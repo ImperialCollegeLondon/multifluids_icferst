@@ -1016,17 +1016,17 @@ start =
                  attribute file_path { string }
                 }*
              }?,
-          ## Activates the Self_potential solver.
+          ## Activates the SelfPotential solver. (S.I. Volts)
           ##
           ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase,
           ## temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a Concentration field defined.
           ## Also, if the minimum concentration is very small, for example below 1e-2, you should expect instabilities
-          ## in your solution due to the logarithmic nature of the system to solve for. This is uncommon, for fresh water the salt concentration is still 1e-5.
+          ## in your solution due to the logarithmic nature of the system to solve for, fresh water has a higher concentration that that.
           ##
           ## Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.
-          element Self_Potential{(
+          element SelfPotential{(
             element scalar_field {
-               attribute name { "Self_Potential" },
+               attribute name { "SelfPotential" },
                (
                 element diagnostic {
                   pressure_mesh_choice,
@@ -1053,10 +1053,6 @@ start =
 	         element Sat_exponent {
 	         	real
 		        }?,
-		       ## By default the results are shown in miliVolts, select this to show the results in Volts.
-	         element Results_in_Volts {
-	         	empty
-		        }? ,
            ## Rock saturated conductivity term (sigma). If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Rock_sat_conductivity_code{
@@ -2456,6 +2452,26 @@ scalar_field_choice =
                     ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
                     element max_limit{real}?
                   )}?,
+                  ## Diffusivity for field (in S.I. m^2/s ).
+                  element tensor_field {
+                     attribute name { "Diffusivity" },
+                     attribute rank { "2" },
+                     (
+                        element prescribed {
+                            mesh_choice?,
+                            prescribed_tensor_field_no_adapt,
+                            output_options
+                        }|
+                      element diagnostic {
+                         (  
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
+                     )
+                  }?,
                   prognostic_scalar_field,
                      output_options
                }|
@@ -2741,6 +2757,26 @@ scalar_field_choice =
                     ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
                     element max_limit{real}?
                   )}?,
+                  ## Diffusivity for field (in S.I. m^2/s ).
+                  element tensor_field {
+                     attribute name { "Diffusivity" },
+                     attribute rank { "2" },
+                     (
+                        element prescribed {
+                            mesh_choice?,
+                            prescribed_tensor_field_no_adapt,
+                            output_options
+                        }|
+                      element diagnostic {
+                         (  
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
+                     )
+                  }?,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2774,6 +2810,26 @@ scalar_field_choice =
                     ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
                     element max_limit{real}?
                   )}?,
+                  ## Diffusivity for field (in S.I. m^2/s ).
+                  element tensor_field {
+                     attribute name { "Diffusivity" },
+                     attribute rank { "2" },
+                     (
+                        element prescribed {
+                            mesh_choice?,
+                            prescribed_tensor_field_no_adapt,
+                            output_options
+                        }|
+                      element diagnostic {
+                         (
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
+                     )
+                  }?,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -3894,13 +3950,14 @@ phase_properties_options =
                  (
                     element prescribed {
                         mesh_choice?,
-                        prescribed_tensor_field_no_adapt
+                        prescribed_tensor_field_no_adapt,
+                            output_options
                     }|
-                    ## For electrical modelling only - holds electrical conductivity
                     element diagnostic {
                        (
-                          tensor_python_diagnostic_algorithm |
-                          internal_algorithm
+                          mesh_choice?,
+                          tensor_python_diagnostic_algorithm ,
+                            output_options
                        ),
                        diagnostic_tensor_field
                     }
@@ -3924,23 +3981,24 @@ phase_properties_options =
                     }
                  )
               }?,
-              ## Solute diffusivity (in S.I. m^2/s ).
+              ## Concentration diffusivity (in S.I. m^2/s ).
               element tensor_field {
                  attribute name { "Solute_Diffusivity" },
                  attribute rank { "2" },
                  (
                     element prescribed {
                         mesh_choice?,
-                        prescribed_tensor_field_no_adapt
+                        prescribed_tensor_field_no_adapt,
+                            output_options
                     }|
-                    ## For electrical modelling only - holds electrical conductivity
-                    element diagnostic {
-                       (
-                          tensor_python_diagnostic_algorithm |
-                          internal_algorithm
-                       ),
-                       diagnostic_tensor_field
-                    }
+                      element diagnostic {
+                         (
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
                  )
               }?,
                 ## Stabilisation for Inertia dominated flow.

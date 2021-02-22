@@ -1412,7 +1412,7 @@ contains
     end subroutine calculate_u_source_cv
 
     !>@brief: Here we compute component/solute/thermal diffusion coefficient
-    subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, calculate_solute_diffusivity, divide_by_rho_CP)
+    subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, TracerName, calculate_solute_diffusivity, divide_by_rho_CP)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
@@ -1420,6 +1420,7 @@ contains
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
       logical, optional, intent(in) :: calculate_solute_diffusivity !If present, calculates solute diffusivity instead of thermal diffusivity
       logical, optional, intent(in) :: divide_by_rho_CP !> If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp
+      character(len=*), optional, intent(in) :: TracerName !> For PassiveTracer with diffusion we pass down the name of the tracer
       !Local variables
       type(scalar_field), pointer :: component, sfield, solid_concentration
       type(tensor_field), pointer :: diffusivity, tfield, den, saturation
@@ -1460,126 +1461,123 @@ contains
           end do
         end do
       else
-        if (present_and_true(calculate_solute_diffusivity)) then
-          diffusivity => extract_tensor_field( state(1), 'ConcentrationDiffusivity', stat )
-        else
-          diffusivity => extract_tensor_field( state(1), 'TemperatureDiffusivity', stat )
-        endif
         !Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
-        if ( stat == 0 ) then
-          if (is_porous_media) then
-            !####DIFFUSIVITY FOR POROUS MEDIA ONLY####
-            sfield=>extract_scalar_field(state(1),"Porosity")
-            den => extract_tensor_field( packed_state,"PackedDensity" )
-            !expo used to switch between boussinesq (density ==1) or normal
-            expo = 1.; if (has_boussinesq_aprox) expo = 0.
+        if (is_porous_media) then
+          !####DIFFUSIVITY FOR POROUS MEDIA ONLY####
+          sfield=>extract_scalar_field(state(1),"Porosity")
+          den => extract_tensor_field( packed_state,"PackedDensity" )
+          !expo used to switch between boussinesq (density ==1) or normal
+          expo = 1.; if (has_boussinesq_aprox) expo = 0.
 
-            ScalarAdvectionField_Diffusion = 0.
-
-            if (present_and_true(calculate_solute_diffusivity)) then
-              do iphase = 1, Mdims%nphase
-                !Check if the field is defined for that phase, if the property is defined but not the field then ignore the property
-                if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/phase_properties/tensor_field::Solute_Diffusivity')) cycle
-                diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
-
-                do ele = 1, Mdims%totele
-                  ele_nod = min(size(sfield%val), ele)
-                  do iloc = 1, Mdims%mat_nloc
-                    mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-                    cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                      do idim = 1, Mdims%ndim
-                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) =    &
-                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) +    &
-                        (sfield%val(ele_nod) *den%val(1, 1, cv_inod)**expo * node_val( diffusivity, idim, idim, mat_inod ))
-                      enddo
-                  end do
-                end do
-              end do
-            else
-              ! Calculation of the averaged thermal diffusivity as
-              ! lambda = (1-porosity) * lambda_p + SUM_of_phases Saturation * (porosity * lambda_f)
-              ! Since lambda_p is defined element-wise and lambda_f CV-wise we perform an average
-              ! as it is stored cv-wise
-              ! NOTE: for porous media we consider thermal equilibrium and therefore unifiying lambda is a must
-              ! Multiplied by the saturation so we use the same paradigm that for the phases,
-              !but in the equations it isn't, but here because we iterate over phases and collapse this is required
-              ! therefore: lambda = SUM_of_phases saturation * [(1-porosity) * lambda_p + porosity * lambda_f)]
-              saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-              do iphase = 1, Mdims%nphase
-                diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-                tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
-                do ele = 1, Mdims%totele
-                  ele_nod = min(size(sfield%val), ele)
-                  t_ele_nod = min(size(tfield%val, 3), ele)
-                  do iloc = 1, Mdims%mat_nloc
-                    mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-                    cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                    do idim = 1, Mdims%ndim
-                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
-                      (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                      +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod))
-                    enddo
-                  end do
-                end do
-              end do
-            endif
-          !####UP TO HERE DIFFUSIVITY FOR POROUS MEDIA ONLY####
-
-
-          else if (have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
-            sfield=> extract_scalar_field( state(1), "SolidConcentration" )
-            !tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
-            ScalarAdvectionField_Diffusion = 0.
+          if (present_and_true(calculate_solute_diffusivity) .or. present(TracerName)) then
             do iphase = 1, Mdims%nphase
+              !Check if the field is defined for that phase, if the property is defined but not the field then ignore the property
               if (present_and_true(calculate_solute_diffusivity)) then
                 diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
-              else
-                diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-              endif
+              else if (present(TracerName)) then
+                diffusivity => extract_tensor_field( state(iphase), trim(TracerName)//'Diffusivity', stat )
+              end if
+              if (stat /= 0) cycle!If no field defined then cycle
+
               do ele = 1, Mdims%totele
                 ele_nod = min(size(sfield%val), ele)
-                !t_ele_nod = min(size(tfield%val, 3), ele)
                 do iloc = 1, Mdims%mat_nloc
                   mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                   cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
                   do idim = 1, Mdims%ndim
-                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-                    ( 1.0 - sfield%val(ele_nod)) * node_val( diffusivity, idim, idim, mat_inod )
-                  end do
+                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) =    &
+                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) +    &
+                    (sfield%val(ele_nod) *den%val(1, 1, cv_inod)**expo * node_val( diffusivity, idim, idim, mat_inod ))
+                  enddo
                 end do
               end do
             end do
           else
-            ScalarAdvectionField_Diffusion = 0.
+            ! Calculation of the averaged thermal diffusivity as
+            ! lambda = (1-porosity) * lambda_p + SUM_of_phases Saturation * (porosity * lambda_f)
+            ! Since lambda_p is defined element-wise and lambda_f CV-wise we perform an average
+            ! as it is stored cv-wise
+            ! NOTE: for porous media we consider thermal equilibrium and therefore unifiying lambda is a must
+            ! Multiplied by the saturation so we use the same paradigm that for the phases,
+            !but in the equations it isn't, but here because we iterate over phases and collapse this is required
+            ! therefore: lambda = SUM_of_phases saturation * [(1-porosity) * lambda_p + porosity * lambda_f)]
+            saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
             do iphase = 1, Mdims%nphase
-              if (present_and_true(calculate_solute_diffusivity)) then
-                diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
-              else
-                diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-              endif
+              diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+              if (stat /= 0) cycle!If no field defined then cycle
+              tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
               do ele = 1, Mdims%totele
-                !                     ele_nod = min(size(sfield%val), ele)
-                !t_ele_nod = min(size(tfield%val, 3), ele)
+                ele_nod = min(size(sfield%val), ele)
+                t_ele_nod = min(size(tfield%val, 3), ele)
                 do iloc = 1, Mdims%mat_nloc
                   mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                   cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
                   do idim = 1, Mdims%ndim
                     ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-                    node_val( diffusivity, idim, idim, mat_inod )
-                  end do
+                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
+                    (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
+                    +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod))
+                  enddo
                 end do
               end do
             end do
-            !do iphase = 1, Mdims%nphase
-            !    diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-            !    do idim = 1, Mdims%ndim
-            !        ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, iphase )
-            !    end do
-            !end dopacked
-          end if
+          endif
+          !####UP TO HERE DIFFUSIVITY FOR POROUS MEDIA ONLY####
+          ! else if (have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
+          !   sfield=> extract_scalar_field( state(1), "SolidConcentration" )
+          !   !tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+          !   ScalarAdvectionField_Diffusion = 0.
+          !   do iphase = 1, Mdims%nphase
+          !     if (present_and_true(calculate_solute_diffusivity)) then
+          !       diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
+          !     else
+          !       diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+          !     endif
+          !     do ele = 1, Mdims%totele
+          !       ele_nod = min(size(sfield%val), ele)
+          !       !t_ele_nod = min(size(tfield%val, 3), ele)
+          !       do iloc = 1, Mdims%mat_nloc
+          !         mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+          !         cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+          !         do idim = 1, Mdims%ndim
+          !           ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+          !           ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+          !           ( 1.0 - sfield%val(ele_nod)) * node_val( diffusivity, idim, idim, mat_inod )
+          !         end do
+          !       end do
+          !     end do
+          !   end do
+        else
+          do iphase = 1, Mdims%nphase
+
+            if (present_and_true(calculate_solute_diffusivity)) then
+              diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
+            else if (present(TracerName)) then
+              diffusivity => extract_tensor_field( state(iphase), trim(TracerName)//'Diffusivity', stat )
+            else
+              diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+            endif
+            if (stat /= 0) cycle!If no field defined then cycle
+            do ele = 1, Mdims%totele
+              !                     ele_nod = min(size(sfield%val), ele)
+              !t_ele_nod = min(size(tfield%val, 3), ele)
+              do iloc = 1, Mdims%mat_nloc
+                mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+                do idim = 1, Mdims%ndim
+                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+                  node_val( diffusivity, idim, idim, mat_inod )
+                end do
+              end do
+            end do
+          end do
+          !do iphase = 1, Mdims%nphase
+          !    diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+          !    do idim = 1, Mdims%ndim
+          !        ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, iphase )
+          !    end do
+          !end do
         end if
       end if
       if ( harmonic_average ) then
@@ -1627,7 +1625,7 @@ contains
     end subroutine calculate_diffusivity
 
     !>@brief: Dispersion for isotropic porous media
-    subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, SoluteDispersion, tracer)
+    subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, SoluteDispersion)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
@@ -1635,14 +1633,13 @@ contains
       real, dimension(:, :, :, :), intent(inout) :: SoluteDispersion
       !Local variables
       type(scalar_field), pointer :: component, sfield, ldfield, tdfield
-      type(tensor_field), pointer :: diffusivity, den
+      type(tensor_field), pointer :: den
       type (vector_field_pointer), dimension(Mdims%n_in_pres) ::darcy_velocity
       integer :: icomp, iphase, idim, stat, ele, idim1, idim2
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc, cv_loc, cv_iloc, ele_nod_disp
       real :: vel_av
       real, dimension(3, 3) :: DispCoeffMat
       real, dimension(3) :: vel_comp, vel_comp2, DispDiaComp
-      type(tensor_field), intent(inout) :: tracer
       real, dimension(:), pointer :: tdisp
 
 
@@ -1666,7 +1663,6 @@ contains
       do iphase = 1, Mdims%n_in_pres
         if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/phase_properties/tensor_field::Solute_Diffusivity')) cycle
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
-        diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
 
         do ele = 1, Mdims%totele
           ele_nod = min(size(sfield%val), ele)

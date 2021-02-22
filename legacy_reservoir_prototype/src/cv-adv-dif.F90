@@ -7388,7 +7388,7 @@ end if
     contains
       !>@brief: Computes the effective value of K or sigma. at the interface between CVs
       !> Based on the intface_type integer:
-      !> 0 = no interpolation; 1 Harmonic mean; !20 for Self_potential solver, harmonic mean considering charge; negative normal mean
+      !> 0 = no interpolation; 1 Harmonic mean; !20 for SelfPotential solver, harmonic mean considering charge; negative normal mean
       real function get_DIFF_COEF_DIVDX(intface_type, HDC,  W_i, W_j, Value_i, Value_j, sigma_i, sigma_j)
         implicit none
         integer, intent(in) :: intface_type
