@@ -99,6 +99,7 @@ contains
 
 
   subroutine C_generate(series, N,   state, coupling)
+    ! The coefficient c used here is actually c/phi because of the formulation used in ICFERST
     implicit none
     type( state_type ), dimension(:), intent( inout ) :: state
     !Global variables
@@ -133,17 +134,17 @@ contains
 
     if (Test) then
       do i=2, N
-        series(i)= coupling%a/d**2*mu*phi(i)**(2-coupling%b)*scaling
+        series(i)= coupling%a/d**2*mu*phi(i)**(1-coupling%b)*scaling
       end do
     else
       do i=2, N
         if (phi(i)<=low) then
-          series(i)= coupling%a/d**2*mu*phi(i)**(2-coupling%b)*scaling
+          series(i)= coupling%a/d**2*mu*phi(i)**(1-coupling%b)*scaling
         else if (phi(i)>=high) then
-          series(i)= 1/d**2*mu*phi(i)**(-5)*(1-phi(i))*scaling
+          series(i)= 1/d**2*mu*phi(i)**(-6)*(1-phi(i))*scaling
         else
           H=exp(s/((phi(i)-low)/(high-low)))/(exp(s/((phi(i)-low)/(high-low)))+exp(s/(1-(phi(i)-low)/(high-low))))
-          series(i)=(coupling%a/d**2*mu*phi(i)**(2-coupling%b)*(1-H)+1/d**2*mu*phi(i)**(-5)*(1-phi(i))*H)*scaling
+          series(i)=(coupling%a/d**2*mu*phi(i)**(1-coupling%b)*(1-H)+1/d**2*mu*phi(i)**(-6)*(1-phi(i))*H)*scaling
         end if
       end do
     end if
