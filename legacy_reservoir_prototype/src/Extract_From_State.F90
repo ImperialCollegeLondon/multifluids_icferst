@@ -939,20 +939,20 @@ contains
 
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call insert_sfield(packed_state,"Temperature",1,nphase,&
-                add_source=.true.,add_absorption=.true.)
+                add_source=.false.,add_absorption=.false.)
         if (.not. is_porous_media) call insert_sfield(packed_state,"FETemperature",1,nphase)
         end if
 
         !HH
         if (option_count("/material_phase/scalar_field::Enthalpy")>0) then
             call insert_sfield(packed_state,"Enthalpy",1,nphase,&
-                add_source=.true.,add_absorption=.true.)
+                add_source=.false.,add_absorption=.false.)
             call insert_sfield(packed_state,"FEEnthalpy",1,nphase)
         end if
 
         if (option_count("/material_phase/scalar_field::Concentration")>0) then
             call insert_sfield(packed_state,"Concentration",1,nphase,&
-                add_source=.true.,add_absorption=.true.)
+                add_source=.false.,add_absorption=.false.)
         if (.not. is_porous_media) call insert_sfield(packed_state,"FEConcentration",1,nphase)
         end if
 
@@ -963,7 +963,7 @@ contains
           if (option_name(1:13)=="PassiveTracer") then
             if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
               call insert_sfield(packed_state,trim(option_name),1,nphase,&
-              add_source=.true.,add_absorption=.true.)!MAYBE NO NEED FOR ABSORPTION??
+              add_source=.false.,add_absorption=.false.)!This introduces memory issues, keep them in state only
               if (.not. is_porous_media) call insert_sfield(packed_state,"FE"//trim(option_name),1,nphase)
             end if
           end if
@@ -1245,8 +1245,9 @@ contains
                     call unpack_sfield(state(i),packed_state,"IteratedTemperature",1,iphase,&
                         check_paired(extract_scalar_field(state(i),"Temperature"),&
                         extract_scalar_field(state(i),"IteratedTemperature")))
+                    !Subfields are now only present in state as including them inside packed state generate deallocation issues
                     ! call unpack_sfield(state(i),packed_state,"TemperatureSource",1,iphase)!Diagnostic fields do not get along with this...
-                    call unpack_sfield(state(i),packed_state,"TemperatureAbsorption",1,iphase)!Diagnostic fields do not get along with this...
+                    ! call unpack_sfield(state(i),packed_state,"TemperatureAbsorption",1,iphase)!Diagnostic fields do not get along with this...
                     call unpack_sfield(state(i),packed_state,"Temperature",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Temperature"),"Temperature")
                 end if
@@ -1260,8 +1261,9 @@ contains
                     call unpack_sfield(state(i),packed_state,"IteratedEnthalpy",1,iphase,&
                         check_paired(extract_scalar_field(state(i),"Enthalpy"),&
                         extract_scalar_field(state(i),"IteratedEnthalpy")))
-                    call unpack_sfield(state(i),packed_state,"EnthalpySource",1,iphase)!Diagnostic fields do not get along with this...
-                    call unpack_sfield(state(i),packed_state,"EnthalpyAbsorption",1,iphase)!Diagnostic fields do not get along with this...
+                    !Subfields are now only present in state as including them inside packed state generate deallocation issues
+                    ! call unpack_sfield(state(i),packed_state,"EnthalpySource",1,iphase)!Diagnostic fields do not get along with this...
+                    ! call unpack_sfield(state(i),packed_state,"EnthalpyAbsorption",1,iphase)!Diagnostic fields do not get along with this...
                     call unpack_sfield(state(i),packed_state,"Enthalpy",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Enthalpy"),"Enthalpy")
                 end if
@@ -1275,8 +1277,9 @@ contains
                     call unpack_sfield(state(i),packed_state,"IteratedConcentration",1,iphase,&
                         check_paired(extract_scalar_field(state(i),"Concentration"),&
                         extract_scalar_field(state(i),"IteratedConcentration")))
-                    call unpack_sfield(state(i),packed_state,"ConcentrationSource",1,iphase)!Diagnostic fields do not get along with this...
-                    call unpack_sfield(state(i),packed_state,"ConcentrationAbsorption",1,iphase)!Diagnostic fields do not get along with this...
+                    !Subfields are now only present in state as including them inside packed state generate deallocation issues
+                    ! call unpack_sfield(state(i),packed_state,"ConcentrationSource",1,iphase)!Diagnostic fields do not get along with this...
+                    ! call unpack_sfield(state(i),packed_state,"ConcentrationAbsorption",1,iphase)!Diagnostic fields do not get along with this...
                     call unpack_sfield(state(i),packed_state,"Concentration",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Concentration"),"Concentration")
                 end if
@@ -1294,8 +1297,9 @@ contains
                       call unpack_sfield(state(i),packed_state,"Iterated"//trim(option_name),1,iphase,&
                       check_paired(extract_scalar_field(state(i),trim(option_name)),&
                       extract_scalar_field(state(i),"Iterated"//trim(option_name))))
-                      call unpack_sfield(state(i),packed_state,trim(option_name)//"Source",1,iphase)!Diagnostic fields do not get along with this...
-                      call unpack_sfield(state(i),packed_state,trim(option_name)//"Absorption",1,iphase)!Diagnostic fields do not get along with this...
+                      !Subfields are now only present in state as including them inside packed state generate deallocation issues
+                      ! call unpack_sfield(state(i),packed_state,trim(option_name)//"Source",1,iphase)!Diagnostic fields do not get along with this...
+                      ! call unpack_sfield(state(i),packed_state,trim(option_name)//"Absorption",1,iphase)!Diagnostic fields do not get along with this...
                       call unpack_sfield(state(i),packed_state,trim(option_name),1,iphase)
                       call insert(multi_state(1,iphase),extract_scalar_field(state(i),trim(option_name)),trim(option_name))
                     end if
