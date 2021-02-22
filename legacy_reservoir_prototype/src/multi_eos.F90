@@ -1438,6 +1438,7 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         real, dimension(:,:), intent(in) :: den
         real, dimension(:,:,:), intent(inout) :: u_source_cv
+        type(scalar_field), pointer :: sat_field1, sat_field2
 
         type(vector_field), pointer :: gravity_direction
         real, dimension(Mdims%ndim) :: g
@@ -1445,6 +1446,8 @@ contains
         real :: gravity_magnitude
         integer :: idim, iphase, nod, stat, start_phase
 
+        sat_field1 => extract_scalar_field( state(1), "PhaseVolumeFraction" )
+        sat_field2 => extract_scalar_field( state(2), "PhaseVolumeFraction" )
         call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
         have_gravity = ( stat == 0 )
         !Initialise RHS
@@ -1457,16 +1460,22 @@ contains
           else if (high_order_Ph) then
             return
           end if
-            gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
-            u_source_cv = 0.
-            do nod = 1, Mdims%cv_nonods
-                g = node_val( gravity_direction, nod ) * gravity_magnitude
-                do iphase = start_phase, Mdims%nphase
-                    do idim = 1, Mdims%ndim
-                        u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim )
-                    end do
+          gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
+          u_source_cv = 0.
+          do nod = 1, Mdims%cv_nonods
+            g = node_val( gravity_direction, nod ) * gravity_magnitude
+            do iphase = start_phase, Mdims%nphase
+              if (is_magma .and. iphase==1) then
+                do idim = 1, Mdims%ndim
+                  u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim ) * sat_field1%val(nod)+ den( 2, nod ) * g( idim ) * sat_field2%val(nod)
                 end do
+              else
+                do idim = 1, Mdims%ndim
+                  u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim )
+                end do
+              end if
             end do
+          end do
         end if
 
     end subroutine calculate_u_source_cv

@@ -2055,7 +2055,7 @@ end if
         end if
 
         !For magma, we change phase 1 to be the sum of the other phases equation
-        if (is_magma) call add_eqs_to_solid_phase() !This has to go just after the call of high_order_pressure_solve
+        ! if (is_magma) call add_eqs_to_solid_phase() !This has to go just after the call of high_order_pressure_solve
 
         !"########################UPDATE VELOCITY STEP####################################"
         !(Is this needed? The pressure hasn't changed yet, so the old velocity should do)!SPRINT_TO_DO
