@@ -1833,7 +1833,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
         U_SOURCE_CV_ALL=0.0
         if ( is_porous_media )then
-           call calculate_u_source_cv( Mdims, state, DEN_ALL, U_SOURCE_CV_ALL )
+           call calculate_u_source_cv( Mdims, state, packed_state, DEN_ALL, U_SOURCE_CV_ALL )
         else
            if ( linearise_density ) then
               call linearise_field( DEN_ALL2, UDEN_ALL )
@@ -1843,7 +1843,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               UDENOLD_ALL = DENOLD_ALL2%VAL( 1, :, : )
            end if
            if ( .not. have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) )&
-                call calculate_u_source_cv( Mdims, state, uden_all, U_SOURCE_CV_ALL )
+                call calculate_u_source_cv( Mdims, state, packed_state, uden_all, U_SOURCE_CV_ALL )
            if ( boussinesq ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
@@ -2054,8 +2054,6 @@ end if
             end if
         end if
 
-        !For magma, we change phase 1 to be the sum of the other phases equation
-        ! if (is_magma) call add_eqs_to_solid_phase() !This has to go just after the call of high_order_pressure_solve
 
         !"########################UPDATE VELOCITY STEP####################################"
         !(Is this needed? The pressure hasn't changed yet, so the old velocity should do)!SPRINT_TO_DO
@@ -2628,27 +2626,6 @@ end if
 
         ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
       end subroutine
-
-
-      !!>@brief: !For magma, we use the Bercovici et al. 2001 (doi.org/10.1029/2000JB900430) formulation,
-      !!> which generates a singular system if both phases act like Darcy.
-      !!> The solution is to solve for the first phase as the sum of all the other phases for momentum, this removes the coupling term from that equation
-      !!> Here we chamge the system to do this, for this we need to change the C matric and U_RHS
-      subroutine add_eqs_to_solid_phase()
-        implicit none
-        !Local variables
-        integer :: JPHASE, IDIM, k, U_INOD
-
-        !Modify the RHS term as well to keep consistency
-        do U_INOD = 1, Mdims%u_nonods
-          do jphase = 2, Mdims%nphase
-            do idim = 1, Mdims%ndim
-              Mmat%U_RHS( idim, 1, U_INOD ) = Mmat%U_RHS( idim, 1, U_INOD ) + Mmat%U_RHS( idim, jphase, U_INOD )
-            end do
-          end do
-        end do
-
-      end subroutine add_eqs_to_solid_phase
 
         !!>@brief: Compute a CV pressure from a FE representation
         subroutine calc_CVPres_from_FEPres()
