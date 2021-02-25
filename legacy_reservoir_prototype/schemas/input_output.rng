@@ -164,6 +164,12 @@ wish below.</a:documentation>
 where X is a tuple of length geometry dimension.</a:documentation>
         <ref name="python_code"/>
       </element>
+      <element name="from_field">
+        <a:documentation>Get the value from another field</a:documentation>
+        <attribute name="name">
+          <data type="string" datatypeLibrary=""/>
+        </attribute>
+      </element>
     </choice>
   </define>
   <define name="initial_condition_scalar">

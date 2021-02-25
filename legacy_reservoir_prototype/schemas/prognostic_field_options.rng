@@ -68,26 +68,12 @@ want this.</a:documentation>
       <element name="order_zero_coefficient">
         <a:documentation> The order zero coefficient represented as C0 in
  C1*T + n.(k*grad(T)) = C0</a:documentation>
-        <choice>
-          <ref name="input_choice_real"/>
-          <element name="from_field">
-            <attribute name="name">
-              <data type="string"/>
-            </attribute>
-          </element>
-        </choice>
+        <ref name="input_choice_real"/>
       </element>
       <element name="order_one_coefficient">
         <a:documentation> The order one coefficient represented as C1 in
  C1*T + n.(k*grad(T)) = C0</a:documentation>
-        <choice>
-          <ref name="input_choice_real"/>
-          <element name="from_field">
-            <attribute name="name">
-              <data type="string"/>
-            </attribute>
-          </element>
-        </choice>
+        <ref name="input_choice_real"/>
       </element>
     </element>
   </define>
