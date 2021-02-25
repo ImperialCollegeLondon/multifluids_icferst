@@ -1581,6 +1581,15 @@ Discontinuous_pressure =&gt; P1DG(BL)P1DG(CV). High order advection scheme and a
             <value>discontinuous_pressure</value>
           </choice>
         </element>
+        <optional>
+          <element name="Balanced_P0DG">
+            <a:documentation>&lt;b&gt;For Balanced and fast precisions.&lt;/b&gt;
+
+Select the P0DG element pair instead of the default P1DG.
+NOTE: that for porous media the default is P0DG.</a:documentation>
+            <empty/>
+          </element>
+        </optional>
       </element>
       <optional>
         <element name="Advance_options">

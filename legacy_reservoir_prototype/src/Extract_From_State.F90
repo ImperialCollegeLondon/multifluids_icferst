@@ -156,7 +156,11 @@ contains
             velocity_cg_mesh => extract_mesh( state, 'VelocityMesh_Continuous' )
             Mdims%xu_nloc = ele_loc( velocity_cg_mesh, 1 )
             Mdims%xu_nonods = max(( Mdims%xu_nloc - 1 ) * Mdims%totele + 1, Mdims%totele )
+          else
+            Mdims%xu_nloc = 1
+            Mdims%xu_nonods = 1
         end if
+
         if( have_option( "/geometry/mesh::HydrostaticPressure/" ) ) then
             ph_mesh => extract_mesh( state( 1 ), 'HydrostaticPressure', stat )
             if ( stat == 0 ) then

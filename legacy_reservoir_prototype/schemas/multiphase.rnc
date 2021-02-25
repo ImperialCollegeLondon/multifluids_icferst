@@ -1279,7 +1279,12 @@ geometry =
             element simulation_quality {
               element string_value{
                  "fast" | "balanced" | "precision"|"discontinuous_pressure"
-              }
+              },
+                ## <b>For Balanced and fast precisions.</b>
+                ## 
+                ## Select the P0DG element pair instead of the default P1DG.
+                ## NOTE: that for porous media the default is P0DG.
+               element Balanced_P0DG {empty}?
             },
 
         ## Settings to change the values specified in simulation_quality.

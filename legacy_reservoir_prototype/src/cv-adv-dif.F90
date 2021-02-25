@@ -4143,7 +4143,7 @@ end if
         X_NONODS, X, Y, Z, &
         NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
         SBCVNGI, SBCVFEN, SBWEIGH, &
-        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, get_gradU, state )
+        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, get_gradU, state, P0Mesh)
 
         ! calculates derivatives of vector fields
         IMPLICIT NONE
@@ -4169,6 +4169,7 @@ end if
         REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
         LOGICAL, intent( in ) :: get_gradU
         TYPE( STATE_TYPE), DIMENSION( : ), intent( inout ) :: state
+        logical, optional :: P0Mesh !> This is for when using the P0DGP1 element pair to substitute the method to find neighbours
         ! Local variables
         REAL, DIMENSION( CV_NLOC, CV_NLOC, TOTELE ) :: MASELE
         REAL, DIMENSION( NDIM, NCOMP, NPHASE, CV_NLOC, TOTELE ) :: VTX_ELE, VTOLDX_ELE
@@ -4268,18 +4269,20 @@ end if
 
                 IF ( SELE2 == 0 ) THEN
                     ! Calculate the nodes on the other side of the face:
+                    if (P0Mesh) then
+                      ILOC_OTHER_SIDE = 1
+                    else
+                      DO CV_SILOC = 1, CV_SNLOC
+                          CV_ILOC = SLOC2LOC( CV_SILOC )
+                          CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
 
-                    DO CV_SILOC = 1, CV_SNLOC
-                        CV_ILOC = SLOC2LOC( CV_SILOC )
-                        CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
+                          DO CV_ILOC2 = 1, CV_NLOC
+                              CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
 
-                        DO CV_ILOC2 = 1, CV_NLOC
-                            CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
-
-                            IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
-                        END DO
-                    END DO
-
+                              IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
+                          END DO
+                      END DO
+                    end if
                     APPLYBC = (ELE /= ELE2) .AND. (ELE2 /= 0)
 
                 ELSE
@@ -4394,7 +4397,7 @@ end if
         X_NONODS, X, Y, Z, &
         NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
         SBCVNGI, SBCVFEN, SBWEIGH, &
-        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY)
+        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, P0Mesh)
 
         ! determine FEMT (finite element wise) etc from T (control volume wise)
         IMPLICIT NONE
@@ -4418,7 +4421,7 @@ end if
         REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN
         REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
         REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-
+        logical, optional :: P0Mesh !> This is for when using the P0DGP1 element pair to substitute the method to find neighbours
         ! Local variables
         REAL, DIMENSION( CV_NLOC, CV_NLOC, TOTELE ) :: MASELE
         REAL, DIMENSION( NDIM, NPHASE, CV_NLOC, TOTELE ) :: VTX_ELE, VTOLDX_ELE
@@ -4516,18 +4519,20 @@ end if
 
                 IF ( SELE2 == 0 ) THEN
                     ! Calculate the nodes on the other side of the face:
+                    if (P0Mesh) then
+                      ILOC_OTHER_SIDE = 1
+                    else
+                      DO CV_SILOC = 1, CV_SNLOC
+                          CV_ILOC = SLOC2LOC( CV_SILOC )
+                          CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
 
-                    DO CV_SILOC = 1, CV_SNLOC
-                        CV_ILOC = SLOC2LOC( CV_SILOC )
-                        CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
+                          DO CV_ILOC2 = 1, CV_NLOC
+                              CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
 
-                        DO CV_ILOC2 = 1, CV_NLOC
-                            CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
-
-                            IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
-                        END DO
-                    END DO
-
+                              IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
+                          END DO
+                      END DO
+                    end if
                     APPLYBC = (ELE /= ELE2) .AND. (ELE2 /= 0)
 
                 ELSE
