@@ -236,8 +236,11 @@ contains
                    call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/' // &
                        'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
                    Field_selector = 1
-                   Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
-                   T_source( :, : ) = Q % val( 1, :, : )
+                   !Retrieve source term; sprint_to_do something equivalent should be done for absoprtion
+                    do iphase = 1, Mdims%nphase
+                      sfield => extract_scalar_field( state(iphase), "TemperatureSource", stat )
+                      if (stat == 0) call assign_val(T_source( iphase, : ),sfield%val)
+                    end do
                end if
                if (thermal) then
                    !We control with the infinite norm of the difference the non-linear iterations done in this sub-cycle
@@ -306,15 +309,10 @@ NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS an
                 !we set up 5 iterations but if it converges => we exit straigth away
 temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the petsc bug hits us here, we can retry
 
-		     if ( have_option( '/femdem_thermal/coupling') ) then
-				Component_Absorption => extract_tensor_field( packed_state, "PackedTemperatureAbsorption")
-				T_ABSORB(1:1,1:1,1:Mdims%cv_nonods)=> Component_Absorption%val (1,1,1:Mdims%cv_nonods)
-
-
-!No need as statement present above
-				!Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
-				!T_source( :, : ) = 0.0! Q % val( 1, 1, : )
-           end if
+            if ( have_option( '/femdem_thermal/coupling') ) then
+              Component_Absorption => extract_tensor_field( packed_state, "PackedTemperatureAbsorption")
+              T_ABSORB(1:1,1:1,1:Mdims%cv_nonods)=> Component_Absorption%val (1,1,1:Mdims%cv_nonods)
+            end if
 
            !Select solver options
            solver_option_path = "/solver_options/Linear_solver"
@@ -775,7 +773,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            real, optional, dimension(:), intent(inout) :: Courant_number
            ! Local variables
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
-           integer :: nits_flux_lim, its_flux_lim
+           integer :: nits_flux_lim, its_flux_lim, stat
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
            REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION, CDISPERSION
@@ -865,8 +863,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            call get_option( '/material_phase[0]/scalar_field::Concentration/prognostic/temporal_discretisation/' // &
                'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
            Field_selector = 1
-           Q => extract_tensor_field( packed_state, "PackedConcentrationSource" )
-           T_source( :, : ) = Q % val( 1, :, : )
+           do iphase = 1, Mdims%nphase
+             sfield => extract_scalar_field( state(iphase), "ConcentrationSource", stat )
+             if (stat == 0) call assign_val(T_source( iphase, : ),sfield%val)
+           end do
 
            !sprint to do, just pass down the other values...
            cv_disopt = Mdisopt%t_disopt
@@ -1082,7 +1082,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            REAL, DIMENSION( : , : ), target, allocatable :: den_all
            REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
            type( tensor_field ), pointer :: P, Q
-           INTEGER :: IPHASE, its_taken, ipres, i
+           INTEGER :: IPHASE, its_taken, ipres, i, stat
            LOGICAL :: RETRIEVE_SOLID_CTY
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
            type( vector_field ), pointer  :: MeanPoreCV, python_vfield
@@ -1156,9 +1156,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            call get_option( '/material_phase[0]/scalar_field::Concentration/prognostic/temporal_discretisation/' // &
                'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
 
-          !Retrieve source term
-           Q => extract_tensor_field( packed_state, "Packed"//trim(Passive_Tracer_name)//"Source" )
-           T_source( :, : ) = Q % val( 1, :, : )
+          !Retrieve source term; sprint_to_do something equivalent should be done for absoprtion
+           do iphase = 1, Mdims%nphase !IF THIS WORKS DO THE SAME FOR THE OTHER SCALAR FIELDS
+             sfield => extract_scalar_field( state(iphase), trim(Passive_Tracer_name)//"Source", stat )
+             if (stat == 0) call assign_val(T_source( iphase, : ),sfield%val)
+           end do
+
            !sprint to do, just pass down the other values...
            cv_disopt = Mdisopt%t_disopt; cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
            cv_theta = Mdisopt%t_theta; cv_beta = Mdisopt%t_beta
