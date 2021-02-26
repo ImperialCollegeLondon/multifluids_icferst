@@ -292,17 +292,11 @@ contains
             Vdegree )
         call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', &
             Pdegree )
-        is_P0DGP1CV = (Vdegree == 0) .and. (Pdegree == 1) .and. &
-                .not. have_option( '/geometry/Advance_options/FE_Pressure' )
-
-        if ((Vdegree == 0) .and. (Pdegree == 1) .and.( .not. is_P0DGP1CV)) then
-            ewrite(0, *) "P0DGP1 does not work for FE dominated simulations yet."
-            stop
-        end if
+        is_P0DGP1 = (Vdegree == 0) .and. (Pdegree == 1)
 
         !Prepare some specific modifications prior to populating state
         !If the extra mesh have not been created, create them here
-        if (.not.is_P0DGP1CV) then!We don't need this field for P0DGP1
+        if (.not.is_P0DGP1) then!We don't need this field for P0DGP1
             if (.not. have_option("/geometry/mesh::VelocityMesh_Continuous")) then
                 call copy_option("/geometry/mesh::VelocityMesh", "/geometry/mesh::VelocityMesh_Continuous")
                 call set_option("/geometry/mesh::VelocityMesh_Continuous/from_mesh/mesh_continuity", "continuous")

@@ -3907,7 +3907,7 @@ end if
             END DO
 
             U_OTHER_LOC = 0 ! Determine U_OTHER_LOC(U_KLOC)
-            if (.not.is_P0DGP1CV) then!XU_NDGLN not defined for P0DGP1
+            if (.not.is_P0DGP1) then!XU_NDGLN not defined for P0DGP1
             ! Works for non constant and constant (XU_NLOC=1) vel basis functions...
             DO U_KLOC = 1, U_NLOC ! Find opposite local node
                 XU_NODK = XU_NDGLN( ( ELE - 1 ) * XU_NLOC + U_KLOC )

@@ -189,7 +189,7 @@ module global_parameters
   logical :: has_concentration = .false.
   !! Checking if using the P0DG for velocity,
   !! special because we need to avoid the use of PressureMesh_Continuous
-  logical :: is_P0DGP1CV = .false.
+  logical :: is_P0DGP1 = .false.
   !! Multiphase prototype, blasting simulator
   logical :: is_blasting = .false.
   !! Has boussinesq option on
