@@ -61,7 +61,11 @@ want this.</a:documentation>
  T the scalar field value on the surface,
  C0 is the input order zero coefficient and
  C1 is the input order one coefficient.
- THIS WILL ONLY WORK FOR CONTINUOUS GALERKIN SPATIAL DISCRETISATION</a:documentation>
+ THIS WILL ONLY WORK FOR CONTINUOUS GALERKIN SPATIAL DISCRETISATION
+
+&lt;b&gt; NOTE: For ICFERST this needs to include the density or for temperature, RhoCP&lt;/b&gt;
+For example for temperature C1 is the convective coefficient, which in this case would need to be multiplied by RhoCP
+and C0 the temperature outside the domain times C1.</a:documentation>
       <attribute name="name">
         <value>robin</value>
       </attribute>
