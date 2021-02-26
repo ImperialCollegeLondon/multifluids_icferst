@@ -54,9 +54,9 @@ robin_bc_scalar =
       ##  C1 is the input order one coefficient.
       ##  THIS WILL ONLY WORK FOR CONTINUOUS GALERKIN SPATIAL DISCRETISATION
       ## 
-      ## <b> NOTE: For ICFERST this needs to include the density or for temperature, RhoCP</b>
-      ## For example for temperature C1 is the convective coefficient, which in this case would need to be multiplied by RhoCP
-      ## and C0 the temperature outside the domain times C1.
+      ## <b> NOTE: Example of units for temperature</b>
+      ## C1 is the convective coefficient W/(m^2 K)
+      ## and C0 is the temperature outside the domain times C1.
       element type {
          attribute name { "robin" },
          ##  The order zero coefficient represented as C0 in
