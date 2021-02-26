@@ -134,7 +134,7 @@ contains
            REAL, DIMENSION( : ), allocatable :: porous_heat_coef, porous_heat_coef_old
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
-           real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
+           real, dimension(2) :: totally_min_max
            logical :: impose_min_max
            real :: aux
            real, save :: inf_tolerance = -1
@@ -555,7 +555,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
-           real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
+           real, dimension(2) :: totally_min_max
            real :: aux
            real, save :: inf_tolerance = -1
            !Variables to control the PETCs solver
@@ -800,7 +800,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
-           real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
+           real, dimension(2) :: totally_min_max
            logical :: impose_min_max
            real :: aux
            real, save :: inf_tolerance = -1
@@ -998,7 +998,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     select case (entrance)
     case (1)
       !Get variable for global convergence method
-      if (apply_minmax_principle .and. nonlinear_iteration == 1) then!Only get the minmax the first non-linear iteration
+      if (apply_minmax_principle) then
+        totally_min_max = (/-1d9,1d9/)
         has_imposed_min_limit = .false.; has_imposed_max_limit = .false.
         if (present(tracerName)) then
           has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit")
@@ -1099,7 +1100,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
-           real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
+           real, dimension(2) :: totally_min_max
            logical :: impose_min_max
            real :: aux
            real, save :: inf_tolerance = -1
@@ -4098,7 +4099,7 @@ end if
                 Mdims%x_nonods, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), &
                 FE_GIdims%nface, FACE_ELE, FE_funs%u_sloclist, FE_funs%cv_sloclist, Mdims%u_snloc, Mdims%cv_snloc, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, &
                 FE_GIdims%sbcvngi, FE_funs%sbufen, FE_funs%sbcvfeweigh, &
-                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly, get_gradU, state )
+                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly, get_gradU, state, Mdims%xu_nloc == 1 )
         ENDIF
         ! LES VISCOCITY CALC.
         IF ( GOT_DIFFUS ) THEN
@@ -5231,23 +5232,23 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     ELSE If_stored
                         U_OTHER_LOC=0
                         U_ILOC_OTHER_SIDE=0
-                        IF( Mdims%xu_nloc == 1 ) THEN ! For constant vel basis functions...
-                            U_ILOC_OTHER_SIDE( 1 ) = 1
-                            U_OTHER_LOC( 1 )= 1
+                        IF( Mdims%xu_nloc == 1) THEN ! For constant vel basis functions...
+                            U_ILOC_OTHER_SIDE = 1
+                            U_OTHER_LOC = 1
                         ELSE
-                            DO U_SILOC = 1, Mdims%u_snloc
-                                U_ILOC = U_SLOC2LOC( U_SILOC )
-                                U_INOD = ndgln%xu( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
-                                DO U_ILOC2 = 1, Mdims%u_nloc
-                                    U_INOD2 = ndgln%xu(( ELE2 - 1 ) * Mdims%u_nloc + U_ILOC2 )
-                                    IF ( U_INOD2 == U_INOD ) THEN
-                                        U_ILOC_OTHER_SIDE( U_SILOC ) = U_ILOC2
-                                        U_OTHER_LOC( U_ILOC )=U_ILOC2
-                                        exit
-                                    END IF
-                                END DO
+                          DO U_SILOC = 1, Mdims%u_snloc
+                            U_ILOC = U_SLOC2LOC( U_SILOC )
+                            U_INOD = ndgln%xu( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
+                            DO U_ILOC2 = 1, Mdims%u_nloc
+                              U_INOD2 = ndgln%xu(( ELE2 - 1 ) * Mdims%u_nloc + U_ILOC2 )
+                              IF ( U_INOD2 == U_INOD ) THEN
+                                U_ILOC_OTHER_SIDE( U_SILOC ) = U_ILOC2
+                                U_OTHER_LOC( U_ILOC )=U_ILOC2
+                                exit
+                              END IF
                             END DO
-                        ENDIF
+                          END DO
+                        end if
                         MAT_OTHER_LOC=0
                         DO MAT_SILOC = 1, Mdims%cv_snloc
                             MAT_ILOC = CV_SLOC2LOC( MAT_SILOC )
@@ -6732,7 +6733,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 LES_MAT_UDIFFUSION_VOL(:,4,:) = LES_U_UDIFFUSION_VOL(:,10,:)+ SOUND_SPEED(:,4,:) * Q_SCHEME_ABS_CONT_VOL(:,10,:)
             end if
         ELSE
-            PRINT *,'not ready to onvert between these elements'
+            PRINT *,'ERROR: P0DG includes implicit LES. If more stabilisation is required use Petrov-Galerkin'
             STOP 2211
         ENDIF
 

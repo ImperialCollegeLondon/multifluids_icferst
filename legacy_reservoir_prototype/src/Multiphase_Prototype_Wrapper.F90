@@ -292,20 +292,11 @@ contains
             Vdegree )
         call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', &
             Pdegree )
-        is_P0DGP1CV = (Vdegree == 0) .and. (Pdegree == 1) .and. &
-                .not. have_option( '/geometry/Advance_options/FE_Pressure' )
-
-        if ((Vdegree == 0) .and. (Pdegree == 1) .and.( .not. is_P0DGP1CV &
-                        .or. have_option('/inertia_dominated'))) then
-            ewrite(0, *) "P0DGP1 does not work for inertia dominated simulations. If using the DCVFEM method use either one of the following options: "
-            ewrite(0, *) "A. Use the P1DGP2CV formulation."
-            ewrite(0, *) "B. Use the P1DGP1CV formulation with mass lumping = 100 in: /numerical_methods/lump_mass_matrix/lump_weight"
-            stop
-        end if
+        is_P0DGP1 = (Vdegree == 0) .and. (Pdegree == 1)
 
         !Prepare some specific modifications prior to populating state
         !If the extra mesh have not been created, create them here
-        if (.not.is_P0DGP1CV) then!We don't need this field for P0DGP1
+        if (.not.is_P0DGP1) then!We don't need this field for P0DGP1
             if (.not. have_option("/geometry/mesh::VelocityMesh_Continuous")) then
                 call copy_option("/geometry/mesh::VelocityMesh", "/geometry/mesh::VelocityMesh_Continuous")
                 call set_option("/geometry/mesh::VelocityMesh_Continuous/from_mesh/mesh_continuity", "continuous")
@@ -708,9 +699,9 @@ contains
           call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
           call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
           if (simulation_quality < 100) then
-              if (have_option("/porous_media_simulator")) then
+              if (have_option("/porous_media_simulator") .or. have_option("/geometry/simulation_quality/Balanced_P0DG")) then
                 call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 0)
-              else !Currently only for porous media P0DG works, so we use P1 for the rest
+              else !we use P1 otherwise
                 call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
               end if
               call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")

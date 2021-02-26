@@ -152,11 +152,15 @@ contains
         Mdims%u_nonods = node_count( velocity )
 
         !!$ Get the continuous space of the velocity field
-        if (.not.is_P0DGP1CV) then
+        if (.not.is_P0DGP1) then
             velocity_cg_mesh => extract_mesh( state, 'VelocityMesh_Continuous' )
             Mdims%xu_nloc = ele_loc( velocity_cg_mesh, 1 )
             Mdims%xu_nonods = max(( Mdims%xu_nloc - 1 ) * Mdims%totele + 1, Mdims%totele )
+          else
+            Mdims%xu_nloc = 1
+            Mdims%xu_nonods = 1
         end if
+
         if( have_option( "/geometry/mesh::HydrostaticPressure/" ) ) then
             ph_mesh => extract_mesh( state( 1 ), 'HydrostaticPressure', stat )
             if ( stat == 0 ) then
@@ -188,7 +192,7 @@ contains
         ndgln%p=>get_ndglno(extract_mesh(state(1),"PressureMesh"))
         ndgln%mat=>get_ndglno(extract_mesh(state(1),"PressureMesh_Discontinuous"))
         ndgln%u=>get_ndglno(extract_mesh(state(1),"InternalVelocityMesh"))
-        if (.not.is_P0DGP1CV) ndgln%xu=>get_ndglno(extract_mesh(state(1),"VelocityMesh_Continuous"))
+        if (.not.is_P0DGP1) ndgln%xu=>get_ndglno(extract_mesh(state(1),"VelocityMesh_Continuous"))
         !!$ Pressure, control volume and material
         pressure => extract_scalar_field( state( 1 ), 'Pressure' )
         !!$ Velocities
@@ -1001,7 +1005,7 @@ contains
         ! pack continuous velocity mesh
         velocity=>extract_vector_field(state(1),"Velocity")
         call insert(packed_state,velocity%mesh,"VelocityMesh")
-        if (.not.is_P0DGP1CV) then
+        if (.not.is_P0DGP1) then
             if (.not.has_mesh(state(1),"VelocityMesh_Continuous")) then
                 nullify(ovmesh)
                 allocate(ovmesh)
