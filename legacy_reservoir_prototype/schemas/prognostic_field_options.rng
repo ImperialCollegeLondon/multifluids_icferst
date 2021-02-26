@@ -61,11 +61,7 @@ want this.</a:documentation>
  T the scalar field value on the surface,
  C0 is the input order zero coefficient and
  C1 is the input order one coefficient.
- THIS WILL ONLY WORK FOR CONTINUOUS GALERKIN SPATIAL DISCRETISATION
-
-&lt;b&gt; NOTE: Example of units for temperature&lt;/b&gt;
-C1 is the convective coefficient W/(m^2 K)
-and C0 is the temperature outside the domain times C1.</a:documentation>
+ THIS WILL ONLY WORK FOR CONTINUOUS GALERKIN SPATIAL DISCRETISATION</a:documentation>
       <attribute name="name">
         <value>robin</value>
       </attribute>
