@@ -4269,7 +4269,7 @@ end if
 
                 IF ( SELE2 == 0 ) THEN
                     ! Calculate the nodes on the other side of the face:
-                    if (P0Mesh) then
+                    if (present_and_true(P0Mesh)) then
                       ILOC_OTHER_SIDE = 1
                     else
                       DO CV_SILOC = 1, CV_SNLOC
@@ -4519,7 +4519,7 @@ end if
 
                 IF ( SELE2 == 0 ) THEN
                     ! Calculate the nodes on the other side of the face:
-                    if (P0Mesh) then
+                    if (present_and_true(P0Mesh)) then
                       ILOC_OTHER_SIDE = 1
                     else
                       DO CV_SILOC = 1, CV_SNLOC
