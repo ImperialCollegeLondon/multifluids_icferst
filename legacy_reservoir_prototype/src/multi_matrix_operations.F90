@@ -1806,8 +1806,8 @@ contains
         nbcolsp=col_numbering%nprivatenodes
         ! number of private rows and cols in total
         ! (this will be the number of local rows and cols for petsc)
-        nrowsp=nbrowsp*nbrows
-        ncolsp=nbcolsp*nbcols
+        nrowsp=nblocksv*3
+        ncolsp=nblocksv*3
 
         bs=nbrows
 
@@ -1820,8 +1820,16 @@ contains
     ! PETSC_DEFAULT_INTEGER, d_nnz, PETSC_DEFAULT_INTEGER, o_nnz, M, ierr)
 
     !! testing: let PETSc decide size of local vector
-    call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, PETSC_DECIDE, PETSC_DECIDE, nrows, ncols, &
+    print*, "gnn1:", nbrows, "gnn2:",nblocksv, "priv.nodes:", nbrowsp
+    print*, bs, nrows, ncols, nbrowsp, ncolsp, size(dnnz), size(onnz)
+
+    ! call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, PETSC_DECIDE, PETSC_DECIDE, 3012, 3012, &
+    ! PETSC_DEFAULT_INTEGER, dnnz, PETSC_DEFAULT_INTEGER, onnz, M, ierr)
+    call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, nrowsp, ncolsp, 3012, 3012, &
     PETSC_DEFAULT_INTEGER, dnnz, PETSC_DEFAULT_INTEGER, onnz, M, ierr)
+
+    !STOP 11119
+
 #else
     call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, PETSC_DECIDE, PETSC_DECIDE, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, dnnz, PETSC_DEFAULT_INTEGER, onnz, M, ierr)

@@ -7443,12 +7443,12 @@ subroutine comb_vel_matrix_diag_dist_block(diag_bigm_con, bigm_con, &
     allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
   end if
 
-    !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
-    call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-    mal = info(MAT_INFO_BLOCK_SIZE)
-    nz_a = info(MAT_INFO_NZ_ALLOCATED)
-    print*, "MATGETINFO1", mal, nz_a
-    !******************** PROFILNG THE PETSC MAT ***************!
+    ! !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
+    ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+    ! mal = info(MAT_INFO_BLOCK_SIZE)
+    ! nz_a = info(MAT_INFO_NZ_ALLOCATED)
+    ! print*, "MATGETINFO1", mal, nz_a
+    ! !******************** PROFILNG THE PETSC MAT ***************!
 
     call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
@@ -7555,6 +7555,8 @@ subroutine comb_vel_matrix_diag_dist_block(diag_bigm_con, bigm_con, &
             !   end do
             ! end do
             !!********************************************************************
+
+
             call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, 1, GLOBJ-1, &
                           valuesb, ADD_VALUES, ierr)
             dgm_petsc%is_assembled=.false.
@@ -7564,6 +7566,8 @@ subroutine comb_vel_matrix_diag_dist_block(diag_bigm_con, bigm_con, &
       nnn=nnn+1
       end do Between_Elements_And_Boundary20
       !! inserting values a block row at a time
+
+      ! STOP 111119
       if(big_block) then
         if(multi_block) then
           call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, size(idxn(0:nnn-1)), idxn(0:nnn-1), &

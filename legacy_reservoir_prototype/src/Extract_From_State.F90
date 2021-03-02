@@ -2134,7 +2134,7 @@ function as_packed_vector(tfield) result(vfield)
 
 end function as_packed_vector
 
-!> @brief: This function points a tensor field as a vector field type
+!> @brief: This function points a tensor field as a vector field type for blocks
 !> This is necessary when solving for tensor fields that are actually multiphase vector fields.
 function as_packed_vector_block(tfield) result(vfield)
     type(tensor_field), intent(inout) :: tfield
@@ -2175,7 +2175,6 @@ subroutine finalise_multistate(packed_state,multiphase_state,&
     call deallocate(packed_state)
 
 end subroutine finalise_multistate
-
 
 
 !>@author: Pablo Salinas
