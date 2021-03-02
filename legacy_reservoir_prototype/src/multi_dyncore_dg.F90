@@ -54,11 +54,12 @@ module multiphase_1D_engine
 #ifdef HAVE_PETSC_MODULES
   use petsc
 #endif
-
-! #include <petsc/finclude/petscvec.h>
-! #include <petsc/finclude/petscmat.h>
-!   use petscvec
-!   use petscmat
+#if PETSC_VERSION_MINOR >=14
+#include <petsc/finclude/petscvec.h>
+#include <petsc/finclude/petscmat.h>
+  use petscvec
+  use petscmat
+#endif
 
     implicit none
 #include "petsc_legacy.h"
@@ -7505,8 +7506,16 @@ subroutine comb_vel_matrix_diag_dist_block(diag_bigm_con, bigm_con, &
                         !!!********* remove once global index/block index issue is resolved ***
                         ! else
                           ! ! global index counters 1 (local rows/columns in a block)
-                          ! i = idim+(iphase-1)*ndim+(u_iloc-1)*ndim*nphase
-                          ! j = jdim+(jphase-1)*ndim+(u_jloc-1)*ndim*nphase
+#if PETSC_VERSION_MINOR >=14
+
+#else
+! Block inserts only really work with new version of PETSc
+                          print*, "WARNING: you are using block matrix solve with an old version, this will be very slow"
+                          i = idim+(iphase-1)*ndim+(u_iloc-1)*ndim*nphase
+                          j = jdim+(jphase-1)*ndim+(u_jloc-1)*ndim*nphase
+                          call addto(dgm_petsc, I , J , globi , globj , &
+                              LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
+#endif
                           ! !global index of each value in the non-zero block
                           !**** this is the old numbering for petsc
                           ! ! idxm(i-1)=dgm_petsc%row_numbering%gnn2unn(globi,i)
@@ -7560,15 +7569,18 @@ subroutine comb_vel_matrix_diag_dist_block(diag_bigm_con, bigm_con, &
             ! end do
             !!********************************************************************
 
-
+#if PETSC_VERSION_MINOR >=14
             call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, 1, GLOBJ-1, &
                           valuesb, ADD_VALUES, ierr)
             dgm_petsc%is_assembled=.false.
+#endif
           end if
         end if
 
       nnn=nnn+1
       end do Between_Elements_And_Boundary20
+
+#if PETSC_VERSION_MINOR >=14
       !! inserting values a block row at a time
       if(big_block) then
         if(multi_block) then
@@ -7577,6 +7589,8 @@ subroutine comb_vel_matrix_diag_dist_block(diag_bigm_con, bigm_con, &
           dgm_petsc%is_assembled=.false.
         end if
       end if
+#endif
+
   end do Loop_Elements20
 
 
