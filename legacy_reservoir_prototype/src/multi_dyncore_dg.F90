@@ -55,10 +55,10 @@ module multiphase_1D_engine
   use petsc
 #endif
 
-#include <petsc/finclude/petscvec.h>
-#include <petsc/finclude/petscmat.h>
-  use petscvec
-  use petscmat
+! #include <petsc/finclude/petscvec.h>
+! #include <petsc/finclude/petscmat.h>
+!   use petscvec
+!   use petscmat
 
     implicit none
 #include "petsc_legacy.h"
@@ -7570,8 +7570,6 @@ subroutine comb_vel_matrix_diag_dist_block(diag_bigm_con, bigm_con, &
       nnn=nnn+1
       end do Between_Elements_And_Boundary20
       !! inserting values a block row at a time
-
-      ! STOP 111119
       if(big_block) then
         if(multi_block) then
           call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, size(idxn(0:nnn-1)), idxn(0:nnn-1), &
