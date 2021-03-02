@@ -287,8 +287,13 @@ integer :: linternal_smoothing_option
      call PCCompositeSetType(prec, PC_COMPOSITE_ADDITIVE, ierr)
      !consisting of the vertical lumped mg, and the internal smoother
      !which is a shell
+#if PETSC_VERSION_MINOR >=14
      call PCCompositeAddPCType(prec, PCMG, ierr)
      call PCCompositeAddPCType(prec, PCSHELL, ierr)
+#else
+    call PCCompositeAddPC(prec, PCMG, ierr)
+    call PCCompositeAddPC(prec, PCSHELL, ierr)
+#endif
      ! set up the vertical_lumped mg
      call PCCompositeGetPC(prec, 0, subprec, ierr)
      call SetupSmoothedAggregation(subprec, matrix, ierror, &
