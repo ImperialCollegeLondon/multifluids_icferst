@@ -229,10 +229,15 @@ integer :: linternal_smoothing_option
      call PCSetType(prec, PCCOMPOSITE, ierr)
      call PCCompositeSetType(prec, PC_COMPOSITE_MULTIPLICATIVE, ierr)
      ! consisting of outer SOR iterations and the composite PC
+#if PETSC_VERSION_MINOR >=14
      call PCCompositeAddPCType(prec, PCSOR, ierr)
      call PCCompositeAddPCType(prec, PCCOMPOSITE, ierr)
      call PCCompositeAddPCType(prec, PCSOR, ierr)
-
+#else
+    call PCCompositeAddPC(prec, PCSOR, ierr)
+    call PCCompositeAddPC(prec, PCCOMPOSITE, ierr)
+    call PCCompositeAddPC(prec, PCSOR, ierr)
+#endif
      !set up the forward SOR
      call PCCompositeGetPC(prec, 0, subprec, ierr)
      call PCSORSetSymmetric(subprec,SOR_FORWARD_SWEEP,ierr)
@@ -252,8 +257,13 @@ integer :: linternal_smoothing_option
      call PCCompositeSetType(subprec, PC_COMPOSITE_ADDITIVE, ierr)
      !consisting of the vertical lumped mg, and the internal smoother
      !which is a shell
+#if PETSC_VERSION_MINOR >=14
      call PCCompositeAddPCType(subprec, PCMG, ierr)
      call PCCompositeAddPCType(subprec, PCSHELL, ierr)
+#else
+    call PCCompositeAddPC(subprec, PCMG, ierr)
+    call PCCompositeAddPC(subprec, PCSHELL, ierr)
+#endif
      ! set up the vertical_lumped mg
      call PCCompositeGetPC(subprec, 0, subsubprec, ierr)
      call SetupSmoothedAggregation(subsubprec, matrix, ierror, &
