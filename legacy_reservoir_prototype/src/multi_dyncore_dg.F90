@@ -2653,7 +2653,11 @@ end if
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           if(block) then
+            Mmat%DGM_PETSC%row_numbering%nprivatenodes = element_count(packed_vel)
+            Mmat%DGM_PETSC%column_numbering%nprivatenodes = element_count(packed_vel)
             call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , block,option_path = trim(solver_option_velocity))
+            Mmat%DGM_PETSC%row_numbering%nprivatenodes = node_count(packed_vel)
+            Mmat%DGM_PETSC%column_numbering%nprivatenodes = node_count(packed_vel)
           else
             call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
           end if

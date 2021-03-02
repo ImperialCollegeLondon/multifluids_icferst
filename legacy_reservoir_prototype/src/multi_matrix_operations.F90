@@ -1693,7 +1693,7 @@ contains
               end do
             end do
           endif
-          matrix%m=full_createseqbaij(blocks, matrix%row_numbering, &
+          matrix%M=full_CreateSeqBAIJ(blocks, matrix%row_numbering, &
             matrix%column_numbering, nnz)
           deallocate(nnz)
         else
