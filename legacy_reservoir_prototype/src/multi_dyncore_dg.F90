@@ -7493,40 +7493,22 @@ subroutine comb_vel_matrix_diag_dist_block(diag_bigm_con, bigm_con, &
                   do idim=1,ndim
                     if (.not. node_owned(velocity,((ele-1)*u_nloc + u_iloc))) cycle
                     if(big_block) then
-                      !!!********* remove once global index/block index issue is resolved ***
-                        ! if(multi_block) then
+
                       !!*******************************************************************
-                          !! requires the rhs and packed_velocity
-                          !! vector pointers to be allocated as:
-                          !! global_index=matrix%gnn2unn(local_index,block_index)
                           valuesb(nn)=loc_dgm_pha( idim,jdim,iphase,jphase,u_iloc,u_jloc)
                           ! block index counters (block rows/columns)
                           globi=ele
                           globj=jcolele
-                        !!!********* remove once global index/block index issue is resolved ***
-                        ! else
-                          ! ! global index counters 1 (local rows/columns in a block)
 #if PETSC_VERSION_MINOR >=14
-
+! Use the more efficient block inserts
 #else
-! Block inserts only really work with new version of PETSc
+! Use the less efficient insert
                           print*, "WARNING: you are using block matrix solve with an old version, this will be very slow"
                           i = idim+(iphase-1)*ndim+(u_iloc-1)*ndim*nphase
                           j = jdim+(jphase-1)*ndim+(u_jloc-1)*ndim*nphase
                           call addto(dgm_petsc, I , J , globi , globj , &
                               LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
 #endif
-                          ! !global index of each value in the non-zero block
-                          !**** this is the old numbering for petsc
-                          ! ! idxm(i-1)=dgm_petsc%row_numbering%gnn2unn(globi,i)
-                          ! ! idxn(j-1)=dgm_petsc%column_numbering%gnn2unn(globj,j)
-                          !**** this is the new numbering for petsc
-                          ! idxm(i-1)=dgm_petsc%row_numbering%gnn2unn(i,globi)
-                          ! idxn(j-1)=dgm_petsc%column_numbering%gnn2unn(j,globj)
-
-                          ! !rank-2 array of the non-zero block per non-zero block column (jcolele) per ele
-                          ! values(i-1,j-1)=loc_dgm_pha( idim,jdim,iphase,jphase,u_iloc,u_jloc)
-                        ! end if
                         !!********************************************************************
                     else
                       i=idim + (iphase-1)*ndim
@@ -7568,7 +7550,6 @@ subroutine comb_vel_matrix_diag_dist_block(diag_bigm_con, bigm_con, &
             !   end do
             ! end do
             !!********************************************************************
-
 #if PETSC_VERSION_MINOR >=14
             call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, 1, GLOBJ-1, &
                           valuesb, ADD_VALUES, ierr)
@@ -7592,16 +7573,12 @@ subroutine comb_vel_matrix_diag_dist_block(diag_bigm_con, bigm_con, &
 #endif
 
   end do Loop_Elements20
-
-
   ! !!******************** PROFILNG THE PETSC MAT ***************!
   ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
   ! mal = info(MAT_INFO_BLOCK_SIZE)
   ! nz_a = info(MAT_INFO_NZ_USED)
   ! print*, "MATGETINFO2", mal, nz_a
   ! !!**********************************************************!
-
-
   if(big_block) then
     deallocate(valuesb)
   else
