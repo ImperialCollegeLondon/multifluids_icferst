@@ -991,7 +991,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !Local variables
     logical :: apply_minmax_principle
     integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
-    type(tensor_field) :: tracer_BCs
+    type(tensor_field) :: tracer_BCs, tracer_BCs_robin2
     real, parameter :: tol = 1e-30
     real :: imposed_min_limit, imposed_max_limit
     logical :: has_imposed_min_limit, has_imposed_max_limit
@@ -1009,7 +1009,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit", imposed_max_limit)
         allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
         call get_entire_boundary_condition(tracer,&
-        ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL)
+        ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL, boundary_second_value=tracer_BCs_robin2)
         !Use boundaries for min/max
         if (.not. has_imposed_min_limit) totally_min_max(1)=minval(tracer_BCs%val, MASK = tracer_BCs%val > tol)!use stored value
         if (.not. has_imposed_max_limit) totally_min_max(2)=maxval(tracer_BCs%val)!use stored value
@@ -1018,7 +1018,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         if (.not. has_imposed_max_limit) totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored value
         !For parallel
         call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-        deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs)
+        deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs); call deallocate(tracer_BCs_robin2)
       end if
     case (2)
       if (apply_minmax_principle) &
