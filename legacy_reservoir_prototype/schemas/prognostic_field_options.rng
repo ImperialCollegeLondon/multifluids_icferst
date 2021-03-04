@@ -71,13 +71,13 @@ and C0 is the temperature outside the domain.</a:documentation>
         <value>robin</value>
       </attribute>
       <element name="order_zero_coefficient">
-        <a:documentation> The order zero coefficient represented as C0 in
- C1*T + n.(k*grad(T)) = C0</a:documentation>
+        <a:documentation> The far field value represented as C0 in
+ C1*(T-C0) + n.(k*grad(T)) = 0</a:documentation>
         <ref name="input_choice_real"/>
       </element>
       <element name="order_one_coefficient">
         <a:documentation> The order one coefficient represented as C1 in
- C1*T + n.(k*grad(T)) = C0</a:documentation>
+ C1*(T-C0) + n.(k*grad(T)) = 0</a:documentation>
         <ref name="input_choice_real"/>
       </element>
     </element>
