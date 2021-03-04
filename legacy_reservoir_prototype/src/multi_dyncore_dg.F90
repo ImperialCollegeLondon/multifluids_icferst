@@ -6733,7 +6733,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 LES_MAT_UDIFFUSION_VOL(:,4,:) = LES_U_UDIFFUSION_VOL(:,10,:)+ SOUND_SPEED(:,4,:) * Q_SCHEME_ABS_CONT_VOL(:,10,:)
             end if
         ELSE
-            PRINT *,'not ready to onvert between these elements'
+            PRINT *,'LES not ready to convert between these elements. Use Petrov-Galerkin instead.'
             STOP 2211
         ENDIF
 
