@@ -1201,25 +1201,27 @@ contains
        Conditional_CV_NLOC_2D_Tri: Select Case( cv_nloc )
        case( 3 ) ! Linear triangle
           Conditional_LinTriangle: if( QUAD_OVER_WHOLE_ELE ) then
-             GIdims%cv_ngi = 3 ; GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
+            GIdims%cv_ngi = 3 ; GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
 !!$
-             Select Case( whole_ele_volume_order )
-             case( 1 )
-                GIdims%cv_ngi = 1
-             case( 2 )
-                GIdims%cv_ngi = 3
-             end Select
+!              Select Case( whole_ele_volume_order )
+!              case( 1 )
+!                 GIdims%cv_ngi = 1
+!              case( 2 )
+!                 GIdims%cv_ngi = 3
+!              end Select
+! !!$
+!              Select Case( whole_ele_surface_order )
+!              case( 1 )
+!                 GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
+!              case( 2 )
+!                 GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
+!              end Select
 !!$
-             Select Case( whole_ele_surface_order )
-             case( 1 )
-                GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
-             case( 2 )
-                GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
-             end Select
-!!$
-             if( u_nloc == 6 .or. u_nloc == 4) then!degree of precision 3. Enough for P1 bubble with Direct mass lumping
+             if (u_nloc == 1 ) then !For P0DG we just need 1 GI point
+               GIdims%cv_ngi = 1 ; GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
+             else if( u_nloc == 6 .or. u_nloc == 4) then!degree of precision 3. Enough for P1 bubble with Direct mass lumping
                 GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3!or P2 normal mass matrix, the integral is not fully exact but results are correct
-            elseif( u_nloc == 10 ) then!Quintic order quadrature for P3, or activate for P1 bubble if not using direct mass lumping
+             elseif( u_nloc == 10 ) then!Quintic order quadrature for P3, or activate for P1 bubble if not using direct mass lumping
                 GIdims%cv_ngi = 14 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
              end if
           else
@@ -1379,28 +1381,32 @@ contains
              GIdims%cv_ngi = 4 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
 !!$
 
-             Select Case( whole_ele_volume_order )
-             case( 1 )
-                GIdims%cv_ngi = 1
-             case( 2 )
-                GIdims%cv_ngi = 4
-             case( 3 )
-                GIdims%cv_ngi = 11
-             end Select
-!!$
+!              Select Case( whole_ele_volume_order )
+!              case( 1 )
+!                 GIdims%cv_ngi = 1
+!              case( 2 )
+!                 GIdims%cv_ngi = 4
+!              case( 3 )
+!                 GIdims%cv_ngi = 11
+!              end Select
+! !!$
+!
+!              Select Case( whole_ele_surface_order )
+!              case( 1 )
+!                 GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
+!              case( 2 )
+!                 GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
+!              case( 3 )
+!                 GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
+!              end Select
 
-             Select Case( whole_ele_surface_order )
-             case( 1 )
-                GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
-             case( 2 )
-                GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
-             case( 3 )
-                GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
-             end Select
+            if (u_nloc == 1) then!For P0DG only 1 point quadrature is necessary
+              GIdims%cv_ngi = 1; GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
+            end if
 
-!!$          ! Use a degree of precision of 4 ;interpolation pt set for quad tets. Enough for P2 normal Mass matrix
-             if( u_nloc == 10 .or. u_nloc == 5) then! or P1 bubble with direct mass lumping
-                  GIdims%cv_ngi = 11 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
+            if( u_nloc == 10 .or. u_nloc == 5) then! or P1 bubble with direct mass lumping
+              ! Use a degree of precision of 4 ;interpolation pt set for quad tets. Enough for P2 normal Mass matrix
+                GIdims%cv_ngi = 11 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
              end if
              ! Use a degree of precision of 8 for bubble tets!sprint_to_do this needs to be optional, to use different options for bubble elements
              if( u_nloc == 5) then !THIS IS VERY EXPENSIVE! only use this if not using direct mass lumping and bubble elements are required
