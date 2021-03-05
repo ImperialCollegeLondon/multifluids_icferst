@@ -508,7 +508,7 @@ contains
     type(scalar_field), pointer :: Composition_source
 
     Composition_source => extract_scalar_field(state(1), "Magma_comp_source")
-    Solute_new=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
+    Solute_new=>extract_tensor_field(packed_state,"PackedConcentration")
     saturation_new => extract_tensor_field(packed_state, "PackedPhaseVolumeFraction")
 
     do cv_inod = 1, Mdims%cv_nonods
