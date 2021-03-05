@@ -210,19 +210,14 @@ contains
         type(coupling_term_coef) :: coupling
         type(magma_phase_diagram) :: magma_phase_coef
         real :: bulk_power
-<<<<<<< HEAD
         ! To record the compostion value and melt fraction before the phase diagram
-       real, dimension(:), allocatable :: Compostion_temp
-       real, dimension(:), allocatable :: melt_temp
-
-||||||| merged common ancestors
-
-=======
+        real, dimension(:), allocatable :: Compostion_temp
+        real, dimension(:), allocatable :: melt_temp
         !Variables for passive tracers
         logical :: have_Passive_Tracers = .true.
         integer :: fields
         character( len = option_path_len ) :: option_name
->>>>>>> 92eee4b2af26f79171c87d6955850b46b446758a
+
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr

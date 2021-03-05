@@ -2062,7 +2062,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end if
            if ( .not. have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) )&
                 call calculate_u_source_cv( Mdims, state, packed_state, uden_all, U_SOURCE_CV_ALL )
-           if ( boussinesq ) then
+           if ( has_boussinesq_aprox ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
            if (solve_stokes) then
