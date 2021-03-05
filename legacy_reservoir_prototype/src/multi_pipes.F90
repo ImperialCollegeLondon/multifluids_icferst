@@ -17,20 +17,14 @@
 #include "fdebug.h"
 
 module multi_pipes
-
     use fldebug
-
     use fields
-
     use reference_counting
     use memory_diagnostics
-
     use global_parameters
-
     use Petsc_Tools
     use Sparse_tools
     use sparse_tools_petsc
-
     use surface_integrals, only :integrate_over_surface_element
     use shape_functions_Linear_Quadratic
     use shape_functions_NDim
@@ -38,14 +32,11 @@ module multi_pipes
     use matrix_operations
     use Copy_Outof_State
     use boundary_conditions
-
     use multi_tools
     use multi_data_types
-
     use write_state_module, only: write_state
-
     implicit none
-
+#include "petsc_legacy.h"
     private
 
     public  :: ASSEMBLE_PIPE_TRANSPORT_AND_CTY, MOD_1D_FORCE_BAL_C, retrieve_pipes_coords, pipe_coords, initialize_pipes_package_and_gamma
@@ -67,7 +58,7 @@ contains
   !>@brief: This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
   SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                   getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                  INV_SIGMA, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase )
+                  INV_SIGMA, upwnd, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase )
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
       type(multi_dimensions), intent(in) :: Mdims
@@ -76,7 +67,7 @@ contains
       type (multi_sparsities), intent(in) :: Mspars
       integer, dimension(:,:,:), intent( in ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_U_BC_ALL
       real, dimension(:,:,:), intent( in ) :: SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL
-      real, dimension(:,:,:,:), intent( in ) :: OPT_VEL_UPWIND_COEFS_NEW
+      type (porous_adv_coefs), intent(inout) :: upwnd
       real, dimension(:,:),intent( inout ) :: INV_SIGMA
       real, dimension(:),intent( inout ) :: MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE ! of length NCMC
       real, dimension(:),intent( inout ) :: mass_pipe, MASS_PIPE_FOR_COUP ! of length Mdims%cv_nonods
@@ -90,7 +81,7 @@ contains
       type (multi_outfluxes), intent(inout) :: outfluxes
       ! Local variables
       INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc, jphase, assembly_phase
-      INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, i_indx, j_indx, ele, cv_gi, iloop, ICORNER, NPIPES, i
+      INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, ele, cv_gi, iloop, ICORNER, NPIPES, i
       integer, dimension(:), pointer :: cv_neigh_ptr
       integer, dimension(:), allocatable:: CV_GL_LOC, CV_GL_GL, X_GL_GL, MAT_GL_GL, u_GL_LOC, u_GL_GL
       integer, dimension(Mdims%ndim+1) :: CV_LOC_CORNER, U_LOC_CORNER!Allocate with number of corners; NCORNER
@@ -125,7 +116,7 @@ contains
       real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, MIN_DIAM
       real, dimension(1) :: R1, R2, RZ
       real, dimension(final_phase*2) :: TMAX, TMIN, DENMAX, DENMIN
-      integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
+      integer :: PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
           u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
           icorner1, icorner2, icorner3, icorner4, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
           U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k, iofluxes, compact_phase, global_phase
@@ -142,9 +133,12 @@ contains
       real, parameter :: INFINY=1.0E+20
       integer, parameter :: WIC_B_BC_DIRICHLET = 1
       !Variables extra for outfluxes
-      type(tensor_field), pointer ::temp_field, salt_field
+      type(tensor_field), pointer ::temp_field, Concentration_field
       logical :: compute_outfluxes
 
+      PetscScalar,parameter :: one = 1.0
+      PetscErrorCode :: ierr
+      PetscInt :: i_indx, j_indx
 
       conservative_advection = abs(cv_beta) > 0.99
 
@@ -157,8 +151,8 @@ contains
             temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
             if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = 0
         end if
-        if (has_salt) then
-            salt_field => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
+        if (has_concentration) then
+            Concentration_field => extract_tensor_field( packed_state, "PackedConcentration" )
             if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
         end if
 
@@ -510,10 +504,10 @@ contains
                   CV_NODI = CV_GL_GL(CV_LILOC)
                   DO IPHASE = 1, final_phase
                       if (is_porous_media) then
-                              TT1 = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T1 )
+                              TT1 = upwnd%adv_coef(1,1,IPHASE, MAT_NODI)* MATMUL(upwnd%inv_permeability(:,:,ele) , T1 )
                               T1TT1 = SUM(T1*TT1)
                           IF ( Mdims%ndim==3 ) THEN
-                              TT2 = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T2 )
+                              TT2 = upwnd%adv_coef(1,1,IPHASE, MAT_NODI)* MATMUL(upwnd%inv_permeability(:,:,ele) , T2 )
                               T1TT2 = SUM( T1*TT2 )
                               T2TT1 = SUM( T2*TT1 )
                               T2TT2 = SUM( T2*TT2 )
@@ -539,7 +533,7 @@ contains
                       INV_SIGMA(IPHASE,CV_NODI) = INV_SIGMA(IPHASE,CV_NODI) + INV_SIGMA_ND * SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
                       ! For the nano laterals...
                       if (is_porous_media) then
-                          NN1 = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), DIRECTION )
+                          NN1 = upwnd%adv_coef(1,1,IPHASE, MAT_NODI)* MATMUL(upwnd%inv_permeability(:,:,ele), DIRECTION )
                           N1NN1 = SUM( DIRECTION*NN1 )
                       else
                           N1NN1 = SUM( DIRECTION )
@@ -836,7 +830,7 @@ contains
                     sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)!We need SELE for this, not ideal but this operation is not done much overall
                     call update_outfluxes(bcs_outfluxes, outfluxes, sele, JCV_NOD,  &
                         NDOTQ * suf_area * LIMT, NDOTQ * suf_area * LIMDT, &!Vol_flux and Mass_flux
-                        T_ALL, temp_field, salt_field, wells_first_phase, final_phase*2 )
+                        T_ALL, temp_field, Concentration_field, wells_first_phase, final_phase*2 )
                   end if
 
               ENDIF ! ENDOF IF(JCV_NOD.NE.0) THEN
@@ -845,6 +839,7 @@ contains
       DO IPHASE = 1, final_phase
           INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE, 1.E-15 )
       END DO
+
       IF ( GETCV_DISC ) THEN
           do iphase = wells_first_phase, final_phase*2
             assembly_phase = iphase
@@ -854,11 +849,17 @@ contains
                       cv_nodj = cv_nodi
                       i_indx = Mmat%petsc_ACV%row_numbering%gnn2unn( cv_nodi, assembly_phase )
                       j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, assembly_phase )
-                      call MatSetValue( Mmat%petsc_ACV, i_indx, j_indx, 1.0, INSERT_VALUES, ierr )
+#if PETSC_VERSION_MINOR >=14
+                      call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, one, ADD_VALUES, ierr)
+
+#else
+                      call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, real(1.0, kind=PetscScalar_kind), ADD_VALUES, ierr)
+#endif
                   end if
               end do
           end do
        end if
+      Mmat%petsc_ACV%is_assembled = .false.
   CONTAINS
     !>@brief: This sub calculates the limited face values TDADJ(1...SNGI) from the central
     !> difference face values TDCEN(1...SNGI) using a NVD shceme.
@@ -1049,10 +1050,8 @@ contains
                 RSUM_VEC = 0.0
                 do ipres = 1, Mdims%npres
                   do iphase = 1, final_phase
-                    DO IDIM = 1, Mdims%ndim
-                        RSUM_VEC(iphase + (ipres - 1)*final_phase) = RSUM_VEC(iphase + (ipres - 1)*final_phase) +&
-                            upwnd%adv_coef( IDIM, IDIM, iphase + (ipres - 1)*Mdims%n_in_pres, MAT_NODI ) / REAL( Mdims%ndim )
-                    END DO
+                      RSUM_VEC(iphase + (ipres - 1)*final_phase) = RSUM_VEC(iphase + (ipres - 1)*final_phase) +&
+                          upwnd%adv_coef( 1, 1, iphase + (ipres - 1)*Mdims%n_in_pres, MAT_NODI ) / REAL( Mdims%ndim )
                   end do
               end do
             else
@@ -1077,7 +1076,7 @@ contains
       MASS_PIPE_FOR_COUP = 0.
       CALL MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
           getcv_disc, getct, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
-          SIGMA_INV_APPROX, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase)
+          SIGMA_INV_APPROX, upwnd, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase)
 
       GAMMA_PRES_ABS2 = 0.0
       !A_GAMMA_PRES_ABS only for compressible flow? sprint_to_do DO WE NEED TO DO THIS FOR Incompressible FLOW??

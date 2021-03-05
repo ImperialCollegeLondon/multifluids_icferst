@@ -14,6 +14,21 @@ from scipy.interpolate import interp1d
 import os
 
 
+def getAnalytical_interpolated( Analytical_X, Analytical_Y, position):
+    #Returns the physical line and line to which certain edge belong
+    getAnalytical_interpolated = -1
+    k = 0
+    #Values are ordered in an increase fashion
+    for i in range(len(Analytical_X)):
+        if (Analytical_X[i]>=position):
+            k = i
+            break
+
+    a = (Analytical_Y[k-1] - Analytical_Y[k])/(Analytical_X[k-1] - Analytical_X[k])    
+    getAnalytical_interpolated = a * (position-Analytical_X[k-1]) + Analytical_Y[k-1]
+    
+    return getAnalytical_interpolated 
+
 print 'Running the model'
 
 #Get path
@@ -21,42 +36,40 @@ print 'Running the model'
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
-os.system(binpath + ' ' + path + '/*.mpml')
+os.system(binpath + ' ' + path + '/*mpml')
+#THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P2DGP1DG AND 
+#A STRUCTURED MESH OF 30 ELEMENTS IN THE X-DIRECTION
+#IT COMPARES THE SOLUTION AGAINST AN ACTUAL ANALYTICAL SOLUTION
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 1e-4
-
-#RETRIEVE AUTOMATICALLY THE LAST VTU FILE
-AutoNumber = 0
-for files in os.listdir(path):
-    if files.endswith(".vtu"):
-        pos = files.rfind('_')
-        pos2 = files.rfind('.')
-        AutoFile = files[:pos]
-        AutoNumber = max(AutoNumber, int(files[pos+1:pos2]))
+#The errors seem big but that is 
+#because the MAXIMUM pressure is about 10^6
+Tolerance_L1_NORM = 0.003
 
 
-AutomaticFile = AutoFile
-AutomaticVTU_Number = AutoNumber
+#The name of the file and number can be introduced here
+#To use this, don't introduce a command argument
+AutomaticFile = 'cwc'
+AutomaticVTU_Number = 40
 
 #Plot the results in 2d?
 showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
-data_name = 'Self_Potential'
+data_name = 'phase1::Pressure'
 
 #Initial and last coordinate of the probe
 x0 = 0.0
-x1 = 200.
+x1 = 1.0
 
-y0 = 25.0 # 1.0/float(NUMBER)
-y1 = y0 #<==Temporary, it can handle different values
+y0 = 0.1
+y1 = 0.1
 
 z0 = 0.0
 z1 = 0.0
 #Resolution of the probe
-resolution = 100
+resolution = 500
 
 
 #TO EXTRACT VECTORIAL VARIABLES,
@@ -145,7 +158,7 @@ for j in range(points.GetNumberOfPoints()):
 
 Analytical_X = []
 Analytical_Y = []
-Analytical=file('Reference','r')
+Analytical=file('Semi-Analytical','r')
 
 
 while True:
@@ -173,20 +186,19 @@ for item in FS:
 
 
 L1_sum = 0.0
-L2_sum = 0.0
 L1_sum_shock_front = 0.0
-L2_sum_shock_front = 0.0
 N_shock = 0
 Infinite_Norm = 0.0
 for i in range(len(Experimental_X)):
     if (i==0):#The first position is exact, so no need to interpolate
         L1_sum = L1_sum + abs(Analytical_Y[i] - Experimental_Y[i])
         continue
+    
     position = Experimental_X[i]
 #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
     x = f(position)
     if (x==-1):
-        print 'The size of the Experimental and reference experiments is different'
+        print 'The size of the Experimental and Analytical experiments is different'
         quit
 
     if (abs(x - Experimental_Y[i])> Infinite_Norm):
@@ -194,33 +206,28 @@ for i in range(len(Experimental_X)):
     L1_sum = L1_sum + abs(x - Experimental_Y[i])  
         
         
-L1_norm= L1_sum / len(Experimental_X)  
+L1_norm= L1_sum / (len(Experimental_X)*max(Analytical_Y))
 
 Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
-#Check the experiment has finished
-if (AutoNumber < 2): Passed = False
-
 #print L1_norm
 if (Passed): 
-    print 'ThermoElectric SelfPotential works OK'
+    print 'CWC works OK'
 else:
-    print 'ThermoElectric SelfPotential does NOT work'
-
+    print 'CWC does NOT work'
 
 if (showPlot):
     fig, ax = plt.subplots()
     x = []
     y = []
     for i in range(len(detector)):
-        x.append(float(detector[i][0])+0.5)#In this test case the origin is in -0.5
+        x.append(float(detector[i][0]))
         y.append(float(FS[i][0]))
-    line = plt.Line2D(x, y, color='red', linewidth=2)
+    line = plt.Line2D(x, y, color='red', linewidth=4)
     line2 = plt.Line2D(Analytical_X, Analytical_Y, color='blue', linewidth=2)
     #line.text.set_color('red')
     #line.text.set_fontsize(16)
     ax.add_line(line)
     ax.add_line(line2)
-    plt.autoscale(enable=True, axis='both', tight=None)
     plt.show()

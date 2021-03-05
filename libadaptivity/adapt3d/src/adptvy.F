@@ -268,7 +268,7 @@ C
       ELSE IF( .NOT. MSHOPT(1) .AND. .NOT. MSHOPT(5) ) THEN
 C - must make sure there is something switched on for two-stage adapt
          MSHOPT(1) = .TRUE.
-         ewrite(0, '(a)')
+         ewrite(1, '(a)')
      :     '+++ ADPTVY: Turned on edge splitting for two stage adapt'
       END IF
 C
@@ -945,7 +945,7 @@ c         IERR = -5010
 c         GOTO 999
 c      END IF
 C
-        ewrite(1, '(a)') 
+        ewrite(1, '(a)')
      :  '*** ADPTVY: INTEGER ARRAY TOO SMALL FOR NEW MESH, REALLOCATING'
         allocate( tmparr(nwsfid+nwnsel-nwndlc) )
 C

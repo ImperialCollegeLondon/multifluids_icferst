@@ -196,6 +196,7 @@ module multi_data_types
         real, dimension( :, :, :, : ), pointer :: adv_coef => null()!>Sigmas at the boundary to calculate fluxes
         real, dimension( :, :, :, : ), pointer :: inv_adv_coef => null()!>Inverse of sigmas at the boundary to calculate fluxes
         real, dimension( :, :, :, : ), pointer :: adv_coef_grad => null()!>Gradient of the sigmas at the boundary to calculate fluxes
+        real, dimension( :, :, : ),    pointer :: inv_permeability => null()!>Gradient of the sigmas at the boundary to calculate fluxes
     end type porous_adv_coefs
 
     type multi_field
@@ -223,7 +224,7 @@ module multi_data_types
                                           !>    Memory_type = 6-> Isotropic Symmetric tensors
         type (multi_field) :: Components
         type (multi_field) :: Temperature
-        type (multi_field) :: SaltConcentration
+        type (multi_field) :: Concentration
         type (multi_field) :: Velocity
         !>Magma absorption
         type (multi_field) :: Magma !>Initially to use memory type = 3  Isotropic coupled
@@ -364,7 +365,8 @@ contains
             if (trim(field_name)=="PorousMedia_AbsorptionTerm") then
                 mfield%is_constant = .false. !For porous media it cannot be constant
 !Andreas        if (Porous Media General Term) then
-                  mfield%memory_type = 2 ! We force this memory despite not being the most comprised
+                  mfield%memory_type = 1!Memory one as now permeability is dettached from this
+                  !2 ! We force this memory despite not being the most comprised
                                        ! because it enables us to remove copies of memory and because for real 3D problems it is very unlikely that
                                        ! the permeability will be isotropic in all the regions
 !              else if (Porous media isotropic diagonal terms)
@@ -446,7 +448,7 @@ contains
         if (associated(multi_absorp%Components%val))  call deallocate_multi_field(multi_absorp%Components, and_destroy2)
         if (associated(multi_absorp%Temperature%val)) call deallocate_multi_field(multi_absorp%Temperature, and_destroy2)
         if (associated(multi_absorp%Velocity%val))    call deallocate_multi_field(multi_absorp%Velocity, and_destroy2)
-        if (associated(multi_absorp%SaltConcentration%val))call deallocate_multi_field(multi_absorp%SaltConcentration, and_destroy2)
+        if (associated(multi_absorp%Concentration%val))call deallocate_multi_field(multi_absorp%Concentration, and_destroy2)
         if (associated(multi_absorp%Magma%val))    call deallocate_multi_field(multi_absorp%Magma, and_destroy2)
     end subroutine deallocate_multi_absorption
 
@@ -1314,8 +1316,9 @@ contains
         type (multi_dimensions), intent(in)  ::Mdims
 
 !        if (.not.associated(upwnd%adv_coef)) allocate(upwnd%adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
-        if (.not.associated(upwnd%inv_adv_coef)) allocate(upwnd%inv_adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
-        if (.not.associated(upwnd%adv_coef_grad)) allocate(upwnd%adv_coef_grad(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
+        if (.not.associated(upwnd%inv_adv_coef)) allocate(upwnd%inv_adv_coef(1,1,Mdims%nphase,Mdims%mat_nonods))
+        if (.not.associated(upwnd%adv_coef_grad)) allocate(upwnd%adv_coef_grad(1,1,Mdims%nphase,Mdims%mat_nonods))
+        if (.not.associated(upwnd%inv_permeability)) allocate(upwnd%inv_permeability(Mdims%ndim,Mdims%ndim,Mdims%totele))
     end subroutine allocate_porous_adv_coefs
 
     subroutine deallocate_porous_adv_coefs(upwnd)
@@ -1325,7 +1328,7 @@ contains
                                             !multi_absorption%porousMedia as is being deallocated there
         if (associated(upwnd%inv_adv_coef)) deallocate(upwnd%inv_adv_coef)
         if (associated(upwnd%adv_coef_grad)) deallocate(upwnd%adv_coef_grad)
-
+        if (associated(upwnd%inv_permeability)) deallocate(upwnd%inv_permeability)
         nullify(upwnd%adv_coef); nullify(upwnd%inv_adv_coef);nullify(upwnd%adv_coef_grad)
     end subroutine deallocate_porous_adv_coefs
 
@@ -1412,7 +1415,7 @@ contains
         !(field -saturation, temperature-, Mdims%nphase, size(outfluxes%outlet_id))
         ! allocate(outfluxes%totout(k, Mdims%nphase, size(outfluxes%outlet_id)))
 
-        ! if (has_salt) k = k + 2
+        ! if (has_concentration) k = k + 2
         allocate(outfluxes%totout(k, Mdims%nphase, size(outfluxes%outlet_id)))
 
         outfluxes%intflux= 0.

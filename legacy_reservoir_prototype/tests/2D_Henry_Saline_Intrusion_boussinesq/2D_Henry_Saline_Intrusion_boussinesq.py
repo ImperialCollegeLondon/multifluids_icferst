@@ -21,11 +21,13 @@ print 'Running the model'
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
-os.system(binpath + ' ' + path + '/*.mpml')
+os.system(binpath + ' ' + path + '/2D_Henry_Saline_Intrusion_boussinesq.mpml')
+#THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST 
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 1e-4
+Tolerance_L1_NORM = 0.055
+Tolerance_L2_NORM = 0.005
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
 AutoNumber = 0
@@ -44,14 +46,14 @@ AutomaticVTU_Number = AutoNumber
 showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
-data_name = 'Self_Potential'
+data_name = 'Concentration'
 
 #Initial and last coordinate of the probe
-x0 = 0.0
-x1 = 200.
+x0 = 1.2
+x1 = 2.0
 
-y0 = 25.0 # 1.0/float(NUMBER)
-y1 = y0 #<==Temporary, it can handle different values
+y0 = -1.0 # 1.0/float(NUMBER)
+y1 = 0.0 #<==Temporary, it can handle different values
 
 z0 = 0.0
 z1 = 0.0
@@ -140,12 +142,11 @@ data = probe.GetOutput()
 for j in range(points.GetNumberOfPoints()):
     FS.append(  data.GetPointData().GetScalars(data_name).GetTuple(j))
 
-#So far we have the information from the analytical result
 
 
 Analytical_X = []
 Analytical_Y = []
-Analytical=file('Reference','r')
+Analytical=file('Fine','r')
 
 
 while True:
@@ -162,10 +163,9 @@ while True:
 Analytical.close
 
 #Create spline curve
-#tck = interpolate.splrep(Analytical_X, Analytical_Y, s=0.08)
+
 f = interp1d(Analytical_X, Analytical_Y,kind ='linear')
 
-#COnvert tuple to array
 Experimental_Y = []
 for item in FS:
     Experimental_Y.extend(item)
@@ -179,37 +179,27 @@ L2_sum_shock_front = 0.0
 N_shock = 0
 Infinite_Norm = 0.0
 for i in range(len(Experimental_X)):
-    if (i==0):#The first position is exact, so no need to interpolate
-        L1_sum = L1_sum + abs(Analytical_Y[i] - Experimental_Y[i])
-        continue
-    position = Experimental_X[i]
-#    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
-    x = f(position)
-    if (x==-1):
-        print 'The size of the Experimental and reference experiments is different'
-        quit
-
-    if (abs(x - Experimental_Y[i])> Infinite_Norm):
-        Infinite_Norm = abs(x - Experimental_Y[i])
-    L1_sum = L1_sum + abs(x - Experimental_Y[i])
-    if (abs(x - Experimental_Y[i])>1/100000000):
-        N_shock = N_shock + 1
-        L1_sum_shock_front = L1_sum_shock_front + abs(x - Experimental_Y[i])     
+    
+     L1_sum = L1_sum + abs(Analytical_Y[i] - Experimental_Y[i])
+     L2_sum = L2_sum + (Analytical_Y[i] - Experimental_Y[i])**2
         
         
-L1_norm= L1_sum / len(Experimental_X)  
+        
+L1_norm= L1_sum / len(Experimental_X) 
+L2_norm = L2_sum**0.5 / len(Experimental_X)    
 
 Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
+if (L2_norm > Tolerance_L2_NORM): Passed = False
 #Check the experiment has finished
-if (AutoNumber < 2): Passed = False
+if (AutoNumber < 20): Passed = False
 
-#print L1_norm
+#print L1_norm, L2_norm
 if (Passed): 
-    print 'ElectroDiffusive SelfPotential works OK'
+    print 'Henry saline intrusion works OK'
 else:
-    print 'ElectroDiffusive SelfPotential does NOT work'
+    print 'Henry saline intrusion does NOT work'
 
 
 if (showPlot):
@@ -217,7 +207,7 @@ if (showPlot):
     x = []
     y = []
     for i in range(len(detector)):
-        x.append(float(detector[i][0])+0.5)#In this test case the origin is in -0.5
+        x.append(float(detector[i][0]))
         y.append(float(FS[i][0]))
     line = plt.Line2D(x, y, color='red', linewidth=2)
     line2 = plt.Line2D(Analytical_X, Analytical_Y, color='blue', linewidth=2)
@@ -225,5 +215,4 @@ if (showPlot):
     #line.text.set_fontsize(16)
     ax.add_line(line)
     ax.add_line(line2)
-    plt.autoscale(enable=True, axis='both', tight=None)
     plt.show()

@@ -18,6 +18,11 @@
 
 
 module multi_tools
+
+#ifdef HAVE_PETSC_MODULES
+  use petsc
+#endif
+
     use python_state
     use state_module
     use fldebug
@@ -28,6 +33,9 @@ module multi_tools
     use vector_tools
 
     implicit none
+
+#include "petsc_legacy.h"
+
 
     !>@brief: Type to keep an eye on the quality of the elements
     !>@DEPRECATED
@@ -941,5 +949,109 @@ END subroutine RotationMatrix
       call python_run_string( trim( pycode ) )
       scalar_result = sfield%val
     end subroutine
+
+
+    !---------------------------------------------------------------------------
+    !> @author Asiri Obeysekara
+    !> @brief Subroutines that can initialise, register and start/end a petsc
+    !> performance profiling routin. The defauly behaviour is initiliased for
+    !> time-loop profiling
+    !---------------------------------------------------------------------------
+    subroutine petsc_logging(func,stage,ierr,default,push_no,stage_name)
+
+    implicit none
+    integer, intent(in) :: func
+    integer, parameter  :: N = 8 !this is the default for the time_loop
+    integer :: x, i
+    integer, optional, intent(in)  :: push_no
+    logical, optional, intent(in) :: default
+    PetscErrorCode, intent(inout) :: ierr
+    PetscLogStage, dimension(0:9)  :: stage
+
+    character(len=*), dimension(1), optional :: stage_name
+    character(len=*), dimension(8), parameter ::  stage_name_def &
+                                = (/ &
+         "PRELIM                ", &
+         "FORCE                 ", &
+         "SATURATION            ", &
+         "TEMP                  ", &
+         "COMP                  ", &
+         "DT+VTU                ", &
+         "ADAPT                 ", &
+         "REST                  "/)
+
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
+print*,"***WARNING: there will be compaitbility issue with your older PETSc &
+version and using & profiling, please configure WITHOUT 'petscdebug'"
+#else
+
+          !! case 1 - register; case 2 - push ; case 3 - pop
+          select case(func)
+            case(1)
+              !this is to initialise
+              if (default) then
+              !default is for the main time-loop
+                do x=1, N
+                  call petsc_log_init(stage_name_def(x),x,stage,ierr)
+                end do
+              else
+                call petsc_log_init(stage_name(1),push_no,stage,ierr)
+              end if
+            case(2) !!-PUSH
+                !this is to initialise
+                if (default) then
+                  call petsc_log_push(push_no,stage,ierr)
+                end if
+            case(3) !! - POP
+              !this is to initialise
+              if (default) then
+              !default is for the main time-loop
+                  call petsc_log_pop(ierr)
+              else
+                  call petsc_log_pop(ierr)
+              end if
+          end select
+#endif
+#endif
+    return
+    contains
+      !> @brief: This routine registers the stage for PETSC logging
+      !> IMPORTANT:
+      subroutine petsc_log_init(stage_name,no,stage, ierr)
+        implicit none
+        PetscErrorCode, intent(inout) :: ierr
+        PetscLogStage,dimension(0:9)  :: stage
+        integer :: no
+        character( len = * ), intent( in ) :: stage_name
+
+
+        call PetscLogStageRegister(stage_name,stage(no),ierr)
+
+      end subroutine petsc_log_init
+
+      !> @brief: This routine starts the current stage registered
+      !> for PETSc profiling
+      !> IMPORTANT:
+      subroutine petsc_log_push(no,stage, ierr)
+        implicit none
+        PetscErrorCode, intent(inout) :: ierr
+        PetscLogStage,dimension(0:9)  :: stage
+        integer :: no
+
+        call PetscLogStagePush(stage(no),ierr)
+      end subroutine petsc_log_push
+
+      !> @brief: This routine ends the current stage registered
+      !> for PETSc profiling
+      !> IMPORTANT:
+      subroutine petsc_log_pop(ierr)
+        implicit none
+        PetscErrorCode, intent(inout) :: ierr
+
+        call PetscLogStagePop(ierr)
+      end subroutine petsc_log_pop
+
+    end subroutine petsc_logging
 
 end module multi_tools

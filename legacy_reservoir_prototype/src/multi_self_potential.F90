@@ -64,10 +64,7 @@ module multi_SP
         type( vector_field ), pointer :: X_ALL
         integer :: reference_nod
         logical :: reference_node_owned
-        real :: reference_value, top_coordinate, gravity_magnitude, conversor_to_miliVolts
-        !Because we solve for Concentration the Solute mass fraction, we need to convert to Moles/litre
-        !M/l = Concentration * density / Molar mass
-        real, parameter :: NaCl_g_mol = 58.44!g/mol
+        real :: reference_value, top_coordinate, gravity_magnitude
 
       !     !Retrieve fields
         X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
@@ -75,9 +72,9 @@ module multi_SP
         Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
         density =>extract_tensor_field(packed_state,"PackedDensity")
         nfields = 1
-        Concentration=>extract_tensor_field(packed_state,"PackedSoluteMassFraction", stat)
+        Concentration=>extract_tensor_field(packed_state,"PackedConcentration", stat)
         Temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
-        if (has_salt) nfields = nfields + 1
+        if (has_concentration) nfields = nfields + 1
         if (has_temperature) nfields = nfields + 1
         allocate(F_fields(nfields, 1, Mdims%cv_nonods), K_fields(nfields, 1, Mdims%cv_nonods))
         allocate(rock_sat_conductivity(1, Mdims%cv_nonods))
@@ -90,9 +87,9 @@ module multi_SP
           F_fields(1, 1, cv_inod) = Pressure%val(1,1,cv_inod) - gravity_magnitude * density%val(1,1,cv_inod) * (top_coordinate - X_ALL%val(Mdims%ndim,cv_inod))
           k = 1
           ! F_fields(1, 1, cv_inod) = Saturation%val(1, 1, cv_inod); k = 1
-          if (has_salt) then
+          if (has_concentration) then
             !Convert to Moles/Litre
-            F_fields(2, 1, cv_inod) = Concentration%val(1, 1, cv_inod) * density%val(1, 1, cv_inod)/ NaCl_g_mol
+            F_fields(2, 1, cv_inod) = Concentration%val(1, 1, cv_inod) * 1000 !To convert from mol/m^3 to mol/l which is how the formulae are defined
             k = 2
           end if
           !Here the temperature can be in Kelvin or Celsius as we are looking at gradients
@@ -100,7 +97,7 @@ module multi_SP
         end do
 
         !Obtain the conductivity of the saturated rock
-        call get_rock_sat_conductivity(state, packed_state, Mdims, ndgln, Saturation%val(1, 1, :), F_fields(2,1,:), Temperature%val(1, 1, :), rock_sat_conductivity(1,:))
+        call get_rock_sat_conductivity(state, packed_state, Mdims, ndgln, Saturation%val(1, 1, :), F_fields(2, 1, :), Temperature%val(1, 1, :), rock_sat_conductivity(1,:))
         !Compute K_fields
         do k = 1, nfields
           call get_SP_coupling_coefficients(state, packed_state, Mdims, ndgln, rock_sat_conductivity(1,:), K_fields(k,1,:), &
@@ -113,14 +110,14 @@ module multi_SP
           solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::SPSolver'
         end if
         ! SP Solver elements
-        SelfPotential => extract_scalar_field(state(1),"Self_Potential", stat)
+        SelfPotential => extract_scalar_field(state(1),"SelfPotential", stat)
         call generate_and_solve_Laplacian_system( Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, &
-                                      rock_sat_conductivity, "Self_Potential", K_fields, F_fields, 20, solver_option_path)
+                                      rock_sat_conductivity, "SelfPotential", K_fields, F_fields, 20, solver_option_path)
 
         !##########Now we normalise the SP result to have the reference node with voltage = 0. We do this because is better to remove the null space###########
         !##Retrieve the coordinates of the reference position##
         reference_value = 0.
-        call find_reference_node_from_coordinates(X_ALL, Saturation%mesh,"/porous_media/Self_Potential",reference_nod,reference_node_owned)
+        call find_reference_node_from_coordinates(X_ALL, Saturation%mesh,"/porous_media/SelfPotential",reference_nod,reference_node_owned)
         !The processor that owns the node retrieves the value
         if (IsParallel()) then
           if (reference_node_owned) reference_value = SelfPotential%val(reference_nod)
@@ -130,9 +127,7 @@ module multi_SP
         !Share the value between all the processors
         call allsum(reference_value)
         !Apply the reference to ensure that the reference node is zero
-        conversor_to_miliVolts = 1e3
-        if (have_option("/porous_media/Self_Potential/Results_in_Volts") ) conversor_to_miliVolts = 1.0!Leave as Volts
-        SelfPotential%val = (SelfPotential%val - reference_value)*conversor_to_miliVolts!to show in mVolts
+        SelfPotential%val = (SelfPotential%val - reference_value)
         deallocate(rock_sat_conductivity, F_fields, K_fields)
       end subroutine Assemble_and_solve_SP
 
@@ -160,8 +155,8 @@ module multi_SP
         real, parameter :: tol = 1e-8
 
         !If using python code all the problem are the users
-        if (have_option("/porous_media/Self_Potential/python_Rock_sat_conductivity_code")) then
-          call compute_python_scalar_field(state, "/porous_media/Self_Potential/python_Rock_sat_conductivity_code", rock_sat_conductivity)
+        if (have_option("/porous_media/SelfPotential/python_Rock_sat_conductivity_code")) then
+          call compute_python_scalar_field(state, "/porous_media/SelfPotential/python_Rock_sat_conductivity_code", rock_sat_conductivity)
         else
           !Retrieve fields from state/packed_state
           !Check the situation with the temperature field/value
@@ -173,8 +168,8 @@ module multi_SP
             end if
             show_msg = .false.
           else
-            if (have_option("/porous_media/Self_Potential/Reservoir_temperature")) then
-              call get_option( '/porous_media/Self_Potential/Reservoir_temperature', temp )
+            if (have_option("/porous_media/SelfPotential/Reservoir_temperature")) then
+              call get_option( '/porous_media/SelfPotential/Reservoir_temperature', temp )
               if (show_msg) then
                 if (GetProcNo() == 1 .and. temp - Kelv_conv < 0.) then
                   ewrite(0, *) "REMINDER: The S.I. units for TEMPERATURE are Kelvin not Celsius."
@@ -183,26 +178,26 @@ module multi_SP
               show_msg = .false.
             else
               if (GetProcNo() == 1) then
-                ewrite(0, *) "ERROR: Self_potential requires to define a temperature either by a prognostic field or using the option: /porous_media/Self_Potential/Reservoir_temperature."
-                ewrite(0, *) "Self_potential will NOT be computed."
+                ewrite(0, *) "ERROR: SelfPotential requires to define a temperature either by a prognostic field or using the option: /porous_media/SelfPotential/Reservoir_temperature."
+                ewrite(0, *) "SelfPotential will NOT be computed."
                 return
               end if
             end if
           end if
           !Retrieve exponents
-          call get_option("/porous_media/Self_Potential/Cementation_exp",cementation_exp, default = 1.8 )
-          call get_option("/porous_media/Self_Potential/Sat_exponent",sat_exp, default = 2.0 )
+          call get_option("/porous_media/SelfPotential/Cementation_exp",cementation_exp, default = 1.8 )
+          call get_option("/porous_media/SelfPotential/Sat_exponent",sat_exp, default = 2.0 )
 
           porosity=>extract_vector_field(packed_state,"Porosity")
-          if (.not. has_salt) then
+          if (.not. has_concentration) then
             if (GetProcNo() == 1) then
               ewrite(0, *) "ERROR: For Self Potential calculation a concentration field is required."
-              ewrite(0, *) "Self_potential will NOT be computed."
+              ewrite(0, *) "SelfPotential will NOT be computed."
               return
             end if
           else !Compute water conductivity based on Temperature and concentration (Sen and Goode, 1992)
             do cv_inod = 1, Mdims%cv_nonods
-              if (has_temperature) temp = Temperature(cv_inod)                   !Water salt concentration
+              if (has_temperature) temp = Temperature(cv_inod)                   !Water concentration
               water_conductivity(cv_inod) = (5.6 + 0.27 * temp - 1.5e-4 * temp**2.)*(Concentration(cv_inod)+tol) &
               - Concentration(cv_inod)**1.5 * ( 2.36 + 0.099 * temp) / (1 + 0.214 * Concentration(cv_inod)**0.5)
             end do
@@ -245,8 +240,8 @@ module multi_SP
         logical :: post_process
 
         !Retrieve fields from state/packed_state
-        if (have_option("/porous_media/Self_Potential/Reservoir_temperature")) then
-          call get_option( '/porous_media/Self_Potential/Reservoir_temperature', temp )
+        if (have_option("/porous_media/SelfPotential/Reservoir_temperature")) then
+          call get_option( '/porous_media/SelfPotential/Reservoir_temperature', temp )
         end if
 
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
@@ -255,8 +250,8 @@ module multi_SP
         cv_counter = 0.
         !Electrokinetic coupling coefficient
         if (flag == 1) then
-          if (have_option("/porous_media/Self_Potential/python_ElectroKinetic_code")) then
-            call compute_python_scalar_field(state, "/porous_media/Self_Potential/python_ElectroKinetic_code", coupling_coef)
+          if (have_option("/porous_media/SelfPotential/python_ElectroKinetic_code")) then
+            call compute_python_scalar_field(state, "/porous_media/SelfPotential/python_ElectroKinetic_code", coupling_coef)
           else
             do  ele = 1, Mdims%totele
               do cv_iloc = 1, Mdims%cv_nloc
@@ -272,7 +267,7 @@ module multi_SP
           end if
         end if
         !Exclusion diffusion coefficient
-        if (flag == 2 .and. .not. have_option("/porous_media/Self_Potential/python_Electrodiffusive_code")) then
+        if (flag == 2 .and. .not. have_option("/porous_media/SelfPotential/python_Electrodiffusive_code")) then
           post_process = .true.
             do cv_inod = 1, Mdims%cv_nonods
               Tna = get_Hittorf_transport_number(Concentration(cv_inod))
@@ -283,7 +278,7 @@ module multi_SP
             end do
         end if
         !Thermal coupling coefficient
-        if (flag == 3 .and. .not. have_option("/porous_media/Self_Potential/python_Thermoelectric_code")) then
+        if (flag == 3 .and. .not. have_option("/porous_media/SelfPotential/python_Thermoelectric_code")) then
           post_process = .true.
           do cv_inod = 1, Mdims%cv_nonods
             Tna = get_Hittorf_transport_number(Concentration(cv_inod))
@@ -303,16 +298,16 @@ module multi_SP
             end do
           end do
           !Obtain the average since we have overlooped cv nodes
-          coupling_coef = coupling_coef/cv_counter * 1e-3!To convert from mV to Volts only flags 2 and 3
+          coupling_coef = coupling_coef/cv_counter *1e-3 !To convert from mV to Volts only flags 2 and 3
         end if
 
         !#############Using python######################
         !Thermal coupling coefficient
-        if (flag == 2 .and. have_option("/porous_media/Self_Potential/python_Electrodiffusive_code")) then
-          call compute_python_scalar_field(state, "/porous_media/Self_Potential/python_Electrodiffusive_code", coupling_coef)
+        if (flag == 2 .and. have_option("/porous_media/SelfPotential/python_Electrodiffusive_code")) then
+          call compute_python_scalar_field(state, "/porous_media/SelfPotential/python_Electrodiffusive_code", coupling_coef)
         end if
-        if (flag == 3 .and. have_option("/porous_media/Self_Potential/python_Thermoelectric_code")) then
-          call compute_python_scalar_field(state, "/porous_media/Self_Potential/python_Thermoelectric_code", coupling_coef)
+        if (flag == 3 .and. have_option("/porous_media/SelfPotential/python_Thermoelectric_code")) then
+          call compute_python_scalar_field(state, "/porous_media/SelfPotential/python_Thermoelectric_code", coupling_coef)
         end if
         !Finally obtain the coupling coefficient
         coupling_term = coupling_coef * rock_sat_conductivity

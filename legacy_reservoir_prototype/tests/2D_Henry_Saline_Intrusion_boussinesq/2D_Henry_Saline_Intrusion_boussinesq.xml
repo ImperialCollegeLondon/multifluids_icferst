@@ -1,15 +1,15 @@
 <?xml version='1.0' encoding='utf-8'?>
 <testproblem>
-  <name>2D_Henry_Saline_Intrusion</name>
+  <name>2D_Henry_Saline_Intrusion_boussinesq</name>
   <owner userid="Arash.Hamzehloo"/>
-  <tags>porous mpml adaptivity transport solute saline intrusion tbc</tags>
+  <tags>porous mpml adaptivity transport solute saline intrusion boussinesq tbc</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>python ./*.py &gt; log</command_line>
   </problem_definition>
   <variables>
   </variables>
   <pass_tests>
-      <test name="2D_Henry_Saline_Intrusion" language="python">check_test = False
+      <test name="2D_Henry_Saline_Intrusion_boussinesq" language="python">check_test = False
 with open("log", "rb") as f:
     linelist = f.readlines()           # Read the first line.
     last = linelist[len(linelist)-1]   # The last line

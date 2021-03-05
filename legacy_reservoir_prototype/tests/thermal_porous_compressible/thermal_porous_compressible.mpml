@@ -69,23 +69,23 @@
     <phase_properties>
       <Density>
         <compressible>
-          <Temperature_Pressure_correlation>
-            <rho0>
+          <Boussinesq_eos>
+            <reference_density>
               <real_value rank="0">1000</real_value>
-            </rho0>
+            </reference_density>
             <T0>
               <real_value rank="0">20</real_value>
             </T0>
+            <beta>
+              <real_value rank="0">0.000088</real_value>
+            </beta>
             <P0>
               <real_value rank="0">1.1e5</real_value>
             </P0>
-            <coefficient_Beta>
-              <real_value rank="0">0.000088</real_value>
-            </coefficient_Beta>
-            <coefficient_E>
-              <real_value rank="0">2.15e9</real_value>
-            </coefficient_E>
-          </Temperature_Pressure_correlation>
+            <gamma>
+              <real_value rank="0">0.46e-9</real_value>
+            </gamma>
+          </Boussinesq_eos>
         </compressible>
         <boundary_conditions name="all">
           <surface_ids>

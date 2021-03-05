@@ -407,7 +407,6 @@ contains
           real, dimension( final_phase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3
           real, dimension( final_phase ) :: THETA_VEL
           real, dimension( final_phase) :: LOC_CV_RHS_I, LOC_CV_RHS_J, LOC_MAT_II, LOC_MAT_JJ, LOC_MAT_IJ, LOC_MAT_JI
-          REAL, DIMENSION( final_phase ) :: ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA
           REAL, DIMENSION( final_phase ) :: wrelax, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
           REAL, DIMENSION ( Mdims%ndim,final_phase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
           type( vector_field ), pointer :: MeanPoreCV
@@ -418,7 +417,7 @@ contains
           real :: theta_cty_solid, VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
           type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
           type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
-          type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field, salt_field
+          type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field, concentration_field
 
           ! variables for pipes (that are needed in cv_assemb as well), allocatable because they are big and barely used
           Real, dimension(:), pointer :: MASS_CV
@@ -430,6 +429,8 @@ contains
           !Variable to decide if we are introducing the sum of phases = 1 in Ct or elsewhere
           logical :: Solve_all_phases
           !Variables for get_int_vel_porous_vel
+          logical :: permeability_jump
+          real, dimension(Mdims%ndim, Mdims%ndim) :: inv_harmonic_perm
           real, dimension(final_phase):: rsum_nodi, rsum_nodj
           integer :: COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
           REAL :: MM_GRAVTY
@@ -447,8 +448,8 @@ contains
           logical :: iv_Incomming_flow
           REAL, DIMENSION(Mdims%ndim) :: iv_SUF_SIG_DIAGTEN_BC_GI
           INTEGER :: iv_u_kloc, iv_u_skloc, iv_cv_kloc, iv_idim, iv_CV_SKLOC, iv_CV_SNODK, iv_CV_SNODK_IPHA, iv_IPHASE, iv_u_kloc2
-          real, dimension(Mdims%ndim, Mdims%ndim, final_phase) :: iv_aux_tensor, iv_sigma_aver, iv_aux_tensor2
-          real, dimension(Mdims%ndim, Mdims%ndim) :: iv_ones
+          real, dimension(final_phase) :: iv_aux_tensor, iv_sigma_aver, iv_aux_tensor2
+          ! real, dimension(Mdims%ndim, Mdims%ndim) :: iv_ones
           ! ####Variables for outfluxes#####
           logical :: compute_outfluxes
           real, dimension(:, :,:), allocatable :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
@@ -553,8 +554,8 @@ contains
                   temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
                   if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = 0.0
               end if
-              if (has_salt) then
-                  salt_field => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
+              if (has_concentration) then
+                  concentration_field => extract_tensor_field( packed_state, "PackedConcentration" )
                   if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
               end if
           end if
@@ -583,7 +584,7 @@ contains
           end if
            if (tracer%name == "PackedTemperature" ) then
               !(tracer%name == "PackedEnthalpy")&
-              ! .or. tracer%name == "PackedSoluteMassFraction")  then !Not sure if it is required for temperature either...
+              ! .or. tracer%name == "PackedConcentration")  then !Not sure if it is required for temperature either...
               allocate( suf_t_bc( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ), &
                   suf_t_bc_rob2( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ) )
               call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, size(tracer_BCs%val,2), &!TEMPORARY, FIXME! sprint_to_do is this call needed?
@@ -628,7 +629,6 @@ contains
               else
               perm=>extract_tensor_field(packed_state,"Permeability")
               end if
-              !Check if the permeability is not isotropic and the method is DG
           end if
           !Initialize Courant number for porous media
           if (present(Courant_number) .and. is_porous_media) Courant_number = 0.
@@ -667,8 +667,8 @@ contains
           do iphase = 1, final_phase
             !Tracer, if prognostic then the value is being modified               !The tracer name includes Packed...
             IGOT_T_CONST(iphase, 1:2) = have_option('/material_phase::['//int2str(iphase-1)//']/scalar_field::'//trim(tracer%name(7:))//'/prescribed')
-            !Density, if incompressible then it must be constant
-            IGOT_T_CONST(iphase, 3:4) = have_option('/material_phase::['//int2str(iphase-1)//']/phase_properties/Density/incompressible')
+            !Density, if incompressible then it must be constant (or if boussinesq it is considered constant for transport)
+            IGOT_T_CONST(iphase, 3:4) = has_boussinesq_aprox .or. have_option('/material_phase::['//int2str(iphase-1)//']/phase_properties/Density/incompressible')
             !Saturation if we are transporting a multiphase tracer
             IF(use_volume_frac_t2) &
               IGOT_T_CONST(iphase, 5:6) = have_option('/material_phase::['//int2str(iphase-1)//']/scalar_field::PhaseVolumeFraction/prescribed')
@@ -818,6 +818,7 @@ contains
           else
               FEMDENOLD_ALL=old_density%val(1,1:final_phase,:)
           end if
+
           IF ( present(saturation) ) then
               if (.not. is_constant(saturation)) then
                   FEMT2_ALL=psi(FEM_IT)%ptr%val(1,1:final_phase,:)
@@ -843,8 +844,7 @@ contains
 !###############################TO HERE###############################
 !IS ALL RUBBISH AND NEEDS TO BE REDONE; THERE IS A QUESTION MARK ON THE NEED OF CREATING A FE REPRESENTATION OF THE FIELDS
 !CERTAINLY FOR POROUS MEDIA IT IS USELESS AND CURRENTLY IN THIS SECTION WE ARE COPYING FIELDS FOR THE SAKE OF IT...
-!THE ONLY USEFUL PART CURRENTLY IS THE CALCULATION OF THE BARYCENTRES AND VOLUMES, WHICH I THINK CAN ALSO BE DONE IN A MORE EFFICIENT WAY
-! (USING GEOMETRIC INFORMATION) RATHER THAN USING THE SHAPE FUNCTIONS... IT WOULD REDUCE THE AUTOMATIC FLEXIBILITY WE CURRENTLY HAVE, BUT JUST A BIT...
+!THE ONLY USEFUL PART CURRENTLY IS THE CALCULATION OF THE BARYCENTRES AND VOLUMES
 !##############################################################################
 
           IF (PRESENT(MASS_ELE_TRANSP)) &
@@ -1104,6 +1104,12 @@ contains
                               MAT_NODJ = ndgln%mat( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
                           END IF
 
+                          permeability_jump = .false.
+                          !For the discontinuous formulation we want to use the discontinuous method only where there is a permeability jump
+                          !elsewhere the normal method should work better as it is also more reliable
+                          if (is_porous_media .and. between_elements) then
+                            permeability_jump = abs(perm%val(1,1,ele) - perm%val(1,1,ele2)/perm%val(1,1,ele)) > 1e-8
+                          end if
                           !Create local variables to reduce slicing
                           LOC_T_J = T_ALL(1:final_phase, cv_nodj); LOC_TOLD_J = TOLD_ALL(1:final_phase, cv_nodj)
                           LOC_DEN_J =DEN_ALL(1:final_phase, cv_nodj); LOC_DENOLD_J = DENOLD_ALL(1:final_phase, cv_nodj)
@@ -1339,9 +1345,9 @@ contains
                                           LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD, &
                                           LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
                                           UGI_COEF_ELE_ALL(:,1:final_phase,:), UGI_COEF_ELE2_ALL(:,1:final_phase,:), &
-                                          upwnd%adv_coef(:,:,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(:,:,1:final_phase, MAT_NODI), &
-                                          upwnd%adv_coef(:,:,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(:,:,1:final_phase, MAT_NODJ), &
-                                          upwnd%inv_adv_coef(:,:,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(:,:,1:final_phase,MAT_NODJ), &
+                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
+                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
+                                          upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
                                           NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .false.)
@@ -1349,9 +1355,9 @@ contains
                                           LOC_T2_I, LOC_T2_J, LOC_FEMT2, &
                                           LOC_NU, LOC2_NU, SLOC_NU, &
                                           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                          upwnd%adv_coef(:,:,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(:,:,1:final_phase, MAT_NODI), &
-                                          upwnd%adv_coef(:,:,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(:,:,1:final_phase, MAT_NODJ), &
-                                          upwnd%inv_adv_coef(:,:,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(:,:,1:final_phase,MAT_NODJ), &
+                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
+                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
+                                          upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
                                           NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .true.)
@@ -1371,9 +1377,9 @@ contains
                                           LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD, &
                                           LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
                                           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                          upwnd%adv_coef(:,:,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(:,:,1:final_phase, MAT_NODI), &
-                                          upwnd%adv_coef(:,:,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(:,:,1:final_phase, MAT_NODJ), &
-                                          upwnd%inv_adv_coef(:,:,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(:,:,1:final_phase,MAT_NODJ), &
+                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
+                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
+                                          upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
                                           NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .false.)!Sprint_to_do store for a time-level old values?? Would halve the cost of flux calculation...
@@ -1381,9 +1387,9 @@ contains
                                           LOC_T_I, LOC_T_J, LOC_FEMT, &
                                           LOC_NU, LOC2_NU, SLOC_NU, &
                                           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                          upwnd%adv_coef(:,:,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(:,:,1:final_phase, MAT_NODI), &
-                                          upwnd%adv_coef(:,:,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(:,:,1:final_phase, MAT_NODJ), &
-                                          upwnd%inv_adv_coef(:,:,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(:,:,1:final_phase,MAT_NODJ), &
+                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
+                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
+                                          upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
                                           NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .true.)
@@ -1405,7 +1411,7 @@ contains
                                   INCOME_J = 1.
                               END WHERE
                               !Calculate the courant number for porous media
-                              !SPRINT_TO_DO Currently if temperature/solutemassfraction multiphase we are doing this more than once...
+                              !SPRINT_TO_DO Currently if temperature/Concentration multiphase we are doing this more than once...
                               if (present(Courant_number) .and. is_porous_media.and. .not. on_domain_boundary) then
                                   !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
                                   Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
@@ -1419,15 +1425,18 @@ contains
                                   IF(SELE == 0) THEN
                                       CAP_DIFF_COEF_DIVDX = 0.
                                       if (is_porous_media) then
-                                      do iphase =1, final_phase !SPRINT_TO_DO DO NOT REMBER IF THIS IS THE CORRECT LOOP!
-                                          rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODI),&
-                                              CVNORMX_ALL(:, GI) ))
-                                          rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODJ),&
-                                              CVNORMX_ALL(:, GI) ))
-                                      end do
-                                      CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
-                                          * rsum_nodi*(1.-INCOME) +&
-                                          CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
+                                        !Project permeability at the GI point
+                                        auxR = dot_product(CVNORMX_ALL(:, GI), matmul(perm%val(:,:,ele),CVNORMX_ALL(:, GI) ))
+                                        do iphase =1, final_phase
+                                            rsum_nodi(iphase) = upwnd%inv_adv_coef(1,1,iphase,MAT_NODI)*auxR
+                                        end do
+                                        if (between_elements) auxR = dot_product(CVNORMX_ALL(:, GI), matmul(perm%val(:,:,ele2),CVNORMX_ALL(:, GI) ))
+                                        do iphase =1, final_phase
+                                            rsum_nodj(iphase) = upwnd%inv_adv_coef(1,1,iphase,MAT_NODJ)*auxR
+                                        end do
+                                        CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
+                                            * rsum_nodi*(1.-INCOME) +&
+                                            CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
                                       else
                                         CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
                                         * (1.-INCOME) +CAP_DIFFUSION( :, MAT_NODJ ) * INCOME) /HDC
@@ -1638,7 +1647,6 @@ contains
                                   ROBIN1=0.0; ROBIN2=0.0
                                   IF( on_domain_boundary ) then
                                       where ( WIC_T_BC_ALL(1,:,SELE) == WIC_T_BC_ROBIN )
-                                          ! this needs to be corrected (its correct but misleading)...
                                           ROBIN1 = SUF_T_BC_ROB1_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
                                           ROBIN2 = SUF_T_BC_ROB2_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
                                       end where
@@ -1691,7 +1699,7 @@ contains
                                       if (VAD_activated) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                       if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - FTHETA_T2 * ( ONE_M_CV_BETA ) * &
                                                                                     SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
-                                      if (on_domain_boundary) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * ROBIN1
+                                      if (on_domain_boundary) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * ROBIN2
 
                                       !Assemble diagonal of the matrix of node cv_nodj
                                       if(integrate_other_side_and_not_boundary) then
@@ -1704,7 +1712,7 @@ contains
                                       IF ( GET_GTHETA ) THEN
                                           THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
                                               -  FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_I & ! Diffusion contribution
-                                              -  SdevFuns%DETWEI( GI ) * ROBIN1 * LOC_T_I  ! Robin bc
+                                              -  SdevFuns%DETWEI( GI ) * robin1 * LOC_T_I  ! Robin bc
                                           if(integrate_other_side_and_not_boundary) then
                                               THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
                                                   -  FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_J ! Diffusion contribution
@@ -1731,7 +1739,7 @@ contains
                                           * ( FTHETA_T2 * NDOTQNEW * LOC_T_I * LIMD  &
                                           + ONE_M_FTHETA_T2OLD * NDOTQOLD * LIMDOLD * LOC_TOLD_I )
                                       if (on_domain_boundary) LOC_CV_RHS_I =  LOC_CV_RHS_I &
-                                          + SdevFuns%DETWEI( GI ) * ROBIN2
+                                          + SdevFuns%DETWEI( GI ) * ROBIN1
 
                                       if (asssembling_enthalpy ) then!TODO: sprint_to_do Currently only for two phases
                                         !Solid phase
@@ -1790,7 +1798,7 @@ contains
                                           + (1.-FTHETA_T2) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
                                           * ( LOC_TOLD_J - LOC_TOLD_I ) &
                                           ! Robin bc
-                                          + SdevFuns%DETWEI( GI ) * ROBIN2
+                                          + SdevFuns%DETWEI( GI ) * robin2
                                       if(integrate_other_side_and_not_boundary) then
                                           THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
                                               + (1.-FTHETA_T2) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
@@ -1834,7 +1842,7 @@ contains
                             if (compute_outfluxes .and. on_domain_boundary) then
                               call update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi,  &
                                 ndotqnew * SdevFuns%DETWEI(gi) * LIMT, ndotqnew * SdevFuns%DETWEI(gi) * LIMDT, & !Vol_flux and Mass_flux
-                                old_tracer, temp_field, salt_field, 1, final_phase )
+                                old_tracer, temp_field, concentration_field, 1, final_phase )
                             end if
 
                           endif ! if(CV_NODJ.ge.CV_NODI) then
@@ -2912,26 +2920,25 @@ end if
             REAL, DIMENSION( :, : ), intent( in ) :: LOC_FEMT
             REAL, DIMENSION( :, :, : ), intent( in ) ::  LOC_NU, LOC2_NU, SLOC_NU
             REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL!This is for the continuity equation, so we convert V into u
-            REAL, DIMENSION( :, :, : ), intent( in ) :: I_adv_coef, I_adv_coef_grad, &
-                J_adv_coef, J_adv_coef_grad
-            REAL, DIMENSION( :, :, : ), intent( in ) :: I_inv_adv_coef, J_inv_adv_coef
+            REAL, DIMENSION( : ), intent( in ) :: I_adv_coef, I_adv_coef_grad, &
+                J_adv_coef, J_adv_coef_grad, I_inv_adv_coef, J_inv_adv_coef
             REAL, DIMENSION( :, :  ), intent( inout ) :: UDGI_ALL
             REAL, intent( in ) :: MASS_CV_I, MASS_CV_J
             REAL, DIMENSION( : ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT!(nphase)
             logical, intent(in) :: not_OLD_VEL
-
             UGI_COEF_ELE_ALL=0.0 ; UGI_COEF_ELE2_ALL=0.0
+
             Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
                 !Initialize variables
                 if (not_OLD_VEL) then
                     forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
-                        ROW_SUM_INV_VI(iv_idim,iv_iphase)=SUM(I_inv_adv_coef(iv_idim,:,iv_iphase))
+                        ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef (iv_iphase) * SUM(perm%val(iv_idim,:,ele))
                     end forall
                 end if
                 DO iv_iphase = 1,final_phase
                     IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
                         !(vel * shape_functions)/sigma
-                        UDGI_ALL(:, iv_iphase) = matmul(I_inv_adv_coef(:,:,iv_iphase),&
+                        UDGI_ALL(:, iv_iphase) = I_inv_adv_coef (iv_iphase)* matmul(perm%val(:,:,ele),&
                             matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI )))
                         ! Here we assume that sigma_out/sigma_in is a diagonal matrix
                         ! which effectively assumes that the anisotropy just inside the domain
@@ -2951,16 +2958,15 @@ end if
                         iv_incomming_flow = DOT_PRODUCT(UDGI_ALL(:, iv_iphase), CVNORMX_ALL(:, GI)) < 0.0
                         if (not_OLD_VEL) then
                             DO iv_u_kloc = 1, Mdims%u_nloc
-!                               IF (.false.) THEN !<= this one for strong boundary conditions
+                              ! IF (.false.) THEN !<= this one for strong boundary conditions
                                 IF (iv_incomming_flow) THEN ! Incomming...
                                     UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)=iv_SUF_SIG_DIAGTEN_BC_GI
                                 ELSE
                                     UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)=1.0
                                 ENDIF
-                                UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)= matmul(I_inv_adv_coef(:,:,iv_iphase),UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc))
+                                UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)= I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc))
                             END DO
                         end if
-
                         if(iv_incomming_flow) UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) * iv_SUF_SIG_DIAGTEN_BC_GI
 
                     ELSE ! Specified vel bc.
@@ -2980,16 +2986,16 @@ end if
                             END IF
 
                         END DO
-                        UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + matmul(I_inv_adv_coef(:,:,iv_iphase),UDGI_ALL_FOR_INV(:, iv_iphase))
+                        UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UDGI_ALL_FOR_INV(:, iv_iphase))
                     END IF
                 END DO ! PHASE LOOP
-            ELSE IF( .not. DISTCONTINUOUS_METHOD) THEN!Only for same element/Continuous formulation
+            ELSE IF( .not. between_elements) THEN!Only for same element/Continuous formulation !old flag: DISTCONTINUOUS_METHOD
                 !vel(GI) = (vel * shape_functions)/sigma
                 do iv_iphase = 1,final_phase
-                    UDGI_ALL(:, iv_iphase) = matmul(I_inv_adv_coef(:,:,iv_iphase),&
-                        matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI )))
-                    UDGI2_ALL(:, iv_iphase) = matmul(J_inv_adv_coef(:,:,iv_iphase),&
-                        matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI )))
+                    UDGI_ALL(:, iv_iphase) = I_inv_adv_coef(iv_iphase)*&
+                        matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
+                    UDGI2_ALL(:, iv_iphase) = J_inv_adv_coef(iv_iphase)*&
+                        matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
                 end do
                 !Get the projected velocity
                 NDOTQ  = MATMUL( CVNORMX_ALL(:, GI), UDGI_ALL )
@@ -3000,7 +3006,6 @@ end if
                     INCOME=0.0
                 END WHERE
                 !Calculate velocity on the interface, either using upwinding or high order methods
-!                if (Mdisopt%in_ele_upwind /= 1) then !high order
                 if (use_porous_limiter) then!high order
                     !Calculate saturation at GI, necessary for the limiter
                     FEMTGI_IPHA = matmul(LOC_FEMT, CV_funs%scvfen(:,GI) )
@@ -3012,36 +3017,46 @@ end if
                         memory_limiters(1:NFIELD), memory_limiters(NFIELD + 1:NFIELD*2),&
                         memory_limiters(2*NFIELD + 1:NFIELD*3), memory_limiters(3*NFIELD + 1:NFIELD*4),&
                         memory_limiters(4*NFIELD + 1:NFIELD*5), memory_limiters(5*NFIELD + 1:NFIELD*6) )
-                    !We perform: n' * sigma * n
-                    DO iv_iphase = 1,final_phase
-                        ABS_CV_NODI_IPHA(iv_iphase) = dot_product(CVNORMX_ALL(:, GI),matmul(I_adv_coef(:,:,iv_iphase), CVNORMX_ALL(:, GI)))
-                        GRAD_ABS_CV_NODI_IPHA(iv_iphase) = dot_product(CVNORMX_ALL(:, GI),matmul(I_adv_coef_grad(:,:,iv_iphase), CVNORMX_ALL(:, GI)))
-                        ABS_CV_NODJ_IPHA(iv_iphase) = dot_product(CVNORMX_ALL(:, GI),matmul(J_adv_coef(:,:,iv_iphase), CVNORMX_ALL(:, GI)))
-                        GRAD_ABS_CV_NODJ_IPHA(iv_iphase) = dot_product(CVNORMX_ALL(:, GI),matmul(J_adv_coef_grad(:,:,iv_iphase), CVNORMX_ALL(:, GI)))
-                    END DO
-                    abs_tilde  = 0.5*(ABS_CV_NODI_IPHA  + ( LIMT3  - LOC_T_I  ) * GRAD_ABS_CV_NODI_IPHA +&
-                        ABS_CV_NODJ_IPHA  + ( LIMT3 - LOC_T_J  ) * GRAD_ABS_CV_NODJ_IPHA  )
+
+                    abs_tilde  = 0.5*(I_adv_coef  + ( LIMT3  - LOC_T_I  ) * I_adv_coef_grad +&
+                        J_adv_coef  + ( LIMT3 - LOC_T_J  ) * J_adv_coef_grad  )
                     !Make sure the value of sigma is between bounds
-                    abs_tilde = min(max(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA), &
-                        max(min(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA),  abs_tilde ))
+                    abs_tilde = min(max(I_adv_coef,  J_adv_coef), &
+                        max(min(I_adv_coef,  J_adv_coef),  abs_tilde ))
                     !We need the projected velocity from the other node
                     NDOTQ2 = MATMUL( CVNORMX_ALL(:, GI), UDGI2_ALL )
                     !Calculation of the velocity at the interface using the sigma at the interface
-                    NDOTQ_TILDE = 0.5*( NDOTQ*ABS_CV_NODI_IPHA + NDOTQ2*ABS_CV_NODJ_IPHA ) /abs_tilde
+                    NDOTQ_TILDE = 0.5*( NDOTQ*I_adv_coef + NDOTQ2*J_adv_coef ) /abs_tilde
                     !Calculate the contribution of each side
                     INCOME = MIN(1.0, MAX(0.0, (NDOTQ_TILDE - NDOTQ)/VTOLFUN( NDOTQ2 - NDOTQ ) ))
                 end if
-                !Finally we calculate the velocity at the interface
+                !Finally we calculate the velocity at the interface (still excluding permeability)
                 DO iv_iphase = 1,final_phase
                     !Calculate contributions from each side
-                    UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) * (1.0-INCOME(iv_iphase)) +&
-                        UDGI2_ALL(:, iv_iphase) * INCOME(iv_iphase)
+                    UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) * (1.0-INCOME(iv_iphase)) + UDGI2_ALL(:, iv_iphase) * INCOME(iv_iphase)
                 END DO ! PHASE LOOP
+                !Now apply the permeability to obtain finally UDGI_ALL
+                if (permeability_jump) then
+                  inv_harmonic_perm = 2.0*inverse((upwnd%inv_permeability(:,:,ele) + upwnd%inv_permeability(:,:,ele2)))
+                  DO iv_iphase = 1,final_phase
+                    !We use the harmonic average of the permeability
+                    UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), inv_harmonic_perm)
+                  end do
+                else
+                  DO iv_iphase = 1,final_phase
+                    UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), perm%val(:,:,ele))
+                  end do
+                end if
                 if (not_OLD_VEL) then
-                    forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
-                        ROW_SUM_INV_VI(iv_idim,iv_iphase)=SUM(I_inv_adv_coef(iv_idim,:,iv_iphase))
-                        ROW_SUM_INV_VJ(iv_idim,iv_iphase)=SUM(J_inv_adv_coef(iv_idim,:,iv_iphase))
-                    end forall
+                    do iv_idim = 1, Mdims%ndim
+                      auxR = SUM(perm%val(iv_idim,:,ele))
+                      RSUM = auxR
+                      if (between_elements) RSUM = SUM(perm%val(iv_idim,:,ele2))
+                      do iv_iphase = 1, final_phase
+                        ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef(iv_iphase) * auxR
+                        ROW_SUM_INV_VJ(iv_idim,iv_iphase)=J_inv_adv_coef(iv_iphase) * RSUM
+                      end do
+                    end do
                     DO iv_iphase = 1,final_phase
                         UGI_COEF_ELE_ALL(:, iv_iphase, :)=SPREAD(ROW_SUM_INV_VI(:,iv_iphase)* (1.0-INCOME(iv_iphase)) &
                             +ROW_SUM_INV_VJ(:,iv_iphase)* INCOME(iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc)
@@ -3054,79 +3069,82 @@ end if
                     UDGI_ALL(:, iv_iphase) = matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
                     !Normal flow including sigma, to know direction of flow
                     NDOTQ(iv_iphase)  = dot_product( CVNORMX_ALL(:, GI),UDGI_ALL(:, iv_iphase))
-                    !Actual advection velocity by removing the contribution of sigma
-                    UDGI_ALL(:, iv_iphase) = matmul(I_inv_adv_coef(:,:,iv_iphase),UDGI_ALL(:, iv_iphase))
+                    !Actual advection velocity by removing the contribution of sigma (still not normalised by permeability)
+                    UDGI_ALL(:, iv_iphase) = I_inv_adv_coef(iv_iphase) * UDGI_ALL(:, iv_iphase)
                 end do
-                IF( between_elements ) THEN
-                    do iv_iphase = 1,final_phase
-                        !Velocity including sigma
-                        UDGI2_ALL(:, iv_iphase) = matmul(LOC2_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
-                        !Normal flow including sigma, to know direction of flow
-                        NDOTQ2(iv_iphase) = dot_product( CVNORMX_ALL(:, GI),UDGI2_ALL(:, iv_iphase))
-                        !Actual advection velocity by removing the contribution of sigma
-                        UDGI2_ALL(:, iv_iphase) = matmul(J_inv_adv_coef(:,:,iv_iphase),UDGI2_ALL(:, iv_iphase))
-                    end do
-                else !same element
-                    do iv_iphase = 1,final_phase
-                        UDGI2_ALL(:, iv_iphase) = matmul(J_inv_adv_coef(:,:,iv_iphase),&
-                            matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI )))
-                    end do
-                    NDOTQ2 = NDOTQ
-                end if
-                !Create diagonal matrix with iv_ones in the diagonal
-                iv_ones = 0.
-                do iv_idim = 1, Mdims%ndim
-                  iv_ones(iv_idim, iv_idim) = 1.0
+                do iv_iphase = 1,final_phase
+                    !Velocity including sigma
+                    UDGI2_ALL(:, iv_iphase) = matmul(LOC2_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
+                    !Normal flow including sigma, to know direction of flow
+                    NDOTQ2(iv_iphase) = dot_product( CVNORMX_ALL(:, GI),UDGI2_ALL(:, iv_iphase))
+                    !Actual advection velocity by removing the contribution of sigma (still not normalised by permeability)
+                    UDGI2_ALL(:, iv_iphase) = J_inv_adv_coef(iv_iphase)*UDGI2_ALL(:, iv_iphase)
                 end do
 
                 !Sigma averaged with the mass to be used as divisor
-                iv_sigma_aver = I_adv_coef*MASS_CV_I+J_adv_coef*MASS_CV_J
+                iv_sigma_aver = 1./(I_adv_coef*MASS_CV_I+J_adv_coef*MASS_CV_J)
                 do iv_iphase = 1,final_phase
-                  call invert(iv_sigma_aver(:,:, iv_iphase))
                   !Calculate the contribution of each side, considering sigma and the volume of the CVs
                   if ( ( NDOTQ(iv_iphase) + NDOTQ2(iv_iphase) ) > 0.0 ) then
                     !We redefine sigma so that it detects oscillations using first order taylor series
-                    iv_aux_tensor(:,:,iv_iphase) =  I_adv_coef(:,:,iv_iphase) + 0.5 * (LOC_T_J(iv_iphase) - LOC_T_I(iv_iphase)) * I_adv_coef_grad(:,:,iv_iphase)
+                    iv_aux_tensor(iv_iphase) =  I_adv_coef(iv_iphase) + 0.5 * (LOC_T_J(iv_iphase) - LOC_T_I(iv_iphase)) * I_adv_coef_grad(iv_iphase)
                     !We limit the value
-                    iv_aux_tensor(:,:,iv_iphase) = min(1000.*max(I_adv_coef(:,:,iv_iphase),  J_adv_coef(:,:,iv_iphase)), &
-                    max(0.001*min(I_adv_coef(:,:,iv_iphase),  J_adv_coef(:,:,iv_iphase)), iv_aux_tensor(:,:,iv_iphase) ))
-                    iv_aux_tensor(:,:,iv_iphase)= min( 1.0, matmul(I_inv_adv_coef(:,:,iv_iphase), iv_aux_tensor(:,:,iv_iphase)))
+                    iv_aux_tensor(iv_iphase) = min(1000.*max(I_adv_coef(iv_iphase),  J_adv_coef(iv_iphase)), &
+                    max(0.001*min(I_adv_coef(iv_iphase),  J_adv_coef(iv_iphase)), iv_aux_tensor(iv_iphase) ))
+                    iv_aux_tensor(iv_iphase)= min( 1.0, I_inv_adv_coef(iv_iphase)* iv_aux_tensor(iv_iphase))
                     !Calculate importance of each side
-                    iv_aux_tensor2(:,:,iv_iphase) = matmul(iv_aux_tensor(:,:,iv_iphase), matmul(iv_sigma_aver(:,:,iv_iphase),I_adv_coef(:,:,iv_iphase)*MASS_CV_I))
+                    iv_aux_tensor2(iv_iphase) = iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase)* I_adv_coef(iv_iphase)*MASS_CV_I
                     !iv_aux_tensor2 has to be calculated before since iv_aux_tensor is rewritten!
-                    iv_aux_tensor(:,:,iv_iphase) = (iv_ones(:,:)-iv_aux_tensor(:,:,iv_iphase)) + matmul(iv_aux_tensor(:,:,iv_iphase),matmul(iv_sigma_aver(:,:,iv_iphase), J_adv_coef(:,:,iv_iphase)*MASS_CV_J))
+                    iv_aux_tensor(iv_iphase) = (1.-iv_aux_tensor(iv_iphase)) + iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase) * J_adv_coef(iv_iphase)*MASS_CV_J
                   else
                     !We redefine sigma so that it detects oscillations using first order taylor series
-                    iv_aux_tensor(:,:,iv_iphase) =  J_adv_coef(:,:,iv_iphase) + 0.5 * (LOC_T_I(iv_iphase) - LOC_T_J(iv_iphase)) * J_adv_coef_grad(:,:,iv_iphase)
+                    iv_aux_tensor(iv_iphase) =  J_adv_coef(iv_iphase) + 0.5 * (LOC_T_I(iv_iphase) - LOC_T_J(iv_iphase)) * J_adv_coef_grad(iv_iphase)
                     !We limit the value
-                    iv_aux_tensor(:,:,iv_iphase) = min(1000.*max(I_adv_coef(:,:,iv_iphase),  J_adv_coef(:,:,iv_iphase)), &
-                    max(0.001*min(I_adv_coef(:,:,iv_iphase),  J_adv_coef(:,:,iv_iphase)), iv_aux_tensor(:,:,iv_iphase) ))
-                    iv_aux_tensor(:,:,iv_iphase)= min( 1.0, matmul(J_inv_adv_coef(:,:,iv_iphase), iv_aux_tensor(:,:,iv_iphase)))
+                    iv_aux_tensor(iv_iphase) = min(1000.*max(I_adv_coef(iv_iphase),  J_adv_coef(iv_iphase)), &
+                    max(0.001*min(I_adv_coef(iv_iphase),  J_adv_coef(iv_iphase)), iv_aux_tensor(iv_iphase) ))
+                    iv_aux_tensor(iv_iphase)= min( 1.0, J_inv_adv_coef(iv_iphase) * iv_aux_tensor(iv_iphase))
                     !Calculate importance of each side
-                    iv_aux_tensor2(:,:,iv_iphase) = (iv_ones(:,:)-iv_aux_tensor(:,:,iv_iphase)) + matmul(iv_aux_tensor(:,:,iv_iphase),matmul(iv_sigma_aver(:,:,iv_iphase), I_adv_coef(:,:,iv_iphase)*MASS_CV_I))
+                    iv_aux_tensor2(iv_iphase) = (1.-iv_aux_tensor(iv_iphase)) + iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase) * I_adv_coef(iv_iphase)*MASS_CV_I
                     !iv_aux_tensor2 has to be calculated before since iv_aux_tensor is rewritten!
-                    iv_aux_tensor(:,:,iv_iphase) = matmul(iv_aux_tensor(:,:,iv_iphase), matmul(iv_sigma_aver(:,:,iv_iphase),J_adv_coef(:,:,iv_iphase)*MASS_CV_J))
+                    iv_aux_tensor(iv_iphase) = iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase) * J_adv_coef(iv_iphase)*MASS_CV_J
                   end if
                   !Calculation of the velocity at the GI point
-                  UDGI_ALL(:, iv_iphase) = matmul(iv_aux_tensor(:,:,iv_iphase), UDGI_ALL(:, iv_iphase)) + matmul( iv_aux_tensor2(:,:,iv_iphase),UDGI2_ALL(:, iv_iphase))
+                  UDGI_ALL(:, iv_iphase) = iv_aux_tensor(iv_iphase) * UDGI_ALL(:, iv_iphase) + iv_aux_tensor2(iv_iphase) * UDGI2_ALL(:, iv_iphase)
                 end do
+                !Now apply the permeability to obtain finally UDGI_ALL
+                if (permeability_jump) then
+                  inv_harmonic_perm = 2.0*inverse((upwnd%inv_permeability(:,:,ele) + upwnd%inv_permeability(:,:,ele2)))
+                  DO iv_iphase = 1,final_phase
+                  !We use the harmonic average of the permeability. Because we have the inverse (and we want the inverse) this is simplified
+                    UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), inv_harmonic_perm)
+                  end do
+                else
+                  DO iv_iphase = 1,final_phase
+                    UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), perm%val(:,:,ele))
+                  end do
+                end if
                 !Calculation of the coefficients at the GI point
                 if (not_OLD_VEL) then
-                  forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
-                  ROW_SUM_INV_VI(iv_idim,iv_iphase)=SUM(I_inv_adv_coef(iv_idim,:,iv_iphase))
-                  ROW_SUM_INV_VJ(iv_idim,iv_iphase)=SUM(J_inv_adv_coef(iv_idim,:,iv_iphase))
-                end forall
-                IF( between_elements ) then
-                  DO iv_iphase = 1,final_phase
-                    UGI_COEF_ELE_ALL(:, iv_iphase, :) = matmul(iv_aux_tensor(:,:,iv_iphase), SPREAD(ROW_SUM_INV_VI(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc))
-                    UGI_COEF_ELE2_ALL(:, iv_iphase, :) = matmul(iv_aux_tensor2(:,:,iv_iphase),SPREAD(ROW_SUM_INV_VJ(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc))
-                  END DO
-                else !same element
-                  DO iv_iphase = 1,final_phase
-                    UGI_COEF_ELE_ALL(:, iv_iphase, :) = matmul(iv_aux_tensor(:,:,iv_iphase), SPREAD(ROW_SUM_INV_VI(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc)) +&
-                    matmul(iv_aux_tensor2(:,:,iv_iphase),SPREAD(ROW_SUM_INV_VJ(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc))
-                  END DO
-                end if
+                  do iv_idim = 1, Mdims%ndim
+                    auxR = SUM(perm%val(iv_idim,:,ele))
+                    RSUM = auxR
+                    if (between_elements) RSUM = SUM(perm%val(iv_idim,:,ele2))
+                    do iv_iphase = 1, final_phase
+                      ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef(iv_iphase) * auxR
+                      ROW_SUM_INV_VJ(iv_idim,iv_iphase)=J_inv_adv_coef(iv_iphase) * RSUM
+                    end do
+                  end do
+                  IF( between_elements ) then
+                    DO iv_iphase = 1,final_phase
+                      UGI_COEF_ELE_ALL(:, iv_iphase, :) = iv_aux_tensor(iv_iphase)* SPREAD(ROW_SUM_INV_VI(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc)
+                      UGI_COEF_ELE2_ALL(:, iv_iphase, :) = iv_aux_tensor2(iv_iphase) *SPREAD(ROW_SUM_INV_VJ(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc)
+                    END DO
+                  else !same element
+                    DO iv_iphase = 1,final_phase
+                      UGI_COEF_ELE_ALL(:, iv_iphase, :) = iv_aux_tensor(iv_iphase) * SPREAD(ROW_SUM_INV_VI(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc) +&
+                      iv_aux_tensor2(iv_iphase) * SPREAD(ROW_SUM_INV_VJ(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc)
+                    END DO
+                  end if
               end if
             END IF Conditional_SELE
             ! Define whether flux is incoming or outgoing, depending on direction of flow
@@ -3154,9 +3172,10 @@ end if
                     END DO
                 END IF
             end if
-
             RETURN
         END SUBROUTINE GET_INT_VEL_POROUS_VEL
+
+
         PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
             TDLIM, TDCEN, INCOME, &
             ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
@@ -3461,7 +3480,7 @@ end if
                                 do iphase = 1, Mdims%nphase
                                     call allsum(outfluxes%totout(1, iphase, k))
                                     if (has_temperature) call allmax(outfluxes%totout(2, iphase, k))!Just interested in max temp
-                                    if (has_salt) call allsum(outfluxes%totout(3, iphase, k))
+                                    if (has_concentration) call allsum(outfluxes%totout(3, iphase, k))
                                 end do
                             end do
                         end if
@@ -3879,7 +3898,7 @@ end if
             END DO
 
             U_OTHER_LOC = 0 ! Determine U_OTHER_LOC(U_KLOC)
-            if (.not.is_P0DGP1CV) then!XU_NDGLN not defined for P0DGP1
+            if (.not.is_P0DGP1) then!XU_NDGLN not defined for P0DGP1
             ! Works for non constant and constant (XU_NLOC=1) vel basis functions...
             DO U_KLOC = 1, U_NLOC ! Find opposite local node
                 XU_NODK = XU_NDGLN( ( ELE - 1 ) * XU_NLOC + U_KLOC )
@@ -4115,7 +4134,7 @@ end if
         X_NONODS, X, Y, Z, &
         NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
         SBCVNGI, SBCVFEN, SBWEIGH, &
-        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, get_gradU, state )
+        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, get_gradU, state, P0Mesh)
 
         ! calculates derivatives of vector fields
         IMPLICIT NONE
@@ -4141,6 +4160,7 @@ end if
         REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
         LOGICAL, intent( in ) :: get_gradU
         TYPE( STATE_TYPE), DIMENSION( : ), intent( inout ) :: state
+        logical, optional :: P0Mesh !> This is for when using the P0DGP1 element pair to substitute the method to find neighbours
         ! Local variables
         REAL, DIMENSION( CV_NLOC, CV_NLOC, TOTELE ) :: MASELE
         REAL, DIMENSION( NDIM, NCOMP, NPHASE, CV_NLOC, TOTELE ) :: VTX_ELE, VTOLDX_ELE
@@ -4240,18 +4260,20 @@ end if
 
                 IF ( SELE2 == 0 ) THEN
                     ! Calculate the nodes on the other side of the face:
+                    if (present_and_true(P0Mesh)) then
+                      ILOC_OTHER_SIDE = 1
+                    else
+                      DO CV_SILOC = 1, CV_SNLOC
+                          CV_ILOC = SLOC2LOC( CV_SILOC )
+                          CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
 
-                    DO CV_SILOC = 1, CV_SNLOC
-                        CV_ILOC = SLOC2LOC( CV_SILOC )
-                        CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
+                          DO CV_ILOC2 = 1, CV_NLOC
+                              CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
 
-                        DO CV_ILOC2 = 1, CV_NLOC
-                            CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
-
-                            IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
-                        END DO
-                    END DO
-
+                              IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
+                          END DO
+                      END DO
+                    end if
                     APPLYBC = (ELE /= ELE2) .AND. (ELE2 /= 0)
 
                 ELSE
@@ -4366,7 +4388,7 @@ end if
         X_NONODS, X, Y, Z, &
         NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
         SBCVNGI, SBCVFEN, SBWEIGH, &
-        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY)
+        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, P0Mesh)
 
         ! determine FEMT (finite element wise) etc from T (control volume wise)
         IMPLICIT NONE
@@ -4390,7 +4412,7 @@ end if
         REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN
         REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
         REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-
+        logical, optional :: P0Mesh !> This is for when using the P0DGP1 element pair to substitute the method to find neighbours
         ! Local variables
         REAL, DIMENSION( CV_NLOC, CV_NLOC, TOTELE ) :: MASELE
         REAL, DIMENSION( NDIM, NPHASE, CV_NLOC, TOTELE ) :: VTX_ELE, VTOLDX_ELE
@@ -4488,18 +4510,20 @@ end if
 
                 IF ( SELE2 == 0 ) THEN
                     ! Calculate the nodes on the other side of the face:
+                    if (present_and_true(P0Mesh)) then
+                      ILOC_OTHER_SIDE = 1
+                    else
+                      DO CV_SILOC = 1, CV_SNLOC
+                          CV_ILOC = SLOC2LOC( CV_SILOC )
+                          CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
 
-                    DO CV_SILOC = 1, CV_SNLOC
-                        CV_ILOC = SLOC2LOC( CV_SILOC )
-                        CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
+                          DO CV_ILOC2 = 1, CV_NLOC
+                              CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
 
-                        DO CV_ILOC2 = 1, CV_NLOC
-                            CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
-
-                            IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
-                        END DO
-                    END DO
-
+                              IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
+                          END DO
+                      END DO
+                    end if
                     APPLYBC = (ELE /= ELE2) .AND. (ELE2 /= 0)
 
                 ELSE
@@ -7320,7 +7344,7 @@ end if
                   LOC_CV_RHS_I=0.0; LOC_MAT_II =0.
                   LOC_CV_RHS_J=0.0; LOC_MAT_JJ =0.
                   LOC_MAT_IJ = 0.0; LOC_MAT_JI =0.
-                  !Assemble off-diagonal cv_nodi-cv_nodj
+                  !Assemble
                   do iphase = 1, local_phases
                     LOC_MAT_IJ(iphase) = LOC_MAT_IJ(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
                     !Assemble off-diagonal
@@ -7359,7 +7383,7 @@ end if
     contains
       !>@brief: Computes the effective value of K or sigma. at the interface between CVs
       !> Based on the intface_type integer:
-      !> 0 = no interpolation; 1 Harmonic mean; !20 for Self_potential solver, harmonic mean considering charge; negative normal mean
+      !> 0 = no interpolation; 1 Harmonic mean; !20 for SelfPotential solver, harmonic mean considering charge; negative normal mean
       real function get_DIFF_COEF_DIVDX(intface_type, HDC,  W_i, W_j, Value_i, Value_j, sigma_i, sigma_j)
         implicit none
         integer, intent(in) :: intface_type
@@ -7374,7 +7398,7 @@ end if
           !Harmonic mean, also used for Rock saturated conductivity
         else if ((intface_type <= 20 .and. intface_type > 0) .and. .not. div_by_zero) then
           get_DIFF_COEF_DIVDX = Value_i * Value_j * (W_j + W_i)/(Value_i *W_j + Value_j*W_i )
-          !40 is for the mean of the coupling terms
+        !   !40 is for the mean of the coupling terms
         else if (intface_type > 20 .and.  (abs(Sigma_i + Sigma_j) > 1e-15) ) then
           get_DIFF_COEF_DIVDX = (Value_i * Sigma_j * W_i + Sigma_i * Value_j *W_j) / &
           (W_j*Sigma_i + W_i*Sigma_j)

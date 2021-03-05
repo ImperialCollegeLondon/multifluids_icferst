@@ -56,8 +56,8 @@ module multiphase_1D_engine
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
-    public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, SOLUTE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
-    FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system
+    public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, Concentration_assem_solve, VolumeFraction_Assemble_Solve, &
+    FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system, Passive_Tracer_Assemble_Solve
 
 contains
   !---------------------------------------------------------------------------
@@ -134,7 +134,8 @@ contains
            REAL, DIMENSION( : ), allocatable :: porous_heat_coef, porous_heat_coef_old
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
-           real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
+           real, dimension(2) :: totally_min_max
+           logical :: impose_min_max
            real :: aux
            real, save :: inf_tolerance = -1
            !Variables to control the PETCs solver
@@ -183,8 +184,6 @@ contains
                 allocate(porous_heat_coef(Mdims%cv_nonods))
                 allocate(porous_heat_coef_old(Mdims%cv_nonods))
                 call effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
-                !Start with the process to apply the min max principle
-                call force_min_max_principle(1)
                 end if
                den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity", stat )
@@ -210,14 +209,38 @@ contains
                den_all=1.0
                denold_all=1.0
            end if
+           !Need to change this to use a reference density/rho_cp so for porous media the rock/fluid ratio is kept
+           if (has_boussinesq_aprox) then
+             if (is_porous_media) then
+               do iphase = 1, Mdims%nphase
+                 !Retrieve CP (considered constant) to get rhoCp
+                 sfield => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
+                 !If compositional then component Cp
+                 if (lcomp > 0) then
+                   sfield => extract_scalar_field( state( Mdims%nphase + lcomp ), 'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
+                   den_all((lcomp - 1 ) * Mdims%nphase + iphase,:) = sfield%val(1) * retrieve_reference_density(state, packed_state, iphase, lcomp, Mdims%nphase)
+                 else
+                   den_all(iphase,:) = sfield%val(1) * retrieve_reference_density(state, packed_state, iphase, lcomp, Mdims%nphase)
+                 end if
+               end do
+              !Copy to old to ensure no time variation
+              denold_all = den_all
+             else
+             !We do not consider variations of density nor CP in transport
+             den_all = 1.0; denold_all = 1.0
+            end if
+           end if
            if( present( option_path ) ) then ! solving for Temperature or Internal Energy or k_epsilon model
 
                if( trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
                    call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/' // &
                        'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
                    Field_selector = 1
-                   Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
-                   T_source( :, : ) = Q % val( 1, :, : )
+                   !Retrieve source term; sprint_to_do something equivalent should be done for absoprtion
+                    do iphase = 1, Mdims%nphase
+                      sfield => extract_scalar_field( state(iphase), "TemperatureSource", stat )
+                      if (stat == 0) call assign_val(T_source( iphase, : ),sfield%val)
+                    end do
                end if
                if (thermal) then
                    !We control with the infinite norm of the difference the non-linear iterations done in this sub-cycle
@@ -277,21 +300,19 @@ contains
            ! Check for a python-set source field when solving for temperature/internal energy
            python_vfield => extract_vector_field( state(1), "TSourcE", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
+           !Start with the process to apply the min max principle
+           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", Mdims%nphase)
+           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
                 !we set up 5 iterations but if it converges => we exit straigth away
 temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the petsc bug hits us here, we can retry
 
-		     if ( have_option( '/femdem_thermal/coupling') ) then
-				Component_Absorption => extract_tensor_field( packed_state, "PackedTemperatureAbsorption")
-				T_ABSORB(1:1,1:1,1:Mdims%cv_nonods)=> Component_Absorption%val (1,1,1:Mdims%cv_nonods)
-
-
-!No need as statement present above
-				!Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
-				!T_source( :, : ) = 0.0! Q % val( 1, 1, : )
-           end if
+            if ( have_option( '/femdem_thermal/coupling') ) then
+              Component_Absorption => extract_tensor_field( packed_state, "PackedTemperatureAbsorption")
+              T_ABSORB(1:1,1:1,1:Mdims%cv_nonods)=> Component_Absorption%val (1,1,1:Mdims%cv_nonods)
+            end if
 
            !Select solver options
            solver_option_path = "/solver_options/Linear_solver"
@@ -329,7 +350,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media .and. thermal) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, totally_min_max, .true.)
                    if (assemble_collapsed_to_one_phase) OvRelax_param = OvRelax_param/ dble(mdims%n_in_pres)
                else
                 Phase_with_Ovrel = -1
@@ -377,7 +398,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                end do
 
                 !Control how it is converging and decide
-               if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
+               if (impose_min_max)call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)!Apply if required the min max principle
 
                !Just after the solvers
                call deallocate(Mmat%petsc_ACV)
@@ -414,62 +435,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
       contains
 
-      !>@brief: Checks convergence on the temperature field, it checks the infinite norm
-      real function convergence_check(temperature, reference_temp)
-          implicit none
-          real, dimension(:,:,:) :: temperature, reference_temp
-          !Local variables
-          real, dimension(2) :: totally_min_max
-
-          totally_min_max(1)=minval(reference_temp, MASK = reference_temp > 1.1)!Using Kelvin it is unlikely that the temperature gets to 1 Kelvin!
-          totally_min_max(2)=maxval(reference_temp)!use stored temperature
-          !For parallel
-          call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-          !Analyse the difference
-          convergence_check = inf_norm_scalar_normalised(temperature(1,:,:), reference_temp(1,:,:), 1.0, totally_min_max)
-
-      end function convergence_check
-
-
-      !>@brief: To help the stability of the system,if there are no sources/sinks it is known that
-      !> the temperature must fulfill the min max principle, therefore here values outside this rank are capped.
-      subroutine force_min_max_principle(entrance)
-        integer, intent(in) :: entrance
-        !Local variables
-        logical, save :: first_time = .true., apply_minmax_principle
-        integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
-        type(tensor_field) :: tracer_BCs
-        real, parameter :: tol = 1e-8
-
-        select case (entrance)
-            case (1)
-                !Get variable for global convergence method
-                if (first_time) then
-                    first_time = .false.
-                    !Check diamond
-                    apply_minmax_principle = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Impose_min_max')
-                end if
-                if (apply_minmax_principle .and. nonlinear_iteration == 1) then!Only get the minmax the first non-linear iteration
-                    allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
-                    call get_entire_boundary_condition(tracer,&
-                        ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL)
-                    !Use boundaries for min/max
-                    totally_min_max(1)=minval(tracer_BCs%val, MASK = tracer_BCs%val > tol)!use stored temperature
-                    totally_min_max(2)=maxval(tracer_BCs%val)!use stored temperature
-                    !Check also domain?                    !For wells cannot consider zero values, this can be solved using Kelvin as proper scientists should do...
-                    totally_min_max(1)=min(totally_min_max(1), minval(tracer%val, MASK = tracer%val > tol))!use stored temperature
-                    totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored temperature
-                    !For parallel
-                    call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-                    deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs)
-                end if
-            case (2)
-                if (apply_minmax_principle) &
-                    tracer%val = max(min(tracer%val,totally_min_max(2)), totally_min_max(1))
-        end select
-
-      end subroutine
-
       !>@brief: Checks convergence on the temperature field Calculation of the averaged heat capacity and density
       !> average = porosity * Cp_f*rho_f + (1-porosity) * CP_p*rho_p
       !> Since porous promerties is defined element-wise and fluid properties CV-wise we perform an average
@@ -498,7 +463,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
                 cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
                 porous_heat_coef( cv_inod ) = porous_heat_coef( cv_inod ) + &
-                    density_porous%val(p_den ) * Cp_porous%val( h_cap )!*(1.0-porosity%val(ele_nod))
+                density_porous%val(p_den ) * Cp_porous%val( h_cap )
                 porous_heat_coef_old( cv_inod ) = porous_heat_coef_old( cv_inod ) + &
                     density_porous_old%val(p_den ) * Cp_porous%val( h_cap )
             end do
@@ -590,7 +555,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
-           real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
+           real, dimension(2) :: totally_min_max
            real :: aux
            real, save :: inf_tolerance = -1
            !Variables to control the PETCs solver
@@ -651,6 +616,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            TDIFFUSION=0.0
            !Obtain diffusion coefficient for temperature
 
+           !WE EITHER CREATE OUR OWN ARE TO SPECIFY THE DIFFUSION COEFFICIENT, LIKE FOR CONCENTRATION
+           !OR WE NEED A PROGNOSTIC TEMPERATURE FIELD, WHICH IS "FINE" BUT STRANGE FOR THE USER
            call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, divide_by_rho_CP = .true.)
            ! Check for a python-set absorption field when solving for Enthalpy/internal energy
            python_tfield => extract_tensor_field( state(1), "TAbsorB", python_stat )
@@ -720,8 +687,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      tracer%val(1,iphase,:)=solution%val(1,:)
                    end do
                  end if
-               !Control how it is converging and decide
-               !if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
                !Just after the solvers
                call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
                !Update halo communications
@@ -750,22 +715,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            ! if (allocated(porous_heat_coef_old)) deallocate(porous_heat_coef_old)
            ewrite(3,*) 'Leaving ENTHALPY_ASSEM_SOLVE'
 
-      contains
-
-      real function convergence_check(Enthalpy, reference_temp)
-          implicit none
-          real, dimension(:,:,:) :: Enthalpy, reference_temp
-          !Local variables
-          real, dimension(2) :: totally_min_max
-
-          totally_min_max(1)=minval(reference_temp, MASK = reference_temp > 1.1)!Using Kelvin it is unlikely that the temperature gets to 1 Kelvin!
-          totally_min_max(2)=maxval(reference_temp)!use stored Enthalpy
-          !For parallel
-          call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-          !Analyse the difference
-          convergence_check = inf_norm_scalar_normalised(Enthalpy(1,:,:), reference_temp(1,:,:), 1.0, totally_min_max)
-
-      end function convergence_check
 
   END SUBROUTINE ENTHALPY_ASSEM_SOLVE
 
@@ -774,7 +723,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
   !> @author Chris Pain, Pablo Salinas, Arash Hamzeloo
   !> @brief Calls to generate and solve the transport equation for the concentration field.
   !---------------------------------------------------------------------------
-  SUBROUTINE SOLUTE_ASSEM_SOLVE( state, packed_state, &
+  SUBROUTINE Concentration_assem_solve( state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
@@ -814,7 +763,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            real, optional, dimension(:), intent(inout) :: Courant_number
            ! Local variables
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
-           integer :: nits_flux_lim, its_flux_lim
+           integer :: nits_flux_lim, its_flux_lim, stat
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
            REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION, CDISPERSION
@@ -841,7 +790,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
-           real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
+           real, dimension(2) :: totally_min_max
+           logical :: impose_min_max
            real :: aux
            real, save :: inf_tolerance = -1
            !Variables to control the PETCs solver
@@ -851,25 +801,22 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer :: Phase_with_Ovrel
            !temperature backup for the petsc bug
            logical :: repeat_assemb_solve
-           logical :: boussinesq
            !Parameters for stabilisation and compact solving, i.e. solving only concentration for some phases
            real, parameter :: min_concentration = 0.
            integer, save :: nconc = -1 !> Number of phases with concentration, this works if the phases with concentration start from the first one and are consecutive
            integer, save :: nconc_in_pres
            type(vector_field) :: solution
-           !Retrieve the number of phases that have soluteMass fraction, and then if they are concecutive and start from the first one
+           !Retrieve the number of phases that have Concentration fraction, and then if they are concecutive and start from the first one
            if (nconc < 0) then
-             nconc = option_count("/material_phase/scalar_field::SoluteMassFraction")
+             nconc = option_count("/material_phase/scalar_field::Concentration")
              nconc_in_pres = nconc
              if (Mdims%npres > 1) nconc_in_pres = max(nconc_in_pres / 2, 1)
              do iphase = 1, nconc_in_pres
-               if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::SoluteMassFraction')) then
-                 FLAbort('SoluteMassFraction must either be defined in all the phases or to start from the first one and consecutively from that one.')
+               if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::Concentration')) then
+                 FLAbort('Concentration must either be defined in all the phases or to start from the first one and consecutively from that one.')
                end if
              end do
            end if
-
-           boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
@@ -890,7 +837,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            p => extract_tensor_field( packed_state, "PackedFEPressure" )
 
-           if (boussinesq) then
+           if (has_boussinesq_aprox) then
+             !We do not consider variations of density in transport
                den_all = 1
                denold_all =1
            else
@@ -902,11 +850,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            IGOT_T2_loc = 1
 
-           call get_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic/temporal_discretisation/' // &
+           call get_option( '/material_phase[0]/scalar_field::Concentration/prognostic/temporal_discretisation/' // &
                'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
            Field_selector = 1
-           Q => extract_tensor_field( packed_state, "PackedSoluteMassFractionSource" )
-           T_source( :, : ) = Q % val( 1, :, : )
+           do iphase = 1, Mdims%nphase
+             sfield => extract_scalar_field( state(iphase), "ConcentrationSource", stat )
+             if (stat == 0) call assign_val(T_source( iphase, : ),sfield%val)
+           end do
 
            !Introduce the source/sink term between the phases
            if (is_magma) then
@@ -937,17 +887,19 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            !Calculates solute dispersion with specific longitudinal and transverse dispersivity
            if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
-             call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION, tracer)
+             call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION)
              TDIFFUSION = TDIFFUSION + CDISPERSION
            end if
-
+           !Start with the process to apply the min max principle
+           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", nconc)
+           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
            NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
 
            solver_option_path = "/solver_options/Linear_solver"
-           if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::SoluteMassFraction')) then
-             solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::SoluteMassFraction'
+           if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::Concentration')) then
+             solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::Concentration'
            end if
            if(max_allowed_its < 0)  then
                call get_option( trim(solver_option_path)//"max_iterations",&
@@ -959,7 +911,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, totally_min_max, .true.)
                else
                 Phase_with_Ovrel = -1
                end if
@@ -993,15 +945,298 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    ! call zero_non_owned(Mmat%CV_RHS)
                    call zero(solution)
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
-                   !Ensure concentration is between 1 and sligthly above 0
+                   !Ensure that the solution is above zero always
+                  solution%val = max(solution%val,min_concentration)
 
-                   solution%val = min(1., max(solution%val,min_concentration))
                    !Copy solution back to tracer(not ideal...)
                    do ipres =1, mdims%npres
                      do iphase = 1 , nconc_in_pres
                       tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*nconc_in_pres,:)
                     end do
                    end do
+
+                   !Apply if required the min max principle
+                   if (impose_min_max) call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
+                   !Just after the solvers
+                   call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
+                   !Update halo communications
+                   call halo_update(tracer)
+                   !Checking solver not fully implemented
+                   solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
+                   call allor(solver_not_converged)
+                   exit!good to go!
+
+           END DO Loop_NonLinearFlux
+
+           call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
+           if (allocated(den_all)) deallocate(den_all)
+           if (allocated(denold_all)) deallocate(denold_all)
+           if (allocated(T_SOURCE)) deallocate(T_SOURCE)
+           call deallocate(solution); nullify(solution%val)
+           ewrite(3,*) 'Leaving Concentration_assem_solve'
+
+  END SUBROUTINE Concentration_assem_solve
+
+
+  !>@brief: To help the stability of the system,if there are no sources/sinks it is known that
+  !> the temperature must fulfill the min max principle, therefore here values outside this rank are capped.
+  subroutine force_min_max_principle(Mdims, entrance, tracer, nonlinear_iteration, totally_min_max, tracerName)
+    type(multi_dimensions), intent(in) :: Mdims
+    type(tensor_field), intent(inout) :: tracer
+    integer, intent(in) :: nonlinear_iteration
+    integer, intent(in) :: entrance
+    real, dimension(2), intent(inout) :: totally_min_max
+    character(len=*), intent(in), optional :: tracerName
+    !Local variables
+    logical :: apply_minmax_principle
+    integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
+    type(tensor_field) :: tracer_BCs
+    real, parameter :: tol = 1e-30
+    real :: imposed_min_limit, imposed_max_limit
+    logical :: has_imposed_min_limit, has_imposed_max_limit
+    select case (entrance)
+    case (1)
+      !Get variable for global convergence method
+      if (apply_minmax_principle) then
+        totally_min_max = (/-1d9,1d9/)
+        has_imposed_min_limit = .false.; has_imposed_max_limit = .false.
+        if (present(tracerName)) then
+          has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit")
+          has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit")
+        end if
+        if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit", imposed_min_limit)
+        if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit", imposed_max_limit)
+        allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
+        call get_entire_boundary_condition(tracer,&
+        ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL)
+        !Use boundaries for min/max
+        if (.not. has_imposed_min_limit) totally_min_max(1)=minval(tracer_BCs%val, MASK = tracer_BCs%val > tol)!use stored value
+        if (.not. has_imposed_max_limit) totally_min_max(2)=maxval(tracer_BCs%val)!use stored value
+        !Check also domain?                    !For wells cannot consider zero values, this can be solved using Kelvin as proper scientists should do...
+        if (.not. has_imposed_min_limit) totally_min_max(1)=min(totally_min_max(1), minval(tracer%val, MASK = tracer%val > tol))!use stored value
+        if (.not. has_imposed_max_limit) totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored value
+        !For parallel
+        call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+        deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs)
+      end if
+    case (2)
+      if (apply_minmax_principle) &
+      tracer%val = max(min(tracer%val,totally_min_max(2)), totally_min_max(1))
+    end select
+
+  end subroutine
+
+  !> @author Chris Pain, Pablo Salinas
+  !> @brief Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passive_Tracer_N
+  !> Where N is an integer which is continuous starting from 1
+  !> A boussinesq approximation is enforced on these tracers as the are totally INERT
+  !> CURRENTLY NO DIFFUSION
+  !---------------------------------------------------------------------------
+  SUBROUTINE Passive_Tracer_Assemble_Solve( Passive_Tracer_name, state, packed_state, &
+       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
+       tracer, velocity, density, multi_absorp, DT, &
+       SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
+       IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
+       THETA_GDIFF, eles_with_pipe, pipes_aux, &
+       mass_ele_transp, &
+       THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
+       icomp, saturation, Permeability_tensor_field, nonlinear_iteration )
+
+           implicit none
+           character(len=*), intent(in) :: Passive_Tracer_name
+           type( state_type ), dimension( : ), intent( inout ) :: state
+           type( state_type ), intent( inout ) :: packed_state
+           type(multi_dimensions), intent(in) :: Mdims
+           type(multi_GI_dimensions), intent(in) :: CV_GIdims
+           type(multi_shape_funs), intent(inout) :: CV_funs
+           type (multi_sparsities), intent(in) :: Mspars
+           type(multi_ndgln), intent(in) :: ndgln
+           type (multi_discretization_opts) :: Mdisopt
+           type (multi_matrices), intent(inout) :: Mmat
+           type (porous_adv_coefs), intent(inout) :: upwnd
+           type(tensor_field), intent(inout) :: tracer
+           type(tensor_field), intent(in) :: velocity, density
+           type(multi_absorption), intent(inout) :: multi_absorp
+           INTEGER, intent( in ) :: IGOT_T2, igot_theta_flux
+           LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
+           REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
+           REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+           REAL, intent( in ) :: DT
+           REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
+           REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+           real, dimension( : ), intent( inout ), optional :: mass_ele_transp
+           type(tensor_field), intent(in), optional :: saturation
+           type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
+           integer, optional :: icomp, nonlinear_iteration
+           type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
+           type (multi_pipe_package), intent(in) :: pipes_aux
+           ! Local variables
+           LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
+           integer :: nits_flux_lim, its_flux_lim
+           REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
+           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
+           REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
+           REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
+           real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
+           REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
+           REAL, DIMENSION( : , : ), target, allocatable :: den_all
+           REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
+           type( tensor_field ), pointer :: P, Q
+           INTEGER :: IPHASE, its_taken, ipres, i, stat
+           LOGICAL :: RETRIEVE_SOLID_CTY
+           type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
+           type( vector_field ), pointer  :: MeanPoreCV, python_vfield
+           integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat
+           type(vector_field)  :: residual
+           type(csr_sparsity), pointer :: sparsity
+           real, dimension(:,:,:), allocatable :: Velocity_Absorption
+           real, dimension(:,:,:), pointer :: T_AbsorB=>null()
+           integer :: ncomp_diff_coef, comp_diffusion_opt
+           real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
+           type( tensor_field ), pointer :: perm, python_tfield
+           integer :: cv_disopt, cv_dg_vel_int_opt
+           real :: cv_theta, cv_beta
+           type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
+           character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+           !Variables to stabilize the non-linear iteration solver
+           real, dimension(2) :: totally_min_max
+           logical :: impose_min_max
+           real :: aux
+           real, save :: inf_tolerance = -1
+           !Variables to control the PETCs solver
+           integer, save :: max_allowed_its = -1
+           !Variables for vanishing diffusion
+           real, dimension(Mdims%cv_nonods) :: OvRelax_param
+           integer :: Phase_with_Ovrel
+           !temperature backup for the petsc bug
+           logical :: repeat_assemb_solve
+           logical :: boussinesq = .true.
+           !Parameters for stabilisation and compact solving, i.e. solving only concentration for some phases
+           real, parameter :: min_val = 0.
+           integer :: nconc !> Number of phases with tracer, this works if the phases with concentration start from the first one and are consecutive
+           integer :: nconc_in_pres
+           type(vector_field) :: solution
+
+           !Retrieve the number of phases that have this tracer, and then if they are concecutive and start from the first one
+           nconc = option_count("/material_phase/scalar_field::"//trim(Passive_Tracer_name))
+           nconc_in_pres = nconc
+           if (Mdims%npres > 1) nconc_in_pres = max(nconc_in_pres / 2, 1)
+           do iphase = 1, nconc_in_pres
+             if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::'//trim(Passive_Tracer_name))) then
+               FLAbort('Concentration must either be defined in all the phases or to start from the first one and consecutively from that one.')
+             end if
+           end do
+
+           if (present(Permeability_tensor_field)) then
+              perm => Permeability_tensor_field
+           else
+              perm=>extract_tensor_field(packed_state,"Permeability")
+           end if
+
+           lcomp = 0
+           if ( present( icomp ) ) lcomp = icomp
+
+           call allocate(Mmat%CV_RHS,nconc,tracer%mesh,"RHS")
+           call allocate(solution,nconc,tracer%mesh,"sol_tracer")!; call zero(solution)
+           sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+           allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
+
+           allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0!SPRINT_TO_DO TURN THESE T_SOURCE INTO POINTERS OR DIRECTLY REMOVE THEM
+           IGOT_T2_loc = 0
+
+           p => extract_tensor_field( packed_state, "PackedFEPressure" )
+
+           if (boussinesq) then
+               den_all = 1
+               denold_all =1
+           endif
+
+           IGOT_T2_loc = 1
+
+           call get_option( '/material_phase[0]/scalar_field::Concentration/prognostic/temporal_discretisation/' // &
+               'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
+
+          !Retrieve source term; sprint_to_do something equivalent should be done for absoprtion
+           do iphase = 1, Mdims%nphase !IF THIS WORKS DO THE SAME FOR THE OTHER SCALAR FIELDS
+             sfield => extract_scalar_field( state(iphase), trim(Passive_Tracer_name)//"Source", stat )
+             if (stat == 0) call assign_val(T_source( iphase, : ),sfield%val)
+           end do
+
+           !sprint to do, just pass down the other values...
+           cv_disopt = Mdisopt%t_disopt; cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
+           cv_theta = Mdisopt%t_theta; cv_beta = Mdisopt%t_beta
+
+           RETRIEVE_SOLID_CTY = .false.
+
+           deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
+           TDIFFUSION=0.0
+
+           call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, TracerName= trim(Passive_Tracer_name))
+
+           MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+
+           solver_option_path = "/solver_options/Linear_solver"
+           if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::Passive_Tracers')) then
+             solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::Passive_Tracers'
+           end if
+           if(max_allowed_its < 0)  then
+               call get_option( trim(solver_option_path)//"max_iterations",&
+                max_allowed_its, default = 500)
+           end if
+
+           !Start with the process to apply the min max principle
+           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", nconc)
+           if (impose_min_max) call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
+
+           Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
+
+                !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
+               if (is_porous_media) then
+                   !Get information for capillary pressure to be use in CV_ASSEMB
+                   Phase_with_Ovrel = 1
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+               else
+                Phase_with_Ovrel = -1
+               end if
+
+               !Solves a PETSC warning saying that we are storing information out of range
+               call allocate(Mmat%petsc_ACV,sparsity,[nconc,nconc],"ACV_Passive_Tracer")
+               call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
+
+               !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
+               call CV_ASSEMB( state, packed_state, &
+                   nconc_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                   tracer, velocity, density, multi_absorp, &
+                   DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                   DEN_ALL, DENOLD_ALL, &
+                   cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
+                   SUF_SIG_DIAGTEN_BC, &
+                   DERIV%val(1,:,:), P%val, &
+                   T_SOURCE, T_ABSORB, VOLFRA_PORE, &
+                   GETCV_DISC, GETCT, &
+                   IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
+                   THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                   MeanPoreCV%val, &
+                   mass_Mn_pres, .false., RETRIEVE_SOLID_CTY, &
+                   .true.,  mass_Mn_pres, &
+                   mass_ele_transp, &
+                   TDIFFUSION = TDIFFUSION,&
+                   saturation=saturation, Permeability_tensor_field = perm,&
+                   eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
+                   solving_compositional = lcomp > 0, &
+                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel)
+                   ! call zero_non_owned(Mmat%CV_RHS)
+                   call zero(solution)
+                   call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+
+                   !Copy solution back to tracer(not ideal...)
+                   do ipres =1, mdims%npres
+                     do iphase = 1 , nconc_in_pres
+                      tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*nconc_in_pres,:)
+                    end do
+                   end do
+                   !Apply if required the min max principle
+                   if (impose_min_max) call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
 
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
@@ -1019,26 +1254,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            if (allocated(denold_all)) deallocate(denold_all)
            if (allocated(T_SOURCE)) deallocate(T_SOURCE)
            call deallocate(solution); nullify(solution%val)
-           ewrite(3,*) 'Leaving SOLUTE_ASSEM_SOLVE'
+           ewrite(3,*) 'Leaving Concentration_assem_solve'
 
-      contains
-        !>@brief: Checks convergence on the concentration field, it checks the infinite norm
-      real function convergence_check(temperature, reference_temp)
-          implicit none
-          real, dimension(:,:,:) :: temperature, reference_temp
-          !Local variables
-          real, dimension(2) :: totally_min_max
+  END SUBROUTINE Passive_Tracer_Assemble_Solve
 
-          totally_min_max(1)=minval(reference_temp, MASK = reference_temp > 0.000001)!Using Kelvin it is unlikely that the temperature gets to 1 Kelvin!
-          totally_min_max(2)=maxval(reference_temp)!use stored temperature
-          !For parallel
-          call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-          !Analyse the difference
-          convergence_check = inf_norm_scalar_normalised(temperature(1,:,:), reference_temp(1,:,:), 1.0, totally_min_max)
-
-      end function convergence_check
-
-  END SUBROUTINE SOLUTE_ASSEM_SOLVE
 
     !---------------------------------------------------------------------------
     !> @author Chris Pain, Pablo Salinas
@@ -1718,7 +1937,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type( vector_field ) :: deltap, rhs_p
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
-        logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, boussinesq, fem_density_buoyancy
+        logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, fem_density_buoyancy
         logical, parameter :: EXPLICIT_PIPES2 = .true.
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         type( tensor_field ) :: pressure_BCs
@@ -1781,7 +2000,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
         FEM_continuity_equation = have_option( "/geometry/Advance_options/FE_Pressure/FEM_continuity_equation" )
         cty_proj_after_adapt = have_option( "/mesh_adaptivity/hr_adaptivity/project_continuity" )
-        boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
         fem_density_buoyancy = have_option( "/physical_parameters/gravity/fem_density_buoyancy" )
         got_free_surf = .false.
         do i = 1, get_boundary_condition_count(pressure)
@@ -1978,7 +2196,7 @@ end if
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON ) !
+            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON ) !
         deallocate(UDIFFUSION_ALL)
 
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
@@ -2730,7 +2948,7 @@ end if
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON) !-ao
+        FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON) !-ao
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -2749,7 +2967,7 @@ end if
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
         type (multi_pipe_package), intent(in) :: pipes_aux
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
-        LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,FEM_continuity_equation,boussinesq
+        LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,FEM_continuity_equation
         real, dimension(:,:), intent(in) :: X_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: velocity_absorption
         type( multi_field ), intent( in ) :: U_SOURCE_ALL
@@ -2820,18 +3038,14 @@ end if
 
         ALLOCATE( DEN_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DEN_OR_ONE = 1.
         ALLOCATE( DENOLD_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DENOLD_OR_ONE = 1.
-        IF ( Mdisopt%volfra_use_theta_flux ) THEN ! We have already put density in theta...
+        IF ( Mdisopt%volfra_use_theta_flux .or. has_boussinesq_aprox) THEN ! We have already put density in theta... or
+          !boussinesq so we do not consider variations of density for the continuity equation
            DEN_OR_ONE = 1.
            DENOLD_OR_ONE = 1.
         ELSE
            DEN_OR_ONE = DEN_ALL
            DENOLD_OR_ONE = DENOLD_ALL
         END IF
-        if ( boussinesq ) then
-           DEN_OR_ONE = 1.0
-           DENOLD_OR_ONE = 1.0
-
-        end if
         ! no q scheme
         tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         density=>extract_tensor_field(packed_state,"PackedDensity")
@@ -3902,7 +4116,7 @@ end if
                 Mdims%x_nonods, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), &
                 FE_GIdims%nface, FACE_ELE, FE_funs%u_sloclist, FE_funs%cv_sloclist, Mdims%u_snloc, Mdims%cv_snloc, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, &
                 FE_GIdims%sbcvngi, FE_funs%sbufen, FE_funs%sbcvfeweigh, &
-                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly, get_gradU, state )
+                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly, get_gradU, state, Mdims%xu_nloc == 1 )
         ENDIF
         ! LES VISCOCITY CALC.
         IF ( GOT_DIFFUS ) THEN
@@ -5068,23 +5282,23 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     ELSE If_stored
                         U_OTHER_LOC=0
                         U_ILOC_OTHER_SIDE=0
-                        IF( Mdims%xu_nloc == 1 ) THEN ! For constant vel basis functions...
-                            U_ILOC_OTHER_SIDE( 1 ) = 1
-                            U_OTHER_LOC( 1 )= 1
+                        IF( Mdims%xu_nloc == 1) THEN ! For constant vel basis functions...
+                            U_ILOC_OTHER_SIDE = 1
+                            U_OTHER_LOC = 1
                         ELSE
-                            DO U_SILOC = 1, Mdims%u_snloc
-                                U_ILOC = U_SLOC2LOC( U_SILOC )
-                                U_INOD = ndgln%xu( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
-                                DO U_ILOC2 = 1, Mdims%u_nloc
-                                    U_INOD2 = ndgln%xu(( ELE2 - 1 ) * Mdims%u_nloc + U_ILOC2 )
-                                    IF ( U_INOD2 == U_INOD ) THEN
-                                        U_ILOC_OTHER_SIDE( U_SILOC ) = U_ILOC2
-                                        U_OTHER_LOC( U_ILOC )=U_ILOC2
-                                        exit
-                                    END IF
-                                END DO
+                          DO U_SILOC = 1, Mdims%u_snloc
+                            U_ILOC = U_SLOC2LOC( U_SILOC )
+                            U_INOD = ndgln%xu( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
+                            DO U_ILOC2 = 1, Mdims%u_nloc
+                              U_INOD2 = ndgln%xu(( ELE2 - 1 ) * Mdims%u_nloc + U_ILOC2 )
+                              IF ( U_INOD2 == U_INOD ) THEN
+                                U_ILOC_OTHER_SIDE( U_SILOC ) = U_ILOC2
+                                U_OTHER_LOC( U_ILOC )=U_ILOC2
+                                exit
+                              END IF
                             END DO
-                        ENDIF
+                          END DO
+                        end if
                         MAT_OTHER_LOC=0
                         DO MAT_SILOC = 1, Mdims%cv_snloc
                             MAT_ILOC = CV_SLOC2LOC( MAT_SILOC )
@@ -7455,7 +7669,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
  !!>@brief: This subroutine calculates the overrelaxation parameter (Vanishing relaxation) we introduce in the saturation equation
  !> Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
  !> For more information read: doi.org/10.1016/j.cma.2019.07.004
- subroutine getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, Overrelaxation, Phase_with_Pc, for_transport)
+ subroutine getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, Overrelaxation, Phase_with_Pc, totally_min_max, for_transport)
      implicit none
      type( state_type ), dimension( : ), intent( inout ) :: state
      type( state_type ), intent(inout) :: packed_state
@@ -7463,6 +7677,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      type(multi_ndgln), intent(in) :: ndgln
      real, dimension(:), intent(inout) :: Overrelaxation
      integer, intent(inout) :: Phase_with_Pc
+     real, dimension(:), optional :: totally_min_max
      logical, optional, intent(in) :: for_transport
      !Local variables
      real, save :: domain_length = -1
@@ -7533,6 +7748,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              Artificial_Pe = .true.
              if (present_and_true(for_transport)) then
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
+                !This method was designed for fields between 0 and 1, so for transport fields, we need to adjust Pe_aux to ensure consistency
+                if (present(totally_min_max)) Pe_aux = Pe_aux*(totally_min_max(2) - totally_min_max(1)) !THIS means making it HIGHER
              else
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
              end if
@@ -7716,7 +7933,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       type( tensor_field ), pointer :: rho, volfra, pfield
       type( vector_field ), pointer :: gravity_direction
 
-      logical :: boussinesq, got_free_surf, same_mesh
+      logical :: got_free_surf, same_mesh
       integer :: inod, ph_jnod2, ierr, count, count2, i, j, mat_inod
       integer, dimension( : ), pointer :: findph, colph
 
@@ -7737,7 +7954,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
 
       ewrite(3,*) "inside high_order_pressure_solve"
-      boussinesq =  have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
       call get_option( '/timestepping/timestep', dt )
 
@@ -7834,7 +8050,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       ! set the gravity term
       rho => extract_tensor_field( packed_state, "PackedDensity" )
       volfra => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-
       call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude )
       gravity_direction => extract_vector_field( state( 1 ), "GravityDirection" )
 
@@ -7844,7 +8059,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                  gravity_magnitude * gravity_direction % val( idim, 1 )
          end do
       end do
-
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
 
       call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix )
@@ -7904,7 +8118,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                   coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
                        tmp_cvfen( cv_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
 
-                  if ( boussinesq ) then
+                  if ( has_boussinesq_aprox ) then
                      den_gi( :, iphase ) = 1.0
                   else
                      den_gi( :, iphase ) = den_gi( :, iphase ) + &
@@ -7996,6 +8210,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
             ! if free surface apply a boundary condition
             ! else don't forget to remove the null space
+            matrix%is_assembled =.false.
+            call assemble( matrix )
+
             if ( got_free_surf .and. same_mesh ) then
                findph => sparsity % findrm
                colph => sparsity % colm
@@ -8050,6 +8267,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                end do
             end if
 
+            matrix%is_assembled =.false.
+
+            ! call assemble( matrix )
 
             !Add remove null_space if not bcs specified for the field
             if ( .not.got_free_surf ) call add_option( trim( solver_option_path ) // "/remove_null_space", stat )

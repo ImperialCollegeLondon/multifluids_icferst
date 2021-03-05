@@ -161,7 +161,7 @@ contains
     !Local variables
     type( tensor_field), pointer :: Composition, saturation
     integer :: iphase, cv_inod
-    Composition=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
+    Composition=>extract_tensor_field(packed_state,"PackedConcentration")
     saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
     BulkComposition = 0.
@@ -222,7 +222,7 @@ contains
     integer :: cv_nodi
 
     ! BulkComposition=> extract_scalar_field(state(1), "BulkComposition")
-    Composition=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
+    Composition=>extract_tensor_field(packed_state,"PackedConcentration")
     temperature =>  extract_tensor_field( packed_state, "PackedTemperature" )
     enthalpy=>extract_tensor_field(packed_state,"PackedEnthalpy")
     Cp => extract_scalar_field(state(1), 'TemperatureHeatCapacity')   !

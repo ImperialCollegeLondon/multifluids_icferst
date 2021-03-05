@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <testproblem>
-  <name>BL_2D</name>
+  <name>Advection_singlePhase</name>
   <owner userid="jefferson.gomes"/>
   <tags>inertia mpml advection</tags>
   <problem_definition length="short" nprocs="1">

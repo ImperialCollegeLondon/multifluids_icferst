@@ -44,7 +44,7 @@ AutomaticVTU_Number = AutoNumber
 showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
-data_name = 'Self_Potential'
+data_name = 'SelfPotential'
 
 #Initial and last coordinate of the probe
 x0 = 0.0
@@ -168,20 +168,15 @@ f = interp1d(Analytical_X, Analytical_Y,kind ='linear')
 #COnvert tuple to array
 Experimental_Y = []
 for item in FS:
-    Experimental_Y.extend(item)
+    Experimental_Y.extend(item) 
 
 
 
 L1_sum = 0.0
-L2_sum = 0.0
-L1_sum_shock_front = 0.0
-L2_sum_shock_front = 0.0
 N_shock = 0
-Infinite_Norm = 0.0
 for i in range(len(Experimental_X)):
     if (i==0):#The first position is exact, so no need to interpolate
-        L1_sum = L1_sum + abs(Analytical_Y[i] - Experimental_Y[i])
-        L2_sum = L2_sum + (Analytical_Y[i] - Experimental_Y[i])**2
+        L1_sum = L1_sum + abs(Analytical_Y[i] - Experimental_Y[i]*1000)#Analytical is in miliVolts
         continue
     position = Experimental_X[i]
 #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
@@ -190,14 +185,8 @@ for i in range(len(Experimental_X)):
         print 'The size of the Experimental and reference experiments is different'
         quit
 
-    if (abs(x - Experimental_Y[i])> Infinite_Norm):
-        Infinite_Norm = abs(x - Experimental_Y[i])
-    L1_sum = L1_sum + abs(x - Experimental_Y[i])
-    L2_sum = L2_sum + (x - Experimental_Y[i])**2
-    if (abs(x - Experimental_Y[i])>1/100000000):
-        N_shock = N_shock + 1
-        L1_sum_shock_front = L1_sum_shock_front + abs(x - Experimental_Y[i])
-        L2_sum_shock_front = L2_sum_shock_front + (x - Experimental_Y[i])**2      
+
+    L1_sum = L1_sum + abs(x - Experimental_Y[i]*1000)#Analytical is in miliVolts   
         
         
 L1_norm= L1_sum / len(Experimental_X)  

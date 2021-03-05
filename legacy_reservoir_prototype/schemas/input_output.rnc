@@ -126,7 +126,10 @@ input_choice_real_contents =
    ## where X is a tuple of length geometry dimension.
    element python {
       python_code
-   }
+   }|
+   ## Get the value from another field
+   element from_field {
+    attribute name {string }}
 
 initial_condition_scalar = 
    (

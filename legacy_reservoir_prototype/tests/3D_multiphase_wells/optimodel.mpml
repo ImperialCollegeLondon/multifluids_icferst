@@ -42,11 +42,17 @@
             </Aim_num_FPI>
           </PID_controller>
           <max_timestep>
-            <real_value rank="0">157680000</real_value>
-            <comment>157680000 = 5 years</comment>
+            <python>
+              <string_value lines="20" type="code" language="python">def val(t):
+  val = 157680000 
+  return val</string_value>
+              <comment># 157680000 = 5 years</comment>
+            </python>
           </max_timestep>
           <min_timestep>
-            <real_value rank="0">7884000</real_value>
+            <constant>
+              <real_value rank="0">7884000</real_value>
+            </constant>
           </min_timestep>
         </adaptive_timestep_nonlinear>
       </Fixed_Point_Iteration>
@@ -135,6 +141,7 @@
           </relative_measure>
         </adaptivity_options>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -176,6 +183,7 @@
         <galerkin_projection>
           <discontinuous/>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -345,6 +353,7 @@
         <galerkin_projection>
           <discontinuous/>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -489,6 +498,7 @@
           <exclude_from_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -528,6 +538,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -632,6 +643,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -732,6 +744,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <tensor_field name="Permeability">
@@ -767,6 +780,7 @@
             </constant>
           </isotropic>
         </value>
+        <output/>
       </prescribed>
     </tensor_field>
     <wells_and_pipes>
@@ -782,6 +796,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="Gamma">
@@ -800,6 +815,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="Sigma">
@@ -814,6 +830,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="DiameterPipe">
@@ -828,6 +845,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <well_volume_ids>

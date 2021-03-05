@@ -381,7 +381,7 @@ contains
     call interleave_surface_ids(input_positions%mesh, surfid, max_coplanar_id)
 
     !We may want to lock the nodes within the sleeves of the wells
-    if (have_option("/porous_media/wells_and_pipes/well_volume_ids/Lock_well_volumes")) then
+    if (have_option("/porous_media/wells_and_pipes/well_volume_ids/Lock_sleeve_nodes")) then
       shape = option_shape('/porous_media/wells_and_pipes/well_volume_ids')
       assert(shape(1) >= 0)
       allocate(well_ids(shape(1)))
@@ -463,6 +463,7 @@ contains
                         ! splitting is not performed by libadaptivity
     ! Move nodes if true
     mshopt(6) = .not. have_option(base_path // "/adaptivity_library/libadaptivity/disable_node_movement")
+
 
     twostg = .false.  ! Two stages of adapting, with no refinement on first
     togthr = .true.  ! Lumps node movement adaptivity in with connectivity
@@ -551,13 +552,11 @@ contains
     if (present_and_true(adapt_error) .and. use_conservative_settings) then
         !edge_split can't be disabled, which is the one that tends to fail,
         !therefore we increase the number of sweeps and relax the tolerance
-        nsweep = 500!Increase drastically the number of sweeps, makes things slower but adaptivity seems to always work with this
-        !Disable all techniques but the very basics
-        ! mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
+        nsweep = 50!Increase the number of sweeps, slower but more robust
+        twostg = .true.  ! Two stages of adapting, with no refinement on first (recommended)
         if (second_try) then
           !Disable all techniques but the very basics
           mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
-    			mshopt(1) = .false.! <= Leave only r-adaptivity
           nsweep = 500!Increase even more the number of sweeps, should be cheaper every sweep since everything is disabled
     			!Relax convergence
     			dotop = dotop * 1.2; !MINCHG = MINCHG / 1.5!Commented out as already is hardcoded to 0.01 and has no effect
@@ -821,7 +820,7 @@ contains
       shape => ele_shape(positions, i)
       if(positions%dim == 3 .and. shape%loc == 4 .and. shape%degree == 1) then
         volume = simplex_volume(positions, i)
-        if(abs(volume) < epsilon(0.0)) then
+        if(abs(volume) < epsilon(0.0)*0.01) then
           ewrite(-1, "(a,i0)") "For element: ", i
           FLAbort("Degenerate tetrahedron encountered")
         end if

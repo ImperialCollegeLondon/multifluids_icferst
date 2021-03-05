@@ -19,6 +19,10 @@
 
 subroutine multiphase_prototype_wrapper() bind(C)
 
+#ifdef HAVE_PETSC_MODULES
+  use petsc
+#endif
+
     use fldebug
     use elements
     use fields
@@ -57,6 +61,8 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use tictoc
     implicit none
 
+#include "petsc_legacy.h"
+
     !Local variables
     type(state_type), dimension(:), pointer :: state
 
@@ -67,6 +73,10 @@ subroutine multiphase_prototype_wrapper() bind(C)
     character(len = option_path_len) :: simulation_name, dump_format
 
     real :: finish_time, nonlinear_iteration_tolerance, auxR, dump_period
+
+    PetscErrorCode :: ierr
+    PetscLogStage,dimension(0:4) :: stages
+
 
     ! Establish signal handlers
     call initialise_signals()
@@ -200,10 +210,14 @@ subroutine multiphase_prototype_wrapper() bind(C)
     !call multiphase_prototype(state, dt, &
     !                          nonlinear_iterations, nonlinear_iteration_tolerance, &
     !                          dump_no)
+
+call petsc_logging(1,stages,ierr,default=.false., push_no=0, stage_name="WRAP")
+call petsc_logging(2,stages,ierr,default=.true., push_no=0)
+
     call MultiFluids_SolveTimeLoop( state, &
         dt, nonlinear_iterations, dump_no )
 
-
+call petsc_logging(3,stages,ierr,default=.true.)
 
 
     call close_diagnostic_files()
@@ -278,20 +292,11 @@ contains
             Vdegree )
         call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', &
             Pdegree )
-        is_P0DGP1CV = (Vdegree == 0) .and. (Pdegree == 1) .and. &
-                .not. have_option( '/geometry/Advance_options/FE_Pressure' )
-
-        if ((Vdegree == 0) .and. (Pdegree == 1) .and.( .not. is_P0DGP1CV &
-                        .or. have_option('/inertia_dominated'))) then
-            ewrite(0, *) "P0DGP1 does not work for inertia dominated simulations. If using the DCVFEM method use either one of the following options: "
-            ewrite(0, *) "A. Use the P1DGP2CV formulation."
-            ewrite(0, *) "B. Use the P1DGP1CV formulation with mass lumping = 100 in: /numerical_methods/lump_mass_matrix/lump_weight"
-            stop
-        end if
+        is_P0DGP1 = (Vdegree == 0) .and. (Pdegree == 1)
 
         !Prepare some specific modifications prior to populating state
         !If the extra mesh have not been created, create them here
-        if (.not.is_P0DGP1CV) then!We don't need this field for P0DGP1
+        if (.not.is_P0DGP1) then!We don't need this field for P0DGP1
             if (.not. have_option("/geometry/mesh::VelocityMesh_Continuous")) then
                 call copy_option("/geometry/mesh::VelocityMesh", "/geometry/mesh::VelocityMesh_Continuous")
                 call set_option("/geometry/mesh::VelocityMesh_Continuous/from_mesh/mesh_continuity", "continuous")
@@ -702,9 +707,9 @@ contains
           call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
           call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
           if (simulation_quality < 100) then
-              if (have_option("/porous_media_simulator")) then
+              if (have_option("/porous_media_simulator") .or. have_option("/geometry/simulation_quality/Balanced_P0DG")) then
                 call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 0)
-              else !Currently only for porous media P0DG works, so we use P1 for the rest
+              else !we use P1 otherwise
                 call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
               end if
               call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
@@ -835,7 +840,7 @@ contains
               call add_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", stat = stat)
               if (have_option('/material_phase[0]/scalar_field::Temperature')) then
                 call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 4)
-              elseif (have_option('/material_phase[0]/scalar_field::SoluteMassFraction')) then
+              elseif (have_option('/material_phase[0]/scalar_field::Concentration')) then
                 call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 5)
               else !If nothing, then pressure
                 call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 1)
@@ -892,7 +897,7 @@ contains
                 l = option_count("/material_phase["// int2str( i - 1 )//"]/phase_properties/Density/boundary_conditions")
 
                 if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/Density/compressible")) then
-                  if (l < 1) then
+                  if (l < 1 .and. .not. has_boussinesq_aprox) then
                     if (GetProcNo() == 1) then
                       ewrite(0, *) "################################################################################"
                       ewrite(0, *) "#WARNING: Compressible flow REQUIRES boundary conditions, run at your own risk.#"
@@ -936,13 +941,13 @@ contains
             end if
             !Easiest way to create the diffusivity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
             if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity")) then
-              ! FLAbort("Solute Diffusivity specified but no prognostic SoluteMassFraction field specified.")! Not all the phases need to have concentration defined
-              if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic")) then
+              ! FLAbort("Solute Diffusivity specified but no prognostic Concentration field specified.")! Not all the phases need to have concentration defined
+              if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Concentration/prognostic")) then
                 call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity",&
-                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
+                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::Concentration/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
               else
                 call get_option("/material_phase["// int2str( i - 1 )//"]/name", option_name)
-                ewrite(0, *) "ERROR: Solute_Diffusivity specified for phase: "// trim(option_name)// " but SoluteMassFraction is not defined."
+                ewrite(0, *) "ERROR: Solute_Diffusivity specified for phase: "// trim(option_name)// " but Concentration is not defined."
                 stop
               end if
             end if
@@ -1086,7 +1091,11 @@ contains
         is_blasting = have_option( '/blasting' )
         !Has temperature
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
-        has_salt = have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/' )
+        has_concentration = have_option( '/material_phase[0]/scalar_field::Concentration/' )
+        !Check boussinesq flag
+        has_boussinesq_aprox = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" ) &
+                     .or. have_option( "/material_phase[0]/phase_properties/Density/python_state/Boussinesq_approximation") .or.&
+                     have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_eos")
 
         ! Check if Porous media model initialisation
         is_porous_initialisation =  have_option("/porous_media/FWL")

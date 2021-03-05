@@ -575,7 +575,7 @@ start =
                   ## For imbibition swith the formula is:
                   ##
                   ## ## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure
-                 
+
                   element type_Brooks_Corey {
                     ## Entry pressure of the formula
                     element scalar_field {
@@ -999,13 +999,13 @@ start =
                   integer_vector,
                       (
                         ## Lock nodes within the well volumes/sleeves.
-                        ## <b> Very useful to reduce oscillations in the system when using mesh adaptivity</b>. 
+                        ## <b> Very useful to reduce oscillations in the system when using mesh adaptivity</b>.
                         ## Very recommended. ONLY WORKS FOR 3D.
-                        element Lock_well_volumes{comment}?,
+                        element Lock_sleeve_nodes{comment}?,
                         ## Output the ids of the wells
                         element Show_well_volumes_ids{comment}?
                       )
-                 }?,
+                 },
                  ## Introduce here the relative path to the file defining a 1D well
                  ## Note: <b>the only accepted file format is NASTRAN, i.e. .bdf.</b>
                  ## Each file has to describe a continuous well touching an external boundary.
@@ -1016,15 +1016,17 @@ start =
                  attribute file_path { string }
                 }*
              }?,
-          ## Activates the Self_potential solver. 
+          ## Activates the SelfPotential solver. (S.I. Volts)
           ##
-          ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase, 
-          ## temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a SoluteMassFraction field defined.
+          ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase,
+          ## temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a Concentration field defined.
+          ## Also, if the minimum concentration is very small, for example below 1e-2, you should expect instabilities
+          ## in your solution due to the logarithmic nature of the system to solve for, fresh water has a higher concentration that that.
           ##
           ## Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.
-          element Self_Potential{(
+          element SelfPotential{(
             element scalar_field {
-               attribute name { "Self_Potential" },
+               attribute name { "SelfPotential" },
                (
                 element diagnostic {
                   pressure_mesh_choice,
@@ -1038,7 +1040,7 @@ start =
            ## coordinates, the nearest vertex will be selected.
            element reference_coordinates {
               real_dim_vector
-           }, 
+           },
            ## <b>If not solving for temperature</b>: here it MUST be specified the reservoir temperature (Kelvin) to compute the rock saturated conductivity.
 	         element Reservoir_temperature {
 	         	real
@@ -1046,35 +1048,31 @@ start =
 		       ## Cementation exponent, by default 1.8, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent
 	         element Cementation_exp {
 	         	real
-		        }?,        
+		        }?,
 		       ## Saturation exponent, by default 2.0, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent
 	         element Sat_exponent {
 	         	real
 		        }?,
-		       ## By default the results are shown in miliVolts, select this to show the results in Volts. 
-	         element Results_in_Volts {
-	         	empty
-		        }? ,
            ## Rock saturated conductivity term (sigma). If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Rock_sat_conductivity_code{
              scalar_python_diagnostic_algorithm
-               }?,   
+               }?,
            ## Electrokinetic (Cek) coupling term. If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_ElectroKinetic_code{
              scalar_python_diagnostic_algorithm
-               }?, 
+               }?,
            ## Electrodiffusive (Ced) coupling term. If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Electrodiffusive_code{
              scalar_python_diagnostic_algorithm
-               }?,  
+               }?,
            ## Thermoelectric (Cte) coupling term. If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Thermoelectric_code{
              scalar_python_diagnostic_algorithm
-               }?                  
+               }?
           )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 	        ##
@@ -1097,7 +1095,7 @@ start =
          element magma_parameters {
          (
            ## Set up phase diagram coefficients. The phase behavious is set by the solidus and liquidus, which is given by, e.g. Tl=A1*Cb^2+B1*Cb+C1; For eutectic phase diagram, A1, B1, C1 is for the branch when the bulk composition is smaller than the eutectic point ae (Cb<=ae). and A2, B2, C2 is for when bulk composition is larger than ae. If only one branch is present in the system (ae=1), only A1, B1, C1 are used.
-            element Phase_diagram_coefficients {		
+            element Phase_diagram_coefficients {
 		(
 		## A1
             	element A1 {
@@ -1123,7 +1121,7 @@ start =
             	element C2 {
                real
             	}?,
-	       ## Eutectic point	
+	       ## Eutectic point
 	       element ae {
                real
             	},
@@ -1152,15 +1150,15 @@ start =
 		## Grain size
             	element grain_size {
                real
-            	},     
+            	},
 		## the range below which the coupling terms follow the Darcy's law, set this to 1 to make the entire domain Darcy like.
             	element cut_a {
                real
-            	},  
-		## the range above which the coupling terms follow the Hindered settling 
+            	},
+		## the range above which the coupling terms follow the Hindered settling
             	element cut_b {
                real
-            	}              
+            	}
 	    )
             }
             )
@@ -1283,7 +1281,12 @@ geometry =
             element simulation_quality {
               element string_value{
                  "fast" | "balanced" | "precision"|"discontinuous_pressure"
-              }
+              },
+                ## <b>For Balanced and fast precisions.</b>
+                ##
+                ## Select the P0DG element pair instead of the default P1DG.
+                ## NOTE: that for porous media the default is P0DG.
+               element Balanced_P0DG {empty}?
             },
 
         ## Settings to change the values specified in simulation_quality.
@@ -1306,7 +1309,7 @@ geometry =
              }*,
              ## Specify a different time discretisation method for different fields
              ## You can use as inputs here: <b>PhaseVolumeFraction, Velocity or Tracer</b>.
-             ## Tracer accounts for Temperature, SoluteMassFraction, etc.
+             ## Tracer accounts for Temperature, Concentration, etc.
              element Time_Discretisation {
                 ##Name of the Field
                 attribute name { xsd:string },
@@ -1319,7 +1322,7 @@ geometry =
              }*,
              ## Specify a different flux calculation for different fields
              ## You can use as inputs here: PhaseVolumeFraction or Tracer.
-             ## Tracer accounts for Temperature, SoluteMassFraction, etc.
+             ## Tracer accounts for Temperature, Concentration, etc.
              element Space_Discretisation {
                 ##Name of the Field
                 attribute name { xsd:string },
@@ -1343,7 +1346,7 @@ geometry =
              ## For PhaseVolumeFraction the recommendation is one.
              ##
              ## You can use as inputs here: PhaseVolumeFraction, Velocity or Tracer.
-             ## Tracer accounts for Temperature, SoluteMassFraction, etc.
+             ## Tracer accounts for Temperature, Concentration, etc.
              element Conservative_formulation_settings {
                 ##Name of the Field
                 attribute name { xsd:string },
@@ -1450,7 +1453,7 @@ solver_options =
                     ## A Variable to check has to be chosen:
                     ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
                     ##
-                    ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature</b>
+                    ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for Concentration and/or Temperature</b>
                     ##
                     ## The field selected in "adaptive_timestep_nonlinear" has preference over this
                     element adaptive_non_linear_iterations{
@@ -1496,13 +1499,6 @@ solver_options =
                   )
                 }?,
               (
-                ## <b>For TEMPERATURE ONLY</b>, if there are no sources nor sinks
-                ## the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
-                ##
-	            ## This imposes that the temperature has to be between bounds.
-                element Impose_min_max{empty}?
-              ),
-              (
                 ## Convergence criterion based on the
                 ## conservation of volume of each phase for the non-linear solver
             ##
@@ -1519,9 +1515,9 @@ solver_options =
                 ## A Variable to check has to be chosen:
                 ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
                 ##
-                ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature</b>
-                
-                
+                ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for Concentration and/or Temperature</b>
+
+
                 element adaptive_timestep_nonlinear{
                     integer,
                   (
@@ -1564,12 +1560,40 @@ solver_options =
                     ## Maximum timestep. Beyond this value the timestep will not be increased.
                     ## By default unlimmited.
                     element max_timestep{
-                    real
+                    (
+                       element constant {
+                       real
+                     }|
+                     ## Python function prescribing real input. Functions should be of the form:
+                     ##
+                     ##  def val(t):
+                     ##     # Function code
+                     ##     return # Return value
+                     ##
+                     ##
+                     element python {
+                       python_code
+                     }
+                  )
                     }?,
                     ## Minimum timestep. Beyond this value the timestep will not be decreased.
                     ## By default dt*1e-3.
                     element min_timestep{
-                    real
+                    (
+                         element constant {
+                         real
+                       }|
+                       ## Python function prescribing real input. Functions should be of the form:
+                       ##
+                       ##  def val(t):
+                       ##     # Function code
+                       ##     return # Return value
+                       ##
+                       ##
+                       element python {
+                         python_code
+                       }
+                    )
                     }?
                   )
                 }?
@@ -1585,31 +1609,31 @@ solver_options =
         element rescale_mom_matrices {
            empty
         }?,
-        ## Use this option to switch on the Anderson acceleration method for the momentum equations. The mass matrix is lumped. 
+        ## Use this option to switch on the Anderson acceleration method for the momentum equations. The mass matrix is lumped.
         ##
         ## This is ACTIVATED by default for Stokes/Magma flow. <b>Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-7.</b>
-        element solve_mom_iteratively {real, 
+        element solve_mom_iteratively {real,
         (
         ## Maximum restart iteration allowed. The default value is 15.
          element restart_its {
            integer}?,
         ## Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.
          element Max_restarts {
-           integer}?,  
+           integer}?,
            ## Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, <b>unstable</b> but potentially faster.
             element Momentum_preconditioner {
            empty}?,
            ## Instead of using the mass matrix as preconditioner, use a preconditioner of the BfB type. This includes two pressure solvers
-           ## but it is more efficient that the simple preconditioner (<b>This option disables this feature, NOT RECOMMENDED</b>). 
-           ## 
-           ## By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1 
+           ## but it is more efficient that the simple preconditioner (<b>This option disables this feature, NOT RECOMMENDED</b>).
+           ##
+           ## By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1
            ##
            ## If Momentum_preconditioner is on then the formula is: (C^t Ad^-1 M^-1 C)^-1 (C^t Ad^-1 A Ad^-1 C) (C^t Ad^-1 M^-1 C)^-1 (<b>Unstable</b>)
-           
+
             element Disable_advance_preconditioner {
-           empty}?               
+           empty}?
         )}?
-       )}?           
+       )}?
       )}
    )
 
@@ -2423,6 +2447,38 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                                    element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,
+                  ## Diffusivity for field (in S.I. m^2/s ).
+                  element tensor_field {
+                     attribute name { "Diffusivity" },
+                     attribute rank { "2" },
+                     (
+                        element prescribed {
+                            mesh_choice?,
+                            prescribed_tensor_field_no_adapt,
+                            output_options
+                        }|
+                      element diagnostic {
+                         (
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
+                     )
+                  }?,
                   prognostic_scalar_field,
                      output_options
                }|
@@ -2432,7 +2488,8 @@ scalar_field_choice =
                      output_options
                }|
                element diagnostic {
-                  scalar_diagnostic_algorithms,
+                  (scalar_diagnostic_algorithms|
+                  internal_algorithm),
                   pressure_mesh_choice,
                   diagnostic_scalar_field,
                      output_options
@@ -2459,6 +2516,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                                    element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2489,14 +2558,25 @@ scalar_field_choice =
                }
             )
          }|
-         ## Mass Fraction of Solute//Concentration
-         ## Can be used as a tracer
+         ## Concentration field (SI units are mol/m^3).
          element scalar_field {
             attribute rank { "0" },
-            attribute name { "SoluteMassFraction" },
+            attribute name { "Concentration" },
             (
                element prognostic {
                   pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                                    element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2661,6 +2741,110 @@ scalar_field_choice =
                   pressure_mesh_choice,
                   internal_algorithm,
                   diagnostic_scalar_field_no_adapt
+               }
+            )
+         }|
+         ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
+         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "PassiveTracer" },
+            (
+               element prognostic {
+                  pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                  element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,
+                  ## Diffusivity for field (in S.I. m^2/s ).
+                  element tensor_field {
+                     attribute name { "Diffusivity" },
+                     attribute rank { "2" },
+                     (
+                        element prescribed {
+                            mesh_choice?,
+                            prescribed_tensor_field_no_adapt,
+                            output_options
+                        }|
+                      element diagnostic {
+                         (
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
+                     )
+                  }?,
+                  prognostic_scalar_field
+               }|
+               element prescribed {
+                  pressure_mesh_choice,
+                  prescribed_scalar_field
+               }|
+               element aliased {
+                  generic_aliased_field
+               }
+            )
+         }|
+         ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
+         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
+         ##
+         ## This is just an example of how it works.
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "PassiveTracer_Example2" },
+            (
+               element prognostic {
+                  pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                                    element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,
+                  ## Diffusivity for field (in S.I. m^2/s ).
+                  element tensor_field {
+                     attribute name { "Diffusivity" },
+                     attribute rank { "2" },
+                     (
+                        element prescribed {
+                            mesh_choice?,
+                            prescribed_tensor_field_no_adapt,
+                            output_options
+                        }|
+                      element diagnostic {
+                         (
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
+                     )
+                  }?,
+                  prognostic_scalar_field
+               }|
+               element prescribed {
+                  pressure_mesh_choice,
+                  prescribed_scalar_field
+               }|
+               element aliased {
+                  generic_aliased_field
                }
             )
          }|
@@ -3629,21 +3813,24 @@ element Density{(
                               real
                            }
                         }|
-                        ## Concentration-dependant EOS
+                        ## Boussinesq EOS
                         ##
-			## Temperature and concentration can be considered simultaneously with this equation which is the recommended for the Boussinesq approximation.
+			                  ## <b>This EOS imposes the boussinesq approximation.</b>
                         ##
-                        ## DEN = DEN0 * ( 1 + Alpha * C - Beta * (Temp -T0))
+                        ## DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))
                         ##
-                        ## C is the solute mass concentration and DEN0 is the reference density corresponding to C = 0
-                        ##
-                        ## Beta is the thermal expansion and a reference Temperature needs to be set.
-                        ##
-                        ## Note: this equation can be used only with concentration, temperature or both simultaneously.
-                        element concentration_dependant {
+                        ## NOTE: This equation is only valid when density varies less than 5%.
+                        ## Internally it is bounded to not vary more than 10%
+                        element Boussinesq_eos {
+                           ## This is the density value at reference properties
                            element reference_density {
                               real
                            },
+                           ## Reference concentration (default 0)
+                           element C0 {
+                              real
+                           }?,
+                           ## Concentration density coefficient
                            element alpha {
                               real
                            }?,
@@ -3654,49 +3841,40 @@ element Density{(
                            ## Thermal expansion (Kelvin^-1)
                            element beta {
                               real
-                           }?
-                        }|
-                        ## Temperature-Pressure correlation for liquids ONLY. With the Boussinesq approximation, only temperature
-                        ## variation is considered.
-                        ##
-                        ## Range of applicability: 0 to 2*10^9 Pa.
-                        ##
-                        ## rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
-                        ##
-                        ## where rho0 is the reference density at temperature T0 and pressure P0;
-                        ##
-                        ## Beta is volumetric expansion coefficient (m^3/m^3 Celsius);
-                        ##
-                        ## E is the liquid elasticity bulk modulus (N/m^2);
-                        ##
-                        ## NOTE: if temperature is not defined the temperature is defined as zero.
-                        element Temperature_Pressure_correlation {
-                           ## Reference density
-                           element rho0 {
-                              real
-                           },
-                           ## Reference temperature
-                           element T0 {
-                              real
-                           },
-                           ## Reference Pressure
+                           }?,
+                           ## Reference pressure (default 1e5 Pa)
                            element P0 {
                               real
-                           },
-                           ## volumetric expansion coefficient (m^3/m^3 Celsius)
-                           element coefficient_Beta {
+                           }?,
+                           ## Inverse of the liquid elasticity bulk modulus (Pa)
+                           element gamma {
+                              real
+                           }?,
+                           ## Extra scalar fields can be added following the same formula.
+                           ##
+                           ## DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0) + field_Coef (field - field_reference) + ...)
+                           ##
+                           ## Introduce the same name as the scalar field being used. For example: PassiveTracer_CO2
+                           element scalar_field{(
+                           attribute name { string },
+                           ## Reference value
+                           element R0 {
                               real
                            },
-                           ## liquid elasticity bulk modulus (N/m^2)
-                           element coefficient_E {
+                           ## Coefficient
+                           element Coef {
                               real
-                           }
+                           })}*
                         }
                       ),      ## Use the boussinesq approximation. Useful for small variations of density.
+                      ## For porous media only the formulate, including linear pressure, with a reference density work with this.
                         element Boussinesq_approximation { empty }?}|
                      ## The "Dummy" diagnotic field on the pressure mesh is required for this option
-                     element python_state{
-                       scalar_python_diagnostic_algorithm
+                     element python_state{(
+                       scalar_python_diagnostic_algorithm,
+                        element Boussinesq_approximation { (
+                        ## For porous media a reference density is necessary when using the Boussinesq approximation
+                        element reference_density{real}?) }?)
                      }
                     ),
                     ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
@@ -3779,13 +3957,14 @@ phase_properties_options =
                  (
                     element prescribed {
                         mesh_choice?,
-                        prescribed_tensor_field_no_adapt
+                        prescribed_tensor_field_no_adapt,
+                            output_options
                     }|
-                    ## For electrical modelling only - holds electrical conductivity
                     element diagnostic {
                        (
-                          tensor_python_diagnostic_algorithm |
-                          internal_algorithm
+                          mesh_choice?,
+                          tensor_python_diagnostic_algorithm ,
+                            output_options
                        ),
                        diagnostic_tensor_field
                     }
@@ -3809,23 +3988,24 @@ phase_properties_options =
                     }
                  )
               }?,
-              ## Solute diffusivity (in S.I. m^2/s ).
+              ## Concentration diffusivity (in S.I. m^2/s ).
               element tensor_field {
                  attribute name { "Solute_Diffusivity" },
                  attribute rank { "2" },
                  (
                     element prescribed {
                         mesh_choice?,
-                        prescribed_tensor_field_no_adapt
+                        prescribed_tensor_field_no_adapt,
+                            output_options
                     }|
-                    ## For electrical modelling only - holds electrical conductivity
-                    element diagnostic {
-                       (
-                          tensor_python_diagnostic_algorithm |
-                          internal_algorithm
-                       ),
-                       diagnostic_tensor_field
-                    }
+                      element diagnostic {
+                         (
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
                  )
               }?,
                 ## Stabilisation for Inertia dominated flow.

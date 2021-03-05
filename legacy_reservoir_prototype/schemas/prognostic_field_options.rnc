@@ -53,17 +53,21 @@ robin_bc_scalar =
       ##  C0 is the input order zero coefficient and
       ##  C1 is the input order one coefficient.
       ##  THIS WILL ONLY WORK FOR CONTINUOUS GALERKIN SPATIAL DISCRETISATION
+      ##
+      ## <b> NOTE: Example of units for temperature</b>
+      ## C1 is the convective coefficient W/(m^2 K)
+      ## and C0 is the temperature outside the domain times C1.
       element type {
          attribute name { "robin" },
          ##  The order zero coefficient represented as C0 in
          ##  C1*T + n.(k*grad(T)) = C0
          element order_zero_coefficient {
-            input_choice_real | element from_field { attribute name {string } }
+            input_choice_real
          },
          ##  The order one coefficient represented as C1 in
          ##  C1*T + n.(k*grad(T)) = C0
          element order_one_coefficient {
-            input_choice_real | element from_field { attribute name {string } }
+            input_choice_real
          }
       }
    )

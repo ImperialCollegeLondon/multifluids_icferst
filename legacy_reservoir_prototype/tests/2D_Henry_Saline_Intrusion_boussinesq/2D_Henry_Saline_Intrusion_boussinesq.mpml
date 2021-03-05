@@ -37,10 +37,9 @@
         <Vanishing_relaxation>
           <real_value rank="0">0</real_value>
           <Vanishing_for_transport>
-            <real_value rank="0">-1e0</real_value>
+            <real_value rank="0">-1e2</real_value>
           </Vanishing_for_transport>
         </Vanishing_relaxation>
-        <Impose_min_max/>
         <adaptive_timestep_nonlinear>
           <integer_value rank="0">5</integer_value>
           <PID_controller>
@@ -49,10 +48,14 @@
             </Aim_num_FPI>
           </PID_controller>
           <max_timestep>
-            <real_value rank="0">300</real_value>
+            <constant>
+              <real_value rank="0">300</real_value>
+            </constant>
           </max_timestep>
           <min_timestep>
-            <real_value rank="0">1</real_value>
+            <constant>
+              <real_value rank="0">1</real_value>
+            </constant>
           </min_timestep>
         </adaptive_timestep_nonlinear>
       </Fixed_Point_Iteration>
@@ -106,14 +109,15 @@
     <phase_properties>
       <Density>
         <compressible>
-          <concentration_dependant>
+          <Boussinesq_eos>
             <reference_density>
               <real_value rank="0">1000</real_value>
             </reference_density>
             <alpha>
               <real_value rank="0">0.025</real_value>
             </alpha>
-          </concentration_dependant>
+          </Boussinesq_eos>
+          <Boussinesq_approximation/>
         </compressible>
       </Density>
       <Viscosity>
@@ -169,6 +173,7 @@
           <exclude_from_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -223,6 +228,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="Density" rank="0">
@@ -248,6 +254,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -286,9 +293,10 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
-    <scalar_field name="SoluteMassFraction" rank="0">
+    <scalar_field name="Concentration" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <Impose_min_max/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.00001</real_value>
@@ -404,6 +412,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <tensor_field name="Permeability">
@@ -416,6 +425,7 @@
             </constant>
           </isotropic>
         </value>
+        <output/>
       </prescribed>
     </tensor_field>
     <Dispersion>
@@ -431,6 +441,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="Transverse_Dispersivity">
@@ -445,6 +456,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
     </Dispersion>

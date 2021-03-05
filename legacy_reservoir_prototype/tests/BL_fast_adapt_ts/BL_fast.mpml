@@ -43,7 +43,9 @@
             <real_value rank="0">1.5</real_value>
           </decrease_factor>
           <min_timestep>
-            <real_value rank="0">1e-15</real_value>
+            <constant>
+              <real_value rank="0">1e-15</real_value>
+            </constant>
           </min_timestep>
         </adaptive_timestep_nonlinear>
       </Fixed_Point_Iteration>
@@ -115,7 +117,11 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <no_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -205,7 +211,11 @@
           </diagnostic>
           <default_absorption/>
         </vector_field>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -227,6 +237,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -345,7 +358,11 @@
           </diagnostic>
           <default_absorption/>
         </vector_field>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -367,6 +384,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -402,6 +422,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <scalar_field name="Permeability">
@@ -416,6 +437,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
   </porous_media>

@@ -1202,31 +1202,29 @@ The default value is 1e-2. If the domain size is below 10m it is automatically s
                   </optional>
                 </element>
               </optional>
-              <optional>
-                <element name="well_volume_ids">
-                  <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
+              <element name="well_volume_ids">
+                <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
 that the well trajectories are preserved.
 
 &lt;b&gt;This is MANDATORY when using files to define wells&lt;/b&gt;</a:documentation>
-                  <ref name="integer_vector"/>
-                  <group>
-                    <optional>
-                      <element name="Lock_well_volumes">
-                        <a:documentation>Lock nodes within the well volumes/sleeves.
-&lt;b&gt; Very useful to reduce oscillations in the system when using mesh adaptivity&lt;/b&gt;. 
+                <ref name="integer_vector"/>
+                <group>
+                  <optional>
+                    <element name="Lock_sleeve_nodes">
+                      <a:documentation>Lock nodes within the well volumes/sleeves.
+&lt;b&gt; Very useful to reduce oscillations in the system when using mesh adaptivity&lt;/b&gt;.
 Very recommended. ONLY WORKS FOR 3D.</a:documentation>
-                        <ref name="comment"/>
-                      </element>
-                    </optional>
-                    <optional>
-                      <element name="Show_well_volumes_ids">
-                        <a:documentation>Output the ids of the wells</a:documentation>
-                        <ref name="comment"/>
-                      </element>
-                    </optional>
-                  </group>
-                </element>
-              </optional>
+                      <ref name="comment"/>
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="Show_well_volumes_ids">
+                      <a:documentation>Output the ids of the wells</a:documentation>
+                      <ref name="comment"/>
+                    </element>
+                  </optional>
+                </group>
+              </element>
               <zeroOrMore>
                 <element name="well_from_file">
                   <a:documentation>Introduce here the relative path to the file defining a 1D well
@@ -1245,16 +1243,18 @@ Each file has to describe a continuous well touching an external boundary.
             </element>
           </optional>
           <optional>
-            <element name="Self_Potential">
-              <a:documentation>Activates the Self_potential solver. 
+            <element name="SelfPotential">
+              <a:documentation>Activates the SelfPotential solver. (S.I. Volts)
 
-&lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase, 
-temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a SoluteMassFraction field defined.
+&lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase,
+temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a Concentration field defined.
+Also, if the minimum concentration is very small, for example below 1e-2, you should expect instabilities
+in your solution due to the logarithmic nature of the system to solve for, fresh water has a higher concentration that that.
 
 Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.</a:documentation>
               <element name="scalar_field">
                 <attribute name="name">
-                  <value>Self_Potential</value>
+                  <value>SelfPotential</value>
                 </attribute>
                 <element name="diagnostic">
                   <ref name="pressure_mesh_choice"/>
@@ -1284,12 +1284,6 @@ coordinates, the nearest vertex will be selected.</a:documentation>
                 <element name="Sat_exponent">
                   <a:documentation>Saturation exponent, by default 2.0, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent</a:documentation>
                   <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="Results_in_Volts">
-                  <a:documentation>By default the results are shown in miliVolts, select this to show the results in Volts. </a:documentation>
-                  <empty/>
                 </element>
               </optional>
               <optional>
@@ -1378,7 +1372,7 @@ Parameters used for magma_simulator</a:documentation>
                 </element>
               </optional>
               <element name="ae">
-                <a:documentation>Eutectic point	</a:documentation>
+                <a:documentation>Eutectic point</a:documentation>
                 <ref name="real"/>
               </element>
               <element name="latent_heat">
@@ -1411,7 +1405,7 @@ The energy difference between liquid and solid, which is used in the relationshi
               <ref name="real"/>
             </element>
             <element name="cut_b">
-              <a:documentation>the range above which the coupling terms follow the Hindered settling </a:documentation>
+              <a:documentation>the range above which the coupling terms follow the Hindered settling</a:documentation>
               <ref name="real"/>
             </element>
           </element>
@@ -1589,6 +1583,15 @@ Discontinuous_pressure =&gt; P1DG(BL)P1DG(CV). High order advection scheme and a
             <value>discontinuous_pressure</value>
           </choice>
         </element>
+        <optional>
+          <element name="Balanced_P0DG">
+            <a:documentation>&lt;b&gt;For Balanced and fast precisions.&lt;/b&gt;
+
+Select the P0DG element pair instead of the default P1DG.
+NOTE: that for porous media the default is P0DG.</a:documentation>
+            <empty/>
+          </element>
+        </optional>
       </element>
       <optional>
         <element name="Advance_options">
@@ -1629,7 +1632,7 @@ Only the activated options will overwrite the values decided in simulation_quali
             <element name="Time_Discretisation">
               <a:documentation>Specify a different time discretisation method for different fields
 You can use as inputs here: &lt;b&gt;PhaseVolumeFraction, Velocity or Tracer&lt;/b&gt;.
-Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
+Tracer accounts for Temperature, Concentration, etc.</a:documentation>
               <attribute name="name">
                 <a:documentation>Name of the Field</a:documentation>
                 <data type="string"/>
@@ -1648,7 +1651,7 @@ Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
             <element name="Space_Discretisation">
               <a:documentation>Specify a different flux calculation for different fields
 You can use as inputs here: PhaseVolumeFraction or Tracer.
-Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
+Tracer accounts for Temperature, Concentration, etc.</a:documentation>
               <attribute name="name">
                 <a:documentation>Name of the Field</a:documentation>
                 <data type="string"/>
@@ -1675,7 +1678,7 @@ For transport equations this is recommended to be zero.
 For PhaseVolumeFraction the recommendation is one.
 
 You can use as inputs here: PhaseVolumeFraction, Velocity or Tracer.
-Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
+Tracer accounts for Temperature, Concentration, etc.</a:documentation>
               <attribute name="name">
                 <a:documentation>Name of the Field</a:documentation>
                 <data type="string"/>
@@ -1793,7 +1796,7 @@ This can be used to control the number of non-linear interations dynamically.
 A Variable to check has to be chosen:
 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
 
-&lt;b&gt; In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature&lt;/b&gt;
+&lt;b&gt; In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for Concentration and/or Temperature&lt;/b&gt;
 
 The field selected in "adaptive_timestep_nonlinear" has preference over this</a:documentation>
                       <ref name="integer"/>
@@ -1840,15 +1843,6 @@ Tip: If running with temperature and single phase disable this setting it to 0.<
                 </element>
               </optional>
               <optional>
-                <element name="Impose_min_max">
-                  <a:documentation>&lt;b&gt;For TEMPERATURE ONLY&lt;/b&gt;, if there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
-
-This imposes that the temperature has to be between bounds.</a:documentation>
-                  <empty/>
-                </element>
-              </optional>
-              <optional>
                 <element name="Test_mass_consv">
                   <a:documentation>Convergence criterion based on the
 conservation of volume of each phase for the non-linear solver
@@ -1870,7 +1864,7 @@ By default the tolerance is 1e-2</a:documentation>
 A Variable to check has to be chosen:
 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
 
-&lt;b&gt; In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature&lt;/b&gt;</a:documentation>
+&lt;b&gt; In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for Concentration and/or Temperature&lt;/b&gt;</a:documentation>
                   <ref name="integer"/>
                   <group>
                     <optional>
@@ -1925,14 +1919,42 @@ By default 2.0</a:documentation>
                       <element name="max_timestep">
                         <a:documentation>Maximum timestep. Beyond this value the timestep will not be increased.
 By default unlimmited.</a:documentation>
-                        <ref name="real"/>
+                        <choice>
+                          <element name="constant">
+                            <ref name="real"/>
+                          </element>
+                          <element name="python">
+                            <a:documentation>Python function prescribing real input. Functions should be of the form:
+
+ def val(t):
+    # Function code
+    return # Return value
+
+</a:documentation>
+                            <ref name="python_code"/>
+                          </element>
+                        </choice>
                       </element>
                     </optional>
                     <optional>
                       <element name="min_timestep">
                         <a:documentation>Minimum timestep. Beyond this value the timestep will not be decreased.
 By default dt*1e-3.</a:documentation>
-                        <ref name="real"/>
+                        <choice>
+                          <element name="constant">
+                            <ref name="real"/>
+                          </element>
+                          <element name="python">
+                            <a:documentation>Python function prescribing real input. Functions should be of the form:
+
+ def val(t):
+    # Function code
+    return # Return value
+
+</a:documentation>
+                            <ref name="python_code"/>
+                          </element>
+                        </choice>
                       </element>
                     </optional>
                   </group>
@@ -1956,7 +1978,7 @@ D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
           </optional>
           <optional>
             <element name="solve_mom_iteratively">
-              <a:documentation>Use this option to switch on the Anderson acceleration method for the momentum equations. The mass matrix is lumped. 
+              <a:documentation>Use this option to switch on the Anderson acceleration method for the momentum equations. The mass matrix is lumped.
 
 This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-7.&lt;/b&gt;</a:documentation>
               <ref name="real"/>
@@ -1982,9 +2004,9 @@ This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the st
                 <optional>
                   <element name="Disable_advance_preconditioner">
                     <a:documentation>Instead of using the mass matrix as preconditioner, use a preconditioner of the BfB type. This includes two pressure solvers
-but it is more efficient that the simple preconditioner (&lt;b&gt;This option disables this feature, NOT RECOMMENDED&lt;/b&gt;). 
+but it is more efficient that the simple preconditioner (&lt;b&gt;This option disables this feature, NOT RECOMMENDED&lt;/b&gt;).
 
-By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1 
+By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1
 
 If Momentum_preconditioner is on then the formula is: (C^t Ad^-1 M^-1 C)^-1 (C^t Ad^-1 A Ad^-1 C) (C^t Ad^-1 M^-1 C)^-1 (&lt;b&gt;Unstable&lt;/b&gt;)</a:documentation>
                     <empty/>
@@ -2904,6 +2926,58 @@ i.e. excluding the components</a:documentation>
           <a:documentation>Field type</a:documentation>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
+            <optional>
+              <element name="Impose_min_max">
+                <a:documentation>If there are no sources nor sinks
+the non-linear solver can be accelerated by imposing physical constraints.
+
+&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+
+This imposes the tracer to be between bounds.</a:documentation>
+                <optional>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+              </element>
+            </optional>
+            <optional>
+              <element name="tensor_field">
+                <a:documentation>Diffusivity for field (in S.I. m^2/s ).</a:documentation>
+                <attribute name="name">
+                  <value>Diffusivity</value>
+                </attribute>
+                <attribute name="rank">
+                  <value>2</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <optional>
+                      <ref name="mesh_choice"/>
+                    </optional>
+                    <ref name="prescribed_tensor_field_no_adapt"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="diagnostic">
+                    <group>
+                      <optional>
+                        <ref name="mesh_choice"/>
+                      </optional>
+                      <ref name="tensor_python_diagnostic_algorithm"/>
+                      <ref name="output_options"/>
+                    </group>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                </choice>
+              </element>
+            </optional>
             <ref name="prognostic_scalar_field"/>
             <ref name="output_options"/>
           </element>
@@ -2913,7 +2987,10 @@ i.e. excluding the components</a:documentation>
             <ref name="output_options"/>
           </element>
           <element name="diagnostic">
-            <ref name="scalar_diagnostic_algorithms"/>
+            <choice>
+              <ref name="scalar_diagnostic_algorithms"/>
+              <ref name="internal_algorithm"/>
+            </choice>
             <ref name="pressure_mesh_choice"/>
             <ref name="diagnostic_scalar_field"/>
             <ref name="output_options"/>
@@ -2944,6 +3021,28 @@ i.e. excluding the components</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
+            <optional>
+              <element name="Impose_min_max">
+                <a:documentation>If there are no sources nor sinks
+the non-linear solver can be accelerated by imposing physical constraints.
+
+&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+
+This imposes the tracer to be between bounds.</a:documentation>
+                <optional>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+              </element>
+            </optional>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
@@ -2979,17 +3078,38 @@ for fields within the same material_phase.</a:documentation>
         </element>
       </element>
       <element name="scalar_field">
-        <a:documentation>Mass Fraction of Solute//Concentration
-Can be used as a tracer</a:documentation>
+        <a:documentation>Concentration field (SI units are mol/m^3).</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
         <attribute name="name">
-          <value>SoluteMassFraction</value>
+          <value>Concentration</value>
         </attribute>
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
+            <optional>
+              <element name="Impose_min_max">
+                <a:documentation>If there are no sources nor sinks
+the non-linear solver can be accelerated by imposing physical constraints.
+
+&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+
+This imposes the tracer to be between bounds.</a:documentation>
+                <optional>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+              </element>
+            </optional>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
@@ -3186,6 +3306,158 @@ mass fraction with a particular phase</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <ref name="internal_algorithm"/>
             <ref name="diagnostic_scalar_field_no_adapt"/>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
+        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
+Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>PassiveTracer</value>
+        </attribute>
+        <choice>
+          <element name="prognostic">
+            <ref name="pressure_mesh_choice"/>
+            <optional>
+              <element name="Impose_min_max">
+                <a:documentation>If there are no sources nor sinks
+the non-linear solver can be accelerated by imposing physical constraints.
+
+&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+
+This imposes the tracer to be between bounds.</a:documentation>
+                <optional>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+              </element>
+            </optional>
+            <optional>
+              <element name="tensor_field">
+                <a:documentation>Diffusivity for field (in S.I. m^2/s ).</a:documentation>
+                <attribute name="name">
+                  <value>Diffusivity</value>
+                </attribute>
+                <attribute name="rank">
+                  <value>2</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <optional>
+                      <ref name="mesh_choice"/>
+                    </optional>
+                    <ref name="prescribed_tensor_field_no_adapt"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="diagnostic">
+                    <group>
+                      <optional>
+                        <ref name="mesh_choice"/>
+                      </optional>
+                      <ref name="tensor_python_diagnostic_algorithm"/>
+                      <ref name="output_options"/>
+                    </group>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                </choice>
+              </element>
+            </optional>
+            <ref name="prognostic_scalar_field"/>
+          </element>
+          <element name="prescribed">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prescribed_scalar_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
+        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
+Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
+
+This is just an example of how it works.</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>PassiveTracer_Example2</value>
+        </attribute>
+        <choice>
+          <element name="prognostic">
+            <ref name="pressure_mesh_choice"/>
+            <optional>
+              <element name="Impose_min_max">
+                <a:documentation>If there are no sources nor sinks
+the non-linear solver can be accelerated by imposing physical constraints.
+
+&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+
+This imposes the tracer to be between bounds.</a:documentation>
+                <optional>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+              </element>
+            </optional>
+            <optional>
+              <element name="tensor_field">
+                <a:documentation>Diffusivity for field (in S.I. m^2/s ).</a:documentation>
+                <attribute name="name">
+                  <value>Diffusivity</value>
+                </attribute>
+                <attribute name="rank">
+                  <value>2</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <optional>
+                      <ref name="mesh_choice"/>
+                    </optional>
+                    <ref name="prescribed_tensor_field_no_adapt"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="diagnostic">
+                    <group>
+                      <optional>
+                        <ref name="mesh_choice"/>
+                      </optional>
+                      <ref name="tensor_python_diagnostic_algorithm"/>
+                      <ref name="output_options"/>
+                    </group>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                </choice>
+              </element>
+            </optional>
+            <ref name="prognostic_scalar_field"/>
+          </element>
+          <element name="prescribed">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prescribed_scalar_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
           </element>
         </choice>
       </element>
@@ -4323,23 +4595,28 @@ DEN = A * P ^ B
                 <ref name="real"/>
               </element>
             </element>
-            <element name="concentration_dependant">
-              <a:documentation>Concentration-dependant EOS
+            <element name="Boussinesq_eos">
+              <a:documentation>Boussinesq EOS
 
-Temperature and concentration can be considered simultaneously with this equation which is the recommended for the Boussinesq approximation.
+&lt;b&gt;This EOS imposes the boussinesq approximation.&lt;/b&gt;
 
-DEN = DEN0 * ( 1 + Alpha * C - Beta * (Temp -T0))
+DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))
 
-C is the solute mass concentration and DEN0 is the reference density corresponding to C = 0
-
-Beta is the thermal expansion and a reference Temperature needs to be set.
-
-Note: this equation can be used only with concentration, temperature or both simultaneously.</a:documentation>
+NOTE: This equation is only valid when density varies less than 5%.
+Internally it is bounded to not vary more than 10%</a:documentation>
               <element name="reference_density">
+                <a:documentation>This is the density value at reference properties</a:documentation>
                 <ref name="real"/>
               </element>
               <optional>
+                <element name="C0">
+                  <a:documentation>Reference concentration (default 0)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
                 <element name="alpha">
+                  <a:documentation>Concentration density coefficient</a:documentation>
                   <ref name="real"/>
                 </element>
               </optional>
@@ -4355,47 +4632,44 @@ Note: this equation can be used only with concentration, temperature or both sim
                   <ref name="real"/>
                 </element>
               </optional>
-            </element>
-            <element name="Temperature_Pressure_correlation">
-              <a:documentation>Temperature-Pressure correlation for liquids ONLY. With the Boussinesq approximation, only temperature
-variation is considered.
+              <optional>
+                <element name="P0">
+                  <a:documentation>Reference pressure (default 1e5 Pa)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="gamma">
+                  <a:documentation>Inverse of the liquid elasticity bulk modulus (Pa)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <zeroOrMore>
+                <element name="scalar_field">
+                  <a:documentation>Extra scalar fields can be added following the same formula.
 
-Range of applicability: 0 to 2*10^9 Pa.
+DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0) + field_Coef (field - field_reference) + ...)
 
-rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
-
-where rho0 is the reference density at temperature T0 and pressure P0;
-
-Beta is volumetric expansion coefficient (m^3/m^3 Celsius);
-
-E is the liquid elasticity bulk modulus (N/m^2);
-
-NOTE: if temperature is not defined the temperature is defined as zero.</a:documentation>
-              <element name="rho0">
-                <a:documentation>Reference density</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="T0">
-                <a:documentation>Reference temperature</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="P0">
-                <a:documentation>Reference Pressure</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="coefficient_Beta">
-                <a:documentation>volumetric expansion coefficient (m^3/m^3 Celsius)</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="coefficient_E">
-                <a:documentation>liquid elasticity bulk modulus (N/m^2)</a:documentation>
-                <ref name="real"/>
-              </element>
+Introduce the same name as the scalar field being used. For example: PassiveTracer_CO2</a:documentation>
+                  <attribute name="name">
+                    <data type="string" datatypeLibrary=""/>
+                  </attribute>
+                  <element name="R0">
+                    <a:documentation>Reference value</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                  <element name="Coef">
+                    <a:documentation>Coefficient</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </element>
+              </zeroOrMore>
             </element>
           </choice>
           <optional>
             <element name="Boussinesq_approximation">
-              <a:documentation>Use the boussinesq approximation. Useful for small variations of density.</a:documentation>
+              <a:documentation>Use the boussinesq approximation. Useful for small variations of density.
+For porous media only the formulate, including linear pressure, with a reference density work with this.</a:documentation>
               <empty/>
             </element>
           </optional>
@@ -4403,6 +4677,16 @@ NOTE: if temperature is not defined the temperature is defined as zero.</a:docum
         <element name="python_state">
           <a:documentation>The "Dummy" diagnotic field on the pressure mesh is required for this option</a:documentation>
           <ref name="scalar_python_diagnostic_algorithm"/>
+          <optional>
+            <element name="Boussinesq_approximation">
+              <optional>
+                <element name="reference_density">
+                  <a:documentation>For porous media a reference density is necessary when using the Boussinesq approximation</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+            </element>
+          </optional>
         </element>
       </choice>
       <optional>
@@ -4511,13 +4795,16 @@ alternating directions. Devised by C.Pain.</a:documentation>
                 <ref name="mesh_choice"/>
               </optional>
               <ref name="prescribed_tensor_field_no_adapt"/>
+              <ref name="output_options"/>
             </element>
             <element name="diagnostic">
-              <a:documentation>For electrical modelling only - holds electrical conductivity</a:documentation>
-              <choice>
+              <group>
+                <optional>
+                  <ref name="mesh_choice"/>
+                </optional>
                 <ref name="tensor_python_diagnostic_algorithm"/>
-                <ref name="internal_algorithm"/>
-              </choice>
+                <ref name="output_options"/>
+              </group>
               <ref name="diagnostic_tensor_field"/>
             </element>
           </choice>
@@ -4549,7 +4836,7 @@ alternating directions. Devised by C.Pain.</a:documentation>
       </optional>
       <optional>
         <element name="tensor_field">
-          <a:documentation>Solute diffusivity (in S.I. m^2/s ).</a:documentation>
+          <a:documentation>Concentration diffusivity (in S.I. m^2/s ).</a:documentation>
           <attribute name="name">
             <value>Solute_Diffusivity</value>
           </attribute>
@@ -4562,14 +4849,17 @@ alternating directions. Devised by C.Pain.</a:documentation>
                 <ref name="mesh_choice"/>
               </optional>
               <ref name="prescribed_tensor_field_no_adapt"/>
+              <ref name="output_options"/>
             </element>
             <element name="diagnostic">
-              <a:documentation>For electrical modelling only - holds electrical conductivity</a:documentation>
-              <choice>
+              <group>
+                <optional>
+                  <ref name="mesh_choice"/>
+                </optional>
                 <ref name="tensor_python_diagnostic_algorithm"/>
-                <ref name="internal_algorithm"/>
-              </choice>
-              <ref name="diagnostic_tensor_field"/>
+                <ref name="output_options"/>
+              </group>
+              <ref name="diagnostic_scalar_field_no_adapt"/>
             </element>
           </choice>
         </element>

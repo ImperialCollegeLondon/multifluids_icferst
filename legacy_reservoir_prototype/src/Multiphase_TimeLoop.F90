@@ -16,6 +16,12 @@
 !    USA
 #include "fdebug.h"
 module multiphase_time_loop
+
+#ifdef HAVE_PETSC_MODULES
+  use petsc
+#endif
+
+
     use field_options
     use write_state_module
     use diagnostic_variables
@@ -63,14 +69,20 @@ module multiphase_time_loop
     use multi_pipes
     use multi_magma
     use multi_SP
+    use multi_tools
     use momentum_diagnostic_fields, only: calculate_densities
 
 #ifdef HAVE_ZOLTAN
   use zoltan
 #endif
+
+
     !use matrix_operations
     !use shape_functions
     implicit none
+
+#include "petsc_legacy.h"
+
     private
     !public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
     public :: MultiFluids_SolveTimeLoop, dump_outflux
@@ -85,6 +97,8 @@ contains
     subroutine MultiFluids_SolveTimeLoop( state, &
         dt, nonlinear_iterations, dump_no )
         implicit none
+
+
         type( state_type ), dimension( : ), intent( inout ) :: state
         integer, intent( inout ) :: dump_no, nonlinear_iterations
         real, intent( inout ) :: dt
@@ -115,12 +129,17 @@ contains
             NonLinearIteration, NonLinearIteration_Components, itimeflag
         real :: acctim, finish_time, dump_period
         !!$ Defining problem that will be solved
-        logical :: have_temperature_field, have_salt_field, have_component_field, have_extra_DiffusionLikeTerm, &
+        logical :: have_temperature_field, have_concentration_field, have_component_field, have_extra_DiffusionLikeTerm, &
             solve_force_balance, solve_PhaseVolumeFraction, simple_black_oil_model
         !!$ Shape function related fields:
         integer :: scvngi_theta, igot_t2, igot_theta_flux
         !!$ Adaptivity related fields and options:
         type( tensor_field ) :: metric_tensor
+
+        PetscErrorCode :: ierrr
+        PetscLogStage,dimension(0:9) :: stages
+
+
         type( state_type ), dimension( : ), pointer :: sub_state => null()
         integer :: nonlinear_iterations_adapt
         logical :: do_reallocate_fields = .false., not_to_move_det_yet = .false.
@@ -191,16 +210,26 @@ contains
         type(coupling_term_coef) :: coupling
         type(magma_phase_diagram) :: magma_phase_coef
         real :: bulk_power
+<<<<<<< HEAD
         ! To record the compostion value and melt fraction before the phase diagram
        real, dimension(:), allocatable :: Compostion_temp
        real, dimension(:), allocatable :: melt_temp
 
+||||||| merged common ancestors
+
+=======
+        !Variables for passive tracers
+        logical :: have_Passive_Tracers = .true.
+        integer :: fields
+        character( len = option_path_len ) :: option_name
+>>>>>>> 92eee4b2af26f79171c87d6955850b46b446758a
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
       ierr = Zoltan_Initialize(ver)
       assert(ierr == ZOLTAN_OK)
 #endif
+
 
 
         ! Check wether we are using the CV_Galerkin method
@@ -361,8 +390,8 @@ contains
         do istate = 1, Mdims%nstate
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/scalar_field::Temperature' ) ) &
                 have_temperature_field = .true.
-            if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/scalar_field::SoluteMassFraction' ) ) &
-                have_salt_field = .true.
+            if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/scalar_field::Concentration' ) ) &
+                have_concentration_field = .true.
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/is_multiphase_component' ) ) &
                 have_component_field = .true.
             !!$
@@ -463,6 +492,19 @@ contains
           !WHAT ABOUT THE BCS? FOR THE TIME BEING WE NEED ENTHALPY BCs...
           call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
         end if
+
+
+        call petsc_logging(3,stages,ierrr,default=.true.)
+        call petsc_logging(1,stages,ierrr,default=.true.)
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=1, stage_name="PRELIM")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=2, stage_name="FORCE")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=3, stage_name="SATURATION")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=4, stage_name="TEMP")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=5, stage_name="COMP")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=6, stage_name="DT+VTU ")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=7, stage_name="ADAPT")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=8, stage_name="REST")
+        call petsc_logging(2,stages,ierrr,default=.true., push_no=1)
 
         !!$ Time loop
         Loop_Time: do
@@ -581,6 +623,9 @@ contains
 
                 !#=================================================================================================================
 
+                call petsc_logging(3,stages,ierrr,default=.true.)
+                call petsc_logging(2,stages,ierrr,default=.true., push_no=2)
+
                 !#=================================================================================================================
                 !# Andreas. I took the velocity and pressure_fields out of the Conditional_ForceBalanceEquation, to always update
                 !#=================================================================================================================
@@ -604,6 +649,8 @@ contains
                         calculate_mass_delta, outfluxes, pres_its_taken, its)
                 end if Conditional_ForceBalanceEquation
 
+                call petsc_logging(3,stages,ierrr,default=.true.)
+                call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
@@ -618,6 +665,8 @@ contains
 
                 end if Conditional_PhaseVolumeFraction
 
+              call petsc_logging(3,stages,ierrr,default=.true.)
+              call petsc_logging(2,stages,ierrr,default=.true., push_no=4)
                 !#=================================================================================================================
                 !# End Saturation -> Move to -> Velocity Update
                 !#=================================================================================================================
@@ -639,6 +688,7 @@ contains
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, multi_absorp, dt, &
@@ -651,15 +701,14 @@ contains
                         ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
 
-                    call Calculate_All_Rhos( state, packed_state, Mdims )
-
                 else IF (is_magma) then !... in which case we solve for enthalpy instead
 
                   tracer_field=>extract_tensor_field(packed_state,"PackedEnthalpy")
                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                   velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-
+                  !Recalculate densities
+                  call Calculate_All_Rhos( state, packed_state, Mdims )
                   call set_nu_to_u( packed_state )
                   ewrite(3,*)'Now advecting Enthalpy Field'
 
@@ -673,6 +722,13 @@ contains
                   option_path = '/material_phase[0]/scalar_field::Enthalpy', &
                   thermal = .false.,saturation=saturation_field, nonlinear_iteration = its, &
                   Courant_number = Courant_number, magma_phase_coefficients=  magma_phase_coef)
+
+                  ! ! Calculate melt fraction from phase diagram
+                  call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
+                  ! ! Update the temperature field
+                  call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
+                  ! ! Update the composition
+                  call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
                   !Recalculate densities
                   call Calculate_All_Rhos( state, packed_state, Mdims )
                 END IF Conditional_ScalarAdvectionField
@@ -680,16 +736,18 @@ contains
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
 
-               !$ Solve advection of the scalar 'SoluteMassFraction':
-               Conditional_ScalarAdvectionField2: if( have_salt_field .and. &
-                   have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) then
-                   ewrite(3,*)'Now advecting SoluteMassFraction Field'
+               !$ Solve advection of the scalar 'Concentration':
+               Conditional_ScalarAdvectionField2: if( have_concentration_field .and. &
+                   have_option( '/material_phase[0]/scalar_field::Concentration/prognostic' ) ) then
+                   ewrite(3,*)'Now advecting Concentration Field'
                    call set_nu_to_u( packed_state )
-                   tracer_field=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
+                   tracer_field=>extract_tensor_field(packed_state,"PackedConcentration")
                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                   call SOLUTE_ASSEM_SOLVE( state, packed_state, &
+                   !Recalculate densities before computations
+                   call Calculate_All_Rhos( state, packed_state, Mdims )
+                   call Concentration_assem_solve( state, packed_state, &
                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
                        suf_sig_diagten_bc, Porosity_field%val, &
@@ -702,11 +760,11 @@ contains
 
                 end if Conditional_ScalarAdvectionField2
 
-                !Do not change the ordering of these if, this one has to occur after calling ENTHALPY_ASSEM_SOLVE and SOLUTE_ASSEM_SOLVE
+                !Do not change the ordering of these if, this one has to occur after calling ENTHALPY_ASSEM_SOLVE and Concentration_assem_solve
                 !The ordering is important to be able to compute the Composition_magma_source term of mass exchange between the concentration between phases
                 IF (is_magma) then
                   !Backup of the composition and melt fraction to be used to compute the phase change source term
-                  tracer_field=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
+                  tracer_field=>extract_tensor_field(packed_state,"PackedConcentration")
                   allocate(Compostion_temp(Mdims%cv_nonods), melt_temp(Mdims%cv_nonods))
                   Compostion_temp= tracer_field%val(1,2,:); melt_temp = saturation_field%val(1,2,:)! second phase is the melt!
 
@@ -721,7 +779,8 @@ contains
                   deallocate(Compostion_temp, melt_temp)
                 end if
                 !#=================================================================================================================
-
+                call petsc_logging(3,stages,ierrr,default=.true.)
+                call petsc_logging(2,stages,ierrr,default=.true., push_no=5)
                 !Solve for components here
                 if (have_component_field) then
                      !!$ Calculate Density_Component for compositional
@@ -734,8 +793,42 @@ contains
                      theta_gdiff, eles_with_pipe, pipes_aux, mass_ele, &
                      sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
                 end if
+
+                  call petsc_logging(3,stages,ierrr,default=.true.)
+                  call petsc_logging(2,stages,ierrr,default=.true., push_no=6)
+
                 !# End Compositional transport -> Move to -> Analysis of the non-linear convergence
                 !#=================================================================================================================
+
+
+                if (have_Passive_Tracers) then
+                  !We make sure to only enter here once if there are no passive tracers
+                  have_Passive_Tracers = .false.
+                  velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                  density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                  saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                  call set_nu_to_u( packed_state )
+                  !Passive fields taken from phase 1, automatically should detect internally if other phases need it
+                  fields = option_count("/material_phase[0]/scalar_field")
+                  do k = 1, fields
+                    call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                    if (option_name(1:13)=="PassiveTracer") then
+                      have_Passive_Tracers = .true.!OK there are passive tracers so remember for next time
+                      tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
+                      call Passive_Tracer_Assemble_Solve( trim(option_name), state, packed_state, &
+                      Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                      tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                      suf_sig_diagten_bc, Porosity_field%val, &
+                      !!$
+                      0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                      THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                      saturation=saturation_field, nonlinear_iteration = its)
+                      nullify(tracer_field)
+                    end if
+                  end do
+                end if
+                !#=================================================================================================================
+
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then
                     ewrite(1,*) "Caught signal, exiting nonlinear loop"
@@ -811,12 +904,18 @@ contains
             !Call to create the output vtu files, if required and also checkpoint
             call create_dump_vtu_and_checkpoints()
 
+
+            call petsc_logging(3,stages,ierrr,default=.true.)
+            call petsc_logging(2,stages,ierrr,default=.true., push_no=7)
             ! Call to adapt the mesh if required! If adapting within the FPI then the adaption is controlled elsewhere
             if(acctim >= t_adapt_threshold .and. .not. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
               call adapt_mesh_mp()
             end if
             ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
             !!$ Simple adaptive time stepping algorithm
+
+            call petsc_logging(3,stages,ierrr,default=.true.)
+            call petsc_logging(2,stages,ierrr,default=.true., push_no=8)
 
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
@@ -907,6 +1006,7 @@ contains
 
         end do Loop_Time
 
+
         if (has_references(metric_tensor)) call deallocate(metric_tensor)
         !!$ Now deallocating arrays:
         deallocate( &
@@ -944,6 +1044,9 @@ contains
         endif
         !***************************************
         if (outfluxes%calculate_flux) call destroy_multi_outfluxes(outfluxes)
+
+
+
         return
     contains
         !> routine puts various CSR sparsities into packed_state
@@ -1139,7 +1242,7 @@ contains
                     if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
-                    if (have_option("/porous_media/Self_Potential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
+                    if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
             else if (have_option('/io/dump_period')) then
@@ -1154,7 +1257,7 @@ contains
                     if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
-                    if (have_option("/porous_media/Self_Potential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
+                    if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_RealTime
             end if
@@ -1165,9 +1268,9 @@ contains
             !local variables
             type( scalar_field ), pointer :: s_field, s_field2, s_field3
             integer                       :: idim
-            real, dimension(2)            :: min_max_limits_before, solute_min_max_limits_before
+            real, dimension(2)            :: min_max_limits_before, concentration_min_max_limits_before
             type (tensor_field), pointer  :: tempfield, ComponentMassFraction
-            type (tensor_field), pointer  :: saltfield
+            type (tensor_field), pointer  :: Concentration
 
             if (numberfields_CVGalerkin_interp > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
@@ -1181,13 +1284,13 @@ contains
                 min_max_limits_before(1) = minval(tempfield%val); call allmin(min_max_limits_before(1))
                 min_max_limits_before(2) = maxval(tempfield%val); call allmax(min_max_limits_before(2))
             end if
-            if (has_salt) then
-                saltfield => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
-                solute_min_max_limits_before(1) = minval(saltfield%val); call allmin(solute_min_max_limits_before(1))
-                solute_min_max_limits_before(2) = maxval(saltfield%val); call allmax(solute_min_max_limits_before(2))
+            if (has_concentration) then
+                concentration => extract_tensor_field( packed_state, "PackedConcentration" )
+                concentration_min_max_limits_before(1) = minval(concentration%val); call allmin(concentration_min_max_limits_before(1))
+                concentration_min_max_limits_before(2) = maxval(concentration%val); call allmax(concentration_min_max_limits_before(2))
                 !sprint_to_do: check the boundedness of the mass fraction (and also the temperature) field
-                !solute_min_max_limits_before(1) = 0.; call allmin(solute_min_max_limits_before(1))
-                !solute_min_max_limits_before(2) = 1.0; call allmax(solute_min_max_limits_before(2))
+                !concentration_min_max_limits_before(1) = 0.; call allmin(concentration_min_max_limits_before(1))
+                !concentration_min_max_limits_before(2) = 1.0; call allmax(concentration_min_max_limits_before(2))
             end if
             do_reallocate_fields = .false.
             Conditional_Adaptivity_ReallocatingFields: if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
@@ -1328,7 +1431,7 @@ contains
                 end if
                 if (.not. have_option("/numerical_methods/do_not_bound_after_adapt")) then
                   if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
-                  if (has_salt) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedSoluteMassFraction" ,min_max_limits = solute_min_max_limits_before)
+                  if (has_concentration) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedConcentration" ,min_max_limits = concentration_min_max_limits_before)
                 end if
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
                 if (numberfields_CVGalerkin_interp > 0) then
