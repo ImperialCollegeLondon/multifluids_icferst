@@ -47,7 +47,7 @@ module multiphase_1D_engine
     use Compositional_Terms
     use multi_pipes
     use multi_surface_tension
-    use multi_tools, only: CALC_FACE_ELE
+    use multi_tools, only: CALC_FACE_ELE, tolfun
     use parallel_tools, only : allmax, allmin, isparallel
     use ieee_arithmetic
     use multi_magma
@@ -1009,11 +1009,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         call get_entire_boundary_condition(tracer,&
         ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL, boundary_second_value=tracer_BCs_robin2)
         !Use boundaries for min/max
-        if (.not. has_imposed_min_limit) totally_min_max(1)=minval(tracer_BCs%val, MASK = tracer_BCs%val > tol)!use stored value
-        if (.not. has_imposed_max_limit) totally_min_max(2)=maxval(tracer_BCs%val)!use stored value
-        !Check also domain?                    !For wells cannot consider zero values, this can be solved using Kelvin as proper scientists should do...
-        if (.not. has_imposed_min_limit) totally_min_max(1)=min(totally_min_max(1), minval(tracer%val, MASK = tracer%val > tol))!use stored value
-        if (.not. has_imposed_max_limit) totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored value
+        if (.not. has_imposed_min_limit) totally_min_max(1)=minval(tracer_BCs%val)
+        if (.not. has_imposed_max_limit) totally_min_max(2)=maxval(tracer_BCs%val)
+        !Check domain
+        if (.not. has_imposed_min_limit) then
+          totally_min_max(1)=minval(tracer%val(:,1:Mdims%n_in_pres,:)) !First the reservoir
+          if (Mdims%npres > 1) & !Next the wells (this is to avoid the zero values in the well domain outside of the defined regions )
+          totally_min_max(1)=min(totally_min_max(1), minval(tracer%val(:, Mdims%n_in_pres+1:Mdims%nphase,:), MASK = tracer%val > tol))
+        end if
+        if (.not. has_imposed_max_limit) totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))
         !For parallel
         call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
         deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs); call deallocate(tracer_BCs_robin2)
@@ -4032,7 +4036,8 @@ end if
         IF(use_P0_limiter) THEN
           allocate( N_DOT_UMEAN_UP(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
           allocate( N_DOT_UMEAN_UP2(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP2_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
-          use_hi_order_p0=.true.; NON_LIN_DGFLUX = .TRUE.
+          use_hi_order_p0=.true.
+
         ENDIF
 
 
@@ -5836,14 +5841,20 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                 !FTHETA( SGI,IDIM,IPHASE )=0.5 !1.0  - should be 1. as there is no theta set for the internal part of an element.
                                 FTHETA( IDIM,IPHASE,SGI )=1.0 ! 0.5
                                 ! CENT_RELAX=1.0 (central scheme) =0.0 (upwind scheme).
-                                IF( use_hi_order_p0 ) THEN ! high order...
-                                    CENT_RELAX( IDIM,IPHASE,SGI ) = 1.0
-                                    CENT_RELAX_OLD( IDIM,IPHASE,SGI )=1.0
                                     IF(ELE2<1) THEN ! Use upwinding next to boundary
                                        CENT_RELAX( IDIM,IPHASE,SGI ) = 0.0
                                        CENT_RELAX_OLD( IDIM,IPHASE,SGI )=0.0
-                                    ENDIF
-                                ELSE IF( NON_LIN_DGFLUX .and. ele2 > 0) THEN
+                                ELSE IF( use_hi_order_p0 ) THEN ! high order...
+                                    CENT_RELAX( IDIM,IPHASE,SGI ) = 1.0
+                                    CENT_RELAX_OLD( IDIM,IPHASE,SGI )=1.0
+                                ELSE IF( use_P0_limiter ) THEN ! limiter...
+                                    CENT_RELAX( IDIM,IPHASE,SGI )    = p0_dg_oscilat_detect( SNDOTQ_KEEP(IPHASE,SGI), SNDOTQ2_KEEP(IPHASE,SGI), &
+                                        N_DOT_DU(IPHASE,SGI), N_DOT_DU2(IPHASE,SGI), SINCOME(IPHASE,SGI), &
+                                        MASS_ELE(ELE), MASS_ELE(ELE2) )
+                                    CENT_RELAX_OLD( IDIM,IPHASE,SGI )= p0_dg_oscilat_detect( SNDOTQOLD_KEEP(IPHASE,SGI), SNDOTQOLD2_KEEP(IPHASE,SGI), &
+                                        N_DOT_DUOLD(IPHASE,SGI), N_DOT_DUOLD2(IPHASE,SGI), SINCOMEOLD(IPHASE,SGI), &
+                                        MASS_ELE(ELE), MASS_ELE(ELE2) )
+                                ELSE IF( NON_LIN_DGFLUX ) THEN
                                     ! non-linear DG flux - if we have an oscillation use upwinding else use central scheme.
                                     CENT_RELAX( IDIM,IPHASE,SGI ) = dg_oscilat_detect( SNDOTQ_KEEP(IPHASE,SGI), SNDOTQ2_KEEP(IPHASE,SGI), &
                                         N_DOT_DU(IPHASE,SGI), N_DOT_DU2(IPHASE,SGI), SINCOME(IPHASE,SGI), MASS_ELE(ELE), MASS_ELE(ELE2) )
@@ -7785,7 +7796,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              if (present_and_true(for_transport)) then
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
                 !This method was designed for fields between 0 and 1, so for transport fields, we need to adjust Pe_aux to ensure consistency
-                if (present(totally_min_max)) Pe_aux = Pe_aux*(totally_min_max(2) - totally_min_max(1)) !THIS means making it HIGHER
+                if (present(totally_min_max)) Pe_aux = Pe_aux*max(abs(totally_min_max(2) - totally_min_max(1)),1.0) !THIS means making it HIGHER
              else
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
              end if
@@ -8405,6 +8416,58 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
         return
     end function dg_oscilat_detect
+
+
+    !>@brief: Determine if we have an oscillation in the normal direction...
+    !> dg_oscilat_detect=1.0- CENTRAL SCHEME.
+    !> dg_oscilat_detect=0.0- UPWIND SCHEME.
+    REAL FUNCTION p0_dg_oscilat_detect(SNDOTQ_KEEP, SNDOTQ2_KEEP, &
+      N_DOT_DU, N_DOT_DU2, SINCOME, MASS_ELE, MASS_ELE2 )
+      ! this peforms more traditional and smooth limiting...
+      real, intent( in ) :: SNDOTQ_KEEP, SNDOTQ2_KEEP, N_DOT_DU, N_DOT_DU2, SINCOME
+      real, intent( in ) :: MASS_ELE, MASS_ELE2
+      ! local variables...
+      real, DIMENSION(1) :: XI_LIMIT! slope of NVD curve
+      REAL :: centre_val, t1, t2, t3, t4
+      real, dimension(1) :: TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, &
+          CTILOU, FTILIN, FTILOU, TDLIM, tdcen, etdnew_pele, ETDNEW_PELEOT, SINCOME2
+      integer :: nfield
+      !
+      centre_val = (SNDOTQ_KEEP*MASS_ELE2 + SNDOTQ2_KEEP*MASS_ELE)/(MASS_ELE + MASS_ELE2 )
+      T1 = SNDOTQ_KEEP - N_DOT_DU
+      T2 = SNDOTQ_KEEP ! ele
+      T3 = SNDOTQ2_KEEP  ! ele2
+      T4 = SNDOTQ2_KEEP + N_DOT_DU2
+      !
+      nfield=1; XI_LIMIT = 2.
+      !---------------------------------------------------
+      !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+      !---------------------------------------------------
+      ! TAIN         THALF       TAOUT
+      !---------------------------------------------------
+      !    if( SINCOME > 0.5 ) then
+      TDCEN=centre_val
+      ETDNEW_PELE=t2
+      ETDNEW_PELEOT=t3
+      TUPWIN=t1
+      TUPWI2=t4
+      SINCOME2 = SINCOME
+
+      call ONVDLIM_ANO_MANY(  NFIELD, &
+      TDLIM, TDCEN, SINCOME2, &
+      ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
+      TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
+      !
+      p0_dg_oscilat_detect = MAX(0.0,  MIN(1.0,   (TDLIM(1) - ETDNEW_PELEOT(1))/tolfun( TDCEN(1) - ETDNEW_PELEOT(1))  ))
+      !        call ONVDLIM_ANO_MANY( NFIELD, &
+      !            TDLIM, TDCEN, INCOME, &
+      !            ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
+      !            TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
+      !    else
+      !        call
+      !    endif
+      return
+    end function p0_dg_oscilat_detect
 
     !>@brief: This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX,DIFF_COEFOLD_DIVDX
     !> based on a non-linear method and a non-oscillating scheme.

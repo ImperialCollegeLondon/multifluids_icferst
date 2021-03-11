@@ -546,9 +546,15 @@ contains
               call get_option( trim( eos_option_path ) // '/gamma', eos_coefs( 7 ), default = -1.)
               Rho = 1.0
               !Add the concentration contribution
-              if (eos_coefs( 3 ) > 0 ) Rho =  Rho + eos_coefs( 3 ) * (Concentration % val - eos_coefs( 2 ) )
+              if (eos_coefs( 3 ) > 0 ) then
+                if (.not. has_concentration) print *, "ERROR: EOS defined to use concentration but concentration field is not defined"
+                Rho =  Rho + eos_coefs( 3 ) * (Concentration % val - eos_coefs( 2 ) )
+              end if
               !add the temperature contribution
-              if (eos_coefs( 5 ) > 0) Rho = Rho - eos_coefs( 5 ) * (temperature % val - eos_coefs( 4 ))
+              if (eos_coefs( 5 ) > 0) then
+                if (.not. has_temperature) print *, "ERROR: EOS defined to use temperature but temperature field is not defined"
+                Rho = Rho - eos_coefs( 5 ) * (temperature % val - eos_coefs( 4 ))
+              end if
               !add pressure contribution
               if (eos_coefs( 7 ) > 0. ) Rho =  Rho + eos_coefs( 7 ) * (pressure%val(1,1,:) - eos_coefs( 6 ) )
               !Now add values from scalar fields such as passive tracers
