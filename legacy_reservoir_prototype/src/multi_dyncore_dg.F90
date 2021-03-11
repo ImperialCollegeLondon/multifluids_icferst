@@ -3587,7 +3587,7 @@ end if
         REAL, DIMENSION ( :, : ), allocatable ::  UFEN_REVERSED, CVN_REVERSED, CVFEN_REVERSED
         REAL, DIMENSION ( :, : ), allocatable :: SBCVFEN_REVERSED, SBUFEN_REVERSED
         !P0 limiter variables
-        logical :: use_P0_limiter
+        logical :: use_P0_limiter, use_hi_order_p0
         integer ele32,u_inod3,u_inod32
         real, DIMENSION ( :, : ), allocatable :: N_DOT_UMEAN_UP, N_DOT_UMEAN_UP_OLD, N_DOT_UMEAN_UP2, N_DOT_UMEAN_UP2_OLD
         !Capillary pressure variables
@@ -4028,9 +4028,11 @@ end if
         ENDIF
         !Select whether to use or not a P0 limiter
         use_P0_limiter = is_P0DGP1 .and. have_option("/numerical_methods/use_P0_limiter")
+        use_hi_order_p0=.false.
         IF(use_P0_limiter) THEN
           allocate( N_DOT_UMEAN_UP(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
           allocate( N_DOT_UMEAN_UP2(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP2_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
+          use_hi_order_p0=.true.; NON_LIN_DGFLUX = .TRUE.
         ENDIF
 
 
@@ -5834,7 +5836,14 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                 !FTHETA( SGI,IDIM,IPHASE )=0.5 !1.0  - should be 1. as there is no theta set for the internal part of an element.
                                 FTHETA( IDIM,IPHASE,SGI )=1.0 ! 0.5
                                 ! CENT_RELAX=1.0 (central scheme) =0.0 (upwind scheme).
-                                IF( NON_LIN_DGFLUX ) THEN
+                                IF( use_hi_order_p0 ) THEN ! high order...
+                                    CENT_RELAX( IDIM,IPHASE,SGI ) = 1.0
+                                    CENT_RELAX_OLD( IDIM,IPHASE,SGI )=1.0
+                                    IF(ELE2<1) THEN ! Use upwinding next to boundary
+                                       CENT_RELAX( IDIM,IPHASE,SGI ) = 0.0
+                                       CENT_RELAX_OLD( IDIM,IPHASE,SGI )=0.0
+                                    ENDIF
+                                ELSE IF( NON_LIN_DGFLUX .and. ele2 > 0) THEN
                                     ! non-linear DG flux - if we have an oscillation use upwinding else use central scheme.
                                     CENT_RELAX( IDIM,IPHASE,SGI ) = dg_oscilat_detect( SNDOTQ_KEEP(IPHASE,SGI), SNDOTQ2_KEEP(IPHASE,SGI), &
                                         N_DOT_DU(IPHASE,SGI), N_DOT_DU2(IPHASE,SGI), SINCOME(IPHASE,SGI), MASS_ELE(ELE), MASS_ELE(ELE2) )
@@ -6511,17 +6520,14 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
       ! real allocatable N_DOT_UMEAN_UP(:,:), N_DOT_UMEAN_UP_OLD(:,:), N_DOT_UMEAN_UP2(:,:), N_DOT_UMEAN_UP2_OLD(:,:)
       ! allocate( N_DOT_UMEAN_UP(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
       ! allocate( N_DOT_UMEAN_UP2(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP2_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
+     IF(ELE2 > 0 ) then
       COUNT_N_DOT_UMEAN_UP=0.0
       COUNT_N_DOT_UMEAN_UP2=0.0
       U_ILOC=1
       U_SILOC=1
       DO IFACE=1,FE_GIdims%nface
         ELE3  =FACE_ELE(IFACE,ELE)
-        if (ELE2 /=0 ) then
-           ELE32 =FACE_ELE(IFACE,ELE2)
-        else
-          ELE32 = ELE3
-        end if
+        ELE32 =FACE_ELE(IFACE,ELE2)
         IF((ELE3 /= ELE) .AND. (ELE3 /= ELE2).AND.(ELE3>0)) THEN
           !                             U_INOD3=ELE3
           U_INOD3 = ndgln%u( (ELE3-1)*Mdims%u_nloc + U_ILOC )
@@ -6546,16 +6552,13 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         ENDIF
       END DO
       ! calculate the distance DX between the barycentres of the elements...
-      if(ele2>0) then
         dx=0.0
         do idim=1,Mdims%ndim
           DX =dx+(  sum(X_ALL( idim, ndgln%x( (ELE-1)*Mdims%x_nloc + 1: ELE*Mdims%x_nloc  ) ))/real(Mdims%x_nloc)&
           - sum(X_ALL( idim, ndgln%x( (ELE2-1)*Mdims%x_nloc + 1: ELE2*Mdims%x_nloc ) ))/real(Mdims%x_nloc) )**2
         end do
         dx=sqrt(dx)
-      else
-        dx=sqrt(   sum((  X_ALL( :, ndgln%x( (ELE-1)*Mdims%x_nloc + 1 )) - X_ALL( :, ndgln%x( ELE*Mdims%x_nloc ))  )**2)  )
-      endif
+
       N_DOT_UMEAN_UP = N_DOT_UMEAN_UP/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP )
       N_DOT_UMEAN_UP2 = N_DOT_UMEAN_UP2/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP2 )
       !
@@ -6566,6 +6569,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
       N_DOT_DU2 = ( N_DOT_UMEAN_UP2 - SNDOTQ2_KEEP )/ DX
       N_DOT_DUOLD  = ( SNDOTQOLD_KEEP - N_DOT_UMEAN_UP_OLD )/ DX
       N_DOT_DUOLD2 = ( N_DOT_UMEAN_UP2_OLD - SNDOTQOLD2_KEEP )/ DX
+     ELSE ! Use random values...
+        N_DOT_DU  = 0.0
+        N_DOT_DU2 = 0.0
+        N_DOT_DUOLD  = 0.0
+        N_DOT_DUOLD2 = 0.0
+     ENDIF
     end subroutine P0_limiter
 
     END SUBROUTINE ASSEMB_FORCE_CTY
