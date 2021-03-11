@@ -301,8 +301,7 @@ contains
            python_vfield => extract_vector_field( state(1), "TSourcE", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
            !Start with the process to apply the min max principle
-           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", Mdims%nphase)
-           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
+           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
@@ -398,7 +397,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                end do
 
                 !Control how it is converging and decide
-               if (impose_min_max)call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)!Apply if required the min max principle
+               call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)!Apply if required the min max principle
 
                !Just after the solvers
                call deallocate(Mmat%petsc_ACV)
@@ -892,8 +891,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              TDIFFUSION = TDIFFUSION + CDISPERSION
            end if
            !Start with the process to apply the min max principle
-           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", nconc)
-           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
+           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
            NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
@@ -957,7 +955,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    end do
 
                    !Apply if required the min max principle
-                   if (impose_min_max) call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
+                   call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
                    !Update halo communications
@@ -981,35 +979,35 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
   !>@brief: To help the stability of the system,if there are no sources/sinks it is known that
   !> the temperature must fulfill the min max principle, therefore here values outside this rank are capped.
-  subroutine force_min_max_principle(Mdims, entrance, tracer, nonlinear_iteration, totally_min_max, tracerName)
+  subroutine force_min_max_principle(Mdims, entrance, tracer, nonlinear_iteration, totally_min_max)
     type(multi_dimensions), intent(in) :: Mdims
     type(tensor_field), intent(inout) :: tracer
     integer, intent(in) :: nonlinear_iteration
     integer, intent(in) :: entrance
     real, dimension(2), intent(inout) :: totally_min_max
-    character(len=*), intent(in), optional :: tracerName
     !Local variables
     logical :: apply_minmax_principle
     integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
-    type(tensor_field) :: tracer_BCs
+    type(tensor_field) :: tracer_BCs, tracer_BCs_robin2
     real, parameter :: tol = 1e-30
     real :: imposed_min_limit, imposed_max_limit
     logical :: has_imposed_min_limit, has_imposed_max_limit
-    select case (entrance)
-    case (1)
-      !Get variable for global convergence method
-      if (apply_minmax_principle) then
+
+    !Check whether to apply the minmax principle
+    apply_minmax_principle = have_option_for_any_phase("scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", Mdims%ndim)
+
+    if (apply_minmax_principle) then
+      select case (entrance)
+      case (1)
+        !Get variable for global convergence method
         totally_min_max = (/-1d9,1d9/)
-        has_imposed_min_limit = .false.; has_imposed_max_limit = .false.
-        if (present(tracerName)) then
-          has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit")
-          has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit")
-        end if
+        has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit")
+        has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit")
         if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit", imposed_min_limit)
         if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit", imposed_max_limit)
         allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
         call get_entire_boundary_condition(tracer,&
-        ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL)
+        ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL, boundary_second_value=tracer_BCs_robin2)
         !Use boundaries for min/max
         if (.not. has_imposed_min_limit) totally_min_max(1)=minval(tracer_BCs%val, MASK = tracer_BCs%val > tol)!use stored value
         if (.not. has_imposed_max_limit) totally_min_max(2)=maxval(tracer_BCs%val)!use stored value
@@ -1018,12 +1016,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         if (.not. has_imposed_max_limit) totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored value
         !For parallel
         call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-        deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs)
-      end if
-    case (2)
-      if (apply_minmax_principle) &
-      tracer%val = max(min(tracer%val,totally_min_max(2)), totally_min_max(1))
-    end select
+        deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs); call deallocate(tracer_BCs_robin2)
+      case (2)
+        tracer%val = max(min(tracer%val,totally_min_max(2)), totally_min_max(1))
+      end select
+    end if
 
   end subroutine
 
@@ -1186,8 +1183,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end if
 
            !Start with the process to apply the min max principle
-           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", nconc)
-           if (impose_min_max) call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
+           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
@@ -1237,7 +1233,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                     end do
                    end do
                    !Apply if required the min max principle
-                   if (impose_min_max) call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
+                   call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
 
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
@@ -6733,7 +6729,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 LES_MAT_UDIFFUSION_VOL(:,4,:) = LES_U_UDIFFUSION_VOL(:,10,:)+ SOUND_SPEED(:,4,:) * Q_SCHEME_ABS_CONT_VOL(:,10,:)
             end if
         ELSE
-            PRINT *,'not ready to onvert between these elements'
+            PRINT *,'LES not ready to convert between these elements. Use Petrov-Galerkin instead.'
             STOP 2211
         ENDIF
 

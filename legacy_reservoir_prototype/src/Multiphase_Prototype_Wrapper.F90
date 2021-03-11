@@ -803,6 +803,35 @@ contains
 
         end if
 
+      !   !For the hydrostatic the default is better CG with hypre and shift_positive
+      !   if (.not. have_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure" ) &
+      !   .and. have_option("/physical_parameters/gravity/hydrostatic_pressure_solver")) then
+      !
+      !   option_path = "/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/iterative_method::cg"
+      !   call add_option(trim(option_path), stat = stat)
+      !   !Preconditioner
+      !   option_path = "/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/preconditioner::hypre"
+      !   call add_option(trim(option_path), stat = stat)
+      !
+      !   option_path = trim(option_path)//"/hypre_type::boomeramg"
+      !   call add_option(trim(option_path), stat = stat)
+      !   option_path = trim(option_path)//"/shift_positive_definite  "
+      !   call add_option(trim(option_path), stat = stat)
+      !   !Convergence settings
+      !
+      !   call add_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/relative_error", stat = stat)
+      !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/relative_error", 1e-10)
+      !   call add_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/absolute_error", stat = stat)
+      !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/absolute_error", 1e-8)
+      !   call add_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/max_iterations", stat = stat)
+      !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/max_iterations", 300)
+      !   !Remove null space for this option
+      !   call copy_option("/simulation_name","/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/remove_null_space")
+      !   !Copy an option that always exists to ensure ignore all solver failues
+      !   call copy_option("/simulation_name","/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/ignore_all_solver_failures")
+      !
+      ! end if
+
         !Non_Linear_Solver default settings
         option_path = "/solver_options/Non_Linear_Solver"
         if (.not. have_option(trim(option_path) )) then!The default has to exist

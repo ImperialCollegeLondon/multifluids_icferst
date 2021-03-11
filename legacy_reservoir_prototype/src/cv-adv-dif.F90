@@ -1656,7 +1656,10 @@ contains
                                   ROBIN1=0.0; ROBIN2=0.0
                                   IF( on_domain_boundary ) then
                                       where ( WIC_T_BC_ALL(1,:,SELE) == WIC_T_BC_ROBIN )
-                                          ROBIN1 = SUF_T_BC_ROB1_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
+                                          !Robin 1 contains the value of the field outside the domain and robin2 the coefficient.
+                                          ! In the RHS we need to put the multiplication of both
+                                          ROBIN1 = SUF_T_BC_ROB1_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))&
+                                                   *   SUF_T_BC_ROB2_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
                                           ROBIN2 = SUF_T_BC_ROB2_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
                                       end where
                                   END IF
@@ -1708,7 +1711,7 @@ contains
                                       if (VAD_activated) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                       if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - FTHETA_T2 * ( ONE_M_CV_BETA ) * &
                                                                                     SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
-                                      if (on_domain_boundary) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * ROBIN2
+                                      if (on_domain_boundary) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * LIMD * ROBIN2
 
                                       !Assemble diagonal of the matrix of node cv_nodj
                                       if(integrate_other_side_and_not_boundary) then
@@ -1721,7 +1724,7 @@ contains
                                       IF ( GET_GTHETA ) THEN
                                           THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
                                               -  FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_I & ! Diffusion contribution
-                                              -  SdevFuns%DETWEI( GI ) * robin1 * LOC_T_I  ! Robin bc
+                                              -  SdevFuns%DETWEI( GI ) * LIMD * robin1 * LOC_T_I  ! Robin bc
                                           if(integrate_other_side_and_not_boundary) then
                                               THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
                                                   -  FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_J ! Diffusion contribution
@@ -1748,7 +1751,7 @@ contains
                                           * ( FTHETA_T2 * NDOTQNEW * LOC_T_I * LIMD  &
                                           + ONE_M_FTHETA_T2OLD * NDOTQOLD * LIMDOLD * LOC_TOLD_I )
                                       if (on_domain_boundary) LOC_CV_RHS_I =  LOC_CV_RHS_I &
-                                          + SdevFuns%DETWEI( GI ) * ROBIN1
+                                          + SdevFuns%DETWEI( GI ) * LIMD * ROBIN1
 
                                       if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
                                         !Solid phase
