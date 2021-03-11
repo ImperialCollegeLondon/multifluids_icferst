@@ -3586,6 +3586,10 @@ end if
         REAL, DIMENSION ( :, :, : ), allocatable ::  CVFENX_ALL_REVERSED, UFENX_ALL_REVERSED
         REAL, DIMENSION ( :, : ), allocatable ::  UFEN_REVERSED, CVN_REVERSED, CVFEN_REVERSED
         REAL, DIMENSION ( :, : ), allocatable :: SBCVFEN_REVERSED, SBUFEN_REVERSED
+        !P0 limiter variables
+        logical :: use_P0_limiter
+        integer ele32,u_inod3,u_inod32
+        real, DIMENSION ( :, : ), allocatable :: N_DOT_UMEAN_UP, N_DOT_UMEAN_UP_OLD, N_DOT_UMEAN_UP2, N_DOT_UMEAN_UP2_OLD
         !Capillary pressure variables
         logical :: capillary_pressure_activated, Diffusive_cap_only
         type(tensor_field), pointer :: CapPressure
@@ -3779,6 +3783,7 @@ end if
             '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/central_differencing') &
             ) UPWIND_DGFLUX = .FALSE.
         NON_LIN_DGFLUX = .FALSE.
+
         if ( have_option( &
             '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/nonlinear_flux') &
             ) NON_LIN_DGFLUX = .TRUE.
@@ -4021,6 +4026,14 @@ end if
             ALLOCATE( DUX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
             ALLOCATE( DUOLDX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
         ENDIF
+        !Select whether to use or not a P0 limiter
+        use_P0_limiter = is_P0DGP1 .and. have_option("/numerical_methods/use_P0_limiter")
+        IF(use_P0_limiter) THEN
+          allocate( N_DOT_UMEAN_UP(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
+          allocate( N_DOT_UMEAN_UP2(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP2_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
+        ENDIF
+
+
         ! IF( (.NOT.JUST_BL_DIAG_MAT) .AND. (.NOT.Mmat%NO_MATRIX_STORE) ) call zero( Mmat%DGM_petsc )
         if (.not.got_c_matrix) Mmat%C = 0.0
         Mmat%U_RHS = 0.0
@@ -5812,6 +5825,9 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         CVM_SNDOTQOLD_IN = 0.0
                         CVM_SNDOTQOLD_OUT = 0.0
                     ENDIF
+                    !Compute limited high-order velocity when using P0DG velocity
+                    IF( use_P0_limiter ) call P0_limiter()
+
                     DO SGI=1,FE_GIdims%sbcvngi
                         DO IPHASE=1, Mdims%nphase
                             DO IDIM=1, Mdims%ndim
@@ -6484,8 +6500,73 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         END DO ! ENDOF DO ELE=1,TOTELE
     end subroutine get_all_in_mass_matrix
 
+    !>@brief: Computes a limited velocity when using a P0DG velocity discretisation
+    subroutine P0_limiter()
+      real :: COUNT_N_DOT_UMEAN_UP, COUNT_N_DOT_UMEAN_UP2, dx
+      ! need to set NON_LIN_DGFLUX=.true.
+      ! Remember SNORMXN_ALL(Mdims%ndim,FE_GIdims%sbcvngi)
+      ! logical GOT_P0LIMITER
+      ! integer ele3,ele32,u_inod3,u_inod32
+      ! real dx, COUNT_N_DOT_UMEAN_UP, COUNT_N_DOT_UMEAN_UP2
+      ! real allocatable N_DOT_UMEAN_UP(:,:), N_DOT_UMEAN_UP_OLD(:,:), N_DOT_UMEAN_UP2(:,:), N_DOT_UMEAN_UP2_OLD(:,:)
+      ! allocate( N_DOT_UMEAN_UP(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
+      ! allocate( N_DOT_UMEAN_UP2(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP2_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
+      COUNT_N_DOT_UMEAN_UP=0.0
+      COUNT_N_DOT_UMEAN_UP2=0.0
+      U_ILOC=1
+      U_SILOC=1
+      DO IFACE=1,FE_GIdims%nface
+        ELE3  =FACE_ELE(IFACE,ELE)
+        if (ELE2 /=0 ) then
+           ELE32 =FACE_ELE(IFACE,ELE2)
+        else
+          ELE32 = ELE3
+        end if
+        IF((ELE3 /= ELE) .AND. (ELE3 /= ELE2).AND.(ELE3>0)) THEN
+          !                             U_INOD3=ELE3
+          U_INOD3 = ndgln%u( (ELE3-1)*Mdims%u_nloc + U_ILOC )
+          DO SGI=1,FE_GIdims%sbcvngi
+            DO IPHASE=1,Mdims%nphase
+              N_DOT_UMEAN_UP( IPHASE,SGI )  = N_DOT_UMEAN_UP( IPHASE,SGI )  + SUM( SNORMXN_ALL(:,SGI) * U_ALL( :, IPHASE, U_INOD3) )
+              N_DOT_UMEAN_UP_OLD( IPHASE,SGI )  = N_DOT_UMEAN_UP_OLD( IPHASE,SGI )  + SUM( SNORMXN_ALL(:,SGI) * UOLD_ALL( :, IPHASE, U_INOD3) )
+            END DO
+          END DO
+          COUNT_N_DOT_UMEAN_UP = COUNT_N_DOT_UMEAN_UP + 1.0
+        ENDIF
+        IF((ELE32/=ELE).AND.(ELE32 /= ELE2).AND.(ELE32>0)) THEN
+          !                             U_INOD32=ELE32
+          U_INOD32 = ndgln%u( (ELE32-1)*Mdims%u_nloc + U_ILOC )
+          DO SGI=1,FE_GIdims%sbcvngi
+            DO IPHASE=1,Mdims%nphase
+              N_DOT_UMEAN_UP2( IPHASE,SGI ) = N_DOT_UMEAN_UP2( IPHASE,SGI ) + SUM( SNORMXN_ALL(:,SGI) * U_ALL( :, IPHASE, U_INOD32) )
+              N_DOT_UMEAN_UP2_OLD( IPHASE,SGI ) = N_DOT_UMEAN_UP2_OLD( IPHASE,SGI ) + SUM( SNORMXN_ALL(:,SGI) * UOLD_ALL( :, IPHASE, U_INOD32) )
+            END DO
+          END DO
+          COUNT_N_DOT_UMEAN_UP2 = COUNT_N_DOT_UMEAN_UP2 + 1.0
+        ENDIF
+      END DO
+      ! calculate the distance DX between the barycentres of the elements...
+      if(ele2>0) then
+        dx=0.0
+        do idim=1,Mdims%ndim
+          DX =dx+(  sum(X_ALL( idim, ndgln%x( (ELE-1)*Mdims%x_nloc + 1: ELE*Mdims%x_nloc  ) ))/real(Mdims%x_nloc)&
+          - sum(X_ALL( idim, ndgln%x( (ELE2-1)*Mdims%x_nloc + 1: ELE2*Mdims%x_nloc ) ))/real(Mdims%x_nloc) )**2
+        end do
+        dx=sqrt(dx)
+      else
+        dx=sqrt(   sum((  X_ALL( :, ndgln%x( (ELE-1)*Mdims%x_nloc + 1 )) - X_ALL( :, ndgln%x( ELE*Mdims%x_nloc ))  )**2)  )
+      endif
+      N_DOT_UMEAN_UP = N_DOT_UMEAN_UP/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP )
+      N_DOT_UMEAN_UP2 = N_DOT_UMEAN_UP2/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP2 )
+      !
+      N_DOT_UMEAN_UP = N_DOT_UMEAN_UP/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP )
+      N_DOT_UMEAN_UP2 = N_DOT_UMEAN_UP2/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP2 )
 
-
+      N_DOT_DU  = ( SNDOTQ_KEEP - N_DOT_UMEAN_UP )/ DX
+      N_DOT_DU2 = ( N_DOT_UMEAN_UP2 - SNDOTQ2_KEEP )/ DX
+      N_DOT_DUOLD  = ( SNDOTQOLD_KEEP - N_DOT_UMEAN_UP_OLD )/ DX
+      N_DOT_DUOLD2 = ( N_DOT_UMEAN_UP2_OLD - SNDOTQOLD2_KEEP )/ DX
+    end subroutine P0_limiter
 
     END SUBROUTINE ASSEMB_FORCE_CTY
 
@@ -7386,7 +7467,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      ELSE
          CALL POSINMAT( COUNT, U_INOD, P_JNOD,  &
              FINDC, COLC )
-         IF(IDO_STORE_AC_SPAR_PT.NE.0) POSINMAT_C_STORE(U_ILOC,P_JLOC,ELE) = COUNT
+         IF(IDO_STORE_AC_SPAR_PT/=0) POSINMAT_C_STORE(U_ILOC,P_JLOC,ELE) = COUNT
      ENDIF
      RETURN
  END SUBROUTINE USE_POSINMAT_C_STORE
