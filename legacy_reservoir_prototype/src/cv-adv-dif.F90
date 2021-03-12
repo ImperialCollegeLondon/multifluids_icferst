@@ -1647,7 +1647,10 @@ contains
                                   ROBIN1=0.0; ROBIN2=0.0
                                   IF( on_domain_boundary ) then
                                       where ( WIC_T_BC_ALL(1,:,SELE) == WIC_T_BC_ROBIN )
-                                          ROBIN1 = SUF_T_BC_ROB1_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
+                                          !Robin 1 contains the value of the field outside the domain and robin2 the coefficient.
+                                          ! In the RHS we need to put the multiplication of both
+                                          ROBIN1 = SUF_T_BC_ROB1_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))&
+                                                   *   SUF_T_BC_ROB2_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
                                           ROBIN2 = SUF_T_BC_ROB2_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
                                       end where
                                   END IF
@@ -1699,7 +1702,7 @@ contains
                                       if (VAD_activated) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                       if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - FTHETA_T2 * ( ONE_M_CV_BETA ) * &
                                                                                     SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
-                                      if (on_domain_boundary) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * ROBIN2
+                                      if (on_domain_boundary) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * LIMD * ROBIN2
 
                                       !Assemble diagonal of the matrix of node cv_nodj
                                       if(integrate_other_side_and_not_boundary) then
@@ -1712,7 +1715,7 @@ contains
                                       IF ( GET_GTHETA ) THEN
                                           THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
                                               -  FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_I & ! Diffusion contribution
-                                              -  SdevFuns%DETWEI( GI ) * robin1 * LOC_T_I  ! Robin bc
+                                              -  SdevFuns%DETWEI( GI ) * LIMD * robin1 * LOC_T_I  ! Robin bc
                                           if(integrate_other_side_and_not_boundary) then
                                               THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
                                                   -  FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_J ! Diffusion contribution
@@ -1739,7 +1742,7 @@ contains
                                           * ( FTHETA_T2 * NDOTQNEW * LOC_T_I * LIMD  &
                                           + ONE_M_FTHETA_T2OLD * NDOTQOLD * LIMDOLD * LOC_TOLD_I )
                                       if (on_domain_boundary) LOC_CV_RHS_I =  LOC_CV_RHS_I &
-                                          + SdevFuns%DETWEI( GI ) * ROBIN1
+                                          + SdevFuns%DETWEI( GI ) * LIMD * ROBIN1
 
                                       if (asssembling_enthalpy ) then!TODO: sprint_to_do Currently only for two phases
                                         !Solid phase
@@ -3175,60 +3178,6 @@ end if
             RETURN
         END SUBROUTINE GET_INT_VEL_POROUS_VEL
 
-
-        PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
-            TDLIM, TDCEN, INCOME, &
-            ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
-            TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
-            implicit none
-            ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-            ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-            ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-            ! LIBETA is the flux limiting parameter.
-            ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
-            ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-            ! PELEOT=element at other side of current face.
-            ! ELEOT2=element at other side of the element ELEOTH.
-            ! ELESID=element next to oposing current face.
-            ! DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU => memory
-            ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-            ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-            !---------------------------------------------------
-            !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-            !---------------------------------------------------
-            ! TAIN         THALF       TAOUT
-            !---------------------------------------------------
-            !>TEXTIN
-            !TEXOUT<
-            !---------------------------------------------------
-            INTEGER, intent( in ) :: NFIELD
-            REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
-            REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
-            REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
-            real, dimension( NFIELD ), intent(inout) :: DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU
-            ! Local variables
-            REAL, PARAMETER :: TOLER=1.0E-10
-            ! Calculate normalisation parameters for incomming velocities
-            DENOIN = ( ETDNEW_PELE - TUPWIN )
-            where( ABS( DENOIN ) < TOLER )
-                DENOIN = SIGN( TOLER, DENOIN )
-            end where
-            CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
-            ! Calculate normalisation parameters for out going velocities
-            DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
-            where( ABS( DENOOU ) < TOLER )
-                DENOOU = SIGN( TOLER, DENOOU )
-            end where
-            CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
-            FTILIN = ( TDCEN - TUPWIN ) / DENOIN
-            FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
-            ! Velocity is going out of element
-            TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW_MANY( FTILIN, CTILIN, XI_LIMIT ) * DENOIN ) &
-                + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
-            TDLIM = MAX( TDLIM, 0.0 )
-            RETURN
-        END SUBROUTINE ONVDLIM_ANO_MANY
-
         FUNCTION FACE_THETA_MANY( DT, CV_THETA, INTERFACE_TRACK, HDC, NPHASE, n_in_pres,&
             NDOTQ, LIMDT, DIFF_COEF_DIVDX, &
             T_NODJ_IPHA, T_NODI_IPHA,  &
@@ -3492,6 +3441,58 @@ end if
 
     END SUBROUTINE CV_ASSEMB
 
+    PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
+        TDLIM, TDCEN, INCOME, &
+        ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
+        TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
+        implicit none
+        ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+        ! difference face values TDCEN(1...SNGI) using a NVD shceme.
+        ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
+        ! LIBETA is the flux limiting parameter.
+        ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
+        ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
+        ! PELEOT=element at other side of current face.
+        ! ELEOT2=element at other side of the element ELEOTH.
+        ! ELESID=element next to oposing current face.
+        ! DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU => memory
+        ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+        ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
+        !---------------------------------------------------
+        !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+        !---------------------------------------------------
+        ! TAIN         THALF       TAOUT
+        !---------------------------------------------------
+        !>TEXTIN
+        !TEXOUT<
+        !---------------------------------------------------
+        INTEGER, intent( in ) :: NFIELD
+        REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
+        REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
+        REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
+        real, dimension( NFIELD ), intent(inout) :: DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU
+        ! Local variables
+        REAL, PARAMETER :: TOLER=1.0E-10
+        ! Calculate normalisation parameters for incomming velocities
+        DENOIN = ( ETDNEW_PELE - TUPWIN )
+        where( ABS( DENOIN ) < TOLER )
+            DENOIN = SIGN( TOLER, DENOIN )
+        end where
+        CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
+        ! Calculate normalisation parameters for out going velocities
+        DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
+        where( ABS( DENOOU ) < TOLER )
+            DENOOU = SIGN( TOLER, DENOOU )
+        end where
+        CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
+        FTILIN = ( TDCEN - TUPWIN ) / DENOIN
+        FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
+        ! Velocity is going out of element
+        TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW_MANY( FTILIN, CTILIN, XI_LIMIT ) * DENOIN ) &
+            + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
+        TDLIM = MAX( TDLIM, 0.0 )
+        RETURN
+    END SUBROUTINE ONVDLIM_ANO_MANY
 
     SUBROUTINE IS_FIELD_CONSTANT(IGOT_T_CONST, IGOT_T_CONST_VALUE, T_ALL, CV_NONODS)
         !SPRINT_TO_DO THIS SUBROUTINE IS HORRIBLE!!!! we need to find another way of checking if a field is constant!

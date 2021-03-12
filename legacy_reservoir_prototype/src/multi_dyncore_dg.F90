@@ -47,7 +47,7 @@ module multiphase_1D_engine
     use Compositional_Terms
     use multi_pipes
     use multi_surface_tension
-    use multi_tools, only: CALC_FACE_ELE
+    use multi_tools, only: CALC_FACE_ELE, tolfun
     use parallel_tools, only : allmax, allmin, isparallel
     use ieee_arithmetic
     use multi_magma
@@ -301,8 +301,7 @@ contains
            python_vfield => extract_vector_field( state(1), "TSourcE", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
            !Start with the process to apply the min max principle
-           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", Mdims%nphase)
-           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
+           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
@@ -398,7 +397,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                end do
 
                 !Control how it is converging and decide
-               if (impose_min_max)call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)!Apply if required the min max principle
+               call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)!Apply if required the min max principle
 
                !Just after the solvers
                call deallocate(Mmat%petsc_ACV)
@@ -891,8 +890,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              TDIFFUSION = TDIFFUSION + CDISPERSION
            end if
            !Start with the process to apply the min max principle
-           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", nconc)
-           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
+           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
            NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
@@ -956,7 +954,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    end do
 
                    !Apply if required the min max principle
-                   if (impose_min_max) call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
+                   call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
                    !Update halo communications
@@ -980,49 +978,52 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
   !>@brief: To help the stability of the system,if there are no sources/sinks it is known that
   !> the temperature must fulfill the min max principle, therefore here values outside this rank are capped.
-  subroutine force_min_max_principle(Mdims, entrance, tracer, nonlinear_iteration, totally_min_max, tracerName)
+  subroutine force_min_max_principle(Mdims, entrance, tracer, nonlinear_iteration, totally_min_max)
     type(multi_dimensions), intent(in) :: Mdims
     type(tensor_field), intent(inout) :: tracer
     integer, intent(in) :: nonlinear_iteration
     integer, intent(in) :: entrance
     real, dimension(2), intent(inout) :: totally_min_max
-    character(len=*), intent(in), optional :: tracerName
     !Local variables
     logical :: apply_minmax_principle
     integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
-    type(tensor_field) :: tracer_BCs
+    type(tensor_field) :: tracer_BCs, tracer_BCs_robin2
     real, parameter :: tol = 1e-30
     real :: imposed_min_limit, imposed_max_limit
     logical :: has_imposed_min_limit, has_imposed_max_limit
-    select case (entrance)
-    case (1)
-      !Get variable for global convergence method
-      if (apply_minmax_principle) then
+
+    !Check whether to apply the minmax principle
+    apply_minmax_principle = have_option_for_any_phase("scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", Mdims%ndim)
+
+    if (apply_minmax_principle) then
+      select case (entrance)
+      case (1)
+        !Get variable for global convergence method
         totally_min_max = (/-1d9,1d9/)
-        has_imposed_min_limit = .false.; has_imposed_max_limit = .false.
-        if (present(tracerName)) then
-          has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit")
-          has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit")
-        end if
+        has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit")
+        has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit")
         if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit", imposed_min_limit)
         if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit", imposed_max_limit)
         allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
         call get_entire_boundary_condition(tracer,&
-        ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL)
+        ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL, boundary_second_value=tracer_BCs_robin2)
         !Use boundaries for min/max
-        if (.not. has_imposed_min_limit) totally_min_max(1)=minval(tracer_BCs%val, MASK = tracer_BCs%val > tol)!use stored value
-        if (.not. has_imposed_max_limit) totally_min_max(2)=maxval(tracer_BCs%val)!use stored value
-        !Check also domain?                    !For wells cannot consider zero values, this can be solved using Kelvin as proper scientists should do...
-        if (.not. has_imposed_min_limit) totally_min_max(1)=min(totally_min_max(1), minval(tracer%val, MASK = tracer%val > tol))!use stored value
-        if (.not. has_imposed_max_limit) totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored value
+        if (.not. has_imposed_min_limit) totally_min_max(1)=minval(tracer_BCs%val)
+        if (.not. has_imposed_max_limit) totally_min_max(2)=maxval(tracer_BCs%val)
+        !Check domain
+        if (.not. has_imposed_min_limit) then
+          totally_min_max(1)=minval(tracer%val(:,1:Mdims%n_in_pres,:)) !First the reservoir
+          if (Mdims%npres > 1) & !Next the wells (this is to avoid the zero values in the well domain outside of the defined regions )
+          totally_min_max(1)=min(totally_min_max(1), minval(tracer%val(:, Mdims%n_in_pres+1:Mdims%nphase,:), MASK = tracer%val > tol))
+        end if
+        if (.not. has_imposed_max_limit) totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))
         !For parallel
         call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-        deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs)
-      end if
-    case (2)
-      if (apply_minmax_principle) &
-      tracer%val = max(min(tracer%val,totally_min_max(2)), totally_min_max(1))
-    end select
+        deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs); call deallocate(tracer_BCs_robin2)
+      case (2)
+        tracer%val = max(min(tracer%val,totally_min_max(2)), totally_min_max(1))
+      end select
+    end if
 
   end subroutine
 
@@ -1185,8 +1186,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end if
 
            !Start with the process to apply the min max principle
-           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", nconc)
-           if (impose_min_max) call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
+           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
@@ -1236,7 +1236,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                     end do
                    end do
                    !Apply if required the min max principle
-                   if (impose_min_max) call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
+                   call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
 
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
@@ -3602,6 +3602,10 @@ end if
         REAL, DIMENSION ( :, :, : ), allocatable ::  CVFENX_ALL_REVERSED, UFENX_ALL_REVERSED
         REAL, DIMENSION ( :, : ), allocatable ::  UFEN_REVERSED, CVN_REVERSED, CVFEN_REVERSED
         REAL, DIMENSION ( :, : ), allocatable :: SBCVFEN_REVERSED, SBUFEN_REVERSED
+        !P0 limiter variables
+        logical :: use_P0_limiter, use_hi_order_p0
+        integer ele32,u_inod3,u_inod32
+        real, DIMENSION ( :, : ), allocatable :: N_DOT_UMEAN_UP, N_DOT_UMEAN_UP_OLD, N_DOT_UMEAN_UP2, N_DOT_UMEAN_UP2_OLD
         !Capillary pressure variables
         logical :: capillary_pressure_activated, Diffusive_cap_only
         type(tensor_field), pointer :: CapPressure
@@ -3795,6 +3799,7 @@ end if
             '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/central_differencing') &
             ) UPWIND_DGFLUX = .FALSE.
         NON_LIN_DGFLUX = .FALSE.
+
         if ( have_option( &
             '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/nonlinear_flux') &
             ) NON_LIN_DGFLUX = .TRUE.
@@ -4037,6 +4042,16 @@ end if
             ALLOCATE( DUX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
             ALLOCATE( DUOLDX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
         ENDIF
+        !Select whether to use or not a P0 limiter (by default on)
+        use_P0_limiter = is_P0DGP1 .and. .not.have_option("/numerical_methods/disable_P0_limiter")
+        use_hi_order_p0= .false.
+        IF(use_P0_limiter) THEN
+          allocate( N_DOT_UMEAN_UP(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
+          allocate( N_DOT_UMEAN_UP2(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP2_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
+          use_hi_order_p0= .false.;   NON_LIN_DGFLUX = .true.
+        ENDIF
+
+
         ! IF( (.NOT.JUST_BL_DIAG_MAT) .AND. (.NOT.Mmat%NO_MATRIX_STORE) ) call zero( Mmat%DGM_petsc )
         if (.not.got_c_matrix) Mmat%C = 0.0
         Mmat%U_RHS = 0.0
@@ -5866,13 +5881,29 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         CVM_SNDOTQOLD_IN = 0.0
                         CVM_SNDOTQOLD_OUT = 0.0
                     ENDIF
+                    !Compute limited high-order velocity when using P0DG velocity
+                    IF( use_P0_limiter ) call P0_limiter()
+
                     DO SGI=1,FE_GIdims%sbcvngi
                         DO IPHASE=1, Mdims%nphase
                             DO IDIM=1, Mdims%ndim
                                 !FTHETA( SGI,IDIM,IPHASE )=0.5 !1.0  - should be 1. as there is no theta set for the internal part of an element.
                                 FTHETA( IDIM,IPHASE,SGI )=1.0 ! 0.5
                                 ! CENT_RELAX=1.0 (central scheme) =0.0 (upwind scheme).
-                                IF( NON_LIN_DGFLUX ) THEN
+                                    IF(ELE2<1) THEN ! Use upwinding next to boundary
+                                       CENT_RELAX( IDIM,IPHASE,SGI ) = 0.0
+                                       CENT_RELAX_OLD( IDIM,IPHASE,SGI )=0.0
+                                ELSE IF( use_hi_order_p0 ) THEN ! high order...
+                                    CENT_RELAX( IDIM,IPHASE,SGI ) = 1.0
+                                    CENT_RELAX_OLD( IDIM,IPHASE,SGI )=1.0
+                                ELSE IF( use_P0_limiter ) THEN ! limiter...
+                                    CENT_RELAX( IDIM,IPHASE,SGI )    = p0_dg_oscilat_detect( SNDOTQ_KEEP(IPHASE,SGI), SNDOTQ2_KEEP(IPHASE,SGI), &
+                                        N_DOT_DU(IPHASE,SGI), N_DOT_DU2(IPHASE,SGI), SINCOME(IPHASE,SGI), &
+                                        MASS_ELE(ELE), MASS_ELE(ELE2) )
+                                    CENT_RELAX_OLD( IDIM,IPHASE,SGI )= p0_dg_oscilat_detect( SNDOTQOLD_KEEP(IPHASE,SGI), SNDOTQOLD2_KEEP(IPHASE,SGI), &
+                                        N_DOT_DUOLD(IPHASE,SGI), N_DOT_DUOLD2(IPHASE,SGI), SINCOMEOLD(IPHASE,SGI), &
+                                        MASS_ELE(ELE), MASS_ELE(ELE2) )
+                                ELSE IF( NON_LIN_DGFLUX ) THEN
                                     ! non-linear DG flux - if we have an oscillation use upwinding else use central scheme.
                                     CENT_RELAX( IDIM,IPHASE,SGI ) = dg_oscilat_detect( SNDOTQ_KEEP(IPHASE,SGI), SNDOTQ2_KEEP(IPHASE,SGI), &
                                         N_DOT_DU(IPHASE,SGI), N_DOT_DU2(IPHASE,SGI), SINCOME(IPHASE,SGI), MASS_ELE(ELE), MASS_ELE(ELE2) )
@@ -6538,8 +6569,96 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         END DO ! ENDOF DO ELE=1,TOTELE
     end subroutine get_all_in_mass_matrix
 
+    !>@brief: Computes a limited velocity when using a P0DG velocity discretisation
+    subroutine P0_limiter()
+      implicit none
+      real :: COUNT_N_DOT_UMEAN_UP, COUNT_N_DOT_UMEAN_UP2, dx, dist3, dist32, sum_dist3, sum_dist32
+      real :: xc_ele(Mdims%ndim),  xc_ele2(Mdims%ndim),  xc_ele3(Mdims%ndim),  xc_ele32(Mdims%ndim), xc_face(Mdims%ndim)
+      ! need to set NON_LIN_DGFLUX=.true.
+      ! Remember SNORMXN_ALL(Mdims%ndim,FE_GIdims%sbcvngi)
+      ! logical GOT_P0LIMITER
+      ! integer ele3,ele32,u_inod3,u_inod32
+      ! real dx, COUNT_N_DOT_UMEAN_UP, COUNT_N_DOT_UMEAN_UP2
+      ! real allocatable N_DOT_UMEAN_UP(:,:), N_DOT_UMEAN_UP_OLD(:,:), N_DOT_UMEAN_UP2(:,:), N_DOT_UMEAN_UP2_OLD(:,:)
+      ! allocate( N_DOT_UMEAN_UP(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
+      ! allocate( N_DOT_UMEAN_UP2(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP2_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
+     IF(ELE2 > 0 ) then
+      COUNT_N_DOT_UMEAN_UP=0.0
+      COUNT_N_DOT_UMEAN_UP2=0.0
+      U_ILOC=1
+      U_SILOC=1
+      do idim=1,Mdims%ndim
+        xc_ele(idim) = sum(X_ALL( idim, ndgln%x( (ELE-1)*Mdims%x_nloc + 1: ELE*Mdims%x_nloc  ) ))/real(Mdims%x_nloc)
+        xc_ele2(idim)= sum(X_ALL( idim, ndgln%x( (ELE2-1)*Mdims%x_nloc + 1: ELE2*Mdims%x_nloc  ) ))/real(Mdims%x_nloc)
+        xc_face(idim)= sum( XSL_ALL( idim, 1:Mdims%cv_snloc ))/real( Mdims%cv_snloc ) ! Bear in mind Mdims%cv_snloc=Mdims%x_snloc
+      end do
+      sum_dist3 =0.0
+      sum_dist32 =0.0
+      DO IFACE=1,FE_GIdims%nface
+        ELE3  =FACE_ELE(IFACE,ELE)
+        ELE32 =FACE_ELE(IFACE,ELE2)
+        IF((ELE3 /= ELE) .AND. (ELE3 /= ELE2).AND.(ELE3>0)) THEN
+          do idim=1, Mdims%ndim
+             xc_ele3(idim)= sum(X_ALL( idim, ndgln%x( (ELE3-1)*Mdims%x_nloc + 1: ELE3*Mdims%x_nloc  ) ))/real(Mdims%x_nloc)
+          end do
+          !                             U_INOD3=ELE3
+          U_INOD3 = ndgln%u( (ELE3-1)*Mdims%u_nloc + U_ILOC )
+          DO SGI=1,FE_GIdims%sbcvngi
+            dist3 = sqrt( sum( ((xc_ele3-xc_ele)*SNORMXN_ALL(:,SGI))**2) )
+            sum_dist3 = sum_dist3 + dist3/real(FE_GIdims%sbcvngi)
+            DO IPHASE=1,Mdims%nphase
+              N_DOT_UMEAN_UP( IPHASE,SGI )  = N_DOT_UMEAN_UP( IPHASE,SGI )  + SUM( SNORMXN_ALL(:,SGI) * U_ALL( :, IPHASE, U_INOD3) )
+              N_DOT_UMEAN_UP_OLD( IPHASE,SGI )  = N_DOT_UMEAN_UP_OLD( IPHASE,SGI )  + SUM( SNORMXN_ALL(:,SGI) * UOLD_ALL( :, IPHASE, U_INOD3) )
+            END DO
+          END DO
+          COUNT_N_DOT_UMEAN_UP = COUNT_N_DOT_UMEAN_UP + 1.0
+        ENDIF
+        IF((ELE32/=ELE).AND.(ELE32 /= ELE2).AND.(ELE32>0)) THEN
+          do idim=1, Mdims%ndim
+             xc_ele32(idim)= sum(X_ALL( idim, ndgln%x( (ELE32-1)*Mdims%x_nloc + 1: ELE32*Mdims%x_nloc  ) ))/real(Mdims%x_nloc)
+          end do
+          !                             U_INOD32=ELE32
+          U_INOD32 = ndgln%u( (ELE32-1)*Mdims%u_nloc + U_ILOC )
+          DO SGI=1,FE_GIdims%sbcvngi
+            dist32 = sqrt( sum( ((xc_ele32-xc_ele2)*SNORMXN_ALL(:,SGI))**2) )
+            sum_dist32 = sum_dist32 + dist32/real(FE_GIdims%sbcvngi)
+            DO IPHASE=1,Mdims%nphase
+              N_DOT_UMEAN_UP2( IPHASE,SGI ) = N_DOT_UMEAN_UP2( IPHASE,SGI ) + SUM( SNORMXN_ALL(:,SGI) * U_ALL( :, IPHASE, U_INOD32) )
+              N_DOT_UMEAN_UP2_OLD( IPHASE,SGI ) = N_DOT_UMEAN_UP2_OLD( IPHASE,SGI ) + SUM( SNORMXN_ALL(:,SGI) * UOLD_ALL( :, IPHASE, U_INOD32) )
+            END DO
+          END DO
+          COUNT_N_DOT_UMEAN_UP2 = COUNT_N_DOT_UMEAN_UP2 + 1.0
+        ENDIF
+      END DO
+      ! calculate the distance DX between the barycentres of the elements...
+      dx=sqrt( sum( (xc_ele-xc_ele2)**2) )
 
+      N_DOT_UMEAN_UP = N_DOT_UMEAN_UP/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP )
+      N_DOT_UMEAN_UP2 = N_DOT_UMEAN_UP2/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP2 )
+      !
+      N_DOT_UMEAN_UP = N_DOT_UMEAN_UP/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP )
+      N_DOT_UMEAN_UP2 = N_DOT_UMEAN_UP2/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP2 )
 
+      dist3 = sum_dist3/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP )
+      dist32 = sum_dist32/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP2 )
+! these are the gradients
+      N_DOT_DU  = ( SNDOTQ_KEEP - N_DOT_UMEAN_UP )/ max(1.e-20, dist3)
+      N_DOT_DU2 = ( N_DOT_UMEAN_UP2 - SNDOTQ2_KEEP )/ max(1.e-20, dist32)
+      N_DOT_DUOLD  = ( SNDOTQOLD_KEEP - N_DOT_UMEAN_UP_OLD )/ max(1.e-20, dist3)
+      N_DOT_DUOLD2 = ( N_DOT_UMEAN_UP2_OLD - SNDOTQOLD2_KEEP )/ max(1.e-20, dist32)
+! now calculate the far field values from these gradients...
+      N_DOT_DU  = SNDOTQ_KEEP  - N_DOT_DU * DX
+      N_DOT_DU2 = SNDOTQ2_KEEP + N_DOT_DU2 * DX
+      N_DOT_DUOLD  = SNDOTQOLD_KEEP  - N_DOT_DUOLD * DX
+      N_DOT_DUOLD2 = SNDOTQOLD2_KEEP + N_DOT_DUOLD2 * DX
+
+     ELSE ! Use random values...
+        N_DOT_DU  = 0.0
+        N_DOT_DU2 = 0.0
+        N_DOT_DUOLD  = 0.0
+        N_DOT_DUOLD2 = 0.0
+     ENDIF
+    end subroutine P0_limiter
 
     END SUBROUTINE ASSEMB_FORCE_CTY
 
@@ -6783,7 +6902,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 LES_MAT_UDIFFUSION_VOL(:,4,:) = LES_U_UDIFFUSION_VOL(:,10,:)+ SOUND_SPEED(:,4,:) * Q_SCHEME_ABS_CONT_VOL(:,10,:)
             end if
         ELSE
-            PRINT *,'not ready to onvert between these elements'
+            PRINT *,'LES not ready to convert between these elements. Use Petrov-Galerkin instead.'
             STOP 2211
         ENDIF
 
@@ -7440,7 +7559,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      ELSE
          CALL POSINMAT( COUNT, U_INOD, P_JNOD,  &
              FINDC, COLC )
-         IF(IDO_STORE_AC_SPAR_PT.NE.0) POSINMAT_C_STORE(U_ILOC,P_JLOC,ELE) = COUNT
+         IF(IDO_STORE_AC_SPAR_PT/=0) POSINMAT_C_STORE(U_ILOC,P_JLOC,ELE) = COUNT
      ENDIF
      RETURN
  END SUBROUTINE USE_POSINMAT_C_STORE
@@ -7749,7 +7868,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              if (present_and_true(for_transport)) then
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
                 !This method was designed for fields between 0 and 1, so for transport fields, we need to adjust Pe_aux to ensure consistency
-                if (present(totally_min_max)) Pe_aux = Pe_aux*(totally_min_max(2) - totally_min_max(1)) !THIS means making it HIGHER
+                if (present(totally_min_max)) Pe_aux = Pe_aux*abs(totally_min_max(2) - totally_min_max(1)) !THIS means making it HIGHER
              else
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
              end if
@@ -8369,6 +8488,59 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
         return
     end function dg_oscilat_detect
+
+
+    !>@brief: Determine if we have an oscillation in the normal direction...
+    !> dg_oscilat_detect=1.0- CENTRAL SCHEME.
+    !> dg_oscilat_detect=0.0- UPWIND SCHEME.
+    REAL FUNCTION p0_dg_oscilat_detect(SNDOTQ_KEEP, SNDOTQ2_KEEP, &
+      N_DOT_DU, N_DOT_DU2, SINCOME, MASS_ELE, MASS_ELE2 )
+      ! this peforms more traditional and smooth limiting...
+      real, intent( in ) :: SNDOTQ_KEEP, SNDOTQ2_KEEP, N_DOT_DU, N_DOT_DU2, SINCOME
+      real, intent( in ) :: MASS_ELE, MASS_ELE2
+      ! local variables...
+      real, DIMENSION(1) :: XI_LIMIT! slope of NVD curve
+      REAL :: centre_val, t1, t2, t3, t4
+      real, dimension(1) :: TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, &
+          CTILOU, FTILIN, FTILOU, TDLIM, tdcen, etdnew_pele, ETDNEW_PELEOT, SINCOME2
+      integer :: nfield
+      !
+!      centre_val = (SNDOTQ_KEEP*MASS_ELE2 + SNDOTQ2_KEEP*MASS_ELE)/(MASS_ELE + MASS_ELE2 )
+      centre_val = SNDOTQ_KEEP*0.5 + SNDOTQ2_KEEP*0.5 ! this is used to be consistent with the central scheme
+      T1 = N_DOT_DU ! This is a far field value now.
+      T2 = SNDOTQ_KEEP ! ele
+      T3 = SNDOTQ2_KEEP  ! ele2
+      T4 = N_DOT_DU2 ! This is a far field value now.
+      !
+      nfield=1; XI_LIMIT = 2.0
+      !---------------------------------------------------
+      !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+      !---------------------------------------------------
+! new for this sub...
+      !                          V(face of interest)
+      !---------------------------------------------------
+      !|   ELESID   |   ELE      |   ELEOTH  |   ELEOT2   |
+      !---------------------------------------------------
+      !|   T1       |   T2       |   T3      |   T4       |
+      !---------------------------------------------------
+      !|   TUPWIN   |   PELE     |   PELEOT  |   TUPWI2   |
+      !---------------------------------------------------
+      TDCEN=centre_val
+      ETDNEW_PELE=t2
+      ETDNEW_PELEOT=t3
+      TUPWIN=t1
+      TUPWI2=t4
+      SINCOME2 = SINCOME
+
+      call ONVDLIM_ANO_MANY(  NFIELD, &
+      TDLIM, TDCEN, SINCOME2, &
+      ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
+      TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
+      !
+      p0_dg_oscilat_detect = MAX(0.0,  MIN(1.0,   SINCOME2(1)*(TDLIM(1) - ETDNEW_PELEOT(1))/tolfun( TDCEN(1) - ETDNEW_PELEOT(1)) &
+                                           +(1.0-SINCOME2(1))*(TDLIM(1) - ETDNEW_PELE(1))/tolfun( TDCEN(1) - ETDNEW_PELE(1)) ))
+      return
+    end function p0_dg_oscilat_detect
 
     !>@brief: This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX,DIFF_COEFOLD_DIVDX
     !> based on a non-linear method and a non-oscillating scheme.
