@@ -1458,8 +1458,8 @@ This option is useful if your field is suddenly changing after adapting the mesh
             </element>
           </optional>
           <optional>
-            <element name="use_P0_limiter">
-              <a:documentation>Use an limiter for velocity when using P0DG. Not for porous media.</a:documentation>
+            <element name="disable_P0_limiter">
+              <a:documentation>Disable the limiter for velocity when using P0DG. Not for porous media.</a:documentation>
               <empty/>
             </element>
           </optional>

@@ -4030,8 +4030,8 @@ end if
             ALLOCATE( DUX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
             ALLOCATE( DUOLDX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
         ENDIF
-        !Select whether to use or not a P0 limiter
-        use_P0_limiter = is_P0DGP1 .and. have_option("/numerical_methods/use_P0_limiter")
+        !Select whether to use or not a P0 limiter (by default on)
+        use_P0_limiter = is_P0DGP1 .and. .not.have_option("/numerical_methods/disable_P0_limiter")
         use_hi_order_p0=.false.
         IF(use_P0_limiter) THEN
           allocate( N_DOT_UMEAN_UP(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
@@ -6573,7 +6573,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
           U_INOD32 = ndgln%u( (ELE32-1)*Mdims%u_nloc + U_ILOC )
           DO SGI=1,FE_GIdims%sbcvngi
             dist32 = sqrt( sum( ((xc_ele32-xc_face)*SNORMXN_ALL(:,SGI))**2) )
-            sum_dist32 = sum_dist32 + dist32/real(FE_GIdims%sbcvngi) 
+            sum_dist32 = sum_dist32 + dist32/real(FE_GIdims%sbcvngi)
             DO IPHASE=1,Mdims%nphase
               N_DOT_UMEAN_UP2( IPHASE,SGI ) = N_DOT_UMEAN_UP2( IPHASE,SGI ) + SUM( SNORMXN_ALL(:,SGI) * U_ALL( :, IPHASE, U_INOD32) )
               N_DOT_UMEAN_UP2_OLD( IPHASE,SGI ) = N_DOT_UMEAN_UP2_OLD( IPHASE,SGI ) + SUM( SNORMXN_ALL(:,SGI) * UOLD_ALL( :, IPHASE, U_INOD32) )
