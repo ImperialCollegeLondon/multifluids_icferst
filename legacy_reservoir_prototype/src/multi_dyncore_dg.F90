@@ -4032,12 +4032,11 @@ end if
         ENDIF
         !Select whether to use or not a P0 limiter (by default on)
         use_P0_limiter = is_P0DGP1 .and. .not.have_option("/numerical_methods/disable_P0_limiter")
-        use_hi_order_p0=.false.
+        use_hi_order_p0= .false.
         IF(use_P0_limiter) THEN
           allocate( N_DOT_UMEAN_UP(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
           allocate( N_DOT_UMEAN_UP2(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP2_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
-          use_hi_order_p0=.false.
-
+          use_hi_order_p0= .false.;   NON_LIN_DGFLUX = .true.
         ENDIF
 
 
@@ -6524,7 +6523,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
     subroutine P0_limiter()
       implicit none
       real :: COUNT_N_DOT_UMEAN_UP, COUNT_N_DOT_UMEAN_UP2, dx, dist3, dist32, sum_dist3, sum_dist32
-      real :: dist_ele_face, dist_ele2_face
       real :: xc_ele(Mdims%ndim),  xc_ele2(Mdims%ndim),  xc_ele3(Mdims%ndim),  xc_ele32(Mdims%ndim), xc_face(Mdims%ndim)
       ! need to set NON_LIN_DGFLUX=.true.
       ! Remember SNORMXN_ALL(Mdims%ndim,FE_GIdims%sbcvngi)
@@ -6556,7 +6554,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
           !                             U_INOD3=ELE3
           U_INOD3 = ndgln%u( (ELE3-1)*Mdims%u_nloc + U_ILOC )
           DO SGI=1,FE_GIdims%sbcvngi
-            dist3 = sqrt( sum( ((xc_ele3-xc_face)*SNORMXN_ALL(:,SGI))**2) )
+            dist3 = sqrt( sum( ((xc_ele3-xc_ele)*SNORMXN_ALL(:,SGI))**2) )
             sum_dist3 = sum_dist3 + dist3/real(FE_GIdims%sbcvngi)
             DO IPHASE=1,Mdims%nphase
               N_DOT_UMEAN_UP( IPHASE,SGI )  = N_DOT_UMEAN_UP( IPHASE,SGI )  + SUM( SNORMXN_ALL(:,SGI) * U_ALL( :, IPHASE, U_INOD3) )
@@ -6572,7 +6570,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
           !                             U_INOD32=ELE32
           U_INOD32 = ndgln%u( (ELE32-1)*Mdims%u_nloc + U_ILOC )
           DO SGI=1,FE_GIdims%sbcvngi
-            dist32 = sqrt( sum( ((xc_ele32-xc_face)*SNORMXN_ALL(:,SGI))**2) )
+            dist32 = sqrt( sum( ((xc_ele32-xc_ele2)*SNORMXN_ALL(:,SGI))**2) )
             sum_dist32 = sum_dist32 + dist32/real(FE_GIdims%sbcvngi)
             DO IPHASE=1,Mdims%nphase
               N_DOT_UMEAN_UP2( IPHASE,SGI ) = N_DOT_UMEAN_UP2( IPHASE,SGI ) + SUM( SNORMXN_ALL(:,SGI) * U_ALL( :, IPHASE, U_INOD32) )
@@ -6583,7 +6581,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         ENDIF
       END DO
       ! calculate the distance DX between the barycentres of the elements...
-      dx=sqrt( sum(xc_ele-xc_ele)**2)
+      dx=sqrt( sum( (xc_ele-xc_ele2)**2) )
 
       N_DOT_UMEAN_UP = N_DOT_UMEAN_UP/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP )
       N_DOT_UMEAN_UP2 = N_DOT_UMEAN_UP2/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP2 )
@@ -6593,16 +6591,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
       dist3 = sum_dist3/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP )
       dist32 = sum_dist32/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP2 )
-      dist_ele_face  = 0.0; dist_ele2_face = 0.0
-      DO SGI=1,FE_GIdims%sbcvngi
-        dist_ele_face  = dist_ele_face + sqrt( sum( (xc_ele-xc_face*SNORMXN_ALL(:,SGI))**2) )/real(FE_GIdims%sbcvngi)
-        dist_ele2_face = dist_ele2_face+ sqrt( sum( (xc_ele2-xc_face*SNORMXN_ALL(:,SGI))**2) )/real(FE_GIdims%sbcvngi)
-      end do
 ! these are the gradients
-      N_DOT_DU  = ( SNDOTQ_KEEP - N_DOT_UMEAN_UP )/ max(1.e-20, abs(dist3-dist_ele_face))
-      N_DOT_DU2 = ( N_DOT_UMEAN_UP2 - SNDOTQ2_KEEP )/ max(1.e-20, abs(dist32-dist_ele2_face))
-      N_DOT_DUOLD  = ( SNDOTQOLD_KEEP - N_DOT_UMEAN_UP_OLD )/ max(1.e-20, abs(dist3-dist_ele_face))
-      N_DOT_DUOLD2 = ( N_DOT_UMEAN_UP2_OLD - SNDOTQOLD2_KEEP )/ max(1.e-20, abs(dist32-dist_ele2_face))
+      N_DOT_DU  = ( SNDOTQ_KEEP - N_DOT_UMEAN_UP )/ max(1.e-20, dist3)
+      N_DOT_DU2 = ( N_DOT_UMEAN_UP2 - SNDOTQ2_KEEP )/ max(1.e-20, dist32)
+      N_DOT_DUOLD  = ( SNDOTQOLD_KEEP - N_DOT_UMEAN_UP_OLD )/ max(1.e-20, dist3)
+      N_DOT_DUOLD2 = ( N_DOT_UMEAN_UP2_OLD - SNDOTQOLD2_KEEP )/ max(1.e-20, dist32)
 ! now calculate the far field values from these gradients...
       N_DOT_DU  = SNDOTQ_KEEP  - N_DOT_DU * DX
       N_DOT_DU2 = SNDOTQ2_KEEP + N_DOT_DU2 * DX
@@ -8476,12 +8469,12 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 ! new for this sub...
       !                          V(face of interest)
       !---------------------------------------------------
+      !|   ELESID   |   ELE      |   ELEOTH  |   ELEOT2   |
       !---------------------------------------------------
-      !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+      !|   T1       |   T2       |   T3      |   T4       |
       !---------------------------------------------------
-      ! TAIN         THALF       TAOUT
+      !|   TUPWIN   |   PELE     |   PELEOT  |   TUPWI2   |
       !---------------------------------------------------
-      !    if( SINCOME > 0.5 ) then
       TDCEN=centre_val
       ETDNEW_PELE=t2
       ETDNEW_PELEOT=t3

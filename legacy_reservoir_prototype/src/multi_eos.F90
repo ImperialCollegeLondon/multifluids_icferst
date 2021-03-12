@@ -125,9 +125,10 @@ contains
 
         allocate( Component_l( cv_nonods ) ) ; Component_l = 0.
         allocate( drhodp_porous( cv_nonods ) ); drhodp_porous = 0.
-        if (have_option('/porous_media/porous_properties/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant') &
-            .and. .not. has_boussinesq_aprox) then!If boussinesq then we do not consider variations in rock density either
-          call Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, cv_nloc,cv_nonods,totele, rho_porous, drhodp_porous  )
+        !If boussinesq then we do not consider variations in rock density either
+        if (.not. has_boussinesq_aprox) then
+          if (have_option('/porous_media/porous_properties/scalar_field::porous_compressibility')) &
+            call Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, drhodp_porous  )
         end if
         do icomp = 1, ncomp
            do iphase = 1, nphase
@@ -689,21 +690,23 @@ contains
     !> calculate the drho/dp term for the porous media which then goes into
     !> the DERIV term in the continuity equation (cv-wise).
     !---------------------------------------------
-    subroutine Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, cv_nloc,cv_nonods,totele, rho_porous, drhodp_porous )
+    subroutine Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, drhodp_porous )
 
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
-        real, dimension( : ), allocatable :: rho_porous, drhodp_porous, rho_porous_old
-        integer, dimension( : ), pointer :: cv_ndgln
+        integer, dimension( : ), intent(in) :: cv_ndgln
+        real, dimension( : ), intent(inout) :: drhodp_porous
+        !Local variables
         type( tensor_field ), pointer :: pressure
         type( scalar_field ), pointer :: density_porous, density_porous_initial, density_porous_old
         real, dimension( : ), allocatable :: eos_coefs, perturbation_pressure, RhoPlus, RhoMinus
-        real, dimension(cv_nonods) :: cv_counter
+        real, dimension(Mdims%cv_nonods) :: cv_counter
         integer :: stat
+        real, dimension( : ), allocatable :: rho_porous, rho_porous_old
 
-        integer :: ele, cv_inod, iloc,p_den, cv_nloc, totele, cv_nonods
+        integer :: ele, cv_inod, iloc,p_den
 
         !!$ Den = Den_surface*exp(C0 * ( P_res-P_surf) )
         pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )
@@ -711,9 +714,9 @@ contains
         density_porous => extract_scalar_field( state(1), "porous_density" )
         density_porous_initial  => extract_scalar_field( state(1), "porous_density_initial" )
         density_porous_old => extract_scalar_field(state(1), "porous_density_old")
-        allocate( perturbation_pressure( cv_nonods ) ) ; perturbation_pressure = 0.
-        allocate( RhoPlus( cv_nonods ) ) ; RhoPlus = 0.
-        allocate( RhoMinus( cv_nonods ) ) ; RhoMinus = 0.
+        allocate( perturbation_pressure( Mdims%cv_nonods ) ) ; perturbation_pressure = 0.
+        allocate( RhoPlus( Mdims%cv_nonods ) ) ; RhoPlus = 0.
+        allocate( RhoMinus( Mdims%cv_nonods ) ) ; RhoMinus = 0.
         allocate( rho_porous( size(density_porous%val) ) )
         allocate( rho_porous_old(size(density_porous%val)  ) )
         allocate( eos_coefs( 1 ) ) ; eos_coefs = 0.
@@ -722,10 +725,10 @@ contains
         perturbation_pressure = 1.
         cv_counter = 0
         rho_porous_old = density_porous%val
-        do ele = 1, totele
+        do ele = 1, Mdims%totele
             p_den = min(size(density_porous%val), ele)
-            do iloc = 1,cv_nloc
-                cv_inod = cv_ndgln((ele-1)*cv_nloc+iloc)
+            do iloc = 1,Mdims%cv_nloc
+                cv_inod = cv_ndgln((ele-1)*Mdims%cv_nloc+iloc)
                 cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
                 rho_porous(p_den) = rho_porous(p_den)+ density_porous_initial%val(p_den )&
                   *exp(eos_coefs( 1 ) * (pressure % val(1,1,cv_inod) -10**5))
@@ -739,14 +742,14 @@ contains
         end do
 
         if (maxval(rho_porous)>15000.0) then
-          rho_porous = density_porous_initial%val*cv_nloc
+          rho_porous = density_porous_initial%val*Mdims%cv_nloc
         end if
 
         if (maxval(drhodp_porous)>100.0) then
           drhodp_porous = 1.e-5
         end if
         !make average
-        rho_porous = rho_porous/cv_nloc
+        rho_porous = rho_porous/Mdims%cv_nloc
         drhodp_porous = drhodp_porous/cv_counter
         density_porous%val = rho_porous
         density_porous_old%val = rho_porous_old
