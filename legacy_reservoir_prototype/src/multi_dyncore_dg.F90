@@ -8470,12 +8470,12 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 ! new for this sub...
       !                          V(face of interest)
       !---------------------------------------------------
+      !|   ELESID   |   ELE      |   ELEOTH  |   ELEOT2   |
       !---------------------------------------------------
-      !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+      !|   T1       |   T2       |   T3      |   T4       |
       !---------------------------------------------------
-      ! TAIN         THALF       TAOUT
+      !|   TUPWIN   |   PELE     |   PELEOT  |   TUPWI2   |
       !---------------------------------------------------
-      !    if( SINCOME > 0.5 ) then
       TDCEN=centre_val
       ETDNEW_PELE=t2
       ETDNEW_PELEOT=t3
