@@ -6557,7 +6557,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
           U_INOD3 = ndgln%u( (ELE3-1)*Mdims%u_nloc + U_ILOC )
           DO SGI=1,FE_GIdims%sbcvngi
             dist3 = sqrt( sum( ((xc_ele3-xc_face)*SNORMXN_ALL(:,SGI))**2) )
-            sum_dist3 = sum_dist3 + dist3
+            sum_dist3 = sum_dist3 + dist3/real(FE_GIdims%sbcvngi)
             DO IPHASE=1,Mdims%nphase
               N_DOT_UMEAN_UP( IPHASE,SGI )  = N_DOT_UMEAN_UP( IPHASE,SGI )  + SUM( SNORMXN_ALL(:,SGI) * U_ALL( :, IPHASE, U_INOD3) )
               N_DOT_UMEAN_UP_OLD( IPHASE,SGI )  = N_DOT_UMEAN_UP_OLD( IPHASE,SGI )  + SUM( SNORMXN_ALL(:,SGI) * UOLD_ALL( :, IPHASE, U_INOD3) )
@@ -6573,7 +6573,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
           U_INOD32 = ndgln%u( (ELE32-1)*Mdims%u_nloc + U_ILOC )
           DO SGI=1,FE_GIdims%sbcvngi
             dist32 = sqrt( sum( ((xc_ele32-xc_face)*SNORMXN_ALL(:,SGI))**2) )
-            sum_dist32 = sum_dist32 + dist32
+            sum_dist32 = sum_dist32 + dist32/real(FE_GIdims%sbcvngi) 
             DO IPHASE=1,Mdims%nphase
               N_DOT_UMEAN_UP2( IPHASE,SGI ) = N_DOT_UMEAN_UP2( IPHASE,SGI ) + SUM( SNORMXN_ALL(:,SGI) * U_ALL( :, IPHASE, U_INOD32) )
               N_DOT_UMEAN_UP2_OLD( IPHASE,SGI ) = N_DOT_UMEAN_UP2_OLD( IPHASE,SGI ) + SUM( SNORMXN_ALL(:,SGI) * UOLD_ALL( :, IPHASE, U_INOD32) )
@@ -6593,14 +6593,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
       dist3 = sum_dist3/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP )
       dist32 = sum_dist32/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP2 )
+      dist_ele_face  = 0.0; dist_ele2_face = 0.0
       DO SGI=1,FE_GIdims%sbcvngi
-        dist_ele_face  = sqrt( sum( (xc_ele-xc_face*SNORMXN_ALL(:,SGI))**2) )
-        dist_ele2_face = sqrt( sum( (xc_ele2-xc_face*SNORMXN_ALL(:,SGI))**2) )
+        dist_ele_face  = dist_ele_face + sqrt( sum( (xc_ele-xc_face*SNORMXN_ALL(:,SGI))**2) )/real(FE_GIdims%sbcvngi)
+        dist_ele2_face = dist_ele2_face+ sqrt( sum( (xc_ele2-xc_face*SNORMXN_ALL(:,SGI))**2) )/real(FE_GIdims%sbcvngi)
       end do
-      if (FE_GIdims%sbcvngi > 1) then !Obtain average
-        dist_ele_face = dist_ele_face/ dble(FE_GIdims%sbcvngi)
-        dist_ele2_face = dist_ele2_face/ dble(FE_GIdims%sbcvngi)
-      end if
 ! these are the gradients
       N_DOT_DU  = ( SNDOTQ_KEEP - N_DOT_UMEAN_UP )/ max(1.e-20, abs(dist3-dist_ele_face))
       N_DOT_DU2 = ( N_DOT_UMEAN_UP2 - SNDOTQ2_KEEP )/ max(1.e-20, abs(dist32-dist_ele2_face))
@@ -7828,7 +7825,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              if (present_and_true(for_transport)) then
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
                 !This method was designed for fields between 0 and 1, so for transport fields, we need to adjust Pe_aux to ensure consistency
-                if (present(totally_min_max)) Pe_aux = Pe_aux*max(abs(totally_min_max(2) - totally_min_max(1)),1.0) !THIS means making it HIGHER
+                if (present(totally_min_max)) Pe_aux = Pe_aux*abs(totally_min_max(2) - totally_min_max(1)) !THIS means making it HIGHER
              else
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
              end if
@@ -8499,10 +8496,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       !
       p0_dg_oscilat_detect = MAX(0.0,  MIN(1.0,   SINCOME2(1)*(TDLIM(1) - ETDNEW_PELEOT(1))/tolfun( TDCEN(1) - ETDNEW_PELEOT(1)) &
                                            +(1.0-SINCOME2(1))*(TDLIM(1) - ETDNEW_PELE(1))/tolfun( TDCEN(1) - ETDNEW_PELE(1)) ))
-      !            TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
-      !    else
-      !        call
-      !    endif
       return
     end function p0_dg_oscilat_detect
 

@@ -841,4 +841,7 @@
       </tensor_field>
     </hr_adaptivity>
   </mesh_adaptivity>
+  <numerical_methods>
+    <use_P0_limiter/>
+  </numerical_methods>
 </icferst_options>
