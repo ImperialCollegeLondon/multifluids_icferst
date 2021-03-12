@@ -4036,7 +4036,7 @@ end if
         IF(use_P0_limiter) THEN
           allocate( N_DOT_UMEAN_UP(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
           allocate( N_DOT_UMEAN_UP2(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP2_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
-          use_hi_order_p0=.true.
+          use_hi_order_p0=.false.
 
         ENDIF
 
@@ -6522,7 +6522,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
     !>@brief: Computes a limited velocity when using a P0DG velocity discretisation
     subroutine P0_limiter()
-      real :: COUNT_N_DOT_UMEAN_UP, COUNT_N_DOT_UMEAN_UP2, dx
+      implicit none
+      real :: COUNT_N_DOT_UMEAN_UP, COUNT_N_DOT_UMEAN_UP2, dx, dist3, dist32, sum_dist3, sum_dist32
+      real :: dist_ele_face, dist_ele2_face
+      real :: xc_ele(Mdims%ndim),  xc_ele2(Mdims%ndim),  xc_ele3(Mdims%ndim),  xc_ele32(Mdims%ndim), xc_face(Mdims%ndim)
       ! need to set NON_LIN_DGFLUX=.true.
       ! Remember SNORMXN_ALL(Mdims%ndim,FE_GIdims%sbcvngi)
       ! logical GOT_P0LIMITER
@@ -6536,13 +6539,25 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
       COUNT_N_DOT_UMEAN_UP2=0.0
       U_ILOC=1
       U_SILOC=1
+      do idim=1,Mdims%ndim
+        xc_ele(idim) = sum(X_ALL( idim, ndgln%x( (ELE-1)*Mdims%x_nloc + 1: ELE*Mdims%x_nloc  ) ))/real(Mdims%x_nloc)
+        xc_ele2(idim)= sum(X_ALL( idim, ndgln%x( (ELE2-1)*Mdims%x_nloc + 1: ELE2*Mdims%x_nloc  ) ))/real(Mdims%x_nloc)
+        xc_face(idim)= sum( XSL_ALL( idim, 1:Mdims%cv_snloc ))/real( Mdims%cv_snloc ) ! Bear in mind Mdims%cv_snloc=Mdims%x_snloc
+      end do
+      sum_dist3 =0.0
+      sum_dist32 =0.0
       DO IFACE=1,FE_GIdims%nface
         ELE3  =FACE_ELE(IFACE,ELE)
         ELE32 =FACE_ELE(IFACE,ELE2)
         IF((ELE3 /= ELE) .AND. (ELE3 /= ELE2).AND.(ELE3>0)) THEN
+          do idim=1, Mdims%ndim
+             xc_ele3(idim)= sum(X_ALL( idim, ndgln%x( (ELE3-1)*Mdims%x_nloc + 1: ELE3*Mdims%x_nloc  ) ))/real(Mdims%x_nloc)
+          end do
           !                             U_INOD3=ELE3
           U_INOD3 = ndgln%u( (ELE3-1)*Mdims%u_nloc + U_ILOC )
           DO SGI=1,FE_GIdims%sbcvngi
+            dist3 = sqrt( sum( ((xc_ele3-xc_face)*SNORMXN_ALL(:,SGI))**2) )
+            sum_dist3 = sum_dist3 + dist3
             DO IPHASE=1,Mdims%nphase
               N_DOT_UMEAN_UP( IPHASE,SGI )  = N_DOT_UMEAN_UP( IPHASE,SGI )  + SUM( SNORMXN_ALL(:,SGI) * U_ALL( :, IPHASE, U_INOD3) )
               N_DOT_UMEAN_UP_OLD( IPHASE,SGI )  = N_DOT_UMEAN_UP_OLD( IPHASE,SGI )  + SUM( SNORMXN_ALL(:,SGI) * UOLD_ALL( :, IPHASE, U_INOD3) )
@@ -6551,9 +6566,14 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
           COUNT_N_DOT_UMEAN_UP = COUNT_N_DOT_UMEAN_UP + 1.0
         ENDIF
         IF((ELE32/=ELE).AND.(ELE32 /= ELE2).AND.(ELE32>0)) THEN
+          do idim=1, Mdims%ndim
+             xc_ele32(idim)= sum(X_ALL( idim, ndgln%x( (ELE32-1)*Mdims%x_nloc + 1: ELE32*Mdims%x_nloc  ) ))/real(Mdims%x_nloc)
+          end do
           !                             U_INOD32=ELE32
           U_INOD32 = ndgln%u( (ELE32-1)*Mdims%u_nloc + U_ILOC )
           DO SGI=1,FE_GIdims%sbcvngi
+            dist32 = sqrt( sum( ((xc_ele32-xc_face)*SNORMXN_ALL(:,SGI))**2) )
+            sum_dist32 = sum_dist32 + dist32
             DO IPHASE=1,Mdims%nphase
               N_DOT_UMEAN_UP2( IPHASE,SGI ) = N_DOT_UMEAN_UP2( IPHASE,SGI ) + SUM( SNORMXN_ALL(:,SGI) * U_ALL( :, IPHASE, U_INOD32) )
               N_DOT_UMEAN_UP2_OLD( IPHASE,SGI ) = N_DOT_UMEAN_UP2_OLD( IPHASE,SGI ) + SUM( SNORMXN_ALL(:,SGI) * UOLD_ALL( :, IPHASE, U_INOD32) )
@@ -6563,12 +6583,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         ENDIF
       END DO
       ! calculate the distance DX between the barycentres of the elements...
-        dx=0.0
-        do idim=1,Mdims%ndim
-          DX =dx+(  sum(X_ALL( idim, ndgln%x( (ELE-1)*Mdims%x_nloc + 1: ELE*Mdims%x_nloc  ) ))/real(Mdims%x_nloc)&
-          - sum(X_ALL( idim, ndgln%x( (ELE2-1)*Mdims%x_nloc + 1: ELE2*Mdims%x_nloc ) ))/real(Mdims%x_nloc) )**2
-        end do
-        dx=sqrt(dx)
+      dx=sqrt( sum(xc_ele-xc_ele)**2)
 
       N_DOT_UMEAN_UP = N_DOT_UMEAN_UP/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP )
       N_DOT_UMEAN_UP2 = N_DOT_UMEAN_UP2/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP2 )
@@ -6576,10 +6591,27 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
       N_DOT_UMEAN_UP = N_DOT_UMEAN_UP/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP )
       N_DOT_UMEAN_UP2 = N_DOT_UMEAN_UP2/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP2 )
 
-      N_DOT_DU  = ( SNDOTQ_KEEP - N_DOT_UMEAN_UP )/ DX
-      N_DOT_DU2 = ( N_DOT_UMEAN_UP2 - SNDOTQ2_KEEP )/ DX
-      N_DOT_DUOLD  = ( SNDOTQOLD_KEEP - N_DOT_UMEAN_UP_OLD )/ DX
-      N_DOT_DUOLD2 = ( N_DOT_UMEAN_UP2_OLD - SNDOTQOLD2_KEEP )/ DX
+      dist3 = sum_dist3/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP )
+      dist32 = sum_dist32/MAX(1.E-3, COUNT_N_DOT_UMEAN_UP2 )
+      DO SGI=1,FE_GIdims%sbcvngi
+        dist_ele_face  = sqrt( sum( (xc_ele-xc_face*SNORMXN_ALL(:,SGI))**2) )
+        dist_ele2_face = sqrt( sum( (xc_ele2-xc_face*SNORMXN_ALL(:,SGI))**2) )
+      end do
+      if (SGI > 1) then !Obtain average
+        dist_ele_face = dist_ele_face/ dble(FE_GIdims%sbcvngi)
+        dist_ele2_face = dist_ele2_face/ dble(FE_GIdims%sbcvngi)
+      end if
+! these are the gradients
+      N_DOT_DU  = ( SNDOTQ_KEEP - N_DOT_UMEAN_UP )/ max(1.e-20, abs(dist3-dist_ele_face))
+      N_DOT_DU2 = ( N_DOT_UMEAN_UP2 - SNDOTQ2_KEEP )/ max(1.e-20, abs(dist32-dist_ele2_face))
+      N_DOT_DUOLD  = ( SNDOTQOLD_KEEP - N_DOT_UMEAN_UP_OLD )/ max(1.e-20, abs(dist3-dist_ele_face))
+      N_DOT_DUOLD2 = ( N_DOT_UMEAN_UP2_OLD - SNDOTQOLD2_KEEP )/ max(1.e-20, abs(dist32-dist_ele2_face))
+! now calculate the far field values from these gradients...
+      N_DOT_DU  = SNDOTQ_KEEP  - N_DOT_DU * DX
+      N_DOT_DU2 = SNDOTQ2_KEEP + N_DOT_DU2 * DX
+      N_DOT_DUOLD  = SNDOTQOLD_KEEP  - N_DOT_DUOLD * DX
+      N_DOT_DUOLD2 = SNDOTQOLD2_KEEP + N_DOT_DUOLD2 * DX
+
      ELSE ! Use random values...
         N_DOT_DU  = 0.0
         N_DOT_DU2 = 0.0
@@ -8433,13 +8465,20 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
           CTILOU, FTILIN, FTILOU, TDLIM, tdcen, etdnew_pele, ETDNEW_PELEOT, SINCOME2
       integer :: nfield
       !
-      centre_val = (SNDOTQ_KEEP*MASS_ELE2 + SNDOTQ2_KEEP*MASS_ELE)/(MASS_ELE + MASS_ELE2 )
-      T1 = SNDOTQ_KEEP - N_DOT_DU
+!      centre_val = (SNDOTQ_KEEP*MASS_ELE2 + SNDOTQ2_KEEP*MASS_ELE)/(MASS_ELE + MASS_ELE2 )
+      centre_val = SNDOTQ_KEEP*0.5 + SNDOTQ2_KEEP*0.5 ! this is used to be consistent with the central scheme
+      T1 = N_DOT_DU ! This is a far field value now.
       T2 = SNDOTQ_KEEP ! ele
       T3 = SNDOTQ2_KEEP  ! ele2
-      T4 = SNDOTQ2_KEEP + N_DOT_DU2
+      T4 = N_DOT_DU2 ! This is a far field value now.
       !
-      nfield=1; XI_LIMIT = 2.
+      nfield=1; XI_LIMIT = 2.0
+      !---------------------------------------------------
+      !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+      !---------------------------------------------------
+! new for this sub...
+      !                          V(face of interest)
+      !---------------------------------------------------
       !---------------------------------------------------
       !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
       !---------------------------------------------------
@@ -8458,10 +8497,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
       TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
       !
-      p0_dg_oscilat_detect = MAX(0.0,  MIN(1.0,   (TDLIM(1) - ETDNEW_PELEOT(1))/tolfun( TDCEN(1) - ETDNEW_PELEOT(1))  ))
-      !        call ONVDLIM_ANO_MANY( NFIELD, &
-      !            TDLIM, TDCEN, INCOME, &
-      !            ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
+      p0_dg_oscilat_detect = MAX(0.0,  MIN(1.0,   SINCOME2(1)*(TDLIM(1) - ETDNEW_PELEOT(1))/tolfun( TDCEN(1) - ETDNEW_PELEOT(1)) &
+                                           +(1.0-SINCOME2(1))*(TDLIM(1) - ETDNEW_PELE(1))/tolfun( TDCEN(1) - ETDNEW_PELE(1)) ))
       !            TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
       !    else
       !        call
