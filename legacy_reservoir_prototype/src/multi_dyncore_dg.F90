@@ -4032,12 +4032,11 @@ end if
         ENDIF
         !Select whether to use or not a P0 limiter (by default on)
         use_P0_limiter = is_P0DGP1 .and. .not.have_option("/numerical_methods/disable_P0_limiter")
-        use_hi_order_p0=.false.
+        use_hi_order_p0= .false.
         IF(use_P0_limiter) THEN
           allocate( N_DOT_UMEAN_UP(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
           allocate( N_DOT_UMEAN_UP2(Mdims%nphase,FE_GIdims%sbcvngi), N_DOT_UMEAN_UP2_OLD(Mdims%nphase,FE_GIdims%sbcvngi) )
-          use_hi_order_p0=.false.
-
+          use_hi_order_p0= .false.;   NON_LIN_DGFLUX = .true.
         ENDIF
 
 
