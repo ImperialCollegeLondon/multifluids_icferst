@@ -45,7 +45,7 @@ os.system(binpath + ' ' + path + '/*mpml')
 #The present values are just above the values I got when writing the script
 #The errors seem big but that is 
 #because the MAXIMUM pressure is about 10^6
-Tolerance_L1_NORM = 0.003
+Tolerance_L1_NORM = 0.0048
 
 
 #The name of the file and number can be introduced here

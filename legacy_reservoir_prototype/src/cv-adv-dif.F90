@@ -3187,60 +3187,6 @@ end if
             RETURN
         END SUBROUTINE GET_INT_VEL_POROUS_VEL
 
-
-        PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
-            TDLIM, TDCEN, INCOME, &
-            ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
-            TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
-            implicit none
-            ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-            ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-            ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-            ! LIBETA is the flux limiting parameter.
-            ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
-            ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-            ! PELEOT=element at other side of current face.
-            ! ELEOT2=element at other side of the element ELEOTH.
-            ! ELESID=element next to oposing current face.
-            ! DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU => memory
-            ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-            ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-            !---------------------------------------------------
-            !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-            !---------------------------------------------------
-            ! TAIN         THALF       TAOUT
-            !---------------------------------------------------
-            !>TEXTIN
-            !TEXOUT<
-            !---------------------------------------------------
-            INTEGER, intent( in ) :: NFIELD
-            REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
-            REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
-            REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
-            real, dimension( NFIELD ), intent(inout) :: DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU
-            ! Local variables
-            REAL, PARAMETER :: TOLER=1.0E-10
-            ! Calculate normalisation parameters for incomming velocities
-            DENOIN = ( ETDNEW_PELE - TUPWIN )
-            where( ABS( DENOIN ) < TOLER )
-                DENOIN = SIGN( TOLER, DENOIN )
-            end where
-            CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
-            ! Calculate normalisation parameters for out going velocities
-            DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
-            where( ABS( DENOOU ) < TOLER )
-                DENOOU = SIGN( TOLER, DENOOU )
-            end where
-            CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
-            FTILIN = ( TDCEN - TUPWIN ) / DENOIN
-            FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
-            ! Velocity is going out of element
-            TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW_MANY( FTILIN, CTILIN, XI_LIMIT ) * DENOIN ) &
-                + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
-            TDLIM = MAX( TDLIM, 0.0 )
-            RETURN
-        END SUBROUTINE ONVDLIM_ANO_MANY
-
         FUNCTION FACE_THETA_MANY( DT, CV_THETA, INTERFACE_TRACK, HDC, NPHASE, n_in_pres,&
             NDOTQ, LIMDT, DIFF_COEF_DIVDX, &
             T_NODJ_IPHA, T_NODI_IPHA,  &
@@ -3504,6 +3450,58 @@ end if
 
     END SUBROUTINE CV_ASSEMB
 
+    PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
+        TDLIM, TDCEN, INCOME, &
+        ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
+        TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
+        implicit none
+        ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+        ! difference face values TDCEN(1...SNGI) using a NVD shceme.
+        ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
+        ! LIBETA is the flux limiting parameter.
+        ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
+        ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
+        ! PELEOT=element at other side of current face.
+        ! ELEOT2=element at other side of the element ELEOTH.
+        ! ELESID=element next to oposing current face.
+        ! DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU => memory
+        ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+        ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
+        !---------------------------------------------------
+        !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+        !---------------------------------------------------
+        ! TAIN         THALF       TAOUT
+        !---------------------------------------------------
+        !>TEXTIN
+        !TEXOUT<
+        !---------------------------------------------------
+        INTEGER, intent( in ) :: NFIELD
+        REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
+        REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
+        REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
+        real, dimension( NFIELD ), intent(inout) :: DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU
+        ! Local variables
+        REAL, PARAMETER :: TOLER=1.0E-10
+        ! Calculate normalisation parameters for incomming velocities
+        DENOIN = ( ETDNEW_PELE - TUPWIN )
+        where( ABS( DENOIN ) < TOLER )
+            DENOIN = SIGN( TOLER, DENOIN )
+        end where
+        CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
+        ! Calculate normalisation parameters for out going velocities
+        DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
+        where( ABS( DENOOU ) < TOLER )
+            DENOOU = SIGN( TOLER, DENOOU )
+        end where
+        CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
+        FTILIN = ( TDCEN - TUPWIN ) / DENOIN
+        FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
+        ! Velocity is going out of element
+        TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW_MANY( FTILIN, CTILIN, XI_LIMIT ) * DENOIN ) &
+            + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
+        TDLIM = MAX( TDLIM, 0.0 )
+        RETURN
+    END SUBROUTINE ONVDLIM_ANO_MANY
 
     SUBROUTINE IS_FIELD_CONSTANT(IGOT_T_CONST, IGOT_T_CONST_VALUE, T_ALL, CV_NONODS)
         !SPRINT_TO_DO THIS SUBROUTINE IS HORRIBLE!!!! we need to find another way of checking if a field is constant!

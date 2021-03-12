@@ -1193,6 +1193,10 @@ start =
             element use_ENO_scheme {
                empty
             }?,
+            ## Disable the limiter for velocity when using P0DG. Not for porous media.
+            element disable_P0_limiter {
+               empty
+            }?,
             ## Use a method to avoid distortion due to boundaries
             element use_reflect_method {
                empty

@@ -92,20 +92,6 @@
           </linear_scheme>
         </viscosity_scheme>
       </Viscosity>
-      <Stabilisation>
-        <Petrov_Galerkin_stabilisation>
-          <method>
-            <integer_value rank="0">2</integer_value>
-          </method>
-          <nonlinear_velocity_coefficient>
-            <real_value rank="0">1.0</real_value>
-          </nonlinear_velocity_coefficient>
-          <include_pressure>
-            <real_value rank="0">1.0</real_value>
-          </include_pressure>
-          <tensor_form/>
-        </Petrov_Galerkin_stabilisation>
-      </Stabilisation>
     </phase_properties>
     <scalar_field name="Pressure" rank="0">
       <prognostic>
