@@ -6597,7 +6597,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         dist_ele_face  = sqrt( sum( (xc_ele-xc_face*SNORMXN_ALL(:,SGI))**2) )
         dist_ele2_face = sqrt( sum( (xc_ele2-xc_face*SNORMXN_ALL(:,SGI))**2) )
       end do
-      if (SGI > 1) then !Obtain average
+      if (FE_GIdims%sbcvngi > 1) then !Obtain average
         dist_ele_face = dist_ele_face/ dble(FE_GIdims%sbcvngi)
         dist_ele2_face = dist_ele2_face/ dble(FE_GIdims%sbcvngi)
       end if
