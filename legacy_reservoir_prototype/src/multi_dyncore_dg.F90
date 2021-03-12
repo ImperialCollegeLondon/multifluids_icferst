@@ -6524,6 +6524,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
       implicit none
       real :: COUNT_N_DOT_UMEAN_UP, COUNT_N_DOT_UMEAN_UP2, dx, dist3, dist32, sum_dist3, sum_dist32
       real :: xc_ele(Mdims%ndim),  xc_ele2(Mdims%ndim),  xc_ele3(Mdims%ndim),  xc_ele32(Mdims%ndim), xc_face(Mdims%ndim)
+      integer :: idim, iface, sgi
       ! need to set NON_LIN_DGFLUX=.true.
       ! Remember SNORMXN_ALL(Mdims%ndim,FE_GIdims%sbcvngi)
       ! logical GOT_P0LIMITER
