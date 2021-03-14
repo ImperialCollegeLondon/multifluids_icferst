@@ -718,14 +718,6 @@ contains
                   thermal = .false.,saturation=saturation_field, nonlinear_iteration = its, &
                   Courant_number = Courant_number, magma_phase_coefficients=  magma_phase_coef)
 
-                  ! ! Calculate melt fraction from phase diagram
-                  call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
-                  ! ! Update the temperature field
-                  call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
-                  ! ! Update the composition
-                  call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
-                  !Recalculate densities
-                  call Calculate_All_Rhos( state, packed_state, Mdims )
                 END IF Conditional_ScalarAdvectionField
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
@@ -763,10 +755,10 @@ contains
                   allocate(Compostion_temp(Mdims%cv_nonods), melt_temp(Mdims%cv_nonods))
                   Compostion_temp= tracer_field%val(1,2,:); melt_temp = saturation_field%val(1,2,:)! second phase is the melt!
 
-                  ! ! Update the temperature field
-                  call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
                   !Here we  Calculate melt fraction from phase diagram
                   call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
+                  ! ! Update the temperature field
+                  call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
                   ! ! Update the composition
                   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
                   ! Calulate the composition source term
