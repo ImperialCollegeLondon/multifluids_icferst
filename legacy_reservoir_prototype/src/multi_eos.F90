@@ -1416,12 +1416,8 @@ contains
           if ( is_magma ) then
             do nod = 1, Mdims%cv_nonods
               g = node_val( gravity_direction, nod ) * gravity_magnitude
-              do iphase = start_phase, Mdims%nphase
-                if (iphase == 1 ) then
+              do iphase = 1, 1
                   auxR=sum(den(:,nod)*sat_field%val(1, :, nod))
-                else
-                  auxR= den( iphase, nod )
-                end if
                 do idim = 1, Mdims%ndim
                   u_source_cv( idim, iphase, nod ) = auxR * g( idim )
                 end do
