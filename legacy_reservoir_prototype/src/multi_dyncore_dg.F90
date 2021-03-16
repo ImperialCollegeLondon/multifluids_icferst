@@ -3018,6 +3018,12 @@ end if
         type(tensor_field), pointer :: tracer, density
         REAL, DIMENSION( : , :, : ), pointer :: V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
         INTEGER :: one_or_n_in_press
+        type( tensor_field ), TARGET :: unit_field
+
+        type( mesh_type ), pointer :: pmesh
+        pmesh => extract_mesh( packed_state, "PhaseVolumeFraction" )
+        call allocate( unit_field, pmesh, "unit_field" ); call zero ( unit_field )
+        unit_field%val=1.0;
 
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
         GET_THETA_FLUX = .FALSE.
@@ -3057,12 +3063,15 @@ end if
            DENOLD_OR_ONE = DENOLD_ALL
         END IF
         ! no q scheme
-        tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+
         density=>extract_tensor_field(packed_state,"PackedDensity")
+
         if (is_magma) then
           one_or_n_in_press=1
+          tracer=>unit_field
         else
           one_or_n_in_press=Mdims%n_in_pres
+          tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         end if
 
         call CV_ASSEMB( state, packed_state, &
