@@ -2153,9 +2153,9 @@ end if
         !Allocation of storable matrices
         if (.not.Mmat%Stored) then
             if (Mmat%CV_pressure) then
-                allocate(Mmat%C_CV(Mdims%ndim, final_phase, Mspars%C%ncol)); Mmat%C_CV = 0.
+                allocate(Mmat%C_CV(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C_CV = 0.
             else !allocate C
-                allocate(Mmat%C(Mdims%ndim, final_phase, Mspars%C%ncol)); Mmat%C = 0.
+                allocate(Mmat%C(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C = 0.
             end if
             if (Mmat%compact_PIVIT_MAT) then!Use a compacted and lumped version of the mass matrix
                     !sprint_to_do for this to work with wells we need to change the sparsity, but that still needs to be done!
@@ -2624,7 +2624,7 @@ end if
                   u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
                   DO JDIM = 1, Mdims%ndim
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
-                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
                     !Just the mass matrix
 !once this is working, viscosity and density need to be chose CV-averaged wise!
                     Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc) * (viscosity%val(1,1,1))
