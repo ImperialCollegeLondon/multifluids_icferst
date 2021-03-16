@@ -2650,8 +2650,13 @@ end if
           !Local variables
           type( vector_field ) :: packed_vel, rhs
           !Pointers to convert from tensor data to vector data
-          packed_vel = as_packed_vector2(Velocity, final_phase)
-          rhs = as_packed_vector2(CDP_tensor, final_phase)
+          if (is_magma) then
+            packed_vel = as_packed_vector2(Velocity, final_phase)
+            rhs = as_packed_vector2(CDP_tensor, final_phase)
+          else
+            packed_vel = as_packed_vector(Velocity, final_phase)
+            rhs = as_packed_vector(CDP_tensor, final_phase)
+          end if
 
 ! call MatView(Mmat%DGM_PETSC%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
           !Compute - u_new = A^-1( - Gradient * P + RHS)
