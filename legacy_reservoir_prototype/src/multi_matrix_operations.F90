@@ -1614,11 +1614,17 @@ contains
             nullify(matrix%row_halo)
             nullify(matrix%column_halo)
         end if
-
-        call allocate(matrix%row_numbering,node_count(velocity),&
-            product(velocity%dim),halo = halo)
-        call allocate(matrix%column_numbering,node_count(velocity),&
-            product(velocity%dim),halo = halo)
+        if (is_magma) then  ! For magma, only assemble the matrix for the first phase
+          call allocate(matrix%row_numbering,node_count(velocity),&
+              velocity%dim(1),halo = halo)
+          call allocate(matrix%column_numbering,node_count(velocity),&
+              velocity%dim(1),halo = halo)
+        else
+          call allocate(matrix%row_numbering,node_count(velocity),&
+              product(velocity%dim),halo = halo)
+          call allocate(matrix%column_numbering,node_count(velocity),&
+              product(velocity%dim),halo = halo)
+        end if
 
         if (.not. IsParallel()) then
             matrix%M=full_CreateSeqAIJ(sparsity, matrix%row_numbering, &
