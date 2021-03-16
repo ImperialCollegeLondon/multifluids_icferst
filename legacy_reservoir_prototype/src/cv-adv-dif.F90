@@ -512,8 +512,11 @@ contains
           end if
           !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
           U_ALL => NU_ALL
-
-          old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
+          if (tracer%name=='unit_field') then
+            old_tracer=>tracer
+          else
+            old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
+          end if
           old_density=>extract_tensor_field(packed_state,GetOldName(density))
           if (present(saturation)) then
               old_saturation=>extract_tensor_field(packed_state,&

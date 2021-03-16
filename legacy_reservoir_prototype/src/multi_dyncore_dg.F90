@@ -3058,8 +3058,8 @@ end if
            DEN_OR_ONE = 1.
            DENOLD_OR_ONE = 1.
         ELSE
-           DEN_OR_ONE = DEN_ALL
-           DENOLD_OR_ONE = DENOLD_ALL
+           DEN_OR_ONE = DEN_ALL(1:final_phase, :)
+           DENOLD_OR_ONE = DENOLD_ALL(1:final_phase, :)
         END IF
         ! no q scheme
 
@@ -3091,7 +3091,7 @@ end if
             dummy_transp, &
             eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, &
             calculate_mass_delta = calculate_mass_delta, outfluxes = outfluxes)
-            
+
         ewrite(3,*)'Back from cv_assemb'
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
         DEALLOCATE( THETA_GDIFF )
@@ -4179,11 +4179,11 @@ end if
                     UDIFFUSION_ALL=UDIFFUSION + LES_UDIFFUSION
                 ENDIF
                 !UDIFFUSION_VOL_ALL=UDIFFUSION_VOL + LES_UDIFFUSION_VOL
-                if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(1,1,:,:)
+                if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(1,1,1:final_phase,:)
                 UDIFFUSION_VOL_ALL = UDIFFUSION_VOL_ALL + LES_UDIFFUSION_VOL
             ELSE
                 UDIFFUSION_ALL=UDIFFUSION
-                if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(1,1,:,:)
+                if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(1,1,1:final_phase,:)
             ENDIF
         ENDIF
         if( RETRIEVE_SOLID_CTY ) THEN
@@ -4286,11 +4286,11 @@ end if
             DO CV_ILOC = 1, Mdims%cv_nloc
                 CV_INOD = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                 IF(IGOT_VOL_X_PRESSURE==1) THEN
-                    LOC_UDEN( :, CV_ILOC ) = UDEN( :, CV_INOD ) * FEM_VOL_FRAC( :, CV_INOD )
-                    LOC_UDENOLD( :, CV_ILOC) = UDENOLD( :, CV_INOD ) * FEM_VOL_FRAC( :, CV_INOD )
+                    LOC_UDEN( :, CV_ILOC ) = UDEN( 1: final_phase, CV_INOD ) * FEM_VOL_FRAC( :, CV_INOD )
+                    LOC_UDENOLD( :, CV_ILOC) = UDENOLD( 1: final_phase, CV_INOD ) * FEM_VOL_FRAC( :, CV_INOD )
                 ELSE
-                    LOC_UDEN( :, CV_ILOC ) = UDEN( :, CV_INOD )
-                    LOC_UDENOLD( :, CV_ILOC) = UDENOLD( :, CV_INOD )
+                    LOC_UDEN( :, CV_ILOC ) = UDEN(1:final_phase, CV_INOD )
+                    LOC_UDENOLD( :, CV_ILOC) = UDENOLD( 1: final_phase, CV_INOD )
                 ENDIF
                 IF(GOT_VIRTUAL_MASS) THEN
                     LOC_VIRTUAL_MASS( :,:, CV_ILOC )         = VIRTUAL_MASS( :,:, CV_INOD )
@@ -5392,15 +5392,15 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         MAT_INOD2 = MAT_INOD
                     END IF
                     IF(IGOT_VOL_X_PRESSURE==1) THEN
-                        SLOC_UDEN( :, CV_SILOC )  = UDEN( :, CV_INOD ) * FEM_VOL_FRAC( :, CV_INOD )
-                        SLOC2_UDEN( :, CV_SILOC ) = UDEN( :, CV_INOD2 ) * FEM_VOL_FRAC( :, CV_INOD2 )
-                        SLOC_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD ) * FEM_VOL_FRAC( :, CV_INOD )
-                        SLOC2_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD2 ) * FEM_VOL_FRAC( :, CV_INOD2 )
+                        SLOC_UDEN( :, CV_SILOC )  = UDEN(  1: final_phase, CV_INOD ) * FEM_VOL_FRAC( :, CV_INOD )
+                        SLOC2_UDEN( :, CV_SILOC ) = UDEN(  1: final_phase, CV_INOD2 ) * FEM_VOL_FRAC( :, CV_INOD2 )
+                        SLOC_UDENOLD( :, CV_SILOC ) = UDENOLD(  1: final_phase, CV_INOD ) * FEM_VOL_FRAC( :, CV_INOD )
+                        SLOC2_UDENOLD( :, CV_SILOC ) = UDENOLD(  1: final_phase, CV_INOD2 ) * FEM_VOL_FRAC( :, CV_INOD2 )
                     ELSE
-                        SLOC_UDEN( :, CV_SILOC )  = UDEN( :, CV_INOD )
-                        SLOC2_UDEN( :, CV_SILOC ) = UDEN( :, CV_INOD2 )
-                        SLOC_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD )
-                        SLOC2_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD2 )
+                        SLOC_UDEN( :, CV_SILOC )  = UDEN( 1: final_phase, CV_INOD )
+                        SLOC2_UDEN( :, CV_SILOC ) = UDEN(  1: final_phase, CV_INOD2 )
+                        SLOC_UDENOLD( :, CV_SILOC ) = UDENOLD(  1: final_phase, CV_INOD )
+                        SLOC2_UDENOLD( :, CV_SILOC ) = UDENOLD(  1: final_phase, CV_INOD2 )
                     ENDIF
                     IF(GOT_VIRTUAL_MASS) THEN
                         SLOC_VIRTUAL_MASS( :,:, CV_SILOC )   = VIRTUAL_MASS( :,:, CV_INOD )
