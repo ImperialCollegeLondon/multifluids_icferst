@@ -4278,7 +4278,7 @@ end if
                     APPLYBC = (ELE /= ELE2) .AND. (ELE2 /= 0)
 
                 ELSE
-                    APPLYBC = ( WIC_T_BC( :, :, SELE2 ) == WIC_T_BC_DIRICHLET )
+                    APPLYBC = ( WIC_T_BC( :, 1:NPHASE, SELE2 ) == WIC_T_BC_DIRICHLET )
                 END IF
 
                 DO CV_SILOC = 1, CV_SNLOC

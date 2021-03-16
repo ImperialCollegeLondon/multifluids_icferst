@@ -2020,7 +2020,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         IGOT_CMC_PRECON = 0
         if ( FEM_continuity_equation ) IGOT_CMC_PRECON = 1
         !sprint_to_do!this looks like a place than can be easily optimized
-        ALLOCATE( UDEN_ALL( final_phase, Mdims%cv_nonods ), UDENOLD_ALL( final_phase, Mdims%cv_nonods ) )
+        ALLOCATE( UDEN_ALL( Mdims%nphase, Mdims%cv_nonods ), UDENOLD_ALL( Mdims%nphase, Mdims%cv_nonods ) ) ! UDEN still needs all phases for magma
         UDEN_ALL = 0.; UDENOLD_ALL = 0.
         ewrite(3,*) 'In FORCE_BAL_CTY_ASSEM_SOLVE'
         ALLOCATE( Mmat%CT( Mdims%ndim, final_phase, Mspars%CT%ncol )) ; Mmat%CT=0.
@@ -3021,7 +3021,7 @@ end if
         type( tensor_field ), TARGET :: unit_field
 
         type( mesh_type ), pointer :: pmesh
-        pmesh => extract_mesh( packed_state, "PhaseVolumeFraction" )
+        pmesh => extract_mesh(state(1),"PressureMesh")
         call allocate( unit_field, pmesh, "unit_field" ); call zero ( unit_field )
         unit_field%val=1.0;
 
@@ -3037,7 +3037,6 @@ end if
             CALL porous_assemb_force_cty( packed_state, pressure, &
             Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL, U_SOURCE_CV_ALL)
         else !Normal and more general method
-
             CALL ASSEMB_FORCE_CTY( state, packed_state, &
                 final_phase, Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
                 velocity, pressure, &
@@ -3092,7 +3091,7 @@ end if
             dummy_transp, &
             eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, &
             calculate_mass_delta = calculate_mass_delta, outfluxes = outfluxes)
-
+            
         ewrite(3,*)'Back from cv_assemb'
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
         DEALLOCATE( THETA_GDIFF )
@@ -3639,7 +3638,7 @@ end if
         type( scalar_field ), pointer :: sf, sfield
         real, dimension( : ), allocatable :: vol_s_gi
         !! Boundary_conditions
-        INTEGER, DIMENSION ( Mdims%ndim , final_phase , surface_element_count(velocity) )  :: WIC_U_BC_ALL, WIC_U_BC_ALL_VISC, &
+        INTEGER, DIMENSION ( Mdims%ndim , Mdims%nphase , surface_element_count(velocity) )  :: WIC_U_BC_ALL, WIC_U_BC_ALL_VISC, &
             WIC_U_BC_ALL_ADV, WIC_MOMU_BC_ALL, WIC_NU_BC_ALL
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         REAL, DIMENSION ( :, :, : ), pointer  :: SUF_U_BC_ALL, SUF_U_BC_ALL_VISC, SUF_MOMU_BC_ALL, SUF_NU_BC_ALL
