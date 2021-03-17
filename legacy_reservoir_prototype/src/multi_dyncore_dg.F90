@@ -2153,9 +2153,9 @@ end if
         !Allocation of storable matrices
         if (.not.Mmat%Stored) then
             if (Mmat%CV_pressure) then
-                allocate(Mmat%C_CV(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C_CV = 0.
+                allocate(Mmat%C_CV(Mdims%ndim, final_phase, Mspars%C%ncol)); Mmat%C_CV = 0.
             else !allocate C
-                allocate(Mmat%C(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C = 0.
+                allocate(Mmat%C(Mdims%ndim, final_phase, Mspars%C%ncol)); Mmat%C = 0.
             end if
             if (Mmat%compact_PIVIT_MAT) then!Use a compacted and lumped version of the mass matrix
                     !sprint_to_do for this to work with wells we need to change the sparsity, but that still needs to be done!
@@ -2261,14 +2261,18 @@ end if
             call allocate(diagonal_A, final_phase*Mdims%ndim, velocity%mesh, "diagonal_A")
             call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
           end if
-          if (solve_stokes .or. solve_mom_iteratively) call generate_Pivit_matrix_Stokes(state, Mdims, Mmat, MASS_ELE, diagonal_A)
+          if (solve_stokes .or. solve_mom_iteratively) call generate_Pivit_matrix_Stokes(state, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A)
           !Now invert the Mass matrix
-          CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
+          ! CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
         ! solve using a projection method
-        call allocate(cdp_tensor,velocity%mesh,"CDP",dim = velocity%dim); call zero(cdp_tensor)
+        if (is_magma) then
+          call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), final_phase/)); call zero(cdp_tensor)
+        else
+          call allocate(cdp_tensor,velocity%mesh,"CDP",dim = velocity%dim); call zero(cdp_tensor)
+        end if
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
-        call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+        call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
 
         if ( high_order_Ph ) then
             if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
@@ -2330,7 +2334,6 @@ end if
           call extract_diagonal(cmc_petsc, diagonal_CMC)
           call scale_PETSc_matrix(cmc_petsc)
         end if
-
         call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
@@ -2339,14 +2342,14 @@ end if
         !"########################UPDATE PRESSURE STEP####################################"
         !We may apply the Anderson acceleration method
         if ((solve_stokes .or. solve_mom_iteratively)) then
-          call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
-                                          MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
+          ! call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
+          !                                 MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
           call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
 
         !######################## CORRECTION VELOCITY STEP####################################
         !Ensure that the velocity fulfils the continuity equation before moving on
-        call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+        !call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
         call deallocate(deltaP)
         if (isParallel()) call halo_update(velocity)
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
@@ -2481,7 +2484,7 @@ end if
               restart_now = .false.
             end if
             !Compute grad P as a proxy of velocity
-            call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+            call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
             !Check normalised relative pressure convergence
             totally_min_max(1)=minval(CDP_tensor%val)!use stored field
             totally_min_max(2)=maxval(CDP_tensor%val)!use stored field
@@ -2505,7 +2508,7 @@ end if
 
             !##########################Now solve the equations##########################
             ! ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
-            call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+            call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
             call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
             if (isParallel()) call halo_update(velocity)
             !Perform Div * U for the RHS of the pressure equation
@@ -2523,7 +2526,7 @@ end if
             ! deltap%val = 1./Omega * deltap%val !and then add it to the pressure, not having done so before
             if (Special_precond ) then !Apply a BfB type preconditioner (GtMG)^-1 Gt*diag(a)^-1*A*G * (GtMG)^-1
               !Multiply by the gradient (C)
-              call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, deltap%val, CDP_tensor)!The equations are for deltap not Pressure!
+              call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, deltap%val, CDP_tensor)!The equations are for deltap not Pressure!
               !Now multiply by the inverse of the lumped mass matrix (to keeps the units consistent)
               ! call mult_inv_Mass_vel_vector(Mdims, ndgln, CDP_tensor%val, MASS_ELE)
               CALL Mass_matrix_MATVEC( CDP_tensor % VAL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, Mdims%totele, Mdims%u_nloc, ndgln%u )
@@ -2590,10 +2593,11 @@ end if
         !> @brief Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not.
         !> For magma only the first phase is imposed here as for Darcy the Mass matrix is generated in ASSEM_FORCE_CTY
         !---------------------------------------------------------------------------
-        subroutine generate_Pivit_matrix_Stokes(state, Mdims, Mmat, MASS_ELE, diagonal_A)
+        subroutine generate_Pivit_matrix_Stokes(state,  Mdims, final_phase,  Mmat, MASS_ELE, diagonal_A)
           implicit none
           type( state_type ), dimension( : ), intent( inout ) :: state
           type(multi_dimensions), intent(in) :: Mdims
+          integer, intent (in) :: final_phase
           type (multi_matrices), intent(inout) :: Mmat
           real, dimension(:), intent(in) :: MASS_ELE
           type( vector_field ), intent(in) :: diagonal_A
@@ -2601,11 +2605,6 @@ end if
           integer :: j
           type( tensor_field ), pointer :: viscosity
 
-          integer :: final_phase
-
-          !For magma we want to populate the mass matrix only for the first phase
-          final_phase = Mdims%nphase
-          if (is_magma) final_phase = 1
           !Matrix already initialised ! Mmat%PIVIT_MAT = 0.
           if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner")) then
             !Introduce the diagonal of A into the Mass matrix (not ideal...)
@@ -2637,7 +2636,7 @@ end if
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
                     !Just the mass matrix
 !once this is working, viscosity and density need to be chose CV-averaged wise!
-                    Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc) * (viscosity%val(1,1,1))
+                    Mmat%PIVIT_MAT(J, J, ELE) =  1! MASS_ELE(ele)/dble(Mdims%u_nloc)! * (viscosity%val(1,1,1))
                   end do
                 end do
               end do
@@ -2743,7 +2742,7 @@ end if
 
           !Perform C * DP
           call zero(cdp_tensor)
-          call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, deltap%val, CDP_tensor)
+          call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, deltap%val, CDP_tensor)
 
           ! DU = BLOCK_MAT * CDP: Project back the velocity from a non divergent-free space to a divergent free space
           DU_VEL = 0.

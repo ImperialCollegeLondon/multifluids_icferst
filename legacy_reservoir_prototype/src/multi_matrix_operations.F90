@@ -297,8 +297,8 @@ contains
             logical, DIMENSION( Mdims%cv_nonods ) :: to_color
             REAL, DIMENSION( : ), allocatable :: COLOR_VEC
             REAL, DIMENSION( :, : ), allocatable :: CMC_COLOR_VEC, CMC_COLOR_VEC2, CMC_COLOR_VEC_PHASE, CMC_COLOR_VEC2_PHASE!, ld
-            REAL, DIMENSION( Mdims%ndim * Mdims%nphase * Mdims%u_nonods ) :: DU_LONG
-            real, dimension(3 * Mdims%nphase * Mdims%u_nonods), target :: temp_memory
+            REAL, DIMENSION( Mdims%ndim * final_phase * Mdims%u_nonods ) :: DU_LONG
+            real, dimension(3 * final_phase * Mdims%u_nonods), target :: temp_memory
             real, dimension(:), pointer :: DU, DV, DW
             REAL, DIMENSION( :, :, : ), pointer :: CDP
             INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IPHASE, CV_JNOD2
@@ -318,10 +318,10 @@ contains
             end if
 
             !CDP and DU, DV and DW can share memory as they never occur at the same time
-            CDP(1:Mdims%ndim, 1:Mdims%nphase, 1:Mdims%u_nonods) => temp_memory(1:Mdims%ndim * Mdims%nphase * Mdims%u_nonods)
-            DU(1:Mdims%u_nonods * Mdims%nphase) => temp_memory(1:    Mdims%u_nonods * Mdims%nphase)
-            DV(1:Mdims%u_nonods * Mdims%nphase) => temp_memory(1 +   Mdims%u_nonods * Mdims%nphase:2*Mdims%u_nonods * Mdims%nphase)
-            DW(1:Mdims%u_nonods * Mdims%nphase) => temp_memory(1 + 2*Mdims%u_nonods * Mdims%nphase:3*Mdims%u_nonods * Mdims%nphase)
+            CDP(1:Mdims%ndim, 1:final_phase, 1:Mdims%u_nonods) => temp_memory(1:Mdims%ndim * final_phase * Mdims%u_nonods)
+            DU(1:Mdims%u_nonods * final_phase) => temp_memory(1:    Mdims%u_nonods * final_phase)
+            DV(1:Mdims%u_nonods * final_phase) => temp_memory(1 +   Mdims%u_nonods * final_phase:2*Mdims%u_nonods * final_phase)
+            DW(1:Mdims%u_nonods * final_phase) => temp_memory(1 + 2*Mdims%u_nonods * final_phase:3*Mdims%u_nonods * final_phase)
 
             IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
             NEED_COLOR = .TRUE.
@@ -355,16 +355,16 @@ contains
                 END DO Loop_CVNOD
                 NEED_COLOR = NEED_COLOR .AND. .NOT.TO_COLOR
                 COLOR_VEC = MERGE( 1.0, 0.0, TO_COLOR )
-                CALL C_MULT2( CDP, COLOR_VEC, Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, &
+                CALL C_MULT2( CDP, COLOR_VEC, Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, final_phase, &
                     Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
 
                 ! DU_LONG = BLOCK_MAT * CDP
-                CALL PHA_BLOCK_MAT_VEC( DU_LONG, Mmat%PIVIT_MAT, CDP, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, &
+                CALL PHA_BLOCK_MAT_VEC( DU_LONG, Mmat%PIVIT_MAT, CDP, Mdims%u_nonods, Mdims%ndim, final_phase, &
                     Mdims%totele, Mdims%u_nloc, ndgln%u )
 
                 ! NB. P_RHS = Mmat%CT * U + CV_RHS
                 ! DU_LONG = CDP
-                CALL ULONG_2_UVW( DU, DV, DW, DU_LONG, Mdims%u_nonods, Mdims%ndim, Mdims%nphase )
+                CALL ULONG_2_UVW( DU, DV, DW, DU_LONG, Mdims%u_nonods, Mdims%ndim, final_phase )
 
 
                 DO IPRES = 1, Mdims%npres
@@ -572,7 +572,7 @@ contains
             else
               one_or_n_in_press=Mdims%n_in_pres
             end if
-            
+
             IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
             MAX_COLOR_IN_ROW = 0
             DO CV_NOD = 1, Mdims%cv_nonods
@@ -634,13 +634,13 @@ contains
                 COLOR_VEC_MANY( Mmat%ICOLOR( CV_NOD ), CV_NOD ) = 1.0
             END DO Loop_CVNOD
             ! we use the same colouring for each pressure variable when Mdims%npres>1.
-            ALLOCATE( CDP_MANY( Mmat%NCOLOR, Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) )
-            CALL C_MULT_MANY( CDP_MANY, COLOR_VEC_MANY, Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mmat%NCOLOR, &
+            ALLOCATE( CDP_MANY( Mmat%NCOLOR, Mdims%ndim, final_phase, Mdims%u_nonods ) )
+            CALL C_MULT_MANY( CDP_MANY, COLOR_VEC_MANY, Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, final_phase, Mmat%NCOLOR, &
                 Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
 
-            CALL PHA_BLOCK_MAT_VEC_MANY_REUSING( Mmat%PIVIT_MAT, CDP_MANY, Mdims%ndim, Mdims%nphase, Mmat%NCOLOR, &
+            CALL PHA_BLOCK_MAT_VEC_MANY_REUSING( Mmat%PIVIT_MAT, CDP_MANY, Mdims%ndim, final_phase, Mmat%NCOLOR, &
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
-            DU_LONG_MANY(1:Mmat%NCOLOR, 1:Mdims%ndim, 1:Mdims%nphase, 1:Mdims%u_nonods) => CDP_MANY
+            DU_LONG_MANY(1:Mmat%NCOLOR, 1:Mdims%ndim, 1:final_phase, 1:Mdims%u_nonods) => CDP_MANY
 
            ! NB. P_RHS = Mmat%CT * U + CV_RHS
            ! DU_LONG = CDP
@@ -1355,20 +1355,28 @@ contains
     END SUBROUTINE C_MULT2
 
     !>@brief: Performs the multiplication CDP_tensor = Mmat%C * deltap
-    subroutine C_MULT2_MULTI_PRES( Mdims, Mspars, Mmat, deltap, CDP_tensor )
+    subroutine C_MULT2_MULTI_PRES( Mdims, final_phase, Mspars, Mmat, deltap, CDP_tensor )
       !Performs the multiplication CDP_tensor = Mmat%C * deltap
       implicit none
       type(multi_dimensions), intent(in) :: Mdims
+      integer, intent(in) :: final_phase
       type (multi_sparsities), intent(in) :: Mspars
       type (multi_matrices), intent(in) :: Mmat
       real, dimension(Mdims%npres,Mdims%cv_nonods), intent(in) :: deltap
       type(tensor_field), intent(inout) :: cdp_tensor
       !Local variables
       integer :: ipres
+      integer :: one_or_n_in_press
+
+      if (is_magma) then
+        one_or_n_in_press=final_phase
+      else
+        one_or_n_in_press=Mdims%n_in_pres
+      end if
 
       DO IPRES = 1, Mdims%npres
-        CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), deltap( IPRES, : ), &
-        Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+        CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*one_or_n_in_press : ipres*one_or_n_in_press, : ), deltap( IPRES, : ), &
+        Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, Mmat%C( :, 1+(ipres-1)*one_or_n_in_press : ipres*one_or_n_in_press, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
       END DO
 
       end subroutine C_MULT2_MULTI_PRES
