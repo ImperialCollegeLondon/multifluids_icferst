@@ -2023,7 +2023,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         ALLOCATE( UDEN_ALL( Mdims%nphase, Mdims%cv_nonods ), UDENOLD_ALL( Mdims%nphase, Mdims%cv_nonods ) ) ! UDEN still needs all phases for magma
         UDEN_ALL = 0.; UDENOLD_ALL = 0.
         ewrite(3,*) 'In FORCE_BAL_CTY_ASSEM_SOLVE'
-        ALLOCATE( Mmat%CT( Mdims%ndim, Mdims%nphase, Mspars%CT%ncol )) ; Mmat%CT=0.  ! still need to define CT in nphase, otherwise it gives error
+        ALLOCATE( Mmat%CT( Mdims%ndim,final_phase, Mspars%CT%ncol )) ; Mmat%CT=0. 
         call allocate(Mmat%CT_RHS,Mdims%npres,pressure%mesh,"Mmat%CT_RHS")
         ALLOCATE( Mmat%U_RHS( Mdims%ndim, final_phase, Mdims%u_nonods )) ; !initialised inside the subroutines
         ALLOCATE( DIAG_SCALE_PRES( Mdims%npres,Mdims%cv_nonods )) ; DIAG_SCALE_PRES=0.
@@ -2301,7 +2301,7 @@ end if
         sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
         diag = Mdims%npres == 1!Make it non-diagonal to allow coupling between reservoir and pipes domains
         call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc",diag)
-        CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
+        CALL COLOR_GET_CMC_PHA( Mdims, final_phase, Mspars, ndgln, Mmat,&
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
         pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
@@ -2452,8 +2452,13 @@ end if
           allocate(stored_field(Mdims%cv_nonods, stokes_max_its))
           allocate(field_residuals(Mdims%cv_nonods, stokes_max_its))
           !Pointers to convert from tensor data to vector data
-          packed_vel = as_packed_vector(Velocity)
-          packed_CDP_tensor = as_packed_vector(CDP_tensor)
+          if (is_magma) then
+            packed_vel = as_packed_vector2(Velocity,final_phase)
+            packed_CDP_tensor = as_packed_vector2(CDP_tensor,final_phase)
+          else
+            packed_vel = as_packed_vector(Velocity)
+            packed_CDP_tensor = as_packed_vector(CDP_tensor)
+          end if
           !Update stored values
           stored_field(:, i) = P_all%val(1,1,:)
           restart_now = .false.

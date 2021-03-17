@@ -208,7 +208,7 @@ contains
     !>@brief:Initialize the momentum equation (CMC) and introduces the corresponding values in it.
     !>COLOR_GET_CMC_PHA_FAST is very memory hungry, so we let the user decide
     !>or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage
-    SUBROUTINE COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
+    SUBROUTINE COLOR_GET_CMC_PHA( Mdims, final_phase, Mspars, ndgln, Mmat,&
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
         pipes_aux, got_free_surf,  MASS_SUF, &
@@ -217,6 +217,7 @@ contains
         implicit none
         ! form pressure matrix CMC using a colouring approach
         type(multi_dimensions), intent(in) :: Mdims
+        integer, intent(in) :: final_phase
         type (multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
         type (multi_matrices), intent(inout) :: Mmat
@@ -246,14 +247,14 @@ contains
 
         IF ( have_option("/numerical_methods/create_P_mat_fast") .or. size(Mmat%PIVIT_MAT,1) == 1) THEN
             ! Fast but memory intensive
-            CALL COLOR_GET_CMC_PHA_FAST( Mdims,Mspars, ndgln, Mmat,  &
+            CALL COLOR_GET_CMC_PHA_FAST( Mdims, final_phase,Mspars, ndgln, Mmat,  &
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                 CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
                 pipes_aux%MASS_PIPE, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_CVFEM2PIPE_TRUE, &
                 got_free_surf,  MASS_SUF, ndpset, FEM_continuity_equation )
         ELSE
             ! Slow but memory efficient...
-            CALL COLOR_GET_CMC_PHA_SLOW( Mdims,Mspars, ndgln, Mmat,&
+            CALL COLOR_GET_CMC_PHA_SLOW( Mdims, final_phase, Mspars, ndgln, Mmat,&
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                 CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
                 pipes_aux%MASS_PIPE, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_CVFEM2PIPE_TRUE, &
@@ -265,7 +266,7 @@ contains
     contains
 
       !>@brief: form pressure matrix CMC using a colouring approach
-       SUBROUTINE COLOR_GET_CMC_PHA_SLOW( Mdims, Mspars, ndgln, Mmat,  &
+       SUBROUTINE COLOR_GET_CMC_PHA_SLOW( Mdims, final_phase, Mspars, ndgln, Mmat,  &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
             MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
@@ -274,6 +275,7 @@ contains
             implicit none
             ! form pressure matrix CMC using a colouring approach
             type(multi_dimensions), intent(in) :: Mdims
+            integer, intent(in) :: final_phase
             type (multi_sparsities), intent(in) :: Mspars
             type(multi_ndgln), intent(in) :: ndgln
             type (multi_matrices), intent(inout) :: Mmat
@@ -302,10 +304,18 @@ contains
             INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IPHASE, CV_JNOD2
             INTEGER :: ierr, IV_STAR, IV_FINI, i_indx, j_indx, IPRES, JPRES
             REAL :: RSUM, RSUM_SUF
+            integer :: one_or_n_in_press
+
             ALLOCATE( NEED_COLOR( Mdims%cv_nonods ) )
             ALLOCATE( COLOR_VEC( Mdims%cv_nonods ) )
             ALLOCATE( CMC_COLOR_VEC( Mdims%npres, Mdims%cv_nonods ) )
             ALLOCATE( CMC_COLOR_VEC2( Mdims%npres, Mdims%cv_nonods ) )
+
+            if (is_magma) then
+              one_or_n_in_press=final_phase
+            else
+              one_or_n_in_press=Mdims%n_in_pres
+            end if
 
             !CDP and DU, DV and DW can share memory as they never occur at the same time
             CDP(1:Mdims%ndim, 1:Mdims%nphase, 1:Mdims%u_nonods) => temp_memory(1:Mdims%ndim * Mdims%nphase * Mdims%u_nonods)
@@ -355,20 +365,22 @@ contains
                 ! NB. P_RHS = Mmat%CT * U + CV_RHS
                 ! DU_LONG = CDP
                 CALL ULONG_2_UVW( DU, DV, DW, DU_LONG, Mdims%u_nonods, Mdims%ndim, Mdims%nphase )
+
+
                 DO IPRES = 1, Mdims%npres
-                    IV_STAR = 1+(IPRES-1)*Mdims%n_in_pres*Mdims%u_nonods
-                    IV_FINI = IPRES*Mdims%n_in_pres*Mdims%u_nonods
+                    IV_STAR = 1+(IPRES-1)*one_or_n_in_press*Mdims%u_nonods
+                    IV_FINI = IPRES*one_or_n_in_press*Mdims%u_nonods
                     CALL CT_MULT( CMC_COLOR_VEC(IPRES,:), DU(IV_STAR:IV_FINI), &
-                        DV(IV_STAR:IV_FINI), DW(IV_STAR:IV_FINI), Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
-                        Mmat%CT(:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
+                        DV(IV_STAR:IV_FINI), DW(IV_STAR:IV_FINI), Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, &
+                        Mmat%CT(:,1+(IPRES-1)*one_or_n_in_press:IPRES*one_or_n_in_press,:), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
                 END DO
                 IF ( IGOT_CMC_PRECON /= 0 ) THEN
                     DO IPRES = 1, Mdims%npres
-                        IV_STAR = 1+(IPRES-1)*Mdims%n_in_pres*Mdims%u_nonods*Mdims%ndim
-                        IV_FINI = IPRES*Mdims%n_in_pres*Mdims%u_nonods*Mdims%ndim
+                        IV_STAR = 1+(IPRES-1)*one_or_n_in_press*Mdims%u_nonods*Mdims%ndim
+                        IV_FINI = IPRES*one_or_n_in_press*Mdims%u_nonods*Mdims%ndim
                         CALL CT_MULT_WITH_C( CMC_COLOR_VEC2(IPRES,:), &
-                            DU_LONG(IV_STAR:IV_FINI), Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
-                            Mmat%C(:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+                            DU_LONG(IV_STAR:IV_FINI), Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, &
+                            Mmat%C(:,1+(IPRES-1)*one_or_n_in_press:IPRES*one_or_n_in_press,:), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
                     END DO
                 END IF
                 ! Matrix vector involving the mass diagonal term
@@ -515,7 +527,7 @@ contains
         END SUBROUTINE COLOR_GET_CMC_PHA_SLOW
 
         !>@brief: form pressure matrix CMC using a colouring approach, requires more memory
-        SUBROUTINE COLOR_GET_CMC_PHA_FAST( Mdims, Mspars, ndgln, Mmat, &
+        SUBROUTINE COLOR_GET_CMC_PHA_FAST( Mdims, final_phase, Mspars, ndgln, Mmat, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
             MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE,  &
@@ -523,6 +535,7 @@ contains
             implicit none
             ! form pressure matrix CMC using a colouring approach
             type(multi_dimensions), intent(in) :: Mdims
+            integer, intent(in) :: final_phase
             type (multi_sparsities), intent(in) :: Mspars
             type(multi_ndgln), intent(in) :: ndgln
             type (multi_matrices), intent(inout) :: Mmat
@@ -552,6 +565,14 @@ contains
             INTEGER :: MAX_COLOR_IN_ROW, I, ICAN_COLOR, MX_COLOR, NOD_COLOR
             INTEGER :: ierr, i_indx, j_indx, IPRES, JPRES
             REAL :: RSUM, RSUM_SUF
+            integer :: one_or_n_in_press
+
+            if (is_magma) then
+              one_or_n_in_press=final_phase
+            else
+              one_or_n_in_press=Mdims%n_in_pres
+            end if
+            
             IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
             MAX_COLOR_IN_ROW = 0
             DO CV_NOD = 1, Mdims%cv_nonods
@@ -626,17 +647,17 @@ contains
             ALLOCATE( CMC_COLOR_VEC_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
             DO IPRES = 1, Mdims%npres
                 CALL CT_MULT_MANY( CMC_COLOR_VEC_MANY(:,IPRES,:), &
-                    DU_LONG_MANY(:,:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), &
-                    Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%NCOLOR, &
-                    Mmat%CT(:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
+                    DU_LONG_MANY(:,:,1+(IPRES-1)*one_or_n_in_press:IPRES*one_or_n_in_press,:), &
+                    Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, Mmat%NCOLOR, &
+                    Mmat%CT(:,1+(IPRES-1)*one_or_n_in_press:IPRES*one_or_n_in_press,:), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
             END DO
             IF ( IGOT_CMC_PRECON /= 0 ) THEN
                 ALLOCATE( CMC_COLOR_VEC2_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
                 DO IPRES = 1, Mdims%npres
                     CALL CT_MULT_WITH_C_MANY( CMC_COLOR_VEC2_MANY(:,IPRES,:), &
-                        DU_LONG_MANY(:,:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres, :), &
-                        Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
-                        Mmat%C(:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), Mspars%C%fin, Mspars%C%col )
+                        DU_LONG_MANY(:,:,1+(IPRES-1)*one_or_n_in_press:IPRES*one_or_n_in_press, :), &
+                        Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, &
+                        Mmat%C(:,1+(IPRES-1)*one_or_n_in_press:IPRES*one_or_n_in_press,:), Mspars%C%fin, Mspars%C%col )
                 END DO
             END IF
             deallocate(CDP_MANY)!deallocate memory, not pointer
