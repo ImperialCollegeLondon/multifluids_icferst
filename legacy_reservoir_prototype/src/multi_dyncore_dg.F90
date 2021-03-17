@@ -2266,11 +2266,7 @@ end if
           ! CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
         ! solve using a projection method
-        if (is_magma) then
-          call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), final_phase/)); call zero(cdp_tensor)
-        else
-          call allocate(cdp_tensor,velocity%mesh,"CDP",dim = velocity%dim); call zero(cdp_tensor)
-        end if
+        call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), final_phase/)); call zero(cdp_tensor)
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
         call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
 
@@ -2342,8 +2338,8 @@ end if
         !"########################UPDATE PRESSURE STEP####################################"
         !We may apply the Anderson acceleration method
         if ((solve_stokes .or. solve_mom_iteratively)) then
-          ! call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
-          !                                 MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
+          call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
+                                          MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
           call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
 
@@ -2445,15 +2441,10 @@ end if
           !#####################################################################
 
           if (Special_precond) then
-            if (is_magma) then
-              call allocate(aux_velocity,velocity%mesh,"aux_velocity",dim = (/velocity%dim(1), final_phase/)); call zero(aux_velocity)
-            else
-              call allocate(aux_velocity,velocity%mesh,"aux_velocity",dim = velocity%dim); call zero(aux_velocity)
-            end if
+            call allocate(aux_velocity,velocity%mesh,"aux_velocity",dim = (/velocity%dim(1), final_phase/)); call zero(aux_velocity)
             packed_aux_velocity = as_packed_vector(aux_velocity)
           end if
-
-          call allocate(ref_cdp_tensor,velocity%mesh,"refCDP",dim = velocity%dim); call zero(ref_cdp_tensor)
+          call allocate(ref_cdp_tensor,velocity%mesh,"refCDP",dim = (/velocity%dim(1), final_phase/)); call zero(ref_cdp_tensor)
 
           i = 1
           allocate(stored_field(Mdims%cv_nonods, stokes_max_its))
@@ -2529,7 +2520,7 @@ end if
               call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, deltap%val, CDP_tensor)!The equations are for deltap not Pressure!
               !Now multiply by the inverse of the lumped mass matrix (to keeps the units consistent)
               ! call mult_inv_Mass_vel_vector(Mdims, ndgln, CDP_tensor%val, MASS_ELE)
-              CALL Mass_matrix_MATVEC( CDP_tensor % VAL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, Mdims%totele, Mdims%u_nloc, ndgln%u )
+              CALL Mass_matrix_MATVEC( CDP_tensor % VAL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, final_phase, Mdims%totele, Mdims%u_nloc, ndgln%u )
               !A x previous
               call mult( packed_aux_velocity, Mmat%DGM_PETSC, packed_CDP_tensor )
               !Ct x previous
@@ -2636,7 +2627,7 @@ end if
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
                     !Just the mass matrix
 !once this is working, viscosity and density need to be chose CV-averaged wise!
-                    Mmat%PIVIT_MAT(J, J, ELE) =  1! MASS_ELE(ele)/dble(Mdims%u_nloc)! * (viscosity%val(1,1,1))
+                    Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)! * (viscosity%val(1,1,1))
                   end do
                 end do
               end do
