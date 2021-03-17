@@ -2023,7 +2023,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         ALLOCATE( UDEN_ALL( Mdims%nphase, Mdims%cv_nonods ), UDENOLD_ALL( Mdims%nphase, Mdims%cv_nonods ) ) ! UDEN still needs all phases for magma
         UDEN_ALL = 0.; UDENOLD_ALL = 0.
         ewrite(3,*) 'In FORCE_BAL_CTY_ASSEM_SOLVE'
-        ALLOCATE( Mmat%CT( Mdims%ndim, Mdims%nphase, Mspars%CT%ncol )) ; Mmat%CT=0.
+        ALLOCATE( Mmat%CT( Mdims%ndim, Mdims%nphase, Mspars%CT%ncol )) ; Mmat%CT=0.  ! still need to define CT in nphase, otherwise it gives error
         call allocate(Mmat%CT_RHS,Mdims%npres,pressure%mesh,"Mmat%CT_RHS")
         ALLOCATE( Mmat%U_RHS( Mdims%ndim, final_phase, Mdims%u_nonods )) ; !initialised inside the subroutines
         ALLOCATE( DIAG_SCALE_PRES( Mdims%npres,Mdims%cv_nonods )) ; DIAG_SCALE_PRES=0.
@@ -2525,6 +2525,7 @@ end if
               !Solve again the system to finish the preconditioner
               call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
             end if
+
             if (isParallel()) call halo_update(P_all)
             !Update residual with the variation from the guessed value and the actual value obtained after appliying the function
             field_residuals(:, i) = P_all%val(1,1,:) - stored_field(:, i) !deltap%val(1,:)
@@ -2654,8 +2655,8 @@ end if
             packed_vel = as_packed_vector2(Velocity, final_phase)
             rhs = as_packed_vector2(CDP_tensor, final_phase)
           else
-            packed_vel = as_packed_vector(Velocity, final_phase)
-            rhs = as_packed_vector(CDP_tensor, final_phase)
+            packed_vel = as_packed_vector(Velocity)
+            rhs = as_packed_vector(CDP_tensor)
           end if
 
 ! call MatView(Mmat%DGM_PETSC%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
@@ -2663,10 +2664,10 @@ end if
           packed_vel%val = 0.
           rhs%val = rhs%val + U_RHS
           !Rescale RHS (it is given that the matrix has been already re-scaled)
-          if (rescale_mom_matrices) rhs%val = rhs%val !/ sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
+          if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
           !If the system is re-scaled then now it is time to recover the correct solution
-          if (rescale_mom_matrices) packed_vel%val = packed_vel%val !/ sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
+          if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
 #ifdef USING_GFORTRAN
       !Nothing to do since we have pointers
@@ -2762,19 +2763,19 @@ end if
         REAL, DIMENSION( :, : ), allocatable :: rhs_p2
         integer :: iphase, CV_NOD, ipres
         logical :: force_transpose_C2
-
+        integer :: one_or_n_in_press
         force_transpose_C2 = .false.
         if (present(force_transpose_C)) force_transpose_C2 = force_transpose_C
 
         IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
-          ALLOCATE ( rhs_p2(Mdims%nphase,Mdims%cv_nonods) ) ; rhs_p2=0.0
+          ALLOCATE ( rhs_p2(final_phase,Mdims%cv_nonods) ) ; rhs_p2=0.0
             if ( .not.FEM_continuity_equation .and. .not. force_transpose_C2) then ! original
-                DO IPHASE = 1, Mdims%nphase
+                DO IPHASE = 1, final_phase
                       CALL CT_MULT2( rhs_p2(IPHASE,:), velocity( :, IPHASE : IPHASE, : ), &
                         Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, 1, Mmat%CT( :, IPHASE : IPHASE, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
                 END DO
             else
-                DO IPHASE = 1, Mdims%nphase
+                DO IPHASE = 1, final_phase
                       CALL CT_MULT_WITH_C3( rhs_p2(IPHASE,:), velocity( :, IPHASE : IPHASE, : ), &
                         Mdims%u_nonods, Mdims%ndim, 1, Mmat%C( :, IPHASE : IPHASE, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
                 END DO
@@ -2789,16 +2790,21 @@ end if
             END DO
               deallocate(rhs_p2)
         ELSE
+          if (is_magma) then
+            one_or_n_in_press=1
+          else
+            one_or_n_in_press=Mdims%n_in_pres
+          end if
             if ( .not.FEM_continuity_equation .and. .not. force_transpose_C2) then ! original
-                DO IPRES = 1, Mdims%npres
-                      CALL CT_MULT2( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
-                        Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
-                        Mmat%CT( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
+                DO IPRES = 1, one_or_n_in_press
+                      CALL CT_MULT2( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
+                        Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, &
+                        Mmat%CT( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
                 END DO
             else
                 DO IPRES = 1, Mdims%npres
-                      CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
-                        Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+                      CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
+                        Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, Mmat%C( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
                 END DO
             end if
         END IF
