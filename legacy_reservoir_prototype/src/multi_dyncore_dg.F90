@@ -2023,7 +2023,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         ALLOCATE( UDEN_ALL( Mdims%nphase, Mdims%cv_nonods ), UDENOLD_ALL( Mdims%nphase, Mdims%cv_nonods ) ) ! UDEN still needs all phases for magma
         UDEN_ALL = 0.; UDENOLD_ALL = 0.
         ewrite(3,*) 'In FORCE_BAL_CTY_ASSEM_SOLVE'
-        ALLOCATE( Mmat%CT( Mdims%ndim,final_phase, Mspars%CT%ncol )) ; Mmat%CT=0. 
+        ALLOCATE( Mmat%CT( Mdims%ndim,final_phase, Mspars%CT%ncol )) ; Mmat%CT=0.
         call allocate(Mmat%CT_RHS,Mdims%npres,pressure%mesh,"Mmat%CT_RHS")
         ALLOCATE( Mmat%U_RHS( Mdims%ndim, final_phase, Mdims%u_nonods )) ; !initialised inside the subroutines
         ALLOCATE( DIAG_SCALE_PRES( Mdims%npres,Mdims%cv_nonods )) ; DIAG_SCALE_PRES=0.
@@ -2442,7 +2442,11 @@ end if
           !#####################################################################
 
           if (Special_precond) then
-            call allocate(aux_velocity,velocity%mesh,"aux_velocity",dim = velocity%dim); call zero(aux_velocity)
+            if (is_magma) then
+              call allocate(aux_velocity,velocity%mesh,"aux_velocity",dim = (/velocity%dim(1), final_phase/)); call zero(aux_velocity)
+            else
+              call allocate(aux_velocity,velocity%mesh,"aux_velocity",dim = velocity%dim); call zero(aux_velocity)
+            end if
             packed_aux_velocity = as_packed_vector(aux_velocity)
           end if
 
