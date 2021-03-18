@@ -2789,13 +2789,10 @@ end if
             END DO
               deallocate(rhs_p2)
         ELSE
-          if (is_magma) then
-            one_or_n_in_press=1
-          else
-            one_or_n_in_press=Mdims%n_in_pres
-          end if
+          one_or_n_in_press=Mdims%n_in_pres
+          if (is_magma) one_or_n_in_press=1
             if ( .not.FEM_continuity_equation .and. .not. force_transpose_C2) then ! original
-                DO IPRES = 1, one_or_n_in_press
+                DO IPRES = 1, Mdims%npres
                       CALL CT_MULT2( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
                         Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, &
                         Mmat%CT( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
