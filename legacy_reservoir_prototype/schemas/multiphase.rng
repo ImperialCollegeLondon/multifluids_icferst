@@ -1206,7 +1206,7 @@ The default value is 1e-2. If the domain size is below 10m it is automatically s
                 <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
 that the well trajectories are preserved.
 
-&lt;b&gt;This is MANDATORY when using files to define wells&lt;/b&gt;</a:documentation>
+&lt;b&gt;This is MANDATORY when using files or coordinates to define wells&lt;/b&gt;</a:documentation>
                 <ref name="integer_vector"/>
                 <group>
                   <optional>
@@ -1238,6 +1238,30 @@ Each file has to describe a continuous well touching an external boundary.
                   <attribute name="file_path">
                     <data type="string" datatypeLibrary=""/>
                   </attribute>
+                </element>
+              </zeroOrMore>
+              <zeroOrMore>
+                <element name="well_from_coordinates">
+                  <a:documentation>For straight-line wells the top and bottom coordinates may be used instead of a bdf file.
+
+***Well_volume_ids option is MANDATORY when using this method to define wells.***</a:documentation>
+                  <attribute name="name">
+                    <data type="string" datatypeLibrary=""/>
+                  </attribute>
+                  <group>
+                    <element name="top_coordinates">
+                      <a:documentation>Coordinates of the top point of the well
+
+Example: 500.0,500.0,0.0</a:documentation>
+                      <ref name="real_vector"/>
+                    </element>
+                    <element name="bottom_coordinates">
+                      <a:documentation>Coordinates of the bottom point of the well
+
+Example: 500.0,500.0,-1000.0</a:documentation>
+                      <ref name="real_vector"/>
+                    </element>
+                  </group>
                 </element>
               </zeroOrMore>
             </element>

@@ -2006,6 +2006,7 @@ contains
         call CALC_CORNER_NODS( CV_LOC_CORNER, Mdims%NDIM, Mdims%CV_NLOC)
         !Retrieve, if there are any number of input .bdf files
         number_well_files = option_count("/porous_media/wells_and_pipes/well_from_file")
+        number_well_files = number_well_files + option_count("/porous_media/wells_and_pipes/well_from_coordinates")
         if (number_well_files > 0) then
             !Need the mesh to get neighbouring elements
             tfield => extract_tensor_field( packed_state, "PackedFEPressure" )
@@ -2022,10 +2023,23 @@ contains
                     FLExit( "ERROR: Wells defined by a file requires the well_volumes_ids to be specified")
                 end if
             end if
-            do k = 1, number_well_files
+            do k = 1, option_count("/porous_media/wells_and_pipes/well_from_file")
                 !First identify the well trajectory
                 call get_option("/porous_media/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
                 call read_nastran_file(file_path, nodes, edges)
+                call find_pipe_seeds(well_domains, X%val, nodes, edges, pipe_seeds)
+                !Only if a seed is found then the well is constructed
+                if ( size(pipe_seeds)>0 ) call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
+                deallocate(nodes, edges)!because nodes and edges are allocated inside read_nastran_file
+                deallocate(pipe_seeds)
+            end do
+            !Use only coordinates instead of a nastran file
+            do k = 1, option_count("/porous_media/wells_and_pipes/well_from_coordinates")
+                !First identify the well trajectory
+                allocate(nodes(3, 2), edges(2, 1))
+                call get_option("/porous_media/wells_and_pipes/well_from_coordinates["// int2str(k-1) //"]/top_coordinates", nodes(:, 1))
+                call get_option("/porous_media/wells_and_pipes/well_from_coordinates["// int2str(k-1) //"]/bottom_coordinates", nodes(:, 2))
+                edges(1, 1) = 1; edges(2, 1) = 2!Stablish connection between the nodes
                 call find_pipe_seeds(well_domains, X%val, nodes, edges, pipe_seeds)
                 !Only if a seed is found then the well is constructed
                 if ( size(pipe_seeds)>0 ) call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)

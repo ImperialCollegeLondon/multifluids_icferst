@@ -85,6 +85,7 @@
               </constant>
             </isotropic>
           </value>
+          <output/>
         </prescribed>
       </tensor_field>
       <scalar_field name="HeatCapacity" rank="0">
@@ -296,6 +297,7 @@
               </constant>
             </isotropic>
           </value>
+          <output/>
         </prescribed>
       </tensor_field>
       <scalar_field name="HeatCapacity" rank="0">
@@ -600,7 +602,14 @@
         <Show_well_volumes_ids/>
       </well_volume_ids>
       <well_from_file name="well01" file_path="well01"/>
-      <well_from_file name="well02" file_path="well02"/>
+      <well_from_coordinates name="well02">
+        <top_coordinates>
+          <real_value shape="3" rank="1">3250.0 2250.0 0.0</real_value>
+        </top_coordinates>
+        <bottom_coordinates>
+          <real_value shape="3" rank="1">3250.0 2250.0 -49.0</real_value>
+        </bottom_coordinates>
+      </well_from_coordinates>
     </wells_and_pipes>
   </porous_media>
 </icferst_options>
