@@ -2232,7 +2232,7 @@ end if
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
-           Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
+           Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity, velocity, final_phase)
         end IF
 
         ! extract diag_big and bigm here, then popualate allocate, solve and deallocate dgm_here.

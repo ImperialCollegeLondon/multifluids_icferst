@@ -1616,9 +1616,10 @@ contains
 
     end subroutine allocate_global_multiphase_petsc_csr
 
-    function allocate_momentum_matrix(sparsity,velocity) result(matrix)
+    function allocate_momentum_matrix(sparsity,velocity,final_phase) result(matrix)
         type(csr_sparsity), intent (inout) :: sparsity
         type(tensor_field), intent (inout) :: velocity
+        integer, intent (in) :: final_phase
         type(halo_type), pointer:: halo
         type(petsc_csr_matrix) :: matrix
         integer :: ierr
@@ -1643,17 +1644,11 @@ contains
             nullify(matrix%row_halo)
             nullify(matrix%column_halo)
         end if
-        if (is_magma) then  ! For magma, only assemble the matrix for the first phase
-          call allocate(matrix%row_numbering,node_count(velocity),&
-              velocity%dim(1),halo = halo)
-          call allocate(matrix%column_numbering,node_count(velocity),&
-              velocity%dim(1),halo = halo)
-        else
-          call allocate(matrix%row_numbering,node_count(velocity),&
-              product(velocity%dim),halo = halo)
-          call allocate(matrix%column_numbering,node_count(velocity),&
-              product(velocity%dim),halo = halo)
-        end if
+
+        call allocate(matrix%row_numbering,node_count(velocity),&
+            velocity%dim(1)*final_phase,halo = halo)
+        call allocate(matrix%column_numbering,node_count(velocity),&
+            velocity%dim(1)*final_phase,halo = halo)
 
         if (.not. IsParallel()) then
             matrix%M=full_CreateSeqAIJ(sparsity, matrix%row_numbering, &
