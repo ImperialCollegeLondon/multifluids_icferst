@@ -2263,7 +2263,7 @@ end if
           end if
           if (solve_stokes .or. solve_mom_iteratively) call generate_Pivit_matrix_Stokes(state, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A)
           !Now invert the Mass matrix
-          ! CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
+          CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
         ! solve using a projection method
         call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), final_phase/)); call zero(cdp_tensor)
@@ -2345,7 +2345,7 @@ end if
 
         !######################## CORRECTION VELOCITY STEP####################################
         !Ensure that the velocity fulfils the continuity equation before moving on
-        !call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+        call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
         call deallocate(deltaP)
         if (isParallel()) call halo_update(velocity)
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
