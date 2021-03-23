@@ -1382,14 +1382,15 @@ contains
     end function Get_DevCapPressure
 
     !>@brief: This subroutine computed the gravity effect, i.e. rho * g
-    subroutine calculate_u_source_cv(Mdims, state, packed_state, den, u_source_cv)
+    subroutine calculate_u_source_cv(Mdims, state, packed_state, den, u_source_cv, collapse_together)
         type(state_type), dimension(:), intent(in) :: state
         type( state_type ), intent( in ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         real, dimension(:,:), intent(in) :: den
         real, dimension(:,:,:), intent(inout) :: u_source_cv
+        logical, optional, intent(in) :: collapse_together
+        !Local variables
         type(tensor_field), pointer :: sat_field
-
         type(vector_field), pointer :: gravity_direction
         real, dimension(Mdims%ndim) :: g
         logical :: have_gravity, high_order_Ph
@@ -1413,27 +1414,27 @@ contains
           end if
           gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
           u_source_cv = 0.
-          if ( is_magma ) then
-            do nod = 1, Mdims%cv_nonods
-              g = node_val( gravity_direction, nod ) * gravity_magnitude
-              do iphase = 1, 1
-                  auxR=sum(den(:,nod)*sat_field%val(1, :, nod))
-                do idim = 1, Mdims%ndim
-                  u_source_cv( idim, iphase, nod ) = auxR * g( idim )
-                end do
+          do nod = 1, Mdims%cv_nonods
+            g = node_val( gravity_direction, nod ) * gravity_magnitude
+            do iphase = start_phase, Mdims%nphase
+              do idim = 1, Mdims%ndim
+                u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim )
               end do
             end do
-          else
-            do nod = 1, Mdims%cv_nonods
-              g = node_val( gravity_direction, nod ) * gravity_magnitude
-              do iphase = start_phase, Mdims%nphase
-                do idim = 1, Mdims%ndim
-                  u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim )
-                end do
-              end do
-            end do
-          end if
+          end do
         end if
+
+        if (present_and_true(collapse_together)) then
+          do nod = 1, Mdims%cv_nonods
+            do iphase = 2, Mdims%nphase
+              do idim = 1, Mdims%ndim
+                u_source_cv( idim, 1, nod ) = sum(u_source_cv( idim, :, nod ) * sat_field%val(idim, :, nod))
+              end do
+            end do
+          end do
+        end if
+
+
 
     end subroutine calculate_u_source_cv
 
