@@ -7186,14 +7186,16 @@ end if
 
 
     !>@brief: In this method we assemble and solve the Laplacian system using at least P1 elements
-    !> The equation solved is the following: Div sigma Grad X = - SUM (Div K Grad F) with Neuman BCs = 0
+    !> The equation solved is the following: Div sigma Grad X = - SUM (Div K Grad F) + Div div_fields with Neuman BCs = 0
     !> where K and F are passed down as a vector. Therefore for n entries the SUM will be performed over n fields
+    !> rhs_div_fields is to perform the divergence of a vector field such as rho gravity
+    !> If there are more entries of K than F, then the Div K will be performed for the extra terms in K
     !> Example: F = (3, nphase, cv_nonods) would include three terms in the RHS and the same for K
     !> If harmonic average then we perform the harmonic average of sigma and K
     !> IMPORTANT: This subroutine requires the PHsparsity to be generated
     !> Note that this method solves considering FE fields. If using CV you may incur in an small error.
     subroutine generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, Sigma_field, &
-      Solution, K_fields, F_fields, intface_val_type)
+      Solution, K_fields, F_fields, rhs_div_fields, intface_val_type)
       implicit none
 
       type(multi_dimensions), intent( in ) :: Mdims
@@ -7202,6 +7204,7 @@ end if
       integer, intent(in) :: intface_val_type!> 0 = no interpolation; 1 Harmonic mean; !20 for SP solver, harmonic mean considering charge; negative normal mean
       real, dimension(:,:), intent(in) :: Sigma_field
       real, dimension(:,:,:), intent(in) :: K_fields, F_fields
+      real, dimension(:,:,:,:), intent(in) :: rhs_div_fields
       type( scalar_field ), intent(inout) :: Solution
       type(multi_shape_funs), intent(inout) :: CV_funs
       type(multi_sparsities), intent(in) :: Mspars
@@ -7226,14 +7229,14 @@ end if
       REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
       INTEGER, DIMENSION( CV_GIdims%nface, Mdims%totele ) :: FACE_ELE
       !Variables to reduce communications with PETSc when assembling the matrix
-      real, dimension(size(F_fields,2)) :: LOC_CV_RHS_I, LOC_CV_RHS_J, LOC_MAT_II, LOC_MAT_JJ, LOC_MAT_IJ, LOC_MAT_JI
+      real, dimension(size(Sigma_field,1)) :: LOC_CV_RHS_I, LOC_CV_RHS_J, LOC_MAT_II, LOC_MAT_JJ, LOC_MAT_IJ, LOC_MAT_JI
       !###Variables for shape function calculation###
       type (multi_dev_shape_funs) :: SdevFuns
       !Local diffusion coefficients
-      real, dimension(size(F_fields,2)):: SIGMA_DIFF_COEF_DIVDX
+      real, dimension(size(Sigma_field,1)):: SIGMA_DIFF_COEF_DIVDX
       real, dimension(size(F_fields,1), size(F_fields,2)):: DIFF_COEF_DIVDX
-      !Set the number of phases from F_fields
-      local_phases = size(F_fields,2)
+      !Set the number of phases from max of fieldsF_fields
+      local_phases = size(Sigma_field,1)
       !Retrieve node coordinates
       X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
       !Retrieve CV volume and CV centres
@@ -7253,6 +7256,7 @@ end if
       CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
       Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
       CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
+
 
       Loop_Elements: do ele = 1, Mdims%totele
         if (IsParallel()) then
@@ -7358,11 +7362,15 @@ end if
                     !Assemble diagonal of the matrix of node cv_nodj
                     LOC_MAT_JJ(iphase) = LOC_MAT_JJ(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
                     ! Fill up RHS
-                    do i = 1, size(K_fields,1)
+                    do i = 1, size(F_fields,1)
                       LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
                       (F_fields(i, iphase, cv_nodj) - F_fields(i, iphase, cv_nodi))
                       LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
                       (F_fields(i, iphase, cv_nodi) - F_fields(i, iphase, cv_nodj))
+                    end do
+                    do i = 1, size(rhs_div_fields,1)
+                      LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodi), CVNORMX_ALL(:, GI))
+                      LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) + SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodi), CVNORMX_ALL(:, GI))
                     end do
                   end do
 

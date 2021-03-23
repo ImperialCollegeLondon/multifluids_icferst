@@ -65,7 +65,6 @@ module multi_SP
         integer :: reference_nod
         logical :: reference_node_owned
         real :: reference_value, top_coordinate, gravity_magnitude
-
       !     !Retrieve fields
         X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
         Saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")

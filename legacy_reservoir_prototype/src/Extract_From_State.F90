@@ -60,7 +60,7 @@ module Copy_Outof_State
     public :: Get_Primary_Scalars_new, Compute_Node_Global_Numbers, &
         Get_Ele_Type, Get_Discretisation_Options, inf_norm_scalar_normalised, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
-        get_var_from_packed_state, as_vector, as_packed_vector, as_packed_vector2, is_constant, GetOldName, GetFEMName, PrintMatrix,&
+        get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         have_option_for_any_phase, Get_Ele_Type_new,inf_norm_vector_normalised, &
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions, &
         EnterForceBalanceEquation, update_outfluxes
@@ -2141,34 +2141,6 @@ function as_packed_vector(tfield) result(vfield)
 #endif
 
 end function as_packed_vector
-
-!> To allow only the 1:final phases to be projected
-function as_packed_vector2(tfield, final_phase) result(vfield)
-
-    type(tensor_field), intent(inout) :: tfield
-    integer, intent(in) :: final_phase
-    type(vector_field) :: vfield
-
-
-    vfield%name=tfield%name
-    vfield%mesh=tfield%mesh
-    vfield%option_path=tfield%option_path
-    vfield%dim=tfield%dim(1)*final_phase
-
-#ifdef USING_GFORTRAN
-      ! vfield%val(1:vfield%dim,1:node_count(vfield)) => tfield%val!%contiguous_val
-      allocate(vfield%val(1:vfield%dim,1:node_count(vfield)))
-      !vfield%val=reshape(tfield%contiguous_val,[vfield%dim,&!
-      vfield%val=reshape(tfield%val(:,1:final_phase,:),[vfield%dim,&
-          node_count(vfield)])
-#else
-    allocate(vfield%val(1:vfield%dim,1:node_count(vfield)))
-    !vfield%val=reshape(tfield%contiguous_val,[vfield%dim,&!
-    vfield%val=reshape(tfield%val(:,1:final_phase,:),[vfield%dim,&
-        node_count(vfield)])
-#endif
-
-end function as_packed_vector2
 
 !> @brief: Destrys packed_state and the passed down states
 subroutine finalise_multistate(packed_state,multiphase_state,&

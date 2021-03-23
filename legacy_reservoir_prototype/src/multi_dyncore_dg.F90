@@ -2307,6 +2307,10 @@ end if
         pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
 ! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 
+        !If solving for compaction, we need to include the
+        !pressure dependant terms of the Schur complement CMC and the corresponding RHS
+        if (is_magma) call include_remaining_CTY_terms(CMC_petsc, Mmat%CT_RHS)
+
         !This section is to impose a pressure of zero at some node (when solving for only a gradient of pressure)
         !This is deprecated as the remove_null space method works much better (provided by PETSc)
         call get_option( '/material_phase[0]/scalar_field::Pressure/' // 'prognostic/reference_node', ndpset, default = 0 )
@@ -2364,7 +2368,7 @@ end if
             DEALLOCATE( Mmat%PIVIT_MAT )
             nullify(Mmat%PIVIT_MAT)
         end if
-
+        if (is_magma) call deallocate(Mmat%petsc_ACV)
         !Using associate doesn't seem to be stable enough
         if (((solve_stokes .or. solve_mom_iteratively) &
              .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
@@ -2410,7 +2414,7 @@ end if
           real :: conv_test, total_max, total_min, Omega
           logical :: restart_now
           type(tensor_field) :: aux_velocity, ref_CDP_tensor
-          type( vector_field ) :: packed_vel, packed_CDP_tensor, packed_aux_velocity
+          type( vector_field ) :: packed_CDP_tensor, packed_aux_velocity
           real, dimension(2) :: totally_min_max
 
           !Retrieve settings from diamond
@@ -2450,13 +2454,7 @@ end if
           allocate(stored_field(Mdims%cv_nonods, stokes_max_its))
           allocate(field_residuals(Mdims%cv_nonods, stokes_max_its))
           !Pointers to convert from tensor data to vector data
-          if (is_magma) then
-            packed_vel = as_packed_vector2(Velocity,final_phase)
-            packed_CDP_tensor = as_packed_vector2(CDP_tensor,final_phase)
-          else
-            packed_vel = as_packed_vector(Velocity)
-            packed_CDP_tensor = as_packed_vector(CDP_tensor)
-          end if
+          packed_CDP_tensor = as_packed_vector(CDP_tensor)
           !Update stored values
           stored_field(:, i) = P_all%val(1,1,:)
           restart_now = .false.
@@ -2525,6 +2523,11 @@ end if
               call mult( packed_aux_velocity, Mmat%DGM_PETSC, packed_CDP_tensor )
               !Ct x previous
               call compute_DIV_U(Mdims, Mmat, Mspars, aux_velocity%val, INV_B, rhs_p)
+              !If performing compaction we need to include now the matrix D to keep it consistent
+              if (is_magma) then
+                call mult_T(deltap, Mmat%petsc_ACV, deltap)
+                rhs_p%val = rhs_p%val + deltap%val
+              end if
               !Solve again the system to finish the preconditioner
               call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
             end if
@@ -2649,14 +2652,18 @@ end if
           type( vector_field ), intent(inout) :: diagonal_A
           !Local variables
           type( vector_field ) :: packed_vel, rhs
+          type( vector_field ), pointer  :: vfield
           !Pointers to convert from tensor data to vector data
           if (is_magma) then
-            packed_vel = as_packed_vector2(Velocity, final_phase)
-            rhs = as_packed_vector2(CDP_tensor, final_phase)
+            !For compaction we only care about the first phase velocity
+            vfield => extract_vector_field(state(1), "Velocity")
+            packed_vel%name=vfield%name; packed_vel%mesh=vfield%mesh
+            packed_vel%option_path=vfield%option_path; packed_vel%dim=vfield%dim
+            packed_vel%val => vfield%val
           else
             packed_vel = as_packed_vector(Velocity)
-            rhs = as_packed_vector(CDP_tensor)
           end if
+          rhs = as_packed_vector(CDP_tensor)
 
 ! call MatView(Mmat%DGM_PETSC%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
           !Compute - u_new = A^-1( - Gradient * P + RHS)
@@ -2806,6 +2813,72 @@ end if
         END IF
 
       end subroutine compute_DIV_U
+
+
+
+
+
+      !---------------------------------------------------------------------------
+      !> @author Chris Pain, Pablo Salinas
+      !> @brief Include in the Schur complement (CMC matrix) the Laplacian of the pressure and the divergence of the gravity terms that are required
+      !> to form the continuity equation when solvig, for example, for compaction
+      !---------------------------------------------------------------------------
+      subroutine  include_remaining_CTY_terms(CMC_petsc, CT_RHS)
+
+        implicit none
+        type(petsc_csr_matrix), intent(inout)::  CMC_petsc
+        type( vector_field ), intent(inout) :: CT_RHS
+        !Local variables
+        integer :: stat, cv_inod, ele, cv_iloc, mat_nod
+        real, dimension(:, :, :), allocatable :: F_fields, K_fields
+        real, dimension(:,:), allocatable :: lhs_coef
+        real, dimension(:,:,:,:), allocatable :: rhs_coef
+        type( scalar_field ), pointer :: sfield
+        real, dimension(Mdims%ndim) :: g
+        real :: gravity_magnitude
+        type(vector_field), pointer :: gravity_direction
+
+        allocate(F_fields(0, 0, 0), K_fields(0,0,0))
+        allocate(lhs_coef(1, Mdims%cv_nonods), rhs_coef(1, Mdims%ndim, 1, Mdims%cv_nonods))
+
+        sfield => extract_scalar_field( state(1), "Saturation", stat )
+
+        !For the term multipliying Grad P porosity^2/c !How would this be for more phases??
+        DO ELE = 1, Mdims%totele
+          DO CV_ILOC = 1, Mdims%cv_nloc
+            mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
+            cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+            lhs_coef(1, cv_inod) = (1. - sfield%val(cv_inod))**2. / multi_absorp%Magma%val(1,2,2,mat_nod)!C is stored in the second phase
+          end do
+        end do
+        !Introduce gravity terms
+        call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
+        gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
+        rhs_coef = 0.
+        if( stat == 0 ) then
+            do cv_inod = 1, Mdims%cv_nonods
+              g = node_val( gravity_direction, cv_inod ) * gravity_magnitude
+              do iphase = 2, Mdims%nphase
+                do idim = 1, Mdims%ndim
+                  rhs_coef( 1, idim, 1, cv_inod ) = rhs_coef( 1, idim, 1, cv_inod ) + DEN_ALL2%VAL(1, iphase, cv_inod ) * g( idim ) * lhs_coef(1, cv_inod)
+                end do
+              end do
+            end do
+        end if
+
+        call generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, lhs_coef, &
+          sfield, K_fields, F_fields, rhs_coef, intface_val_type = 100)!intface_val_type normal mean
+
+        !Now we perform CMC = CMC + D
+        call MatAXPY(CMC_petsc%M,1.0,Mmat%petsc_ACV%M, SAME_NONZERO_PATTERN, stat)
+        !We update also the RHS of the continuity equation
+        CT_RHS%val = CT_RHS%val + Mmat%CV_RHS%val
+
+        !We do not deallocate here Mmat%petsc_ACV as it may be needed in the BfB/stokes solver later on
+        call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
+        deallocate(F_fields, K_fields, lhs_coef, rhs_coef)
+
+      end subroutine include_remaining_CTY_terms
 
       !---------------------------------------------------------------------------
       !> @author Chris Pain, Pablo Salinas
@@ -9136,7 +9209,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
       type(scalar_field), pointer  :: solution
       type(vector_field)  :: v_solution
-
+      real, dimension(0,0,0,0) :: rhs_coef!dummy variable needed for generate_Laplacian_system
       local_phases = size(F_fields,2)
       !Solver options, if specified
       solver_option_path = "/solver_options/Linear_solver"
@@ -9150,7 +9223,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       !Generate system
       call generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, Sigma_field, &
-                                          Solution, K_fields, F_fields, intface_val_type)
+                                          Solution, K_fields, F_fields, rhs_coef, intface_val_type)
       !Solve system
       call allocate(v_solution,local_phases,Solution%mesh,"Laplacian_system")
       !Add remove null_space if not bcs specified for the field since we always have natural BCs
