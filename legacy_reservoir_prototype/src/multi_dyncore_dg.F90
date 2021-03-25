@@ -1966,7 +1966,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         integer :: final_phase
 
-        if (is_magma) then  ! For magma only the first phase is assembled for the momentum equation.
+        if (is_magma) compute_compaction= .true.  ! For magma only the first phase is assembled for the momentum equation.
+
+        if (compute_compaction) then
           final_phase=1
         else
           final_phase=Mdims%nphase
@@ -2069,7 +2071,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               UDENOLD_ALL = DENOLD_ALL2%VAL( 1, :, : )
            end if
            if ( .not. have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) )&
-                call calculate_u_source_cv( Mdims, state, packed_state, uden_all, U_SOURCE_CV_ALL, is_magma )
+                call calculate_u_source_cv( Mdims, state, packed_state, uden_all, U_SOURCE_CV_ALL, compute_compaction )
            if ( has_boussinesq_aprox ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
@@ -2309,7 +2311,7 @@ end if
 
         !If solving for compaction, we need to include the
         !pressure dependant terms of the Schur complement CMC and the corresponding RHS
-        if (is_magma) call include_remaining_CTY_terms(CMC_petsc, Mmat%CT_RHS)
+        if (compute_compaction) call include_remaining_CTY_terms(CMC_petsc, Mmat%CT_RHS)
 
         !This section is to impose a pressure of zero at some node (when solving for only a gradient of pressure)
         !This is deprecated as the remove_null space method works much better (provided by PETSc)
@@ -2351,7 +2353,7 @@ end if
         !Ensure that the velocity fulfils the continuity equation before moving on
         call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases
-        if (is_magma) call get_Darcy_phases_velocity()
+        if (compute_compaction) call get_Darcy_phases_velocity()
         call deallocate(deltaP)
         if (isParallel()) call halo_update(velocity)
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
@@ -2370,7 +2372,7 @@ end if
             DEALLOCATE( Mmat%PIVIT_MAT )
             nullify(Mmat%PIVIT_MAT)
         end if
-        if (is_magma) call deallocate(Mmat%petsc_ACV)
+        if (compute_compaction) call deallocate(Mmat%petsc_ACV)
         !Using associate doesn't seem to be stable enough
         if (((solve_stokes .or. solve_mom_iteratively) &
              .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
@@ -2526,7 +2528,7 @@ end if
               !Ct x previous
               call compute_DIV_U(Mdims, Mmat, Mspars, aux_velocity%val, INV_B, rhs_p)
               !If performing compaction we need to include now the matrix D to keep it consistent
-              if (is_magma) then
+              if (compute_compaction) then
                 call mult_T(deltap, Mmat%petsc_ACV, deltap)
                 rhs_p%val = rhs_p%val + deltap%val
               end if
@@ -2656,7 +2658,7 @@ end if
           type( vector_field ) :: packed_vel, rhs
           type( vector_field ), pointer  :: vfield
           !Pointers to convert from tensor data to vector data
-          if (is_magma) then
+          if (compute_compaction) then
             !For compaction we only care about the first phase velocity
             vfield => extract_vector_field(state(1), "Velocity")
             packed_vel%name=vfield%name; packed_vel%mesh=vfield%mesh
@@ -2799,7 +2801,7 @@ end if
               deallocate(rhs_p2)
         ELSE
           one_or_n_in_press=Mdims%n_in_pres
-          if (is_magma) one_or_n_in_press=1
+          if (compute_compaction) one_or_n_in_press=1
             if ( .not.FEM_continuity_equation .and. .not. force_transpose_C2) then ! original
                 DO IPRES = 1, Mdims%npres
                       CALL CT_MULT2( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
@@ -3180,7 +3182,7 @@ end if
 
         density=>extract_tensor_field(packed_state,"PackedDensity")
 
-        if (is_magma) then
+        if (compute_compaction) then
           one_or_n_in_press=1
           tracer=>unit_field
         else
@@ -3310,7 +3312,7 @@ end if
           !Assemble lumped mass matrix (only necessary at the beggining and after adapt)
           !this has to go, the mass matrix should not be assembled at all as it can be done on-the-fly so long
           !we have the mass of each element
-          if (.not.Mmat%Stored .or. is_magma) then!When solving for the darcy phases we need to compute the mass matrix
+          if (.not.Mmat%Stored .or. compute_compaction) then!When solving for the darcy phases we need to compute the mass matrix
             if (.not. Bubble_element_active) then
               !Use the method based on diagonal scaling for lagrangian elements
               call get_diagonal_mass_matrix(ELE, Mdims%nphase, Mdims, DevFuns, Mmat)
@@ -4243,13 +4245,13 @@ end if
             FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
 
         !Simplify the Navier-Stokes equations to Stokes
-        if (is_poroelasticity .or. is_magma .or. solve_stokes) then
+        if (is_poroelasticity .or. compute_compaction .or. solve_stokes) then
             GOT_DIFFUS = .true.!Activate diffusion but considering the inertia terms are disabled!
             GOT_UDEN = .false.!Disable inertia terms
             PIVIT_ON_VISC= .false.!This is to add viscosity terms into the Mu matrix
             STAB_VISC_WITH_ABS = .false.!Adds diffusion terms into Mu also in the RHS
             !For magma it seems that we need this term
-            if (.not. is_magma) zero_or_two_thirds = 0.!Disable "Laplacian" of velocity
+            if (.not. compute_compaction) zero_or_two_thirds = 0.!Disable "Laplacian" of velocity... note: note sure if this is needed for other stokes flow simulation
             !Lumps the absorption terms and RHS; More consistent with the lumping of the mass matrix
             ! lump_mass = .true.; lump_absorption = .true.
             lump_mass = .true.; lump_absorption = .false.

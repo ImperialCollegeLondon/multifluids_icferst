@@ -1426,10 +1426,8 @@ contains
 
         if (present_and_true(collapse_together)) then
           do nod = 1, Mdims%cv_nonods
-            do iphase = 2, Mdims%nphase
-              do idim = 1, Mdims%ndim
-                u_source_cv( idim, 1, nod ) = sum(u_source_cv( idim, :, nod ) * sat_field%val(idim, :, nod))
-              end do
+            do idim = 1, Mdims%ndim
+              u_source_cv( idim, 1, nod ) = sum(u_source_cv( idim, :, nod ) * sat_field%val(idim, :, nod))
             end do
           end do
         end if
