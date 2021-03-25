@@ -593,7 +593,7 @@ contains
                         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                 end if
 
-                if ( is_magma ) call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln, c_phi_series)
+                if ( is_magma ) call update_coupling_coefficients(Mdims, state, packed_state, ndgln, multi_absorp%Magma,  c_phi_series)
 
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then

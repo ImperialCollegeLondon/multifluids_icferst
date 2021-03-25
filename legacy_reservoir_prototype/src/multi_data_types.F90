@@ -378,7 +378,7 @@ contains
 
             if (trim(field_name)=="Magma_AbsorptionTerm") then
                 mfield%is_constant = .false.!It cannot be constant
-                mfield%memory_type = 3      !The absorption is always Isotropic coupled
+                mfield%memory_type = 7      !To store the coupline between phases
             end if
 
             if (trim(field_name)=="ComponentAbsorption") then
@@ -406,6 +406,8 @@ contains
                 mfield%ndim1 = ndim ; mfield%ndim2 = nphase      ; mfield%ndim3 = 1
             case( 6 )    ! Porous media isotropic coupled
                 mfield%ndim1 = 1    ; mfield%ndim2 = ndim        ; mfield%ndim3 = nphase     !Andreas
+            case( 7 )    ! Porous media isotropic coupled
+                mfield%ndim1 = 1    ; mfield%ndim2 = 1         ; mfield%ndim3 = nphase-1     !HH
             case default
                 FLAbort( "Cannot determine multi_field memrory_type." )
         end select

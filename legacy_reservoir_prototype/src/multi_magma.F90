@@ -99,7 +99,7 @@ contains
 
 
   subroutine C_generate(series, N,   state, coupling)
-    ! The coefficient c used here is actually c/phi because of the formulation used in ICFERST
+    ! Coefficients phi^2/C is generated and stored in coupling
     implicit none
     type( state_type ), dimension(:), intent( inout ) :: state
     !Global variables
@@ -108,7 +108,7 @@ contains
     !Local variables
     integer :: i, stat
     real,dimension(N) :: phi ! porosity series
-    real :: d !grain size
+    real :: d, a, b !grain size, coefficient a b
     real :: mu !liquid viscosity needs to be build later
     real :: low,high !transition points
     real :: H,s !value of the smoothing function and the smoothing factor
@@ -117,13 +117,13 @@ contains
     type(coupling_term_coef), intent(in) :: coupling
 
     real :: scaling ! a temporal fix for the scaling difference between the viscosity in ICFERST and the models
-    scaling=2.0/3    ! the viscosity difference between ICFERST and the model
+    scaling=1.0    ! the viscosity difference between ICFERST and the model
 
     s= -2 !> transition coefficient of the linking function
-    ! d=35e-6
     d=coupling%grain_size
+    a=coupling%a
+    b=coupling%b
     t_field => extract_tensor_field( state(2), 'Viscosity', stat )
-    mu=t_field%val( 1, 1, 1) !only consider a constant mu for now
     ! mu=1e2
     low=coupling%cut_low
     high=coupling%cut_high
@@ -134,21 +134,21 @@ contains
 
     if (Test) then
       do i=2, N
-        series(i)= coupling%a/d**2*mu*phi(i)**(1-coupling%b)*scaling
+        series(i)=d**2/a/mu*phi(i)**b !coupling%a/d**2*mu*phi(i)**(1-coupling%b)*scaling
       end do
     else
-      do i=2, N
+      do i=1, N-1
         if (phi(i)<=low) then
-          series(i)= coupling%a/d**2*mu*phi(i)**(1-coupling%b)*scaling
+          series(i)= d**2/a/mu*phi(i)**b  !coupling%a/d**2*mu*phi(i)**(1-coupling%b)*scaling
         else if (phi(i)>=high) then
-          series(i)= 1/d**2*mu*phi(i)**(-6)*(1-phi(i))*scaling
+          series(i)= d**2/mu*phi(i)**7/(1-phi(i))!1/d**2*mu*phi(i)**(-6)*(1-phi(i))*scaling
         else
           H=exp(s/((phi(i)-low)/(high-low)))/(exp(s/((phi(i)-low)/(high-low)))+exp(s/(1-(phi(i)-low)/(high-low))))
-          series(i)=(coupling%a/d**2*mu*phi(i)**(1-coupling%b)*(1-H)+1/d**2*mu*phi(i)**(-6)*(1-phi(i))*H)*scaling
+          series(i)= d**2/mu*phi(i)**7/(1-phi(i))*H+d**2/a/mu*phi(i)**b*(1-H) !(coupling%a/d**2*mu*phi(i)**(1-coupling%b)*(1-H)+1/d**2*mu*phi(i)**(-6)*(1-phi(i))*H)*scaling
         end if
       end do
     end if
-    series(1)=2*series(2)-series(3)
+    series(N)=2*series(N-1)-series(N-2)
   end subroutine C_generate
 
 
@@ -435,19 +435,15 @@ contains
   end subroutine
 
 
-
-  !>@brief:This subroutine calculates the coupling term for the magma modelling
-  !>and adds it to the absorptiont term to impose the coupling between phase
-  !>NOTE: It gives for GRANTED that the memory type is 3!!!! (see multi_data_types)
-  !> Despite Bercovici uses a coupling term for both phases, here we do not put it on the first phase
-  !> as that equation is generated in such a way that the coupling term is removed
-  subroutine calculate_Magma_absorption(Mdims, state, packed_state, Magma_absorp, ndgln, c_phi_series)
+  !>@brief:This subroutine updated the FEM-stored values of the coefficient phi/C in the field magma_absorp
+  subroutine update_coupling_coefficients(Mdims, state, packed_state, ndgln, Magma_absorp,  c_phi_series)
     implicit none
     type( state_type ), dimension( : ), intent( inout ) :: state
     type( state_type ), intent( inout ) :: packed_state
+    type(multi_ndgln), intent(in) :: ndgln
     type (multi_field) :: Magma_absorp
     type( multi_dimensions ), intent( in ) :: Mdims
-    type(multi_ndgln), intent(in) :: ndgln
+    type(coupling_term_coef) :: coupling
     real, dimension(:), intent(in) :: c_phi_series !generated c coefficients
     !Local variables
     integer :: mat_nod, ele, CV_ILOC, cv_inod, iphase, jphase
@@ -457,41 +453,35 @@ contains
     real, dimension(4):: test
     !Get from packed_state
     saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-
     c_phi_size=size(c_phi_series)
-    !Give for granted we are in memory type = 3 for magma
+
     DO ELE = 1, Mdims%totele
-        DO CV_ILOC = 1, Mdims%cv_nloc
-            mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
-            cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-            DO IPHASE = 2, Mdims%nphase!Not phase 1
-              magma_coupling = c_value(saturation%val(1,2, cv_inod))
-              do jphase = 1, Mdims%nphase
-                if (jphase == iphase) then
-                  Magma_absorp%val(1, iphase, jphase, mat_nod ) = magma_coupling
-                else
-                  Magma_absorp%val(1, iphase, jphase, mat_nod ) = - magma_coupling
-                end if
-              end do
-            end do
-        END DO
-    END DO
+      DO CV_ILOC = 1, Mdims%cv_nloc
+        mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
+        cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+          Do iphase =1, Mdims%nphase-1
+            Magma_absorp%val(1, 1, iphase, mat_nod) = phi2_over_c(saturation%val(1,2, cv_inod))
+          end Do
+      end DO
+    end DO
+
   contains
-    real function c_value(phi)
+    real function phi2_over_c(phi)
         real, intent(in) :: phi
         integer :: pos
         real:: portion
 
         pos= int(phi*(c_phi_size-1))+1
         if (pos==c_phi_size) then
-          c_value=c_phi_series(c_phi_size)
+          phi2_over_c=c_phi_series(c_phi_size)
         else
           portion=(phi-(pos-1.0)/(c_phi_size-1.0))*c_phi_size
-          c_value=c_phi_series(pos)*(1-portion)+c_phi_series(pos+1)*portion
+          phi2_over_c=c_phi_series(pos)*(1-portion)+c_phi_series(pos+1)*portion
           ! c_value=c_phi_series(pos)
         end if
-      end function c_value
-  end subroutine calculate_Magma_absorption
+      end function phi2_over_c
+  end subroutine update_coupling_coefficients
+
 
   !>@brief:Compute the source/sink term of the phase change between the concentration living in both two phases
   !> it requires to have Compostion_temp and melt_temp stored before calling cal_solidfluidcomposition

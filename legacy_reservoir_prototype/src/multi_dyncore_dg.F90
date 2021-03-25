@@ -1894,6 +1894,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type (multi_outfluxes), intent(inout) :: outfluxes
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
         integer, intent(inout) :: pres_its_taken
+
         ! Local Variables
         character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
         character(len=option_path_len) :: solver_option_velocity = "/solver_options/Linear_solver"
@@ -2058,7 +2059,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         JUST_BL_DIAG_MAT = .false.
 
         !Calculate gravity source terms
-        allocate(U_SOURCE_CV_ALL(Mdims%ndim, final_phase, Mdims%cv_nonods))
+        allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
         U_SOURCE_CV_ALL=0.0
         if ( is_porous_media )then
            call calculate_u_source_cv( Mdims, state, packed_state, DEN_ALL, U_SOURCE_CV_ALL )
@@ -2140,12 +2141,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 if (associated(multi_absorp%PorousMedia%val))then!sprint_to_do AVOID THESE CONVERSIONS...
     do cv_nod = 1, size(multi_absorp%PorousMedia%val,4)
         call add_multi_field_to_array(multi_absorp%PorousMedia, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
-    end do
-end if
-!Temporary conversion
-if (associated(multi_absorp%Magma%val))then!sprint_to_do AVOID THESE CONVERSIONS...
-    do cv_nod = 1, size(multi_absorp%Magma%val,4)
-        call add_multi_field_to_array(multi_absorp%Magma, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
     end do
 end if
 
@@ -2603,7 +2598,8 @@ end if
           integer :: j
           type( tensor_field ), pointer :: viscosity
 
-          !Matrix already initialised ! Mmat%PIVIT_MAT = 0.
+          !Matrix already initialised !
+          Mmat%PIVIT_MAT = 0.
           if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner")) then
             !Introduce the diagonal of A into the Mass matrix (not ideal...)
             do ele = 1, Mdims%totele
@@ -2848,7 +2844,7 @@ end if
           DO CV_ILOC = 1, Mdims%cv_nloc
             mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
             cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-            lhs_coef(1, cv_inod) = (1. - sfield%val(cv_inod))**2. / multi_absorp%Magma%val(1,2,2,mat_nod)!C is stored in the second phase
+            lhs_coef(1, cv_inod) = multi_absorp%Magma%val(1, 1, 1, mat_nod) !multi_absorp%Magma stored the value of phi^2/C
           end do
         end do
         !Introduce gravity terms
