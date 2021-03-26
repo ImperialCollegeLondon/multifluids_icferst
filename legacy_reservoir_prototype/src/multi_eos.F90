@@ -1867,7 +1867,7 @@ contains
                           if (iphase==1) then !only the solid phase has viscosity terms
                             momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
                             !Currently only magma uses momentum_diffusion2
-                            ! momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))
+                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))
                           end if
                         else
                           momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
