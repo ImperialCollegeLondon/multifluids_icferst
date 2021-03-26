@@ -7343,7 +7343,7 @@ end if
                         DIFF_COEF_DIVDX(i, iphase) = get_DIFF_COEF_DIVDX(2*intface_val_type, HDC, HDLi, HDLj, K_fields(i, iphase, cv_nodi), K_fields(i, iphase, cv_nodj)&
                         ,Sigma_field(iphase, cv_nodi), Sigma_field(iphase, cv_nodj))
                       end do
-                      SIGMA_DIFF_COEF_DIVDX(iphase) = get_DIFF_COEF_DIVDX(intface_val_type, HDC, HDLi, HDLj, Sigma_field(iphase, cv_nodi), Sigma_field(iphase, cv_nodj))
+                      SIGMA_DIFF_COEF_DIVDX(iphase) = get_DIFF_COEF_DIVDX(intface_val_type, HDC, HDLi, HDLj, Sigma_field(iphase, cv_nodi), Sigma_field(iphase, cv_nodj),0.,0.)
                     end do
                   else
                     DIFF_COEF_DIVDX = 0
@@ -7400,7 +7400,7 @@ end if
         implicit none
         integer, intent(in) :: intface_type
         real, intent(in) :: Value_i, Value_j, W_i, W_j, HDC
-        real, optional, intent(in) :: sigma_i, sigma_j
+        real, intent(in) :: sigma_i, sigma_j
         !Local variable
         logical :: div_by_zero
 

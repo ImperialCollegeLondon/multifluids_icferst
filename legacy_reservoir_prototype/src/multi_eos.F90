@@ -1414,6 +1414,14 @@ contains
           end if
           gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
           u_source_cv = 0.
+          if (present_and_true(collapse_together)) then
+            !This is to put all the gravity contribution in the first phase
+            do nod = 1, Mdims%cv_nonods
+              do idim = 1, Mdims%ndim
+                u_source_cv( idim, 1, nod ) = sum(den( :, nod ) * sat_field%val(1, :, nod)) * g( idim )
+              end do
+            end do
+          else
           do nod = 1, Mdims%cv_nonods
             g = node_val( gravity_direction, nod ) * gravity_magnitude
             do iphase = start_phase, Mdims%nphase
@@ -1424,15 +1432,9 @@ contains
           end do
         end if
 
-        if (present_and_true(collapse_together)) then
-          do nod = 1, Mdims%cv_nonods
-            do iphase = 2, Mdims%nphase
-              do idim = 1, Mdims%ndim
-                u_source_cv( idim, 1, nod ) = sum(u_source_cv( idim, :, nod ) * sat_field%val(idim, :, nod))
-              end do
-            end do
-          end do
+
         end if
+
 
 
 
@@ -1865,7 +1867,7 @@ contains
                           if (iphase==1) then !only the solid phase has viscosity terms
                             momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
                             !Currently only magma uses momentum_diffusion2
-                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))
+                            ! momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))
                           end if
                         else
                           momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )

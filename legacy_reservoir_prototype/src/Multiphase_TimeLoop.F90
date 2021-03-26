@@ -756,7 +756,7 @@ contains
                   Compostion_temp= tracer_field%val(1,2,:); melt_temp = saturation_field%val(1,2,:)! second phase is the melt!
 
                   !Here we  Calculate melt fraction from phase diagram
-                  call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
+                  ! call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
                   ! ! Update the temperature field
                   call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
                   ! ! Update the composition
