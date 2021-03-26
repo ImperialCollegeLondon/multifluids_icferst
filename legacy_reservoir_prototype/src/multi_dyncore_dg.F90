@@ -2070,14 +2070,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end if
            if ( .not. have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) )&
                 call calculate_u_source_cv( Mdims, state, packed_state, uden_all, U_SOURCE_CV_ALL, is_magma )
-           if ( has_boussinesq_aprox ) then
-              UDEN_ALL=1.0; UDENOLD_ALL=1.0
-           end if
-           if (solve_stokes) then
-             !For Stokes we need to disable all the inertia terms that are dependant on velocity and density
-             !By making uden =0. these terms will be effectively zeroed.
-              UDEN_ALL=0.0; UDENOLD_ALL=0.0  ! turn off the time derivative term
-           end if
+        end if
+        
+        if ( has_boussinesq_aprox ) then
+          UDEN_ALL=1.0; UDENOLD_ALL=1.0
+        end if
+        if (solve_stokes) then
+          !For Stokes we need to disable all the inertia terms that are dependant on velocity and density
+          !By making uden =0. these terms will be effectively zeroed.
+          UDEN_ALL=0.0; UDENOLD_ALL=0.0  ! turn off the time derivative term
         end if
 
         if ( have_option( '/blasting' ) ) then
@@ -2294,6 +2295,7 @@ end if
               !For a velocity field the diagonal of A needs to be extracted using a vector field
               call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
             end if
+! call MatView(Mmat%DGM_PETSC%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
             if ( .not. (solve_stokes .or. solve_mom_iteratively) )  call deallocate(Mmat%DGM_PETSC)
         END IF
         !"########################UPDATE PRESSURE STEP####################################"
@@ -2718,7 +2720,7 @@ end if
             return
           else
             !Now update the pressure
-            P_all = P_all + 1e12*deltap%val
+            P_all = P_all + deltap%val
           end if
 
         end subroutine solve_and_update_pressure
