@@ -2716,7 +2716,7 @@ end if
             return
           else
             !Now update the pressure
-            P_all = P_all + deltap%val
+            P_all = P_all + 1e12*deltap%val
           end if
 
         end subroutine solve_and_update_pressure
@@ -2736,18 +2736,24 @@ end if
           type( vector_field ), intent(inout) :: deltap
           type(tensor_field), intent(inout) :: cdp_tensor!>To reuse memory
           !Local variables
-          REAL, DIMENSION( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods ) :: DU_VEL
-
+          REAL, DIMENSION( Mdims%ndim,  final_phase, Mdims%u_nonods ) :: DU_VEL
+          integer :: u_inod, idim, iphase
           !Perform C * DP
           call zero(cdp_tensor)
           call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, deltap%val, CDP_tensor)
 
           ! DU = BLOCK_MAT * CDP: Project back the velocity from a non divergent-free space to a divergent free space
           DU_VEL = 0.
-          CALL Mass_matrix_MATVEC( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
+          CALL Mass_matrix_MATVEC( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, final_phase, &
           Mdims%totele, Mdims%u_nloc, ndgln%u )
-
-          velocity%val = velocity%val + DU_VEL
+          !Update the velocity
+          do u_inod = 1, Mdims%u_nonods
+            do iphase = 1, final_phase
+              do idim = 1, Mdims%ndim
+                velocity%val(idim, iphase, u_inod) = velocity%val(idim, iphase, u_inod) + DU_VEL(idim, iphase, u_inod)
+              end do
+            end do
+          end do
 
           !if (solve_stokes) we will have to change this, as this only works as for inertia as long as M only contains the mass of the elements
 
@@ -2837,7 +2843,7 @@ end if
         allocate(F_fields(0, 0, 0), K_fields(0,0,0))
         allocate(lhs_coef(1, Mdims%cv_nonods), rhs_coef(1, Mdims%ndim, 1, Mdims%cv_nonods))
 
-        sfield => extract_scalar_field( state(1), "Saturation", stat )
+        sfield => extract_scalar_field( state(1), "PhaseVolumeFraction", stat )
 
         !For the term multipliying Grad P porosity^2/c !How would this be for more phases??
         DO ELE = 1, Mdims%totele
@@ -2886,12 +2892,13 @@ end if
 
         integer :: idim, iphase, u_inod
         deallocate(Mmat%PIVIT_MAT)
-        !Allocate for a compact version
+        !Allocate for a compact version if we move to P0DGP1CV
         allocate( Mmat%PIVIT_MAT( 1, 1, Mdims%totele ) ); Mmat%PIVIT_MAT=0.0
-        allocate(U_SOURCE_CV_ALL(Mdims%ndim, final_phase, Mdims%cv_nonods)); U_SOURCE_CV_ALL=0.0
+        allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods)); U_SOURCE_CV_ALL=0.0
+        deallocate(Mmat%U_RHS); allocate(Mmat%U_RHS(Mdims%ndim, Mdims%nphase, Mdims%u_nonods))
         call calculate_u_source_cv( Mdims, state, packed_state, DEN_ALL, U_SOURCE_CV_ALL )
         !Recomputes the U_RHS and Mmat%PIVIT_MAT to be Darcy-like
-        CALL porous_assemb_force_cty( packed_state, pressure, &
+        CALL porous_assemb_force_cty( packed_state, pressure, &!We consider all the phases, the assembly is quite cheap anyway
           Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL2%val, U_SOURCE_CV_ALL)
         deallocate(U_SOURCE_CV_ALL)
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
@@ -2900,7 +2907,7 @@ end if
         call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, Mdims%NPHASE - 1, &
             Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
         !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
-        CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:Mdims%ndim,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:Mdims%ndim,:) + CDP_tensor%val(:,2:Mdims%ndim,:),&
+        CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:Mdims%nphase,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:Mdims%nphase,:) + CDP_tensor%val,&
             Mdims%ndim, Mdims%nphase-1, Mdims%totele, Mdims%u_nloc, ndgln%u )
 
         !The final step is to add the solid velocity (WE NEED TO DOUBLE CHECK THE SIGNS HERE)
