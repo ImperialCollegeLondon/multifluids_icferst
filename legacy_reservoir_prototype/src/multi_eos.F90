@@ -1414,6 +1414,15 @@ contains
           end if
           gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
           u_source_cv = 0.
+          if (present_and_true(collapse_together)) then
+            !This is to put all the gravity contribution in the first phase
+            do nod = 1, Mdims%cv_nonods
+              g = node_val( gravity_direction, nod ) * gravity_magnitude
+              do idim = 1, Mdims%ndim
+                u_source_cv( idim, 1, nod ) = sum(den( :, nod ) * sat_field%val(1, :, nod)) * g( idim )
+              end do
+            end do
+          else
           do nod = 1, Mdims%cv_nonods
             g = node_val( gravity_direction, nod ) * gravity_magnitude
             do iphase = start_phase, Mdims%nphase
@@ -1423,16 +1432,7 @@ contains
             end do
           end do
         end if
-
-        if (present_and_true(collapse_together)) then
-          do nod = 1, Mdims%cv_nonods
-            do idim = 1, Mdims%ndim
-              u_source_cv( idim, 1, nod ) = sum(u_source_cv( idim, :, nod ) * sat_field%val(1, :, nod))
-            end do
-          end do
-        end if
-
-
+      end if
 
     end subroutine calculate_u_source_cv
 

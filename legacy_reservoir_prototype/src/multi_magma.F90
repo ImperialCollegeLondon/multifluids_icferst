@@ -124,14 +124,14 @@ contains
     a=coupling%a
     b=coupling%b
     t_field => extract_tensor_field( state(2), 'Viscosity', stat )
-    ! mu=1e2
+    mu=t_field%val(1,1,1)  !currently only consider a constant liquid viscosity
+
     low=coupling%cut_low
     high=coupling%cut_high
 
     do i=1, N
       phi(i) = real(i - 1) / (N - 1)
     end do
-
     if (Test) then
       do i=2, N
         series(i)=d**2/a/mu*phi(i)**b !coupling%a/d**2*mu*phi(i)**(1-coupling%b)*scaling
@@ -464,7 +464,6 @@ contains
           end Do
       end DO
     end DO
-
   contains
     real function phi2_over_c(phi)
         real, intent(in) :: phi

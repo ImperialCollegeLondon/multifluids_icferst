@@ -2716,7 +2716,7 @@ end if
             return
           else
             !Now update the pressure
-            P_all = P_all + 1e12*deltap%val
+            P_all = P_all + deltap%val
           end if
 
         end subroutine solve_and_update_pressure
