@@ -2343,12 +2343,11 @@ end if
                                           MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
           call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
-
         !######################## CORRECTION VELOCITY STEP####################################
-        !Ensure that the velocity fulfils the continuity equation before moving on
-        call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases
         if (compute_compaction) call get_Darcy_phases_velocity()
+        !Ensure that the velocity fulfils the continuity equation before moving on
+        call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
         call deallocate(deltaP)
         if (isParallel()) call halo_update(velocity)
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
