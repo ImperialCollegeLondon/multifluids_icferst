@@ -1981,6 +1981,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         solve_mom_iteratively = have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively")
         !Retrieve the maximum allowed number of its
         call get_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/restart_its", stokes_max_its, default = 15)
+
         if (is_porous_media) then !Find parameter to re-scale the pressure matrix
           !Since we save the parameter rescaleVal, we only do this one time
           if (rescaleVal < 0.) then
@@ -2345,7 +2346,7 @@ end if
         end if
         !######################## CORRECTION VELOCITY STEP####################################
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases
-        if (compute_compaction) call get_Darcy_phases_velocity()
+        ! if (compute_compaction) call get_Darcy_phases_velocity()
         !Ensure that the velocity fulfils the continuity equation before moving on
         call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
         call deallocate(deltaP)
@@ -2607,12 +2608,11 @@ end if
                 DO JDIM = 1, Mdims%ndim
                   DO JPHASE = 1, final_phase
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
-                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                    Mmat%PIVIT_MAT(J, J, ELE) =  diagonal_A%val(JPHA_JDIM, u_jnod )
+                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
+                    Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )/1e3
                   end do
                 end do
               end do
-
               !Don't multiply by the mass of the elements, A already include this!
               ! do j = 1, size(Mmat%PIVIT_MAT,1)
               !   Mmat%PIVIT_MAT(j, j, ele) = Mmat%PIVIT_MAT(j, j, ele) * MASS_ELE(ele)/dble(Mdims%u_nloc)
@@ -2635,7 +2635,6 @@ end if
               end do
             end do
           end if
-
         end subroutine
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas
@@ -2873,8 +2872,7 @@ end if
         !Now we perform CMC = CMC + D
         call MatAXPY(CMC_petsc%M,1.0,Mmat%petsc_ACV%M, SAME_NONZERO_PATTERN, stat)
         !We update also the RHS of the continuity equation
-        CT_RHS%val = CT_RHS%val + Mmat%CV_RHS%val
-
+        CT_RHS%val = CT_RHS%val - Mmat%CV_RHS%val
         !We do not deallocate here Mmat%petsc_ACV as it may be needed in the BfB/stokes solver later on
         call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
         deallocate(F_fields, K_fields, lhs_coef, rhs_coef)

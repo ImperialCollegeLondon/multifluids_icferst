@@ -707,16 +707,16 @@ contains
                   call set_nu_to_u( packed_state )
                   ewrite(3,*)'Now advecting Enthalpy Field'
 
-                  call ENTHALPY_ASSEM_SOLVE( state, packed_state, &
-                  Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                  tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                  suf_sig_diagten_bc, Porosity_field%val, &
-                  !!$
-                  0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                  THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                  option_path = '/material_phase[0]/scalar_field::Enthalpy', &
-                  thermal = .false.,saturation=saturation_field, nonlinear_iteration = its, &
-                  Courant_number = Courant_number, magma_phase_coefficients=  magma_phase_coef)
+                  ! call ENTHALPY_ASSEM_SOLVE( state, packed_state, &
+                  ! Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                  ! tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                  ! suf_sig_diagten_bc, Porosity_field%val, &
+                  ! !!$
+                  ! 0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                  ! THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                  ! option_path = '/material_phase[0]/scalar_field::Enthalpy', &
+                  ! thermal = .false.,saturation=saturation_field, nonlinear_iteration = its, &
+                  ! Courant_number = Courant_number, magma_phase_coefficients=  magma_phase_coef)
 
                 END IF Conditional_ScalarAdvectionField
 
