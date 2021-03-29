@@ -239,7 +239,7 @@ manual:
 python_build:
 ifeq (@HAVE_PYTHON@,yes)
 	@echo "    MAKE python"
-	@cd python; python setup.py build > build.log 2>&1
+	@cd python; python3 setup.py build > build.log 2>&1
 	@cd python/fluidity; find ../build/lib* -name '*.so' -exec ln -sf {} . \;
 endif
 
