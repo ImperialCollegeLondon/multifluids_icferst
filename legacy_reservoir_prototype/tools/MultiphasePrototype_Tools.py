@@ -13,13 +13,13 @@ def compare_two_files_dump_seris(file_series_name1,file_series_name2,dump_start,
     
     # the dump series should be called file_series_name1.d.1 etc
     
-    print "Compare two files dump seris"
+    print("Compare two files dump seris")
     
     pass_number = 1
     
     file_series_name3 = str(file_series_name1)
     file_series_name4 = str(file_series_name2)    
-    print "Input files series:", file_series_name3,file_series_name4
+    print("Input files series:", file_series_name3,file_series_name4)
     
     # loop from the start to the end dump and compare the two files
     dump_difference = dump_end - dump_start
@@ -41,7 +41,7 @@ def compare_two_files_dump_seris(file_series_name1,file_series_name2,dump_start,
        else:
           pass_number = 0
           number_lines = 0
-          print "Error, two files have different number of lines",number_lines_1,number_lines_2
+          print("Error, two files have different number of lines",number_lines_1,number_lines_2)
     
        # go back to start of file
        filein_1.seek(0)
@@ -82,7 +82,7 @@ def compare_two_files_dump_seris(file_series_name1,file_series_name2,dump_start,
        else:
           pass_number = 0
           difference = 0
-          print "Error, two seperate ranges for the files asked for"
+          print("Error, two seperate ranges for the files asked for")
     
        maxdiff = 0.0
        # python list starts from 0 --> [0,1,2,3,...]
@@ -97,9 +97,9 @@ def compare_two_files_dump_seris(file_series_name1,file_series_name2,dump_start,
             
           if abs(value_1[j] - value_2[k]) > rel_tolerance*abs(value_2[j]):   
              pass_number = 0
-             print "*****Failed on value:",j+1,k+1
-             print "     value_1,value_2:",value_1[j],value_2[k] 
-             print "     For dump number:",dump_num + 1    
+             print("*****Failed on value:",j+1,k+1)
+             print("     value_1,value_2:",value_1[j],value_2[k]) 
+             print("     For dump number:",dump_num + 1)    
        
        if maxdiff > maxdiff_alldump:
           maxdiff_dumpnum = dump_num + 1
@@ -109,8 +109,8 @@ def compare_two_files_dump_seris(file_series_name1,file_series_name2,dump_start,
        if pass_number == 0:
           exit
 
-    print "Relative tolerance, Max relative difference over all dumps and associated dump number",rel_tolerance,maxdiff_alldump,maxdiff_dumpnum
-    print "Finish Compare two file dump series: pass_number(1=pass,0=fail)",pass_number  
+    print("Relative tolerance, Max relative difference over all dumps and associated dump number",rel_tolerance,maxdiff_alldump,maxdiff_dumpnum)
+    print("Finish Compare two file dump series: pass_number(1=pass,0=fail)",pass_number)  
                                     
     return pass_number
 
@@ -121,13 +121,13 @@ def compare_two_files(file_name1,file_name2,rel_tolerance,start1,end1,start2,end
     # to within a relative tolerance    
     # the pass number(1=all pass, 0=any fail)
     
-    print "Compare two files"
+    print("Compare two files")
     
     pass_number = 1
     
     file_name3 = str(file_name1)
     file_name4 = str(file_name2)    
-    print "Input files:", file_name3,file_name4
+    print("Input files:", file_name3,file_name4)
     
     filein_1 = open(file_name3,"r")    
     filein_2 = open(file_name4,"r")    
@@ -143,7 +143,7 @@ def compare_two_files(file_name1,file_name2,rel_tolerance,start1,end1,start2,end
     else:
        pass_number = 0
        number_lines = 0
-       print "Error, two files have different number of lines",number_lines_1,number_lines_2
+       print("Error, two files have different number of lines",number_lines_1,number_lines_2)
     
     # go back to start of file
     filein_1.seek(0)
@@ -184,7 +184,7 @@ def compare_two_files(file_name1,file_name2,rel_tolerance,start1,end1,start2,end
     else:
        pass_number = 0
        difference = 0
-       print "Error, two seperate ranges for the files asked for"
+       print("Error, two seperate ranges for the files asked for")
     
     maxdiff = 0.0
     # python list starts from 0 --> [0,1,2,3,...]
@@ -199,11 +199,11 @@ def compare_two_files(file_name1,file_name2,rel_tolerance,start1,end1,start2,end
 
        if abs(value_1[j] - value_2[k]) > rel_tolerance*abs(value_2[j]):   
           pass_number = 0
-          print "*****Failed on value:",j+1,k+1
-          print "     value_1,value_2:",value_1[j],value_2[k]
+          print("*****Failed on value:",j+1,k+1)
+          print("     value_1,value_2:",value_1[j],value_2[k])
     
-    print "Relative tolerance, Max relative difference",rel_tolerance,maxdiff
-    print "Finish Compare two file: pass_number(1=pass,0=fail)",pass_number            
+    print("Relative tolerance, Max relative difference",rel_tolerance,maxdiff)
+    print("Finish Compare two file: pass_number(1=pass,0=fail)",pass_number)            
                      
     return pass_number
 
@@ -239,8 +239,8 @@ def compare_variables(reference, current, error, zerotol=1.0e-14):
            relerrs.append(abs(current[i])) # not really a relative error but however
 
     maxerr = max(relerrs)
-    print "Asserting max relative error is smaller than", error
-    print "max relative error: %s; index: %s" % (maxerr, relerrs.index(maxerr))
+    print("Asserting max relative error is smaller than", error)
+    print("max relative error: %s; index: %s" % (maxerr, relerrs.index(maxerr)))
     assert maxerr < error
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -253,12 +253,12 @@ def compare_variable(reference, current, error, zerotol=1.0e-14):
     diff = abs(reference - current)
     if abs(reference) > zerotol: # decide if reference is "0.0" or not
        relerr = (diff / reference)
-       print "Asserting relative error is smaller than", error
-       print "relative error: " + `relerr`
+       print("Asserting relative error is smaller than", error)
+       print("relative error: " + repr(relerr))
        assert relerr < error
     else:
-       print "Asserting absolute error is smaller than", error
-       print "absolute error: "+ `diff`
+       print("Asserting absolute error is smaller than", error)
+       print("absolute error: "+ repr(diff))
        assert diff < error
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -348,7 +348,7 @@ def print_value(value,value_name):
     
     value_name1 = str(value_name)
     
-    print value_name1,value
+    print(value_name1,value)
     
     return 
 

@@ -1,4 +1,4 @@
- #!/usr/bin/env python
+#!/usr/bin/env python3
 
 #Created by James Percival
 #modified by:
@@ -23,7 +23,7 @@ def write_in_binary_format(fname):
                     "%d\n"%len(node_dict)))
     rnode_dict={}
     rnode_dict = numpy.zeros((len(node_dict),3), dtype=float)
-    for k,v in node_dict.items():
+    for k,v in list(node_dict.items()):
         rnode_dict[v-1][0]=k[0]
         rnode_dict[v-1][1]=k[1]
         rnode_dict[v-1][2]=k[2]
@@ -58,7 +58,7 @@ def write_in_binary_format(fname):
 
 def write_in_ASCII_format(fname):
     rnode_dict={}
-    for k,v in node_dict.items():
+    for k,v in list(node_dict.items()):
         rnode_dict[v]=k
     #fname = fname[:-2]+'.msh'
     file=open(fname,'w')
@@ -87,13 +87,13 @@ useBinaryFormat = True
 fname=sys.argv[1]
 r=vtk.vtkExodusIIReader()
 if (fname[-2:] == '-h'):
-    print 'This script converts a general exodus ii file into ASCII .msh file format. It requires the vtk python library to be installed on the system.'
-    print 'The input should be the name of the file, and the output is that same name .msh. Example: python exodus2msh.py test.e'
-    print 'To convert to .msh binary format use the option /geometry/create_binary_msh in Diamond.'
+    print('This script converts a general exodus ii file into ASCII .msh file format. It requires the vtk python library to be installed on the system.')
+    print('The input should be the name of the file, and the output is that same name .msh. Example: python exodus2msh.py test.e')
+    print('To convert to .msh binary format use the option /geometry/create_binary_msh in Diamond.')
     exit()
 elif (fname[-2:] != '.e'):
     fname+='.e'
-print 'Converting the input exodus ii file into .msh format...'
+print('Converting the input exodus ii file into .msh format...')
 r.SetFileName(fname)
 r.UpdateInformation()
 r.GenerateGlobalNodeIdArrayOn()
@@ -164,4 +164,4 @@ if useBinaryFormat:
 else:
     write_in_ASCII_format(fname)
 
-print '...file created => '+ fname
+print('...file created => '+ fname)
