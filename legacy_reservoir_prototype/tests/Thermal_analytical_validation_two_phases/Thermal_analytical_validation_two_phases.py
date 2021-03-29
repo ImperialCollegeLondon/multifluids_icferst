@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -24,7 +24,7 @@ gamma = 1.
 pi = 3.141596
 Tolerance_L1_NORM = 0.019
 
-print 'Running the model'
+print('Running the model')
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
@@ -197,7 +197,7 @@ for i in range(len(Experimental_X)):
 #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
     x = f(position)
     if (x==-1):
-        print 'The size of the Experimental and Analytical experiments is different'
+        print('The size of the Experimental and Analytical experiments is different')
         quit
 
     if (abs(x - Experimental_Y[i])> Infinite_Norm):
@@ -213,9 +213,9 @@ Passed = True
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 
 if (Passed): 
-    print 'Thermal_analytical_validation_two_phases OK'
+    print('Thermal_analytical_validation_two_phases OK')
 else:
-    print 'Thermal_analytical_validation_two_phases NOT work'
+    print('Thermal_analytical_validation_two_phases NOT work')
 
 #print "L1_norm:", L1_norm
 

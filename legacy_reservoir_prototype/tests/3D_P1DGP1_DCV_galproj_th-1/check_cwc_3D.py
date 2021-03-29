@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import vtk
 import glob
@@ -21,7 +21,7 @@ def get_water_depths(filelist, xarray, delta):
     try:
       os.stat(f)
     except:
-      print "No such file: %s" % f
+      print("No such file: %s" % f)
       sys.exit(1)
     
     y = numpy.arange(delta/2.0,2.0+delta/2.0,delta)[:,numpy.newaxis]
@@ -45,7 +45,7 @@ def get_water_depths(filelist, xarray, delta):
   results = numpy.array(results)
   return results
 
-print 'Running the model'
+print('Running the model')
 
 #Get path
 
@@ -87,7 +87,7 @@ for x in range(len(xarray)):
   #print str(warray[x]),"TOL=",TOLERANCE_H,", ERROR=",abs(numpy.std(numpy.array(experiment[:,2])-numpy.array(results[:,2+x])))
   H_check=abs(numpy.std(numpy.array(experiment[:,2])-numpy.array(results[:,2+x])))<TOLERANCE_H
   if H_check==False:
-      print "H_check=",H_check
+      print("H_check=",H_check)
       break
   
 ts=time[1:] #ignore 0
@@ -128,10 +128,10 @@ for p in range(len(parray)):
 	  pylab.legend(("Experiment", "Model"), loc="upper left")
 	  pylab.savefig("pressure_gauge_"+parray[p]+".png")
   
-  print str(parray[p]),"TOL=",TOLERANCE_P,", ERROR=",abs(numpy.std(numpy.array(data_o2)-numpy.array(data_2)))
+  print(str(parray[p]),"TOL=",TOLERANCE_P,", ERROR=",abs(numpy.std(numpy.array(data_o2)-numpy.array(data_2))))
   P_check=abs(numpy.std(numpy.array(data_o2)-numpy.array(data_2)))<TOLERANCE_P
   if P_check==False:
-      print "P_check=",P_check
+      print("P_check=",P_check)
       break
 
 #pylab.show()
@@ -140,6 +140,6 @@ if H_check==False: Passed=False
 if P_check==False: Passed=False
 
 if (Passed): 
-    print 'CWC works OK'
+    print('CWC works OK')
 else:
-    print 'CWC does NOT work'
+    print('CWC does NOT work')

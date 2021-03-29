@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -197,7 +197,7 @@ for i in range(len(Experimental_X)):
 #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
     x = f(position)
     if (x==-1):
-        print 'The size of the Experimental and Analytical experiments is different'
+        print('The size of the Experimental and Analytical experiments is different')
         quit
 
     if (abs(x - Experimental_Y[i])> Infinite_Norm):
@@ -223,9 +223,9 @@ if (AutoNumber < 9): Passed = False
 #print L1_norm, L2_norm
 
 if (Passed): 
-    print '3D BL works OK'
+    print('3D BL works OK')
 else:
-    print '3D BL does NOT work'
+    print('3D BL does NOT work')
 
 if (showPlot):
     fig, ax = plt.subplots()

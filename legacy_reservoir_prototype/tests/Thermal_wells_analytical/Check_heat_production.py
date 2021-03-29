@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -14,7 +14,7 @@ from scipy.interpolate import interp1d
 import os
 import csv
 
-print 'Running the model'
+print('Running the model')
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
@@ -46,7 +46,7 @@ for i in range(len(temp)):
         pos = i
         break
 
-print 'Lifetime in years: ' + str(time[pos])
+print('Lifetime in years: ' + str(time[pos]))
 #Check time to produce water with lower temperature than the reservoir
 if (time[pos] >= Lifetime): Passed = True
 #Check the experiment has finished
@@ -55,9 +55,9 @@ if (len(temp) < 28): Passed = False
 #print time, temp
 
 if (Passed): 
-    print 'Geothermal well production works OK'
+    print('Geothermal well production works OK')
 else:
-    print 'Geothermal well production does NOT work'
+    print('Geothermal well production does NOT work')
 
 if (showPlot):
     fig, ax = plt.subplots()

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -14,7 +14,7 @@ from scipy.interpolate import interp1d
 import os
 
 
-print 'Running the model'
+print('Running the model')
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
@@ -191,7 +191,7 @@ for i in range(len(Experimental_X)):
 #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
     x = f(position)
     if (x==-1):
-        print 'The size of the Experimental and Analytical experiments is different'
+        print('The size of the Experimental and Analytical experiments is different')
         quit
 
     if (abs(x - Experimental_Y[i])> Infinite_Norm):
@@ -216,9 +216,9 @@ if (AutoNumber < 8): Passed = False
 
 #print L1_norm, L2_norm
 if (Passed): 
-    print 'Works OK'
+    print('Works OK')
 else:
-    print 'Does NOT work'
+    print('Does NOT work')
 
 if (showPlot):
     fig, ax = plt.subplots()
