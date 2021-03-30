@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -17,7 +17,7 @@ from scipy.interpolate import interp1d
 import os
 import sod
 
-print 'First solving the analytical'
+print('First solving the analytical')
 #Plot analytical results#############
 gamma = 1.4
 dustFrac = 0.0
@@ -40,13 +40,13 @@ positions, regions, values = sod.solve(left_state=left_state, \
 
 # Printing positions
 print('Positions:')
-for desc, vals in positions.items():
-	print('{0:10} : {1}'.format(desc, vals))
+for desc, vals in list(positions.items()):
+	print(('{0:10} : {1}'.format(desc, vals)))
 
 # Printing p, rho and u for regions
 print('Regions:')
 for region, vals in sorted(regions.items()):
-	print('{0:10} : {1}'.format(region, vals))
+	print(('{0:10} : {1}'.format(region, vals)))
 
 Analytical_X = []
 Analytical_Yrho = []
@@ -60,7 +60,7 @@ Analytical_Yp=values['p']
 Analytical_Yv=values['u']
 
 
-print 'Now running the numerical model'
+print('Now running the numerical model')
 
 #Get path
 path = os.getcwd()
@@ -233,7 +233,7 @@ for i in range(len(Experimental_X)):
     position = Experimental_X[i]
     x = f(position)
     if (x==-1):
-        print 'The size of the Experimental and Analytical experiments is different'
+        print('The size of the Experimental and Analytical experiments is different')
         quit
 
     if (abs(x - Experimental_Yrho[i])> Infinite_Norm):
@@ -255,9 +255,9 @@ if (AutoNumber < 20): Passed = False
 
 #print L1_norm, L2_norm
 if (Passed):
-    print 'Sod shock works OK'
+    print('Sod shock works OK')
 else:
-    print 'Sod shock NOT work'
+    print('Sod shock NOT work')
 
 #######################################################
 if (showPlot):

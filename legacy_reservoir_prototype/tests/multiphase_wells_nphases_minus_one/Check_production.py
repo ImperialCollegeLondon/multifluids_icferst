@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -14,7 +14,7 @@ from scipy.interpolate import interp1d
 import os
 import csv
 
-print 'Running the model'
+print('Running the model')
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
@@ -44,7 +44,7 @@ with open(filename, 'rb') as csvfile:
 diff = abs(phase1_in[2] + phase2_out[2])/abs(phase2_out[2])
 
 
-print 'In-out difference after 15 years: ' + str(diff)
+print('In-out difference after 15 years: ' + str(diff))
 Passed = False
 #Check time to produce water with lower temperature than the reservoir
 if (abs(diff) < 1e-3): Passed = True
@@ -52,7 +52,7 @@ if (abs(diff) < 1e-3): Passed = True
 #print time, temp
 
 if (Passed): 
-    print 'Well production works OK'
+    print('Well production works OK')
 else:
-    print 'Well production does NOT work'
+    print('Well production does NOT work')
 

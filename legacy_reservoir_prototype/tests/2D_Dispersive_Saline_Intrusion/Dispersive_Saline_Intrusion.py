@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -14,7 +14,7 @@ from scipy.interpolate import interp1d
 import os
 
 
-print 'Running the model'
+print('Running the model')
 
 #Get path
 
@@ -197,9 +197,9 @@ if (AutoNumber < 20): Passed = False
 
 #print L1_norm, L2_norm
 if (Passed): 
-    print 'Dispersive saline intrusion works OK'
+    print('Dispersive saline intrusion works OK')
 else:
-    print 'Dispersive saline intrusion does NOT work'
+    print('Dispersive saline intrusion does NOT work')
 
 
 if (showPlot):

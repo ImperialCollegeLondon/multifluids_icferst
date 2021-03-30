@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
 
 
-#Autor: Pablo Salinas
+# Author: Pablo Salinas
 # This script has been created to merge all the different parts of a well that might be created by trellis
 # To make it work place all the parts of the well with the nastran extension into the same folder and run the script
 # this will create a file with all the wells merged.
@@ -20,7 +20,7 @@ class Edges():
         self.node2 = 0
 
 
-print 'Converting file...'
+print('Converting file...')
 
 #Get path
 
@@ -46,8 +46,8 @@ del Final_Lnodes[0]
 Final_Ledges = [Edges()]
 del Final_Ledges[0]
 for files in input_files:
-    File=file(files,'r')
-    print 'Reading file: ', files
+    File=open(files,'r')
+    print('Reading file: ', files)
     #Create nodes list and edges list from all the files
     Lnodes = [Nodes()]
     del Lnodes[0]
@@ -105,7 +105,7 @@ for files in input_files:
             #First in global integer
     #        auxC = re.compile("\\b" + re.escape(var)+"\\b", re.IGNORECASE)
     #        cadena = auxC.sub(Struc_name+var, cadena)
-    File.close
+    File.close()
 
 
 #for n in Final_Lnodes:
@@ -115,8 +115,8 @@ for files in input_files:
 #Output.write(cadena)
 
 #Use one file as template to mimic it and create the merged file
-Output = file('Merged_well.bdf', "w")
-File=file(input_files[0],'r')
+Output = open('Merged_well.bdf', "w")
+File=open(input_files[0],'r')
 first_GRID = True
 first_CROD = True
 while True:
@@ -172,6 +172,5 @@ while True:
     #When reaching end of file exit
     if len(cadena) ==0:
         break # EOF
-File.close
-Output.close
-
+File.close()
+Output.close()

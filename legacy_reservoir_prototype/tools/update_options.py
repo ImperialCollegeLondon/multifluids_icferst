@@ -1,11 +1,18 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import getopt
 import glob
 import os
 import sys
 
-import gtk.gdk
+import gi
+gi.require_version('Gdk', '3.0')
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk as gtk
+from gi.repository import Gdk as gdk
+
+#from gi.repository import Gtk as gtk 
+#import gtk.gdk
 
 import diamond.debug as debug
 import diamond.schema as schema
@@ -44,13 +51,13 @@ extdict = {"xml"  : "test_options.rng",
 
 # cache parsed schema files
 schemadict = {}
-for k,v in extdict.items():
+for k,v in list(extdict.items()):
   schemadict[k] = schema.Schema(os.path.join(rootDir, "schemas", v))
 
 filenames = args
 if len(filenames) == 0:
   filenames = []
-  for k,v in extdict.items():
+  for k,v in list(extdict.items()):
     filenames += glob.glob(os.path.join(testDir, "*", "*."+k))
     filenames += glob.glob(os.path.join(testDir, "*", "*", "*."+k))
     filenames += glob.glob(os.path.join(examplesDir, "*", "*."+k))
