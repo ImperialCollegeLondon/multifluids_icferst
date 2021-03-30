@@ -1015,7 +1015,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         if (.not. has_imposed_min_limit) then
           totally_min_max(1)=minval(tracer%val(:,1:Mdims%n_in_pres,:)) !First the reservoir
           if (Mdims%npres > 1) & !Next the wells (this is to avoid the zero values in the well domain outside of the defined regions )
-          totally_min_max(1)=min(totally_min_max(1), minval(tracer%val(:, Mdims%n_in_pres+1:Mdims%nphase,:), MASK = tracer%val > tol))
+          totally_min_max(1)=min(totally_min_max(1), minval(tracer%val(:, Mdims%n_in_pres+1:,:), MASK = tracer%val(:, Mdims%n_in_pres+1:,:) > tol))
         end if
         if (.not. has_imposed_max_limit) totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))
         !For parallel
