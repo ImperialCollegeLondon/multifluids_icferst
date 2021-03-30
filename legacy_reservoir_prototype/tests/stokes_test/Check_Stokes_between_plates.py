@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -14,7 +14,7 @@ from scipy.interpolate import interp1d
 import os
 
 
-print 'Running the model'
+print('Running the model')
 
 #Get path
 
@@ -177,7 +177,7 @@ for i in range(len(Experimental_X)):
     #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
     x = f(position)
     if (x==-1):
-        print 'The size of the Experimental and Analytical experiments is different'
+        print('The size of the Experimental and Analytical experiments is different')
         quit
 
     if (abs(x - Experimental_Y[i])> Infinite_Norm):
@@ -197,9 +197,9 @@ if (L1_norm > Tolerance_L1_NORM): Passed = False
 
 #print L1_norm
 if (Passed): 
-    print 'BL works OK'
+    print('BL works OK')
 else:
-    print 'BL does NOT work'
+    print('BL does NOT work')
 
 
 if (showPlot):

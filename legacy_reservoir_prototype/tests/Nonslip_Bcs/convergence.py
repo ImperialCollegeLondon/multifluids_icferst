@@ -29,7 +29,7 @@ for H,F in zip(h,f):
     t,e= stats('newtonian_chris_'+F)
     
     error.append(e[-1])
-    print(t[-1],e[-1])
+    print((t[-1],e[-1]))
 
 h0=[error[0]/(2**i) for i in range(len(h))]
 h1=[error[0]/(4**i) for i in range(len(h))]
@@ -48,7 +48,7 @@ for H,F in zip(h[:-1],f[:-1]):
     t,e= statsMP('newtonian_multiphase_'+F)
     
     errorMp.append(e[-1])
-    print(t[-1],e[-1])
+    print((t[-1],e[-1]))
 
 h0=[errorMp[0]/(2**i) for i in range(len(errorMp))]
 h1=[errorMp[0]/(4**i) for i in range(len(errorMp))]
