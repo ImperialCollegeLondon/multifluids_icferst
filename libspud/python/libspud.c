@@ -870,7 +870,7 @@ initlibspud(void)
     SpudNewKeyWarning = PyErr_NewException("SpudNewKey.warning", NULL, NULL);
     SpudKeyError = PyErr_NewException("SpudKey.error", NULL, NULL);
     SpudTypeError = PyErr_NewException("SpudType.error", NULL, NULL);
-    SpudFileError = PyErr_NewException("SpudFile.error", NULL, NULL);
+    SpudFileError = PyErr_NewException("SpudFile.warning", NULL, NULL);
     SpudAttrSetFailedWarning = PyErr_NewException("SpudAttrSetFailed.warning", NULL, NULL);
     SpudShapeError = PyErr_NewException("SpudShape.error", NULL, NULL);
     SpudRankError = PyErr_NewException("SpudRank.error", NULL, NULL);
