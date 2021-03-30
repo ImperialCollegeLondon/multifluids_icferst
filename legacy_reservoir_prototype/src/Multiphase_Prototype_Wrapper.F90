@@ -75,7 +75,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     real :: finish_time, nonlinear_iteration_tolerance, auxR, dump_period
 
     PetscErrorCode :: ierr
-    PetscLogStage,dimension(0:4) :: stages
+    PetscLogStage,dimension(0:9) :: stages
 
 
     ! Establish signal handlers

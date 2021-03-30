@@ -9146,10 +9146,10 @@ contains
 
 
   REAL FUNCTION SPECFU(DIFF,LXGP,INOD,NDNOD,IPOLY,NODPOS)
-    LOGICAL , intent(inout):: DIFF
-    INTEGER , intent(inout) :: INOD,NDNOD,IPOLY
-    REAL , intent(inout) :: LXGP
-    real, dimension(:), intent(inout) :: NODPOS
+    LOGICAL :: DIFF
+    INTEGER :: INOD,NDNOD,IPOLY
+    REAL :: LXGP
+    real, dimension(:) :: NODPOS
     !     INOD contains the node at which the polynomial is associated with
     !     LXGP is the position at which the polynomial is to be avaluated.\
     !     If(DIFF) then find the D poly/DX.
