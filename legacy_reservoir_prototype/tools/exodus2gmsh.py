@@ -14,13 +14,13 @@ from ctypes import c_int, c_double
 
 def write_in_binary_format(fname):
     file=open(fname,'wb')
-    file.writelines(("$MeshFormat\n",
-                     "2.1 1 8\n"))
+    file.write(f"$MeshFormat\n2.1 1 8\n".encode("utf-8"))
     file.write(struct.pack("i", 1))
-    file.write("\n".encode("utf-8"))    
-    file.writelines(("$EndMeshFormat\n",
-                     "$Nodes\n",
-                    "%d\n"%len(node_dict)))
+    file.write("\n".encode("utf-8"))   
+    file.write(f"$EndMeshFormat\n".encode("utf-8")) 
+    file.write(f"$Nodes\n".encode("utf-8")) 
+    file.write("{}\n".format(len(node_dict)).encode("utf-8"))
+
     rnode_dict={}
     rnode_dict = numpy.zeros((len(node_dict),3), dtype=float)
     for k,v in list(node_dict.items()):
@@ -35,9 +35,9 @@ def write_in_binary_format(fname):
 
 
     file.write("\n".encode("utf-8"))    
-    file.write("$EndNodes\n")
-    file.write("$Elements\n")
-    file.write("%d\n"%(len(ele_face_dict)+len(ele_vol_dict)))
+    file.write(f"$EndNodes\n".encode("utf-8"))
+    file.write(f"$Elements\n".encode("utf-8"))
+    file.write("{}\n".format(len(ele_face_dict)+len(ele_vol_dict)).encode("utf-8"))
     # header
     file.write(struct.pack("i", 2))
     file.write(struct.pack("i", len(ele_face_dict)))#or maybe +len(ele_face_dict)
@@ -52,7 +52,7 @@ def write_in_binary_format(fname):
     for k,ele in enumerate(ele_vol_dict):
         file.write(struct.pack("iiiiiii", k+1+len(ele_face_dict), ele[0], ele[0], ele[1], ele[2], ele[3], ele[4]))
     file.write("\n".encode("utf-8"))
-    file.write("$EndElements\n")
+    file.write(f"$EndElements\n".encode("utf-8"))
     file.close()
 
 
@@ -164,4 +164,4 @@ if useBinaryFormat:
 else:
     write_in_ASCII_format(fname)
 
-print('...file created => '+ fname)
+print(('...file created => '+ fname))

@@ -1,13 +1,13 @@
 # DockerFile for a Fludity development container
 
-# Use a Trusty base image
-FROM ubuntu:trusty
+# Use a Xenial base image# FOR DIFFERENT UBUNTU DISTROS REMEMBER TO CHANGE ALL THE XENIAL INSTANCES!
+FROM ubuntu:xenial
 
 # This DockerFile is looked after by
 MAINTAINER Tim Greaves
 
 # Add the Fluidity repository
-RUN echo "deb http://ppa.launchpad.net/fluidity-core/ppa/ubuntu trusty main" > /etc/apt/sources.list.d/fluidity-core-ppa-trusty.list
+RUN echo "deb http://ppa.launchpad.net/fluidity-core/ppa/ubuntu xenial main" > /etc/apt/sources.list.d/fluidity-core-ppa-xenial.list
 
 # Import the Launchpad PPA public key
 RUN gpg --keyserver keyserver.ubuntu.com --recv 0D45605A33BAC3BE
@@ -29,10 +29,10 @@ RUN apt-get -y install unzip
 
 # Add the multifluids source
 RUN mkdir -p /usr/local/src
-ADD multifluids_monthly-master.zip /tmp
+ADD multifluids_icferst-master.zip /tmp
 WORKDIR /usr/local/src
-RUN unzip /tmp/multifluids_monthly-master.zip
-WORKDIR /usr/local/src/multifluids_monthly-master
+RUN unzip /tmp/multifluids_icferst-master.zip
+WORKDIR /usr/local/src/multifluids_icferst-master
 RUN ./configure --enable-2d-adaptivity --prefix=/usr/local
 RUN make install
 
