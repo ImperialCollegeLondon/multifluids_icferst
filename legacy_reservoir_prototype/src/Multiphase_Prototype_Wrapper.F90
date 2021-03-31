@@ -938,9 +938,9 @@ contains
                 call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
                 call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
             end if
-!Easiest way to create the viscosity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
+            !Easiest way to create the viscosity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
             call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/Viscosity/tensor_field::Viscosity",&
-            "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/tensor_field::Viscosity")
+            "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/tensor_field::Viscosity", stat)
   !CHECK BECAUSE MAYBE THESE MEMORY IS AUTOMATICALLY ALLOCATED
 !Easiest way to create the diffusivity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
             if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Thermal_Conductivity")) then
