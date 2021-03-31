@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -14,7 +14,7 @@ from scipy.interpolate import interp1d
 import os
 import csv
 
-print 'Running the model'
+print('Running the model')
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
@@ -46,7 +46,7 @@ with open(filename, 'rb') as csvfile:
 #diff = abs(phase2_out[-1] - 41048807.176)/41048807.176
 diff = abs(phase2_out[-1] + phase1_out[-1] + phase1_in[-1])/abs(phase1_in[-1]) * 100
 
-print 'Compare production with injection: ' + str(diff)
+print('Compare production with injection: ' + str(diff))
 Passed = False
 #Below 0.5% we are happy
 if (abs(diff) < 0.5 and phase2_out > 0 ): Passed = True
@@ -54,7 +54,7 @@ if (abs(diff) < 0.5 and phase2_out > 0 ): Passed = True
 #print time, temp
 
 if (Passed): 
-    print 'Well production works OK'
+    print('Well production works OK')
 else:
-    print 'Well production does NOT work'
+    print('Well production does NOT work')
 

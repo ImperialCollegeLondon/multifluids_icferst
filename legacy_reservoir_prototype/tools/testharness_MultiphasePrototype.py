@@ -1,10 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
 import os.path
 import glob
 import time
+
 
 try:
  import fluidity.regressiontest as regressiontest
@@ -27,11 +28,11 @@ except ImportError:
      def __init__(self, name, test_cases):
          self.test_cases=test_cases
      def to_file(self,*args):
-         print "cannot generate xml report without junit_xml module."
+         print("cannot generate xml report without junit_xml module.")
 
 # make sure we use the correct version of regressiontest
 sys.path.insert(0, os.path.abspath(os.path.join(os.getcwd(), os.path.dirname(sys.argv[0]),'../..', "python")))
-print sys.path
+print(sys.path)
 import fluidity.regressiontest as regressiontest
 
 try:
@@ -64,14 +65,14 @@ class TestHarness:
         fluidity_command = self.decide_fluidity_command()
 
         if file == "":
-          print "Test criteria:"
-          print "-" * 80
-          print "length: ", length
-          print "parallel: ", parallel
-          print "tags to include: ", tags
-          print "tags to exclude: ", exclude_tags
-          print "-" * 80
-          print 
+          print("Test criteria:")
+          print("-" * 80)
+          print("length: ", length)
+          print("parallel: ", parallel)
+          print("tags to include: ", tags)
+          print("tags to exclude: ", exclude_tags)
+          print("-" * 80)
+          print() 
 
         # step 1. form a list of all the xml files to be considered.
 
@@ -94,7 +95,7 @@ class TestHarness:
                 if x.tag == "testproblem":
                   xml_files.append(os.path.join(subdir, xml_file))
               except xml.parsers.expat.ExpatError:
-                print "Warning: %s mal-formed" % xml_file
+                print("Warning: %s mal-formed" % xml_file)
                 traceback.print_exc()
 
         # step 2. if the user has specified a particular file, let's use that.
@@ -125,9 +126,9 @@ class TestHarness:
                 self.tests.append((subdir, testprob))
                 files.remove(xml_file)
           if files != []:
-            print "Could not find the following specified test files:"
+            print("Could not find the following specified test files:")
             for f in files:
-              print f
+              print(f)
             sys.exit(1)
           return
 
@@ -200,7 +201,7 @@ class TestHarness:
           self.tests.append((subdir, testprob))
 
         if len(self.tests) == 0:
-          print "Warning: no matching tests."
+          print("Warning: no matching tests.")
 
     def length_matches(self, filelength):
         if self.length == filelength: return True
@@ -251,7 +252,7 @@ class TestHarness:
 
     def modify_command_line(self, nprocs):
       flucmd = self.decide_fluidity_command()
-      print flucmd
+      print(flucmd)
       def f(s):
         if not flucmd in [None, "multiphase_prototype"]:
           s = s.replace('mutliphase_prototype ', flucmd + ' ')
@@ -272,7 +273,7 @@ class TestHarness:
 
     def log(self, str):
         if self.verbose == True:
-            print str
+            print(str)
 
     def clean(self):
       self.log(" ")
@@ -343,17 +344,17 @@ class TestHarness:
         self.warncount = self.teststatus.count('W')
         
         if self.failcount + self.warncount > 0:
-            print
-            print "Summary of test problems with failures or warnings:"
+            print()
+            print("Summary of test problems with failures or warnings:")
             for t in self.completed_tests:
                 if t.pass_status.count('F')+t.warn_status.count('W')>0:
-                    print t.filename+':', ''.join(t.pass_status+t.warn_status)
-            print
+                    print(t.filename+':', ''.join(t.pass_status+t.warn_status))
+            print()
         
         if self.passcount + self.failcount + self.warncount > 0:
-            print "Passes:   %d" % self.passcount
-            print "Failures: %d" % self.failcount
-            print "Warnings: %d" % self.warncount
+            print("Passes:   %d" % self.passcount)
+            print("Failures: %d" % self.failcount)
+            print("Warnings: %d" % self.warncount)
 
         if self.xml_outfile!="":
             fd=open(self.cwd+'/'+self.xml_outfile,'w')
@@ -390,7 +391,7 @@ class TestHarness:
 
     def list(self):
       for (subdir, test) in self.tests:
-        print os.path.join(subdir, test.filename)
+        print(os.path.join(subdir, test.filename))
 
 
 if __name__ == "__main__":
@@ -461,21 +462,21 @@ if __name__ == "__main__":
     elif options.clean:
       testharness.clean()
     else:
-      print "-" * 80
+      print("-" * 80)
       which = os.popen("which %s" % testharness.decide_fluidity_command()).read()
       if len(which) > 0:
-        print "which %s: %s" % ("fluidity", which),
+        print("which %s: %s" % ("fluidity", which), end=' ')
       versio = os.popen("%s -V" % testharness.decide_fluidity_command()).read()
       if len(versio) > 0:
-        print versio
-      print "-" * 80
+        print(versio)
+      print("-" * 80)
 
       if options.valgrind is True:
-        print "-" * 80
-        print "I see you are using valgrind!"
-        print "A couple of points to remember."
-        print "a) The log file will be produced in the directory containing the tests."
-        print "b) Valgrind typically takes O(100) times as long. I hope your test is short."
-        print "-" * 80
+        print("-" * 80)
+        print("I see you are using valgrind!")
+        print("A couple of points to remember.")
+        print("a) The log file will be produced in the directory containing the tests.")
+        print("b) Valgrind typically takes O(100) times as long. I hope your test is short.")
+        print("-" * 80)
 
       testharness.run()

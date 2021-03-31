@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -67,10 +67,10 @@ resolution = 1000
 
 ################################AUTOMATIC STUFF###############################
 
-if (len(sys.argv)>1):
+try:
     filename   = sys.argv[1]
     vtu_number = int(sys.argv[2])
-else:
+except:
     filename = AutomaticFile
     vtu_number = int(AutomaticVTU_Number)
     
@@ -153,7 +153,7 @@ for i in range(len(FS)):
 
 Analytical_X = []
 Analytical_Y = []
-Analytical=file('Analytical','r')
+Analytical=open('Analytical','r')
 
 
 while True:
@@ -195,7 +195,7 @@ for i in range(len(Experimental_X)):
 #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
     x = f(position)
     if (x==-1):
-        print 'The size of the Experimental and Analytical experiments is different'
+        print('The size of the Experimental and Analytical experiments is different')
         quit
 
     if (abs(x - Experimental_Y[i])> Infinite_Norm):
@@ -212,12 +212,12 @@ if (L1_norm > Tolerance_L1_NORM): Passed = False
 #Check the experiment has finished
 if (AutoNumber < 32): Passed = False
 
-#print L1_norm, L2_norm
+print(L1_norm)
 
 if (Passed): 
-    print '3D BL works OK'
+    print('3D BL works OK')
 else:
-    print '3D BL does NOT work'
+    print('3D BL does NOT work')
 
 if (showPlot):
     fig, ax = plt.subplots()

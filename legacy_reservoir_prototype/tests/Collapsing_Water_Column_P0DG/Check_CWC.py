@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -29,7 +29,7 @@ def getAnalytical_interpolated( Analytical_X, Analytical_Y, position):
     
     return getAnalytical_interpolated 
 
-print 'Running the model'
+print('Running the model')
 
 #Get path
 
@@ -79,10 +79,10 @@ resolution = 500
 
 ################################AUTOMATIC STUFF###############################
 
-if (len(sys.argv)>1):
+try:
     filename   = sys.argv[1]
     vtu_number = int(sys.argv[2])
-else:
+except:
     filename = AutomaticFile
     vtu_number = int(AutomaticVTU_Number)
     
@@ -158,7 +158,7 @@ for j in range(points.GetNumberOfPoints()):
 
 Analytical_X = []
 Analytical_Y = []
-Analytical=file('Semi-Analytical','r')
+Analytical=open('Semi-Analytical','r')
 
 
 while True:
@@ -198,7 +198,7 @@ for i in range(len(Experimental_X)):
 #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
     x = f(position)
     if (x==-1):
-        print 'The size of the Experimental and Analytical experiments is different'
+        print('The size of the Experimental and Analytical experiments is different')
         quit
 
     if (abs(x - Experimental_Y[i])> Infinite_Norm):
@@ -213,9 +213,9 @@ Passed = True
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 #print L1_norm
 if (Passed): 
-    print 'CWC works OK'
+    print('CWC works OK')
 else:
-    print 'CWC does NOT work'
+    print('CWC does NOT work')
 
 if (showPlot):
     fig, ax = plt.subplots()

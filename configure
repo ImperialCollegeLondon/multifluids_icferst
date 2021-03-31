@@ -3769,11 +3769,11 @@ if $FC -v 2>&1 | grep 'gcc version'; then
   USING_GFORTRAN="yes"
   GFORTRAN_VERSION=$($FC -v 2>&1 | grep 'gcc version' | awk '{print $3}')
   # test really is so retarded that it can't lexicographically compare strings
-  if test "$(python -c "print \"$GFORTRAN_VERSION\" >= \"4.5\"")" = "True"; then
+  if test "$(python3 -c "print (\"$GFORTRAN_VERSION\" >= \"4.5\")")" = "True"; then
     GFORTRAN_4_5_OR_NEWER="yes"
 
   fi
-  if test "$(python -c "print \"$GFORTRAN_VERSION\" >= \"4.8\"")" = "True"; then
+  if test "$(python3 -c "print (\"$GFORTRAN_VERSION\" >= \"4.8\")")" = "True"; then
     GFORTRAN_4_8_OR_NEWER="yes"
   fi
 else
@@ -3809,8 +3809,8 @@ if test "$fcompiler" = "ifort" ; then
       { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Early versions of intel 11.1 are bugged and cannot be used to compile Fluidity. Make sure you have at least version 11.1.073." >&5
 $as_echo "$as_me: WARNING: Early versions of intel 11.1 are bugged and cannot be used to compile Fluidity. Make sure you have at least version 11.1.073." >&2;}
     fi
-    FFLAGS="$FFLAGS -vec-report0"
-    FCFLAGS="$FCFLAGS -vec-report0"
+    FFLAGS="$FFLAGS -vec-report=0"
+    FCFLAGS="$FCFLAGS -vec-report=0"
 fi
 
 ac_ext=c
@@ -5935,7 +5935,7 @@ main ()
 
                         Py_Initialize();
                         PyRun_SimpleString("from time import time,ctime\n"
-                            "print 'Today is',ctime(time())\n");
+                            "print ('Today is',ctime(time()))\n");
                         Py_Finalize();
 
   ;
@@ -5952,7 +5952,6 @@ else
             { $as_echo "$as_me:${as_lineno-$LINENO}: No Python automagic." >&5
 $as_echo "$as_me: No Python automagic." >&6;}
 	    search_for_python=yes
-
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
@@ -5962,9 +5961,60 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
+if test "x$enable_python" != "xno"
+then
+    if test -z "$PYTHON_VERSION"; then
+      # if PYTHON_VERSION is set we use python$PYTHON_VERSION as the python interpreter
+      # if not, if there is no `python` in the path, or there is a `python` but its version is <3
+      # then use `python3` (by setting PETSC_VERSION=3).
+      # If there *is* a `python` of version 3, we use that
+      # Extract the first word of "python", so it can be a program name with args.
+set dummy python; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_prog_have_bare_python+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$have_bare_python"; then
+  ac_cv_prog_have_bare_python="$have_bare_python" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_have_bare_python=""yes""
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
 
-    if test "x$search_for_python" == "xyes" ; then
-        mycppflag=$CPPFLAGS
+fi
+fi
+have_bare_python=$ac_cv_prog_have_bare_python
+if test -n "$have_bare_python"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $have_bare_python" >&5
+$as_echo "$have_bare_python" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+      if test "x$have_bare_python" = "xyes"; then
+        bare_python_is_two=`python -c "import sys; print(sys.version_info.major < 3)"`
+        if test "x$bare_python_is_two=xTrue"; then
+          PYTHON_VERSION=3
+        fi
+      else
+        PYTHON_VERSION=3
+      fi
+    fi
+    mycppflag=$CPPFLAGS
 
 	#
 	# Allow the use of a (user set) custom python version
@@ -6052,19 +6102,19 @@ $as_echo "yes" >&6; }
 	#
 	# if the macro parameter ``version'' is set, honour it
 	#
-	if test -n ""; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for a version of Python " >&5
-$as_echo_n "checking for a version of Python ... " >&6; }
+	if test -n ">= '3.6'"; then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for a version of Python >= '3.6'" >&5
+$as_echo_n "checking for a version of Python >= '3.6'... " >&6; }
 		ac_supports_python_ver=`$PYTHON -c "import sys; \
 			ver = sys.version.split ()[0]; \
-			print (ver )"`
+			print (ver >= '3.6')"`
 		if test "$ac_supports_python_ver" = "True"; then
-	   	   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		else
 			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-			as_fn_error $? "this package requires Python .
+			as_fn_error $? "this package requires Python >= '3.6'.
 If you have it installed, but it isn't the default Python
 interpreter in your system path, please pass the PYTHON_VERSION
 variable to configure. See \`\`configure --help'' for reference.
@@ -6098,9 +6148,15 @@ $ac_distutils_result" "$LINENO" 5
 $as_echo_n "checking for Python include path... " >&6; }
 	if test -z "$PYTHON_CPPFLAGS"; then
 		python_path=`$PYTHON -c "import distutils.sysconfig; \
-           		print (distutils.sysconfig.get_python_inc ());"`
+			print (distutils.sysconfig.get_python_inc ());"`
+		plat_python_path=`$PYTHON -c "import distutils.sysconfig; \
+			print (distutils.sysconfig.get_python_inc (plat_specific=1));"`
 		if test -n "${python_path}"; then
-		   	python_path="-I$python_path"
+			if test "${plat_python_path}" != "${python_path}"; then
+				python_path="-I$python_path -I$plat_python_path"
+			else
+				python_path="-I$python_path"
+			fi
 		fi
 		PYTHON_CPPFLAGS=$python_path
 	fi
@@ -6168,7 +6224,15 @@ EOD`
 		  print (distutils.sysconfig.get_config_vars('LDLIBRARY')[0])"`
 
 		# Strip away extension from the end to canonicalize its name:
-		ac_python_library=`echo "$ac_python_soname" | sed "s/${ac_python_soext}$//"`
+		ac_python_library=`cat<<EOD | $PYTHON -
+
+import distutils.sysconfig
+c = distutils.sysconfig.get_config_vars()
+if 'LDVERSION' in c:
+	print ('python'+c['LDVERSION'])
+else:
+	print ('python'+c['VERSION'])
+EOD`
 
 		# This small piece shamelessly adapted from PostgreSQL python macro;
 		# credits goes to momjian, I think. I'd like to put the right name
@@ -6221,7 +6285,7 @@ $as_echo_n "checking python extra libraries... " >&6; }
 	if test -z "$PYTHON_EXTRA_LIBS"; then
 	   PYTHON_EXTRA_LIBS=`$PYTHON -c "import distutils.sysconfig; \
                 conf = distutils.sysconfig.get_config_var; \
-                print (conf('LOCALMODLIBS') + ' ' + conf('LIBS'))"`
+                print (conf('LOCALMODLIBS') + ' ' + conf('LIBS') + ' ' + conf('SYSLIBS'))"`
 	fi
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $PYTHON_EXTRA_LIBS" >&5
 $as_echo "$PYTHON_EXTRA_LIBS" >&6; }
@@ -6235,7 +6299,7 @@ $as_echo_n "checking python extra linking flags... " >&6; }
 	if test -z "$PYTHON_EXTRA_LDFLAGS"; then
 		PYTHON_EXTRA_LDFLAGS=`$PYTHON -c "import distutils.sysconfig; \
 			conf = distutils.sysconfig.get_config_var; \
-			print (conf('LINKFORSHARED'))"`
+			print ('' if conf('PYTHONFRAMEWORK') else conf('LINKFORSHARED'))"`
 	fi
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $PYTHON_EXTRA_LDFLAGS" >&5
 $as_echo "$PYTHON_EXTRA_LDFLAGS" >&6; }
@@ -6247,7 +6311,11 @@ $as_echo "$PYTHON_EXTRA_LDFLAGS" >&6; }
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking consistency of all components of python development environment" >&5
 $as_echo_n "checking consistency of all components of python development environment... " >&6; }
 	# save current global flags
+	ac_save_LIBS="$LIBS"
+	ac_save_LDFLAGS="$LDFLAGS"
+	ac_save_CPPFLAGS="$CPPFLAGS"
 	LIBS="$ac_save_LIBS $PYTHON_LDFLAGS $PYTHON_EXTRA_LDFLAGS $PYTHON_EXTRA_LIBS"
+	LDFLAGS="$ac_save_LDFLAGS $PYTHON_EXTRA_LDFLAGS"
 	CPPFLAGS="$ac_save_CPPFLAGS $PYTHON_CPPFLAGS"
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -6378,7 +6446,7 @@ fi
     fi
 
     # Additionally check for numpy
-    NUMPY=$($PYTHON -c 'import numpy; print numpy.get_include()' 2>/dev/null)
+    NUMPY=$($PYTHON -c 'import numpy; print(numpy.get_include())' 2>/dev/null)
     if ! test -z "$NUMPY"; then
 	echo "Numpy is " $NUMPY
 	CXXFLAGS="$CXXFLAGS -DHAVE_NUMPY -I$NUMPY"

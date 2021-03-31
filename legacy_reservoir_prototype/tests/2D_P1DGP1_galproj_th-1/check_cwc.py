@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import vtk
 import glob
@@ -8,7 +8,8 @@ import vtktools
 import operator
 import numpy
 import pylab
-import fluidity_tools
+sys.path.append("../../tools")
+import icferst_tools
 
 TOLERANCE_H=0.01
 TOLERANCE_P=100
@@ -21,7 +22,7 @@ def get_water_depths(filelist, xarray, delta):
     try:
       os.stat(f)
     except:
-      print "No such file: %s" % f
+      print("No such file: %s" % f)
       sys.exit(1)
     
     y = numpy.arange(delta/2.0,2.0+delta/2.0,delta)[:,numpy.newaxis]
@@ -45,7 +46,7 @@ def get_water_depths(filelist, xarray, delta):
   results = numpy.array(results)
   return results
 
-print 'Running the model'
+print('Running the model')
 
 #Get path
 
@@ -70,7 +71,7 @@ P_check=True
 
 # first the water gauges
 for x in range(len(xarray)):
-  experiment = numpy.load(warray[x]+".npy")
+  experiment = numpy.load(warray[x]+".npy", encoding="bytes")
 
   #if plotting==True:
 	  
@@ -84,17 +85,17 @@ for x in range(len(xarray)):
 	  #pylab.legend(("Experiment", "Model"), loc="upper left")
 	  #pylab.savefig("water_gauge_"+warray[x]+".png")
 
-  print str(warray[x]),"TOL=",TOLERANCE_H,", ERROR=",abs(numpy.std(numpy.array(experiment[:,2])-numpy.array(results[:,2+x])))
+  print(str(warray[x]),"TOL=",TOLERANCE_H,", ERROR=",abs(numpy.std(numpy.array(experiment[:,2])-numpy.array(results[:,2+x]))))
   H_check=abs(numpy.std(numpy.array(experiment[:,2])-numpy.array(results[:,2+x])))<TOLERANCE_H
   if H_check==False:
-      print "H_check=",H_check
+      print("H_check=",H_check)
       break
   
 ts=time[1:] #ignore 0
 
 # then the pressure gauges - this takes it data from the detectors so no
 # need for extraction from the vtus
-results = fluidity_tools.stat_parser("cwc.detectors")
+results = icferst_tools.stat_parser("cwc.detectors")
 time = results["ElapsedTime"]["value"]
 
 for p in range(len(parray)):
@@ -102,7 +103,7 @@ for p in range(len(parray)):
   data_o = results["phase1"]["Pressure"][parray[p]]
   if "HydrostaticPressure" in results["phase1"]:
       data_o+=results["phase1"]["HydrostaticPressure"][parray[p]]
-  experiment = numpy.load(parray[p]+".npy")
+  experiment = numpy.load(parray[p]+".npy", encoding="bytes")
   data=experiment.item(0)["phase1"]["Pressure"][parray[p]]
   if "HydrostaticPressure" in experiment.item(0)["phase1"]:
       data+=experiment.item(0)["phase1"]["HydrostaticPressure"][parray[p]]
@@ -128,10 +129,10 @@ for p in range(len(parray)):
 	  #pylab.legend(("Experiment", "Model"), loc="upper left")
 	  #pylab.savefig("pressure_gauge_"+parray[p]+".png")
   
-  print str(parray[p]),"TOL=",TOLERANCE_P,", ERROR=",abs(numpy.std(numpy.array(data_o2)-numpy.array(data_2)))
+  print(str(parray[p]),"TOL=",TOLERANCE_P,", ERROR=",abs(numpy.std(numpy.array(data_o2)-numpy.array(data_2))))
   P_check=abs(numpy.std(numpy.array(data_o2)-numpy.array(data_2)))<TOLERANCE_P
   if P_check==False:
-      print "P_check=",P_check
+      print("P_check=",P_check)
       break
 
 #pylab.show()
@@ -141,6 +142,6 @@ if P_check==False: Passed=False
 
 #print L1_norm, L2_norm
 if (Passed): 
-    print 'CWC works OK'
+    print('CWC works OK')
 else:
-    print 'CWC does NOT work'
+    print('CWC does NOT work')

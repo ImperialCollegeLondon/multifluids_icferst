@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -14,7 +14,7 @@ from scipy.interpolate import interp1d
 import os
 
 
-print 'Running the model'
+print('Running the model')
 
 #Get path
 
@@ -74,10 +74,10 @@ resolution = 1000
 
 ################################AUTOMATIC STUFF###############################
 
-if (len(sys.argv)>1):
+try:
     filename   = sys.argv[1]
     vtu_number = int(sys.argv[2])
-else:
+except:
     filename = AutomaticFile
     vtu_number = int(AutomaticVTU_Number)
     
@@ -153,7 +153,7 @@ for j in range(points.GetNumberOfPoints()):
 
 Analytical_X = []
 Analytical_Y = []
-Analytical=file('Experimental_high_res','r')
+Analytical=open('Experimental_high_res','r')
 
 
 while True:
@@ -197,7 +197,7 @@ for i in range(len(Experimental_X)):
 #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
     x = f(position)
     if (x==-1):
-        print 'The size of the Experimental and Analytical experiments is different'
+        print('The size of the Experimental and Analytical experiments is different')
         quit
 
     if (abs(x - Experimental_Y[i])> Infinite_Norm):
@@ -219,9 +219,9 @@ if (abs(L1_norm-Tolerance_L1_NORM)/Tolerance_L1_NORM > Tol): Passed = False
 #if (abs(L2_norm-Tolerance_L2_NORM)/Tolerance_L2_NORM > Tol): Passed = False
 #print abs(L1_norm-Tolerance_L1_NORM)/Tolerance_L1_NORM#, abs(L2_norm-Tolerance_L2_NORM)/Tolerance_L2_NORM
 if (Passed): 
-    print 'BL works OK'
+    print('BL works OK')
 else:
-    print 'BL does NOT work'
+    print('BL does NOT work')
 #Check the experiment has finished
 if (AutoNumber < 20): Passed = False
 

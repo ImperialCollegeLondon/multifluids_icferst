@@ -1,31 +1,18 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import glob
 import re
 import sys
-import sha
-from optparse import OptionParser
-
-parser = OptionParser()
-parser.add_option("-b","--basename",dest="baseName",
-                  action="store",type="string",
-                  help="set base name for script",
-                  default="Diagnostic_Fields_New") 
-parser.add_option("-p","--path",dest="path",
-                  action="store",type="string",
-                  help="set directory search path for script",
-                  default="") 
-(options,args)=parser.parse_args()
+import hashlib
 
 def Error(msg):
   sys.stderr.write("Diagnostics error: " + str(msg) + "\n")
   sys.stderr.flush()
   sys.exit(1)
 
-baseName = options.baseName
-searchPath= options.path.split(':')
+baseName = "Diagnostic_Fields_New"
 disabledDiags = ["Diagnostic_Source_Fields.F90", \
-  "Diagnostic_Fields_Interfaces.F90","Diagnostic_Fields_New.F90"]
+  "Diagnostic_Fields_Interfaces.F90"]
 
 inputFilename = baseName + ".F90.in"
 outputFilename = baseName + ".F90"
@@ -33,10 +20,10 @@ outputFilename = baseName + ".F90"
 # get sha1 digest of existing generated file.  Can't use 'rw' here
 # because it updates the modtime of the file, which we're trying to
 # avoid doing.
-orig=sha.new()
+orig=hashlib.sha1()
 try:
     f=open(outputFilename, 'r')
-    orig.update(f.read())
+    orig.update(f.read().encode("utf8"))
 except IOError:
     pass
 else:
@@ -70,24 +57,12 @@ multipleStateTensorDiagnosticsCode = ""
 moduleRe = re.compile(r"^\s*module\s+(\w+)\s*$", re.IGNORECASE | re.MULTILINE)
 subroutineRe = re.compile(r"^\s*subroutine\s+(\w+)\(?([\w,\s]*)\)?\s*$", re.IGNORECASE | re.MULTILINE)
 
-try:
-  searchPath.remove("")
-except ValueError:
-  pass
-    
 diagFiles = glob.glob("*.F90")
 for file in [inputFilename, outputFilename] + disabledDiags:
   try:
     diagFiles.remove(file)
   except ValueError:
     pass
-for directory in searchPath:
-  diagFiles += glob.glob(directory+"*.F90")
-  for file in [inputFilename, outputFilename] + disabledDiags:
-    try:
-      diagFiles.remove(directory+file)
-    except ValueError:
-      pass
     
 for file in diagFiles:
   fileHandle = open(file, "r")
@@ -187,8 +162,8 @@ outputCode = outputCode.replace("SINGLE_STATE_TENSOR_DIAGNOSTICS", singleStateTe
 outputCode = outputCode.replace("MULTIPLE_STATE_TENSOR_DIAGNOSTICS", multipleStateTensorDiagnosticsCode)
 
 # Write the output
-new=sha.new()
-new.update(outputCode)
+new=hashlib.sha1()
+new.update(outputCode.encode("utf8"))
 
 # Only write file if sha1sums differ
 if new.digest() != orig.digest():

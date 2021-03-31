@@ -27,7 +27,7 @@ d2 = vtk_to_numpy(my_vtk_array2)
 
 
 pressure_P1DGP1=sum(d1)/len(d1)-sum(d2)/len(d2)
-print pressure_P1DGP1</variable>
+print(pressure_P1DGP1)</variable>
   </variables>
   <pass_tests>
     <test name="P1DGP1 pressure difference:" language="python">assert( abs(pressure_P1DGP1) &lt;5.0e-4)</test>

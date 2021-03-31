@@ -8,7 +8,7 @@
 
 ../../../bin/icferst BL_quartered.mpml
 mv BL_radial_0.vtu serial.vtu
-mpiexec  ../../../bin/icferst BL_quartered.mpml
+mpirun -n 2  ../../../bin/icferst BL_quartered.mpml
 ../../../bin/pvtu2vtu BL_radial 0
 ../../../bin/vtudiff serial.vtu BL_radial_0.vtu diff.vtu</command_line>
   </problem_definition>
@@ -30,7 +30,7 @@ data2.GetPointData().SetActiveScalars("phase1::PhaseVolumeFraction")
 d2=numpy.zeros(data2.GetNumberOfPoints())
 data2.GetPointData().GetScalars().ExportToVoidPointer(d2)
 check_P1DGP1=abs(d1/d2)
-print max(check_P1DGP1)</variable>
+print(max(check_P1DGP1))</variable>
   </variables>
   <pass_tests>
     <test name="ParallelDiscrepancy" language="python">assert all(abs(check_P1DGP1)&lt;4.1e-3)</test>

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -14,7 +14,7 @@ from scipy.interpolate import interp1d
 import os
 
 
-print 'Running the model'
+print('Running the model')
 
 #Get path
 
@@ -68,10 +68,10 @@ resolution = 1000
 
 ################################AUTOMATIC STUFF###############################
 
-if (len(sys.argv)>1):
+try:
     filename   = sys.argv[1]
     vtu_number = int(sys.argv[2])
-else:
+except:
     filename = AutomaticFile
     vtu_number = int(AutomaticVTU_Number)
     
@@ -146,7 +146,7 @@ for j in range(points.GetNumberOfPoints()):
 
 Analytical_X = []
 Analytical_Y = []
-Analytical=file('Fine','r')
+Analytical=open('Fine','r')
 
 
 while True:
@@ -197,9 +197,9 @@ if (AutoNumber < 20): Passed = False
 
 #print L1_norm, L2_norm
 if (Passed): 
-    print 'Henry saline intrusion works OK'
+    print('Henry saline intrusion works OK')
 else:
-    print 'Henry saline intrusion does NOT work'
+    print('Henry saline intrusion does NOT work')
 
 
 if (showPlot):

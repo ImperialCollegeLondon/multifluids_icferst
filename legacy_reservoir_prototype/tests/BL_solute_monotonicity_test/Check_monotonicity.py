@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # arguments:: project vtu
 # extracts flow parameters for a number of points
@@ -14,7 +14,7 @@ from scipy.interpolate import interp1d
 import os
 
 
-print 'Running the model'
+print('Running the model')
 
 #Get path
 
@@ -62,10 +62,10 @@ for test in range(2):
 
   ################################AUTOMATIC STUFF###############################
 
-  if (len(sys.argv)>1):
+  try:
       filename   = sys.argv[1]
       vtu_number = int(sys.argv[2])
-  else:
+  except:
       filename = AutomaticFile
       vtu_number = int(AutomaticVTU_Number)
       
@@ -136,8 +136,8 @@ if (AutoNumber < 20): Passed = False
 
 #print L1_norm, L2_norm
 if (Passed): 
-    print 'Monotonicity for Tracer and Saturation works OK'
+    print('Monotonicity for Tracer and Saturation works OK')
 else:
-    print 'Monotonicity for Tracer and Saturation does NOT work'
+    print('Monotonicity for Tracer and Saturation does NOT work')
 
 

@@ -1,4 +1,4 @@
- #!/usr/bin/env python
+#!/usr/bin/env python3
 
 #Created by James Percival
 #modified by:
@@ -14,16 +14,16 @@ from ctypes import c_int, c_double
 
 def write_in_binary_format(fname):
     file=open(fname,'wb')
-    file.writelines(("$MeshFormat\n",
-                     "2.1 1 8\n"))
+    file.write(f"$MeshFormat\n2.1 1 8\n".encode("utf-8"))
     file.write(struct.pack("i", 1))
-    file.write("\n".encode("utf-8"))    
-    file.writelines(("$EndMeshFormat\n",
-                     "$Nodes\n",
-                    "%d\n"%len(node_dict)))
+    file.write("\n".encode("utf-8"))   
+    file.write(f"$EndMeshFormat\n".encode("utf-8")) 
+    file.write(f"$Nodes\n".encode("utf-8")) 
+    file.write("{}\n".format(len(node_dict)).encode("utf-8"))
+
     rnode_dict={}
     rnode_dict = numpy.zeros((len(node_dict),3), dtype=float)
-    for k,v in node_dict.items():
+    for k,v in list(node_dict.items()):
         rnode_dict[v-1][0]=k[0]
         rnode_dict[v-1][1]=k[1]
         rnode_dict[v-1][2]=k[2]
@@ -35,9 +35,9 @@ def write_in_binary_format(fname):
 
 
     file.write("\n".encode("utf-8"))    
-    file.write("$EndNodes\n")
-    file.write("$Elements\n")
-    file.write("%d\n"%(len(ele_face_dict)+len(ele_vol_dict)))
+    file.write(f"$EndNodes\n".encode("utf-8"))
+    file.write(f"$Elements\n".encode("utf-8"))
+    file.write("{}\n".format(len(ele_face_dict)+len(ele_vol_dict)).encode("utf-8"))
     # header
     file.write(struct.pack("i", 2))
     file.write(struct.pack("i", len(ele_face_dict)))#or maybe +len(ele_face_dict)
@@ -52,13 +52,13 @@ def write_in_binary_format(fname):
     for k,ele in enumerate(ele_vol_dict):
         file.write(struct.pack("iiiiiii", k+1+len(ele_face_dict), ele[0], ele[0], ele[1], ele[2], ele[3], ele[4]))
     file.write("\n".encode("utf-8"))
-    file.write("$EndElements\n")
+    file.write(f"$EndElements\n".encode("utf-8"))
     file.close()
 
 
 def write_in_ASCII_format(fname):
     rnode_dict={}
-    for k,v in node_dict.items():
+    for k,v in list(node_dict.items()):
         rnode_dict[v]=k
     #fname = fname[:-2]+'.msh'
     file=open(fname,'w')
@@ -87,13 +87,13 @@ useBinaryFormat = True
 fname=sys.argv[1]
 r=vtk.vtkExodusIIReader()
 if (fname[-2:] == '-h'):
-    print 'This script converts a general exodus ii file into ASCII .msh file format. It requires the vtk python library to be installed on the system.'
-    print 'The input should be the name of the file, and the output is that same name .msh. Example: python exodus2msh.py test.e'
-    print 'To convert to .msh binary format use the option /geometry/create_binary_msh in Diamond.'
+    print('This script converts a general exodus ii file into ASCII .msh file format. It requires the vtk python library to be installed on the system.')
+    print('The input should be the name of the file, and the output is that same name .msh. Example: python exodus2msh.py test.e')
+    print('To convert to .msh binary format use the option /geometry/create_binary_msh in Diamond.')
     exit()
 elif (fname[-2:] != '.e'):
     fname+='.e'
-print 'Converting the input exodus ii file into .msh format...'
+print('Converting the input exodus ii file into .msh format...')
 r.SetFileName(fname)
 r.UpdateInformation()
 r.GenerateGlobalNodeIdArrayOn()
@@ -164,4 +164,4 @@ if useBinaryFormat:
 else:
     write_in_ASCII_format(fname)
 
-print '...file created => '+ fname
+print(('...file created => '+ fname))
