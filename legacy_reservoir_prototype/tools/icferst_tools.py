@@ -322,7 +322,7 @@ for example:
     
       assert(subsample > 0)
 
-      statfile=file(filename, "r")
+      statfile=open(filename, "r")
       header_re=re.compile(r"</header>")
       xml="" # xml header.
 
@@ -377,10 +377,10 @@ for example:
             if not integer_size == 4:
               raise Exception("Unexpected integer size: " + str(real_size))
        
-        nOutput = (os.path.getsize(filename + ".dat") / (nColumns * real_size)) / subsample
+        nOutput = int((os.path.getsize(filename + ".dat") / (nColumns * real_size)) / subsample)
         
         columns = numpy.empty((nColumns, nOutput))
-        statDatFile = file(filename + ".dat", "rb")   
+        statDatFile = open(filename + ".dat", "rb")   
         index = 0     
         while True:
           values = array.array(realFormat)
