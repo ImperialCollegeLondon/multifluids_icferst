@@ -55,7 +55,7 @@
       </constant>
     </dump_period_in_timesteps>
     <PropertiesFromFile>substances_properties</PropertiesFromFile>
-    <Show_Convergence/>
+    
   </io>
   <timestepping>
     <current_time>
