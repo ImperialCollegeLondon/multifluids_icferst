@@ -8,14 +8,14 @@
 
 ../../../bin/icferst cwc_P1DGP1.mpml
 cp cwc_P1DGP1_1.vtu serial_P1DGP1.vtu
-mpiexec  ../../../bin/icferst cwc_P1DGP1.mpml
+mpirun -n 2  ../../../bin/icferst cwc_P1DGP1.mpml
 ../../../bin/pvtu2vtu cwc_P1DGP1 1
 ../../../bin/vtudiff serial_P1DGP1.vtu cwc_P1DGP1_1.vtu diff_P1DGP1.vtu
 
 
 ../../../bin/icferst cwc_P1DGP2.mpml
 cp cwc_P1DGP2_1.vtu serial_P1DGP2.vtu
-mpiexec  ../../../bin/icferst cwc_P1DGP2.mpml
+mpirun -n 2  ../../../bin/icferst cwc_P1DGP2.mpml
 ../../../bin/pvtu2vtu cwc_P1DGP2 1
 ../../../bin/vtudiff serial_P1DGP2.vtu cwc_P1DGP2_1.vtu diff_P1DGP2.vtu</command_line>
   </problem_definition>

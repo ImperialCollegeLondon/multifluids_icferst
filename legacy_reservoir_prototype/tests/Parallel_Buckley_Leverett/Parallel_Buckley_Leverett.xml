@@ -8,7 +8,7 @@
 
 ../../../bin/icferst BL_quartered.mpml
 mv BL_radial_0.vtu serial.vtu
-mpiexec  ../../../bin/icferst BL_quartered.mpml
+mpirun -n 2  ../../../bin/icferst BL_quartered.mpml
 ../../../bin/pvtu2vtu BL_radial 0
 ../../../bin/vtudiff serial.vtu BL_radial_0.vtu diff.vtu</command_line>
   </problem_definition>
