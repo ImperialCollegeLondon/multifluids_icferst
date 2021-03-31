@@ -8,7 +8,8 @@ import vtktools
 import operator
 import numpy
 import pylab
-import fluidity_tools
+sys.path.append("../../tools")
+import icferst_tools
 
 TOLERANCE_H=0.05
 TOLERANCE_P=150
@@ -94,7 +95,7 @@ ts=time[1:] #ignore 0
 
 # then the pressure gauges - this takes it data from the detectors so no
 # need for extraction from the vtus
-results = fluidity_tools.stat_parser("cwc.detectors")
+results = icferst_tools.stat_parser("cwc.detectors")
 time = results["ElapsedTime"]["value"]
 
 for p in range(len(parray)):
