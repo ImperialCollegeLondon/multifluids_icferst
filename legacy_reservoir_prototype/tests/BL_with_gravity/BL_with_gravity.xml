@@ -4,12 +4,12 @@
   <owner userid="pablo.salinas"/>
   <tags>porous gravity mpml DCVFEM</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>python ./Check_BL_with_gravity.py &gt; log</command_line>
+    <command_line>python3 ./Check_BL_with_gravity.py &gt; log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>
     <test name="Check_BL_with_gravity" language="python">Check_BL_with_gravity = False
-with open("log", "rb") as f:
+with open("log", "r") as f:
     linelist = f.readlines()           # Read the first line.
     last = linelist[len(linelist)-1]   # The last line
 f.close 

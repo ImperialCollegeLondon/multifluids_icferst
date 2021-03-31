@@ -31,7 +31,7 @@ Passed = False
 filename = 'two_well_test_outfluxes.csv'
 phase1_in = []
 phase2_out = []
-with open(filename, 'rb') as csvfile:
+with open(filename, 'r') as csvfile:
     datareader = csv.reader(csvfile, delimiter=',', quotechar='|')
     for row in datareader:
         try:

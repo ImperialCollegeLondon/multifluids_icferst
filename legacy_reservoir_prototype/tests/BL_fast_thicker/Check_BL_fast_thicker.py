@@ -67,10 +67,10 @@ resolution = 1000
 
 ################################AUTOMATIC STUFF###############################
 
-if (len(sys.argv)>1):
+try:
     filename   = sys.argv[1]
     vtu_number = int(sys.argv[2])
-else:
+except:
     filename = AutomaticFile
     vtu_number = int(AutomaticVTU_Number)
     
@@ -146,7 +146,7 @@ for j in range(points.GetNumberOfPoints()):
 
 Analytical_X = []
 Analytical_Y = []
-Analytical=file('Analytical','r')
+Analytical=open('Analytical','r')
 
 
 while True:

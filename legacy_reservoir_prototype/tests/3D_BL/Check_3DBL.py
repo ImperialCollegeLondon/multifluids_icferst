@@ -67,10 +67,10 @@ resolution = 1000
 
 ################################AUTOMATIC STUFF###############################
 
-if (len(sys.argv)>1):
+try:
     filename   = sys.argv[1]
     vtu_number = int(sys.argv[2])
-else:
+except:
     filename = AutomaticFile
     vtu_number = int(AutomaticVTU_Number)
     
@@ -153,7 +153,7 @@ for i in range(len(FS)):
 
 Analytical_X = []
 Analytical_Y = []
-Analytical=file('Analytical','r')
+Analytical=open('Analytical','r')
 
 
 while True:
@@ -212,7 +212,7 @@ if (L1_norm > Tolerance_L1_NORM): Passed = False
 #Check the experiment has finished
 if (AutoNumber < 32): Passed = False
 
-#print L1_norm, L2_norm
+print(L1_norm)
 
 if (Passed): 
     print('3D BL works OK')
