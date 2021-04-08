@@ -1935,7 +1935,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type( vector_field ), pointer :: x_all2, U
         type( scalar_field ), pointer :: sf, soldf, gamma, cvp
         type( vector_field ) :: packed_vel, rhs
-        type( vector_field ) :: deltap, rhs_p
+        type( vector_field ) :: deltap, rhs_p, vpressure
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
         logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, fem_density_buoyancy
@@ -2319,8 +2319,13 @@ end if
         ewrite(3,*)'about to solve for pressure'
         !Perform Div * U for the RHS of the pressure equation
         rhs_p%val = 0.
+        vpressure=as_vector(P_ALL,dim=2)
         call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
-        rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
+        if (compute_compaction) then
+          call mult_T(deltap, Mmat%petsc_ACV, vpressure)
+          rhs_p%val = rhs_p%val + deltap%val
+          rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
+        end if
         call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
         !Re-scale system so we can deal with SI units of permeability
         if (is_porous_media) then
@@ -2481,7 +2486,7 @@ end if
             call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
             conv_test = inf_norm_vector_normalised(CDP_tensor%val, ref_CDP_tensor%val, totally_min_max)
             ref_CDP_tensor%val = CDP_tensor%val
-! print *, conv_test
+print *, conv_test
             !We use deltaP as residual check for convergence
             if ( conv_test < solver_tolerance .or.  k == stokes_max_its*Max_restarts) then
               if (getprocno() == 1) then
@@ -2504,7 +2509,11 @@ end if
             !If we end up using the residual, this call just below is unnecessary
             rhs_p%val = 0.
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
-            rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
+            if (compute_compaction) then
+              call mult_T(deltap, Mmat%petsc_ACV, vpressure)
+              rhs_p%val = rhs_p%val + deltap%val
+              rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
+            end if
             call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
             call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val, update_pres = .not. Special_precond)!don
             if (isParallel()) call halo_update(deltap)
@@ -2527,6 +2536,7 @@ end if
               if (compute_compaction) then
                 call mult_T(deltap, Mmat%petsc_ACV, deltap)
                 rhs_p%val = rhs_p%val + deltap%val
+                rhs_p%val = rhs_p%val + Mmat%CT_RHS%val
               end if
               !Solve again the system to finish the preconditioner
               call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
@@ -2610,7 +2620,7 @@ end if
                   DO JPHASE = 1, final_phase
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
-                    Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )/1e3
+                    Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )
                   end do
                 end do
               end do
@@ -2869,11 +2879,11 @@ end if
 
         call generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, lhs_coef, &
           sfield, K_fields, F_fields, rhs_coef, intface_val_type = 100)!intface_val_type normal mean
-
+print *, 'RHS', Mmat%CV_RHS%val(1,1) ,  Mmat%CV_RHS%val(1,10),  Mmat%CV_RHS%val(1,30)
         !Now we perform CMC = CMC + D
         call MatAXPY(CMC_petsc%M,1.0,Mmat%petsc_ACV%M, SAME_NONZERO_PATTERN, stat)
         !We update also the RHS of the continuity equation
-        CT_RHS%val = CT_RHS%val - Mmat%CV_RHS%val
+        CT_RHS%val = CT_RHS%val - Mmat%CV_RHS%val*0
         !We do not deallocate here Mmat%petsc_ACV as it may be needed in the BfB/stokes solver later on
         call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
         deallocate(F_fields, K_fields, lhs_coef, rhs_coef)

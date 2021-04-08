@@ -7195,7 +7195,7 @@ end if
     !> IMPORTANT: This subroutine requires the PHsparsity to be generated
     !> Note that this method solves considering FE fields. If using CV you may incur in an small error.
     subroutine generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, Sigma_field, &
-      Solution, K_fields, F_fields, rhs_div_fields, intface_val_type)
+      Solution, K_fields, F_fields, rhs_div_fields, intface_val_type, add_to_CT)
       implicit none
 
       type(multi_dimensions), intent( in ) :: Mdims
@@ -7235,6 +7235,8 @@ end if
       !Local diffusion coefficients
       real, dimension(size(Sigma_field,1)):: SIGMA_DIFF_COEF_DIVDX
       real, dimension(size(F_fields,1), size(F_fields,2)):: DIFF_COEF_DIVDX
+      logical, optional :: add_to_CT
+      
       !Set the number of phases from max of fieldsF_fields
       local_phases = size(Sigma_field,1)
       !Retrieve node coordinates
@@ -7370,12 +7372,15 @@ end if
                     end do
                     do i = 1, size(rhs_div_fields,1)
                       LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodi), CVNORMX_ALL(:, GI))
-                      LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) + SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodi), CVNORMX_ALL(:, GI))
+                      LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) + SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodj), CVNORMX_ALL(:, GI))
                     end do
                   end do
 
                   do iphase = 1, local_phases
                     !For the RHS collapsing to assemble into phase 1 can be done just here
+                    ! print *, '----'
+                    ! print *, 'I:', LOC_CV_RHS_I(iphase)
+                    ! print *, 'J:', LOC_CV_RHS_J(iphase)
                     call addto(Mmat%CV_RHS,iphase, CV_NODI,LOC_CV_RHS_I(iphase))
                     call addto(Mmat%CV_RHS,iphase, CV_NODJ,LOC_CV_RHS_J(iphase))
                     !Introduce the information into the petsc_ACV matrix
