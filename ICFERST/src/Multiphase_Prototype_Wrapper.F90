@@ -836,8 +836,8 @@ contains
         option_path = "/solver_options/Non_Linear_Solver"
         if (.not. have_option(trim(option_path) )) then!The default has to exist
           if (GetProcNo() == 1) then
-            print*, "MESSAGE: Using default options for the non-linear solver. Convergence check (Pressure) with a maximum of 20 its. ",&
-             "For multiphase porous media VAD and automatic backtracking are on. The check is either Saturation, if multiphase, or the Tracer used."
+            print*, "MESSAGE: Using default options for the non-linear solver. Convergence check of 1% of Pressure, saturation and all the tracers with a maximum of 20 its. ",&
+             "For multiphase porous media VAD and automatic backtracking are on."
           end if
           call add_option(trim(option_path), stat = stat)
           call set_option(trim(option_path), 20)

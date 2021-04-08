@@ -1380,7 +1380,7 @@ contains
           FLAbort("ERROR: Well_domains modelling activated but pressure for both systems not specified.")
         end if
         call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Well_domains', &
-        states(i), field_name='Well_domains')
+        states(1), field_name='Well_domains')
       end if
     end if
 
