@@ -1308,91 +1308,80 @@ contains
        call allocate_and_insert_irradiance(states(1))
     end if
 
-    !Insert density and viscosity fields, required for the new schema
-    ! if (have_option('/material_phase[0]/phase_properties' )) then
-    !   do i=1, nstates
-    !     !Insert Viscosity
-    !      call allocate_and_insert_tensor_field('/material_phase['//int2str(i)//']phase_properties/Viscosity/tensor_field::Viscosity', &
-    !      states(i), parent_mesh = "VelocityMesh")
-    !
-    !    end do
-    ! end if
     ! insert porous media fields
     if (have_option('/porous_media')) then!SPRINT_TO_D I DON'T THINK WE NEED TO LOOP OVER NSTATES IN ALL THESE CASES
-       do i=1, nstates
-          call allocate_and_insert_scalar_field('/porous_media/scalar_field::Porosity', &
-             states(i), field_name='Porosity')
-          if (have_option("/porous_media/scalar_field::Permeability")) then
-             call allocate_and_insert_scalar_field('/porous_media/scalar_field::Permeability', &
-               states(i), field_name='Permeability')
-          elseif (have_option("/porous_media/vector_field::Permeability")) then
-             call allocate_and_insert_vector_field('/porous_media/vector_field::Permeability', &
-               states(i))
-          elseif (have_option("/porous_media/tensor_field::Permeability")) then
-             call allocate_and_insert_tensor_field('/porous_media/tensor_field::Permeability', &
-               states(i))
-          end if
-          if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
-             call allocate_and_insert_scalar_field('/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity', &
-               states(i), field_name='Longitudinal_Dispersivity')
-          end if
+      call allocate_and_insert_scalar_field('/porous_media/scalar_field::Porosity', &
+      states(1), field_name='Porosity')
+      if (have_option("/porous_media/scalar_field::Permeability")) then
+        call allocate_and_insert_scalar_field('/porous_media/scalar_field::Permeability', &
+        states(1), field_name='Permeability')
+      elseif (have_option("/porous_media/vector_field::Permeability")) then
+        call allocate_and_insert_vector_field('/porous_media/vector_field::Permeability', &
+        states(1))
+      elseif (have_option("/porous_media/tensor_field::Permeability")) then
+        call allocate_and_insert_tensor_field('/porous_media/tensor_field::Permeability', &
+        states(1))
+      end if
+      if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
+        call allocate_and_insert_scalar_field('/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity', &
+        states(1), field_name='Longitudinal_Dispersivity')
+      end if
 
-          if (have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
-             call allocate_and_insert_scalar_field('/porous_media/Dispersion/scalar_field::Transverse_Dispersivity', &
-               states(i), field_name='Transverse_Dispersivity')
-          end if
+      if (have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
+        call allocate_and_insert_scalar_field('/porous_media/Dispersion/scalar_field::Transverse_Dispersivity', &
+        states(1), field_name='Transverse_Dispersivity')
+      end if
 
 
-       end do
-       !Insert if required thermal porous media fields
-        if (have_option('/porous_media/porous_properties/')) then
-          call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
-           states(1), field_name='porous_density_initial')  !only for 1 phase because porous medium (this is to calculate porous density)
-          call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
-           states(1), field_name='porous_density_old')  !only for 1 phase because porous medium (to calculate porous_heat_coef_old)
-           do i=1, nstates
-             call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
-                states(i), field_name='porous_density')
-              call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_heat_capacity', &
-                 states(i), field_name='porous_heat_capacity')
-              if (have_option("/porous_media/porous_properties/scalar_field::porous_compressibility")) then
-                call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_compressibility', &
-                  states(i), field_name='porous_compressibility')
-              end if
-              if (have_option("/porous_media/porous_properties/tensor_field::porous_thermal_conductivity")) then
-                 call allocate_and_insert_tensor_field('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity', &
-                   states(i))
-              end if
-           end do
+      !Insert if required thermal porous media fields
+      if (have_option('/porous_media/porous_properties/')) then
+        call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
+        states(1), field_name='porous_density_initial')  !only for 1 phase because porous medium (this is to calculate porous density)
+        call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
+        states(1), field_name='porous_density_old')  !only for 1 phase because porous medium (to calculate porous_heat_coef_old)
+        call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
+        states(1), field_name='porous_density')
+        call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_heat_capacity', &
+        states(1), field_name='porous_heat_capacity')
+        if (have_option("/porous_media/porous_properties/scalar_field::porous_compressibility")) then
+          call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_compressibility', &
+          states(1), field_name='porous_compressibility')
         end if
-        if (have_option("/porous_media/SelfPotential")) then
-          call allocate_and_insert_scalar_field('/porous_media/SelfPotential/scalar_field::SelfPotential', &
-             states(1), field_name='SelfPotential')
+        if (have_option("/porous_media/porous_properties/tensor_field::porous_thermal_conductivity")) then
+          call allocate_and_insert_tensor_field('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity', &
+          states(1))
         end if
+      end if
+      if (have_option("/porous_media/SelfPotential")) then
+        call allocate_and_insert_scalar_field('/porous_media/SelfPotential/scalar_field::SelfPotential', &
+        states(1), field_name='SelfPotential')
+      end if
     end if
 
     if (have_option("/porous_media/wells_and_pipes")) then
-       do i=1, nstates
-          call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Pipe', &
-             states(i), field_name='Pipe')
-          call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Gamma', &
-             states(i), field_name='Gamma')
-          call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Sigma', &
-             states(i), field_name='Sigma')
-        !For diameter, we need to define meory over all the mesh
-          call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::DiameterPipe', &
-             states(i), field_name='DiameterPipe', dont_save_memory = .true. )
-          if (have_option('/porous_media/wells_and_pipes/thermal_well_properties'))then
-             call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/thermal_well_properties/scalar_field::Conductivity', &
-                states(i), field_name='Conductivity')
-             call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/thermal_well_properties/scalar_field::well_thickness', &
-                states(i), field_name='well_thickness')
-          end if
-          if (have_option('/porous_media/wells_and_pipes/well_volume_ids')) then
-              call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Well_domains', &
-                 states(i), field_name='Well_domains')
+      call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Pipe', &
+      states(1), field_name='Pipe')
+      call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Gamma', &
+      states(1), field_name='Gamma')
+      call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Sigma', &
+      states(1), field_name='Sigma')
+      !For diameter, we need to define meory over all the mesh
+      call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::DiameterPipe', &
+      states(1), field_name='DiameterPipe', dont_save_memory = .true. )
+      if (have_option('/porous_media/wells_and_pipes/thermal_well_properties'))then
+        call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/thermal_well_properties/scalar_field::Conductivity', &
+        states(1), field_name='Conductivity')
+        call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/thermal_well_properties/scalar_field::well_thickness', &
+        states(1), field_name='well_thickness')
+      end if
+      if (have_option('/porous_media/wells_and_pipes/well_volume_ids')) then
+        !Check if it has 2 pressures
+        if (option_count("/material_phase/scalar_field::Pressure/prognostic") < 2) then
+          FLAbort("ERROR: Well_domains modelling activated but pressure for both systems not specified.")
         end if
-       end do
+        call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Well_domains', &
+        states(i), field_name='Well_domains')
+      end if
     end if
 
 

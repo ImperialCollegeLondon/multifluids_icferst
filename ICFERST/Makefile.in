@@ -83,7 +83,7 @@ clean:
 	@rm -f *.o *.d include/*.mod $(PROG_EXEC) lib/*.a
 	@rm -rf bin/
 	@cd src;   make clean
-	@cd tests; PYTHONPATH=../python ../tools/testharness_MultiphasePrototype.py --clean >/dev/null
+	@cd tests; PYTHONPATH=../python ../tools/testharness_ICFERST.py --clean >/dev/null
 	@cd unittest; make clean
 
 

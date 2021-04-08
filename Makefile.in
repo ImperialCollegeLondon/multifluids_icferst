@@ -479,12 +479,12 @@ mediumtest: fltools bin/$(FLUIDITY) manual spudtools
 test-mp: fltools bin/icferst serialtest-mp
 
 serialtest-mp:
-	@cd ICFERST/tests; ../tools/testharness_MultiphasePrototype.py -l short $(EXCLUDE_TAGS) -n $(THREADS)
+	@cd ICFERST/tests; ../tools/testharness_ICFERST.py -l short $(EXCLUDE_TAGS) -n $(THREADS)
 
 test-mp-xml: fltools bin/icferst serialtest-mp-xml
 
 serialtest-mp-xml:
-	@cd ICFERST/tests; ../tools/testharness_MultiphasePrototype.py -x multiphase_test_results.xml -l short $(EXCLUDE_TAGS) -n $(THREADS)
+	@cd ICFERST/tests; ../tools/testharness_ICFERST.py -x multiphase_test_results.xml -l short $(EXCLUDE_TAGS) -n $(THREADS)
 
 spudtools:
 	@cd libspud ; $(MAKE) install-spudtools
