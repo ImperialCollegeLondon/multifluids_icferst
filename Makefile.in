@@ -182,14 +182,13 @@ mp: bin/icferst
 
 bin/icferst: fluidity_library
 	@echo "    MAKE icferst"
-	@cd legacy_reservoir_prototype; $(MAKE)
+	@cd ICFERST; $(MAKE)
 	@echo "BUILD icferst"
-	@echo "    MKDIR legacy_reservoir_prototype"
+	@echo "    MKDIR ICFERST"
 	@mkdir -p bin
 	@echo "    LD icferst"
-	@$(EVAL) $(LINKER) -o bin/icferst legacy_reservoir_prototype/main.o ./legacy_reservoir_prototype/lib/libmphase.a $(CXXFLAGS) $(LIBS)
+	@$(EVAL) $(LINKER) -o bin/icferst ICFERST/main.o ./ICFERST/lib/libmphase.a $(CXXFLAGS) $(LIBS)
 	@cd ../
-	@cp ./bin/icferst ./bin/multiphase_prototype
 
 bin/form_pod_basis: fluidity_library reduced_modelling/Form_Pod_Basis_Main.F90
 	@cd reduced_modelling; $(MAKE) Form_Pod_Basis_Main.o
@@ -384,8 +383,8 @@ endif
 	@cd climatology;  $(MAKE) clean
 	@echo "    CLEAN main"
 	@cd main; $(MAKE) clean
-	@echo "    CLEAN legacy_reservoir_prototype"
-	@cd legacy_reservoir_prototype; $(MAKE) clean
+	@echo "    CLEAN ICFERST"
+	@cd ICFERST; $(MAKE) clean
 	@rm -fr bin lib
 
 clean: clean-light clean-test python_clean clean-debian
@@ -477,15 +476,15 @@ mediumtest: fltools bin/$(FLUIDITY) manual spudtools
 
 .PHONY: spudtools
 
-test-mp: fltools bin/multiphase_prototype serialtest-mp
+test-mp: fltools bin/icferst serialtest-mp
 
 serialtest-mp:
-	@cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -l short $(EXCLUDE_TAGS) -n $(THREADS)
+	@cd ICFERST/tests; ../tools/testharness_MultiphasePrototype.py -l short $(EXCLUDE_TAGS) -n $(THREADS)
 
-test-mp-xml: fltools bin/multiphase_prototype serialtest-mp-xml
+test-mp-xml: fltools bin/icferst serialtest-mp-xml
 
 serialtest-mp-xml:
-	@cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -x multiphase_test_results.xml -l short $(EXCLUDE_TAGS) -n $(THREADS)
+	@cd ICFERST/tests; ../tools/testharness_MultiphasePrototype.py -x multiphase_test_results.xml -l short $(EXCLUDE_TAGS) -n $(THREADS)
 
 spudtools:
 	@cd libspud ; $(MAKE) install-spudtools
@@ -516,8 +515,8 @@ endif
 	@cd assemble/tests; $(MAKE) unittest
 	@echo "    UNITTEST ocean_forcing"
 	@cd ocean_forcing/tests; $(MAKE) unittest
-	@echo "    UNITTEST legacy_reservoir_prototype"
-	@cd legacy_reservoir_prototype; $(MAKE) build_unittest
+	@echo "    UNITTEST ICFERST"
+	@cd ICFERST; $(MAKE) build_unittest
 
 
 unittest: build_unittest
@@ -525,8 +524,8 @@ unittest: build_unittest
 	@bin/unittestharness bin/tests
 
 unittest-mp: build_unittest
-	@echo "RUN legacy_reservoir_prototype/bin/tests"
-	@bin/unittestharness legacy_reservoir_prototype/bin/tests
+	@echo "RUN ICFERST/bin/tests"
+	@bin/unittestharness ICFERST/bin/tests
 
 
 bin/spud-preprocess:
@@ -582,7 +581,7 @@ endif
 	@cd diagnostics;   	$(MAKE) Diagnostic_Fields_Interfaces.o \
 	Diagnostic_Fields_New.o
 	@echo "    Generating multiphase dependencies"
-	@cd legacy_reservoir_prototype/src;  ../../bin/create_makefile $(TESTOPTS)
+	@cd ICFERST/src;  ../../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating main dependencies"
 	@cd main; ../bin/create_makefile --exclude test_coupler.F90 $(TESTOPTS)
 	@echo "    Cleaning up the mess"

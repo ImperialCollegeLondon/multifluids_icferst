@@ -30,7 +30,7 @@ pipeline {
     }
     post {
         always {
-            junit 'legacy_reservoir_prototype/tests/multiphase_test_result*xml'
+            junit 'ICFERST/tests/multiphase_test_result*xml'
         }
     }
 }
