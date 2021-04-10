@@ -7370,7 +7370,7 @@ end if
                     end do
                     do i = 1, size(rhs_div_fields,1)
                       LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodi), CVNORMX_ALL(:, GI))
-                      LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) + SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodi), CVNORMX_ALL(:, GI))
+                      LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) + SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodj), CVNORMX_ALL(:, GI))
                     end do
                   end do
 
