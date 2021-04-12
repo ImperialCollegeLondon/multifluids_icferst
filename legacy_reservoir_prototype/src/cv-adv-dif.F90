@@ -1,16 +1,26 @@
-!    Copyright (C) 2020 Imperial College London and others.
+!    Copyright (C) 2006 Imperial College London and others.
+!
+!    Please see the AUTHORS file in the main source directory for a full list
+!    of copyright holders.
+!
+!    Prof. C Pain
+!    Applied Modelling and Computation Group
+!    Department of Earth Science and Engineering
+!    Imperial College London
+!
+!    amcgsoftware@imperial.ac.uk
 !
 !    This library is free software; you can redistribute it and/or
-!    modify it under the terms of the GNU Affero General Public License
-!    as published by the Free Software Foundation,
-!    version 3.0 of the License.
+!    modify it under the terms of the GNU Lesser General Public
+!    License as published by the Free Software Foundation,
+!    version 2.1 of the License.
 !
 !    This library is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without seven the implied warranty of
+!    but WITHOUT ANY WARRANTY; without even the implied warranty of
 !    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 !    Lesser General Public License for more details.
 !
-!    You should have received a copy of the GNU General Public
+!    You should have received a copy of the GNU Lesser General Public
 !    License along with this library; if not, write to the Free Software
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
@@ -5294,7 +5304,6 @@ end if
         REAL :: FEN_TEN_XX(NDIM,NDIM),FEN_TEN_VOL(NDIM)
         INTEGER :: IDIM,JDIM
 
-
         DO IDIM=1,NDIM
             FEN_TEN_XX(IDIM,:)=UFENX_ILOC(:) * TEN_XX(IDIM,:)
         END DO
@@ -5323,29 +5332,34 @@ end if
 
     END SUBROUTINE CALC_STRESS_TEN
 
-    SUBROUTINE CALC_STRESS_TEN_SOLID(CAUCHY_STRESS_IJ_SOLID_ELE,  NDIM, NLOC,   &
-    LOC_X_ALL,LOC_X0_ALL, TEN_VOL_RATIO_temp)
+    SUBROUTINE CALC_STRESS_TEN_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE,  NDIM, NLOC,   &
+    LOC_X_ALL,LOC_X0_ALL, LOC_VEL_ALL, TEN_VOL_RATIO_temp, ELE)
     ! determine stress form of viscocity...
     IMPLICIT NONE
-    INTEGER, intent( in )  :: NDIM, NLOC
+    type( state_type ), dimension( : ), intent( inout ) :: state !> Linked list containing all the fields defined in diamond and considered by Fluidity
+
+    INTEGER, intent( in )  :: NDIM, NLOC , ELE ! linfeng needs index of element (ELE)
+    type( tensor_field ), pointer :: temp_stress    ! linfeng sets this temporary to update solid stress tensor
     REAL, DIMENSION( :, :  ), intent( inOUT ) :: CAUCHY_STRESS_IJ_SOLID_ELE
  !   REAL, DIMENSION( :, :  ), intent( inOUT ) :: PRESSURE
     REAL, intent( in ) :: TEN_VOL_RATIO_temp
-    REAL, DIMENSION( :,: ), intent( in ) :: LOC_X_ALL
+    REAL, DIMENSION( :,: ), intent( in ) :: LOC_X_ALL, LOC_VEL_ALL
     REAL, DIMENSION( :,: ), intent( in ) :: LOC_X0_ALL
     REAL :: F0( NDIM,NDIM ),FX( NDIM,NDIM ),F0inv( NDIM,NDIM ),Fxinv( NDIM,NDIM )
-    REAL :: voli,volc
+    REAL :: voli,volc, LX( NDIM,NDIM ), L(NDIM,NDIM ),D(NDIM,NDIM )
 
 ! TEN_VOL is volumetric viscocity - mostly set to zero other than q-scheme or use with kinetic theory
 !    REAL, DIMENSION( : ), intent( in ) :: UFENX_JLOC
     ! Local variables...
     REAL :: FEN_TEN_XX(NDIM,NDIM),FEN_TEN_VOL(NDIM),UFENX(NDIM,NDIM)
     INTEGER :: IDIM,JDIM,KDIM,ILOC,II
-    REAL::DPEMU,DPELA,TEN_VOL_RATIO, hydro_pressure
+    REAL::DPEMU,DPELA,TEN_VOL_RATIO, hydro_pressure, DPEKS
    !     ewrite(3,*)"enter stress tensor calculation, TEN_VOL_RATIO", TEN_VOL_RATIO
 
-    DPEMU=1.0e+04
-    DPELA=1.0e+04
+    DPEMU=7.72e10
+    DPELA=1.15e11
+    DPEKS=10.0
+                    temp_stress => extract_tensor_field(state(1), "StressTenSolid")
 
     DO ILOC=2,NLOC
        ii=ILOC-1
@@ -5355,6 +5369,9 @@ end if
         FX(1,ii)=LOC_X_ALL(1,ILOC)-LOC_X_ALL(1,1)
         FX(2,ii)=LOC_X_ALL(2,ILOC)-LOC_X_ALL(2,1)
         FX(3,ii)=LOC_X_ALL(3,ILOC)-LOC_X_ALL(3,1)
+        LX(1,ii)=LOC_VEL_ALL(1,ILOC)-LOC_VEL_ALL(1,1)
+        LX(2,ii)=LOC_VEL_ALL(2,ILOC)-LOC_VEL_ALL(2,1)
+        LX(3,ii)=LOC_VEL_ALL(3,ILOC)-LOC_VEL_ALL(3,1)
     END DO
 
 voli=F0(1,1)*(F0(2,2)*F0(3,3)-F0(2,3)*F0(3,2))-    &
@@ -5385,10 +5402,13 @@ volc=FX(1,1)*(FX(2,2)*FX(3,3)-FX(2,3)*FX(3,2))-    &
 TEN_VOL_RATIO=volc/voli
 
     UFENX=0.0
+    L=0.0
         DO IDIM=1,NDIM
        DO JDIM=1,NDIM
           DO KDIM=1,NDIM
           UFENX(IDIM,JDIM)=UFENX(IDIM,JDIM)+FX(IDIM,KDIM)*F0inv(KDIM,JDIM)
+          L(IDIM,JDIM)=L(IDIM,JDIM)+LX(IDIM,KDIM)*FXinv(KDIM,JDIM)
+
           END DO
        END DO
     END DO
@@ -5403,12 +5423,14 @@ TEN_VOL_RATIO=volc/voli
 
 
     FEN_TEN_XX=0.0
+    D=0.0
     DO IDIM=1,NDIM
         DO JDIM=1,NDIM
            DO KDIM=1,NDIM
            FEN_TEN_XX(IDIM,JDIM)=FEN_TEN_XX(IDIM,JDIM)+UFENX(IDIM,KDIM)*UFENX(JDIM,KDIM)
 !    FEN_TEN_XX(IDIM,JDIM)=FEN_TEN_XX(IDIM,JDIM)+UFENX_ILOC(IDIM,JDIM)*UFENX0(JDIM,IDIM)
            END DO
+           D(IDIM,JDIM)=0.5*(L(IDIM,JDIM)+L(JDIM,IDIM))
        END DO
     END DO
 
@@ -5416,10 +5438,19 @@ TEN_VOL_RATIO=volc/voli
 
     DO JDIM=1,NDIM
        DO IDIM=1,NDIM
-          CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)
+          CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)+DPEKS*D(IDIM,JDIM)
        END DO
           CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM)+(DPELA*LOG(TEN_VOL_RATIO)-DPEMU)/TEN_VOL_RATIO
     END DO
+
+    ! linfeng update solid stress, for output in vtk file.
+    ! ewrite(3, *) "++++++++++++  write solid stress  +++++++++++++"
+     DO JDIM=1,NDIM
+        DO IDIM=1,NDIM
+            temp_stress%val(IDIM, JDIM, ELE) = CAUCHY_STRESS_IJ_SOLID_ELE(IDIM, JDIM)
+        ENDDO
+    ENDDO
+    ! ewrite(3, *) "++++++++  write solid stress finished +++++++++"
 
 !    ewrite(3,*)"stress is", STRESS_IJ
 !    DO JDIM=1,NDIM

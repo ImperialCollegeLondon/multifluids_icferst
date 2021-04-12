@@ -1,16 +1,26 @@
-!    Copyright (C) 2020 Imperial College London and others.
+!    Copyright (C) 2006 Imperial College London and others.
+!
+!    Please see the AUTHORS file in the main source directory for a full list
+!    of copyright holders.
+!
+!    Prof. C Pain
+!    Applied Modelling and Computation Group
+!    Department of Earth Science and Engineering
+!    Imperial College London
+!
+!    amcgsoftware@imperial.ac.uk
 !
 !    This library is free software; you can redistribute it and/or
-!    modify it under the terms of the GNU Affero General Public License
-!    as published by the Free Software Foundation,
-!    version 3.0 of the License.
+!    modify it under the terms of the GNU Lesser General Public
+!    License as published by the Free Software Foundation,
+!    version 2.1 of the License.
 !
 !    This library is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without seven the implied warranty of
+!    but WITHOUT ANY WARRANTY; without even the implied warranty of
 !    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 !    Lesser General Public License for more details.
 !
-!    You should have received a copy of the GNU General Public
+!    You should have received a copy of the GNU Lesser General Public
 !    License along with this library; if not, write to the Free Software
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
@@ -414,8 +424,9 @@ contains
         end if
 !JXiang 8/11/2019 change coordinates of mesh       
         solid_implicit= have_option( '/solid_implicit')
-        diffusion_solid_implicit= have_option( '/diffusion_solid_implicit')
-
+!        solid_implicit=.false.
+        diffusion_solid_implicit= have_option( '/solid_implicit')
+!        diffusion_solid_implicit= .false.
 !        if(solid_implicit) then
         !Check that all the elements have implicity solid defined
         
@@ -429,7 +440,9 @@ contains
             X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
             XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
             x_coord=> extract_vector_field( state, "Coordinate" )
+!            X0_ALL => extract_vector_field( state , "SolidOriginalCoordinate" )
             XOLD_ALL%val=X_ALL%val
+!            X0_ALL%val=X_ALL%val
            end if
 
         
@@ -631,9 +644,12 @@ contains
                if(its==1) XOLD_ALL%val=X_ALL%val
   !             ewrite(3,*)"before all_diffusion",its,XOLD_ALL%val
  !              ewrite(3,*)"X_ALL",its,X_ALL%val
-               call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
   !             ewrite(3,*)"after all_diffusion",its,XOLD_ALL%val
                END If
+               if(diffusion_solid_implicit) then
+                                      call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+               END If
+
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
@@ -683,7 +699,7 @@ contains
 
                     call Calculate_All_Rhos( state, packed_state, Mdims )
 
-                else IF (is_magma) then !... in which case we solve for enthalpy instead
+                else IF (is_magma) then !... in which case we solve for enthalpy instead 
 
                   tracer_field=>extract_tensor_field(packed_state,"PackedEnthalpy")
                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
@@ -837,6 +853,7 @@ contains
             x_coord=> extract_vector_field( state, "Coordinate" )
             XOLD_ALL%val=X_ALL%val
             x_coord%val=X_ALL%val
+ !           ewrite(3,*)"X0 coordinate",X0_ALL%val
            end if
  
             !Call to create the output vtu files, if required and also checkpoint
