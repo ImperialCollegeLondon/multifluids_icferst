@@ -2536,7 +2536,11 @@ print *, conv_test
               if (compute_compaction) then
                 call mult_T(deltap, Mmat%petsc_ACV, deltap)
                 rhs_p%val = rhs_p%val + deltap%val
+<<<<<<< HEAD
                 rhs_p%val = rhs_p%val + Mmat%CT_RHS%val
+=======
+                rhs_p%val = rhs_p%val !+ Mmat%CT_RHS%val
+>>>>>>> temporary
               end if
               !Solve again the system to finish the preconditioner
               call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
@@ -2620,7 +2624,11 @@ print *, conv_test
                   DO JPHASE = 1, final_phase
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
+<<<<<<< HEAD
                     Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )
+=======
+                    Mmat%PIVIT_MAT(J, J, ELE) = 1e8!diagonal_A%val(JPHA_JDIM, u_jnod )
+>>>>>>> temporary
                   end do
                 end do
               end do
@@ -2640,7 +2648,7 @@ print *, conv_test
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
                     !Just the mass matrix
 !once this is working, viscosity and density need to be chose CV-averaged wise!
-                    Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)! * (viscosity%val(1,1,1))
+                    Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)*1e7! * (viscosity%val(1,1,1))
                   end do
                 end do
               end do
@@ -2879,7 +2887,10 @@ print *, conv_test
 
         call generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, lhs_coef, &
           sfield, K_fields, F_fields, rhs_coef, intface_val_type = 100)!intface_val_type normal mean
+<<<<<<< HEAD
 print *, 'RHS', Mmat%CV_RHS%val(1,1) ,  Mmat%CV_RHS%val(1,10),  Mmat%CV_RHS%val(1,30)
+=======
+>>>>>>> temporary
         !Now we perform CMC = CMC + D
         call MatAXPY(CMC_petsc%M,1.0,Mmat%petsc_ACV%M, SAME_NONZERO_PATTERN, stat)
         !We update also the RHS of the continuity equation

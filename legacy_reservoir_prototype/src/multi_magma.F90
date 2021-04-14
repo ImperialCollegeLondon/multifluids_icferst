@@ -454,7 +454,7 @@ contains
     !Get from packed_state
     saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
     c_phi_size=size(c_phi_series)
-    print *, 'phi2/c', phi2_over_c(saturation%val(1,2, 10))
+    ! print *, 'phi2/c', phi2_over_c(saturation%val(1,2, 10))
     DO ELE = 1, Mdims%totele
       DO CV_ILOC = 1, Mdims%cv_nloc
         mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
