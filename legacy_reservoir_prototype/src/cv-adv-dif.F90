@@ -7211,7 +7211,7 @@ end if
       type (multi_matrices), intent(inout) :: Mmat
       type(multi_GI_dimensions), intent(in) :: CV_GIdims
       ! local variables...
-      logical :: INTEGRAT_AT_GI, skip, on_domain_boundary
+      logical :: INTEGRAT_AT_GI, skip, on_domain_boundary, integrate_other_side_and_not_boundary
       logical :: DISTCONTINUOUS_METHOD = .false.!For the time being this subroutine only works for continuous fields
       integer :: stat ,nb, ele, ele2, ele3, sele, cv_siloc, i, local_phases, CV_NODK, cv_kloc,&
       cv_iloc, cv_jloc, cv_nodi, cv_nodj, idim, iphase, GCOUNT, GI, x_nodi, x_nodj, cv_xloc
@@ -7236,7 +7236,7 @@ end if
       real, dimension(size(Sigma_field,1)):: SIGMA_DIFF_COEF_DIVDX
       real, dimension(size(F_fields,1), size(F_fields,2)):: DIFF_COEF_DIVDX
       logical, optional :: add_to_CT
-      
+
       !Set the number of phases from max of fieldsF_fields
       local_phases = size(Sigma_field,1)
       !Retrieve node coordinates
@@ -7322,8 +7322,9 @@ end if
                 on_domain_boundary = ( SELE /= 0 )
                 CV_NODJ = ndgln%cv( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
                 X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
-
-                if(CV_NODJ > CV_NODI) then
+                !Flag to ensure that we do not integrate twice when doing the boundaries.
+                integrate_other_side_and_not_boundary = SELE < 0
+                if(CV_NODJ >= CV_NODI) then
                   !Compute SdevFuns%DETWEI and CVNORMX_ALL
                   CALL SCVDETNX( Mdims, ndgln, X_ALL%val, CV_funs, CV_GIdims, on_domain_boundary, .false., &!NOT FULLY DG FOR THIS METHOD
                   ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL, XC_CV_ALL%val( :, CV_NODI ), X_NODI, X_NODJ)
@@ -7366,21 +7367,18 @@ end if
                     ! Fill up RHS
                     do i = 1, size(F_fields,1)
                       LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
-                      (F_fields(i, iphase, cv_nodj) - F_fields(i, iphase, cv_nodi))
-                      LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
-                      (F_fields(i, iphase, cv_nodi) - F_fields(i, iphase, cv_nodj))
+                        (F_fields(i, iphase, cv_nodj) - F_fields(i, iphase, cv_nodi))
+                       LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
+                        (F_fields(i, iphase, cv_nodi) - F_fields(i, iphase, cv_nodj))
                     end do
                     do i = 1, size(rhs_div_fields,1)
                       LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodi), CVNORMX_ALL(:, GI))
-                      LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) + SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodj), CVNORMX_ALL(:, GI))
+                      if (integrate_other_side_and_not_boundary) LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) + SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodj), CVNORMX_ALL(:, GI))
                     end do
                   end do
 
                   do iphase = 1, local_phases
                     !For the RHS collapsing to assemble into phase 1 can be done just here
-                    ! print *, '----'
-                    ! print *, 'I:', LOC_CV_RHS_I(iphase)
-                    ! print *, 'J:', LOC_CV_RHS_J(iphase)
                     call addto(Mmat%CV_RHS,iphase, CV_NODI,LOC_CV_RHS_I(iphase))
                     call addto(Mmat%CV_RHS,iphase, CV_NODJ,LOC_CV_RHS_J(iphase))
                     !Introduce the information into the petsc_ACV matrix

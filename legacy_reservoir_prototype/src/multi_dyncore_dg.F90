@@ -2486,7 +2486,6 @@ end if
             call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
             conv_test = inf_norm_vector_normalised(CDP_tensor%val, ref_CDP_tensor%val, totally_min_max)
             ref_CDP_tensor%val = CDP_tensor%val
-print *, conv_test
             !We use deltaP as residual check for convergence
             if ( conv_test < solver_tolerance .or.  k == stokes_max_its*Max_restarts) then
               if (getprocno() == 1) then
@@ -2536,11 +2535,7 @@ print *, conv_test
               if (compute_compaction) then
                 call mult_T(deltap, Mmat%petsc_ACV, deltap)
                 rhs_p%val = rhs_p%val + deltap%val
-<<<<<<< HEAD
-                rhs_p%val = rhs_p%val + Mmat%CT_RHS%val
-=======
                 rhs_p%val = rhs_p%val !+ Mmat%CT_RHS%val
->>>>>>> temporary
               end if
               !Solve again the system to finish the preconditioner
               call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
@@ -2624,11 +2619,7 @@ print *, conv_test
                   DO JPHASE = 1, final_phase
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
-<<<<<<< HEAD
-                    Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )
-=======
                     Mmat%PIVIT_MAT(J, J, ELE) = 1e8!diagonal_A%val(JPHA_JDIM, u_jnod )
->>>>>>> temporary
                   end do
                 end do
               end do
@@ -2887,10 +2878,6 @@ print *, conv_test
 
         call generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, lhs_coef, &
           sfield, K_fields, F_fields, rhs_coef, intface_val_type = 100)!intface_val_type normal mean
-<<<<<<< HEAD
-print *, 'RHS', Mmat%CV_RHS%val(1,1) ,  Mmat%CV_RHS%val(1,10),  Mmat%CV_RHS%val(1,30)
-=======
->>>>>>> temporary
         !Now we perform CMC = CMC + D
         call MatAXPY(CMC_petsc%M,1.0,Mmat%petsc_ACV%M, SAME_NONZERO_PATTERN, stat)
         !We update also the RHS of the continuity equation
@@ -2908,10 +2895,12 @@ print *, 'RHS', Mmat%CV_RHS%val(1,1) ,  Mmat%CV_RHS%val(1,10),  Mmat%CV_RHS%val(
       !---------------------------------------------------------------------------
       subroutine  get_Darcy_phases_velocity()
         implicit none
-
+        !Local varables
         integer :: idim, iphase, u_inod
-        deallocate(Mmat%PIVIT_MAT)
+
+if (.not. is_P0DGP1) print *, "####REMINDER: FOR MAGMA ONLY THE P0DG FORMULATION WORKS TO OBTAIN THE DARCY PHASES####"
         !Allocate for a compact version if we move to P0DGP1CV
+        deallocate(Mmat%PIVIT_MAT)
         allocate( Mmat%PIVIT_MAT( 1, 1, Mdims%totele ) ); Mmat%PIVIT_MAT=0.0
         allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods)); U_SOURCE_CV_ALL=0.0
         deallocate(Mmat%U_RHS); allocate(Mmat%U_RHS(Mdims%ndim, Mdims%nphase, Mdims%u_nonods))
