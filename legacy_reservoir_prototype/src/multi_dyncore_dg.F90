@@ -2898,7 +2898,7 @@ end if
         !Local varables
         integer :: idim, iphase, u_inod
 
-if (.not. is_P0DGP1) print *, "####REMINDER: FOR MAGMA ONLY THE P0DG FORMULATION WORKS TO OBTAIN THE DARCY PHASES####"
+if (.not. is_P0DGP1) print *, "####REMINDER: FOR MAGMA ONLY THE P0DG FORMULATION WORKS FOR THE TIME BEING####"
         !Allocate for a compact version if we move to P0DGP1CV
         deallocate(Mmat%PIVIT_MAT)
         allocate( Mmat%PIVIT_MAT( 1, 1, Mdims%totele ) ); Mmat%PIVIT_MAT=0.0

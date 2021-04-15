@@ -7358,18 +7358,20 @@ end if
                   !Assemble
                   do iphase = 1, local_phases
                     LOC_MAT_IJ(iphase) = LOC_MAT_IJ(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
-                    !Assemble off-diagonal
-                    LOC_MAT_JI(iphase) = LOC_MAT_JI(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
                     !Assemble diagonal of the matrix of node cv_nodi
                     LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
-                    !Assemble diagonal of the matrix of node cv_nodj
-                    LOC_MAT_JJ(iphase) = LOC_MAT_JJ(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                    if(integrate_other_side_and_not_boundary) then
+                      !Assemble off-diagonal
+                      LOC_MAT_JI(iphase) = LOC_MAT_JI(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                      !Assemble diagonal of the matrix of node cv_nodj
+                      LOC_MAT_JJ(iphase) = LOC_MAT_JJ(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                    end if
                     ! Fill up RHS
                     do i = 1, size(F_fields,1)
                       LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
                         (F_fields(i, iphase, cv_nodj) - F_fields(i, iphase, cv_nodi))
-                       LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
-                        (F_fields(i, iphase, cv_nodi) - F_fields(i, iphase, cv_nodj))
+                      if(integrate_other_side_and_not_boundary) LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) - &
+                        SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * (F_fields(i, iphase, cv_nodi) - F_fields(i, iphase, cv_nodj))
                     end do
                     do i = 1, size(rhs_div_fields,1)
                       LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodi), CVNORMX_ALL(:, GI))
