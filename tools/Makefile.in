@@ -58,10 +58,7 @@ MESHCONV = ../bin/meshconv
 TEST_LAPLACIAN= ../bin/test_laplacian
 VISUALISE_ELEMENTS= ../bin/visualise_elements
 GMSH2VTU= ../bin/gmsh2vtu
-TRIANGLE2VTU= ../bin/triangle2vtu
 VTU2GMSH= ../bin/vtu2gmsh
-VTU2TRIANGLE= ../bin/vtu2triangle
-PETSC_READNSOLVE = ../bin/petsc_readnsolve
 TEST_PRESSURE_SOLVE = ../bin/test_pressure_solve
 PROJECT_TO_CONTINUOUS = ../bin/project_to_continuous
 UNIFIEDMESH = ../bin/unifiedmesh
@@ -79,14 +76,14 @@ VTKPROJECTION=../bin/vtk_projection
 PERIODISE=../bin/periodise
 
 BINARIES = $(VTKDIAGNOSTIC)		\
-  $(FLDIAGNOSTICS) $(FLREDECOMP) $(PETSC_READNSOLVE)			\
+  $(FLDIAGNOSTICS) $(FLREDECOMP)			\
   $(VERTICAL_INTEGRATION) $(EVMERGE) $(FLADAPT) $(CHECKMESH)		\
   $(PROJECT_VTU) $(PROBE_VTU) $(SUPERMESH_DIFFERENCE)			\
   $(DIFFERENTIATE_VTU) $(VTU_BINS) $(GMSH2VTU)	        		\
   $(PROJECT_TO_CONTINUOUS) $(MESHCONV) $(VTU2GMSH)		        \
   $(TEST_PRESSURE_SOLVE) $(UNIFIEDMESH) $(VTKPROJECTION) $(PERIODISE)	\
   $(STREAMFUNCTION_2D)							\
-  $(TEST_LAPLACIAN) 
+  $(TEST_LAPLACIAN)
 
 # Work around Intel compiler bug in visualise elements by simply not
 # building it.
@@ -95,7 +92,7 @@ BINARIES += $(VISUALISE_ELEMENTS)
 endif
 
 
-.SUFFIXES: .f90 .F90 .c .cpp .o .a 
+.SUFFIXES: .f90 .F90 .c .cpp .o .a
 
 %.o:	%.f90
 	$(FC) $(FCFLAGS) -c $<
@@ -129,13 +126,7 @@ install_python:
 $(GMSH2VTU): gmsh2vtu.o gmsh2vtu_main.o lib/
 	$(LINKER) -o $@ $(filter %.o,$^) -l$(FLUIDITY) $(LIBS)
 
-$(TRIANGLE2VTU): triangle2vtu.o triangle2vtu_main.o lib/
-	$(LINKER) -o $@ $(filter %.o,$^) -l$(FLUIDITY) $(LIBS)
-
 $(VTU2GMSH): vtu2gmsh.o vtu2gmsh_main.o lib/
-	$(LINKER) -o $@ $(filter %.o,$^) -l$(FLUIDITY) $(LIBS)
-
-$(VTU2TRIANGLE): vtu2triangle.o vtu2triangle_main.o lib/
 	$(LINKER) -o $@ $(filter %.o,$^) -l$(FLUIDITY) $(LIBS)
 
 $(PROJECT_TO_CONTINUOUS): project_to_continuous.o project_to_continuous_main.o
@@ -151,10 +142,6 @@ $(VISUALISE_ELEMENTS): visualise_elements.o
 	$(FLLINKER) $(CXXFLAGS) -o $@ $(filter %.o,$^) -l$(FLUIDITY) $(LIBS)
 
 $(VERTICAL_INTEGRATION): Vertical_Integration.o Vertical_Integration_main.o lib/
-	$(LINKER) $(CXXFLAGS) -o $@ $(filter %.o,$^) -l$(FLUIDITY) $(LIBS)
-
-$(PETSC_READNSOLVE): petsc_readnsolve_main.o petsc_readnsolve.o \
-  lib/
 	$(LINKER) $(CXXFLAGS) -o $@ $(filter %.o,$^) -l$(FLUIDITY) $(LIBS)
 
 $(TEST_PRESSURE_SOLVE): test_pressure_solve_main.o test_pressure_solve.o \
@@ -213,9 +200,8 @@ $(UNIFIEDMESH): unifiedmesh.o unifiedmesh_main.o lib/
 
 clean:
 	rm -f *.o *.mod
-	rm -rf build dist fluidity.egg-info 
+	rm -rf build dist fluidity.egg-info
 	rm -f lib
 
 distclean:
 	rm -f version-info
-
