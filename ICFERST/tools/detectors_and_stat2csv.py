@@ -79,11 +79,12 @@ if len(args) > 1:
   Error("Unrecognised option \"" + args[1] + "\" entered")
 outputLabels = 1
 delimiter = ","
-if len(inputFile.split(".")) == 1:
-  outputFile = inputFile
-else:
-  outputFile = inputFile[:-len(inputFile.split(".")[-1]) - 1]
-outputFile += "_detectors.csv"
+#if len(inputFile.split(".")) == 1:
+#  outputFile = inputFile
+#else:
+#  outputFile = inputFile[:-len(inputFile.split(".")[-1]) - 1]
+outputFile = inputFile
+outputFile += ".csv"
 useStdout = 0
 for opt in opts:
   if opt[0] == "-c":
