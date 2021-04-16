@@ -7323,7 +7323,7 @@ end if
                 CV_NODJ = ndgln%cv( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
                 X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
                 !Flag to ensure that we do not integrate twice when doing the boundaries.
-                integrate_other_side_and_not_boundary = SELE < 0
+                integrate_other_side_and_not_boundary = .not. on_domain_boundary!SELE < 0
                 if(CV_NODJ >= CV_NODI) then
                   !Compute SdevFuns%DETWEI and CVNORMX_ALL
                   CALL SCVDETNX( Mdims, ndgln, X_ALL%val, CV_funs, CV_GIdims, on_domain_boundary, .false., &!NOT FULLY DG FOR THIS METHOD
