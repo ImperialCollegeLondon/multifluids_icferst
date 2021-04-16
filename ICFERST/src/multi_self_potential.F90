@@ -60,7 +60,7 @@ module multi_SP
         real, dimension(:,:,:), allocatable :: F_fields, K_fields
         real, dimension(:,:), allocatable ::rock_sat_conductivity
         character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
-        type(scalar_field), pointer :: SelfPotential
+        type(scalar_field), pointer :: SelfPotential, SelfPotential2
         type( vector_field ), pointer :: X_ALL
         integer :: reference_nod
         logical :: reference_node_owned
@@ -111,8 +111,16 @@ module multi_SP
         end if
         ! SP Solver elements
         SelfPotential => extract_scalar_field(state(1),"SelfPotential", stat)
-        call generate_and_solve_Laplacian_system( Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, &
-                                      rock_sat_conductivity, "SelfPotential", K_fields, F_fields, 20, solver_option_path)
+        do k = 1, nfields
+          call generate_and_solve_Laplacian_system( Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, &
+          rock_sat_conductivity, "SelfPotential"//int2str(k), K_fields(k:k,:,:), F_fields(k:k,:,:), 20, solver_option_path)
+        end do
+
+        SelfPotential%val = 0.
+        do k = 1, nfields
+          SelfPotential2 => extract_scalar_field(state(1),"SelfPotential"//int2str(k), stat)
+          SelfPotential%val = SelfPotential%val + SelfPotential2%val
+        end do
 
         !##########Now we normalise the SP result to have the reference node with voltage = 0. We do this because is better to remove the null space###########
         !##Retrieve the coordinates of the reference position##
@@ -128,6 +136,10 @@ module multi_SP
         call allsum(reference_value)
         !Apply the reference to ensure that the reference node is zero
         SelfPotential%val = (SelfPotential%val - reference_value)
+        do k = 1, nfields
+          SelfPotential2 => extract_scalar_field(state(1),"SelfPotential"//int2str(k), stat)
+          SelfPotential2%val = (SelfPotential2%val - reference_value)
+        end do
         deallocate(rock_sat_conductivity, F_fields, K_fields)
       end subroutine Assemble_and_solve_SP
 
