@@ -7,10 +7,10 @@ RUN apt-get -y update && \
       rm -rf /var/cache/apt/archives && \
       rm -rf /var/lib/apt/lists
 
-COPY . /home/icferst
-RUN chown -R icferst /home/icferst
+COPY . /home/fluidity
+RUN chown -R fluidity /home/fluidity
 
-USER icferst
+USER fluidity
 
 RUN ./configure --enable-2d-adaptivity
 RUN make mp

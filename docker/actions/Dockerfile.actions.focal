@@ -7,10 +7,10 @@ RUN apt-get -y update && \
       rm -rf /var/cache/apt/archives && \
       rm -rf /var/lib/apt/lists
 
-COPY . /home/icferst
-RUN chown -R icferst /home/icferst
+COPY . /home/fluidity
+RUN chown -R fluidity /home/fluidity
 
-USER icferst
+USER fluidity
 
 ENV FCFLAGS="-I/usr/include"
 
