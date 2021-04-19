@@ -1,4 +1,4 @@
-FROM fluidity/baseimages:focal
+FROM icferst/baseimages:focal
 
 USER root
 
@@ -7,10 +7,10 @@ RUN apt-get -y update && \
       rm -rf /var/cache/apt/archives && \
       rm -rf /var/lib/apt/lists
 
-COPY . /home/fluidity
-RUN chown -R fluidity /home/fluidity
+COPY . /home/icferst
+RUN chown -R icferst /home/icferst
 
-USER fluidity
+USER icferst
 
 ENV FCFLAGS="-I/usr/include"
 
