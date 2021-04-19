@@ -1,4 +1,4 @@
-FROM icferst/baseimages:focal
+FROM fluidity/baseimages:focal
 
 USER root
 

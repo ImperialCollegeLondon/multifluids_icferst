@@ -1,4 +1,4 @@
-FROM icferst/baseimages:bionic
+FROM fluidity/baseimages:bionic
 
 USER root
 
@@ -8,7 +8,7 @@ RUN apt-get -y update && \
       rm -rf /var/lib/apt/lists
 
 COPY . /home/icferst
-RUN chown -R icferst /home/icferst
+RUN chown -R fluidity /home/icferst
 
 USER icferst
 
