@@ -8,7 +8,7 @@ RUN apt-get -y update && \
       rm -rf /var/lib/apt/lists
 
 COPY . /home/icferst
-RUN chown -R fluidity /home/icferst
+RUN chown -R icferst /home/icferst
 
 USER icferst
 
