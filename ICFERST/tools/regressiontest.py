@@ -137,9 +137,9 @@ class TestProblem:
             os.system("cd "+dir+"; qsub " + self.filename[:-4] + ".pbs")
         else:
           self.log(self.command_line)
-          start_time=time.clock()
+          start_time=time.process_time()
           os.system("cd "+dir+"; "+self.command_line)
-          run_time=time.clock()-start_time
+          run_time=time.process_time()-start_time
 
         return run_time
         

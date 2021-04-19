@@ -827,9 +827,9 @@ class Diamond:
 
   def __diff(self, path):
     def run_diff(self, path):
-      start = time.clock()
+      start = time.process_time()
       diffview.DiffView(path, self.tree)
-      seconds = time.clock() - start
+      seconds = time.process_time() - start
       self.statusbar.set_statusbar("Diff calculated (took " + str(seconds) + " seconds)")
       return False
 
