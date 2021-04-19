@@ -43,7 +43,7 @@ jobs:
           context: .
           file: docker/actions/Dockerfile.actions.${{ matrix.release }}
           push: true
-          tags: icferst/actions:${{ matrix.release }}-${{ github.sha }}
+          tags: iclpsalinas/icferst/actions:${{ matrix.release }}-${{ github.sha }}
 
   testing:
 
