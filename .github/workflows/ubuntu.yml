@@ -74,7 +74,7 @@ jobs:
         run: |
          chmod 777 .
          docker pull iclpsalinas/icferst/actions:${{ matrix.release }}-${{ github.sha }}
-         docker run -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} /bin/bash -c "${{ matrix.command }} && cp -v tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
+         docker run -v $PWD:/host iclpsalinas/icferst/actions:${{ matrix.release }}-${{ github.sha }} /bin/bash -c "${{ matrix.command }} && cp -v tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
 
       - uses: actions/upload-artifact@v2
         with:
