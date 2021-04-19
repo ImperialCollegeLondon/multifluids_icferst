@@ -2324,8 +2324,8 @@ end if
         if (compute_compaction) then
           call mult_T(deltap, Mmat%petsc_ACV, vpressure)
           rhs_p%val = rhs_p%val + deltap%val
-          rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
         end if
+        rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
         call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
         !Re-scale system so we can deal with SI units of permeability
         if (is_porous_media) then
@@ -2511,8 +2511,8 @@ end if
             if (compute_compaction) then
               call mult_T(deltap, Mmat%petsc_ACV, vpressure)
               rhs_p%val = rhs_p%val + deltap%val
-              rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             end if
+            rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
             call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val, update_pres = .not. Special_precond)!don
             if (isParallel()) call halo_update(deltap)
@@ -2535,8 +2535,8 @@ end if
               if (compute_compaction) then
                 call mult_T(deltap, Mmat%petsc_ACV, deltap)
                 rhs_p%val = rhs_p%val + deltap%val
-                rhs_p%val = rhs_p%val !+ Mmat%CT_RHS%val
               end if
+              rhs_p%val = rhs_p%val !+ Mmat%CT_RHS%val
               !Solve again the system to finish the preconditioner
               call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
             end if
