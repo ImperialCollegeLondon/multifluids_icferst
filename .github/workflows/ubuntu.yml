@@ -79,5 +79,13 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           path: ${{ matrix.release }}-${{ matrix.output }}
-          
+
       - uses: actions/download-artifact@v2
+
+      - name: ${{ matrix.name }}
+        uses: mikepenz/action-junit-report@v2
+        with:
+          report_paths: '**/${{ matrix.release }}-test*.xml'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          check_name: Test report ${{ matrix.release }}
+          fail_on_failure: true
