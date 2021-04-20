@@ -2319,10 +2319,10 @@ end if
         ewrite(3,*)'about to solve for pressure'
         !Perform Div * U for the RHS of the pressure equation
         rhs_p%val = 0.
-        vpressure=as_vector(P_ALL,dim=2)
         call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
         if (compute_compaction) then
-          call mult_T(deltap, Mmat%petsc_ACV, vpressure)
+          vpressure=as_vector(P_ALL,dim=2)
+          call mult(deltap, Mmat%petsc_ACV, vpressure)
           rhs_p%val = rhs_p%val + deltap%val
         end if
         rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
@@ -2509,7 +2509,7 @@ end if
             rhs_p%val = 0.
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
             if (compute_compaction) then
-              call mult_T(deltap, Mmat%petsc_ACV, vpressure)
+              call mult(deltap, Mmat%petsc_ACV, vpressure)
               rhs_p%val = rhs_p%val + deltap%val
             end if
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
@@ -2533,7 +2533,7 @@ end if
               call compute_DIV_U(Mdims, Mmat, Mspars, aux_velocity%val, INV_B, rhs_p)
               !If performing compaction we need to include now the matrix D to keep it consistent
               if (compute_compaction) then
-                call mult_T(deltap, Mmat%petsc_ACV, deltap)
+                call mult(deltap, Mmat%petsc_ACV, deltap)
                 rhs_p%val = rhs_p%val + deltap%val
               end if
               rhs_p%val = rhs_p%val !+ Mmat%CT_RHS%val
