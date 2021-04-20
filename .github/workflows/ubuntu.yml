@@ -90,7 +90,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v2
 
-      - name: ${{ matrix.name }}
+      - name: ${{ matrix.name }}       
+        run: find *.xml
+        
         uses: mikepenz/action-junit-report@v2
         with:
           report_paths: '**/${{ matrix.release }}-test*.xml'
