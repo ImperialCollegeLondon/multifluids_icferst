@@ -80,6 +80,14 @@ jobs:
         with:
           path: ${{ matrix.release }}-${{ matrix.output }}
 
+  Report:
+
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    if: always()
+    needs: testing
+
+    steps:
       - uses: actions/download-artifact@v2
 
       - name: ${{ matrix.name }}
