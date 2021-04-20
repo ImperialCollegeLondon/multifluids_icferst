@@ -15,15 +15,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Build Bionic", "Build Focal" ]
+        name: [ "Build Bionic"]
         include:
 
           - name: "Build Bionic"
             release: bionic
-
-          - name: "Build Focal"
-            release: focal
-
 
     steps:
 
@@ -55,16 +51,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Bionic", "Focal" ]
+        name: [ "Bionic"]
         include:
 
           - name: "Bionic"
             release: bionic
-            command: "make THREADS=2 serialtest-mp-xml"
-            output: "multiphase_test_results.xml"
-
-          - name: "Focal"
-            release: focal
             command: "make THREADS=2 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
@@ -91,7 +82,7 @@ jobs:
       - uses: actions/download-artifact@v2
 
       - name: ${{ matrix.name }}
-        run: find *.xml
+        run: find . -iname *.xml
 
       - name: ${{ matrix.name }}               
         uses: mikepenz/action-junit-report@v2
