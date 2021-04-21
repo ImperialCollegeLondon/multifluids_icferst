@@ -1935,7 +1935,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type( vector_field ), pointer :: x_all2, U
         type( scalar_field ), pointer :: sf, soldf, gamma, cvp
         type( vector_field ) :: packed_vel, rhs
-        type( vector_field ) :: deltap, rhs_p, vpressure
+        type( vector_field ) :: deltap, rhs_p
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
         logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, fem_density_buoyancy
@@ -2320,13 +2320,9 @@ end if
         !Perform Div * U for the RHS of the pressure equation
         rhs_p%val = 0.
         call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
-        if (compute_compaction) then
-          vpressure=as_vector(P_ALL,dim=2)
-          call mult(deltap, Mmat%petsc_ACV, vpressure)
-          rhs_p%val = rhs_p%val + deltap%val
-        end if
-        rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
+        if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
         call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+        rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
         !Re-scale system so we can deal with SI units of permeability
         if (is_porous_media) then
           call scale(cmc_petsc, 1.0/rescaleVal)
@@ -2508,12 +2504,9 @@ end if
             !If we end up using the residual, this call just below is unnecessary
             rhs_p%val = 0.
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
-            if (compute_compaction) then
-              call mult(deltap, Mmat%petsc_ACV, vpressure)
-              rhs_p%val = rhs_p%val + deltap%val
-            end if
-            rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
+            if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
             call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+            rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val, update_pres = .not. Special_precond)!don
             if (isParallel()) call halo_update(deltap)
             if (k == 1) then
@@ -2532,11 +2525,10 @@ end if
               !Ct x previous
               call compute_DIV_U(Mdims, Mmat, Mspars, aux_velocity%val, INV_B, rhs_p)
               !If performing compaction we need to include now the matrix D to keep it consistent
-              if (compute_compaction) then
-                call mult(deltap, Mmat%petsc_ACV, deltap)
-                rhs_p%val = rhs_p%val + deltap%val
-              end if
-              rhs_p%val = rhs_p%val !+ Mmat%CT_RHS%val
+              if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
+              !NEED TO CHECK BFB PRECOND WITH COMPRESSIBILITY
+              ! call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+              ! rhs_p%val = rhs_p%val + Mmat%CT_RHS%val !SIGN IS DIFFERENT TO THE OTHER CASES
               !Solve again the system to finish the preconditioner
               call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
             end if
@@ -2927,6 +2919,27 @@ if (.not. is_P0DGP1) print *, "####REMINDER: FOR MAGMA ONLY THE P0DG FORMULATION
           end do
         end do
       end subroutine get_Darcy_phases_velocity
+
+
+      !---------------------------------------------------------------------------
+      !> @author Haiyang Hu, Pablo Salinas
+      !> @brief Include the Laplacian of the pressure in the RHS, this is necessary for compaction
+      !---------------------------------------------------------------------------
+      subroutine include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, vfield)
+        implicit none
+        type(tensor_field) :: Pressure
+        type (multi_matrices):: Mmat
+        type( vector_field ):: rhs_p, vfield!> vfield is a vector field with memory already allocated
+
+        !Local variables
+        type( vector_field ) :: vpressure
+
+        vpressure=as_packed_vector(Pressure)
+        call mult(vfield, Mmat%petsc_ACV, vpressure)
+        rhs_p%val = rhs_p%val + vfield%val
+
+        call deallocate(vpressure)
+      end subroutine include_Laplacian_P_into_RHS
 
       !---------------------------------------------------------------------------
       !> @author Chris Pain, Pablo Salinas
