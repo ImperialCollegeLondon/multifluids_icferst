@@ -84,7 +84,7 @@ jobs:
       - name: ${{ matrix.name }}               
         uses: mikepenz/action-junit-report@v2
         with:
-          report_paths: '**/${{ matrix.release }}-multiphase_test_results.xml'
+          report_paths: './artifact/bionic-multiphase_test_results.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Test report ${{ matrix.release }}
           fail_on_failure: true
