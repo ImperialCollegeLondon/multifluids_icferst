@@ -1,0 +1,4 @@
+#ifndef _FLUIDITY_VERSION_H
+#define _FLUIDITY_VERSION_H
+#define __FLUIDITY_VERSION__ "master:0165d271542b54b11d2d3e9313ddbcba55f82d7f"
+#endif /* _FLUIDITY_VERSION_H */

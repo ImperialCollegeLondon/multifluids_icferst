@@ -1,0 +1,18 @@
+Making clean in src
+Making clean in storagemanager
+rm -f ./so_locations
+Making clean in spatialindex
+rm -f ./so_locations
+Making clean in rtree
+rm -f ./so_locations
+Making clean in mvrtree
+rm -f ./so_locations
+Making clean in tprtree
+rm -f ./so_locations
+Making clean in tools
+rm -f ./so_locations
+Making clean in capi
+rm -f ./so_locations
+Making clean in .
+rm -f ./so_locations
+Making clean in include
