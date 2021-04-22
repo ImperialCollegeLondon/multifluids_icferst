@@ -20,23 +20,7 @@
       <string_value>balanced</string_value>
     </simulation_quality>
   </geometry>
-  <solver_options>
-    <Non_Linear_Solver>
-      <integer_value rank="0">25</integer_value>
-      <Fixed_Point_Iteration>
-        <real_value rank="0">5e-2</real_value>
-        <Infinite_norm_tol>
-          <real_value rank="0">0.01</real_value>
-        </Infinite_norm_tol>
-        <Backtracking_factor>
-          <real_value rank="0">-10</real_value>
-        </Backtracking_factor>
-        <Vanishing_relaxation>
-          <real_value rank="0">-1e3</real_value>
-        </Vanishing_relaxation>
-      </Fixed_Point_Iteration>
-    </Non_Linear_Solver>
-  </solver_options>
+  <solver_options/>
   <io>
     <dump_format>
       <string_value>vtk</string_value>
@@ -136,6 +120,7 @@
             <solver/>
           </continuous>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -175,6 +160,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="Density" rank="0">
@@ -189,6 +175,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -291,6 +278,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="Density" rank="0">
@@ -305,6 +293,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -419,6 +408,7 @@
             <solver/>
           </continuous>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -483,6 +473,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="Density" rank="0">
@@ -497,6 +488,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -624,6 +616,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="Density" rank="0">
@@ -638,6 +631,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -688,6 +682,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <scalar_field name="Permeability">
@@ -702,6 +697,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <wells_and_pipes>
@@ -717,6 +713,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="Gamma">
@@ -735,6 +732,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="Sigma">
@@ -749,6 +747,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="DiameterPipe">
@@ -763,6 +762,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <well_volume_ids>

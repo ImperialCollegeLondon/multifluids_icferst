@@ -1,9 +1,10 @@
 name: Build and Test
 
-on: 
+on:
   push:
     branches:
-      - DevyMcDevface
+      - pablo_dev
+      - master
 
 jobs:
 
@@ -14,19 +15,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Build Bionic", "Build Focal" ]
+        name: [ "Build Bionic"]
         include:
-        
+
           - name: "Build Bionic"
             release: bionic
-    
-          - name: "Build Focal"
-            release: focal
-    
-    
+
     steps:
 
-      - name: Check Out Repo 
+      - name: Check Out Repo
         uses: actions/checkout@v2
 
       - name: Login to Docker Hub
@@ -34,7 +31,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
-          
+
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v2
@@ -42,7 +39,7 @@ jobs:
           context: .
           file: docker/actions/Dockerfile.actions.${{ matrix.release }}
           push: true
-          tags: fluidity/actions:${{ matrix.release }}-${{ github.sha }}
+          tags: icferst/actions:${{ matrix.release }}-${{ github.sha }}
 
   testing:
 
@@ -54,27 +51,40 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Bionic", "Focal" ]
+        name: [ "Bionic"]
         include:
-       
+
           - name: "Bionic"
             release: bionic
             command: "make THREADS=2 serialtest-mp-xml"
-            output: "multiphase_test_results.xm"
-
-          - name: "Focal"
-            release: focal
-            command: "make THREADS=2 serialtest-mp-xml"
-            output: "multiphase_test_results.xm"
+            output: "multiphase_test_results.xml"
 
     steps:
 
       - name: ${{ matrix.name }}
         run: |
          chmod 777 .
-         docker pull fluidity/actions:${{ matrix.release }}-${{ github.sha }}
-         docker run -v $PWD:/host fluidity/actions:${{ matrix.release }}-${{ github.sha }} /bin/bash -c "${{ matrix.command }} && cp -v tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
+         docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
+         docker run -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} /bin/bash -c "${{ matrix.command }} && cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
 
       - uses: actions/upload-artifact@v2
         with:
           path: ${{ matrix.release }}-${{ matrix.output }}
+
+  Report:
+
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    if: always()
+    needs: testing
+
+    steps:
+      - uses: actions/download-artifact@v2
+
+      - name: ${{ matrix.name }}               
+        uses: mikepenz/action-junit-report@v2
+        with:
+          report_paths: './artifact/*-multiphase_test_results.xml'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          check_name: Test report ${{ matrix.release }}
+          fail_on_failure: true
