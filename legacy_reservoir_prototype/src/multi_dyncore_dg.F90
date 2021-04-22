@@ -5416,16 +5416,20 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                         DO GI = 1, FE_GIdims%cv_ngi
                             DO IPHASE = 1, Mdims%nphase
                                         DO U_JLOC = 1, Mdims%u_nloc
-                                           CALL CALC_STRESS_TEN_SOLID( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-                                             Mdims%x_nloc,UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ),&
-                                             UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), &
-                                             UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, 1:Mdims%u_nloc ), LOC_X_ALL(:,:),LOC_X0_ALL(:,:), &
-                                             TEN_VOL_RATIO(GI),VLK_ele(IPHASE,U_ILOC, U_JLOC) )
+                                        CALL CALC_STRESS_TEN( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
+                                            UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
+
+!                                           CALL CALC_STRESS_TEN_SOLID( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
+!                                             Mdims%x_nloc,UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ),&
+!                                             UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), &
+!                                             UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, 1:Mdims%u_nloc ), LOC_X_ALL(:,:),LOC_X0_ALL(:,:), &
+!                                             TEN_VOL_RATIO(GI),VLK_ele(IPHASE,U_ILOC, U_JLOC) )
+
 !                                           DO IDIM=1,Mdims%ndim
 !                                              force_solids(IDIM,IPHASE,U_ILOC) = force_solids(IDIM,IPHASE,U_ILOC) &
 !                                               - SUM( STRESS_IJ_solid_ELE( IDIM, :, IPHASE, U_ILOC, U_JLOC ) * UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ))* DevFuns%DETWEI( GI )
 !                                           END DO
-                                           STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC )=STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC )
+!                                           STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC )=STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC )
                                            STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC )=0.0
                                         END DO
 !                                        rhs_diff_u( :, IPHASE, U_ILOC )=rhs_diff_u( :, IPHASE, U_ILOC ) - force_solids(:,iphase, u_iloc) 
@@ -6068,11 +6072,15 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                    if(solid_implicit) then
                                    if(solid_visc_ele_imp_stab) then ! use a stabilization of visc in projection method
                                    if(sigma%val(ele).GT.0.5) then
-                                        CALL CALC_STRESS_TEN_SOLID( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-                                             Mdims%x_nloc,UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ),&
-                                             UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), &
-                                             UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, 1:Mdims%u_nloc ), LOC_X_ALL(:,:), LOC_X0_ALL(:,:),&
-                                             TEN_VOL_RATIO(GI),VLK_ele(IPHASE,U_ILOC, U_JLOC) )
+                                        CALL CALC_STRESS_TEN( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
+                                            UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
+
+!                                        CALL CALC_STRESS_TEN_SOLID( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
+!                                             Mdims%x_nloc,UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ),&
+!                                             UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), &
+!                                             UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, 1:Mdims%u_nloc ), LOC_X_ALL(:,:), LOC_X0_ALL(:,:),&
+!                                             TEN_VOL_RATIO(GI),VLK_ele(IPHASE,U_ILOC, U_JLOC) )
+!
 !                                        DO IDIM=1,Mdims%ndim
 !                                           force_solids(IDIM.IPHASE,U_ILOC) = - SUM( STRESS_IJ_ELE( IDIM, :, IPHASE, U_ILOC, U_JLOC ) * UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ))* DevFuns%DETWEI( GI )
 !                                        END DO
@@ -7054,7 +7062,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                           DO IDIM=1,Mdims%ndim
                                              LOC_U_RHS( IDIM,IPHASE,U_ILOC ) = LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
                                                     + DT*STRESS_IJ_SOLID_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC ) &
-                                                       * LOC_U( IDIM, IPHASE, U_JLOC )
+                                                       * LOC_U( IDIM, IPHASE, U_JLOC ) &
 !                                                       * U_ALL( IDIM, IPHASE, U_JNOD )
                                                     + DT*STRESS_IJ_SOLID_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc ) &
                                                        * LOC2_U( IDIM, IPHASE, U_JLOC2 )
@@ -7587,7 +7595,9 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         DEALLOCATE( STRESS_IJ_SOLID_ELE )
         DEALLOCATE( CAUCHY_STRESS_IJ_SOLID_ELE )
 
-        DEALLOCATE( STRESS_IJ_SOLID_ELE_EXT ) 
+        DEALLOCATE( STRESS_IJ_SOLID_ELE_EXT )
+        DEALLOCATE( LOC2_U)
+        DEALLOCATE( LOC_U) 
         IF(SOLID_IMPLICIT) then
         DEALLOCATE( CVFENX0_ALL_REVERSED ) 
         DEALLOCATE( UFENX0_ALL_REVERSED )
