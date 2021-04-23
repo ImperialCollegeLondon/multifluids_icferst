@@ -135,8 +135,8 @@ contains
        call read_entities(fd, lfilename, gmshFormat, versionNumber, &
             entityMap, entityTags, beforeHeaderPos, findElementData)
     end if
-    ! Read in the nodes
 
+    ! Read in the nodes
     if (versionNumber%major == 4) then
        if( gmshFormat == asciiFormat ) then
           call read_nodes_coords_v4_ascii(fd, lfilename, beforeHeaderPos, &
@@ -148,7 +148,7 @@ contains
     else
        call read_nodes_coords_v2( fd, lfilename, gmshFormat, nodes )
     end if
-    ! Read in elements
+
     ! Read in elements
     if (versionNumber%major == 4) then
        if( gmshFormat == asciiFormat ) then
@@ -340,8 +340,8 @@ contains
 
   ! -----------------------------------------------------------------
   ! Read through the head to decide whether binary or ASCII, and decide
-  ! whether this looks like a GMSH mesh file or not.
-
+  ! whether this looks like a GMSH mesh file or not. Also returns
+  ! the version number if it is indeed a GMSH file.
 
   subroutine read_header( fd, lfilename, gmshFormat, versionNumber )
     integer, intent(in) :: fd
@@ -415,9 +415,9 @@ contains
 
   end subroutine read_header
 
+ ! -----------------------------------------------------------------
+ ! Read GMSH 4 entities into a physical tag map
 
-  ! -----------------------------------------------------------------
-  ! read in GMSH mesh nodes' coords into temporary arrays
   subroutine read_entities(fd, filename, gmshFormat, versionNumber, &
        entityMap, entityTags, beforeHeaderPos, findElementData)
 
@@ -858,8 +858,8 @@ contains
 
 
   ! -----------------------------------------------------------------
-  ! Read in element header data and establish topological dimension
-
+  ! Read in ASCII-formatted GMSH 4 element header data and
+  ! establish topological dimension
 
   subroutine read_faces_and_elements_v4_ascii( fd, filename, &
        versionNumber, elements, faces, dim, entityMap, entityTags, &
@@ -1404,11 +1404,6 @@ contains
     call copy_to_faces_and_elements( allElements, &
          elements, numElements, elementType, &
          faces, numFaces, faceType )
-
-
-    ! We no longer need this
-    call deallocateElementList( allElements )
-
 
 
   end subroutine process_gmsh_elements
