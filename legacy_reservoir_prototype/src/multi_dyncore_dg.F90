@@ -2528,7 +2528,7 @@ end if
               if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
               !NEED TO CHECK BFB PRECOND WITH COMPRESSIBILITY
               ! call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-              ! rhs_p%val = rhs_p%val + Mmat%CT_RHS%val !SIGN IS DIFFERENT TO THE OTHER CASES
+              ! rhs_p%val = rhs_p%val - Mmat%CT_RHS%val
               !Solve again the system to finish the preconditioner
               call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
             end if
@@ -2937,8 +2937,6 @@ if (.not. is_P0DGP1) print *, "####REMINDER: FOR MAGMA ONLY THE P0DG FORMULATION
         vpressure=as_packed_vector(Pressure)
         call mult(vfield, Mmat%petsc_ACV, vpressure)
         rhs_p%val = rhs_p%val + vfield%val
-
-        call deallocate(vpressure)
       end subroutine include_Laplacian_P_into_RHS
 
       !---------------------------------------------------------------------------
