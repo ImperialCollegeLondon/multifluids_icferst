@@ -2936,7 +2936,7 @@ if (.not. is_P0DGP1) print *, "####REMINDER: FOR MAGMA ONLY THE P0DG FORMULATION
 
         vpressure=as_packed_vector(Pressure)
         call mult(vfield, Mmat%petsc_ACV, vpressure)
-        rhs_p%val = rhs_p%val + vfield%val
+        rhs_p%val = rhs_p%val - vfield%val
       end subroutine include_Laplacian_P_into_RHS
 
       !---------------------------------------------------------------------------
