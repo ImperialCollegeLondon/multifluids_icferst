@@ -7276,123 +7276,120 @@ end if
           end if
         end if
 
-        DO CV_KLOC = 1, Mdims%cv_nloc
-          CV_NODK = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_KLOC )
-          Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
-            ! Global node number of the local node
-            CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-            X_NODI = ndgln%x( ( ELE - 1 ) * Mdims%x_nloc  + CV_ILOC )
-            ! MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-            ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
-            Loop_GCOUNT: DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
-              ! CV_funs%colgpts stores the local Gauss-point number in the ELE
-              GI = CV_funs%colgpts( GCOUNT )
-              ! Get the neighbouring node for node ILOC and Gauss point GI
-              CV_JLOC = CV_funs%cv_neiloc( CV_ILOC, GI )
-              ELE2 = 0; SELE = 0; CV_SILOC=0
-              INTEGRAT_AT_GI = .TRUE.
-              U_OTHER_LOC=0; CV_OTHER_LOC=0
-              Conditional_CheckingNeighbourhood: IF ( CV_JLOC == -1 ) THEN
-                ! We are on the boundary or next to another element.  Determine CV_OTHER_LOC
-                ! CV_funs%cvfem_on_face(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
-                ! Look for these nodes on the other elements.
-                CALL FIND_OTHER_SIDE( CV_OTHER_LOC, Mdims%cv_nloc, U_OTHER_LOC, Mdims%u_nloc, &
-                MAT_OTHER_LOC, INTEGRAT_AT_GI, &
-                Mdims%x_nloc, Mdims%xu_nloc, ndgln%x, ndgln%xu, &
-                Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, ELE, ELE2,  &
-                Mspars%ELE%fin, Mspars%ELE%col, DISTCONTINUOUS_METHOD )
+        Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
+          ! Global node number of the local node
+          CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+          X_NODI = ndgln%x( ( ELE - 1 ) * Mdims%x_nloc  + CV_ILOC )
+          ! MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+          ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
+          Loop_GCOUNT: DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
+            ! CV_funs%colgpts stores the local Gauss-point number in the ELE
+            GI = CV_funs%colgpts( GCOUNT )
+            ! Get the neighbouring node for node ILOC and Gauss point GI
+            CV_JLOC = CV_funs%cv_neiloc( CV_ILOC, GI )
+            ELE2 = 0; SELE = 0; CV_SILOC=0
+            INTEGRAT_AT_GI = .TRUE.
+            U_OTHER_LOC=0; CV_OTHER_LOC=0
+            Conditional_CheckingNeighbourhood: IF ( CV_JLOC == -1 ) THEN
+              ! We are on the boundary or next to another element.  Determine CV_OTHER_LOC
+              ! CV_funs%cvfem_on_face(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
+              ! Look for these nodes on the other elements.
+              CALL FIND_OTHER_SIDE( CV_OTHER_LOC, Mdims%cv_nloc, U_OTHER_LOC, Mdims%u_nloc, &
+              MAT_OTHER_LOC, INTEGRAT_AT_GI, &
+              Mdims%x_nloc, Mdims%xu_nloc, ndgln%x, ndgln%xu, &
+              Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, ELE, ELE2,  &
+              Mspars%ELE%fin, Mspars%ELE%col, DISTCONTINUOUS_METHOD )
 
-                IF ( INTEGRAT_AT_GI ) THEN
-                  CV_JLOC = CV_OTHER_LOC( CV_ILOC )
-                  SELE = 0
-                  ELE3=0
-                  IF ( CV_JLOC == 0 ) THEN ! We are on the boundary of the domain or subdomain
-                    CV_JLOC = CV_ILOC
-                    ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC
-                    CALL CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
-                    FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
-                    ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
-                  END IF
-                  INTEGRAT_AT_GI = .NOT.( (ELE==ELE2) .AND. (SELE==0) )
+              IF ( INTEGRAT_AT_GI ) THEN
+                CV_JLOC = CV_OTHER_LOC( CV_ILOC )
+                SELE = 0
+                ELE3=0
+                IF ( CV_JLOC == 0 ) THEN ! We are on the boundary of the domain or subdomain
+                  CV_JLOC = CV_ILOC
+                  ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC
+                  CALL CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
+                  FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
+                  ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
                 END IF
-              END IF Conditional_CheckingNeighbourhood
-              !Avoid integrating across the middle of a CV on the boundaries of elements
-              !For disconditnuous pressure this is always true
-              Conditional_integration: IF ( INTEGRAT_AT_GI ) THEN
-                on_domain_boundary = ( SELE /= 0 )
-                CV_NODJ = ndgln%cv( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
-                X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
-                !Flag to ensure that we do not integrate twice when doing the boundaries.
-                if(CV_NODJ >= CV_NODI) then
-                  !Compute SdevFuns%DETWEI and CVNORMX_ALL
-                  CALL SCVDETNX( Mdims, ndgln, X_ALL%val, CV_funs, CV_GIdims, on_domain_boundary, .false., &!NOT FULLY DG FOR THIS METHOD
-                  ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL, XC_CV_ALL%val( :, CV_NODI ), X_NODI, X_NODJ)
-                  ! Obtain the CV discretised advection/diffusion equations
-                  IF(.not. on_domain_boundary) THEN
-                    GI_coordinate = 0.
-                    !Obtain the coordinate at the edge between both CVs using shape functions
-                    do cv_xloc = 1, Mdims%x_nloc
-                      GI_coordinate = GI_coordinate + CV_funs%scvfen( cv_xloc , GI ) * X_ALL%val(:,ndgln%x((ELE-1) * Mdims%x_nloc  + cv_xloc ))
-                    end do
-                    !Distance from i node to edge!
-                    HDLi = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODI)-GI_coordinate)**2) )
-                    ! Compute the distance HDC between the nodes either side of the CV face
-                    HDC = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODI)-XC_CV_ALL%val(:,CV_NODJ))**2) )
-                    !Distance from j node to edge
-                    HDLj = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODJ)-GI_coordinate)**2) )
-                    do iphase = 1, local_phases
-                      do i = 1, size(K_fields,1)
-                        DIFF_COEF_DIVDX(i, iphase) = get_DIFF_COEF_DIVDX(2*intface_val_type, HDC, HDLi, HDLj, K_fields(i, iphase, cv_nodi), K_fields(i, iphase, cv_nodj)&
-                        ,Sigma_field(iphase, cv_nodi), Sigma_field(iphase, cv_nodj))
-                      end do
-                      SIGMA_DIFF_COEF_DIVDX(iphase) = get_DIFF_COEF_DIVDX(intface_val_type, HDC, HDLi, HDLj, Sigma_field(iphase, cv_nodi), Sigma_field(iphase, cv_nodj),0.,0.)
-                    end do
-                  else
-                    DIFF_COEF_DIVDX = 0
-                    SIGMA_DIFF_COEF_DIVDX = 0.
-                  ENDIF
-                  LOC_CV_RHS_I=0.0; LOC_MAT_II =0.
-                  LOC_CV_RHS_J=0.0; LOC_MAT_JJ =0.
-                  LOC_MAT_IJ = 0.0; LOC_MAT_JI =0.
-                  !Assemble
-                  do iphase = 1, local_phases
-                    LOC_MAT_IJ(iphase) = LOC_MAT_IJ(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
-                    !Assemble diagonal of the matrix of node cv_nodi
-                    LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
-                    if(.not. on_domain_boundary) then
-                      !Assemble off-diagonal
-                      LOC_MAT_JI(iphase) = LOC_MAT_JI(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
-                      !Assemble diagonal of the matrix of node cv_nodj
-                      LOC_MAT_JJ(iphase) = LOC_MAT_JJ(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
-                    end if
-                    ! Fill up RHS
-                    do i = 1, size(F_fields,1)
-                      LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
-                        (F_fields(i, iphase, cv_nodj) - F_fields(i, iphase, cv_nodi))
-                      if(.not. on_domain_boundary) LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) - &
-                        SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * (F_fields(i, iphase, cv_nodi) - F_fields(i, iphase, cv_nodj))
-                    end do
-                    do i = 1, size(rhs_div_fields,1)
-                      LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodi), CVNORMX_ALL(:, GI))
-                      if (.not. on_domain_boundary) LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) + SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodj), CVNORMX_ALL(:, GI))
-                    end do
+                INTEGRAT_AT_GI = .NOT.( (ELE==ELE2) .AND. (SELE==0) )
+              END IF
+            END IF Conditional_CheckingNeighbourhood
+            !Avoid integrating across the middle of a CV on the boundaries of elements
+            !For disconditnuous pressure this is always true
+            Conditional_integration: IF ( INTEGRAT_AT_GI ) THEN
+              on_domain_boundary = ( SELE /= 0 )
+              CV_NODJ = ndgln%cv( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
+              X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
+              !Flag to ensure that we do not integrate twice when doing the boundaries.
+              if(CV_NODJ >= CV_NODI) then
+                !Compute SdevFuns%DETWEI and CVNORMX_ALL
+                CALL SCVDETNX( Mdims, ndgln, X_ALL%val, CV_funs, CV_GIdims, on_domain_boundary, .false., &!NOT FULLY DG FOR THIS METHOD
+                ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL, XC_CV_ALL%val( :, CV_NODI ), X_NODI, X_NODJ)
+                ! Obtain the CV discretised advection/diffusion equations
+                IF(.not. on_domain_boundary) THEN
+                  GI_coordinate = 0.
+                  !Obtain the coordinate at the edge between both CVs using shape functions
+                  do cv_xloc = 1, Mdims%x_nloc
+                    GI_coordinate = GI_coordinate + CV_funs%scvfen( cv_xloc , GI ) * X_ALL%val(:,ndgln%x((ELE-1) * Mdims%x_nloc  + cv_xloc ))
                   end do
+                  !Distance from i node to edge!
+                  HDLi = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODI)-GI_coordinate)**2) )
+                  ! Compute the distance HDC between the nodes either side of the CV face
+                  HDC = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODI)-XC_CV_ALL%val(:,CV_NODJ))**2) )
+                  !Distance from j node to edge
+                  HDLj = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODJ)-GI_coordinate)**2) )
+                  do iphase = 1, local_phases
+                    do i = 1, size(K_fields,1)
+                      DIFF_COEF_DIVDX(i, iphase) = get_DIFF_COEF_DIVDX(2*intface_val_type, HDC, HDLi, HDLj, K_fields(i, iphase, cv_nodi), K_fields(i, iphase, cv_nodj)&
+                      ,Sigma_field(iphase, cv_nodi), Sigma_field(iphase, cv_nodj))
+                    end do
+                    SIGMA_DIFF_COEF_DIVDX(iphase) = get_DIFF_COEF_DIVDX(intface_val_type, HDC, HDLi, HDLj, Sigma_field(iphase, cv_nodi), Sigma_field(iphase, cv_nodj),0.,0.)
+                  end do
+                else
+                  DIFF_COEF_DIVDX = 0
+                  SIGMA_DIFF_COEF_DIVDX = 0.
+                ENDIF
+                LOC_CV_RHS_I=0.0; LOC_MAT_II =0.
+                LOC_CV_RHS_J=0.0; LOC_MAT_JJ =0.
+                LOC_MAT_IJ = 0.0; LOC_MAT_JI =0.
+                !Assemble
+                do iphase = 1, local_phases
+                  LOC_MAT_IJ(iphase) = LOC_MAT_IJ(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                  !Assemble diagonal of the matrix of node cv_nodi
+                  LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                  if(.not. on_domain_boundary) then
+                    !Assemble off-diagonal
+                    LOC_MAT_JI(iphase) = LOC_MAT_JI(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                    !Assemble diagonal of the matrix of node cv_nodj
+                    LOC_MAT_JJ(iphase) = LOC_MAT_JJ(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                  end if
+                  ! Fill up RHS
+                  do i = 1, size(F_fields,1)
+                    LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
+                    (F_fields(i, iphase, cv_nodj) - F_fields(i, iphase, cv_nodi))
+                    if(.not. on_domain_boundary) LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) - &
+                    SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * (F_fields(i, iphase, cv_nodi) - F_fields(i, iphase, cv_nodj))
+                  end do
+                  do i = 1, size(rhs_div_fields,1)
+                    LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodi), CVNORMX_ALL(:, GI))
+                    if (.not. on_domain_boundary) LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) + SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodj), CVNORMX_ALL(:, GI))
+                  end do
+                end do
 
-                  do iphase = 1, local_phases
-                    !For the RHS collapsing to assemble into phase 1 can be done just here
-                    call addto(Mmat%CV_RHS,iphase, CV_NODI,LOC_CV_RHS_I(iphase))
-                    call addto(Mmat%CV_RHS,iphase, CV_NODJ,LOC_CV_RHS_J(iphase))
-                    !Introduce the information into the petsc_ACV matrix
-                    call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
-                    call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj, LOC_MAT_JJ(iphase) )
-                    call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj, LOC_MAT_IJ(iphase) )
-                    call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi, LOC_MAT_JI(iphase) )
-                  end do
-                END IF
-              END IF Conditional_integration
-            END DO Loop_GCOUNT
-          END DO Loop_CV_ILOC
-        end do
+                do iphase = 1, local_phases
+                  !For the RHS collapsing to assemble into phase 1 can be done just here
+                  call addto(Mmat%CV_RHS,iphase, CV_NODI,LOC_CV_RHS_I(iphase))
+                  call addto(Mmat%CV_RHS,iphase, CV_NODJ,LOC_CV_RHS_J(iphase))
+                  !Introduce the information into the petsc_ACV matrix
+                  call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
+                  call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj, LOC_MAT_JJ(iphase) )
+                  call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj, LOC_MAT_IJ(iphase) )
+                  call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi, LOC_MAT_JI(iphase) )
+                end do
+              END IF
+            END IF Conditional_integration
+          END DO Loop_GCOUNT
+        END DO Loop_CV_ILOC
       END DO Loop_Elements
       call deallocate_multi_dev_shape_funs(SdevFuns)
 
