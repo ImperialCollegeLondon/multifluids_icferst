@@ -4182,7 +4182,7 @@ end if
         LOGICAL, PARAMETER :: STORED_AC_SPAR_PT=.FALSE.
         INTEGER, PARAMETER :: IDO_STORE_AC_SPAR_PT=0
         ! options for implicit solids using one eqn approach...
-        LOGICAL, PARAMETER :: solid_visc_ele_imp=.false. ! treat implicitly inside an element.
+        LOGICAL, PARAMETER :: solid_visc_ele_imp=.true. ! treat implicitly inside an element.
         LOGICAL, PARAMETER :: solid_visc_ele_imp_stab=.false. ! treat implicitly inside an element for the projection method (suggest =.false., but may be more atable=.true.).
         LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false. ! treat implicitly between elements.
         ! re-calculate Mmat%C matrix...
@@ -4346,6 +4346,7 @@ end if
         REAL, DIMENSION ( :, :, :, : ), allocatable :: NN_SIGMAGI_ELE, NN_SIGMAGI_STAB_ELE, NN_SIGMAGI_STAB_SOLID_RHS_ELE, NN_MASS_ELE, NN_MASSOLD_ELE
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: STRESS_IJ_ELE, DUX_ELE_ALL, DUOLDX_ELE_ALL
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: STRESS_IJ_SOLID_ELE    !JXiang
+        REAL :: w_s = 100. ! linfeng: coefficient to decide how much stress_ij_solid_ele goes in RHS & DIAG_BIGM_CON
         REAL, DIMENSION ( :, :, : ), allocatable :: VLK_ELE
         REAL, DIMENSION ( :, :, :, : ), allocatable :: UDIFFUSION   !JXiang
         REAL, DIMENSION ( :, :, :, : ), allocatable :: UDIFFUSION_ALL, LES_UDIFFUSION
@@ -5411,33 +5412,19 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                          END DO
           !            END DO
 
-                       if(solid_visc_ele_imp) then
-                    DO U_ILOC = 1, Mdims%u_nloc
-                        DO GI = 1, FE_GIdims%cv_ngi
-                            DO IPHASE = 1, Mdims%nphase
+                        if(solid_visc_ele_imp) then
+                            DO U_ILOC = 1, Mdims%u_nloc
+                                DO GI = 1, FE_GIdims%cv_ngi
+                                    DO IPHASE = 1, Mdims%nphase
                                         DO U_JLOC = 1, Mdims%u_nloc
-                                        CALL CALC_STRESS_TEN( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-                                            UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
-
-!                                           CALL CALC_STRESS_TEN_SOLID( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-!                                             Mdims%x_nloc,UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ),&
-!                                             UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), &
-!                                             UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, 1:Mdims%u_nloc ), LOC_X_ALL(:,:),LOC_X0_ALL(:,:), &
-!                                             TEN_VOL_RATIO(GI),VLK_ele(IPHASE,U_ILOC, U_JLOC) )
-
-!                                           DO IDIM=1,Mdims%ndim
-!                                              force_solids(IDIM,IPHASE,U_ILOC) = force_solids(IDIM,IPHASE,U_ILOC) &
-!                                               - SUM( STRESS_IJ_solid_ELE( IDIM, :, IPHASE, U_ILOC, U_JLOC ) * UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ))* DevFuns%DETWEI( GI )
-!                                           END DO
-!                                           STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC )=STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC )
-                                           STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC )=0.0
+                                            CALL CALC_STRESS_TEN( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
+                                                UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
+                                            STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC )=0.0
                                         END DO
-!                                        rhs_diff_u( :, IPHASE, U_ILOC )=rhs_diff_u( :, IPHASE, U_ILOC ) - force_solids(:,iphase, u_iloc) 
-!                                        loc_u_rhs( :, IPHASE, U_ILOC )=loc_u_rhs( :, IPHASE, U_ILOC ) + force_solids(:,iphase, u_iloc) 
+                                    END DO
+                                END DO
                             END DO
-                         END DO
-                      END DO
-                       endif ! if(solid_visc_ele_imp) then
+                        endif ! if(solid_visc_ele_imp) then
 
                                    endif ! IF(IDIVID_BY_VOL_FRAC.ne.1) THEN
                                 ENDIF ! IF ( STRESS_FORM ) THEN
@@ -5705,20 +5692,20 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 ! take away implicit solids as it has to cancel...
                         if(solid_implicit) then ! add in the force from the solids.
-                        if(solid_visc_ele_imp) then
-                           DO IPHASE = 1, Mdims%nphase
-                              JPHASE = IPHASE
-                              DO JDIM = 1, Mdims%ndim
-                                 DO IDIM = 1, Mdims%ndim
-                                    LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                           + DT*STRESS_IJ_SOLID_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
-                                 END DO
-                              END DO
-                           END DO
-                        endif
-                        endif
-
-                        IF ( .NOT.JUST_BL_DIAG_MAT ) THEN
+                            if(solid_visc_ele_imp) then
+                               DO IPHASE = 1, Mdims%nphase
+                                  JPHASE = IPHASE
+                                  DO JDIM = 1, Mdims%ndim
+                                     DO IDIM = 1, Mdims%ndim
+                                        LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                               + w_s * DT*STRESS_IJ_SOLID_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
+                                     END DO
+                                  END DO
+                               END DO
+                            endif
+                            endif
+   
+                            IF ( .NOT.JUST_BL_DIAG_MAT ) THEN
                             IF ( STRESS_FORM ) THEN
                                 DO IPHASE = 1, Mdims%nphase
                                     JPHASE = IPHASE
@@ -5728,10 +5715,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                 LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                                     - STRESS_IJ_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
                                              ! JXiang 
-!                                             IF(SOLID_IMPLICIT) then
-!                                                LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-!                                                    - STRESS_IJ_SOLID_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) *LOC_U( JDIM, IPHASE, U_JLOC )
-!                                            END IF
+                                            !  IF(SOLID_IMPLICIT) then
+                                            !     LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                            !         - STRESS_IJ_SOLID_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) *LOC_U( JDIM, IPHASE, U_JLOC )
+                                            ! END IF
 
                                             ELSE
                                                     !JXiang need calculate LOC_D
@@ -5745,12 +5732,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                 DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
                                                     = DIAG_BIGM_CON(1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
                                                     + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                                    + 1.*DT*STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added JXiang
+                                                    + w_s * DT*STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added JXiang
                                               ELSE
                                                 DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
                                                     = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
                                                     + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                                    + 1.0*DT*STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added by JXiang
+                                                    + w_s * DT*STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added by JXiang
                                               ENDIF
 
                                             END IF
@@ -6067,31 +6054,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                    ! JXiang end
                                         CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
                                             UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
-
-
-                                   if(solid_implicit) then
-                                   if(solid_visc_ele_imp_stab) then ! use a stabilization of visc in projection method
-                                   if(sigma%val(ele).GT.0.5) then
-                                        CALL CALC_STRESS_TEN( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-                                            UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
-
-!                                        CALL CALC_STRESS_TEN_SOLID( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-!                                             Mdims%x_nloc,UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ),&
-!                                             UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), &
-!                                             UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, 1:Mdims%u_nloc ), LOC_X_ALL(:,:), LOC_X0_ALL(:,:),&
-!                                             TEN_VOL_RATIO(GI),VLK_ele(IPHASE,U_ILOC, U_JLOC) )
-!
-!                                        DO IDIM=1,Mdims%ndim
-!                                           force_solids(IDIM.IPHASE,U_ILOC) = - SUM( STRESS_IJ_ELE( IDIM, :, IPHASE, U_ILOC, U_JLOC ) * UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ))* DevFuns%DETWEI( GI )
-!                                        END DO
-!                                        STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC )=STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC )
-                                        STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC )=0.0
-                                   else 
-                                        STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC )=0.0
-                                   endif
-                                   endif
-                                   endif ! if(solid_implicit) then
-
                                     ENDIF
                                 END DO
                             END DO
@@ -6103,12 +6065,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                         DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
                                         = DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
                                         + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                        + DT*STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang 
+                                        + w_s * DT*STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang 
                                       ELSE
                                         DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
                                         = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
                                         + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )&
-                                        + DT*STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
+                                        + w_s * DT*STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
                                       END IF
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
@@ -6492,22 +6454,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         END DO
                     END DO
                 END DO
-
-
-! volume velocities
-                DO U_ILOC = 1, Mdims%u_nloc
-                    U_INOD = ndgln%u( (ELE-1)*Mdims%u_nloc + U_ILOC )
-                    LOC_U( :, :, U_ILOC ) = U_ALL( :, :, U_INOD )
-                END DO
-                IF(ELE2>0) THEN
-                   DO U_ILOC = 1, Mdims%u_nloc
-                       U_INOD2 = ndgln%u( (ELE2-1)*Mdims%u_nloc + U_ILOC )
-                       LOC2_U( :, :, U_ILOC ) = U_ALL( :, :, U_INOD2 )
-                   END DO
-                ELSE
-                   LOC2_U=0.0
-                ENDIF
-
                 If_diffusion_or_momentum1: IF(GOT_DIFFUS .OR. GOT_UDEN) THEN
                     SDEN=0.0
                     SDENOLD=0.0
@@ -6886,13 +6832,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                      STRESS_IJ_SOLID_ELE_EXT=0.0
              ! added by JXiang 
              IF(SOLID_IMPLICIT) THEN
-             if(solid_visc_sufele_imp) then
-               IF(ELE2>0) THEN
-                  if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid
-                     STRESS_IJ_SOLID_ELE_EXT = STRESS_IJ_ELE_EXT
-                     STRESS_IJ_ELE_EXT=0.0
-                  endif
-               ENDIF 
+!               IF(ELE2>0) THEN
+ !                 if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid
+  !                   STRESS_IJ_SOLID_ELE_EXT = STRESS_IJ_ELE_EXT
+  !                   STRESS_IJ_ELE_EXT=0.0
+  !                endif
+  !             ENDIF 
 ! here
 !                        CALL LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_SOLID_ELE_EXT, S_INV_NNX_MAT12,  &
 !                            STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
@@ -6900,8 +6845,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 !                            SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION_SOLID, SLOC_UDIFFUSION_VOL_SOLID, SLOC2_UDIFFUSION_SOLID, SLOC2_UDIFFUSION_VOL_SOLID, UDIFF_SUF_STAB, &
 !                            (ELE2.LE.0), SNORMXN_ALL  )
 ! why (because continuous)...
-            endif ! if(solid_visc_sufele_imp) then
-            ENDIF ! IF(SOLID_IMPLICIT) THEN
+            ENDIF
             ! JXiang end
                         !                        STRESS_IJ_ELE_EXT=0.0
                         DIFF_COEF_DIVDX   =0.0
@@ -7013,11 +6957,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                     U_ILOC =U_SLOC2LOC(U_SILOC)
                                     DO IPHASE = 1, Mdims%nphase
                                         JPHASE = IPHASE
-!                                        if(solid_implicit) then
-!                                          DO IDIM=1,Mdims%ndim
-!                                            RHS_DIFF_U()=RHS_DIFF_U() + STRESS_IJ_SOLID_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC )*
-!                                          END DO
-!                                        endif
                                         IF(LUMP_DIAG_MOM) THEN
                                           DO IDIM=1,Mdims%ndim
                                             DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE)  &
@@ -7052,27 +6991,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                           =BIGM_CON( :,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)+ STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc ) &
                                            +DT*STRESS_IJ_SOLID_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )  !JXiang
                                         END IF
-
-
-! subtract the implicit solids so it eventually makes no contibution...
-                                       if(solid_implicit) then ! add in the force from the solids.
-                                       if(solid_visc_sufele_imp) then
-!                                          U_JNOD  = ndgln%u((ELE -1)*Mdims%u_nloc + U_JLOC  )
-!                                          U_JNOD2 = ndgln%u((ELE2-1)*Mdims%u_nloc + U_JLOC2 )
-                                          DO IDIM=1,Mdims%ndim
-                                             LOC_U_RHS( IDIM,IPHASE,U_ILOC ) = LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
-                                                    + DT*STRESS_IJ_SOLID_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC ) &
-                                                       * LOC_U( IDIM, IPHASE, U_JLOC ) &
-!                                                       * U_ALL( IDIM, IPHASE, U_JNOD )
-                                                    + DT*STRESS_IJ_SOLID_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc ) &
-                                                       * LOC2_U( IDIM, IPHASE, U_JLOC2 )
-!                                                       * U_ALL( IDIM, IPHASE, U_JNOD2 )
-!                                                       * SLOC2_U( IDIM, IPHASE, U_SJLOC ) * LOC2_U( IDIM, IPHASE, U_JLOC2 ) ************
-                                          END DO
-                                       endif ! if(solid_visc_sufele_imp) then
-                                       endif ! if(solid_implicit) then
-
-
                                     END DO
                                 END DO
                             END DO
