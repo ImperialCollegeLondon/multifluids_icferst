@@ -1972,6 +1972,8 @@ contains
       type( scalar_field ), pointer :: f
       integer :: iphase, stat, idx1, idx2
 
+      !Check whether something needs to be done here or not
+      if (.not. have_option("/physical_parameters/coriolis")) return
       do iphase = 1, nphase
          f => extract_scalar_field( states( iphase ), 'f', stat )
          if ( stat == 0 ) then

@@ -2270,10 +2270,11 @@ end if
 
         if ( high_order_Ph ) then
             if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
+              !UABSORBIN HAS NEVER BEEN CONSIDERED FOR THE PRESSURE SOLVER, IT SHOULD BE REMOVED!
                 allocate (U_ABSORBIN(Mdims%ndim * final_phase, Mdims%ndim * final_phase, Mdims%mat_nonods))
-                call update_velocity_absorption( state, Mdims%ndim, final_phase, U_ABSORBIN )
-                call update_velocity_absorption_coriolis( state, Mdims%ndim, final_phase, U_ABSORBIN )
-                call high_order_pressure_solve( Mdims, ndgln, Mmat%u_rhs, state, packed_state, Mdims%n_in_pres, U_ABSORBIN*0.0 )
+                ! call update_velocity_absorption( state, Mdims%ndim, final_phase, U_ABSORBIN )
+                ! call update_velocity_absorption_coriolis( state, Mdims%ndim, final_phase, U_ABSORBIN )
+                call high_order_pressure_solve( Mdims, ndgln, Mmat%u_rhs, state, packed_state, final_phase, U_ABSORBIN*0.0 )
                 deallocate(U_ABSORBIN)
             end if
         end if
@@ -2428,7 +2429,6 @@ end if
           end if
           !Retrieve the maximum number
           call get_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Max_restarts", Max_restarts, default = 5)
-
           allocate(ref_pressure(Mdims%npres,Mdims%cv_nonods));ref_pressure = 0.
           !#####################################################################
           !Check normalised relative pressure convergence before getting into the AA loop
@@ -2614,7 +2614,7 @@ end if
                   DO JPHASE = 1, final_phase
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
-                    Mmat%PIVIT_MAT(J, J, ELE) = 1e8!diagonal_A%val(JPHA_JDIM, u_jnod )
+                    Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )
                   end do
                 end do
               end do
@@ -4280,7 +4280,6 @@ if (.not. is_P0DGP1) print *, "####REMINDER: FOR MAGMA ONLY THE P0DG FORMULATION
             !Lumps the absorption terms and RHS; More consistent with the lumping of the mass matrix
             ! lump_mass = .true.; lump_absorption = .true.
             lump_mass = .true.; lump_absorption = .false.
-
         end if
 
        IF( GOT_DIFFUS .or. get_gradU ) THEN
