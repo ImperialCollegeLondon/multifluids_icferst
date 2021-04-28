@@ -1398,6 +1398,8 @@ contains
         integer :: idim, iphase, nod, stat, start_phase
         real :: auxR
 
+        logical :: use_potential = .true.
+
         call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
         have_gravity = ( stat == 0 )
         !Initialise RHS
@@ -1414,12 +1416,21 @@ contains
           if (present_and_true(collapse_together)) then
             sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
             !This is to put all the gravity contribution in the first phase
-            do nod = 1, Mdims%cv_nonods
-              g = node_val( gravity_direction, nod ) * gravity_magnitude
-              do idim = 1, Mdims%ndim
-                u_source_cv( idim, 1, nod ) = sum(den( :, nod ) * sat_field%val(1, :, nod)) * g( idim )
+            if (use_potential) then
+              do nod = 1, Mdims%cv_nonods
+                g = node_val( gravity_direction, nod ) * gravity_magnitude
+                do idim = 1, Mdims%ndim
+                  u_source_cv( idim, 1, nod ) = (den( 1, nod )- den( 2, nod ) )* sat_field%val(1, 1, nod) * g( idim )
+                end do
               end do
-            end do
+            else
+              do nod = 1, Mdims%cv_nonods
+                g = node_val( gravity_direction, nod ) * gravity_magnitude
+                do idim = 1, Mdims%ndim
+                  u_source_cv( idim, 1, nod ) = sum(den( :, nod ) * sat_field%val(1, :, nod)) * g( idim )
+                end do
+              end do
+            end if
           else
             do nod = 1, Mdims%cv_nonods
               g = node_val( gravity_direction, nod ) * gravity_magnitude

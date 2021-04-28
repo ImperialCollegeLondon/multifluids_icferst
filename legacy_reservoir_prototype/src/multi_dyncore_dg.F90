@@ -2527,7 +2527,7 @@ end if
               !If performing compaction we need to include now the matrix D to keep it consistent
               if (compute_compaction) then
                 call mult(deltap, Mmat%petsc_ACV, deltap)!Need to use here deltap since it is the continuation of a mutliplication
-                rhs_p%val = rhs_p%val - deltap%val
+                rhs_p%val = rhs_p%val + deltap%val
                 ! call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
               end if
               call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
@@ -2614,7 +2614,7 @@ end if
                   DO JPHASE = 1, final_phase
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
-                    Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )
+                    Mmat%PIVIT_MAT(J, J, ELE) = 1e8!diagonal_A%val(JPHA_JDIM, u_jnod )
                   end do
                 end do
               end do
@@ -2876,7 +2876,7 @@ end if
         !Now we perform CMC = CMC + D
         call MatAXPY(CMC_petsc%M,1.0,Mmat%petsc_ACV%M, SAME_NONZERO_PATTERN, stat)
         !We update also the RHS of the continuity equation
-        CT_RHS%val = CT_RHS%val - Mmat%CV_RHS%val*0
+        CT_RHS%val = CT_RHS%val - Mmat%CV_RHS%val*0     ! for use_potential=true, no need to add the divergence of gravity term anyway
         !We do not deallocate here Mmat%petsc_ACV as it may be needed in the BfB/stokes solver later on
         call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
         deallocate(F_fields, K_fields, lhs_coef, rhs_coef)
@@ -2939,7 +2939,7 @@ if (.not. is_P0DGP1) print *, "####REMINDER: FOR MAGMA ONLY THE P0DG FORMULATION
 
         vpressure=as_packed_vector(Pressure)
         call mult(vfield, Mmat%petsc_ACV, vpressure)
-        rhs_p%val = rhs_p%val - vfield%val
+        rhs_p%val = rhs_p%val + vfield%val
       end subroutine include_Laplacian_P_into_RHS
 
       !---------------------------------------------------------------------------
