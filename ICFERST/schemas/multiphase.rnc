@@ -3732,7 +3732,7 @@ phase_viscosity =(
                      attribute rank { "2" },
                      (
                         element prescribed {
-                            velocity_mesh_choice?,
+                            pressure_mesh_choice,
                             prescribed_tensor_field_no_adapt
                         }|
                         ## For electrical modelling only - holds electrical conductivity

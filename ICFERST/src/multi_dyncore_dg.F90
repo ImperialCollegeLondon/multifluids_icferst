@@ -2798,6 +2798,9 @@ end if
         type( tensor_field ), pointer :: pold_all
         integer :: CV_NOD, COUNT, CV_JNOD, IPRES, JPRES
 
+        !Check whether we have something here or not
+        if (has_boussinesq_aprox .or. .not. have_option_for_any_phase('/phase_properties/Density/compressible', Mdims%nphase)) return
+        
         if(got_free_surf) POLD_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldFEPressure" )
         ! Matrix vector involving the mass diagonal term
         DO CV_NOD = 1, Mdims%cv_nonods

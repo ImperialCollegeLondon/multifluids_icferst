@@ -4510,9 +4510,7 @@ Defaults to zero at machine tolerance (epsilon(0.0)) if not selected.</a:documen
       </attribute>
       <choice>
         <element name="prescribed">
-          <optional>
-            <ref name="velocity_mesh_choice"/>
-          </optional>
+          <ref name="pressure_mesh_choice"/>
           <ref name="prescribed_tensor_field_no_adapt"/>
         </element>
         <element name="diagnostic">

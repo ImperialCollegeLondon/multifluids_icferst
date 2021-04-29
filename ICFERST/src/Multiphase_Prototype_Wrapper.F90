@@ -377,6 +377,13 @@ contains
             end do
         end if
 
+        !Checking whether the field PhaseVolumeFraction is defined or not. If not a error is output
+        do i = 1, nphase
+          if (.not. have_option(("/material_phase["// int2str( i - 1 )//"]/scalar_field::PhaseVolumeFraction"))) &
+            FLAbort('PhaseVolumeFraction must be defined for all the phases, including single phase simulations.')
+        end do
+
+
         if (have_option('/physical_parameters/black-oil_PVT_table')) then
 
         !Maybe no need for a field in state? and just calculate using required conditions????
