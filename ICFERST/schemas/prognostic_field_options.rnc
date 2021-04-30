@@ -345,7 +345,7 @@ prognostic_pressure_field =
             region_ids?,
             input_choice_initial_condition_pressure
          }
-      )*,
+      )+,
       ## Boundary conditions
       element boundary_conditions {
          attribute name { string },

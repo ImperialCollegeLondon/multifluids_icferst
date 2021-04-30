@@ -568,48 +568,46 @@ to sum to 1 by adding constraint into compositional source term.</a:documentatio
           <ref name="phase_properties_options">
             <a:documentation>Options to provide properties of the fluid for the given phase.</a:documentation>
           </ref>
-          <optional>
-            <element name="scalar_field">
-              <a:documentation>Pressure</a:documentation>
-              <attribute name="rank">
-                <value>0</value>
-              </attribute>
-              <attribute name="name">
-                <value>Pressure</value>
-              </attribute>
-              <choice>
-                <a:documentation>Field type</a:documentation>
-                <element name="prognostic">
-                  <!-- mesh choice with PressureMesh as first option -->
-                  <ref name="pressure_mesh_choice"/>
-                  <ref name="prognostic_pressure_field"/>
-                  <ref name="output_options"/>
-                </element>
-                <element name="prescribed">
-                  <!-- mesh choice with PressureMesh as first option -->
-                  <ref name="pressure_mesh_choice"/>
-                  <ref name="prescribed_scalar_field"/>
-                  <ref name="output_options"/>
-                </element>
-                <element name="diagnostic">
-                  <a:documentation>Compute pressure from Density and InternalEnergy
+          <element name="scalar_field">
+            <a:documentation>Pressure</a:documentation>
+            <attribute name="rank">
+              <value>0</value>
+            </attribute>
+            <attribute name="name">
+              <value>Pressure</value>
+            </attribute>
+            <choice>
+              <a:documentation>Field type</a:documentation>
+              <element name="prognostic">
+                <!-- mesh choice with PressureMesh as first option -->
+                <ref name="pressure_mesh_choice"/>
+                <ref name="prognostic_pressure_field"/>
+                <ref name="output_options"/>
+              </element>
+              <element name="prescribed">
+                <!-- mesh choice with PressureMesh as first option -->
+                <ref name="pressure_mesh_choice"/>
+                <ref name="prescribed_scalar_field"/>
+                <ref name="output_options"/>
+              </element>
+              <element name="diagnostic">
+                <a:documentation>Compute pressure from Density and InternalEnergy
 via a compressible equation of state.</a:documentation>
-                  <!-- mesh choice with PressureMesh as first option -->
-                  <ref name="pressure_mesh_choice"/>
-                  <ref name="internal_algorithm"/>
-                  <ref name="diagnostic_scalar_field"/>
-                </element>
-                <element name="aliased">
-                  <attribute name="material_phase_name">
-                    <data type="string"/>
-                  </attribute>
-                  <attribute name="field_name">
-                    <value>Pressure</value>
-                  </attribute>
-                </element>
-              </choice>
-            </element>
-          </optional>
+                <!-- mesh choice with PressureMesh as first option -->
+                <ref name="pressure_mesh_choice"/>
+                <ref name="internal_algorithm"/>
+                <ref name="diagnostic_scalar_field"/>
+              </element>
+              <element name="aliased">
+                <attribute name="material_phase_name">
+                  <data type="string"/>
+                </attribute>
+                <attribute name="field_name">
+                  <value>Pressure</value>
+                </attribute>
+              </element>
+            </choice>
+          </element>
           <element name="vector_field">
             <a:documentation>Velocity vector and momentum options</a:documentation>
             <attribute name="rank">

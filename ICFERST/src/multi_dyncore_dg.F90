@@ -2783,7 +2783,7 @@ end if
       !---------------------------------------------------------------------------
       !> @author Chris Pain, Pablo Salinas
       !> @brief Include in the pressure matrix the compressibility terms (based on taylor expansion series) to ensure that we account for this term
-      !> as implicitly as possible
+      !> as implicitly as possible. For wells it introduces the coupling between pressures
       !---------------------------------------------------------------------------
       subroutine include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
 
@@ -2797,28 +2797,32 @@ end if
         !Local variables
         type( tensor_field ), pointer :: pold_all
         integer :: CV_NOD, COUNT, CV_JNOD, IPRES, JPRES
+        logical :: incl_compress_press
 
-        !Check whether we have something here or not
-        if (has_boussinesq_aprox .or. .not. have_option_for_any_phase('/phase_properties/Density/compressible', Mdims%nphase)) return
-        
+        incl_compress_press = .not. (has_boussinesq_aprox .or. .not. have_option_for_any_phase('/phase_properties/Density/compressible', Mdims%nphase))
+        !Check whether we have to do something here or not
+        if (Mdims%npres == 1 .and. .not. incl_compress_press) return
+
         if(got_free_surf) POLD_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldFEPressure" )
         ! Matrix vector involving the mass diagonal term
         DO CV_NOD = 1, Mdims%cv_nonods
             DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
                 CV_JNOD = Mspars%CMC%col( COUNT )
                 DO IPRES = 1, Mdims%npres
-                    IF (( Mdims%npres > 1 )) THEN
-                        IF(IPRES==1) THEN
-                            rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-                                -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
-                        ELSE
-                            rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-                                -DIAG_SCALE_PRES( IPRES, CV_NOD ) * pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
-                        ENDIF
-                    ELSE
-                        rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-                            -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
-                    ENDIF
+                    if (incl_compress_press) then
+                      IF (( Mdims%npres > 1 )) THEN
+                          IF(IPRES==1) THEN
+                              rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                                  -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+                          ELSE
+                              rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                                  -DIAG_SCALE_PRES( IPRES, CV_NOD ) * pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+                          ENDIF
+                      ELSE
+                          rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                              -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+                      ENDIF
+                    end if
                     if ( got_free_surf ) then
                         rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
                             -MASS_SUF( COUNT ) * ( P_ALL%VAL( 1, IPRES, CV_JNOD ) - POLD_ALL%VAL( 1, IPRES, CV_JNOD ) )
