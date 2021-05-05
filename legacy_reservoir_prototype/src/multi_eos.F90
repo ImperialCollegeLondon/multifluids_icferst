@@ -42,9 +42,6 @@ module multiphase_EOS
 
     implicit none
 
-    real, parameter :: flooding_hmin = 1e-5
-
-
 contains
 
     !>@brief: Computes the density for the phases and the derivatives of the density
@@ -1393,12 +1390,12 @@ contains
         type(tensor_field), pointer :: sat_field
         type(vector_field), pointer :: gravity_direction
         real, dimension(Mdims%ndim) :: g
-        logical :: have_gravity, high_order_Ph
+        logical :: have_gravity, high_order_Ph, use_potential
         real :: gravity_magnitude
         integer :: idim, iphase, nod, stat, start_phase
         real :: auxR
 
-        logical :: use_potential = .true.
+        use_potential = compute_compaction
 
         call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
         have_gravity = ( stat == 0 )
@@ -1873,16 +1870,21 @@ contains
                             momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
                             !Currently only magma uses momentum_diffusion2
                             momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))
+                            !Saturation scaling of viscosity
+!For testing rescaling of viscosity with the saturation
+if (is_magma) then
+momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion( :, :, iphase, mat_nod ) * max(saturation%val(cv_nod), 1e-5)!Ensure that it does not dissapear
+! momentum_diffusion2%val(1, 1, iphase, mat_nod)  = momentum_diffusion2%val(1, 1, iphase, mat_nod) * max(saturation%val(cv_nod), 1e-5)!Ensure that it does not dissapear
+end if
                           end if
                         else
                           momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
                         end if
-
-                        if(cg_mesh) then
-                          mat_nod = cv_nod * multiplier + (1 - multiplier)! this is for CG
-                        else
-                          mat_nod = mat_nod * multiplier + (1 - multiplier)! this is for DG
-                        end if
+                        ! if(cg_mesh) then
+                        !   mat_nod = cv_nod * multiplier + (1 - multiplier)! this is for CG
+                        ! else
+                        !   mat_nod = mat_nod * multiplier + (1 - multiplier)! this is for DG
+                        ! end if
                         ! if ( have_option( '/blasting' ) ) then
                         !    t_field%val( :, :, 1 ) = mu_tmp( :, :, iloc )
                         ! else
