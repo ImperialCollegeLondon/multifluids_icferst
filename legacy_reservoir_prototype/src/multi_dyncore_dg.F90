@@ -2349,7 +2349,7 @@ end if
         end if
         !######################## CORRECTION VELOCITY STEP####################################
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases
-        ! if (compute_compaction) call get_Darcy_phases_velocity()
+        if (compute_compaction) call get_Darcy_phases_velocity()
         !Ensure that the velocity fulfils the continuity equation before moving on
         call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
         call deallocate(deltaP)
@@ -2891,27 +2891,38 @@ end if
       subroutine  get_Darcy_phases_velocity()
         implicit none
         !Local varables
-        integer :: idim, iphase, u_inod
+        integer :: idim, iphase, u_inod, darcy_phases
 
-if (.not. is_P0DGP1) print *, "####REMINDER: FOR MAGMA ONLY THE P0DG FORMULATION WORKS FOR THE TIME BEING####"
-        !Allocate for a compact version if we move to P0DGP1CV
+
+        darcy_phases = Mdims%nphase-1
+        !We need to redo the PIVIT_matrix
         deallocate(Mmat%PIVIT_MAT)
-        allocate( Mmat%PIVIT_MAT( 1, 1, Mdims%totele ) ); Mmat%PIVIT_MAT=0.0
+        if (Mmat%compact_PIVIT_MAT) then!Use a compacted and lumped version of the mass matrix if possible
+            allocate( Mmat%PIVIT_MAT( 1, 1, Mdims%totele ) )
+        else
+            allocate( Mmat%PIVIT_MAT( Mdims%ndim * darcy_phases * Mdims%u_nloc, Mdims%ndim * darcy_phases * Mdims%u_nloc, Mdims%totele ) )
+        end if
+        Mmat%PIVIT_MAT=0.0
         allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods)); U_SOURCE_CV_ALL=0.0
         deallocate(Mmat%U_RHS); allocate(Mmat%U_RHS(Mdims%ndim, Mdims%nphase, Mdims%u_nonods))
+        !Here we compute rho g for all the phases
         call calculate_u_source_cv( Mdims, state, packed_state, DEN_ALL, U_SOURCE_CV_ALL )
+!###############################################################################################################
+!CURRENTLY THIS WORKS FOR FE FORMULATION ONLY!!!
+!FOR DCVFEM WE NEED THE P0DGP1 ELEMENT PAIR WORKING OR CHANGE THE MASS MATRIX METHOD INSIDE TO COLLAPSE NODES FOR DARCY SO IT IS P0DG EFFECTIVELY
+!###############################################################################################################
         !Recomputes the U_RHS and Mmat%PIVIT_MAT to be Darcy-like
         CALL porous_assemb_force_cty( packed_state, pressure, &!We consider all the phases, the assembly is quite cheap anyway
           Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL2%val, U_SOURCE_CV_ALL)
         deallocate(U_SOURCE_CV_ALL)
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
         call deallocate(CDP_tensor);
-        call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), Mdims%nphase-1/)); call zero(cdp_tensor)
-        call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, Mdims%NPHASE - 1, &
+        call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), darcy_phases/)); call zero(cdp_tensor)
+        call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, darcy_phases, &
             Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
         !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
         CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:Mdims%nphase,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:Mdims%nphase,:) + CDP_tensor%val,&
-            Mdims%ndim, Mdims%nphase-1, Mdims%totele, Mdims%u_nloc, ndgln%u )
+            Mdims%ndim, darcy_phases, Mdims%totele, Mdims%u_nloc, ndgln%u )
 
         !The final step is to add the solid velocity (WE NEED TO DOUBLE CHECK THE SIGNS HERE)
         do u_inod = 1, Mdims%u_nonods
@@ -3338,7 +3349,7 @@ if (.not. is_P0DGP1) print *, "####REMINDER: FOR MAGMA ONLY THE P0DG FORMULATION
           !this has to go, the mass matrix should not be assembled at all as it can be done on-the-fly so long
           !we have the mass of each element
           if (.not.Mmat%Stored .or. compute_compaction) then!When solving for the darcy phases we need to compute the mass matrix
-            if (.not. Bubble_element_active) then
+            if (.not. Bubble_element_active .and. .not. compute_compaction) then !For the time being for compaction we use get_massMatrix
               !Use the method based on diagonal scaling for lagrangian elements
               call get_diagonal_mass_matrix(ELE, Mdims%nphase, Mdims, DevFuns, Mmat)
             else !Use the row-sum method for P1DGBLP1DG(CV)
@@ -3454,13 +3465,15 @@ if (.not. is_P0DGP1) print *, "####REMINDER: FOR MAGMA ONLY THE P0DG FORMULATION
         type (multi_matrices), intent(inout) :: Mmat
         REAL, DIMENSION( :, : ), intent( in ) :: X_ALL, UFEN_REVERSED
         !Local variables
-        integer:: I, J, U_JLOC, U_ILOC, GI, JPHASE, JDIM, IPHASE, idim, JPHA_JDIM, IPHA_IDIM
+        integer:: I, J, U_JLOC, U_ILOC, GI, JPHASE, JDIM, IPHASE, idim, JPHA_JDIM, IPHA_IDIM, local_phases
         REAL, DIMENSION ( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc ) :: NN_SIGMAGI_ELE ! element mass matrix
         REAL, DIMENSION ( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, FE_GIdims%cv_ngi ) :: SIGMAGI
         logical, parameter :: row_sum_method = .true.
         REAL, SAVE :: scaling_vel_nodes = -1.
         REAL, SAVE :: Tau = -1.
 
+        !For compaction/magma we don't have all the phases so we obtain it based on the size of PIVIT_MAT
+        local_phases = size(Mmat%PIVIT_MAT,1)/(Mdims%ndim*Mdims%u_nloc)
         SIGMAGI = 0.
         DO IPHA_IDIM = 1, Mdims%ndim * Mdims%nphase
           SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = 1.0
@@ -3496,14 +3509,14 @@ if (.not. is_P0DGP1) print *, "####REMINDER: FOR MAGMA ONLY THE P0DG FORMULATION
 
         DO U_JLOC = 1, Mdims%u_nloc
           DO U_ILOC = 1, Mdims%u_nloc
-            DO JPHASE = 1,Mdims%nphase
+            DO JPHASE = 1,local_phases
               DO JDIM = 1, Mdims%ndim
                 JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
-                J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                DO IPHASE = 1,Mdims%nphase
+                J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*local_phases
+                DO IPHASE = 1,local_phases
                   DO IDIM = 1, Mdims%ndim
                     IPHA_IDIM = IDIM + (IPHASE-1)*Mdims%ndim
-                    I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+                    I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*local_phases
                     !Assemble
                     IF (row_sum_method) then!sprint_to_do despite hard coded I don't like this if within these loops
                       !decide which method to keep and just leave that one
