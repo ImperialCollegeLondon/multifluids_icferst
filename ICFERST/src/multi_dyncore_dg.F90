@@ -990,12 +990,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
     type(tensor_field) :: tracer_BCs, tracer_BCs_robin2
     real, parameter :: tol = 1e-30
-    real :: imposed_min_limit, imposed_max_limit
     logical :: has_imposed_min_limit, has_imposed_max_limit
 
     !Check whether to apply the minmax principle
     apply_minmax_principle = have_option_for_any_phase("scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", Mdims%ndim)
-
     if (apply_minmax_principle) then
       select case (entrance)
       case (1)
@@ -1003,8 +1001,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         totally_min_max = (/-1d9,1d9/)
         has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit")
         has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit")
-        if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit", imposed_min_limit)
-        if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit", imposed_max_limit)
+        if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit", totally_min_max(1))
+        if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit", totally_min_max(2))
         allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
         call get_entire_boundary_condition(tracer,&
         ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL, boundary_second_value=tracer_BCs_robin2)
