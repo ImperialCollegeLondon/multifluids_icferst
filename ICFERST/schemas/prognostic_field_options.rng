@@ -389,7 +389,7 @@ The gravitational acceleration is considered to be in negative y (or negative z 
           <empty/>
         </element>
       </optional>
-      <zeroOrMore>
+      <oneOrMore>
         <choice>
           <element name="initial_condition">
             <a:documentation>Initial condition for WholeMesh
@@ -417,7 +417,7 @@ requires a distinct name for the options dictionary.</a:documentation>
             <ref name="input_choice_initial_condition_pressure"/>
           </element>
         </choice>
-      </zeroOrMore>
+      </oneOrMore>
       <zeroOrMore>
         <element name="boundary_conditions">
           <a:documentation>Boundary conditions</a:documentation>
