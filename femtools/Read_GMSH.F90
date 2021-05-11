@@ -83,8 +83,9 @@ contains
 
     integer :: fd
     integer,  pointer, dimension(:) :: sndglno, boundaryIDs, faceOwner
-    integer, allocatable, dimension(:,:):: ele_combination
     integer, ALLOCATABLE, DIMENSION(:,:):: faces2
+    integer, ALLOCATABLE, DIMENSION(:):: nodes2_ID
+    real, ALLOCATABLE, DIMENSION(:,:):: nodes2_X
 
     character(len = parallel_filename_len(filename)) :: lfilename
     integer :: loc, sloc,i,j,k
@@ -133,22 +134,32 @@ contains
     numFaces = size(faces)
     numElements = size(elements)
 
-    allocate(ele_combination(6,2), faces2(numNodes+numElements-1,2))
-    forall (i=1:((size(faces2)/2)), j=1:2) faces2(i,j)=-1
-    open(unit=12, file='amin_gmsh.txt')
-    write(12,*) '$MeshFormat'
-    write(12,*) '2.2 0 8'
-    write(12,*) '$EndMeshFormat'
 
-    write(12,*) '$Nodes'
+
+
+
+
+    allocate(nodes2_ID(numElements*12), nodes2_x(numElements*12,3), faces2(numNodes+numElements-1,2))
+    forall (i=1:((size(faces2)/2)), j=1:2) faces2(i,j)=-1
+    forall (i=1:numElements*12, j=1:3) nodes2_x(i,j)=-1
+    forall (i=1:numElements*12) nodes2_ID(i)=-1
+
+open(unit=12, file='amin_gmsh.txt')
+write(12,*) '$MeshFormat'
+write(12,*) '2.2 0 8'
+write(12,*) '$EndMeshFormat'
+
+write(12,*) '$Nodes'
     do i=1,numNodes
-        write(12,*) nodes(i)%nodeID, nodes(i)%x
-      end do
+      nodes2_ID(i) = nodes(i)%nodeID
+      forall (j=1:3) nodes2_x(i,j) = nodes(i)%x(j)
+      ! write(12,*) nodes(i)%nodeID, nodes(i)%x
+      write(12,*) nodes2_ID(i), nodes2_x(i,:)
+    end do
     do i=1,numFaces
-          write(12,*) i+numFaces+1, (nodes(faces(i)%nodeIDs(1))%x(1)+ nodes(faces(i)%nodeIDs(2))%x(1))/2.0, &
-                                    (nodes(faces(i)%nodeIDs(1))%x(2)+ nodes(faces(i)%nodeIDs(2))%x(2))/2.0, &
-                                    (nodes(faces(i)%nodeIDs(1))%x(3)+ nodes(faces(i)%nodeIDs(2))%x(3))/2.0
-      ! numNodes=i+numfaces+1
+      nodes2_ID(i+numFaces+1) = i+numFaces+1
+      forall (j=1:3) nodes2_x(i,j) = (nodes(faces(i)%nodeIDs(1))%x(j)+ nodes(faces(i)%nodeIDs(2))%x(j))/2.0
+      write(12,*) nodes2_ID(i+numFaces+1), nodes2_X(i,:)
       end do
 write(12,*) '$EndNodes'
 
@@ -161,7 +172,7 @@ write(12,*) '$Elements'
      !     j=j+1
      ! end do
 
-write(12,*) 'Now Faces'
+write(12,*) 'Now edges'
      do i=1,numFaces
        faces2(i,1)=faces(i)%nodeIDs(1)
        faces2(i,2)=faces(i)%nodeIDs(2)
@@ -171,16 +182,9 @@ write(12,*) 'Now Faces'
      write(12,*) 'next'
      write(12,*) numElements+numFaces
      do i=1,((size(faces2)/2))
-         write(12,*) faces2(i,1), faces2(i,2)
+         write(12,*) faces2(i,:)
      end do
 
-! write(12,*) 'Now combinations of faces'
-!      do i=1,numFaces
-!        faces2(i,1) = faces(i)%nodeIDs(1)
-!        faces2(i,2) = faces(i)%nodeIDs(2)
-!        write(12,*) faces2(i,:)
-!      end do
-!
 !      do i=numFaces,2*numFaces-1
 !        faces2(i,1) = faces(i-numFaces+1)%nodeIDs(2)
 !        faces2(i,2) = faces(i-numFaces+1)%nodeIDs(1)
@@ -191,7 +195,7 @@ write(12,*) 'Now Faces'
 k=1
 write(12,*) 'Now element'
      do i=1, numElements
-       write(12,*) elements(i)%nodeIDs
+       write(12,*) '# elements',elements(i)%nodeIDs
        do j=1,(numNodes+numElements-1)
          ! checks all combinations of faces if the midpoint is already calculated in the Node section
          if ((elements(i)%nodeIDs(1) == faces2(j,1) .and. elements(i)%nodeIDs(2) == faces2(j,2))&
@@ -250,35 +254,19 @@ write(12,*) 'Now element'
      end do
 
      do i=1,((size(faces2)/2))
-         write(12,*) faces2(i,1), faces2(i,2)
+         write(12,*) faces2(i,:)
      end do
-         ! write(12,*) elements(i)%elementID, elements(i)%type, elements(i)%numTags , elements(i)%tags, elements(i)%nodeIDs
-          ! ele_combination(1,1)= elements(i)%nodeIDs(1)
-          ! ele_combination(1,2)= elements(i)%nodeIDs(2)
-          ! write(12,*) ele_combination(1,:)
-          ! ele_combination(2,1)= elements(i)%nodeIDs(1)
-          ! ele_combination(2,2)= elements(i)%nodeIDs(3)
-          ! write(12,*) ele_combination(2,:)
-          ! ele_combination(3,1)= elements(i)%nodeIDs(2)
-          ! ele_combination(3,2)= elements(i)%nodeIDs(3)
-          ! write(12,*) ele_combination(3,:)
-          ! ele_combination(4,1)= elements(i)%nodeIDs(2)
-          ! ele_combination(4,2)= elements(i)%nodeIDs(1)
-          ! write(12,*) ele_combination(4,:)
-          ! ele_combination(5,1)= elements(i)%nodeIDs(3)
-          ! ele_combination(5,2)= elements(i)%nodeIDs(1)
-          ! write(12,*) ele_combination(5,:)
-          ! ele_combination(6,1)= elements(i)%nodeIDs(3)
-          ! ele_combination(6,2)= elements(i)%nodeIDs(2)
-          ! write(12,*) ele_combination(6,:), 'next'
-         ! do i=1,numElements
-         !     ! write(12,*) elements(i)%nodeIDs(1)
      write(12,*) '$EndElements'
+     write(12,*) '~nodes=', numNodes, numFaces,numElements
 
     close(12)
-    deallocate(ele_combination, faces2)
+    deallocate(nodes2_ID, nodes2_x, faces2)
     print*, 'done'
     stop
+
+
+
+
 
     ! NOTE:  similar function 'boundaries' variable in Read_Triangle.F90
     ! ie. flag for boundaries and internal boundaries (period mesh bounds)
