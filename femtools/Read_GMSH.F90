@@ -24,7 +24,7 @@
 !    License along with this library; if not, write to the Free Software
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
-!test
+
 #include "fdebug.h"
 
 module read_gmsh
@@ -60,7 +60,7 @@ contains
   ! The main function for reading GMSH files
 
   function read_gmsh_simple( filename, quad_degree, &
-       quad_ngi, quad_family, mdim ) &
+         quad_ngi, quad_family, mdim ) &
        result (field)
     !!< Read a GMSH file into a coordinate field.
     !!< In parallel the filename must *not* include the process number.
@@ -83,14 +83,16 @@ contains
 
     integer :: fd
     integer,  pointer, dimension(:) :: sndglno, boundaryIDs, faceOwner
+    integer, allocatable, dimension(:,:):: ele_combination
+    integer, ALLOCATABLE, DIMENSION(:,:):: faces2
 
     character(len = parallel_filename_len(filename)) :: lfilename
-    integer :: loc, sloc
+    integer :: loc, sloc,i,j,k
     integer :: numNodes, numElements, numFaces
     logical :: haveBounds, haveElementOwners, haveRegionIDs
     integer :: dim, coordinate_dim, gdim
     integer :: gmshFormat
-    integer :: n, d, e, f, nodeID
+    integer :: n, d, e, f, nodeID, check, check2, check3
 
     type(GMSHnode), pointer :: nodes(:)
     type(GMSHelement), pointer :: elements(:), faces(:)
@@ -130,6 +132,153 @@ contains
     numNodes = size(nodes)
     numFaces = size(faces)
     numElements = size(elements)
+
+    allocate(ele_combination(6,2), faces2(numNodes+numElements-1,2))
+    forall (i=1:((size(faces2)/2)), j=1:2) faces2(i,j)=-1
+    open(unit=12, file='amin_gmsh.txt')
+    write(12,*) '$MeshFormat'
+    write(12,*) '2.2 0 8'
+    write(12,*) '$EndMeshFormat'
+
+    write(12,*) '$Nodes'
+    do i=1,numNodes
+        write(12,*) nodes(i)%nodeID, nodes(i)%x
+      end do
+    do i=1,numFaces
+          write(12,*) i+numFaces+1, (nodes(faces(i)%nodeIDs(1))%x(1)+ nodes(faces(i)%nodeIDs(2))%x(1))/2.0, &
+                                    (nodes(faces(i)%nodeIDs(1))%x(2)+ nodes(faces(i)%nodeIDs(2))%x(2))/2.0, &
+                                    (nodes(faces(i)%nodeIDs(1))%x(3)+ nodes(faces(i)%nodeIDs(2))%x(3))/2.0
+      ! numNodes=i+numfaces+1
+      end do
+write(12,*) '$EndNodes'
+
+write(12,*) '$Elements'
+     ! j=1
+     ! do i=1,numFaces
+     !     write(12,*)j,faces(i)%type,faces(i)%numTags,faces(i)%tags,faces(i)%nodeIDs(1), i+numFaces+1
+     !     j=j+1
+     !     write(12,*)j,faces(i)%type,faces(i)%numTags,faces(i)%tags, i+numFaces+1, faces(i)%nodeIDs(2)
+     !     j=j+1
+     ! end do
+
+write(12,*) 'Now Faces'
+     do i=1,numFaces
+       faces2(i,1)=faces(i)%nodeIDs(1)
+       faces2(i,2)=faces(i)%nodeIDs(2)
+       write(12,*) faces(i)%nodeIDs
+     end do
+
+     write(12,*) 'next'
+     write(12,*) numElements+numFaces
+     do i=1,((size(faces2)/2))
+         write(12,*) faces2(i,1), faces2(i,2)
+     end do
+
+! write(12,*) 'Now combinations of faces'
+!      do i=1,numFaces
+!        faces2(i,1) = faces(i)%nodeIDs(1)
+!        faces2(i,2) = faces(i)%nodeIDs(2)
+!        write(12,*) faces2(i,:)
+!      end do
+!
+!      do i=numFaces,2*numFaces-1
+!        faces2(i,1) = faces(i-numFaces+1)%nodeIDs(2)
+!        faces2(i,2) = faces(i-numFaces+1)%nodeIDs(1)
+!        write(12,*) faces2(i,:)
+!      end do
+
+
+k=1
+write(12,*) 'Now element'
+     do i=1, numElements
+       write(12,*) elements(i)%nodeIDs
+       do j=1,(numNodes+numElements-1)
+         ! checks all combinations of faces if the midpoint is already calculated in the Node section
+         if ((elements(i)%nodeIDs(1) == faces2(j,1) .and. elements(i)%nodeIDs(2) == faces2(j,2))&
+            .or. (elements(i)%nodeIDs(1) == faces2(j,2) .and. elements(i)%nodeIDs(2) == faces2(j,1))) then
+            check=0
+            exit
+         else
+            check=1
+         end if
+        end do
+        if (check == 1) then
+           write(12,*) 0.5*(nodes(elements(i)%nodeIDs(1))%x(1) + nodes(elements(i)%nodeIDs(2))%x(1)),&
+                       0.5*(nodes(elements(i)%nodeIDs(1))%x(2) + nodes(elements(i)%nodeIDs(2))%x(2)),&
+                       0.5*(nodes(elements(i)%nodeIDs(1))%x(3) + nodes(elements(i)%nodeIDs(2))%x(3))
+           faces2(numFaces+k,1)=elements(i)%nodeIDs(1)
+           faces2(numFaces+k,2)=elements(i)%nodeIDs(2)
+           k=k+1
+         end if
+
+        do j=1,(numNodes+numElements-1)
+          if ((elements(i)%nodeIDs(1) == faces2(j,1) .and. elements(i)%nodeIDs(3) == faces2(j,2))&
+                 .or. (elements(i)%nodeIDs(1) == faces2(j,2) .and. elements(i)%nodeIDs(3) == faces2(j,1))) then
+              check2 =0
+              exit
+          else
+              check2=1
+          end if
+        end do
+        if (check2==1) then
+         write(12,*) 0.5*(nodes(elements(i)%nodeIDs(1))%x(1) + nodes(elements(i)%nodeIDs(3))%x(1)),&
+                     0.5*(nodes(elements(i)%nodeIDs(1))%x(2) + nodes(elements(i)%nodeIDs(3))%x(2)),&
+                     0.5*(nodes(elements(i)%nodeIDs(1))%x(3) + nodes(elements(i)%nodeIDs(3))%x(3))
+          faces2(numFaces+k,1)=elements(i)%nodeIDs(1)
+          faces2(numFaces+k,2)=elements(i)%nodeIDs(3)
+          k=k+1
+        end if
+
+
+        do j=1,(numNodes+numElements-1)
+        if ((elements(i)%nodeIDs(2) == faces2(j,1) .and. elements(i)%nodeIDs(3) == faces2(j,2) )&
+                .or. (elements(i)%nodeIDs(2) == faces2(j,2) .and. elements(i)%nodeIDs(3) == faces2(j,1) )) then
+          check3 =0
+          exit
+        else
+          check3=1
+        end if
+        end do
+        if (check3==1) then
+         write(12,*) 0.5*(nodes(elements(i)%nodeIDs(2))%x(1) + nodes(elements(i)%nodeIDs(3))%x(1)),&
+                     0.5*(nodes(elements(i)%nodeIDs(2))%x(2) + nodes(elements(i)%nodeIDs(3))%x(2)),&
+                     0.5*(nodes(elements(i)%nodeIDs(2))%x(3) + nodes(elements(i)%nodeIDs(3))%x(3))
+          faces2(numFaces+k,1)=elements(i)%nodeIDs(2)
+          faces2(numFaces+k,2)=elements(i)%nodeIDs(3)
+          k=k+1
+        end if
+     end do
+
+     do i=1,((size(faces2)/2))
+         write(12,*) faces2(i,1), faces2(i,2)
+     end do
+         ! write(12,*) elements(i)%elementID, elements(i)%type, elements(i)%numTags , elements(i)%tags, elements(i)%nodeIDs
+          ! ele_combination(1,1)= elements(i)%nodeIDs(1)
+          ! ele_combination(1,2)= elements(i)%nodeIDs(2)
+          ! write(12,*) ele_combination(1,:)
+          ! ele_combination(2,1)= elements(i)%nodeIDs(1)
+          ! ele_combination(2,2)= elements(i)%nodeIDs(3)
+          ! write(12,*) ele_combination(2,:)
+          ! ele_combination(3,1)= elements(i)%nodeIDs(2)
+          ! ele_combination(3,2)= elements(i)%nodeIDs(3)
+          ! write(12,*) ele_combination(3,:)
+          ! ele_combination(4,1)= elements(i)%nodeIDs(2)
+          ! ele_combination(4,2)= elements(i)%nodeIDs(1)
+          ! write(12,*) ele_combination(4,:)
+          ! ele_combination(5,1)= elements(i)%nodeIDs(3)
+          ! ele_combination(5,2)= elements(i)%nodeIDs(1)
+          ! write(12,*) ele_combination(5,:)
+          ! ele_combination(6,1)= elements(i)%nodeIDs(3)
+          ! ele_combination(6,2)= elements(i)%nodeIDs(2)
+          ! write(12,*) ele_combination(6,:), 'next'
+         ! do i=1,numElements
+         !     ! write(12,*) elements(i)%nodeIDs(1)
+     write(12,*) '$EndElements'
+
+    close(12)
+    deallocate(ele_combination, faces2)
+    print*, 'done'
+    stop
 
     ! NOTE:  similar function 'boundaries' variable in Read_Triangle.F90
     ! ie. flag for boundaries and internal boundaries (period mesh bounds)

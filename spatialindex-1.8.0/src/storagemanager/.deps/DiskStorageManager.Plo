@@ -25,8 +25,7 @@ DiskStorageManager.lo: DiskStorageManager.cc /usr/include/stdc-predef.h \
  /usr/include/x86_64-linux-gnu/bits/types/FILE.h \
  /usr/include/x86_64-linux-gnu/bits/types/locale_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h \
- /usr/include/x86_64-linux-gnu/bits/wchar2.h /usr/include/c++/7/exception \
- /usr/include/c++/7/bits/exception.h \
+ /usr/include/c++/7/exception /usr/include/c++/7/bits/exception.h \
  /usr/include/c++/7/bits/char_traits.h \
  /usr/include/c++/7/bits/stl_algobase.h \
  /usr/include/c++/7/bits/functexcept.h \
@@ -101,14 +100,10 @@ DiskStorageManager.lo: DiskStorageManager.cc /usr/include/stdc-predef.h \
  /usr/include/x86_64-linux-gnu/bits/_G_config.h \
  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
  /usr/include/x86_64-linux-gnu/bits/sys_errlist.h \
- /usr/include/x86_64-linux-gnu/bits/stdio.h \
- /usr/include/x86_64-linux-gnu/bits/stdio2.h \
  /usr/include/x86_64-linux-gnu/c++/7/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/7/bits/c++io.h \
  /usr/include/c++/7/bits/fstream.tcc /usr/include/c++/7/cstring \
  /usr/include/string.h /usr/include/strings.h \
- /usr/include/x86_64-linux-gnu/bits/strings_fortified.h \
- /usr/include/x86_64-linux-gnu/bits/string_fortified.h \
  /usr/include/x86_64-linux-gnu/sys/stat.h \
  /usr/include/x86_64-linux-gnu/bits/stat.h \
  ../../include/spatialindex/SpatialIndex.h \
@@ -142,12 +137,9 @@ DiskStorageManager.lo: DiskStorageManager.cc /usr/include/stdc-predef.h \
  /usr/include/x86_64-linux-gnu/bits/select.h \
  /usr/include/x86_64-linux-gnu/bits/types/sigset_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h \
- /usr/include/x86_64-linux-gnu/bits/select2.h \
  /usr/include/x86_64-linux-gnu/sys/sysmacros.h \
  /usr/include/x86_64-linux-gnu/bits/sysmacros.h /usr/include/alloca.h \
- /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h \
  /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
- /usr/include/x86_64-linux-gnu/bits/stdlib.h \
  /usr/include/c++/7/bits/std_abs.h /usr/include/c++/7/bits/algorithmfwd.h \
  /usr/include/c++/7/bits/stl_tempbuf.h \
  ../../include/spatialindex/tools/SmartPointer.h \
@@ -226,8 +218,6 @@ DiskStorageManager.lo: DiskStorageManager.cc /usr/include/stdc-predef.h \
 /usr/include/x86_64-linux-gnu/bits/types/locale_t.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h:
-
-/usr/include/x86_64-linux-gnu/bits/wchar2.h:
 
 /usr/include/c++/7/exception:
 
@@ -419,10 +409,6 @@ DiskStorageManager.lo: DiskStorageManager.cc /usr/include/stdc-predef.h \
 
 /usr/include/x86_64-linux-gnu/bits/sys_errlist.h:
 
-/usr/include/x86_64-linux-gnu/bits/stdio.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdio2.h:
-
 /usr/include/x86_64-linux-gnu/c++/7/bits/basic_file.h:
 
 /usr/include/x86_64-linux-gnu/c++/7/bits/c++io.h:
@@ -434,10 +420,6 @@ DiskStorageManager.lo: DiskStorageManager.cc /usr/include/stdc-predef.h \
 /usr/include/string.h:
 
 /usr/include/strings.h:
-
-/usr/include/x86_64-linux-gnu/bits/strings_fortified.h:
-
-/usr/include/x86_64-linux-gnu/bits/string_fortified.h:
 
 /usr/include/x86_64-linux-gnu/sys/stat.h:
 
@@ -543,19 +525,13 @@ DiskStorageManager.lo: DiskStorageManager.cc /usr/include/stdc-predef.h \
 
 /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h:
 
-/usr/include/x86_64-linux-gnu/bits/select2.h:
-
 /usr/include/x86_64-linux-gnu/sys/sysmacros.h:
 
 /usr/include/x86_64-linux-gnu/bits/sysmacros.h:
 
 /usr/include/alloca.h:
 
-/usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h:
-
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdlib.h:
 
 /usr/include/c++/7/bits/std_abs.h:
 

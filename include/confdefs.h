@@ -18,7 +18,7 @@
 #define LONG_64_BITS 1
 #define F77_FUNC(name,NAME) name ## _
 #define F77_FUNC_(name,NAME) name ## _
-#define HAVE_PYTHON "2.7"
+#define HAVE_PYTHON "3.6"
 #define HAVE_BLAS 1
 #define HAVE_LAPACK 1
 #define HAVE_LIBSTDC__ 1
@@ -26,7 +26,7 @@
 #define HAVE_LIBPTHREAD 1
 #define HAVE_LIBUDUNITS 1
 #define USING_GFORTRAN 1
-#define NDEBUG 1
+#define DDEBUG 1
 #define HAVE_MPI 1
 #define HAVE_MPI_CXX 1
 #define _MPI_CPP_BINDINGS 1
@@ -47,3 +47,4 @@
 #define HAVE_JUDY 1
 #define HAVE_SPUD 1
 #define HAVE_MBA_2D 1
+#define HAVE_MEMORY_STATS 1

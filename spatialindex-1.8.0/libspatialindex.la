@@ -38,4 +38,4 @@ dlopen=''
 dlpreopen=''
 
 # Directory that this library needs to be installed in:
-libdir='/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib'
+libdir='/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib'

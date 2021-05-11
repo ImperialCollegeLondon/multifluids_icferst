@@ -27,16 +27,16 @@
 SHELL = /bin/bash
 
 FC      = mpif90
-FCFLAGS = -I../include -ffast-math -frecord-marker=4  -fno-realloc-lhs -ffree-line-length-none -ffixed-line-length-none  -O3 -I/usr/lib/petscdir/3.8.3/include -I/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/include -I/usr/include/hdf5/openmpi -I/home/amin/Desktop/IC-FIRST/include/ -fdefault-real-8 -fdefault-double-8
+FCFLAGS = -I../include -fbounds-check -Wall -Wimplicit-interface -Wno-surprising -g -O0 -frecord-marker=4 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -fno-realloc-lhs -ffree-line-length-none -ffixed-line-length-none -finit-integer=-66666 -finit-real=nan  -I/usr/lib/petscdir/3.8.3/include -I/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/include -I/usr/include/hdf5/openmpi -I/home/amin/Desktop/IC-FERST/include/ -fdefault-real-8 -fdefault-double-8
 
 F77      = mpif90
-FFLAGS = -I../include -ffast-math -frecord-marker=4  -fno-realloc-lhs -ffree-line-length-none -ffixed-line-length-none  -O3 -fdefault-real-8 -fdefault-double-8
+FFLAGS = -I../include -fbounds-check -Wall -g -O0 -frecord-marker=4 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -fno-realloc-lhs -ffree-line-length-none -ffixed-line-length-none -finit-integer=-66666 -finit-real=nan  -fdefault-real-8 -fdefault-double-8
 
 CC      = mpicc
-CFLAGS  =  -I/usr/include/python2.7  -O3
+CFLAGS  = -fbounds-check -Wall -g -O0 -I/usr/include/python3.6m -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include 
 
 CXX     = mpicxx
-CXXFLAGS=  -I/usr/include/python2.7  -O3
+CXXFLAGS= -fbounds-check -Wall -g -O0 -I/usr/include/python3.6m -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include 
 
 MAKE    = make
 AR  = ar

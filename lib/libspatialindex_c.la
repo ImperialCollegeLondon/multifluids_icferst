@@ -17,7 +17,7 @@ old_library='libspatialindex_c.a'
 inherited_linker_flags=''
 
 # Libraries that this one depends upon.
-dependency_libs=' -lstdc++ /home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib/libspatialindex.la -lpthread'
+dependency_libs=' -lstdc++ /home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib/libspatialindex.la -lpthread'
 
 # Names of additional weak libraries provided by this library
 weak_library_names=''
@@ -38,4 +38,4 @@ dlopen=''
 dlpreopen=''
 
 # Directory that this library needs to be installed in:
-libdir='/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib'
+libdir='/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib'

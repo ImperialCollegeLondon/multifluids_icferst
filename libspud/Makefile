@@ -55,17 +55,18 @@ VPATH = src/
 default: libspud.la build-diamond
 
 libspud.la: $(OBJS)
-	./libtool --mode=link --tag=FC $(FC) $(FCFLAGS) -o $(LIB) $(OBJS) $(LIBS) -rpath /home/amin/Desktop/IC-FIRST/libspud/../lib 
+	./libtool --mode=link --tag=FC $(FC) $(FCFLAGS) -o $(LIB) $(OBJS) $(LIBS) -rpath /home/amin/Desktop/IC-FERST/libspud/../lib 
 	if test -f .libs/libspud.a; then cp .libs/libspud.a .; fi
 	(if test -f .libs/libspud.so; then cp .libs/libspud.so ./libspud.so.0; ln -s libspud.so.0 libspud.so; fi) || true
 
 build-diamond:
-	cd diamond; python setup.py build; cd ..
+	cd diamond; python3 setup.py build; cd ..
 
 test: unittest
 
 unittest: libspud.la
 	@cd src/tests; $(MAKE)
+
 
 .PHONY:doc
 
@@ -75,37 +76,38 @@ doc:
 install: install-libspud install-spudtools install-diamond install-pyspud install-dxdiff
 
 install-libspud: libspud.la
-	/usr/bin/install -c -d $(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/../lib
-	/usr/bin/install -c -d $(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/../include
-	/usr/bin/install -c libspud.a $(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/../lib
-	(if test -f libspud.so.0; then /usr/bin/install -c libspud.so.0 $(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/../lib; fi) || true
-	(if test -f libspud.so; then cd $(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/../lib/; ln -s libspud.so.0 libspud.so; cd -; fi) || true
-	/usr/bin/install -c $(MODS) $(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/../include
-	/usr/bin/install -c $(HEADERS) $(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/../include
+	/usr/bin/install -c -d $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../lib
+	/usr/bin/install -c -d $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../include
+	/usr/bin/install -c libspud.a $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../lib
+	(if test -f libspud.so.0; then /usr/bin/install -c libspud.so.0 $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../lib; fi) || true
+	(if test -f libspud.so; then cd $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../lib/; ln -s libspud.so.0 libspud.so; cd -; fi) || true
+	/usr/bin/install -c $(MODS) $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../include
+	/usr/bin/install -c $(HEADERS) $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../include
 
 install-spudtools: 
-	/usr/bin/install -c -d $(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/../share/spud
-	/usr/bin/install -c -d $(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/../bin
-	/usr/bin/install -c -m755 bin/spud-preprocess $(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/../bin
-	/usr/bin/install -c -m755 bin/spud-set $(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/../bin
-	/usr/bin/install -c -m644 schema/spud_base.rnc $(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/../share/spud
-	/usr/bin/install -c -m644 schema/spud_base.rng $(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/../share/spud
+	/usr/bin/install -c -d $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../share/spud
+	/usr/bin/install -c -d $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../bin
+	/usr/bin/install -c -m755 bin/spud-preprocess $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../bin
+	/usr/bin/install -c -m755 bin/spud-set $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../bin
+	/usr/bin/install -c -m755 bin/spud-update-options $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../bin
+	/usr/bin/install -c -m644 schema/spud_base.rnc $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../share/spud
+	/usr/bin/install -c -m644 schema/spud_base.rng $(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/../share/spud
 
 install-diamond:
-	cd diamond;	python setup.py install --prefix=$(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/..; cd ..
+	cd diamond;	python3 setup.py install --prefix=$(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/..; cd ..
 
 install-pyspud:
 ifeq ($(origin BUILDING_DEBIAN),undefined)
-	cd python; python setup.py install --prefix=$(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/..; cd ..
+	cd python; python3 setup.py install --prefix=$(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/..; cd ..
 else
-	cd python; for python in $(shell pyversions -r); do $$python setup.py install --prefix=$(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/.. --install-layout=deb; done; cd ..
+	cd python; for python in $(shell py3versions -r); do $$python setup.py install --prefix=$(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/.. --install-layout=deb; done; cd ..
 endif
 
 install-dxdiff:
-ifeq ($(origin DESTDIR),undefined)
-	cd dxdiff; python setup.py install --prefix=$(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/..; cd ..
+ifeq ($(origin BUILDING_DEBIAN),undefined)
+	cd dxdiff; python3 setup.py install --prefix=$(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/..; cd ..
 else
-	cd dxdiff; for python in $(shell pyversions -r); do $$python setup.py install --prefix=$(DESTDIR)/home/amin/Desktop/IC-FIRST/libspud/.. --install-layout=deb; done; cd ..
+	cd dxdiff; for python in $(shell py3versions -r); do $$python setup.py install --prefix=$(DESTDIR)/home/amin/Desktop/IC-FERST/libspud/.. --install-layout=deb; done; cd ..
 endif
 
 clean:
@@ -124,3 +126,8 @@ distclean: clean
 	rm -f Makefile src/tests/Makefile examples/Makefile
 	rm -f bin/spud-preprocess
 	rm -f diamond/setup.py diamond/diamond/plugins.py diamond/diamond/preprocess.py
+	rm -fr debian/diamond debian/python3-dxdiff debian/python3-spud
+	rm -fr debian/spudtools debian/libspud-dev
+	rm -rf diamond/diamond.egg-info/
+	rm -f debian/*.debhelper* debian/*.substvars 
+	rm -f build-* debian/files

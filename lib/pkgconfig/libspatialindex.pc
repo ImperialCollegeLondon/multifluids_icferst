@@ -1,4 +1,4 @@
-prefix=/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/..
+prefix=/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/..
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include

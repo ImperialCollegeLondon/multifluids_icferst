@@ -1,5 +1,4 @@
         CC JudyMalloc.c
-        CC Judy1Tables.c
         CC Judy1Test.c
         CC j__udy1Test.c
         CC Judy1Set.c
@@ -20,6 +19,7 @@
         CC Judy1CreateBranch.c
         CC Judy1InsertBranch.c
         CC Judy1MallocIF.c
+        CC Judy1Tables.c
         CC JudyLByCount.c
         CC JudyLCount.c
         CC JudyLDecascade.c
@@ -30,7 +30,6 @@
         CC JudyLMemActive.c
         CC JudyLNext.c
         CC JudyLPrev.c
-        CC JudyLTables.c
         CC JudyLCascade.c
         CC JudyLCreateBranch.c
         CC JudyLDel.c
@@ -41,6 +40,7 @@
         CC JudyLMemUsed.c
         CC JudyLNextEmpty.c
         CC JudyLPrevEmpty.c
+        CC JudyLTables.c
         CC JudySL.c
         CC JudyHS.c
 Making install in src
@@ -51,23 +51,23 @@ Making install in mvrtree
 Making install in tprtree
 Making install in tools
 Making install in capi
- /bin/mkdir -p '/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib/pkgconfig'
- /usr/bin/install -c -m 644 libspatialindex.pc '/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib/pkgconfig'
+ /bin/mkdir -p '/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib/pkgconfig'
+ /usr/bin/install -c -m 644 libspatialindex.pc '/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib/pkgconfig'
 Making install in .
- /bin/mkdir -p '/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib'
- /bin/bash ./libtool   --mode=install /usr/bin/install -c   libspatialindex.la libspatialindex_c.la '/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib'
-libtool: install: /usr/bin/install -c .libs/libspatialindex.lai /home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib/libspatialindex.la
-libtool: install: /usr/bin/install -c .libs/libspatialindex_c.lai /home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib/libspatialindex_c.la
-libtool: install: /usr/bin/install -c .libs/libspatialindex.a /home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib/libspatialindex.a
-libtool: install: chmod 644 /home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib/libspatialindex.a
-libtool: install: ranlib /home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib/libspatialindex.a
-libtool: install: /usr/bin/install -c .libs/libspatialindex_c.a /home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib/libspatialindex_c.a
-libtool: install: chmod 644 /home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib/libspatialindex_c.a
-libtool: install: ranlib /home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib/libspatialindex_c.a
-libtool: finish: PATH="/home/amin/anaconda3/bin:/home/amin/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/sbin" ldconfig -n /home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib
+ /bin/mkdir -p '/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib'
+ /bin/bash ./libtool   --mode=install /usr/bin/install -c   libspatialindex.la libspatialindex_c.la '/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib'
+libtool: install: /usr/bin/install -c .libs/libspatialindex.lai /home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib/libspatialindex.la
+libtool: install: /usr/bin/install -c .libs/libspatialindex_c.lai /home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib/libspatialindex_c.la
+libtool: install: /usr/bin/install -c .libs/libspatialindex.a /home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib/libspatialindex.a
+libtool: install: chmod 644 /home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib/libspatialindex.a
+libtool: install: ranlib /home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib/libspatialindex.a
+libtool: install: /usr/bin/install -c .libs/libspatialindex_c.a /home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib/libspatialindex_c.a
+libtool: install: chmod 644 /home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib/libspatialindex_c.a
+libtool: install: ranlib /home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib/libspatialindex_c.a
+libtool: finish: PATH="/home/amin/.local/bin:/home/amin/anaconda3/bin:/home/amin/.local/bin:/home/amin/anaconda3/bin:/home/amin/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/bin:/sbin" ldconfig -n /home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib
 ----------------------------------------------------------------------
 Libraries have been installed in:
-   /home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../lib
+   /home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../lib
 
 If you ever happen to want to link against installed libraries
 in a given directory, LIBDIR, you must either use libtool, and
@@ -84,10 +84,10 @@ See any operating system documentation about shared libraries for
 more information, such as the ld(1) and ld.so(8) manual pages.
 ----------------------------------------------------------------------
 Making install in include
- /bin/mkdir -p '/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../include'
- /bin/mkdir -p '/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../include/spatialindex'
- /usr/bin/install -c -m 644  spatialindex/SpatialIndex.h spatialindex/RTree.h spatialindex/MVRTree.h spatialindex/TPRTree.h spatialindex/Point.h spatialindex/Region.h spatialindex/LineSegment.h spatialindex/TimePoint.h spatialindex/TimeRegion.h spatialindex/MovingPoint.h spatialindex/MovingRegion.h spatialindex/Version.h '/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../include/spatialindex'
- /bin/mkdir -p '/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../include/spatialindex/capi'
- /usr/bin/install -c -m 644  spatialindex/capi/BoundsQuery.h spatialindex/capi/CountVisitor.h spatialindex/capi/CustomStorage.h spatialindex/capi/DataStream.h spatialindex/capi/Error.h spatialindex/capi/IdVisitor.h spatialindex/capi/Index.h spatialindex/capi/LeafQuery.h spatialindex/capi/ObjVisitor.h spatialindex/capi/sidx_api.h spatialindex/capi/sidx_config.h spatialindex/capi/sidx_impl.h spatialindex/capi/Utility.h '/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../include/spatialindex/capi'
- /bin/mkdir -p '/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../include/spatialindex/tools'
- /usr/bin/install -c -m 644  spatialindex/tools/PointerPool.h spatialindex/tools/PoolPointer.h spatialindex/tools/rand48.h spatialindex/tools/SmartPointer.h spatialindex/tools/Tools.h '/home/amin/Desktop/IC-FIRST/spatialindex-1.8.0/../include/spatialindex/tools'
+ /bin/mkdir -p '/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../include'
+ /bin/mkdir -p '/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../include/spatialindex'
+ /usr/bin/install -c -m 644  spatialindex/SpatialIndex.h spatialindex/RTree.h spatialindex/MVRTree.h spatialindex/TPRTree.h spatialindex/Point.h spatialindex/Region.h spatialindex/LineSegment.h spatialindex/TimePoint.h spatialindex/TimeRegion.h spatialindex/MovingPoint.h spatialindex/MovingRegion.h spatialindex/Version.h '/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../include/spatialindex'
+ /bin/mkdir -p '/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../include/spatialindex/capi'
+ /usr/bin/install -c -m 644  spatialindex/capi/BoundsQuery.h spatialindex/capi/CountVisitor.h spatialindex/capi/CustomStorage.h spatialindex/capi/DataStream.h spatialindex/capi/Error.h spatialindex/capi/IdVisitor.h spatialindex/capi/Index.h spatialindex/capi/LeafQuery.h spatialindex/capi/ObjVisitor.h spatialindex/capi/sidx_api.h spatialindex/capi/sidx_config.h spatialindex/capi/sidx_impl.h spatialindex/capi/Utility.h '/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../include/spatialindex/capi'
+ /bin/mkdir -p '/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../include/spatialindex/tools'
+ /usr/bin/install -c -m 644  spatialindex/tools/PointerPool.h spatialindex/tools/PoolPointer.h spatialindex/tools/rand48.h spatialindex/tools/SmartPointer.h spatialindex/tools/Tools.h '/home/amin/Desktop/IC-FERST/spatialindex-1.8.0/../include/spatialindex/tools'

@@ -13,10 +13,8 @@ MovingRegion.lo: MovingRegion.cc /usr/include/stdc-predef.h \
  /usr/lib/gcc/x86_64-linux-gnu/7/include/stddef.h \
  /usr/include/x86_64-linux-gnu/bits/types/locale_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h \
- /usr/include/strings.h \
- /usr/include/x86_64-linux-gnu/bits/strings_fortified.h \
- /usr/include/x86_64-linux-gnu/bits/string_fortified.h \
- /usr/include/c++/7/cmath /usr/include/c++/7/bits/cpp_type_traits.h \
+ /usr/include/strings.h /usr/include/c++/7/cmath \
+ /usr/include/c++/7/bits/cpp_type_traits.h \
  /usr/include/c++/7/ext/type_traits.h /usr/include/math.h \
  /usr/include/x86_64-linux-gnu/bits/types.h \
  /usr/include/x86_64-linux-gnu/bits/typesizes.h \
@@ -30,7 +28,6 @@ MovingRegion.lo: MovingRegion.cc /usr/include/stdc-predef.h \
  /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
  /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
  /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
- /usr/include/x86_64-linux-gnu/bits/mathinline.h \
  /usr/include/c++/7/bits/std_abs.h /usr/include/stdlib.h \
  /usr/include/x86_64-linux-gnu/bits/waitflags.h \
  /usr/include/x86_64-linux-gnu/bits/waitstatus.h \
@@ -50,17 +47,13 @@ MovingRegion.lo: MovingRegion.cc /usr/include/stdc-predef.h \
  /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h \
- /usr/include/x86_64-linux-gnu/bits/select2.h \
  /usr/include/x86_64-linux-gnu/sys/sysmacros.h \
  /usr/include/x86_64-linux-gnu/bits/sysmacros.h \
  /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h \
  /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h \
  /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h \
- /usr/include/alloca.h \
- /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h \
- /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
- /usr/include/x86_64-linux-gnu/bits/stdlib.h /usr/include/c++/7/limits \
- ../../include/spatialindex/SpatialIndex.h \
+ /usr/include/alloca.h /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
+ /usr/include/c++/7/limits ../../include/spatialindex/SpatialIndex.h \
  ../../include/spatialindex/tools/Tools.h \
  /usr/lib/gcc/x86_64-linux-gnu/7/include/stdint.h /usr/include/stdint.h \
  /usr/include/x86_64-linux-gnu/bits/wchar.h \
@@ -75,8 +68,7 @@ MovingRegion.lo: MovingRegion.cc /usr/include/stdc-predef.h \
  /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/__FILE.h \
  /usr/include/x86_64-linux-gnu/bits/types/FILE.h \
- /usr/include/x86_64-linux-gnu/bits/wchar2.h /usr/include/c++/7/exception \
- /usr/include/c++/7/bits/exception.h \
+ /usr/include/c++/7/exception /usr/include/c++/7/bits/exception.h \
  /usr/include/c++/7/bits/char_traits.h \
  /usr/include/c++/7/bits/stl_algobase.h \
  /usr/include/c++/7/bits/functexcept.h \
@@ -139,8 +131,6 @@ MovingRegion.lo: MovingRegion.cc /usr/include/stdc-predef.h \
  /usr/include/x86_64-linux-gnu/bits/_G_config.h \
  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
  /usr/include/x86_64-linux-gnu/bits/sys_errlist.h \
- /usr/include/x86_64-linux-gnu/bits/stdio.h \
- /usr/include/x86_64-linux-gnu/bits/stdio2.h \
  /usr/include/x86_64-linux-gnu/c++/7/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/7/bits/c++io.h \
  /usr/include/c++/7/bits/fstream.tcc /usr/include/c++/7/queue \
@@ -207,10 +197,6 @@ MovingRegion.lo: MovingRegion.cc /usr/include/stdc-predef.h \
 
 /usr/include/strings.h:
 
-/usr/include/x86_64-linux-gnu/bits/strings_fortified.h:
-
-/usr/include/x86_64-linux-gnu/bits/string_fortified.h:
-
 /usr/include/c++/7/cmath:
 
 /usr/include/c++/7/bits/cpp_type_traits.h:
@@ -242,8 +228,6 @@ MovingRegion.lo: MovingRegion.cc /usr/include/stdc-predef.h \
 /usr/include/x86_64-linux-gnu/bits/mathcalls.h:
 
 /usr/include/x86_64-linux-gnu/bits/iscanonical.h:
-
-/usr/include/x86_64-linux-gnu/bits/mathinline.h:
 
 /usr/include/c++/7/bits/std_abs.h:
 
@@ -287,8 +271,6 @@ MovingRegion.lo: MovingRegion.cc /usr/include/stdc-predef.h \
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h:
 
-/usr/include/x86_64-linux-gnu/bits/select2.h:
-
 /usr/include/x86_64-linux-gnu/sys/sysmacros.h:
 
 /usr/include/x86_64-linux-gnu/bits/sysmacros.h:
@@ -301,11 +283,7 @@ MovingRegion.lo: MovingRegion.cc /usr/include/stdc-predef.h \
 
 /usr/include/alloca.h:
 
-/usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h:
-
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdlib.h:
 
 /usr/include/c++/7/limits:
 
@@ -352,8 +330,6 @@ MovingRegion.lo: MovingRegion.cc /usr/include/stdc-predef.h \
 /usr/include/x86_64-linux-gnu/bits/types/__FILE.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/FILE.h:
-
-/usr/include/x86_64-linux-gnu/bits/wchar2.h:
 
 /usr/include/c++/7/exception:
 
@@ -520,10 +496,6 @@ MovingRegion.lo: MovingRegion.cc /usr/include/stdc-predef.h \
 /usr/include/x86_64-linux-gnu/bits/stdio_lim.h:
 
 /usr/include/x86_64-linux-gnu/bits/sys_errlist.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdio.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdio2.h:
 
 /usr/include/x86_64-linux-gnu/c++/7/bits/basic_file.h:
 

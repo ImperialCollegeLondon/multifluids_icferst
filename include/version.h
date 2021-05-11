@@ -1,4 +1,4 @@
 #ifndef _FLUIDITY_VERSION_H
 #define _FLUIDITY_VERSION_H
-#define __FLUIDITY_VERSION__ "master:0165d271542b54b11d2d3e9313ddbcba55f82d7f"
+#define __FLUIDITY_VERSION__ "Amin_semi_structure:a75399d56252c76722f456f3d96f84e6a475f701"
 #endif /* _FLUIDITY_VERSION_H */

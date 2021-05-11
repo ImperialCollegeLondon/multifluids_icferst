@@ -48,25 +48,25 @@ htmldir = ${docdir}/
 pdfdir = ${docdir}/
 
 FC      = mpif90
-FCFLAGS = -ffast-math -frecord-marker=4  -fno-realloc-lhs -ffree-line-length-none -ffixed-line-length-none  -O3 -I/usr/lib/petscdir/3.8.3/include -I/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/include -I/usr/include/hdf5/openmpi -I/home/amin/Desktop/IC-FIRST/include/ -fdefault-real-8 -fdefault-double-8
+FCFLAGS = -fbounds-check -Wall -Wimplicit-interface -Wno-surprising -g -O0 -frecord-marker=4 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -fno-realloc-lhs -ffree-line-length-none -ffixed-line-length-none -finit-integer=-66666 -finit-real=nan  -I/usr/lib/petscdir/3.8.3/include -I/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/include -I/usr/include/hdf5/openmpi -I/home/amin/Desktop/IC-FERST/include/ -fdefault-real-8 -fdefault-double-8
 
 MPIF90  = mpif90
 MPICC   = mpicc
 MPICXX  = mpicxx
 
 CC	= mpicc
-CFLAGS	=  -I/usr/include/python2.7 -I/usr/lib/petscdir/3.8.3/include -I/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/include -I/usr/include/hdf5/openmpi -I/home/amin/Desktop/IC-FIRST/include/ -DHAVE_PETSC  -I/usr/include/vtk-7.1 -I/usr/include/freetype2 -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/opal/mca/event/libevent2022/libevent -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/opal/mca/event/libevent2022/libevent/include -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/include/python3.6m -I/usr/include/hdf5/openmpi -I/usr/include/jsoncpp -I/usr/include/libxml2 -I/usr/include/tcl   -DHAVE_VTK  -I/usr/include/python2.7  -O3
+CFLAGS	=  -I/usr/include/python3.6m -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/usr/lib/petscdir/3.8.3/include -I/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/include -I/usr/include/hdf5/openmpi -I/home/amin/Desktop/IC-FERST/include/ -DHAVE_PETSC  -I/usr/include/vtk-7.1 -I/usr/include/freetype2 -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/opal/mca/event/libevent2022/libevent -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/opal/mca/event/libevent2022/libevent/include -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/include/python3.6m -I/usr/include/hdf5/openmpi -I/usr/include/jsoncpp -I/usr/include/libxml2 -I/usr/include/tcl   -DHAVE_VTK -fbounds-check -Wall -g -O0 -I/usr/include/python3.6m -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include 
 
 CXX	= mpicxx
-CXXFLAGS=  -I/usr/include/python2.7 -I/usr/lib/petscdir/3.8.3/include -I/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/include -I/usr/include/hdf5/openmpi -I/home/amin/Desktop/IC-FIRST/include/ -DHAVE_PETSC  -I/usr/include/vtk-7.1 -I/usr/include/freetype2 -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/opal/mca/event/libevent2022/libevent -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/opal/mca/event/libevent2022/libevent/include -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/include/python3.6m -I/usr/include/hdf5/openmpi -I/usr/include/jsoncpp -I/usr/include/libxml2 -I/usr/include/tcl   -DHAVE_VTK  -I/usr/include/python2.7  -O3 -I./include
+CXXFLAGS=  -I/usr/include/python3.6m -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/usr/lib/petscdir/3.8.3/include -I/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/include -I/usr/include/hdf5/openmpi -I/home/amin/Desktop/IC-FERST/include/ -DHAVE_PETSC  -I/usr/include/vtk-7.1 -I/usr/include/freetype2 -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/opal/mca/event/libevent2022/libevent -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/opal/mca/event/libevent2022/libevent/include -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/include/python3.6m -I/usr/include/hdf5/openmpi -I/usr/include/jsoncpp -I/usr/include/libxml2 -I/usr/include/tcl   -DHAVE_VTK -fbounds-check -Wall -g -O0 -I/usr/include/python3.6m -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include  -I./include
 
-LINKER  = mpicxx    $(CXXFLAGS)
+LINKER  = mpicxx -rdynamic  -Xlinker -export-dynamic -Wl,-O1 -Wl,-Bsymbolic-functions   $(CXXFLAGS)
 
-FLLINKER = mpif90    $(FCFLAGS)
+FLLINKER = mpif90 -rdynamic  -Xlinker -export-dynamic -Wl,-O1 -Wl,-Bsymbolic-functions   $(FCFLAGS)
 
 LIBS    = -L./lib -l$(FLUIDITY)  ./lib/libadaptivity.a \
-           ./lib/libvtkfortran.a /home/amin/Desktop/IC-FIRST/lib/libspatialindex.a  /home/amin/Desktop/IC-FIRST/lib/libspud.a ./lib/libjudy.a \
-           -lmba2d -lzoltan -Wl,-rpath,/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/lib -Wl,-rpath,/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/lib -L/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/lib -Wl,-rpath,/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/lib -Wl,-rpath,/usr/lib/x86_64-linux-gnu/openmpi/lib -L/usr/lib/x86_64-linux-gnu/openmpi/lib -Wl,-rpath,/usr/lib/gcc/x86_64-linux-gnu/7 -L/usr/lib/gcc/x86_64-linux-gnu/7 -Wl,-rpath,/usr/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -Wl,-rpath,/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -lpetsc -lexoIIv2c -lcmumps -ldmumps -lsmumps -lzmumps -lmumps_common -lpord -lnetcdf -lparmetis -lumfpack -lklu -lcholmod -lbtf -lccolamd -lcolamd -lcamd -lamd -lsuitesparseconfig -lml -lscalapack -lHYPRE -ltriangle -lhdf5_openmpi -lhdf5_openmpi_hl -lmetis -lchaco -lptesmumps -lptscotch -lptscotcherr -lesmumps -lscotch -lscotcherr -llapack -lblas -lctetgen -lX11 -lm -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lgfortran -lm -lgfortran -lm -lquadmath -lmpi_cxx -lstdc++ -lm -lrt -lm -lpthread -lz -Wl,-rpath,/usr/lib/x86_64-linux-gnu/openmpi/lib -L/usr/lib/x86_64-linux-gnu/openmpi/lib -Wl,-rpath,/usr/lib/gcc/x86_64-linux-gnu/7 -L/usr/lib/gcc/x86_64-linux-gnu/7 -Wl,-rpath,/usr/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -Wl,-rpath,/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -Wl,-rpath,/usr/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -ldl -lmpi -lgcc_s -lpthread -ldl -lnetcdff -lnetcdf  -llapack -ludunits2 -lpthread -lm -lstdc++  -L/usr/lib -lpython2.7 -Xlinker -export-dynamic -Wl,-O1 -Wl,-Bsymbolic-functions -L/usr/lib -lz -lpthread -ldl  -lutil  -L/usr/lib/gcc/x86_64-linux-gnu/7 -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/7/../../.. -lgfortran -lm -lquadmath  -L/usr/lib/gcc/x86_64-linux-gnu/7 -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/7/../../.. -lgfortran -lm -lquadmath -L./lib -Wl,-rpath,/usr/lib/x86_64-linux-gnu/hdf5/openmpi:/usr/lib/x86_64-linux-gnu/openmpi/lib /usr/lib/x86_64-linux-gnu/libfreetype.so /usr/lib/x86_64-linux-gnu/libz.so /usr/lib/x86_64-linux-gnu/libexpat.so /usr/lib/x86_64-linux-gnu/libvtkDomainsChemistryOpenGL2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/x86_64-linux-gnu/libpng.so /usr/lib/x86_64-linux-gnu/libtiff.so /usr/lib/x86_64-linux-gnu/libvtkFiltersGeneric-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersHyperTree-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersParallelDIY2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersParallelFlowPaths-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersParallelGeometry-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersParallelImaging-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersParallelMPI-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersParallelStatistics-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersPoints-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersProgrammable-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersPython-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libpython3.6m.so /usr/lib/libvtkWrappingTools-7.1.a /usr/lib/x86_64-linux-gnu/libvtkFiltersReebGraph-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersSMP-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersSelection-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersTexture-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersVerdict-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkverdict-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libproj.so /usr/lib/x86_64-linux-gnu/libvtkIOAMR-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/hdf5/openmpi/libhdf5.so /usr/lib/x86_64-linux-gnu/libsz.so /usr/lib/x86_64-linux-gnu/libdl.so -lm /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi.so /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi_cxx.so /usr/lib/x86_64-linux-gnu/hdf5/openmpi/libhdf5_hl.so /usr/lib/x86_64-linux-gnu/libvtkIOEnSight-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libnetcdf_c++.so /usr/lib/x86_64-linux-gnu/libnetcdf.so /usr/lib/x86_64-linux-gnu/libvtkIOExport-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingGL2PSOpenGL2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libgl2ps.so /usr/lib/x86_64-linux-gnu/libvtkIOFFMPEG-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOMovie-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libtheoraenc.so /usr/lib/x86_64-linux-gnu/libtheoradec.so /usr/lib/x86_64-linux-gnu/libogg.so /usr/lib/x86_64-linux-gnu/libvtkIOGDAL-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOGeoJSON-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libjsoncpp.so /usr/lib/x86_64-linux-gnu/libvtkIOImport-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOInfovis-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libxml2.so /usr/lib/x86_64-linux-gnu/libvtkIOMINC-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOMPIImage-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOMPIParallel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOParallel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIONetCDF-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOMySQL-7.1.so.7.1.1 -lsqlite3 /usr/lib/x86_64-linux-gnu/libvtkIOODBC-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOPLY-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOParallelExodus-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOParallelLSDyna-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOParallelNetCDF-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOParallelXML-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOPostgreSQL-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOTecplotTable-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOVPIC-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkVPIC-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOVideo-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOXdmf2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkxdmf2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingMorphological-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingStatistics-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingStencil-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkInfovisBoostGraphAlgorithms-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkInteractionImage-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkLocalExample-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkParallelMPI4Py-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingContextOpenGL2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingExternal-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingFreeTypeFontConfig-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingImage-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingLOD-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingMatplotlib-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingParallel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingParallelLIC-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingSceneGraph-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingVolumeAMR-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingVolumeOpenGL2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkTestingGenericBridge-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkTestingIOSQL-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkTestingRendering-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkViewsContext2D-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkViewsGeovis-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkViewsInfovis-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkWrappingJava-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkDomainsChemistry-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersFlowPaths-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOGeometry-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOExodus-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkexoIIc-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libnetcdf_c++.so /usr/lib/x86_64-linux-gnu/libnetcdf.so /usr/lib/x86_64-linux-gnu/libvtkIOLSDyna-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOSQL-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/hdf5/openmpi/libhdf5.so /usr/lib/x86_64-linux-gnu/libsz.so /usr/lib/x86_64-linux-gnu/libdl.so -lm /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi.so /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi_cxx.so /usr/lib/x86_64-linux-gnu/hdf5/openmpi/libhdf5_hl.so /usr/lib/x86_64-linux-gnu/libxml2.so /usr/lib/x86_64-linux-gnu/libvtkWrappingPython36Core-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkPythonInterpreter-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libpython3.6m.so /usr/lib/x86_64-linux-gnu/libvtkFiltersParallel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkParallelMPI-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingLICOpenGL2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersAMR-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkParallelCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOLegacy-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingOpenGL2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libGLEW.so /usr/lib/x86_64-linux-gnu/libSM.so /usr/lib/x86_64-linux-gnu/libICE.so /usr/lib/x86_64-linux-gnu/libX11.so /usr/lib/x86_64-linux-gnu/libXext.so /usr/lib/x86_64-linux-gnu/libXt.so /usr/lib/x86_64-linux-gnu/libvtkImagingMath-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkGeovisCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libproj.so /usr/lib/x86_64-linux-gnu/libvtkChartsCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingContext2D-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersImaging-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkInfovisLayout-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkInfovisCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkViewsCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkInteractionWidgets-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersHybrid-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingGeneral-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingSources-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersModeling-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingHybrid-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOImage-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkDICOMParser-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkmetaio-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libz.so /usr/lib/x86_64-linux-gnu/libvtkInteractionStyle-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersExtraction-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersStatistics-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingFourier-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkalglib-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingAnnotation-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingColor-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingVolume-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOXML-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOXMLParser-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingLabel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingFreeType-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonColor-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersGeometry-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersSources-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersGeneral-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonComputationalGeometry-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonExecutionModel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonDataModel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonTransforms-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonMisc-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonMath-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonSystem-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtksys-7.1.so.7.1.1 -ldl /usr/lib/x86_64-linux-gnu/libfreetype.so /usr/lib/x86_64-linux-gnu/libvtkCommonCore-7.1.so.7.1.1   -lblas  -L/usr/lib/gcc/x86_64-linux-gnu/7 -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/7/../../.. -lgfortran -lm -lquadmath
+           ./lib/libvtkfortran.a /home/amin/Desktop/IC-FERST/lib/libspatialindex.a  /home/amin/Desktop/IC-FERST/lib/libspud.a ./lib/libjudy.a \
+           -lmba2d -lzoltan -Wl,-rpath,/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/lib -Wl,-rpath,/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/lib -L/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/lib -Wl,-rpath,/usr/lib/petscdir/3.8.3/linux-gnu-c-opt/lib -Wl,-rpath,/usr/lib/x86_64-linux-gnu/openmpi/lib -L/usr/lib/x86_64-linux-gnu/openmpi/lib -Wl,-rpath,/usr/lib/gcc/x86_64-linux-gnu/7 -L/usr/lib/gcc/x86_64-linux-gnu/7 -Wl,-rpath,/usr/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -Wl,-rpath,/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -lpetsc -lexoIIv2c -lcmumps -ldmumps -lsmumps -lzmumps -lmumps_common -lpord -lnetcdf -lparmetis -lumfpack -lklu -lcholmod -lbtf -lccolamd -lcolamd -lcamd -lamd -lsuitesparseconfig -lml -lscalapack -lHYPRE -ltriangle -lhdf5_openmpi -lhdf5_openmpi_hl -lmetis -lchaco -lptesmumps -lptscotch -lptscotcherr -lesmumps -lscotch -lscotcherr -llapack -lblas -lctetgen -lX11 -lm -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lgfortran -lm -lgfortran -lm -lquadmath -lmpi_cxx -lstdc++ -lm -lrt -lm -lpthread -lz -Wl,-rpath,/usr/lib/x86_64-linux-gnu/openmpi/lib -L/usr/lib/x86_64-linux-gnu/openmpi/lib -Wl,-rpath,/usr/lib/gcc/x86_64-linux-gnu/7 -L/usr/lib/gcc/x86_64-linux-gnu/7 -Wl,-rpath,/usr/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -Wl,-rpath,/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu -Wl,-rpath,/usr/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -ldl -lmpi -lgcc_s -lpthread -ldl -lnetcdff -lnetcdf  -llapack -ludunits2 -lpthread -lm -lstdc++  -L/usr/lib -lpython3.6m -Xlinker -export-dynamic -Wl,-O0 -Wl,-Bsymbolic-functions -lexpat                     -L/usr/lib -lz  -lexpat -lpthread -ldl  -lutil -lm  -L/usr/lib/gcc/x86_64-linux-gnu/7 -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/7/../../.. -lgfortran -lm -lquadmath  -L/usr/lib/gcc/x86_64-linux-gnu/7 -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/7/../../.. -lgfortran -lm -lquadmath -L./lib -Wl,-rpath,/usr/lib/x86_64-linux-gnu/hdf5/openmpi:/usr/lib/x86_64-linux-gnu/openmpi/lib /usr/lib/x86_64-linux-gnu/libfreetype.so /usr/lib/x86_64-linux-gnu/libz.so /usr/lib/x86_64-linux-gnu/libexpat.so /usr/lib/x86_64-linux-gnu/libvtkDomainsChemistryOpenGL2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/x86_64-linux-gnu/libpng.so /usr/lib/x86_64-linux-gnu/libtiff.so /usr/lib/x86_64-linux-gnu/libvtkFiltersGeneric-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersHyperTree-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersParallelDIY2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersParallelFlowPaths-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersParallelGeometry-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersParallelImaging-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersParallelMPI-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersParallelStatistics-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersPoints-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersProgrammable-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersPython-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libpython3.6m.so /usr/lib/libvtkWrappingTools-7.1.a /usr/lib/x86_64-linux-gnu/libvtkFiltersReebGraph-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersSMP-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersSelection-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersTexture-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersVerdict-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkverdict-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libproj.so /usr/lib/x86_64-linux-gnu/libvtkIOAMR-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/hdf5/openmpi/libhdf5.so /usr/lib/x86_64-linux-gnu/libsz.so /usr/lib/x86_64-linux-gnu/libdl.so -lm /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi.so /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi_cxx.so /usr/lib/x86_64-linux-gnu/hdf5/openmpi/libhdf5_hl.so /usr/lib/x86_64-linux-gnu/libvtkIOEnSight-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libnetcdf_c++.so /usr/lib/x86_64-linux-gnu/libnetcdf.so /usr/lib/x86_64-linux-gnu/libvtkIOExport-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingGL2PSOpenGL2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libgl2ps.so /usr/lib/x86_64-linux-gnu/libvtkIOFFMPEG-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOMovie-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libtheoraenc.so /usr/lib/x86_64-linux-gnu/libtheoradec.so /usr/lib/x86_64-linux-gnu/libogg.so /usr/lib/x86_64-linux-gnu/libvtkIOGDAL-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOGeoJSON-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libjsoncpp.so /usr/lib/x86_64-linux-gnu/libvtkIOImport-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOInfovis-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libxml2.so /usr/lib/x86_64-linux-gnu/libvtkIOMINC-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOMPIImage-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOMPIParallel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOParallel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIONetCDF-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOMySQL-7.1.so.7.1.1 -lsqlite3 /usr/lib/x86_64-linux-gnu/libvtkIOODBC-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOPLY-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOParallelExodus-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOParallelLSDyna-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOParallelNetCDF-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOParallelXML-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOPostgreSQL-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOTecplotTable-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOVPIC-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkVPIC-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOVideo-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOXdmf2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkxdmf2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingMorphological-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingStatistics-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingStencil-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkInfovisBoostGraphAlgorithms-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkInteractionImage-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkLocalExample-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkParallelMPI4Py-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingContextOpenGL2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingExternal-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingFreeTypeFontConfig-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingImage-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingLOD-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingMatplotlib-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingParallel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingParallelLIC-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingSceneGraph-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingVolumeAMR-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingVolumeOpenGL2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkTestingGenericBridge-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkTestingIOSQL-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkTestingRendering-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkViewsContext2D-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkViewsGeovis-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkViewsInfovis-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkWrappingJava-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkDomainsChemistry-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersFlowPaths-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOGeometry-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOExodus-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkexoIIc-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libnetcdf_c++.so /usr/lib/x86_64-linux-gnu/libnetcdf.so /usr/lib/x86_64-linux-gnu/libvtkIOLSDyna-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOSQL-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/hdf5/openmpi/libhdf5.so /usr/lib/x86_64-linux-gnu/libsz.so /usr/lib/x86_64-linux-gnu/libdl.so -lm /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi.so /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi_cxx.so /usr/lib/x86_64-linux-gnu/hdf5/openmpi/libhdf5_hl.so /usr/lib/x86_64-linux-gnu/libxml2.so /usr/lib/x86_64-linux-gnu/libvtkWrappingPython36Core-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkPythonInterpreter-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libpython3.6m.so /usr/lib/x86_64-linux-gnu/libvtkFiltersParallel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkParallelMPI-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingLICOpenGL2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersAMR-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkParallelCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOLegacy-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingOpenGL2-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libGLEW.so /usr/lib/x86_64-linux-gnu/libSM.so /usr/lib/x86_64-linux-gnu/libICE.so /usr/lib/x86_64-linux-gnu/libX11.so /usr/lib/x86_64-linux-gnu/libXext.so /usr/lib/x86_64-linux-gnu/libXt.so /usr/lib/x86_64-linux-gnu/libvtkImagingMath-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkGeovisCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libproj.so /usr/lib/x86_64-linux-gnu/libvtkChartsCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingContext2D-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersImaging-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkInfovisLayout-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkInfovisCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkViewsCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkInteractionWidgets-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersHybrid-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingGeneral-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingSources-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersModeling-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingHybrid-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOImage-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkDICOMParser-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkmetaio-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libz.so /usr/lib/x86_64-linux-gnu/libvtkInteractionStyle-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersExtraction-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersStatistics-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingFourier-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkalglib-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingAnnotation-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingColor-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingVolume-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkImagingCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOXML-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOXMLParser-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkIOCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingLabel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingFreeType-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkRenderingCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonColor-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersGeometry-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersSources-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersGeneral-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonComputationalGeometry-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkFiltersCore-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonExecutionModel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonDataModel-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonTransforms-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonMisc-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonMath-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtkCommonSystem-7.1.so.7.1.1 /usr/lib/x86_64-linux-gnu/libvtksys-7.1.so.7.1.1 -ldl /usr/lib/x86_64-linux-gnu/libfreetype.so /usr/lib/x86_64-linux-gnu/libvtkCommonCore-7.1.so.7.1.1   -lblas  -L/usr/lib/gcc/x86_64-linux-gnu/7 -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/7/../../.. -lgfortran -lm -lquadmath
 
 OBJS = $(shell find . -mindepth 2 -maxdepth 2 -name '*.c' -o -name '*.cpp' -o -name '*.[fF]' -o -name '*.F90' | grep -v ^./lib | xargs)
 MAKE = make -s
@@ -111,8 +111,8 @@ endif
 default: bin/$(FLUIDITY)
 
 sub_system: $(LIBMBA2D) $(LIBMBA3D)  \
-	lib/libadaptivity.a lib/libvtkfortran.a /home/amin/Desktop/IC-FIRST/lib/libspatialindex.a \
-	/home/amin/Desktop/IC-FIRST/lib/libspud.a ./lib/libjudy.a include/version.h
+	lib/libadaptivity.a lib/libvtkfortran.a /home/amin/Desktop/IC-FERST/lib/libspatialindex.a \
+	/home/amin/Desktop/IC-FERST/lib/libspud.a ./lib/libjudy.a include/version.h
 
 ./lib/libjudy.a:
 	@echo '    MKDIR lib'; mkdir -p lib
@@ -134,16 +134,16 @@ lib/libvtkfortran.a:
 	@echo '    MKDIR lib'; mkdir -p lib
 	echo '    MAKE libvtkfortran'; $(MAKE) -C libvtkfortran 2>make.log 2>&1 && cp libvtkfortran/libvtkfortran.a lib/ && cp libvtkfortran/*.mod include/
 
-/home/amin/Desktop/IC-FIRST/lib/libspatialindex.a:
+/home/amin/Desktop/IC-FERST/lib/libspatialindex.a:
 	@echo '    MKDIR lib'; mkdir -p lib
 	echo '    MAKE libspatialindex'; $(MAKE) -C spatialindex-1.8.0 && $(MAKE) -C spatialindex-1.8.0 install >> make.log 2>&1
 
-/home/amin/Desktop/IC-FIRST/lib/libspud.a:
+/home/amin/Desktop/IC-FERST/lib/libspud.a:
 	@echo '    MKDIR lib'; mkdir -p lib
 ifeq (,yes)
 	echo '    MAKE libspud'; $(MAKE) -C libspud && $(MAKE) -C libspud install-libspud
 else
-	echo '    MAKE libspud'; $(MAKE) -C libspud &&  $(MAKE) -C libspud install-libspud && cd libspud/python && python setup.py build && cd ../.. && cp libspud/python/build/lib*/libspud.so python/
+	echo '    MAKE libspud'; $(MAKE) -C libspud &&  $(MAKE) -C libspud install-libspud && cd libspud/python && python3 setup.py build && cd ../.. && cp libspud/python/build/lib*/libspud*.so python/
 endif
 
 libfemtools: sub_system
@@ -159,9 +159,9 @@ ifeq (,yes)
 	@$(MAKE) -C 
 endif
 
-/home/amin/Desktop/IC-FIRST/include/spud.h: /home/amin/Desktop/IC-FIRST/lib/libspud.a
+/home/amin/Desktop/IC-FERST/include/spud.h: /home/amin/Desktop/IC-FERST/lib/libspud.a
 
-main.o: include/version.h /home/amin/Desktop/IC-FIRST/include/spud.h
+main.o: include/version.h /home/amin/Desktop/IC-FERST/include/spud.h
 
 include/version.h: version-info
 	@bin/version-info $@
@@ -182,14 +182,13 @@ mp: bin/icferst
 
 bin/icferst: fluidity_library
 	@echo "    MAKE icferst"
-	@cd legacy_reservoir_prototype; $(MAKE)
+	@cd ICFERST; $(MAKE)
 	@echo "BUILD icferst"
-	@echo "    MKDIR legacy_reservoir_prototype"
+	@echo "    MKDIR ICFERST"
 	@mkdir -p bin
 	@echo "    LD icferst"
-	@$(EVAL) $(LINKER) -o bin/icferst legacy_reservoir_prototype/main.o ./legacy_reservoir_prototype/lib/libmphase.a $(CXXFLAGS) $(LIBS)
+	@$(EVAL) $(LINKER) -o bin/icferst ICFERST/main.o ./ICFERST/lib/libmphase.a $(CXXFLAGS) $(LIBS)
 	@cd ../
-	@cp ./bin/icferst ./bin/multiphase_prototype
 
 bin/form_pod_basis: fluidity_library reduced_modelling/Form_Pod_Basis_Main.F90
 	@cd reduced_modelling; $(MAKE) Form_Pod_Basis_Main.o
@@ -239,7 +238,7 @@ manual:
 python_build:
 ifeq (,yes)
 	@echo "    MAKE python"
-	@cd python; python setup.py build > build.log 2>&1
+	@cd python; python3 setup.py build > build.log 2>&1
 	@cd python/fluidity; find ../build/lib* -name '*.so' -exec ln -sf {} . \;
 endif
 
@@ -384,8 +383,8 @@ endif
 	@cd climatology;  $(MAKE) clean
 	@echo "    CLEAN main"
 	@cd main; $(MAKE) clean
-	@echo "    CLEAN legacy_reservoir_prototype"
-	@cd legacy_reservoir_prototype; $(MAKE) clean
+	@echo "    CLEAN ICFERST"
+	@cd ICFERST; $(MAKE) clean
 	@rm -fr bin lib
 
 clean: clean-light clean-test python_clean clean-debian
@@ -393,7 +392,7 @@ clean: clean-light clean-test python_clean clean-debian
 	@cd libvtkfortran; $(MAKE) clean
 	@echo "    CLEAN libjudy"
 	@cd libjudy; $(MAKE) clean >> make.log 2>&1
-ifeq ($(abspath /home/amin/Desktop/IC-FIRST/lib/libspud.a),$(abspath lib/libspud.a))
+ifeq ($(abspath /home/amin/Desktop/IC-FERST/lib/libspud.a),$(abspath lib/libspud.a))
 	@echo "    CLEAN libspud"
 	@cd libspud; $(MAKE) clean
 endif
@@ -477,15 +476,15 @@ mediumtest: fltools bin/$(FLUIDITY) manual spudtools
 
 .PHONY: spudtools
 
-test-mp: fltools bin/multiphase_prototype serialtest-mp
+test-mp: fltools bin/icferst serialtest-mp
 
 serialtest-mp:
-	@cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -l short $(EXCLUDE_TAGS) -n $(THREADS)
+	@cd ICFERST/tests; ../tools/testharness_ICFERST.py -l short $(EXCLUDE_TAGS) -n $(THREADS)
 
-test-mp-xml: fltools bin/multiphase_prototype serialtest-mp-xml
+test-mp-xml: fltools bin/icferst serialtest-mp-xml
 
 serialtest-mp-xml:
-	@cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -x multiphase_test_results.xml -l short $(EXCLUDE_TAGS) -n $(THREADS)
+	@cd ICFERST/tests; ../tools/testharness_ICFERST.py -x multiphase_test_results.xml -l short $(EXCLUDE_TAGS) -n $(THREADS)
 
 spudtools:
 	@cd libspud ; $(MAKE) install-spudtools
@@ -500,7 +499,7 @@ setuputs:
 	@ln -sf ../../tests/data bin/tests/data
 
 build_unittest: fluidity_library libfemtools setuputs
-ifeq (/home/amin/Desktop/IC-FIRST/lib/libspud.a,./lib/libspud.a)
+ifeq (/home/amin/Desktop/IC-FERST/lib/libspud.a,./lib/libspud.a)
 	@echo "    UNITTEST libspud"
 	@cd libspud/src/tests; $(MAKE) test-binaries; find bin/* -maxdepth 1 -type f -exec ln -sf ../../libspud/src/tests/{} ../../../bin/tests \;
 endif
@@ -516,8 +515,8 @@ endif
 	@cd assemble/tests; $(MAKE) unittest
 	@echo "    UNITTEST ocean_forcing"
 	@cd ocean_forcing/tests; $(MAKE) unittest
-	@echo "    UNITTEST legacy_reservoir_prototype"
-	@cd legacy_reservoir_prototype; $(MAKE) build_unittest
+	@echo "    UNITTEST ICFERST"
+	@cd ICFERST; $(MAKE) build_unittest
 
 
 unittest: build_unittest
@@ -525,8 +524,8 @@ unittest: build_unittest
 	@bin/unittestharness bin/tests
 
 unittest-mp: build_unittest
-	@echo "RUN legacy_reservoir_prototype/bin/tests"
-	@bin/unittestharness legacy_reservoir_prototype/bin/tests
+	@echo "RUN ICFERST/bin/tests"
+	@bin/unittestharness ICFERST/bin/tests
 
 
 bin/spud-preprocess:
@@ -582,7 +581,7 @@ endif
 	@cd diagnostics;   	$(MAKE) Diagnostic_Fields_Interfaces.o \
 	Diagnostic_Fields_New.o
 	@echo "    Generating multiphase dependencies"
-	@cd legacy_reservoir_prototype/src;  ../../bin/create_makefile $(TESTOPTS)
+	@cd ICFERST/src;  ../../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating main dependencies"
 	@cd main; ../bin/create_makefile --exclude test_coupler.F90 $(TESTOPTS)
 	@echo "    Cleaning up the mess"
@@ -598,7 +597,7 @@ install: default fltools mp
 	cp -R schemas $(DESTDIR)$(datadir)/fluidity/
 	mkdir -p $(DESTDIR)$(datadir)/diamond/schemata
 	$(SED) 's/$${datadir}/$(subst /,\/,$(datadir))/g' schemas/flml.in > $(DESTDIR)$(datadir)/diamond/schemata/flml
-	cd python ; python setup.py install --root=$(shell echo ${DESTDIR} | sed 's/^$$/\//') --prefix="$(prefix)" $$FLUIDITY_PYTHON_INSTALL_ARGS
+	cd python ; python3 setup.py install --root=$(shell echo ${DESTDIR} | sed 's/^$$/\//') --prefix="$(prefix)" $$FLUIDITY_PYTHON_INSTALL_ARGS
 	cp -R examples $(DESTDIR)$(docdir)/fluidity
 	find $(DESTDIR)$(docdir)/fluidity/examples -type f -exec $(SED) -i "s/\.\.\/\.\.\/\.\.\/bin\///" '{}' \;
 	find $(DESTDIR)$(docdir)/fluidity/examples -type f -exec $(SED) -i "s/\.\.\/\.\.\/bin\///" '{}' \;
