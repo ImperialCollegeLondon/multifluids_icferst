@@ -2277,9 +2277,9 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     end if
     !Now check the CFL ones just in case that approach is being used in combination with the non-linear case
     call get_option('/timestepping/adaptive_timestep/minimum_timestep', auxR, stat= auxI)
-    if (auxI /= 0) min_ts = max(min_ts, auxR)
+    if (auxI == 0) min_ts = min(min_ts, auxR)
     call get_option('/timestepping/adaptive_timestep/maximum_timestep', auxR, stat= auxI)
-    if (auxI /= 0) max_ts = min(max_ts, auxR)
+    if (auxI == 0) max_ts = min(max_ts, auxR)
 
     !Ensure that even adapting the time, the final time is matched
     max_ts = max(min(max_ts, abs(finish_time - acctim)), 1e-8)
