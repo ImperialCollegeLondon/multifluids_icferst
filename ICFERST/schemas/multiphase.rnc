@@ -356,6 +356,8 @@ start =
                ## and bounds specified) to target this courant
                ## number. Timestep adapts occur at the end of each
                ## timestep and after a mesh adapt.
+               ## 
+               ##<b>NOTE</b> If the nonlinear adaptive time-step is on, the CFL is used as an upper bound of the nonlinear adaptive time-step
                element requested_cfl {
                   real,(
                   ## For porous media use the shock-front CFL instead.

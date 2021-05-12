@@ -2275,6 +2275,12 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
       call get_option(trim(option_path)//"/min_timestep/python", pyfunc)
       call real_from_python(pyfunc, acctim, min_ts)
     end if
+    !Now check the CFL ones just in case that approach is being used in combination with the non-linear case
+    call get_option('/timestepping/adaptive_timestep/minimum_timestep', auxR, stat= auxI)
+    if (auxI /= 0) min_ts = max(min_ts, auxR)
+    call get_option('/timestepping/adaptive_timestep/maximum_timestep', auxR, stat= auxI)
+    if (auxI /= 0) max_ts = min(max_ts, auxR)
+
     !Ensure that even adapting the time, the final time is matched
     max_ts = max(min(max_ts, abs(finish_time - acctim)), 1e-8)
     if (stored_dt<0) then!for the first time only

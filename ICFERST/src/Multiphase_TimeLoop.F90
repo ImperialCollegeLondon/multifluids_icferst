@@ -194,7 +194,7 @@ contains
 
         !!-Variable to keep track of dt reduction for meeting dump_period requirements
         real, save :: stored_dt = -1
-        real :: old_acctim
+        real :: old_acctim, nonlinear_dt
 
         !! Variables to initialise porous media models
         logical :: exit_initialise_porous_media = .false.
@@ -889,6 +889,7 @@ contains
             call petsc_logging(2,stages,ierrr,default=.true., push_no=8)
 
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
+                nonlinear_dt = dt!To use if also the nonlinear adapt time-step is on
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
                 call get_option( '/timestepping/adaptive_timestep/requested_cfl', rc )
                 call get_option( '/timestepping/adaptive_timestep/minimum_timestep', minc, stat, default = 0.)
@@ -948,6 +949,10 @@ contains
                   end if
                 end if
                 dt = max( min( dt , maxc ), minc )
+                !If we are imposing also adaptive time-step based on the stability of the non-linear solver, use the CFL as an upper bound
+                if (have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/')) then
+                  dt = min( dt , nonlinear_dt )
+                end if
                 ! dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc ) Original
                 !Make sure we finish at required time and we don't get dt = 0
                 dt = max(min(dt, finish_time - current_time), 1d-15)
