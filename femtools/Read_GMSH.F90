@@ -89,7 +89,7 @@ contains
 
     character(len = parallel_filename_len(filename)) :: lfilename
     integer :: loc, sloc,i,j
-    integer :: numNodes, numElements, numFaces
+    integer :: numNodes, numElements, numFaces, numFaces2
     logical :: haveBounds, haveElementOwners, haveRegionIDs
     integer :: dim, coordinate_dim, gdim
     integer :: gmshFormat
@@ -133,6 +133,8 @@ contains
     numNodes = size(nodes)
     numFaces = size(faces)
     numElements = size(elements)
+
+    numFaces2=numFaces*2
 
 
 
@@ -186,28 +188,18 @@ write(12,*) '$EndNodes'
 write(12,*) '$Elements'
 ! write(12,*) 'Old Faces'
 !      do i=1,numFaces
-!        ! faces2(i,1)=faces(i)%elementID
-!        ! faces2(i,2)=faces(i)%type
-!        ! faces2(i,3)=faces(i)%numTags
-!        ! faces2(i,4:5)=faces(i)%tags
-!        ! faces2(i,6:)=faces(i)%nodeIDs
 !        write(12,*) faces(i)%elementID, faces(i)%type, faces(i)%numTags, faces(i)%tags, faces(i)%nodeIDs
 !      end do
 
-     write(12,*) 'New Faces'
+write(12,*) 'New Faces'
      write(12,*) numFaces*2
      do i=1,((numFaces*2))
          write(12,*) faces2(i,:)
      end do
 
-!      do i=numFaces,2*numFaces-1
-!        faces2(i,1) = faces(i-numFaces+1)%nodeIDs(2)
-!        faces2(i,2) = faces(i-numFaces+1)%nodeIDs(1)
-!        write(12,*) faces2(i,:)
-!      end do
-do i=1,numFaces
-  dummy_faces(i,:)=faces(i)%nodeIDs
-end do
+    do i=1,numFaces
+      dummy_faces(i,:)=faces(i)%nodeIDs
+    end do
 
 write(12,*) 'Now element'
      do i=1, numElements
@@ -235,10 +227,6 @@ write(12,*) 'Now element'
            nodes2_X(numNodes+1,3) = 0.5*(nodes(elements(i)%nodeIDs(1))%x(3) + nodes(elements(i)%nodeIDs(2))%x(3))
            nodes2_ID(numNodes+1) = numNodes+1
            numNodes = numNodes+1
-            ! nodes2_ID(numNodes+1)=numNodes+1
-            ! numNodes=numNodes+1
-           ! faces2(numFaces+k,6)=elements(i)%nodeIDs(1)
-           ! faces2(numFaces+k,7)=elements(i)%nodeIDs(2)
          end if
 
         do j=1,(numFaces)
@@ -260,8 +248,6 @@ write(12,*) 'Now element'
             nodes2_X(numNodes+1,3) = 0.5*(nodes(elements(i)%nodeIDs(1))%x(3) + nodes(elements(i)%nodeIDs(3))%x(3))
             nodes2_ID(numNodes+1) = numNodes+1
             numNodes = numNodes+1
-          ! faces2(numFaces+k,6)=elements(i)%nodeIDs(1)
-          ! faces2(numFaces+k,7)=elements(i)%nodeIDs(3)
         end if
 
 
@@ -284,8 +270,6 @@ write(12,*) 'Now element'
             nodes2_X(numNodes+1,3) = 0.5*(nodes(elements(i)%nodeIDs(2))%x(3) + nodes(elements(i)%nodeIDs(3))%x(3))
             nodes2_ID(numNodes+1) = numNodes+1
             numNodes = numNodes+1
-          ! faces2(numFaces+k,6)=elements(i)%nodeIDs(2)
-          ! faces2(numFaces+k,7)=elements(i)%nodeIDs(3)
         end if
      end do
 write(12,*) '$EndElements'
@@ -293,7 +277,7 @@ write(12,*) '$EndElements'
      ! do i=1,(size(dummy_faces)/2)
      !     write(12,*) dummy_faces(i,1), dummy_faces(i,2)
      !   end do
-     write(12,*) '~nodes=', numNodes, numFaces,numElements
+     write(12,*) '~nodes=', numNodes, numFaces2,numElements
 
      do i=1,numNodes
        write(12,*) nodes2_ID(i), nodes2_X(i,:)
