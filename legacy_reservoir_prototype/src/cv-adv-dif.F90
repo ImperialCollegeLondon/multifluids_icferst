@@ -5356,9 +5356,9 @@ end if
     REAL::DPEMU,DPELA,TEN_VOL_RATIO, hydro_pressure, DPEKS
    !     ewrite(3,*)"enter stress tensor calculation, TEN_VOL_RATIO", TEN_VOL_RATIO
 
-    DPEMU=7.72e10
-    DPELA=1.15e11
-    DPEKS=10.0
+    DPEMU=1.0e+05
+    DPELA=1.0e+05
+    DPEKS=300.
                     temp_stress => extract_tensor_field(state(1), "StressTenSolid")
 
     DO ILOC=2,NLOC
