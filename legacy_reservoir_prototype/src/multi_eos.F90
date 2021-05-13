@@ -1782,7 +1782,7 @@ contains
       !Local variables
       type( tensor_field ), pointer :: t_field, tp_field, tc_field
       integer :: iphase, icomp, stat, mat_nod, cv_nod, ele
-      type( scalar_field ), pointer :: component, saturation
+      type( scalar_field ), pointer :: component, saturation, saturation2
       logical :: linearise_viscosity, cg_mesh
       real, dimension( : ), allocatable :: component_tmp
       real, dimension( :, :, : ), allocatable :: mu_tmp
@@ -1845,6 +1845,7 @@ contains
             else
                if (is_magma)  then
                  saturation => extract_scalar_field(state(2), "PhaseVolumeFraction") !HH melt is the 2nd phase
+                 saturation2 => extract_scalar_field(state(1), "PhaseVolumeFraction") !Solid phase saturation
                  call get_option('/magma_parameters/bulk_viscosity_exponential_coefficient' , exp_zeta_function)
                end if
                cg_mesh = have_option( '/material_phase[0]/phase_properties/Viscosity/tensor_field::Viscosity/diagnostic/mesh::PressureMesh')
@@ -1873,7 +1874,7 @@ contains
                             !Saturation scaling of viscosity
 !For testing rescaling of viscosity with the saturation
 if (is_magma) then
-momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion( :, :, iphase, mat_nod ) * max(saturation%val(cv_nod), 1e-5)!Ensure that it does not dissapear
+momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion( :, :, iphase, mat_nod ) * max(saturation2%val(cv_nod), 1e-5)!Ensure that it does not dissapear
 ! momentum_diffusion2%val(1, 1, iphase, mat_nod)  = momentum_diffusion2%val(1, 1, iphase, mat_nod) * max(saturation%val(cv_nod), 1e-5)!Ensure that it does not dissapear
 end if
                           end if
