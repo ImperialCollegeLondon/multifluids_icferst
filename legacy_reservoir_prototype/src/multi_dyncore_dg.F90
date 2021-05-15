@@ -2259,7 +2259,7 @@ end if
             call allocate(diagonal_A, final_phase*Mdims%ndim, velocity%mesh, "diagonal_A")
             call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
           end if
-          if (solve_stokes .or. solve_mom_iteratively) call generate_Pivit_matrix_Stokes(state, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A)
+          if (solve_stokes .or. solve_mom_iteratively) call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A)
           !Now invert the Mass matrix
           CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
@@ -2591,18 +2591,20 @@ end if
         !> @brief Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not.
         !> For magma only the first phase is imposed here as for Darcy the Mass matrix is generated in ASSEM_FORCE_CTY
         !---------------------------------------------------------------------------
-        subroutine generate_Pivit_matrix_Stokes(state,  Mdims, final_phase,  Mmat, MASS_ELE, diagonal_A)
+        subroutine generate_Pivit_matrix_Stokes(state, ndgln,  Mdims, final_phase,  Mmat, MASS_ELE, diagonal_A)
           implicit none
           type( state_type ), dimension( : ), intent( inout ) :: state
+          type(multi_ndgln), intent(in) :: ndgln
           type(multi_dimensions), intent(in) :: Mdims
           integer, intent (in) :: final_phase
           type (multi_matrices), intent(inout) :: Mmat
           real, dimension(:), intent(in) :: MASS_ELE
           type( vector_field ), intent(in) :: diagonal_A
           !Local variables
-          integer :: j
+          integer :: j, cv_iloc, cv_loc, imat, u_iloc, u_inod
           type( tensor_field ), pointer :: viscosity
-
+          type( scalar_field ), pointer :: saturation
+          real, dimension( :, :, : ), allocatable :: mu_tmp
           !Matrix already initialised !
           Mmat%PIVIT_MAT = 0.
           if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner")) then
@@ -2614,7 +2616,7 @@ end if
                   DO JPHASE = 1, final_phase
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
-                    Mmat%PIVIT_MAT(J, J, ELE) = 1e8!diagonal_A%val(JPHA_JDIM, u_jnod )
+                    Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )/1e8
                   end do
                 end do
               end do
@@ -2624,20 +2626,41 @@ end if
               ! end do
             end do
           else
-            DO JPHASE = 1, final_phase
-              viscosity => extract_tensor_field(state(jphase), "Viscosity")
-              do ele = 1, Mdims%totele
-                DO U_JLOC = 1, Mdims%u_nloc
-                  u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
-                  DO JDIM = 1, Mdims%ndim
-                    JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
-                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
-                    !Just the mass matrix
-!once this is working, viscosity and density need to be chose CV-averaged wise!
-                    Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)*1e7! * (viscosity%val(1,1,1))
-                  end do
+!             DO JPHASE = 1, final_phase
+!               viscosity => extract_tensor_field(state(jphase), "Viscosity")
+!               saturation => extract_scalar_field(state(1), "PhaseVolumeFraction")
+!               do ele = 1, Mdims%totele
+!                 DO U_JLOC = 1, Mdims%u_nloc
+!                   u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
+!                   DO JDIM = 1, Mdims%ndim
+!                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
+!                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
+!                     !Just the mass matrix
+! !once this is working, viscosity and density need to be chose CV-averaged wise!
+!                     Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)*2.7e9! (viscosity%val(1,1,1))
+!                   end do
+!                 end do
+!               end do
+            ! end do
+            viscosity => extract_tensor_field(state(1), "Viscosity")
+            allocate(mu_tmp( viscosity%dim(1), viscosity%dim(2), Mdims%cv_nloc ) )
+
+            saturation => extract_scalar_field(state(1), "PhaseVolumeFraction")
+            do ele = 1, Mdims%totele
+                mu_tmp = ele_val( viscosity, ele )
+                do u_iloc = 1, Mdims%u_nloc
+                    u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
+                    do cv_iloc = 1, Mdims%cv_nloc
+                        imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+                        cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+                        do JPHASE = 1, final_phase
+                          DO JDIM = 1, Mdims%ndim
+                            J = JDIM+(JPHASE-1)*Mdims%ndim+(u_iloc-1)*Mdims%ndim*final_phase
+                            Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)*mu_tmp( 1, 1, cv_iloc )* max(saturation%val(cv_loc), 1e-5)/1000
+                          END DO
+                        end do
+                    end do
                 end do
-              end do
             end do
           end if
         end subroutine
