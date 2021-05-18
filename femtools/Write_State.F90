@@ -693,7 +693,9 @@ contains
       if(trim(dump_format) == "vtk") then
         call get_option("/io/output_mesh[0]/name", output_mesh_name, stat = stat)
         if(stat /= SPUD_NO_ERROR) then
-          FLExit("An output mesh must be specified if using a VTK dump format.")
+          ewrite(2, *) "Defaulting to a PressureMesh"
+          output_mesh_name = "PressureMesh"
+          !FLExit("An output mesh must be specified if using a VTK dump format.")
         else if(option_count("/geometry/mesh::" // output_mesh_name) == 0) then
           FLExit("Output mesh " // trim(output_mesh_name) // " is not defined.")
         end if

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -30,11 +30,11 @@ except ImportError:
 try:
   import scipy
 except ImportError:
-  debug.deprint("Warning: Failed to import scipy module")
+  debug.deprint("Warning: Failed to import scipy module. This is THIS FUCKER.")
 try:
   import scipy.interpolate
 except ImportError:
-  debug.deprint("Warning: Failed to import scipy.interpolate module")
+  debug.deprint("Warning: Failed to import scipy.interpolate module. BASTARD.")
 
 import fluidity.diagnostics.calc as calc
 import fluidity.diagnostics.events as events

@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Thermal_analytical_validation_two_phases</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml thermal</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python3 ./Thermal_analytical_validation_two_phases.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="Thermal_analytical_validation_two_phases" language="python">Thermal_analytical_validation_two_phases = False
+with open("log", "r") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
+
+if 'OK' in last: Thermal_analytical_validation_two_phases = True
+
+assert(Thermal_analytical_validation_two_phases)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

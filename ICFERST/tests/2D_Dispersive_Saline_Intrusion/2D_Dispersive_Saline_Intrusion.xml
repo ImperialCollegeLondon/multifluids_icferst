@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>2D_Dispersive_Saline_Intrusion</name>
+  <owner userid="Arash.Hamzehloo"/>
+  <tags>porous mpml adaptivity transport</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python3 ./*.py &gt; log</command_line>
+  </problem_definition>
+  <variables>
+  </variables>
+  <pass_tests>
+  <test name="2D_Dispersive_Saline_Intrusion" language="python">check_test = False
+with open("log", "r") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
+
+if 'OK' in last: check_test = True
+
+assert(check_test)
+  </test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
