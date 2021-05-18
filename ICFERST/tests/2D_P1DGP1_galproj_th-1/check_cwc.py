@@ -71,7 +71,7 @@ P_check=True
 
 # first the water gauges
 for x in range(len(xarray)):
-  experiment = numpy.load(warray[x]+".npy", encoding="bytes", allow_pickle-True)
+  experiment = numpy.load(warray[x]+".npy", encoding="bytes", allow_pickle=True)
 
   #if plotting==True:
 
@@ -103,7 +103,7 @@ for p in range(len(parray)):
   data_o = results["phase1"]["Pressure"][parray[p]]
   if "HydrostaticPressure" in results["phase1"]:
       data_o+=results["phase1"]["HydrostaticPressure"][parray[p]]
-  experiment = numpy.load(parray[p]+".npy", encoding="bytes", allow_pickle-True)
+  experiment = numpy.load(parray[p]+".npy", encoding="bytes", allow_pickle=True)
   data=experiment.item(0)["phase1"]["Pressure"][parray[p]]
   if "HydrostaticPressure" in experiment.item(0)["phase1"]:
       data+=experiment.item(0)["phase1"]["HydrostaticPressure"][parray[p]]
