@@ -2323,8 +2323,8 @@ end if
         call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
         if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
         rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
-        call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-        
+        call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+
         !Re-scale system so we can deal with SI units of permeability
         if (is_porous_media) then
           call scale(cmc_petsc, 1.0/rescaleVal)
@@ -2506,7 +2506,7 @@ end if
             rhs_p%val = 0.
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
             if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
-            call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+            call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val, update_pres = .not. Special_precond)!don
             if (isParallel()) call halo_update(deltap)
@@ -2533,7 +2533,7 @@ end if
               end if
               rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
               call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-              
+
               !Solve again the system to finish the preconditioner
               call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
             end if
@@ -2983,7 +2983,7 @@ end if
       !> @brief Include in the pressure matrix the compressibility terms (based on taylor expansion series) to ensure that we account for this term
       !> as implicitly as possible. For wells it introduces the coupling between pressures
       !---------------------------------------------------------------------------
-      subroutine include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+      subroutine include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
 
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
