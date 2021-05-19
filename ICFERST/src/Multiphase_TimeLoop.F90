@@ -431,11 +431,11 @@ contains
 
             !Get into packed state relative permeability, immobile fractions, ...
             call get_RockFluidProp(state, packed_state)
-            !Allocate the memory to obtain the sigmas at the interface between elements
-            call allocate_porous_adv_coefs(Mdims, upwnd)
             !Ensure that the initial condition for the saturation sum to 1.
             call Initialise_Saturation_sums_one(Mdims, ndgln, packed_state, .true.)
         end if
+        !Allocate the memory to obtain the sigmas at the interface between elements
+        if (is_porous_media .or. is_magma) call allocate_porous_adv_coefs(Mdims, upwnd)
 
         !!$ Starting Time Loop
         itime = 0
@@ -593,8 +593,12 @@ contains
                         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                 end if
 
-                if ( is_magma ) call update_coupling_coefficients(Mdims, state, packed_state, ndgln, multi_absorp%Magma,  c_phi_series)
-
+                if ( is_magma ) then
+                  !update_coupling_coefficients must go first!
+                  call update_coupling_coefficients(Mdims, state, packed_state, ndgln, multi_absorp%Magma,  c_phi_series)
+                  call Calculate_Magma_AbsorptionTerms( state, packed_state, multi_absorp%Magma, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
+                                                                    upwnd, suf_sig_diagten_bc )
+                end if
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
                    PhaseVolumeFractionComponentSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionComponentSource")
@@ -667,7 +671,7 @@ contains
                 !#=================================================================================================================
 
                 !!$ Calculate Darcy velocity with the most up-to-date information
-                if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
+                if(is_porous_media .or. is_magma) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
 
                 !#=================================================================================================================
                 !# End Velocity Update -> Move to ->the rest

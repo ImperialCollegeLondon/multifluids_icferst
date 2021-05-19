@@ -1317,7 +1317,7 @@ contains
         type (porous_adv_coefs), intent(inout) :: upwnd
         type (multi_dimensions), intent(in)  ::Mdims
 
-!        if (.not.associated(upwnd%adv_coef)) allocate(upwnd%adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
+        if (is_magma .and. .not.associated(upwnd%adv_coef)) allocate(upwnd%adv_coef(1,1,Mdims%nphase,Mdims%mat_nonods))
         if (.not.associated(upwnd%inv_adv_coef)) allocate(upwnd%inv_adv_coef(1,1,Mdims%nphase,Mdims%mat_nonods))
         if (.not.associated(upwnd%adv_coef_grad)) allocate(upwnd%adv_coef_grad(1,1,Mdims%nphase,Mdims%mat_nonods))
         if (.not.associated(upwnd%inv_permeability)) allocate(upwnd%inv_permeability(Mdims%ndim,Mdims%ndim,Mdims%totele))
@@ -1326,7 +1326,7 @@ contains
     subroutine deallocate_porous_adv_coefs(upwnd)
         type (porous_adv_coefs), intent(inout) :: upwnd
 
-!        if (associated(upwnd%adv_coef)) deallocate(upwnd%adv_coef)!This memory is pointing to
+        if (is_magma .and. associated(upwnd%adv_coef)) deallocate(upwnd%adv_coef)!This memory is pointing to
                                             !multi_absorption%porousMedia as is being deallocated there
         if (associated(upwnd%inv_adv_coef)) deallocate(upwnd%inv_adv_coef)
         if (associated(upwnd%adv_coef_grad)) deallocate(upwnd%adv_coef_grad)

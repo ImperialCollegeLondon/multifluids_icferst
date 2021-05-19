@@ -2904,4 +2904,156 @@ end if
       retrieve_reference_density = ref_rho
     end function
 
+
+
+    !>@brief: Here we compute the absorption for magma
+    !> Currently ONLY SINGLE DARCY PHASE (i.e., one solid phase and a second phase fluid). All phases are defined although for
+    !> the upwnd the first phase contains ones so it works for the Stokes solid phase also
+    !> and we can treat all the phases consistently when computing transport or the continuity equation
+    subroutine Calculate_Magma_AbsorptionTerms( state, packed_state, Magma_absorp, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
+                                                      upwnd, suf_sig_diagten_bc )
+       implicit none
+       type( state_type ), dimension( : ), intent( inout ) :: state
+       type( state_type ), intent( inout ) :: packed_state
+       type (multi_field) :: Magma_absorp
+       type( multi_dimensions ), intent( in ) :: Mdims
+       type(multi_shape_funs), intent(inout) :: CV_funs
+       type( multi_gi_dimensions ), intent( in )  :: CV_GIdims
+       type (multi_sparsities), intent( in ) :: Mspars
+       type(multi_ndgln), intent(in) :: ndgln
+       type (porous_adv_coefs), intent(inout) :: upwnd
+       real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
+       !Local variables
+       type( tensor_field ), pointer :: state_viscosity
+       real, dimension(:,:), allocatable :: viscosities
+       integer :: i
+       real, parameter :: pi = acos(0.0) * 2.0 ! Define pi
+
+       !Take the first term only as for porous media we consider only scalar
+       allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
+       do i = 1,  Mdims%nphase
+         state_viscosity => extract_tensor_field( state( i ), 'Viscosity' )
+         call assign_val(viscosities(i, :),state_viscosity%val(1,1,:))!Take the first term only as for porous media we consider only scalar
+       end do
+
+       call Calculate_PorousMagma_adv_terms( Magma_absorp, Mdims, upwnd, viscosities )
+
+       call calculate_SUF_SIG_DIAGTEN_BC_magma( packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
+           Mspars, ndgln, upwnd%adv_coef)
+
+       deallocate(viscosities)
+
+       contains
+          !>@brief: Computes the absorption and its derivatives against the saturation
+           subroutine Calculate_PorousMagma_adv_terms( Magma_absorp, Mdims, upwnd, viscosities )
+
+               implicit none
+               type (multi_field), intent( inout ) :: Magma_absorp
+               type( multi_dimensions ), intent( in ) :: Mdims
+               type (porous_adv_coefs), intent(inout) :: upwnd
+               real, dimension(:,:) :: viscosities
+               !!$ Local variables:
+               integer :: cv_inod, iphase, ele, cv_iloc, mat_nod
+
+               !Set up advection coefficients
+               upwnd%adv_coef_grad=0.0;
+               do ele = 1, Mdims%totele
+               do cv_iloc = 1, Mdims%cv_nloc
+                 cv_inod = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
+                 mat_nod = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
+                 !Solid phase has a value of 1
+                 upwnd%inv_adv_coef(1,1,1,cv_inod)=1.0; upwnd%adv_coef(1,1,1,cv_inod)=1.0
+                 do iphase = 2, Mdims%nphase
+                   upwnd%adv_coef(1,1,iphase,mat_nod) = viscosities(iphase,cv_inod)/Magma_absorp%val(1,1,1,mat_nod)
+                   !Now the inverse
+                   upwnd%inv_adv_coef(1,1,iphase,mat_nod) = 1./upwnd%adv_coef(1,1,iphase,mat_nod)
+                 end do
+               end do
+             end do
+
+           end subroutine Calculate_PorousMagma_adv_terms
+
+           !>@brief: Computes the absorption and its derivatives against the saturation on the boundary
+           subroutine calculate_SUF_SIG_DIAGTEN_BC_magma( packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
+               Mspars, ndgln, adv_coef)
+               implicit none
+               type( state_type ), intent( inout ) :: packed_state
+               type(multi_dimensions), intent(in) :: Mdims
+               type(multi_GI_dimensions), intent(in) :: CV_GIdims
+               type(multi_shape_funs), intent(inout) :: CV_funs
+               type (multi_sparsities), intent(in) :: Mspars
+               type(multi_ndgln), intent(in) :: ndgln
+               real, dimension(:,:,:,:) :: adv_coef
+               real, dimension( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), intent( inout ) :: suf_sig_diagten_bc
+               ! local variables
+               integer :: iphase, ele, sele, cv_siloc, cv_snodi, cv_snodi_ipha, iface,  &
+                   ele2, sele2, cv_iloc, idim, jdim, i, mat_nod, cv_nodi
+               real :: sigma_out!, mat, mat_inv
+               ! real, dimension( Mdims%ndim, Mdims%ndim ) :: mat_ones, mat, mat_inv
+               integer, dimension( CV_GIdims%nface, Mdims%totele) :: face_ele
+               integer, dimension( Mdims%cv_snloc ) :: cv_sloc2loc
+               integer, dimension( :, :, : ),  allocatable :: wic_u_bc, wic_vol_bc
+               integer, parameter :: WIC_BC_DIRICHLET = 1
+               type(tensor_field), pointer :: velocity, volfrac, perm
+               type(tensor_field) :: velocity_BCs, volfrac_BCs
+
+
+               !Get from packed_state
+               volfrac=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+               velocity=>extract_tensor_field(packed_state,"PackedVelocity")
+
+               allocate(wic_u_bc(velocity%dim(1),velocity%dim(2),&
+                   surface_element_count(velocity)))
+               allocate(wic_vol_bc(volfrac%dim(1),volfrac%dim(2),&
+                   surface_element_count(volfrac)))
+               call get_entire_boundary_condition(velocity,&
+                   ['weakdirichlet'],velocity_BCs,WIC_U_BC)
+               call get_entire_boundary_condition(volfrac,&
+                   ['weakdirichlet'],volfrac_BCs,WIC_vol_BC)
+
+               !We initialise as 1 as the first phase must contain a 1
+               suf_sig_diagten_bc = 1.
+               face_ele = 0
+               call calc_face_ele( face_ele, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
+                   Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+                   CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
+                   do ele = 1, Mdims%totele
+                       !Get properties from packed state
+                       do iface = 1, CV_GIdims%nface
+                           ele2  = face_ele( iface, ele )
+                           sele2 = max( 0, -ele2 )
+                           sele  = sele2
+                           if ( sele > 0 ) then
+                               do iphase = 2, Mdims%nphase
+                                   if ( wic_u_bc(1,iphase,sele) /= WIC_BC_DIRICHLET .and. &
+                                       wic_vol_bc(1,iphase,sele) == WIC_BC_DIRICHLET ) then
+                                       cv_sloc2loc( : ) = CV_funs%cv_sloclist( iface, : )
+                                       do cv_siloc = 1, Mdims%cv_snloc
+                                           cv_iloc = cv_sloc2loc( cv_siloc )
+                                           cv_snodi = ( sele - 1 ) * Mdims%cv_snloc + cv_siloc
+                                           cv_nodi = ndgln%suf_cv(cv_snodi)
+                                           cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * Mdims%stotel * Mdims%cv_snloc
+                                           mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + cv_iloc  )
+                                           !For the time being use the interior absorption, this will need to be when multiphase like the porous media one
+                                          suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = adv_coef(1,1,iphase, mat_nod)
+                                       end do
+                                   end if
+                               end do
+                           end if
+                       end do
+                   end do
+                call deallocate(velocity_BCs)
+               call deallocate(volfrac_BCs)
+               deallocate(wic_u_bc, wic_vol_bc)
+               return
+           end subroutine calculate_SUF_SIG_DIAGTEN_BC_magma
+
+    end subroutine Calculate_Magma_AbsorptionTerms
+
+
+
+
+
+
+
 end module multiphase_EOS

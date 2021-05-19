@@ -432,7 +432,7 @@ contains
                  "/mesh_adaptivity/hr_adaptivity/preserve_mesh_regions")
             end if
         end if
-        if (is_porous_media) then
+        if (is_porous_media .or. is_magma) then
             ewrite(1, *) "For porous media we output only the Darcy Velocity, not the velocity. Check multiphase_prototype_wrapper"
             !Create a field to store the DarcyVelocity in it
             do i = 1, nphase
@@ -452,8 +452,7 @@ contains
                     call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
                     !Velocity is the force density which is pretty much useless so we instead show the DarcyVelocity
                     !do_not_show velocity
-
-                    if (.not.have_option("/numerical_methods/porous_output_force_density") .and.&
+                    if (is_porous_media .and. .not.have_option("/numerical_methods/porous_output_force_density") .and.&
                     .not.have_option("/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu"))&
                     call copy_option("simulation_name", &
                         "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu")

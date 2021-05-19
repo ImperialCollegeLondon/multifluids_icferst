@@ -3491,7 +3491,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
     real, dimension(Mdims%nphase*Mdims%ndim,Mdims%nphase*Mdims%ndim) :: loc_absorp_matrix
     real, dimension(Mdims%ndim) :: sat_weight_velocity
     real :: auxR
-    integer :: cv_iloc, u_iloc, ele, iphase, imat, u_inod, cv_loc, idim
+    integer :: cv_iloc, u_iloc, ele, iphase, imat, u_inod, cv_loc, idim, stat
     ! Initialisation
     do iphase = 1, Mdims%n_in_pres
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
@@ -3500,7 +3500,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
     !darcy_velocity => extract_tensor_field(packed_state,"PackedDarcyVelocity")
     velocity => extract_tensor_field(packed_state,"PackedVelocity")
     saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-    perm=>extract_tensor_field(packed_state,"Permeability")
+    perm=>extract_tensor_field(packed_state,"Permeability", stat )
     ! Calculation
     do ele = 1, Mdims%totele
         do u_iloc = 1, Mdims%u_nloc
@@ -3509,10 +3509,14 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
                 imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
                 cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                 do iphase = 1, Mdims%n_in_pres
+                  if (is_porous_media) then
                     sat_weight_velocity = upwnd%inv_adv_coef(1,1,iphase,imat) * matmul(perm%val(:,:,ele), velocity%val(:,iphase,u_inod))
-                    !P0 darcy velocities per element
-                    darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
-                        sat_weight_velocity(:)*saturation%val(1,iphase,cv_loc)/real(Mdims%cv_nloc)
+                  else
+                    sat_weight_velocity = upwnd%inv_adv_coef(1,1,iphase,imat) * velocity%val(:,iphase,u_inod)
+                  end if
+                  !P0 darcy velocities per element
+                  darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
+                  sat_weight_velocity(:)*saturation%val(1,iphase,cv_loc)/real(Mdims%cv_nloc)
                 end do
             end do
         end do
