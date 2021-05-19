@@ -23,13 +23,13 @@ def get_water_depths(filelist, xarray, delta):
     except:
       print("No such file: %s" % f)
       sys.exit(1)
-    
+
     y = numpy.arange(delta/2.0,2.0+delta/2.0,delta)[:,numpy.newaxis]
-    
+
     num = int(f.split(".vtu")[0].split('_')[-1])
     vtu = vtktools.vtu(f)
-    for name in vtu.GetFieldNames(): 
-      if name.endswith("Time"): 
+    for name in vtu.GetFieldNames():
+      if name.endswith("Time"):
         time = max(vtu.GetScalarRange(name))
         break
     waterdepths = []
@@ -38,9 +38,9 @@ def get_water_depths(filelist, xarray, delta):
     for x in range(len(xarray)):
       coordinates = numpy.concatenate((numpy.ones((len(y),1))*xarray[x], y, numpy.zeros((len(y),1))),1)
       waterdepths.append(sum(vtu.ProbeData(coordinates, "Component1::ComponentMassFractionPhase1"))[0]*delta)
-    
+
     results.append(waterdepths)
-  
+
   results.sort(key=operator.itemgetter(1))
   results = numpy.array(results)
   return results
@@ -70,10 +70,10 @@ P_check=True
 
 # first the water gauges
 for x in range(len(xarray)):
-  experiment = numpy.load(warray[x]+".npy")
+  experiment = numpy.load(warray[x]+".npy", allow_pickle=True)
 
   if plotting==True:
-	  
+
 	  pylab.figure(x)
 	  pylab.title(warray[x]+" water gauge at "+str(xarray[x])+"m.")
 	  pylab.xlabel('Time (s)')
@@ -89,7 +89,7 @@ for x in range(len(xarray)):
   if H_check==False:
       print("H_check=",H_check)
       break
-  
+
 ts=time[1:] #ignore 0
 
 # then the pressure gauges - this takes it data from the detectors so no
@@ -98,11 +98,11 @@ results = fluidity_tools.stat_parser("cwc.detectors")
 time = results["ElapsedTime"]["value"]
 
 for p in range(len(parray)):
-	
+
   data_o = results["phase1"]["Pressure"][parray[p]]
   if "HydrostaticPressure" in results["phase1"]:
       data_o+=results["phase1"]["HydrostaticPressure"][parray[p]]
-  experiment = numpy.load(parray[p]+".npy")
+  experiment = numpy.load(parray[p]+".npy", allow_pickle=True)
   data=experiment.item(0)["phase1"]["Pressure"][parray[p]]
   if "HydrostaticPressure" in experiment.item(0)["phase1"]:
       data+=experiment.item(0)["phase1"]["HydrostaticPressure"][parray[p]]
@@ -116,7 +116,7 @@ for p in range(len(parray)):
       i2=next(j for j, _ in enumerate(experiment.item(0)["ElapsedTime"]["value"]) if numpy.isclose(_, i, tol))
       data_o2.append(data_o[io2])
       data_2.append(data[i2])
-      
+
   if plotting==True:
 	  pylab.figure(p+len(xarray))
 	  pylab.title(parray[p]+' pressure gauge.')
@@ -127,7 +127,7 @@ for p in range(len(parray)):
 	  pylab.axis([0.0, 1.0, -1000., 10000.])
 	  pylab.legend(("Experiment", "Model"), loc="upper left")
 	  pylab.savefig("pressure_gauge_"+parray[p]+".png")
-  
+
   print(str(parray[p]),"TOL=",TOLERANCE_P,", ERROR=",abs(numpy.std(numpy.array(data_o2)-numpy.array(data_2))))
   P_check=abs(numpy.std(numpy.array(data_o2)-numpy.array(data_2)))<TOLERANCE_P
   if P_check==False:
@@ -140,7 +140,7 @@ if H_check==False: Passed=False
 if P_check==False: Passed=False
 
 #print L1_norm, L2_norm
-if (Passed): 
+if (Passed):
     print('CWC works OK')
 else:
     print('CWC does NOT work')
