@@ -1409,7 +1409,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             !Allocate residual, to compute the residual
             if (backtrack_par_factor < 1.01) call allocate(residual,nphase,sat_field%mesh,"residual")
             call allocate(Mmat%CV_RHS,nphase,sat_field%mesh,"RHS")
-            call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
             call allocate(solution,nphase,sat_field%mesh,"Saturation")!; call zero(solution)
 
             IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
@@ -1424,6 +1423,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
 
+               !To avoid a petsc warning error we need to re-allocate the matrix always
+               call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
                 !Update solution field to calculate the residual
                   do ipres =1, mdims%npres
                     do iphase = 1 , n_in_pres
@@ -1494,6 +1495,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                  !########Solve the system#############
                  call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                 !To avoid a petsc warning error we need to re-allocate the matrix always
+                 call deallocate(Mmat%petsc_ACV)
  ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
                 !Copy solution back to sat_field (not ideal...)
                   do ipres =1, mdims%npres
@@ -1591,7 +1594,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  deallocate(DEN_ALL, DENOLD_ALL)
              end if
              nullify(DEN_ALL); nullify(DENOLD_ALL)
-             call deallocate(Mmat%petsc_ACV)
              call deallocate(solution)
              ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 

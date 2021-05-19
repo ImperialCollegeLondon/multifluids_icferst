@@ -5,6 +5,9 @@ on:
     branches:
       - pablo_dev
       - master
+      - magma_dev
+      - linfeng_dev
+      - geraldine_dev
 
 jobs:
 
@@ -15,12 +18,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Build Bionic"]
+        name: [ "Build Bionic", "Build Focal" ]
         include:
 
           - name: "Build Bionic"
             release: bionic
-
+            
+          - name: "Build Focal"
+            release: focal
     steps:
 
       - name: Check Out Repo
@@ -51,11 +56,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Bionic"]
+        name: [ "Bionic", "Focal"]
         include:
 
           - name: "Bionic"
             release: bionic
+            command: "make THREADS=2 serialtest-mp-xml"
+            output: "multiphase_test_results.xml"
+            
+          - name: "Focal"
+            release: focal
             command: "make THREADS=2 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
