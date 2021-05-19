@@ -7210,6 +7210,7 @@ end if
       type(multi_sparsities), intent(in) :: Mspars
       type (multi_matrices), intent(inout) :: Mmat
       type(multi_GI_dimensions), intent(in) :: CV_GIdims
+      logical, optional :: add_to_CT
       ! local variables...
       logical :: INTEGRAT_AT_GI, skip, on_domain_boundary
       logical :: DISTCONTINUOUS_METHOD = .false.!For the time being this subroutine only works for continuous fields
@@ -7228,6 +7229,7 @@ end if
       integer, dimension(:), pointer :: neighbours
       REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
       INTEGER, DIMENSION( CV_GIdims%nface, Mdims%totele ) :: FACE_ELE
+      logical :: integrate_other_side_and_not_boundary
       !Variables to reduce communications with PETSc when assembling the matrix
       real, dimension(size(Sigma_field,1)) :: LOC_CV_RHS_I, LOC_CV_RHS_J, LOC_MAT_II, LOC_MAT_JJ, LOC_MAT_IJ, LOC_MAT_JI
       !###Variables for shape function calculation###
@@ -7235,7 +7237,6 @@ end if
       !Local diffusion coefficients
       real, dimension(size(Sigma_field,1)):: SIGMA_DIFF_COEF_DIVDX
       real, dimension(size(F_fields,1), size(F_fields,2)):: DIFF_COEF_DIVDX
-      logical, optional :: add_to_CT
 
       !Set the number of phases from max of fieldsF_fields
       local_phases = size(Sigma_field,1)
@@ -7322,11 +7323,12 @@ end if
               X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
               !Flag to ensure that we do not integrate twice when doing the boundaries.
               if(CV_NODJ >= CV_NODI) then
+                integrate_other_side_and_not_boundary = .not. on_domain_boundary .and. CV_NODJ /= CV_NODI
                 !Compute SdevFuns%DETWEI and CVNORMX_ALL
                 CALL SCVDETNX( Mdims, ndgln, X_ALL%val, CV_funs, CV_GIdims, on_domain_boundary, .false., &!NOT FULLY DG FOR THIS METHOD
                 ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL, XC_CV_ALL%val( :, CV_NODI ), X_NODI, X_NODJ)
                 ! Obtain the CV discretised advection/diffusion equations
-                IF(.not. on_domain_boundary) THEN
+                IF(integrate_other_side_and_not_boundary) THEN
                   GI_coordinate = 0.
                   !Obtain the coordinate at the edge between both CVs using shape functions
                   do cv_xloc = 1, Mdims%x_nloc
@@ -7354,22 +7356,23 @@ end if
                 LOC_MAT_IJ = 0.0; LOC_MAT_JI =0.
                 !Assemble
                 do iphase = 1, local_phases
-                  LOC_MAT_IJ(iphase) = LOC_MAT_IJ(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
-                  !Assemble diagonal of the matrix of node cv_nodi
-                  LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
-                  if(.not. on_domain_boundary) then
+                  IF(integrate_other_side_and_not_boundary) THEN
+                    !We cannot integrate a gradient or the value is zero anyway
+                    LOC_MAT_IJ(iphase) = LOC_MAT_IJ(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                    !Assemble diagonal of the matrix of node cv_nodi
+                    LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
                     !Assemble off-diagonal
                     LOC_MAT_JI(iphase) = LOC_MAT_JI(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
                     !Assemble diagonal of the matrix of node cv_nodj
                     LOC_MAT_JJ(iphase) = LOC_MAT_JJ(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                    ! Fill up RHS
+                    do i = 1, size(F_fields,1)
+                      LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
+                      (F_fields(i, iphase, cv_nodj) - F_fields(i, iphase, cv_nodi))
+                      LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) - &
+                      SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * (F_fields(i, iphase, cv_nodi) - F_fields(i, iphase, cv_nodj))
+                    end do
                   end if
-                  ! Fill up RHS
-                  do i = 1, size(F_fields,1)
-                    LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
-                    (F_fields(i, iphase, cv_nodj) - F_fields(i, iphase, cv_nodi))
-                    if(.not. on_domain_boundary) LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) - &
-                    SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * (F_fields(i, iphase, cv_nodi) - F_fields(i, iphase, cv_nodj))
-                  end do
                   do i = 1, size(rhs_div_fields,1)
                     LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodi), CVNORMX_ALL(:, GI))
                     if (.not. on_domain_boundary) LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) + SdevFuns%DETWEI(GI) * DOT_PRODUCT(rhs_div_fields(i, :, iphase, cv_nodj), CVNORMX_ALL(:, GI))
