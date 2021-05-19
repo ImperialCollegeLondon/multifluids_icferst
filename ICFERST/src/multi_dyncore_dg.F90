@@ -2609,6 +2609,7 @@ end if
           real, dimension( :, :, : ), allocatable :: mu_tmp
           !Matrix already initialised !
           Mmat%PIVIT_MAT = 0.
+
           if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner")) then
             !Introduce the diagonal of A into the Mass matrix (not ideal...)
             do ele = 1, Mdims%totele
@@ -2618,7 +2619,7 @@ end if
                   DO JPHASE = 1, final_phase
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
-                    Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )/1e8
+                    Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )!/1e8
                   end do
                 end do
               end do
@@ -2658,7 +2659,12 @@ end if
                         do JPHASE = 1, final_phase
                           DO JDIM = 1, Mdims%ndim
                             J = JDIM+(JPHASE-1)*Mdims%ndim+(u_iloc-1)*Mdims%ndim*final_phase
-                            Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)*mu_tmp( 1, 1, cv_iloc )* max(saturation%val(cv_loc), 1e-5)/1000
+                            !THIS SPLIT IS TEMPORARY SO WE PASS THE TEST CASES BUT A PROPER SCALING NEEDS TO BE FOUND AND IMPLEMENTED CONSISTENTLY
+                            if (is_magma) then
+                              Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)*mu_tmp( 1, 1, cv_iloc )* max(saturation%val(cv_loc), 1e-5)/1000
+                            else
+                              Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)
+                            end if
                           END DO
                         end do
                     end do

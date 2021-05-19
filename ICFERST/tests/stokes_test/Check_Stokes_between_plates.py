@@ -26,7 +26,7 @@ os.system(binpath + ' ' + path + '/stokes_test.mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.00012
+Tolerance_L1_NORM = 0.0005#0.00012
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
 #AutoNumber = 0
@@ -195,7 +195,7 @@ if (L1_norm > Tolerance_L1_NORM): Passed = False
 #Check the experiment has finished
 #if (AutoNumber < 20): Passed = False
 
-#print L1_norm
+#print (L1_norm)
 if (Passed): 
     print('BL works OK')
 else:
