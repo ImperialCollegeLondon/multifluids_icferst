@@ -806,6 +806,32 @@ contains
 
         end if
 
+        !For inertia the default for velocity is jacobi with rowmax
+        if (.not. have_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity" ) .and. .not. is_porous_media) then
+          if (GetProcNo() == 1) then
+            print*, "MESSAGE: Using default options for the linear solver for velocity: GMRES(30) + Jacobi(rowmax)"
+          end if
+          option_path = "/solver_options/Linear_solver/Custom_solver_configuration/Velocity/iterative_method::gmres/restart"
+          call add_option(trim(option_path), stat = stat)
+          call set_option(trim(option_path), 30)
+
+          !Preconditioner
+          option_path = "/solver_options/Linear_solver/Custom_solver_configuration/Velocity/preconditioner::jacobi"
+          call add_option(trim(option_path), stat = stat)
+          option_path = "/solver_options/Linear_solver/Custom_solver_configuration/Velocity/preconditioner::jacobi/jacobi_type::rowmax"
+          call add_option(trim(option_path), stat = stat)
+
+          !Convergence settings
+          call add_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/relative_error", stat = stat)
+          call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/relative_error", 1e-10)
+          call add_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/absolute_error", stat = stat)
+          call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/absolute_error", 1e-8)
+          call add_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/max_iterations", stat = stat)
+          call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/max_iterations", 500)
+          !Copy an option that always exists to ensure ignore all solver failues
+          call copy_option("/simulation_name","/solver_options/Linear_solver/Custom_solver_configuration/Velocity/ignore_all_solver_failures")
+        end if
+
       !   !For the hydrostatic the default is better CG with hypre and shift_positive
       !   if (.not. have_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure" ) &
       !   .and. have_option("/physical_parameters/gravity/hydrostatic_pressure_solver")) then
