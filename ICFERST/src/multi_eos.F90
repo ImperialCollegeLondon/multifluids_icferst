@@ -2964,7 +2964,7 @@ end if
                  !Solid phase has a value of 1
                  upwnd%inv_adv_coef(1,1,1,cv_inod)=1.0; upwnd%adv_coef(1,1,1,cv_inod)=1.0
                  do iphase = 2, Mdims%nphase
-                   upwnd%adv_coef(1,1,iphase,mat_nod) = viscosities(iphase,cv_inod)/Magma_absorp%val(1,1,1,mat_nod)
+                   upwnd%adv_coef(1,1,iphase,mat_nod) = Magma_absorp%val(1,1,1,mat_nod) * viscosities(iphase,cv_inod)
                    !Now the inverse
                    upwnd%inv_adv_coef(1,1,iphase,mat_nod) = 1./upwnd%adv_coef(1,1,iphase,mat_nod)
                  end do
