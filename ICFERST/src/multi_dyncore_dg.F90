@@ -2904,6 +2904,7 @@ end if
 
         call generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, lhs_coef, &
           sfield, K_fields, F_fields, rhs_coef, intface_val_type = 100)!intface_val_type normal mean
+        call assemble(Mmat%petsc_ACV); call assemble(CMC_petsc)
         !Now we perform CMC = CMC + D
         call MatAXPY(CMC_petsc%M,1.0,Mmat%petsc_ACV%M, SAME_NONZERO_PATTERN, stat)
         !We update also the RHS of the continuity equation
