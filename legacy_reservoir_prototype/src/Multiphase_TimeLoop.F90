@@ -649,7 +649,7 @@ contains
                if(diffusion_solid_implicit) then
                                       call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
                END If
-
+               ewrite(-1,*) 'timestep, acctim, its', timestep, acctim, its
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
