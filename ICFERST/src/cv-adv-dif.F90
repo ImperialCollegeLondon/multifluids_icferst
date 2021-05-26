@@ -1656,10 +1656,9 @@ contains
                                   ROBIN1=0.0; ROBIN2=0.0
                                   IF( on_domain_boundary ) then
                                       where ( WIC_T_BC_ALL(1,:,SELE) == WIC_T_BC_ROBIN )
-                                          !Robin 1 contains the value of the field outside the domain and robin2 the coefficient.
-                                          ! In the RHS we need to put the multiplication of both
-                                          ROBIN1 = SUF_T_BC_ROB1_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))&
-                                                   *   SUF_T_BC_ROB2_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
+                                          !Robin 1 contains the value of the field outside the domain times the coefficient.
+                                          !This is also used for Neumann to impose a fixed flux
+                                          ROBIN1 = SUF_T_BC_ROB1_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
                                           ROBIN2 = SUF_T_BC_ROB2_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
                                       end where
                                   END IF

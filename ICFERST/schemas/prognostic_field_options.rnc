@@ -33,10 +33,6 @@ scalar_boundary_conditions =
                }?,
                input_choice_real
             }|
-            element type {
-               attribute name { "neumann" },
-               input_choice_real
-            }|
             robin_bc_scalar
          )
       }
@@ -46,27 +42,30 @@ scalar_boundary_conditions =
 robin_bc_scalar =
    (
       ##  A robin boundary condition of the form
-      ##  C1*(T-C0) + n.(k*grad(T)) = 0 which can be also written as
-      ##  C1*T + n.(k*grad(T)) = C0 * C1
-      ##  where k is the diffusivity tensor,
+      ##  C1*(T-T0) + n.(k*grad(T)) = 0 which can be also written as
+      ##  C1*T + n.(k*grad(T)) = T0 * C1 = C0
+      ##  where k is the conductivity tensor,
       ##  n the outward normal vector to the surface,
       ##  T the scalar field value on the surface,
       ##  C0 is the input order zero coefficient and
       ##  C1 is the input order one coefficient.
+      ##
+      ## <b> USE C1 = 0 TO IMPOSE NEUMANN BCs. Being in this case C0 the desired flux.</b>
+      ##
       ##  THIS WILL ONLY WORK FOR CONTINUOUS GALERKIN SPATIAL DISCRETISATION
       ##
       ## <b> NOTE: Example of units for temperature</b>
       ## C1 is the convective coefficient W/(m^2 K)
-      ## and C0 is the temperature outside the domain.
+      ## and C0 is the temperature outside the domain times C1.
       element type {
          attribute name { "robin" },
          ##  The far field value represented as C0 in
-         ##  C1*(T-C0) + n.(k*grad(T)) = 0
+         ##  C1*(T-T0) + n.(k*grad(T)) = C1*T0 = C0
          element order_zero_coefficient {
             input_choice_real
          },
          ##  The order one coefficient represented as C1 in
-         ##  C1*(T-C0) + n.(k*grad(T)) = 0
+         ##  C1*(T-T0) + n.(k*grad(T)) = 0
          element order_one_coefficient {
             input_choice_real
          }
