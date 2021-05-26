@@ -992,8 +992,12 @@ For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conduc
               <optional>
                 <element name="scalar_field">
                   <a:documentation>Specify scalar field compressibility of the porous media
-( in Pa-1 den = den_surface*exp(c*(P_res-P_surface))
-with P_surf = 10^5 Pa )</a:documentation>
+( in Pa-1 den = den_surface*exp(Coef*(P_res-P_surface))
+with P_surf = 10^5 Pa )
+
+Here the term &lt;b&gt;Coef&lt;\b&gt; is specified.
+
+Temporarily P_surface can be defined from /numerical_methods/Surface_pressure</a:documentation>
                   <attribute name="name">
                     <value>porous_compressibility</value>
                   </attribute>
@@ -1549,6 +1553,12 @@ By default this number is 1. STILL TESTING THIS PARAMETER</a:documentation>
             <element name="VAD_two_levels">
               <a:documentation>This is for stratified flows, experimental but it seems to work better than the default</a:documentation>
               <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="Surface_pressure">
+              <a:documentation>Surface pressure for the porous compressibility equation</a:documentation>
+              <ref name="real"/>
             </element>
           </optional>
           <optional>

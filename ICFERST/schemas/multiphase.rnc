@@ -810,8 +810,12 @@ start =
                }?,
 
                ## Specify scalar field compressibility of the porous media
-               ## ( in Pa-1 den = den_surface*exp(c*(P_res-P_surface))
+               ## ( in Pa-1 den = den_surface*exp(Coef*(P_res-P_surface))
                ## with P_surf = 10^5 Pa )
+               ##
+               ## Here the term <b>Coef<\b> is specified.
+               ##
+               ## Temporarily P_surface can be defined from /numerical_methods/Surface_pressure
                element scalar_field {
                   attribute name { "porous_compressibility" },
                   (
@@ -1258,6 +1262,10 @@ start =
             ## This is for stratified flows, experimental but it seems to work better than the default
             element VAD_two_levels {
                empty
+               }?,
+           ## Surface pressure for the porous compressibility equation
+            element Surface_pressure {
+               real
             }?,
             ## For porous media only the Darcy velocity is outputed as the normal velocity is actually the force density
             ## activate this to also output the force_density

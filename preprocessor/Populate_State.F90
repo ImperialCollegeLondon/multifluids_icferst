@@ -1252,6 +1252,7 @@ contains
     character(len=255) :: tmp ! temporary string to make life a little easier
     type(scalar_field), pointer :: fshistory_sfield
     integer :: fshistory_levels
+    logical :: big_porous_density_mem
 
     nstates=option_count("/material_phase")
 
@@ -1335,15 +1336,16 @@ contains
 
       !Insert if required thermal porous media fields
       if (have_option('/porous_media/porous_properties/')) then
+        big_porous_density_mem = have_option("/porous_media/porous_properties/scalar_field::porous_compressibility")
         call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
-        states(1), field_name='porous_density_initial')  !only for 1 phase because porous medium (this is to calculate porous density)
+        states(1), field_name='porous_density', dont_save_memory = big_porous_density_mem)
         call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
-        states(1), field_name='porous_density_old')  !only for 1 phase because porous medium (to calculate porous_heat_coef_old)
-        call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
-        states(1), field_name='porous_density')
+        states(1), field_name='porous_density_old', dont_save_memory = big_porous_density_mem)  !only for 1 phase because porous medium (to calculate porous_heat_coef_old)
         call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_heat_capacity', &
         states(1), field_name='porous_heat_capacity')
         if (have_option("/porous_media/porous_properties/scalar_field::porous_compressibility")) then
+          call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
+          states(1), field_name='porous_density_initial', dont_save_memory = big_porous_density_mem)  !only for 1 phase because porous medium (this is to calculate porous density)
           call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_compressibility', &
           states(1), field_name='porous_compressibility')
         end if
