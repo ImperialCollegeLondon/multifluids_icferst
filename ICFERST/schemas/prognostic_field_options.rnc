@@ -1,6 +1,8 @@
 scalar_boundary_conditions =
   (
       ## Boundary conditions
+      ##
+      ## <b>Unspecified BC implies Neumann = 0.</b>
       element boundary_conditions {
          attribute name { string },
          ## Surface id:

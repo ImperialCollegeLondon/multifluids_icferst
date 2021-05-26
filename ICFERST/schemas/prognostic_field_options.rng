@@ -2,7 +2,9 @@
 <grammar xmlns:a="http://relaxng.org/ns/compatibility/annotations/1.0" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="">
   <define name="scalar_boundary_conditions">
     <element name="boundary_conditions">
-      <a:documentation>Boundary conditions</a:documentation>
+      <a:documentation>Boundary conditions
+
+&lt;b&gt;Unspecified BC implies Neumann = 0.&lt;/b&gt;</a:documentation>
       <attribute name="name">
         <data type="string"/>
       </attribute>
