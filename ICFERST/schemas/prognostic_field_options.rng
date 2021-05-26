@@ -42,12 +42,6 @@ want this.</a:documentation>
           </optional>
           <ref name="input_choice_real"/>
         </element>
-        <element name="type">
-          <attribute name="name">
-            <value>neumann</value>
-          </attribute>
-          <ref name="input_choice_real"/>
-        </element>
         <ref name="robin_bc_scalar"/>
       </choice>
     </element>
@@ -55,29 +49,32 @@ want this.</a:documentation>
   <define name="robin_bc_scalar">
     <element name="type">
       <a:documentation> A robin boundary condition of the form
- C1*(T-C0) + n.(k*grad(T)) = 0 which can be also written as
- C1*T + n.(k*grad(T)) = C0 * C1
- where k is the diffusivity tensor,
+ C1*(T-T0) + n.(k*grad(T)) = 0 which can be also written as
+ C1*T + n.(k*grad(T)) = T0 * C1 = C0
+ where k is the conductivity tensor,
  n the outward normal vector to the surface,
  T the scalar field value on the surface,
  C0 is the input order zero coefficient and
  C1 is the input order one coefficient.
+
+&lt;b&gt; USE C1 = 0 TO IMPOSE NEUMANN BCs. Being in this case C0 the desired flux.&lt;/b&gt;
+
  THIS WILL ONLY WORK FOR CONTINUOUS GALERKIN SPATIAL DISCRETISATION
 
 &lt;b&gt; NOTE: Example of units for temperature&lt;/b&gt;
 C1 is the convective coefficient W/(m^2 K)
-and C0 is the temperature outside the domain.</a:documentation>
+and C0 is the temperature outside the domain times C1.</a:documentation>
       <attribute name="name">
         <value>robin</value>
       </attribute>
       <element name="order_zero_coefficient">
         <a:documentation> The far field value represented as C0 in
- C1*(T-C0) + n.(k*grad(T)) = 0</a:documentation>
+ C1*(T-T0) + n.(k*grad(T)) = C1*T0 = C0</a:documentation>
         <ref name="input_choice_real"/>
       </element>
       <element name="order_one_coefficient">
         <a:documentation> The order one coefficient represented as C1 in
- C1*(T-C0) + n.(k*grad(T)) = 0</a:documentation>
+ C1*(T-T0) + n.(k*grad(T)) = 0</a:documentation>
         <ref name="input_choice_real"/>
       </element>
     </element>

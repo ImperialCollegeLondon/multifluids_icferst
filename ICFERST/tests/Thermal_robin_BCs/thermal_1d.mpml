@@ -209,7 +209,7 @@
           <type name="robin">
             <order_zero_coefficient>
               <constant>
-                <real_value rank="0">10</real_value>
+                <real_value rank="0">20</real_value>
                 <comment>considering a natural convection factor of 2 and a temperature outside of 10</comment>
               </constant>
             </order_zero_coefficient>
