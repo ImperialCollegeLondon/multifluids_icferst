@@ -43,8 +43,12 @@ want this.</a:documentation>
           <ref name="input_choice_real"/>
         </element>
         <ref name="robin_bc_scalar"/>
-        <element name="no_flux">
-          <a:documentation>This is for no flux BCs. i.e., Neumann BCs = 0.</a:documentation>
+        <element name="type">
+          <a:documentation>Prevent the field from fluxing out of the boundary.
+Only applicable to control volume spatial discretisations.</a:documentation>
+          <attribute name="name">
+            <value>zero_flux</value>
+          </attribute>
           <empty/>
         </element>
       </choice>

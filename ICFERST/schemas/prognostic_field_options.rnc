@@ -35,8 +35,12 @@ scalar_boundary_conditions =
             }|
             robin_bc_scalar
             |
-            ## This is for no flux BCs. i.e., Neumann BCs = 0.
-            element no_flux {empty}
+            ## Prevent the field from fluxing out of the boundary.
+            ## Only applicable to control volume spatial discretisations.
+            element type {
+              attribute name { "zero_flux" },
+              empty
+            }
          )
       }
 )
