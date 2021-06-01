@@ -34,6 +34,9 @@ scalar_boundary_conditions =
                input_choice_real
             }|
             robin_bc_scalar
+            |
+            ## This is for no flow BCs. i.e., Neumann BCs = 0.
+            element no_flow {empty}
          )
       }
 )

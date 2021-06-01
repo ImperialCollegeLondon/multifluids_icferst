@@ -1383,8 +1383,9 @@ contains
     end function Get_DevCapPressure
 
     !>@brief: This subroutine computed the gravity effect, i.e. rho * g
-    subroutine calculate_u_source_cv(Mdims, state, den, u_source_cv)
+    subroutine calculate_u_source_cv(Mdims, state, packed_state, den, u_source_cv)
         type(state_type), dimension(:), intent(in) :: state
+        type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         real, dimension(:,:), intent(in) :: den
         real, dimension(:,:,:), intent(inout) :: u_source_cv
@@ -1393,10 +1394,18 @@ contains
         real, dimension(Mdims%ndim) :: g
         logical :: have_gravity, high_order_Ph
         real :: gravity_magnitude
+        real, dimension(Mdims%nphase):: ref_density
         integer :: idim, iphase, nod, stat, start_phase
 
         call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
         have_gravity = ( stat == 0 )
+
+        ref_density = 0.
+        if (have_option("/physical_parameters/gravity/remove_hydrostatic_contribution")) then
+          do iphase = 1, Mdims%nphase
+            ref_density(iphase) = retrieve_reference_density(state, packed_state, iphase, 0, Mdims%nphase)
+          end do
+        end if
         !Initialise RHS
         u_source_cv = 0.
         high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
@@ -1413,7 +1422,7 @@ contains
                 g = node_val( gravity_direction, nod ) * gravity_magnitude
                 do iphase = start_phase, Mdims%nphase
                     do idim = 1, Mdims%ndim
-                        u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim )
+                        u_source_cv( idim, iphase, nod ) = (den( iphase, nod ) - ref_density(iphase)) * g( idim )
                     end do
                 end do
             end do
@@ -2801,7 +2810,7 @@ contains
     real function retrieve_reference_density(state, packed_state, iphase, icomp, nphase)
       implicit none
       type( state_type ), intent( inout ) :: packed_state
-      type( state_type ), dimension( : ), intent( inout ) :: state
+      type( state_type ), dimension( : ), intent( in) :: state
       integer, intent(in) :: iphase, icomp, nphase
       !local variables
       character( len = option_path_len ) :: eos_option_path
