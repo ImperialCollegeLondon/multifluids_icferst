@@ -35,8 +35,8 @@ scalar_boundary_conditions =
             }|
             robin_bc_scalar
             |
-            ## This is for no flow BCs. i.e., Neumann BCs = 0.
-            element no_flow {empty}
+            ## This is for no flux BCs. i.e., Neumann BCs = 0.
+            element no_flux {empty}
          )
       }
 )
@@ -157,7 +157,7 @@ prognostic_scalar_field =
 
 
 
-      
+
 #      prognostic_scalar_stat_options,
 #      scalar_convergence_options,
       prognostic_detector_options,
@@ -291,7 +291,7 @@ prognostic_velocity_field =
            }
          )
       }?,
-      
+
       prognostic_detector_options,
       adaptivity_options_prognostic_vector_field,
       interpolation_algorithm_vector
@@ -471,7 +471,7 @@ prognostic_geostrophic_pressure_field =
             input_choice_real_plus_boundary_forcing
          }
       }*,
-      
+
       prognostic_scalar_stat_options,
       scalar_convergence_options,
       prognostic_detector_options,
@@ -507,7 +507,7 @@ prognostic_vertical_balance_pressure_field =
       element exclude_from_checkpointing {
         comment
       },
-      
+
       prognostic_scalar_stat_options,
       scalar_convergence_options,
       prognostic_detector_options,
@@ -557,7 +557,7 @@ prognostic_hydrostatic_pressure_field =
       element exclude_from_checkpointing {
         comment
       },
-      
+
       prognostic_scalar_stat_options,
       scalar_convergence_options,
       prognostic_detector_options,
@@ -573,7 +573,7 @@ prognostic_hydrostatic_pressure_gradient_field =
       element exclude_from_checkpointing {
         comment
       },
-      
+
       prognostic_velocity_stat_options,
       vector_convergence_options,
       prognostic_detector_options,
@@ -662,7 +662,7 @@ prognostic_foam_velocity_potential_field =
             }
          )
       }*,
-      
+
       prognostic_scalar_stat_options,
       prognostic_detector_options,
       scalar_steady_state_options,
