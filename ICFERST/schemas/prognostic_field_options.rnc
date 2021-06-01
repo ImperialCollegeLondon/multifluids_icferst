@@ -1,8 +1,6 @@
 scalar_boundary_conditions =
   (
       ## Boundary conditions
-      ##
-      ## <b>Unspecified BC implies Neumann = 0.</b>
       element boundary_conditions {
          attribute name { string },
          ## Surface id:
@@ -36,6 +34,9 @@ scalar_boundary_conditions =
                input_choice_real
             }|
             robin_bc_scalar
+            |
+            ## This is for no flow BCs. i.e., Neumann BCs = 0.
+            element no_flow {empty}
          )
       }
 )

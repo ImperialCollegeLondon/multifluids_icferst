@@ -12,7 +12,14 @@ gravity_options =
       element magnitude {
          real
       },
-      ## Solve the gravity component indendently from the pressure general solver.
+      ## Instead of including rho * g, the hydrostatic contribution is removed
+      ## by including instead (rho - rho_ref) * g. Being rho_ref the reference density
+      ## introduced in the equation of state.
+      ##
+      ## <b> NOTE<b/> that <b>i)<b/> this option implies that hydrostatic_boundaries or hydrostatic_pressure_solver should not be used
+      ## <b>ii)<b/> the EOS will use the non-hydrostatic pressure to compute the properties.
+      element remove_hydrostatic_contribution { empty }?,
+      ## Solve the gravity component independently from the pressure general solver.
       ## Not implemented for wells yet. Therefore NOT recommended for wells.
       ##
       ## Internally it creates a field named HydrostaticPressure and a mesh with the same name.
@@ -42,7 +49,7 @@ coriolis_options =
          ## Full Coriolis parameter:
          ##   f = 2 omega sin (latitude)
          ## where latitude=y/R_earth+latitude_0
-         ## 
+         ##
          ## Specify omega and R_earth and latitude_0
          element sine_of_latitude {
             ## Full Coriolis parameter:
@@ -54,14 +61,14 @@ coriolis_options =
             ## Full Coriolis parameter:
             ##   f = 2 omega sin (latitude)
             ## where latitude=y/R_earth+latitude_0
-            ## 
+            ##
             ## Suggested value for R_earth: 6.371e6
             element R_earth {
                real
             },
             ## Full Coriolis parameter:
             ##   f = 2 omega sin (latitude)
-            ## where 
+            ## where
             ##   latitude=y/R_earth+latitude_0
             ## latitude_0 is the latitude of y=0
             element latitude_0 {
@@ -71,7 +78,7 @@ coriolis_options =
          ## Full representation on sphere
          element on_sphere {
             ## Earth rotation rate
-            ## 
+            ##
             ## Suggested value: 2 pi / 86400 = 7.27220522e-5
             element omega {
                real
@@ -166,4 +173,3 @@ beta_plane_options =
          real_dim_vector
       }
    }
-

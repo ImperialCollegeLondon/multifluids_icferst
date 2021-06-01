@@ -2052,7 +2052,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
         U_SOURCE_CV_ALL=0.0
         if ( is_porous_media )then
-           call calculate_u_source_cv( Mdims, state, DEN_ALL, U_SOURCE_CV_ALL )
+           call calculate_u_source_cv( Mdims, state, packed_state, DEN_ALL, U_SOURCE_CV_ALL )
         else
            if ( linearise_density ) then
               call linearise_field( DEN_ALL2, UDEN_ALL )
@@ -2062,7 +2062,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               UDENOLD_ALL = DENOLD_ALL2%VAL( 1, :, : )
            end if
            if ( .not. have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) )&
-                call calculate_u_source_cv( Mdims, state, uden_all, U_SOURCE_CV_ALL )
+                call calculate_u_source_cv( Mdims, state, packed_state, uden_all, U_SOURCE_CV_ALL )
         end if
 
         if (solve_stokes) then

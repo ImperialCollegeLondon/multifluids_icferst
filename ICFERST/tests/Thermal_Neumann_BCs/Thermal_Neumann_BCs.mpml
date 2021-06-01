@@ -261,6 +261,12 @@
             </order_one_coefficient>
           </type>
         </boundary_conditions>
+        <boundary_conditions name="no_flow">
+          <surface_ids>
+            <integer_value shape="3" rank="1">2 3 4</integer_value>
+          </surface_ids>
+          <no_flow/>
+        </boundary_conditions>
         <detectors>
           <include_in_detectors/>
         </detectors>

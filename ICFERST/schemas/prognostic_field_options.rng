@@ -2,9 +2,7 @@
 <grammar xmlns:a="http://relaxng.org/ns/compatibility/annotations/1.0" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="">
   <define name="scalar_boundary_conditions">
     <element name="boundary_conditions">
-      <a:documentation>Boundary conditions
-
-&lt;b&gt;Unspecified BC implies Neumann = 0.&lt;/b&gt;</a:documentation>
+      <a:documentation>Boundary conditions</a:documentation>
       <attribute name="name">
         <data type="string"/>
       </attribute>
@@ -45,6 +43,10 @@ want this.</a:documentation>
           <ref name="input_choice_real"/>
         </element>
         <ref name="robin_bc_scalar"/>
+        <element name="no_flow">
+          <a:documentation>This is for no flow BCs. i.e., Neumann BCs = 0.</a:documentation>
+          <empty/>
+        </element>
       </choice>
     </element>
   </define>
