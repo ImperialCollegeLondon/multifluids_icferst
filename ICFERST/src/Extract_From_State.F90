@@ -1875,6 +1875,7 @@ contains
                     if (stat/= 0 ) cycle
                     do n=1,get_boundary_condition_count(sfield)
                         bc=>sfield%bc%boundary_condition(n)
+                        if (bc%type == "zero_flux") cycle!ignore zero_flux bcs
                         nullify(tbc%applies)
                         allocate(tbc%applies(mfield%dim(1),mfield%dim(2)))
                         tbc%applies= .false.
