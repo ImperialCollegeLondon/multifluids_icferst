@@ -2969,7 +2969,7 @@ end if
                    !Solid phase has a value of 1
                    upwnd%inv_adv_coef(1,1,1,cv_inod)=1.0; upwnd%adv_coef(1,1,1,cv_inod)=1.0
                    do iphase = 2, Mdims%nphase
-                     upwnd%adv_coef(1,1,iphase,mat_nod) = max(eps, volfrac%val(1,iphase,cv_inod)) * Magma_absorp%val(1,1,1,mat_nod) * viscosities(iphase,cv_inod)
+                     upwnd%adv_coef(1,1,iphase,mat_nod) = max(eps, volfrac%val(1,iphase,cv_inod)) / (Magma_absorp%val(1,1,1,mat_nod) * viscosities(iphase,cv_inod))
                      !Now the inverse
                      upwnd%inv_adv_coef(1,1,iphase,mat_nod) = 1./upwnd%adv_coef(1,1,iphase,mat_nod)
                    end do
@@ -3042,7 +3042,7 @@ end if
                                            cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * Mdims%stotel * Mdims%cv_snloc
                                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + cv_iloc  )
                                            !For the time being use the interior absorption, this will need to be when multiphase like the porous media one
-                                          suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = adv_coef(1,1,iphase, mat_nod) * max(eps, volfrac%val(1,iphase,cv_nodi))
+                                          suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = adv_coef(1,1,iphase, mat_nod)! * max(eps, volfrac%val(1,iphase,cv_nodi))
                                        end do
                                    end if
                                end do

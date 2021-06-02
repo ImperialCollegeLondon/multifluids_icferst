@@ -1343,7 +1343,7 @@ contains
                               ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
                               !Calling the functions directly instead inside a wrapper saves a around a 5%
                               IF( GOT_T2 ) THEN
-                                  IF( is_porous_media ) THEN
+                                  IF( is_porous_media) THEN
                                       CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                                           LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD, &
                                           LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
@@ -3008,7 +3008,7 @@ end if
                         END DO
                         if (is_porous_media) then
                           UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UDGI_ALL_FOR_INV(:, iv_iphase))
-                        else 
+                        else
                           UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + I_inv_adv_coef (iv_iphase) * UDGI_ALL_FOR_INV(:, iv_iphase)
                         end if
                     END IF
@@ -3075,9 +3075,13 @@ end if
                 end if
                 if (not_OLD_VEL) then
                     do iv_idim = 1, Mdims%ndim
-                      auxR = SUM(perm%val(iv_idim,:,ele))
-                      RSUM = auxR
-                      if (between_elements) RSUM = SUM(perm%val(iv_idim,:,ele2))
+                      if (is_porous_media) then
+                        auxR = SUM(perm%val(iv_idim,:,ele))
+                        RSUM = auxR
+                        if (between_elements) RSUM = SUM(perm%val(iv_idim,:,ele2))
+                      else
+                        auxR = 1.0; RSUM = 1.0
+                      end if
                       do iv_iphase = 1, final_phase
                         ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef(iv_iphase) * auxR
                         ROW_SUM_INV_VJ(iv_idim,iv_iphase)=J_inv_adv_coef(iv_iphase) * RSUM
