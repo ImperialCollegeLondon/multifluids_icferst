@@ -2953,23 +2953,28 @@ end if
                type (porous_adv_coefs), intent(inout) :: upwnd
                real, dimension(:,:) :: viscosities
                !!$ Local variables:
+               type(tensor_field), pointer :: volfrac
                integer :: cv_inod, iphase, ele, cv_iloc, mat_nod
+               !Local parameters
+               real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
 
+               !retrieve saturation
+               volfrac=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                !Set up advection coefficients
                upwnd%adv_coef_grad=0.0;
                do ele = 1, Mdims%totele
-               do cv_iloc = 1, Mdims%cv_nloc
-                 cv_inod = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
-                 mat_nod = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
-                 !Solid phase has a value of 1
-                 upwnd%inv_adv_coef(1,1,1,cv_inod)=1.0; upwnd%adv_coef(1,1,1,cv_inod)=1.0
-                 do iphase = 2, Mdims%nphase
-                   upwnd%adv_coef(1,1,iphase,mat_nod) = Magma_absorp%val(1,1,1,mat_nod) * viscosities(iphase,cv_inod)
-                   !Now the inverse
-                   upwnd%inv_adv_coef(1,1,iphase,mat_nod) = 1./upwnd%adv_coef(1,1,iphase,mat_nod)
+                 do cv_iloc = 1, Mdims%cv_nloc
+                   cv_inod = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
+                   mat_nod = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
+                   !Solid phase has a value of 1
+                   upwnd%inv_adv_coef(1,1,1,cv_inod)=1.0; upwnd%adv_coef(1,1,1,cv_inod)=1.0
+                   do iphase = 2, Mdims%nphase
+                     upwnd%adv_coef(1,1,iphase,mat_nod) = max(eps, volfrac%val(1,iphase,cv_inod)) * Magma_absorp%val(1,1,1,mat_nod) * viscosities(iphase,cv_inod)
+                     !Now the inverse
+                     upwnd%inv_adv_coef(1,1,iphase,mat_nod) = 1./upwnd%adv_coef(1,1,iphase,mat_nod)
+                   end do
                  end do
                end do
-             end do
 
            end subroutine Calculate_PorousMagma_adv_terms
 
@@ -2996,6 +3001,8 @@ end if
                integer, parameter :: WIC_BC_DIRICHLET = 1
                type(tensor_field), pointer :: velocity, volfrac, perm
                type(tensor_field) :: velocity_BCs, volfrac_BCs
+               !Local parameters
+               real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
 
 
                !Get from packed_state
@@ -3035,7 +3042,7 @@ end if
                                            cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * Mdims%stotel * Mdims%cv_snloc
                                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + cv_iloc  )
                                            !For the time being use the interior absorption, this will need to be when multiphase like the porous media one
-                                          suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = adv_coef(1,1,iphase, mat_nod)
+                                          suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = adv_coef(1,1,iphase, mat_nod) * max(eps, volfrac%val(1,iphase,cv_nodi))
                                        end do
                                    end if
                                end do

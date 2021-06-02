@@ -2619,7 +2619,7 @@ end if
                   DO JPHASE = 1, final_phase
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
-                    Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )!/1e8
+                    Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )/4e6
                   end do
                 end do
               end do
