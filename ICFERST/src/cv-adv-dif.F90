@@ -2937,15 +2937,25 @@ end if
             Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
                 !Initialize variables
                 if (not_OLD_VEL) then
-                    forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
-                        ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef (iv_iphase) * SUM(perm%val(iv_idim,:,ele))
-                    end forall
+                    if (is_porous_media) then
+                      forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
+                          ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef (iv_iphase) * SUM(perm%val(iv_idim,:,ele))
+                      end forall
+                    else
+                      forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
+                          ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef (iv_iphase)
+                      end forall
+                    end if
                 end if
                 DO iv_iphase = 1,final_phase
                     IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
                         !(vel * shape_functions)/sigma
+                        if (is_porous_media) then
                         UDGI_ALL(:, iv_iphase) = I_inv_adv_coef (iv_iphase)* matmul(perm%val(:,:,ele),&
                             matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI )))
+                        else
+                          UDGI_ALL(:, iv_iphase) = I_inv_adv_coef (iv_iphase)* matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
+                        end if
                         ! Here we assume that sigma_out/sigma_in is a diagonal matrix
                         ! which effectively assumes that the anisotropy just inside the domain
                         ! is the same as just outside the domain.
@@ -2970,7 +2980,11 @@ end if
                                 ELSE
                                     UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)=1.0
                                 ENDIF
-                                UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)= I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc))
+                                if (is_porous_media) then
+                                  UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)= I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc))
+                                else
+                                  UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)= I_inv_adv_coef (iv_iphase) * UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)
+                                end if
                             END DO
                         end if
                         if(iv_incomming_flow) UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) * iv_SUF_SIG_DIAGTEN_BC_GI
@@ -2992,7 +3006,11 @@ end if
                             END IF
 
                         END DO
-                        UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UDGI_ALL_FOR_INV(:, iv_iphase))
+                        if (is_porous_media) then
+                          UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UDGI_ALL_FOR_INV(:, iv_iphase))
+                        else 
+                          UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + I_inv_adv_coef (iv_iphase) * UDGI_ALL_FOR_INV(:, iv_iphase)
+                        end if
                     END IF
                 END DO ! PHASE LOOP
             ELSE IF( .not. between_elements) THEN!Only for same element/Continuous formulation !old flag: DISTCONTINUOUS_METHOD
@@ -3042,16 +3060,18 @@ end if
                     UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) * (1.0-INCOME(iv_iphase)) + UDGI2_ALL(:, iv_iphase) * INCOME(iv_iphase)
                 END DO ! PHASE LOOP
                 !Now apply the permeability to obtain finally UDGI_ALL
-                if (permeability_jump) then
-                  inv_harmonic_perm = 2.0*inverse((upwnd%inv_permeability(:,:,ele) + upwnd%inv_permeability(:,:,ele2)))
-                  DO iv_iphase = 1,final_phase
-                    !We use the harmonic average of the permeability
-                    UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), inv_harmonic_perm)
-                  end do
-                else
-                  DO iv_iphase = 1,final_phase
-                    UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), perm%val(:,:,ele))
-                  end do
+                if (is_porous_media) then
+                  if (permeability_jump) then
+                    inv_harmonic_perm = 2.0*inverse((upwnd%inv_permeability(:,:,ele) + upwnd%inv_permeability(:,:,ele2)))
+                    DO iv_iphase = 1,final_phase
+                      !We use the harmonic average of the permeability
+                      UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), inv_harmonic_perm)
+                    end do
+                  else
+                    DO iv_iphase = 1,final_phase
+                      UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), perm%val(:,:,ele))
+                    end do
+                  end if
                 end if
                 if (not_OLD_VEL) then
                     do iv_idim = 1, Mdims%ndim
