@@ -204,12 +204,10 @@ contains
         ! Andreas. Declare the parameters required for skipping pressure solve
         Integer:: rcp                 !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
         Logical:: EnterSolve =.true., after_adapt_itime =.false.  !Flag to either enter or not the pressure solve
-
-        real,allocatable, dimension(:) :: c_phi_series
-        integer :: c_phi_length
-        type(coupling_term_coef) :: coupling
+        !Magma variables
+        real, dimension(1000000) :: magma_c_phi_series !We calculate the C values in advance to the precision of 6 digits and store them in the system
+        type(coupling_term_coef) :: magma_coupling
         type(magma_phase_diagram) :: magma_phase_coef
-        real :: bulk_power
         ! To record the compostion value and melt fraction before the phase diagram
         real, dimension(:), allocatable :: Compostion_temp
         real, dimension(:), allocatable :: melt_temp
@@ -479,10 +477,8 @@ contains
 
         !HH Initialize all the magma simulation related coefficients
         if (is_magma) then
-          c_phi_length=1e6 !We calculate the C values in advance to the precision of 6 digits and store them in the system
-          allocate(c_phi_series(c_phi_length))
-          call initialize_magma_parameters(magma_phase_coef,  coupling)
-          call C_generate (c_phi_series, c_phi_length, state, coupling)
+          call initialize_magma_parameters(magma_phase_coef,  magma_coupling)
+          call magma_Coupling_generate (magma_c_phi_series, state, magma_coupling)
           !This is important to specify EnthalpyOld based on the temperature which is easier for the user
           !WHAT ABOUT THE BCS? FOR THE TIME BEING WE NEED ENTHALPY BCs...
           call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
@@ -594,11 +590,11 @@ contains
                 end if
 
                 if ( is_magma ) then
-                  !update_coupling_coefficients must go first!
+                  !update_magma_coupling_coefficients must go first!
                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                  call update_coupling_coefficients(Mdims, state, saturation_field%val, ndgln, multi_absorp%Magma%val,  c_phi_series)
+                  call update_magma_coupling_coefficients(Mdims, state, saturation_field%val, ndgln, multi_absorp%Magma%val,  magma_c_phi_series)
                   call Calculate_Magma_AbsorptionTerms( state, packed_state, multi_absorp%Magma, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
-                                                                    upwnd, suf_sig_diagten_bc )
+                                                                    upwnd, suf_sig_diagten_bc, magma_c_phi_series )
                 end if
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then

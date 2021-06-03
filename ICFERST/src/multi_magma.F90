@@ -98,16 +98,15 @@ contains
   end subroutine initialize_magma_parameters
 
 
-  subroutine C_generate(series, N,   state, coupling)
+  subroutine magma_Coupling_generate(series, state, coupling)
     ! Coefficients phi^2/C is generated and stored in coupling
     implicit none
     type( state_type ), dimension(:), intent( inout ) :: state
     !Global variables
     real, dimension(:) :: series
-    integer :: N  !number of items in the series
     !Local variables
     integer :: i, stat
-    real,dimension(N) :: phi ! porosity series
+    real,dimension(size(series)) :: phi ! porosity series
     real :: d, a, b !grain size, coefficient a b
     real :: mu !liquid viscosity needs to be build later
     real :: low,high !transition points
@@ -115,10 +114,11 @@ contains
     logical :: Test=.false. ! set to true to have uniform Darcy-like c coefficient
     type( tensor_field ), pointer :: t_field !liquid viscosity
     type(coupling_term_coef), intent(in) :: coupling
+    integer :: N  !number of items in the series
 
     real :: scaling ! a temporal fix for the scaling difference between the viscosity in ICFERST and the models
     scaling=1.0    ! the viscosity difference between ICFERST and the model
-
+    N = size(series)
     s= -2 !> transition coefficient of the linking function
     d=coupling%grain_size
     a=coupling%a
@@ -149,7 +149,7 @@ contains
       end do
     end if
     series(N)=2*series(N-1)-series(N-2)
-  end subroutine C_generate
+  end subroutine magma_Coupling_generate
 
 
   !>@brief: Computes the bulk Composition for two phases
@@ -436,7 +436,7 @@ contains
 
 
   !>@brief:This subroutine updated the FEM-stored values of the coefficient phi/C in the field magma_absorp
-  subroutine update_coupling_coefficients(Mdims, state, saturation, ndgln, Magma_absorp,  c_phi_series)
+  subroutine update_magma_coupling_coefficients(Mdims, state, saturation, ndgln, Magma_absorp,  c_phi_series)
     implicit none
     type( state_type ), dimension( : ), intent( inout ) :: state
     real, dimension(:,:,:), intent(in) :: saturation
@@ -476,7 +476,7 @@ contains
           ! c_value=c_phi_series(pos)
         end if
       end function phi2_over_c
-  end subroutine update_coupling_coefficients
+  end subroutine update_magma_coupling_coefficients
 
 
   !>@brief:Compute the source/sink term of the phase change between the concentration living in both two phases

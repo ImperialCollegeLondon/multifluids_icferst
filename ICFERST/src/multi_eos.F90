@@ -37,6 +37,7 @@ module multiphase_EOS
     use Field_Options, only: get_external_coordinate_field
     use initialise_fields_module, only: initialise_field_over_regions, initialise_field
     use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
+    use multi_magma, only : update_magma_coupling_coefficients
     use checkpoint
 
 
@@ -2911,7 +2912,7 @@ end if
     !> the upwnd the first phase contains ones so it works for the Stokes solid phase also
     !> and we can treat all the phases consistently when computing transport or the continuity equation
     subroutine Calculate_Magma_AbsorptionTerms( state, packed_state, Magma_absorp, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
-                                                      upwnd, suf_sig_diagten_bc )
+                                                      upwnd, suf_sig_diagten_bc , magma_c_phi_series )
        implicit none
        type( state_type ), dimension( : ), intent( inout ) :: state
        type( state_type ), intent( inout ) :: packed_state
@@ -2923,6 +2924,7 @@ end if
        type(multi_ndgln), intent(in) :: ndgln
        type (porous_adv_coefs), intent(inout) :: upwnd
        real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
+       real, dimension(:), intent(in) :: magma_c_phi_series
        !Local variables
        type( tensor_field ), pointer :: state_viscosity
        real, dimension(:,:), allocatable :: viscosities
@@ -2954,8 +2956,9 @@ end if
                real, dimension(:,:) :: viscosities
                !!$ Local variables:
                type(tensor_field), pointer :: satura, OldSatura
-               integer :: cv_inod, iphase, ele, cv_iloc, mat_nod
+               integer :: cv_inod, iphase, ele, cv_iloc, mat_nod, icv
                real, dimension( :, : , : ), allocatable :: satura2
+               real, dimension(:,:,:,:), allocatable :: Magma_absorp2
                real, dimension(:), allocatable :: max_sat
                real :: pert
                !Local parameters
@@ -2965,7 +2968,6 @@ end if
                satura=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
                !Set up advection coefficients
-               upwnd%adv_coef_grad=0.0;
                do ele = 1, Mdims%totele
                  do cv_iloc = 1, Mdims%cv_nloc
                    cv_inod = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
@@ -2980,6 +2982,42 @@ end if
                  end do
                end do
 
+               !Introduce perturbation, positive for the increasing and negative for decreasing phase
+               !Make sure that the perturbation is between bounds
+               PERT = 0.0001; allocate(Max_sat(Mdims%nphase), SATURA2(1, Mdims%nphase, Mdims%cv_nonods))
+               OldSatura=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
+               do ele = 1, Mdims%totele
+                   do cv_iloc = 1, Mdims%cv_nloc
+                       cv_inod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+                       Max_sat = 1. !- sum(Immobile_fraction(:, ele)) + Immobile_fraction(:, ele)
+                       DO IPHASE = 2, Mdims%nphase
+                         SATURA2(1, IPHASE, cv_inod) = satura%val(1, IPHASE, cv_inod) + sign(PERT, satura%val(1, iphase, cv_inod)-Oldsatura%val(1,iphase, cv_inod))
+                         !If out of bounds then we perturbate in the opposite direction
+                         if (satura2(1, IPHASE, cv_inod) > Max_sat(iphase)) then
+                             SATURA2(1, IPHASE, cv_inod) = SATURA2(1, IPHASE, cv_inod) - 2. * sign(PERT, satura%val(1,iphase, cv_inod)-Oldsatura%val(1,iphase, cv_inod))
+                         end if
+                       end do
+                   end do
+               end do
+
+               !Compute absorption gven a perturbed saturation
+               allocate(Magma_absorp2(1, 1, Mdims%nphase, Mdims%mat_nonods))
+               call update_magma_coupling_coefficients(Mdims, state, SATURA2, ndgln, Magma_absorp2,  magma_c_phi_series)
+               DO ELE = 1, Mdims%totele
+                 DO CV_ILOC = 1, Mdims%cv_nloc
+                   mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
+                   cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                   !Absorption for phase 1 is constant so the gradient is zero
+                   upwnd%adv_coef_grad(1, 1, 1, mat_nod)=0.0;
+                   DO IPHASE = 2, Mdims%nphase
+                     ! This is the gradient
+                     upwnd%adv_coef_grad(1, 1, iphase, mat_nod) = (Magma_absorp2( 1,1, iphase-1 ,mat_nod) -&
+                     Magma_absorp%val( 1,1, iphase-1 ,mat_nod)) / ( SATURA2(1,iphase, cv_inod ) - satura%val(1,iphase, cv_inod))
+                   END DO
+                 end do
+               END DO
+
+               deallocate( satura2, Max_sat, Magma_absorp2)
 
            end subroutine Calculate_PorousMagma_adv_terms
 
