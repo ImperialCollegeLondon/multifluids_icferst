@@ -436,23 +436,20 @@ contains
 
 
   !>@brief:This subroutine updated the FEM-stored values of the coefficient phi/C in the field magma_absorp
-  subroutine update_coupling_coefficients(Mdims, state, packed_state, ndgln, Magma_absorp,  c_phi_series)
+  subroutine update_coupling_coefficients(Mdims, state, saturation, ndgln, Magma_absorp,  c_phi_series)
     implicit none
     type( state_type ), dimension( : ), intent( inout ) :: state
-    type( state_type ), intent( inout ) :: packed_state
+    real, dimension(:,:,:), intent(in) :: saturation
     type(multi_ndgln), intent(in) :: ndgln
-    type (multi_field) :: Magma_absorp
+    real, dimension(:,:,:,:), INTENT(INOUT) :: Magma_absorp
     type( multi_dimensions ), intent( in ) :: Mdims
     type(coupling_term_coef) :: coupling
     real, dimension(:), intent(in) :: c_phi_series !generated c coefficients
     !Local variables
     integer :: mat_nod, ele, CV_ILOC, cv_inod, iphase, jphase
     real :: magma_coupling
-    type(tensor_field), pointer :: saturation
     integer:: c_phi_size ! length of c_phi_series
     real, dimension(4):: test
-    !Get from packed_state
-    saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
     c_phi_size=size(c_phi_series)
     ! print *, 'phi2/c', phi2_over_c(saturation%val(1,2, 10))
     DO ELE = 1, Mdims%totele
@@ -460,7 +457,7 @@ contains
         mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
         cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
           Do iphase =1, Mdims%nphase-1
-            Magma_absorp%val(1, 1, iphase, mat_nod) = phi2_over_c(saturation%val(1,2, cv_inod))
+            Magma_absorp(1, 1, iphase, mat_nod) = phi2_over_c(saturation(1,2, cv_inod))
           end Do
       end DO
     end DO

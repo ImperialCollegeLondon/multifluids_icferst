@@ -2953,13 +2953,17 @@ end if
                type (porous_adv_coefs), intent(inout) :: upwnd
                real, dimension(:,:) :: viscosities
                !!$ Local variables:
-               type(tensor_field), pointer :: volfrac
+               type(tensor_field), pointer :: satura, OldSatura
                integer :: cv_inod, iphase, ele, cv_iloc, mat_nod
+               real, dimension( :, : , : ), allocatable :: satura2
+               real, dimension(:), allocatable :: max_sat
+               real :: pert
                !Local parameters
                real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
 
                !retrieve saturation
-               volfrac=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+               satura=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+
                !Set up advection coefficients
                upwnd%adv_coef_grad=0.0;
                do ele = 1, Mdims%totele
@@ -2967,14 +2971,15 @@ end if
                    cv_inod = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
                    mat_nod = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
                    !Solid phase has a value of 1
-                   upwnd%inv_adv_coef(1,1,1,cv_inod)=1.0; upwnd%adv_coef(1,1,1,cv_inod)=1.0
+                   upwnd%inv_adv_coef(1,1,1,mat_nod)=1.0; upwnd%adv_coef(1,1,1,mat_nod)=1.0
                    do iphase = 2, Mdims%nphase
-                     upwnd%adv_coef(1,1,iphase,mat_nod) = max(eps, volfrac%val(1,iphase,cv_inod)) / (Magma_absorp%val(1,1,1,mat_nod) * viscosities(iphase,cv_inod))
+                     upwnd%adv_coef(1,1,iphase,mat_nod) = max(eps, satura%val(1,iphase,cv_inod)) / (Magma_absorp%val(1,1,1,mat_nod) * viscosities(iphase,cv_inod))
                      !Now the inverse
                      upwnd%inv_adv_coef(1,1,iphase,mat_nod) = 1./upwnd%adv_coef(1,1,iphase,mat_nod)
                    end do
                  end do
                end do
+
 
            end subroutine Calculate_PorousMagma_adv_terms
 
@@ -2999,24 +3004,24 @@ end if
                integer, dimension( Mdims%cv_snloc ) :: cv_sloc2loc
                integer, dimension( :, :, : ),  allocatable :: wic_u_bc, wic_vol_bc
                integer, parameter :: WIC_BC_DIRICHLET = 1
-               type(tensor_field), pointer :: velocity, volfrac, perm
-               type(tensor_field) :: velocity_BCs, volfrac_BCs
+               type(tensor_field), pointer :: velocity, satura, perm
+               type(tensor_field) :: velocity_BCs, satura_BCs
                !Local parameters
                real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
 
 
                !Get from packed_state
-               volfrac=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+               satura=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                velocity=>extract_tensor_field(packed_state,"PackedVelocity")
 
                allocate(wic_u_bc(velocity%dim(1),velocity%dim(2),&
                    surface_element_count(velocity)))
-               allocate(wic_vol_bc(volfrac%dim(1),volfrac%dim(2),&
-                   surface_element_count(volfrac)))
+               allocate(wic_vol_bc(satura%dim(1),satura%dim(2),&
+                   surface_element_count(satura)))
                call get_entire_boundary_condition(velocity,&
                    ['weakdirichlet'],velocity_BCs,WIC_U_BC)
-               call get_entire_boundary_condition(volfrac,&
-                   ['weakdirichlet'],volfrac_BCs,WIC_vol_BC)
+               call get_entire_boundary_condition(satura,&
+                   ['weakdirichlet'],satura_BCs,WIC_vol_BC)
 
                !We initialise as 1 as the first phase must contain a 1
                suf_sig_diagten_bc = 1.
@@ -3041,8 +3046,8 @@ end if
                                            cv_nodi = ndgln%suf_cv(cv_snodi)
                                            cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * Mdims%stotel * Mdims%cv_snloc
                                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + cv_iloc  )
-                                           !For the time being use the interior absorption, this will need to be when multiphase like the porous media one
-                                          suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = adv_coef(1,1,iphase, mat_nod)! * max(eps, volfrac%val(1,iphase,cv_nodi))
+                                           !For the time being use the interior absorption, this will need to be changed when multiphase like the porous media one
+                                          suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = adv_coef(1,1,iphase, mat_nod)! * max(eps, satura%val(1,iphase,cv_nodi))
                                        end do
                                    end if
                                end do
@@ -3050,7 +3055,7 @@ end if
                        end do
                    end do
                 call deallocate(velocity_BCs)
-               call deallocate(volfrac_BCs)
+               call deallocate(satura_BCs)
                deallocate(wic_u_bc, wic_vol_bc)
                return
            end subroutine calculate_SUF_SIG_DIAGTEN_BC_magma

@@ -1343,7 +1343,7 @@ contains
                               ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
                               !Calling the functions directly instead inside a wrapper saves a around a 5%
                               IF( GOT_T2 ) THEN
-                                  IF( is_porous_media) THEN
+                                  IF( is_porous_media .or. is_magma) THEN
                                       CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                                           LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD, &
                                           LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
@@ -1375,7 +1375,8 @@ contains
                                           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .true. )
                                   end if
                               ELSE
-                                  IF( is_porous_media ) THEN
+                                  IF( is_porous_media .or. is_magma ) THEN
+
                                       CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                                           LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD, &
                                           LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &

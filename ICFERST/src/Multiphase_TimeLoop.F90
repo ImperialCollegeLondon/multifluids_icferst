@@ -595,7 +595,8 @@ contains
 
                 if ( is_magma ) then
                   !update_coupling_coefficients must go first!
-                  call update_coupling_coefficients(Mdims, state, packed_state, ndgln, multi_absorp%Magma,  c_phi_series)
+                  saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                  call update_coupling_coefficients(Mdims, state, saturation_field%val, ndgln, multi_absorp%Magma%val,  c_phi_series)
                   call Calculate_Magma_AbsorptionTerms( state, packed_state, multi_absorp%Magma, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
                                                                     upwnd, suf_sig_diagten_bc )
                 end if
