@@ -495,7 +495,7 @@ start =
                      attribute field_name {"Pressure" }
                   }
                )
-            },
+            }?,
             ## Velocity vector and momentum options
             element vector_field {
                attribute rank { "1" },
