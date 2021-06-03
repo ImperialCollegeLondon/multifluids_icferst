@@ -129,6 +129,7 @@
           <exclude_from_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -222,6 +223,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="Density" rank="0">
@@ -236,6 +238,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -293,6 +296,7 @@
         <steady_state>
           <include_in_steady_state/>
         </steady_state>
+        <output/>
       </diagnostic>
     </scalar_field>
     <scalar_field name="totalpressure" rank="0">
@@ -319,6 +323,7 @@ for i in range (field.node_count):
         <steady_state>
           <include_in_steady_state/>
         </steady_state>
+        <output/>
       </diagnostic>
     </scalar_field>
     <vector_field name="DiagnosticCoordinate" rank="1">
