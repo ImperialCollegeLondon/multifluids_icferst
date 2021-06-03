@@ -579,13 +579,22 @@ contains
                                        & applies=(/ .true., .true., .true. /),suppress_warnings=suppress_warnings )
           deallocate(surface_ids)
 
+      case ("log_law_of_wall")
+          ! these are marked as applying in the 2nd (and 3d if present) only
+          ! so they could potentially be combined with a no_normal_flow
+          ! or a rotatted bc applying in the normal direction only
+          call add_boundary_condition(field, trim(bc_name), trim(bc_type), &
+          & surface_ids, option_path=bc_path_i, &
+          & applies=(/ .false., .true., .true. /) )
+          deallocate(surface_ids)
+
        case default
           FLAbort("Incorrect boundary condition type for field")
        end select
 
        ! now check for user-specified normal/tangent vectors (rotation matrix)
        select case (bc_type)
-       case ("dirichlet", "neumann", "robin", "weakdirichlet", "flux")
+       case ("dirichlet", "neumann", "robin", "weakdirichlet", "flux", "log_law_of_wall")
           ! this is the same for all 3 b.c. types
 
           bc_type_path=trim(bc_path_i)//"/type[0]/align_bc_with_surface"
@@ -595,7 +604,7 @@ contains
                surface_element_list=surface_element_list)
           bc_position = get_coordinates_remapped_to_surface(position, surface_mesh, surface_element_list)
 
-          if (have_option(bc_type_path)) then
+          if (have_option(bc_type_path) .or. bc_type=="log_law_of_wall" ) then
 
              prescribed = .false.
 
@@ -2555,7 +2564,7 @@ contains
           allocate(ele_local_vertices(ele_vertices(mesh,ele)))
           ! List vertices of element incorporating desired coordinates:
           ele_local_vertices = local_vertices(ele_shape(mesh,ele))
-          ! Find nearest vertex:                !Mask included as it may return values bigger than the number of nodes 
+          ! Find nearest vertex:                !Mask included as it may return values bigger than the number of nodes
           local_vertex = maxloc(local_coord,dim=1, MASK=local_coord <= size(ele_local_vertices))
           ! List of nodes in element:
           nodes => ele_nodes(mesh,ele)
