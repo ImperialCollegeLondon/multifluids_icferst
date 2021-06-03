@@ -12,13 +12,6 @@ gravity_options =
       element magnitude {
          real
       },
-      ## Instead of including rho * g, the hydrostatic contribution is removed
-      ## by including instead (rho - rho_ref) * g. Being rho_ref the reference density
-      ## introduced in the equation of state.
-      ##
-      ## <b> NOTE<b/> that <b>i)<b/> this option implies that hydrostatic_boundaries or hydrostatic_pressure_solver should not be used
-      ## <b>ii)<b/> the EOS will use the non-hydrostatic pressure to compute the properties.
-      element remove_hydrostatic_contribution { empty }?,
       ## Solve the gravity component independently from the pressure general solver.
       ## Not implemented for wells yet. Therefore NOT recommended for wells.
       ##
