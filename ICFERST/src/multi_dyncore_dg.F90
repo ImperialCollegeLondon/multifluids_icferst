@@ -987,8 +987,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     real, dimension(2), intent(inout) :: totally_min_max
     !Local variables
     logical :: apply_minmax_principle
-    integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
-    type(tensor_field) :: tracer_BCs, tracer_BCs_robin2
     real, parameter :: tol = 1e-30
     logical :: has_imposed_min_limit, has_imposed_max_limit
 
@@ -998,27 +996,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
       select case (entrance)
       case (1)
         !Get variable for global convergence method
-        totally_min_max = (/-1d9,1d9/)
+        totally_min_max = (/-1d30,1d30/)
         has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit")
         has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit")
         if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit", totally_min_max(1))
         if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit", totally_min_max(2))
-        allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
-        call get_entire_boundary_condition(tracer,&
-        ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL, boundary_second_value=tracer_BCs_robin2)
-        !Use boundaries for min/max
-        if (.not. has_imposed_min_limit) totally_min_max(1)=minval(tracer_BCs%val)
-        if (.not. has_imposed_max_limit) totally_min_max(2)=maxval(tracer_BCs%val)
-        !Check domain
-        if (.not. has_imposed_min_limit) then
-          totally_min_max(1)=min(totally_min_max(1), minval(tracer%val(:,1:Mdims%n_in_pres,:))) !First the reservoir
-          if (Mdims%npres > 1) & !Next the wells (this is to avoid the zero values in the well domain outside of the defined regions )
-          totally_min_max(1)=min(totally_min_max(1), minval(tracer%val(:, Mdims%n_in_pres+1:,:), MASK = tracer%val(:, Mdims%n_in_pres+1:,:) > tol))
-        end if
-        if (.not. has_imposed_max_limit) totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))
-        !For parallel
         call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-        deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs); call deallocate(tracer_BCs_robin2)
       case (2)
         tracer%val = max(min(tracer%val,totally_min_max(2)), totally_min_max(1))
       end select

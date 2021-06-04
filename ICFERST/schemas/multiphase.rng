@@ -2752,24 +2752,21 @@ i.e. excluding the components</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <optional>
               <element name="Impose_min_max">
-                <a:documentation>If there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints.
+                <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
-&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+&lt;b&gt;Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.&lt;/b&gt;
+
+EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <optional>
-                  <element name="min_limit">
-                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="max_limit">
-                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
+                <element name="min_limit">
+                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
+                <element name="max_limit">
+                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
               </element>
             </optional>
             <optional>
@@ -2847,24 +2844,21 @@ This imposes the tracer to be between bounds.</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <optional>
               <element name="Impose_min_max">
-                <a:documentation>If there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints.
+                <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
-&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+&lt;b&gt;Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.&lt;/b&gt;
+
+EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <optional>
-                  <element name="min_limit">
-                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="max_limit">
-                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
+                <element name="min_limit">
+                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
+                <element name="max_limit">
+                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
@@ -2914,24 +2908,21 @@ for fields within the same material_phase.</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <optional>
               <element name="Impose_min_max">
-                <a:documentation>If there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints.
+                <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
-&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+&lt;b&gt;Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.&lt;/b&gt;
+
+EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <optional>
-                  <element name="min_limit">
-                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="max_limit">
-                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
+                <element name="min_limit">
+                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
+                <element name="max_limit">
+                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
@@ -3147,24 +3138,21 @@ Passive Tracers do not have diffusion and the boussinesq approximation for this 
             <ref name="pressure_mesh_choice"/>
             <optional>
               <element name="Impose_min_max">
-                <a:documentation>If there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints.
+                <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
-&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+&lt;b&gt;Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.&lt;/b&gt;
 
-This imposes the tracer to be between bounds.</a:documentation>
-                <optional>
-                  <element name="min_limit">
-                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="max_limit">
-                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
+EXTREMELY RECOMMENDED!
+
+This imposes the tracer to be between bounds..</a:documentation>
+                <element name="min_limit">
+                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
+                <element name="max_limit">
+                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
               </element>
             </optional>
             <optional>
@@ -3224,24 +3212,21 @@ This is just an example of how it works.</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <optional>
               <element name="Impose_min_max">
-                <a:documentation>If there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints.
+                <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
-&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+&lt;b&gt;Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.&lt;/b&gt;
+
+EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <optional>
-                  <element name="min_limit">
-                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="max_limit">
-                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
+                <element name="min_limit">
+                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
+                <element name="max_limit">
+                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
               </element>
             </optional>
             <optional>

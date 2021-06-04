@@ -102,6 +102,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <anisotropic_asymmetric>
                 <constant>
@@ -125,6 +126,7 @@
               </constant>
             </isotropic>
           </value>
+          <output/>
         </prescribed>
       </tensor_field>
       <scalar_field name="HeatCapacity" rank="0">
@@ -288,11 +290,7 @@
           <surface_ids>
             <integer_value shape="1" rank="1">2</integer_value>
           </surface_ids>
-          <type name="neumann">
-            <constant>
-              <real_value rank="0">0</real_value>
-            </constant>
-          </type>
+          <type name="zero_flux"/>
         </boundary_conditions>
         <detectors>
           <include_in_detectors/>

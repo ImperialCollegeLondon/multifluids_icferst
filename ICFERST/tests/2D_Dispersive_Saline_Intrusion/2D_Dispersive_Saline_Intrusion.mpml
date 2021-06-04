@@ -126,6 +126,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -149,6 +150,7 @@
               </constant>
             </isotropic>
           </value>
+          <output/>
         </prescribed>
       </tensor_field>
     </phase_properties>
@@ -299,7 +301,14 @@
     <scalar_field name="Concentration" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
-        <Impose_min_max/>
+        <Impose_min_max>
+          <min_limit>
+            <real_value rank="0">0.00001</real_value>
+          </min_limit>
+          <max_limit>
+            <real_value rank="0">1</real_value>
+          </max_limit>
+        </Impose_min_max>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.00001</real_value>
@@ -331,11 +340,7 @@
           <surface_ids>
             <integer_value shape="2" rank="1">9 10</integer_value>
           </surface_ids>
-          <type name="neumann">
-            <constant>
-              <real_value rank="0">0</real_value>
-            </constant>
-          </type>
+          <type name="zero_flux"/>
         </boundary_conditions>
         <detectors>
           <include_in_detectors/>

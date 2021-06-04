@@ -2302,17 +2302,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## If there are no sources nor sinks
-                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
-                    ## <b>VERY RECOMMENDED</b>
+                    ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
+                    ##
+                    ## EXTREMELY RECOMMENDED!
                     ##
 	                  ## This imposes the tracer to be between bounds.
                                     element Impose_min_max{(
-                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element min_limit{real}?,
-                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element max_limit{real}?
+                    ##Impose min limit. Only the first phase is read
+                    element min_limit{real},
+                    ##Impose max limit. Only the first phase is read
+                    element max_limit{real}
                   )}?,
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
@@ -2371,17 +2372,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## If there are no sources nor sinks
-                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
-                    ## <b>VERY RECOMMENDED</b>
+                    ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
+                    ##
+                    ## EXTREMELY RECOMMENDED!
                     ##
 	                  ## This imposes the tracer to be between bounds.
                                     element Impose_min_max{(
-                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element min_limit{real}?,
-                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element max_limit{real}?
+                    ##Impose min limit. Only the first phase is read
+                    element min_limit{real},
+                    ##Impose max limit. Only the first phase is read
+                    element max_limit{real}
                   )}?,
                   prognostic_scalar_field
                }|
@@ -2420,17 +2422,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## If there are no sources nor sinks
-                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                     ## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
-                    ## <b>VERY RECOMMENDED</b>
+                    ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
+                    ##
+                    ## EXTREMELY RECOMMENDED!
                     ##
 	                  ## This imposes the tracer to be between bounds.
                                     element Impose_min_max{(
-                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element min_limit{real}?,
-                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element max_limit{real}?
+                    ##Impose min limit. Only the first phase is read
+                    element min_limit{real},
+                    ##Impose max limit. Only the first phase is read
+                    element max_limit{real}
                   )}?,
                   prognostic_scalar_field
                }|
@@ -2607,17 +2610,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## If there are no sources nor sinks
-                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                     ## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
-                    ## <b>VERY RECOMMENDED</b>
+                    ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
                     ##
-	                  ## This imposes the tracer to be between bounds.
+                    ## EXTREMELY RECOMMENDED!
+                    ##
+	                  ## This imposes the tracer to be between bounds..
                   element Impose_min_max{(
-                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element min_limit{real}?,
-                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element max_limit{real}?
+                    ##Impose min limit. Only the first phase is read
+                    element min_limit{real},
+                    ##Impose max limit. Only the first phase is read
+                    element max_limit{real}
                   )}?,
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
@@ -2660,17 +2664,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## If there are no sources nor sinks
-                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                     ## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
-                    ## <b>VERY RECOMMENDED</b>
+                    ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
+                    ##
+                    ## EXTREMELY RECOMMENDED!
                     ##
 	                  ## This imposes the tracer to be between bounds.
                                     element Impose_min_max{(
-                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element min_limit{real}?,
-                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element max_limit{real}?
+                    ##Impose min limit. Only the first phase is read
+                    element min_limit{real},
+                    ##Impose max limit. Only the first phase is read
+                    element max_limit{real}
                   )}?,
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
