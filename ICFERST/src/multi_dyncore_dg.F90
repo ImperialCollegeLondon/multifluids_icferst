@@ -3688,7 +3688,7 @@ end if
             ['weakdirichlet','freesurface  '],&
             pressure_BCs,WIC_P_BC_ALL)
         call get_entire_boundary_condition(velocity,&
-            ['weakdirichlet','robin        '],&
+            ['weakdirichlet  ','robin          ','log_law_of_wall'],&
             velocity_BCs,WIC_U_BC_ALL,boundary_second_value=velocity_BCs_robin2)
         call get_entire_boundary_condition(velocity,&
             ['weakdirichlet_viscosity'],&
@@ -5486,7 +5486,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 ENDIF If_diffusion_or_momentum1
                 If_on_boundary_domain: IF(SELE /= 0) THEN
                     ! ***********SUBROUTINE DETERMINE_SUF_PRES - START************
-                    ! Put the surface integrals in for pressure b.Mmat%C.'s
+                    ! Put the surface integrals in for pressure b.C.'s
                     ! that is add into Mmat%C matrix and Mmat%U_RHS. (DG velocities)
                     Loop_ILOC2: DO U_SILOC = 1, Mdims%u_snloc
                         U_ILOC = U_SLOC2LOC( U_SILOC )
@@ -6218,6 +6218,19 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                 - VLM * SUF_U_ROB1_BC_ALL( IDIM, IPHASE, U_SJLOC + Mdims%u_snloc * (  SELE2 - 1 ) ) * SLOC_U( IDIM, IPHASE, U_SJLOC ) &
                                                 - VLM * SUF_U_ROB2_BC_ALL( IDIM, IPHASE, U_SJLOC + Mdims%u_snloc * (  SELE2 - 1 ) )
                                         ENDIF
+
+                                        if (WIC_U_BC_ALL( IDIM, IPHASE, SELE2 ) == WIC_U_BC_LOG_LAW ) then
+                                          RR = introduce_log_law_of_wall(IDIM, IPHASE, U_SILOC,U_SJLOC)
+                                          LOC_U_RHS( IDIM,IPHASE,U_ILOC ) =  LOC_U_RHS( IDIM, IPHASE,U_ILOC ) - RR * LOC_U( IDIM, IPHASE, U_ILOC )
+                                          IF(LUMP_DIAG_MOM) THEN
+                                            DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE) &
+                                              = DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE) + dt * ftheta( IDIM,IPHASE,1 ) * RR!SGI = 1
+                                          ELSE
+                                            DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) &
+                                              = DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) + dt * ftheta( IDIM,IPHASE,1 ) * RR
+                                          END IF
+                                        end if
+
                                         ! BC for incoming momentum...
                                         IF( WIC_MOMU_BC_ALL( IDIM, IPHASE, SELE2 ) == WIC_U_BC_DIRICHLET ) THEN
                                             IF(MOM_CONSERV) THEN
@@ -6462,6 +6475,45 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         ewrite(3,*)'Leaving assemb_force_cty'
         RETURN
     contains
+
+      real function introduce_log_law_of_wall(IDIM, IPHASE, U_SILOC,U_SJLOC)
+        implicit none
+        !Global variables
+        integer :: idim, iphase, U_SILOC,U_SJLOC
+        !Local variables
+        real, parameter:: kappa = 0.4 ! Constant of Vonkarman
+        real, save :: wall_roughness = -1
+        real :: h, Id, q
+        real, dimension(Mdims%ndim) :: uh
+        integer :: i, j
+
+        if (wall_roughness < 0 ) then
+          !read option from diamond only once
+          wall_roughness = 5.0
+        end if
+
+        !Compute normal with the size of the element
+        h = sqrt(sum( matmul(SNORMXN_ALL,SDETWE)**2. ))
+        !Log law of wall
+        q = ( kappa / (log ( (h / 2.) * wall_roughness ) - 1.) )**2
+
+        ! velocity parallel to the wall
+         uh=0.
+         do i = 1, Mdims%ndim
+            do j = 1, Mdims%ndim
+               if (i==j) then
+                  Id = 1.
+               else
+                  Id = 0.
+               end if
+               uh = uh + (-SNORMXN_ALL(i,1) * SNORMXN_ALL(j,1) + Id) * SLOC_U( IDIM, IPHASE, U_SILOC )
+            end do
+         end do
+         !Ensure positiveness
+         uh = sqrt( max(uh, 0.) )
+         !Compute the absorption term to be introduced in the RHS and the matrix (We use the first GI point, not sure why)
+         introduce_log_law_of_wall = sum(FE_funs%sbufen( U_SILOC, 1 ) * FE_funs%sbcvfen( U_SJLOC, 1 ) * SDETWE(1) * q * uh /dt)
+    end function
 
       !!>@brief:This subroutine introduces in the pivit matrix the temporal terms
       !> WARNING****this is under testing****
