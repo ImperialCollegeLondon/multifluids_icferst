@@ -2321,7 +2321,7 @@ end if
         !Perform Div * U for the RHS of the pressure equation
         rhs_p%val = 0.
         call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
-        if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
+        ! if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
         rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
         call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
 
@@ -2336,7 +2336,7 @@ end if
           call extract_diagonal(cmc_petsc, diagonal_CMC)
           call scale_PETSc_matrix(cmc_petsc)
         end if
-        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, Mmat%petsc_ACV, diagonal_CMC%val, .false.)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
@@ -2433,7 +2433,7 @@ end if
           allocate(ref_pressure(Mdims%npres,Mdims%cv_nonods));ref_pressure = 0.
           !#####################################################################
           !Check normalised relative pressure convergence before getting into the AA loop
-          ref_pressure = P_ALL%val(1,:,:) - deltap%val
+          ref_pressure = P_ALL%val(1,:,:)
           totally_min_max(1)=minval(ref_pressure)!use stored field
           totally_min_max(2)=maxval(ref_pressure)!use stored field
           !For parallel
@@ -2492,10 +2492,10 @@ end if
             end if
             M = i - 2; if (M <= 0) M = stokes_max_its + M
               !Find the optimal combination of pressure fields that minimise the residual
-            if (i > 2) call get_Anderson_acceleration_new_guess(size(stored_field,1), M, P_all%val(1,1,:), &
-                       stored_field(:,1:i), field_residuals(:,1:i), stokes_max_its, BAK_matrix, restart_now)
+            ! if (i > 2) call get_Anderson_acceleration_new_guess(size(stored_field,1), M, P_all%val(1,1,:), &
+            !            stored_field(:,1:i), field_residuals(:,1:i), stokes_max_its, BAK_matrix, restart_now)
 
-
+print *, k,':', conv_test
             !##########################Now solve the equations##########################
             ! ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
             call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
@@ -2505,10 +2505,10 @@ end if
             !If we end up using the residual, this call just below is unnecessary
             rhs_p%val = 0.
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
-            if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
+            ! if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-            call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val, update_pres = .not. Special_precond)!don
+            call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, Mmat%petsc_ACV, diagonal_CMC%val, update_pres = .not. Special_precond)!don
             if (isParallel()) call halo_update(deltap)
             if (k == 1) then
               Omega = 1.0
@@ -2619,7 +2619,7 @@ end if
                   DO JPHASE = 1, final_phase
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
-                    Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )/4e6
+                    Mmat%PIVIT_MAT(J, J, ELE) = diagonal_A%val(JPHA_JDIM, u_jnod )**0.5
                   end do
                 end do
               end do
@@ -2750,7 +2750,7 @@ end if
             return
           else
             !Now update the pressure
-            P_all = P_all + deltap%val
+            P_all =deltap%val
           end if
 
         end subroutine solve_and_update_pressure
