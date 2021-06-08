@@ -1102,7 +1102,7 @@ contains
         is_magma = have_option('/magma_simulator')
         is_poroelasticity = have_option('/poroelasticity')
         !Decide to solve Stokes equations instead of navier-Stokes (magma requires this option as well)
-        solve_stokes = have_option('/stokes_simulator')
+        solve_stokes = have_option('/stokes_simulator') .or. is_magma
         !Flag to set up the coupling with femdem
         is_multifracture = have_option( '/femdem_fracture' )
         !Flag to set up blasting
