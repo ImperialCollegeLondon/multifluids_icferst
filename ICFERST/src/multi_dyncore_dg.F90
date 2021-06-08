@@ -2321,7 +2321,7 @@ end if
         !Perform Div * U for the RHS of the pressure equation
         rhs_p%val = 0.
         call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
-        ! if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
+        if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
         rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
         call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
 
@@ -2336,15 +2336,15 @@ end if
           call extract_diagonal(cmc_petsc, diagonal_CMC)
           call scale_PETSc_matrix(cmc_petsc)
         end if
-        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, Mmat%petsc_ACV, diagonal_CMC%val, .false.)
+        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
 
         !"########################UPDATE PRESSURE STEP####################################"
         !We may apply the Anderson acceleration method
-        if ((solve_stokes .or. solve_mom_iteratively)) then
-          call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
+          if ((solve_stokes .or. solve_mom_iteratively)) then
+            call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
                                           MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
           call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
@@ -2433,7 +2433,7 @@ end if
           allocate(ref_pressure(Mdims%npres,Mdims%cv_nonods));ref_pressure = 0.
           !#####################################################################
           !Check normalised relative pressure convergence before getting into the AA loop
-          ref_pressure = P_ALL%val(1,:,:)
+          ref_pressure = P_ALL%val(1,:,:) - deltap%val
           totally_min_max(1)=minval(ref_pressure)!use stored field
           totally_min_max(2)=maxval(ref_pressure)!use stored field
           !For parallel
@@ -2492,8 +2492,8 @@ end if
             end if
             M = i - 2; if (M <= 0) M = stokes_max_its + M
               !Find the optimal combination of pressure fields that minimise the residual
-            ! if (i > 2) call get_Anderson_acceleration_new_guess(size(stored_field,1), M, P_all%val(1,1,:), &
-            !            stored_field(:,1:i), field_residuals(:,1:i), stokes_max_its, BAK_matrix, restart_now)
+            if (i > 2) call get_Anderson_acceleration_new_guess(size(stored_field,1), M, P_all%val(1,1,:), &
+                       stored_field(:,1:i), field_residuals(:,1:i), stokes_max_its, BAK_matrix, restart_now)
 
 print *, k,':', conv_test
             !##########################Now solve the equations##########################
@@ -2505,17 +2505,21 @@ print *, k,':', conv_test
             !If we end up using the residual, this call just below is unnecessary
             rhs_p%val = 0.
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
-            ! if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
-            rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
+            if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
             call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-            call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, Mmat%petsc_ACV, diagonal_CMC%val, update_pres = .not. Special_precond)!don
+            rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
+            if (compute_compaction) then
+              call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, Mmat%petsc_ACV, diagonal_CMC%val)
+            else
+              call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+            end if
             if (isParallel()) call halo_update(deltap)
             if (k == 1) then
               Omega = 1.0
             end if
             !Omega should go within solve_and_update_pressure
             ! deltap%val = 1./Omega * deltap%val !and then add it to the pressure, not having done so before
-            if (Special_precond ) then !Apply a BfB type preconditioner (GtMG)^-1 Gt*diag(a)^-1*A*G * (GtMG)^-1
+            if (Special_precond .and. .not. compute_compaction) then !Apply a BfB type preconditioner (GtMG)^-1 Gt*diag(a)^-1*A*G * (GtMG)^-1
               !Multiply by the gradient (C)
               call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, deltap%val, CDP_tensor)!The equations are for deltap not Pressure!
               !Now multiply by the inverse of the lumped mass matrix (to keeps the units consistent)
@@ -2526,11 +2530,11 @@ print *, k,':', conv_test
               !Ct x previous
               call compute_DIV_U(Mdims, Mmat, Mspars, aux_velocity%val, INV_B, rhs_p)
               !If performing compaction we need to include now the matrix D to keep it consistent
-              if (compute_compaction) then
-                call mult(deltap, Mmat%petsc_ACV, deltap)!Need to use here deltap since it is the continuation of a mutliplication
-                rhs_p%val = rhs_p%val + deltap%val
-                ! call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
-              end if
+              ! if (compute_compaction) then
+              !   call mult(deltap, Mmat%petsc_ACV, deltap)!Need to use here deltap since it is the continuation of a mutliplication
+              !   rhs_p%val = rhs_p%val + deltap%val
+              !   ! call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
+              ! end if
               rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
               call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
 
@@ -2750,7 +2754,7 @@ print *, k,':', conv_test
             return
           else
             !Now update the pressure
-            P_all =deltap%val
+            P_all = P_all + deltap%val
           end if
 
         end subroutine solve_and_update_pressure
