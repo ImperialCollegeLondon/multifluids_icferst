@@ -2495,7 +2495,7 @@ end if
             if (i > 2) call get_Anderson_acceleration_new_guess(size(stored_field,1), M, P_all%val(1,1,:), &
                        stored_field(:,1:i), field_residuals(:,1:i), stokes_max_its, BAK_matrix, restart_now)
 
-print *, k,':', conv_test
+! print *, k,':', conv_test
             !##########################Now solve the equations##########################
             ! ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
             call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
@@ -2506,8 +2506,8 @@ print *, k,':', conv_test
             rhs_p%val = 0.
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
             if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
-            call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
+            call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
             if (compute_compaction) then
               call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, Mmat%petsc_ACV, diagonal_CMC%val)
             else
@@ -2633,22 +2633,6 @@ print *, k,':', conv_test
               ! end do
             end do
           else
-!             DO JPHASE = 1, final_phase
-!               viscosity => extract_tensor_field(state(jphase), "Viscosity")
-!               saturation => extract_scalar_field(state(1), "PhaseVolumeFraction")
-!               do ele = 1, Mdims%totele
-!                 DO U_JLOC = 1, Mdims%u_nloc
-!                   u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
-!                   DO JDIM = 1, Mdims%ndim
-!                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
-!                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
-!                     !Just the mass matrix
-! !once this is working, viscosity and density need to be chose CV-averaged wise!
-!                     Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)*2.7e9! (viscosity%val(1,1,1))
-!                   end do
-!                 end do
-!               end do
-            ! end do
             viscosity => extract_tensor_field(state(1), "Viscosity")
             allocate(mu_tmp( viscosity%dim(1), viscosity%dim(2), Mdims%cv_nloc ) )
 
@@ -2674,6 +2658,7 @@ print *, k,':', conv_test
                     end do
                 end do
             end do
+            deallocate(mu_tmp)
           end if
         end subroutine
         !---------------------------------------------------------------------------
