@@ -1267,9 +1267,9 @@ contains
                 end if
 
                 !Passive Tracers
-                fields = option_count("/material_phase[0]/scalar_field")
+                fields = option_count("/material_phase["// int2str( i - 1 )//"]/scalar_field")
                 do k = 1, fields
-                  call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                  call get_option("/material_phase["// int2str( i - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
                   if (option_name(1:13)=="PassiveTracer" .or. trim(option_name)== "Concentration" ) then
                     if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
                       call unpack_sfield(state(i),packed_state,"Old"//trim(option_name),1,iphase,&
