@@ -2511,7 +2511,7 @@ end if
             if (compute_compaction) then
               call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, Mmat%petsc_ACV, diagonal_CMC%val)
             else
-              call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+              call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val, update_pres = .not. Special_precond)
             end if
             if (isParallel()) call halo_update(deltap)
             if (k == 1) then
