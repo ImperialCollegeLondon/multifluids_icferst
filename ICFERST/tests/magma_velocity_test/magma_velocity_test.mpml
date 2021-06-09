@@ -46,16 +46,8 @@
       </Fixed_Point_Iteration>
     </Non_Linear_Solver>
     <Momemtum_matrix>
-      <rescale_mom_matrices/>
       <solve_mom_iteratively>
-        <real_value rank="0">1e-11</real_value>
-        <restart_its>
-          <integer_value rank="0">30</integer_value>
-        </restart_its>
-        <Max_restarts>
-          <integer_value rank="0">1</integer_value>
-        </Max_restarts>
-        <Momentum_preconditioner/>
+        <real_value rank="0">1e-7</real_value>
       </solve_mom_iteratively>
     </Momemtum_matrix>
   </solver_options>
