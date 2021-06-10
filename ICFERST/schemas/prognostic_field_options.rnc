@@ -63,7 +63,7 @@ robin_bc_scalar =
       ##
       ## <b> NOTE: Example of units for temperature</b>
       ## C1 is the convective coefficient W/(m^2 K)
-      ## and C0 is the temperature outside the domain times C1.
+      ## and C0 is the temperature outside the domain times C1 => W/(m^2).
       element type {
          attribute name { "robin" },
          ##  The far field value represented as C0 in

@@ -356,7 +356,7 @@ start =
                ## and bounds specified) to target this courant
                ## number. Timestep adapts occur at the end of each
                ## timestep and after a mesh adapt.
-               ## 
+               ##
                ##<b>NOTE</b> If the nonlinear adaptive time-step is on, the CFL is used as an upper bound of the nonlinear adaptive time-step
                element requested_cfl {
                   real,(
@@ -1039,7 +1039,7 @@ start =
                            real_vector
                         }
                       )
-                 }*                
+                 }*
              }?,
           ## Activates the SelfPotential solver. (S.I. Volts)
           ##
@@ -1314,7 +1314,7 @@ geometry =
                  "fast" | "balanced" | "precision"|"discontinuous_pressure"
               },
                 ## <b>For Balanced and fast precisions.</b>
-                ## 
+                ##
                 ## Select the P0DG element pair instead of the default P1DG.
                 ## NOTE: that for porous media the default is P0DG.
                element Balanced_P0DG {empty}?
@@ -1829,36 +1829,6 @@ velocity_boundary_conditions =
             },
             velocity_components_choice
          }|
-         ## NOT USED - choose "dirichlet" instead for the cty bcs
-         ##
-         ## This applies a Dirichlet condition through the continuity equation
-         ## and thus will only apply a normal component of this specified
-         ## velocity as the boundary condition.
-         element type {
-            attribute name { "dirichlet_continuity" },
-            ## Apply the dirichlet bc weakly.  Available automatically
-            ## with a discontinuous_galerkin Velocity
-            ## spatial_discretisation.  Available if you
-            ## integrate_continuity_by_parts with a
-            ## continuous_galerkin Pressure or use a control_volume
-            ## Pressure spatial_discretisation and/or
-            ## integrate_advection_by_parts under Velocity
-            ## spatial_discretisation with continuous_galerkin.
-            ##
-            ## If not selected boundary conditions are applied strongly.
-            element apply_weakly {
-               ## If the initial condition and boundary conditions
-               ## differ, setting this option will cause the initial
-               ## condition on the boundary to be overwritten with
-               ## the boundary condition. Since you are applying the
-               ## boundary condition weakly, you probably do *not*
-               ## want this.
-               element boundary_overwrites_initial_condition {
-                  empty
-               }?
-            },
-            velocity_components_choice
-         }|
          ## This applies a Dirichlet condition through the viscous terms in the
          ## momentum equation. It will be applied to each of the components specified.
          element type {
@@ -1913,158 +1883,12 @@ velocity_boundary_conditions =
             },
             velocity_components_choice
          }|
-         element type {
-            attribute name { "neumann" },
-            velocity_components_choice
-         }|
-         ## Add a bulk formulae boundary condition. Only makes sense
-         ## on the Velocity field.
-         element type {
-            attribute name { "bulk_formulae" },
-               empty
-         }|
-         element type {
-           attribute name { "free_surface" },
-           (
-              ## This options adds a surface stabilisation term to the free surface. Works only for cg velocity so far.
-              ## Note: Once activated, the stabilisation term will occur in all free surface areas in the domain.
-              ## IN DEVELOPMENT
-              element surface_stabilisation {
-                  ## Scale factor for the surface stabilisation.
-                  element scale_factor{
-                    real
-                  }
-              }?
-           )
-         }|
-         ## Apply quadratic drag. Specify drag coefficient. If you
-         ## want to exactly replicate results from using the OCEDRA
-         ## option, set this to 0.003 and remember to apply to both
-         ## bottom and sides.
-         element type {
-            attribute name { "drag" },
-            input_choice_real,
-            (
-              ## Use a quadratic drag.
-              ##
-              ## This means that the drag coefficient is nondimensional.
-              element quadratic_drag {
-                ## Use the Manning-Strickler formulation:
-                ## n^2*g*|u|*u/H^(1/3)
-                ## where n is the Manning coefficient, g is gravity, u is the velocity vector and H is the water heigth at that point.
-                ##
-                ## The coefficient given above defines the Manning coefficient [s/m^(1/3)] (a typical value for sand is 0.02)
-                element manning-strickler {
-                   empty
-                }?
-              }|
-              ## Use a linear drag (basically just a surface absorption term).
-              ##
-              ## This means that the drag coefficient has units of momentum.
-              element linear_drag {
-                empty
-              }
-            )
-         }|
-
-
-         ## Apply wind forcing specified by stress or wind velocity.
-         ## Replaces windy.dat and windy.py
-         element type {
-            attribute name { "wind_forcing" },
-            (
-               ## Wind forcing with user specified wind stress
-               ##
-               ## <b> Note that the stress needs to be specified
-               ## using the same density units as the reference_density
-               ## under equation of state.</b>So if you use the recommended
-               ## non-dimensional value of 1.0 for reference_density and
-               ## your calculated stress is in kg m^-1s^-2 and the dimensional
-               ## reference_density is 1000.0 kg m^-3, you need to divide
-               ## the calculated stress in SI units by 1000.0.
-               element wind_stress {
-                  input_choice_real_dim_minus_one_vector|
-                  element from_netcdf {
-                     ## The format of this file should conform to NetCDF CF 1.x
-                     ## (http://cf-pcmdi.llnl.gov/).
-                     attribute file_name { xsd:string },
-                     attribute east_west { xsd:string },
-                     attribute north_south { xsd:string },
-                     comment
-                  }
-               }|
-               ## Wind forcing with user specified 10m wind velocity
-               element wind_velocity {
-                  ## Specify wind drag coefficient (dimensionless)
-                  ## Suggested value: 4.0e-4
-                  element wind_drag_coefficient {
-                     input_choice_real
-                  },
-                  ## Density of air.
-                  ##
-                  ## <b>Note that you have to specify
-                  ## this density in the same units as the
-                  ## reference_density under equation of state.</b>
-                  ## So with a typicial value of rho_air=1.3 kgm^-3
-                  ## and rho_water=1000 kgm^-3, if you fill in the
-                  ## recommended (non-dimensional) value of 1.0 for
-                  ## reference_density, this field needs to be 1.3e-3.
-                  element density_air {
-                     real
-                  },
-                  ## Specify wind velocity
-                  element wind_velocity {
-                     input_choice_real_dim_minus_one_vector|
-                     element from_netcdf {
-                        ## The format of this file should conform to NetCDF CF 1.x
-                        ## (http://cf-pcmdi.llnl.gov/)
-                        attribute file_name { xsd:string },
-                        attribute east_west { xsd:string },
-                        attribute north_south { xsd:string },
-                        comment
-                     }
-                  }
-               }
-            )
-         }|
-
-         ## When using control_volumes under Pressure
-         ## spatial_discretisation or when using
-         ## integrate_continuity_by_parts with continuous_galerkin
-         ## Pressure and continuous_galerkin Velocity this
-         ## boundary condition type imposes a weak no normal flow
-         ## boundary condition on the surface_ids specified.
-         element type {
-            attribute name { "no_normal_flow" },
-            empty
-         }|
-
-         ## Implements a penalty function for the near wall region.
-         ## Using this option coarse meshes can
-         ## be used in the near wall region.
-         ##
-         ## Should be used in combination with a no_normal_flow condition.
-         ##
-         ## See Bazilevs et al. 2007
-         element type{
-            attribute name { "near_wall_treatment" },
-            element tolerance {real},
-            ## if not set then Cb=2*h, where h is the element size
-            element Cb {real}?
-         }|
          ## Log law of the wall
          ##
-         ## Should be used in combination with a no_normal_flow condition.
+         ## Should be used in combination with a no normal flow condition.
          element type{
             attribute name { "log_law_of_wall" },
             element surface_roughness {real}
-         }|
-         ## Dummy BC
-         ##
-         ## Should be used in combination with the near_wall_treatment condition.
-         ## When activated wall treatment is not applied on the wall-outflow edge.
-         element type{
-            attribute name { "outflow" }
          }|
          ## Momentun BC
          ##
@@ -2478,17 +2302,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## If there are no sources nor sinks
-                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
-                    ## <b>VERY RECOMMENDED</b>
+                    ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
+                    ##
+                    ## EXTREMELY RECOMMENDED!
                     ##
 	                  ## This imposes the tracer to be between bounds.
                                     element Impose_min_max{(
-                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element min_limit{real}?,
-                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element max_limit{real}?
+                    ##Impose min limit. Only the first phase is read
+                    element min_limit{real},
+                    ##Impose max limit. Only the first phase is read
+                    element max_limit{real}
                   )}?,
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
@@ -2501,7 +2326,7 @@ scalar_field_choice =
                             output_options
                         }|
                       element diagnostic {
-                         (  
+                         (
                             mesh_choice?,
                             tensor_python_diagnostic_algorithm,
                             output_options
@@ -2547,17 +2372,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## If there are no sources nor sinks
-                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
-                    ## <b>VERY RECOMMENDED</b>
+                    ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
+                    ##
+                    ## EXTREMELY RECOMMENDED!
                     ##
 	                  ## This imposes the tracer to be between bounds.
                                     element Impose_min_max{(
-                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element min_limit{real}?,
-                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element max_limit{real}?
+                    ##Impose min limit. Only the first phase is read
+                    element min_limit{real},
+                    ##Impose max limit. Only the first phase is read
+                    element max_limit{real}
                   )}?,
                   prognostic_scalar_field
                }|
@@ -2596,18 +2422,39 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## If there are no sources nor sinks
-                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                     ## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
-                    ## <b>VERY RECOMMENDED</b>
+                    ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
+                    ##
+                    ## EXTREMELY RECOMMENDED!
                     ##
 	                  ## This imposes the tracer to be between bounds.
                                     element Impose_min_max{(
-                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element min_limit{real}?,
-                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element max_limit{real}?
+                    ##Impose min limit. Only the first phase is read
+                    element min_limit{real},
+                    ##Impose max limit. Only the first phase is read
+                    element max_limit{real}
                   )}?,
+                  ## Diffusivity for field (in S.I. m^2/s ).
+                  element tensor_field {
+                     attribute name { "Diffusivity" },
+                     attribute rank { "2" },
+                     (
+                        element prescribed {
+                            mesh_choice?,
+                            prescribed_tensor_field_no_adapt,
+                            output_options
+                        }|
+                      element diagnostic {
+                         (
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
+                     )
+                  }?,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2776,24 +2623,24 @@ scalar_field_choice =
             )
          }|
          ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
-         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
          element scalar_field {
             attribute rank { "0" },
             attribute name { "PassiveTracer" },
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## If there are no sources nor sinks
-                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                     ## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
-                    ## <b>VERY RECOMMENDED</b>
+                    ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
                     ##
-	                  ## This imposes the tracer to be between bounds.
+                    ## EXTREMELY RECOMMENDED!
+                    ##
+	                  ## This imposes the tracer to be between bounds..
                   element Impose_min_max{(
-                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element min_limit{real}?,
-                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element max_limit{real}?
+                    ##Impose min limit. Only the first phase is read
+                    element min_limit{real},
+                    ##Impose max limit. Only the first phase is read
+                    element max_limit{real}
                   )}?,
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
@@ -2806,7 +2653,7 @@ scalar_field_choice =
                             output_options
                         }|
                       element diagnostic {
-                         (  
+                         (
                             mesh_choice?,
                             tensor_python_diagnostic_algorithm,
                             output_options
@@ -2827,7 +2674,6 @@ scalar_field_choice =
             )
          }|
          ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
-         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
          ##
          ## This is just an example of how it works.
          element scalar_field {
@@ -2836,17 +2682,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## If there are no sources nor sinks
-                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                     ## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
-                    ## <b>VERY RECOMMENDED</b>
+                    ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
+                    ##
+                    ## EXTREMELY RECOMMENDED!
                     ##
 	                  ## This imposes the tracer to be between bounds.
                                     element Impose_min_max{(
-                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element min_limit{real}?,
-                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
-                    element max_limit{real}?
+                    ##Impose min limit. Only the first phase is read
+                    element min_limit{real},
+                    ##Impose max limit. Only the first phase is read
+                    element max_limit{real}
                   )}?,
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
@@ -4017,26 +3864,6 @@ phase_properties_options =
                        ),
                        diagnostic_scalar_field_no_adapt
                     }
-                 )
-              }?,
-              ## Concentration diffusivity (in S.I. m^2/s ).
-              element tensor_field {
-                 attribute name { "Solute_Diffusivity" },
-                 attribute rank { "2" },
-                 (
-                    element prescribed {
-                        mesh_choice?,
-                        prescribed_tensor_field_no_adapt,
-                            output_options
-                    }|
-                      element diagnostic {
-                         (
-                            mesh_choice?,
-                            tensor_python_diagnostic_algorithm,
-                            output_options
-                         ),
-                         diagnostic_scalar_field_no_adapt
-                      }
                  )
               }?,
                 ## Stabilisation for Inertia dominated flow.

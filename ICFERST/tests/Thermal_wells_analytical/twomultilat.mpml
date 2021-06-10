@@ -61,6 +61,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -223,7 +224,14 @@
     <scalar_field name="Temperature" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
-        <Impose_min_max/>
+        <Impose_min_max>
+          <min_limit>
+            <real_value rank="0">353</real_value>
+          </min_limit>
+          <max_limit>
+            <real_value rank="0">433</real_value>
+          </max_limit>
+        </Impose_min_max>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">433</real_value>
@@ -274,6 +282,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>

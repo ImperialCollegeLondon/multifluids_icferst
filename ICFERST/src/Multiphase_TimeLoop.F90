@@ -724,31 +724,6 @@ contains
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
-
-               !$ Solve advection of the scalar 'Concentration':
-               Conditional_ScalarAdvectionField2: if( have_concentration_field .and. &
-                   have_option( '/material_phase[0]/scalar_field::Concentration/prognostic' ) ) then
-                   ewrite(3,*)'Now advecting Concentration Field'
-                   call set_nu_to_u( packed_state )
-                   tracer_field=>extract_tensor_field(packed_state,"PackedConcentration")
-                   velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                   !Recalculate densities before computations
-                   call Calculate_All_Rhos( state, packed_state, Mdims )
-                   call Concentration_assem_solve( state, packed_state, &
-                       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                       tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                       suf_sig_diagten_bc, Porosity_field%val, &
-                       !!$
-                       0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                       THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                       saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
-
-                   nullify(tracer_field)
-
-                end if Conditional_ScalarAdvectionField2
-
                 !#=================================================================================================================
                   call petsc_logging(3,stages,ierrr,default=.true.)
                   call petsc_logging(2,stages,ierrr,default=.true., push_no=5)
@@ -771,7 +746,6 @@ contains
                 !# End Compositional transport -> Move to -> Analysis of the non-linear convergence
                 !#=================================================================================================================
 
-
                 if (have_Passive_Tracers) then
                   !We make sure to only enter here once if there are no passive tracers
                   have_Passive_Tracers = .false.
@@ -783,7 +757,7 @@ contains
                   fields = option_count("/material_phase[0]/scalar_field")
                   do k = 1, fields
                     call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                    if (option_name(1:13)=="PassiveTracer") then
+                    if (option_name(1:13)=="PassiveTracer" .or. trim(option_name) == "Concentration") then
                       have_Passive_Tracers = .true.!OK there are passive tracers so remember for next time
                       tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
                       call Passive_Tracer_Assemble_Solve( trim(option_name), state, packed_state, &

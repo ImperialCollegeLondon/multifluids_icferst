@@ -109,6 +109,7 @@
               </constant>
             </isotropic>
           </value>
+          <output/>
         </prescribed>
       </tensor_field>
       <scalar_field name="HeatCapacity" rank="0">
@@ -133,6 +134,7 @@
               </constant>
             </isotropic>
           </value>
+          <output/>
         </prescribed>
       </tensor_field>
     </phase_properties>

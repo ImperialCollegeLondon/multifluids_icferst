@@ -2228,40 +2228,6 @@ want this.</a:documentation>
         <ref name="velocity_components_choice"/>
       </element>
       <element name="type">
-        <a:documentation>NOT USED - choose "dirichlet" instead for the cty bcs
-
-This applies a Dirichlet condition through the continuity equation
-and thus will only apply a normal component of this specified
-velocity as the boundary condition.</a:documentation>
-        <attribute name="name">
-          <value>dirichlet_continuity</value>
-        </attribute>
-        <element name="apply_weakly">
-          <a:documentation>Apply the dirichlet bc weakly.  Available automatically
-with a discontinuous_galerkin Velocity
-spatial_discretisation.  Available if you
-integrate_continuity_by_parts with a
-continuous_galerkin Pressure or use a control_volume
-Pressure spatial_discretisation and/or
-integrate_advection_by_parts under Velocity
-spatial_discretisation with continuous_galerkin.
-
-If not selected boundary conditions are applied strongly.</a:documentation>
-          <optional>
-            <element name="boundary_overwrites_initial_condition">
-              <a:documentation>If the initial condition and boundary conditions
-differ, setting this option will cause the initial
-condition on the boundary to be overwritten with
-the boundary condition. Since you are applying the
-boundary condition weakly, you probably do *not*
-want this.</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-        </element>
-        <ref name="velocity_components_choice"/>
-      </element>
-      <element name="type">
         <a:documentation>This applies a Dirichlet condition through the viscous terms in the
 momentum equation. It will be applied to each of the components specified.</a:documentation>
         <attribute name="name">
@@ -2324,197 +2290,15 @@ want this.</a:documentation>
         <ref name="velocity_components_choice"/>
       </element>
       <element name="type">
-        <attribute name="name">
-          <value>neumann</value>
-        </attribute>
-        <ref name="velocity_components_choice"/>
-      </element>
-      <element name="type">
-        <a:documentation>Add a bulk formulae boundary condition. Only makes sense
-on the Velocity field.</a:documentation>
-        <attribute name="name">
-          <value>bulk_formulae</value>
-        </attribute>
-        <empty/>
-      </element>
-      <element name="type">
-        <attribute name="name">
-          <value>free_surface</value>
-        </attribute>
-        <optional>
-          <element name="surface_stabilisation">
-            <a:documentation>This options adds a surface stabilisation term to the free surface. Works only for cg velocity so far.
-Note: Once activated, the stabilisation term will occur in all free surface areas in the domain.
-IN DEVELOPMENT</a:documentation>
-            <element name="scale_factor">
-              <a:documentation>Scale factor for the surface stabilisation.</a:documentation>
-              <ref name="real"/>
-            </element>
-          </element>
-        </optional>
-      </element>
-      <element name="type">
-        <a:documentation>Apply quadratic drag. Specify drag coefficient. If you
-want to exactly replicate results from using the OCEDRA
-option, set this to 0.003 and remember to apply to both
-bottom and sides.</a:documentation>
-        <attribute name="name">
-          <value>drag</value>
-        </attribute>
-        <ref name="input_choice_real"/>
-        <choice>
-          <element name="quadratic_drag">
-            <a:documentation>Use a quadratic drag.
-
-This means that the drag coefficient is nondimensional.</a:documentation>
-            <optional>
-              <element name="manning-strickler">
-                <a:documentation>Use the Manning-Strickler formulation:
-n^2*g*|u|*u/H^(1/3)
-where n is the Manning coefficient, g is gravity, u is the velocity vector and H is the water heigth at that point.
-
-The coefficient given above defines the Manning coefficient [s/m^(1/3)] (a typical value for sand is 0.02)</a:documentation>
-                <empty/>
-              </element>
-            </optional>
-          </element>
-          <element name="linear_drag">
-            <a:documentation>Use a linear drag (basically just a surface absorption term).
-
-This means that the drag coefficient has units of momentum.</a:documentation>
-            <empty/>
-          </element>
-        </choice>
-      </element>
-      <element name="type">
-        <a:documentation>Apply wind forcing specified by stress or wind velocity.
-Replaces windy.dat and windy.py</a:documentation>
-        <attribute name="name">
-          <value>wind_forcing</value>
-        </attribute>
-        <choice>
-          <element name="wind_stress">
-            <a:documentation>Wind forcing with user specified wind stress
-
-&lt;b&gt; Note that the stress needs to be specified
-using the same density units as the reference_density
-under equation of state.&lt;/b&gt;So if you use the recommended
-non-dimensional value of 1.0 for reference_density and
-your calculated stress is in kg m^-1s^-2 and the dimensional
-reference_density is 1000.0 kg m^-3, you need to divide
-the calculated stress in SI units by 1000.0.</a:documentation>
-            <choice>
-              <ref name="input_choice_real_dim_minus_one_vector"/>
-              <element name="from_netcdf">
-                <attribute name="file_name">
-                  <a:documentation>The format of this file should conform to NetCDF CF 1.x
-(http://cf-pcmdi.llnl.gov/).</a:documentation>
-                  <data type="string"/>
-                </attribute>
-                <attribute name="east_west">
-                  <data type="string"/>
-                </attribute>
-                <attribute name="north_south">
-                  <data type="string"/>
-                </attribute>
-                <ref name="comment"/>
-              </element>
-            </choice>
-          </element>
-          <element name="wind_velocity">
-            <a:documentation>Wind forcing with user specified 10m wind velocity</a:documentation>
-            <element name="wind_drag_coefficient">
-              <a:documentation>Specify wind drag coefficient (dimensionless)
-Suggested value: 4.0e-4</a:documentation>
-              <ref name="input_choice_real"/>
-            </element>
-            <element name="density_air">
-              <a:documentation>Density of air.
-
-&lt;b&gt;Note that you have to specify
-this density in the same units as the
-reference_density under equation of state.&lt;/b&gt;
-So with a typicial value of rho_air=1.3 kgm^-3
-and rho_water=1000 kgm^-3, if you fill in the
-recommended (non-dimensional) value of 1.0 for
-reference_density, this field needs to be 1.3e-3.</a:documentation>
-              <ref name="real"/>
-            </element>
-            <element name="wind_velocity">
-              <a:documentation>Specify wind velocity</a:documentation>
-              <choice>
-                <ref name="input_choice_real_dim_minus_one_vector"/>
-                <element name="from_netcdf">
-                  <attribute name="file_name">
-                    <a:documentation>The format of this file should conform to NetCDF CF 1.x
-(http://cf-pcmdi.llnl.gov/)</a:documentation>
-                    <data type="string"/>
-                  </attribute>
-                  <attribute name="east_west">
-                    <data type="string"/>
-                  </attribute>
-                  <attribute name="north_south">
-                    <data type="string"/>
-                  </attribute>
-                  <ref name="comment"/>
-                </element>
-              </choice>
-            </element>
-          </element>
-        </choice>
-      </element>
-      <element name="type">
-        <a:documentation>When using control_volumes under Pressure
-spatial_discretisation or when using
-integrate_continuity_by_parts with continuous_galerkin
-Pressure and continuous_galerkin Velocity this
-boundary condition type imposes a weak no normal flow
-boundary condition on the surface_ids specified.</a:documentation>
-        <attribute name="name">
-          <value>no_normal_flow</value>
-        </attribute>
-        <empty/>
-      </element>
-      <element name="type">
-        <a:documentation>Implements a penalty function for the near wall region.
-Using this option coarse meshes can
-be used in the near wall region.
-
-Should be used in combination with a no_normal_flow condition.
-
-See Bazilevs et al. 2007</a:documentation>
-        <attribute name="name">
-          <value>near_wall_treatment</value>
-        </attribute>
-        <element name="tolerance">
-          <ref name="real"/>
-        </element>
-        <optional>
-          <element name="Cb">
-            <a:documentation>if not set then Cb=2*h, where h is the element size</a:documentation>
-            <ref name="real"/>
-          </element>
-        </optional>
-      </element>
-      <element name="type">
         <a:documentation>Log law of the wall
 
-Should be used in combination with a no_normal_flow condition.</a:documentation>
+Should be used in combination with a no normal flow condition.</a:documentation>
         <attribute name="name">
           <value>log_law_of_wall</value>
         </attribute>
         <element name="surface_roughness">
           <ref name="real"/>
         </element>
-      </element>
-      <element name="type">
-        <a:documentation>Dummy BC
-
-Should be used in combination with the near_wall_treatment condition.
-When activated wall treatment is not applied on the wall-outflow edge.</a:documentation>
-        <attribute name="name">
-          <value>outflow</value>
-        </attribute>
       </element>
       <element name="type">
         <a:documentation>Momentun BC
@@ -2968,24 +2752,21 @@ i.e. excluding the components</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <optional>
               <element name="Impose_min_max">
-                <a:documentation>If there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints.
+                <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
-&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+&lt;b&gt;Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.&lt;/b&gt;
+
+EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <optional>
-                  <element name="min_limit">
-                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="max_limit">
-                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
+                <element name="min_limit">
+                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
+                <element name="max_limit">
+                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
               </element>
             </optional>
             <optional>
@@ -3063,24 +2844,21 @@ This imposes the tracer to be between bounds.</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <optional>
               <element name="Impose_min_max">
-                <a:documentation>If there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints.
+                <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
-&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+&lt;b&gt;Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.&lt;/b&gt;
+
+EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <optional>
-                  <element name="min_limit">
-                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="max_limit">
-                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
+                <element name="min_limit">
+                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
+                <element name="max_limit">
+                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
@@ -3130,24 +2908,51 @@ for fields within the same material_phase.</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <optional>
               <element name="Impose_min_max">
-                <a:documentation>If there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints.
+                <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
-&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+&lt;b&gt;Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.&lt;/b&gt;
+
+EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <optional>
-                  <element name="min_limit">
-                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
+                <element name="min_limit">
+                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
+                <element name="max_limit">
+                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </element>
+            </optional>
+            <optional>
+              <element name="tensor_field">
+                <a:documentation>Diffusivity for field (in S.I. m^2/s ).</a:documentation>
+                <attribute name="name">
+                  <value>Diffusivity</value>
+                </attribute>
+                <attribute name="rank">
+                  <value>2</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <optional>
+                      <ref name="mesh_choice"/>
+                    </optional>
+                    <ref name="prescribed_tensor_field_no_adapt"/>
+                    <ref name="output_options"/>
                   </element>
-                </optional>
-                <optional>
-                  <element name="max_limit">
-                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
+                  <element name="diagnostic">
+                    <group>
+                      <optional>
+                        <ref name="mesh_choice"/>
+                      </optional>
+                      <ref name="tensor_python_diagnostic_algorithm"/>
+                      <ref name="output_options"/>
+                    </group>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
                   </element>
-                </optional>
+                </choice>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
@@ -3350,8 +3155,7 @@ mass fraction with a particular phase</a:documentation>
         </choice>
       </element>
       <element name="scalar_field">
-        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
-Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.</a:documentation>
+        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
@@ -3363,24 +3167,21 @@ Passive Tracers do not have diffusion and the boussinesq approximation for this 
             <ref name="pressure_mesh_choice"/>
             <optional>
               <element name="Impose_min_max">
-                <a:documentation>If there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints.
+                <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
-&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+&lt;b&gt;Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.&lt;/b&gt;
 
-This imposes the tracer to be between bounds.</a:documentation>
-                <optional>
-                  <element name="min_limit">
-                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="max_limit">
-                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
+EXTREMELY RECOMMENDED!
+
+This imposes the tracer to be between bounds..</a:documentation>
+                <element name="min_limit">
+                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
+                <element name="max_limit">
+                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
               </element>
             </optional>
             <optional>
@@ -3426,7 +3227,6 @@ This imposes the tracer to be between bounds.</a:documentation>
       </element>
       <element name="scalar_field">
         <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
-Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
 
 This is just an example of how it works.</a:documentation>
         <attribute name="rank">
@@ -3440,24 +3240,21 @@ This is just an example of how it works.</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <optional>
               <element name="Impose_min_max">
-                <a:documentation>If there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints.
+                <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
-&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+&lt;b&gt;Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.&lt;/b&gt;
+
+EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <optional>
-                  <element name="min_limit">
-                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="max_limit">
-                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
+                <element name="min_limit">
+                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
+                <element name="max_limit">
+                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                  <ref name="real"/>
+                </element>
               </element>
             </optional>
             <optional>
@@ -4867,36 +4664,6 @@ alternating directions. Devised by C.Pain.</a:documentation>
                 <ref name="scalar_python_diagnostic_algorithm"/>
                 <ref name="internal_algorithm"/>
               </choice>
-              <ref name="diagnostic_scalar_field_no_adapt"/>
-            </element>
-          </choice>
-        </element>
-      </optional>
-      <optional>
-        <element name="tensor_field">
-          <a:documentation>Concentration diffusivity (in S.I. m^2/s ).</a:documentation>
-          <attribute name="name">
-            <value>Solute_Diffusivity</value>
-          </attribute>
-          <attribute name="rank">
-            <value>2</value>
-          </attribute>
-          <choice>
-            <element name="prescribed">
-              <optional>
-                <ref name="mesh_choice"/>
-              </optional>
-              <ref name="prescribed_tensor_field_no_adapt"/>
-              <ref name="output_options"/>
-            </element>
-            <element name="diagnostic">
-              <group>
-                <optional>
-                  <ref name="mesh_choice"/>
-                </optional>
-                <ref name="tensor_python_diagnostic_algorithm"/>
-                <ref name="output_options"/>
-              </group>
               <ref name="diagnostic_scalar_field_no_adapt"/>
             </element>
           </choice>
