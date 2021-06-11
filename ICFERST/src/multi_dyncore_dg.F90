@@ -3854,7 +3854,7 @@ end if
             FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
 
         !Simplify the Navier-Stokes equations to Stokes
-        if (is_poroelasticity .or. is_magma .or. solve_stokes) then
+        if (is_magma .or. solve_stokes) then
             GOT_DIFFUS = .true.!Activate diffusion but considering the inertia terms are disabled!
             GOT_UDEN = .false.!Disable inertia terms
             PIVIT_ON_VISC= .false.!This is to add viscosity terms into the Mu matrix

@@ -43,13 +43,6 @@ characters in the simulation name should be avoided.</a:documentation>
           <a:documentation>Stokes flow simulator</a:documentation>
           <ref name="comment"/>
         </element>
-        <element name="poroelasticity">
-          <a:documentation>Poro-elasticity simulator:
-This requires to define through diamond the tensor field in phase 1 UAbsorB
-as an absorption term and also the RHS that should include the second time-derivative for the solid phase
-and also the coupling terms. The first phase is considered the solid phase.</a:documentation>
-          <ref name="comment"/>
-        </element>
       </choice>
       <ref name="geometry"/>
       <ref name="solver_options"/>
