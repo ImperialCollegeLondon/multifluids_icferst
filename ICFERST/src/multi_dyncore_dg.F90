@@ -2871,9 +2871,10 @@ end if
         end do
         !Introduce gravity terms
         call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
-        gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
         rhs_coef = 0.
         if( stat == 0 ) then
+        
+          gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
             do cv_inod = 1, Mdims%cv_nonods
               g = node_val( gravity_direction, cv_inod ) * gravity_magnitude
               do iphase = 2, Mdims%nphase

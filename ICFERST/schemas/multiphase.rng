@@ -36,7 +36,14 @@ characters in the simulation name should be avoided.</a:documentation>
           <ref name="comment"/>
         </element>
         <element name="magma_simulator">
-          <a:documentation>Magma flow simulator</a:documentation>
+          <a:documentation>Magma flow simulator. You need to specify at least two phases and
+1) Temperature
+
+2) Enthalpy
+
+3) Concentration field 
+
+apart from the parameters in magma_parameters</a:documentation>
           <ref name="comment"/>
         </element>
         <element name="stokes_simulator">

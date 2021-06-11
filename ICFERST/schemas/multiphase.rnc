@@ -32,7 +32,14 @@ start =
                 element inertia_dominated_simulator{comment}|
                 ## Darcy flow simulator
                 element porous_media_simulator{comment}|
-                ## Magma flow simulator
+                ## Magma flow simulator. You need to specify at least two phases and
+                ## 1) Temperature
+                ## 
+                ## 2) Enthalpy
+                ##
+                ## 3) Concentration field 
+                ##
+                ## apart from the parameters in magma_parameters
                 element magma_simulator{comment}|
                 ## Stokes flow simulator
                 element stokes_simulator{comment}|
