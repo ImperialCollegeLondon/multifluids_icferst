@@ -278,25 +278,22 @@ contains
 
   !Local variables
   integer :: cv_nodi, iphase
-  type ( scalar_field), pointer :: Cp                       !Temporary until deciding if creating a Cp in packed_state as well
-  type( tensor_field ), pointer :: enthalpy, temperature,  saturation, dCp , den
+  type( tensor_field ), pointer :: enthalpy, temperature,  saturation, rhoCp
   real, dimension(Mdims%cv_nonods) :: enthalpy_dim
   !real, parameter :: tol = 1e-5
     !Temporary until deciding if creating a Cp in packed_state as well
-    den => extract_tensor_field( packed_state,"PackedDensity" )
-    Cp => extract_scalar_field( state(1), 'TemperatureHeatCapacity')
-    dCp =>extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+    rhoCp =>extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
     enthalpy => extract_tensor_field( packed_state,"PackedEnthalpy" )
     temperature =>  extract_tensor_field( packed_state, "PackedTemperature" )
     saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-    !saturation =>  extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )!First phase is rock presence
 
-!IT CONSIDERS ONE SINGLE TEMPERATURE!!! WHICH MAKE SENSE BECAUSE AT THAT TIME SCALE THINGS ARE IN EQUILIBRIUM...
-    ! do iphase =1, nphase
+    !FYI: IT CONSIDERS ONE SINGLE TEMPERATURE!!! WHICH MAKE SENSE BECAUSE AT THAT TIME SCALE THINGS ARE IN EQUILIBRIUM...
     !Calculate temperature using the generic formula T = (H - Lf*porosity)/Cp
-    temperature%val(1,1,:)=(enthalpy%val(1,1,:)- phase_coef%Lf*saturation%val(1,2,:))/Cp%val(1)  ! sprint_to_do Need to fix for variable heat capacity.
+    do cv_nodi = 1, Mdims%cv_nonods
+      temperature%val(1,1,cv_nodi)=(enthalpy%val(1,1,cv_nodi)- phase_coef%Lf*saturation%val(1,2,cv_nodi))/rhoCp%val(1, 1, cv_nodi)
+    end do
     !Now add corrections if required
-    where (saturation%val(1,2, :)>0.) !If porosity > 0.
+    where (1. - saturation%val(1,1, :) > 0.) !If porosity > 0.
       where (temperature%val(1,1,:) < phase_coef%Ts ) !If there is mixture, temperature cannot be below the solidus
         temperature%val(1,1,:) = phase_coef%Ts!It seems that the Solidus line is flat
       end where
@@ -304,8 +301,10 @@ contains
     !   temperature%val(1,1,:) = enthalpy_dim* den%val(1,iphase,:)/Density_Cp%val(1,iphase,:)
     end where
     !Now for consistency populate the temperature of all the phase
-    do iphase = 2, Mdims%ndim
-      temperature%val(1,iphase,:) = temperature%val(1,1,:)
+    do cv_nodi = 1, Mdims%cv_nonods
+      do iphase = 2, Mdims%ndim
+        temperature%val(1,iphase,cv_nodi) = temperature%val(1,1,cv_nodi)
+      end do
     end do
   end subroutine enthalpy_to_temperature
 
@@ -325,26 +324,27 @@ contains
   type( tensor_field ), pointer :: enthalpy, temperature,  saturation, rhoCp
   real, dimension(Mdims%cv_nonods) :: enthalpy_dim
   !real, parameter :: tol = 1e-5
-    !Temporary until deciding if creating a Cp in packed_state as well
-    rhoCp =>extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
-    enthalpy => extract_tensor_field( packed_state,"PackedEnthalpy" )
-    temperature =>  extract_tensor_field( packed_state, "PackedTemperature" )
-    saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+  rhoCp =>extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+  enthalpy => extract_tensor_field( packed_state,"PackedEnthalpy" )
+  temperature =>  extract_tensor_field( packed_state, "PackedTemperature" )
+  saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
-    !Calculate temperature using the generic formula H = T_alpha * rho_alpha * Cp_alpha * Saturation_alpha + Lf * phi (phi = Saturation_2)
-    enthalpy%val=0.0
-    do cv_nodi = 1, Mdims%cv_nonods
-      do iphase = 1, Mdims%nphase
-        !First enthalpy stored in each phase
-        enthalpy%val(1,1,cv_nodi)=enthalpy%val(1,1,cv_nodi)+ temperature%val(1,1,cv_nodi) * rhoCp%val(1,iphase, cv_nodi) * saturation%val(1,iphase,cv_nodi) ! sprint_to_do Need to fix for variable heat capacity.
-      end do
-      !Now consider the latent heat
-      enthalpy%val(1,1,cv_nodi)= enthalpy%val(1,1,cv_nodi) + phase_coef%Lf*saturation%val(1,2,cv_nodi)
+  !Calculate temperature using the generic formula H = T_alpha * rho_alpha * Cp_alpha * Saturation_alpha + Lf * phi (phi = 1- Saturation_1)
+  enthalpy%val=0.0
+  do cv_nodi = 1, Mdims%cv_nonods
+    do iphase = 1, Mdims%nphase
+      !First enthalpy stored in each phase
+      enthalpy%val(1,1,cv_nodi)=enthalpy%val(1,1,cv_nodi) + temperature%val(1,1,cv_nodi) * rhoCp%val(1,iphase, cv_nodi) * saturation%val(1,iphase,cv_nodi)
     end do
-    !Now for consistency populate the temperature of all the phase
+    !Now consider the latent heat
+    enthalpy%val(1,1,cv_nodi)= enthalpy%val(1,1,cv_nodi) + phase_coef%Lf*(1.-saturation%val(1,1,cv_nodi))
+  end do
+  !Now for consistency populate the temperature of all the phase
+  do cv_nodi = 1, Mdims%cv_nonods
     do iphase = 2, Mdims%nphase
-      enthalpy%val(1,iphase,:) = enthalpy%val(1,1,:)
+      enthalpy%val(1,iphase,cv_nodi) = enthalpy%val(1,1,cv_nodi)
     end do
+  end do
   end subroutine temperature_to_enthalpy
 
 

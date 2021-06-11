@@ -600,13 +600,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            assemble_collapsed_to_one_phase = .true.
            n_in_pres = 2
 
-           ! !Extract Density times HeatCapacity
-           ! den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
-           ! denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity", stat )
-           ! if (stat /= 0) then
-           !   den_all2 => extract_tensor_field( packed_state, "PackedDensity", stat )
-           !   denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
-           ! end if
            !Since we solve for enthalpy the density and CP are included within the enthalpy, this terms are only required for the RHS  and the diffusion terms
            !In order to solve the enthalpy equation we make the
            !a) density in the equation 1

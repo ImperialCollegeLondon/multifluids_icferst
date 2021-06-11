@@ -1125,12 +1125,12 @@ contains
           end if
         end if
 
-        if ((is_magma .and. .not. have_option('/magma_parameters/Phase_diagram_coefficients')) .or. &
-        ( have_option('/magma_parameters/Phase_diagram_coefficients') .and. .not. is_magma)) then
-          if (GetProcNo() == 1) then
-            FLAbort("Magma simulator requires /magma_parameters options.")
-          end if
-        end if
+        ! if ((is_magma .and. .not. have_option('/magma_parameters/Phase_diagram_coefficients')) .or. &
+        ! ( have_option('/magma_parameters/Phase_diagram_coefficients') .and. .not. is_magma)) then
+        !   if (GetProcNo() == 1) then
+        !     FLAbort("Magma simulator requires /magma_parameters options.")
+        !   end if
+        ! end if
 
     end subroutine get_simulation_type
 
