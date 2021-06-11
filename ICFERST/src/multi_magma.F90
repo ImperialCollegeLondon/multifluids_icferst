@@ -463,18 +463,19 @@ contains
       end DO
     end DO
   contains
+    !> TO INCLUDE INFORMATION ABOUT THE FUNCTION
     real function phi2_over_c(phi)
         real, intent(in) :: phi
         integer :: pos
-        real:: portion
-
-        pos= int(phi*(c_phi_size-1))+1
+        real:: portion, phi2
+        !Ensure boundedness
+        phi2 = min(max(0., phi), 1.)
+        pos= int(phi2*(c_phi_size-1))+1
         if (pos==c_phi_size) then
           phi2_over_c=c_phi_series(c_phi_size)
         else
-          portion=(phi-(pos-1.0)/(c_phi_size-1.0))*c_phi_size
+          portion=(phi2-(pos-1.0)/(c_phi_size-1.0))*c_phi_size
           phi2_over_c=c_phi_series(pos)*(1-portion)+c_phi_series(pos+1)*portion
-          ! c_value=c_phi_series(pos)
         end if
       end function phi2_over_c
   end subroutine update_magma_coupling_coefficients
