@@ -457,8 +457,8 @@ contains
       DO CV_ILOC = 1, Mdims%cv_nloc
         mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
         cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-          Do iphase =1, Mdims%nphase-1
-            Magma_absorp(1, 1, iphase, mat_nod) = phi2_over_c(saturation(1,2, cv_inod))
+          Do iphase =2, Mdims%nphase!Absorption is defined as a term mutiplying the velocity term, not the pressure
+            Magma_absorp(1, 1, iphase, mat_nod) = 1.0/phi2_over_c(saturation(1,iphase, cv_inod))
           end Do
       end DO
     end DO
@@ -576,7 +576,9 @@ contains
                  !Solid phase has a value of 1
                  upwnd%inv_adv_coef(1,1,1,mat_nod)=1.0; upwnd%adv_coef(1,1,1,mat_nod)=1.0
                  do iphase = 2, Mdims%nphase
-                   upwnd%adv_coef(1,1,iphase,mat_nod) = max(eps,  (Magma_absorp%val(1,1,1,mat_nod)/satura%val(1,iphase,cv_inod)) )
+                   upwnd%adv_coef(1,1,iphase,mat_nod) = Magma_absorp%val(1,1,iphase,mat_nod)/max(eps,satura%val(1,iphase,cv_inod))
+                   !Now the inverse
+                   upwnd%inv_adv_coef(1,1,iphase,mat_nod) = 1./upwnd%adv_coef(1,1,iphase,mat_nod)                 
                  end do
                end do
              end do
@@ -610,8 +612,8 @@ contains
                  upwnd%adv_coef_grad(1, 1, 1, mat_nod)=0.0;
                  DO IPHASE = 2, Mdims%nphase
                    ! This is the gradient
-                   upwnd%adv_coef_grad(1, 1, iphase, mat_nod) = (Magma_absorp2( 1,1, iphase-1 ,mat_nod) -&
-                   Magma_absorp%val( 1,1, iphase-1 ,mat_nod)) / ( SATURA2(1,iphase, cv_inod ) - satura%val(1,iphase, cv_inod))
+                   upwnd%adv_coef_grad(1, 1, iphase, mat_nod) = (Magma_absorp2( 1,1, iphase ,mat_nod) -&
+                   Magma_absorp%val( 1,1, iphase ,mat_nod)) / ( SATURA2(1,iphase, cv_inod ) - satura%val(1,iphase, cv_inod))
                  END DO
                end do
              END DO

@@ -2855,6 +2855,7 @@ end if
         real, dimension(Mdims%ndim) :: g
         real :: gravity_magnitude
         type(vector_field), pointer :: gravity_direction
+        real, dimension(Mdims%cv_nonods) :: CV_counter
 
         allocate(F_fields(0, 0, 0), K_fields(0,0,0))
         allocate(lhs_coef(1, Mdims%cv_nonods), rhs_coef(1, Mdims%ndim, 1, Mdims%cv_nonods))
@@ -2862,18 +2863,22 @@ end if
         sfield => extract_scalar_field( state(1), "PhaseVolumeFraction", stat )
 
         !For the term multipliying Grad P porosity^2/c !How would this be for more phases??
+        lhs_coef = 0.; CV_counter = 0.
         DO ELE = 1, Mdims%totele
           DO CV_ILOC = 1, Mdims%cv_nloc
             mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
             cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-            lhs_coef(1, cv_inod) = multi_absorp%Magma%val(1, 1, 1, mat_nod) !multi_absorp%Magma stored the value of phi^2/C
+            lhs_coef(1, cv_inod) = lhs_coef(1, cv_inod) + upwnd%inv_adv_coef(1,1,1,mat_nod)!upwnd%inv_adv_coef stored the value of phi^2/C
+            CV_counter(cv_inod) = CV_counter(cv_inod) + 1.0
           end do
         end do
+        !Perform average
+        lhs_coef(1,:) = lhs_coef(1,:) / CV_counter
         !Introduce gravity terms
         call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
         rhs_coef = 0.
         if( stat == 0 ) then
-        
+
           gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
             do cv_inod = 1, Mdims%cv_nonods
               g = node_val( gravity_direction, cv_inod ) * gravity_magnitude
@@ -2939,14 +2944,6 @@ end if
         CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:Mdims%nphase,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:Mdims%nphase,:) + CDP_tensor%val,&
             Mdims%ndim, darcy_phases, Mdims%totele, Mdims%u_nloc, ndgln%u )
 
-        !The final step is to add the solid velocity (WE NEED TO DOUBLE CHECK THE SIGNS HERE)
-        do u_inod = 1, Mdims%u_nonods
-          do iphase = 2, Mdims%nphase
-            do idim = 1, Mdims%ndim
-              velocity % VAL(idim, iphase, u_inod) = velocity % VAL(idim, 1, u_inod) + velocity % VAL(idim, iphase, u_inod)
-            end  do
-          end do
-        end do
       end subroutine get_Darcy_phases_velocity
 
 

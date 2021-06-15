@@ -407,7 +407,7 @@ contains
             case( 6 )    ! Porous media isotropic coupled
                 mfield%ndim1 = 1    ; mfield%ndim2 = ndim        ; mfield%ndim3 = nphase     !Andreas
             case( 7 )    ! Porous media isotropic coupled
-                mfield%ndim1 = 1    ; mfield%ndim2 = 1         ; mfield%ndim3 = nphase-1     !HH
+                mfield%ndim1 = 1    ; mfield%ndim2 = 1         ; mfield%ndim3 = nphase     !HH
             case default
                 FLAbort( "Cannot determine multi_field memrory_type." )
         end select
