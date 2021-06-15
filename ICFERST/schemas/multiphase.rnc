@@ -1796,6 +1796,39 @@ velocity_components_choice =
       )
    )
 
+# and again for robin b.c.s
+robin_velocity_components_choice =
+   (
+      (
+         element align_bc_with_cartesian {
+            element x_component {
+               element order_zero_coefficient {
+                  input_choice_real
+               },
+               element order_one_coefficient {
+                  input_choice_real
+               }
+            }?,
+            element y_component {
+               element order_zero_coefficient {
+                  input_choice_real
+               },
+               element order_one_coefficient {
+                  input_choice_real
+               }
+            }?,
+            element z_component {
+               element order_zero_coefficient {
+                  input_choice_real
+               },
+               element order_one_coefficient {
+                  input_choice_real
+               }
+            }?
+         }
+      )
+   )
+
 velocity_boundary_conditions =
    (
       (
@@ -1878,12 +1911,15 @@ velocity_boundary_conditions =
             },
             velocity_components_choice
          }|
-         ## Log law of the wall
+         ## Apply a Robin BC type. This is for a wall type BC
+         ## 
+         ## C0 * u + du/dx = C1
          ##
-         ## Should be used in combination with a no normal flow condition.
-         element type{
-            attribute name { "log_law_of_wall" },
-            element surface_roughness {real}
+         ## <b>Viscosity BCs override these BC</b>
+         ##
+         element type {
+            attribute name { "robin" },
+            robin_velocity_components_choice
          }|
          ## Momentun BC
          ##
