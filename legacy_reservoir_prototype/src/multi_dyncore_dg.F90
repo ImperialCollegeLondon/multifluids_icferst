@@ -733,26 +733,10 @@ end if
          sigma = 0.0
       end if
 
-!      allocate(a(Mdims%totele),b(Mdims%totele)) 
 
-!      a=sigma*1.e+4 + (1.0-sigma)*1.e-4 ! adjust this 
-!      b=sigma*0.0 + (1.0-sigma)*1.e+4  ! adjust this
-
-!      a=sigma*1.e+2 + (1.0-sigma)*1.e-2 ! adjust this
-!      b=sigma*0.0 + (1.0-sigma)*1.e+2  ! adjust this
-
-!      a=sigma*1.+ (1.0-sigma)*1. ! adjust this
-!      b=sigma*0.0 + (1.0-sigma)*1.  ! adjust this
-
-
-!b2      a=sigma*1.0e+06+ (1.0-sigma)*1.0e+06 ! adjust this
-!      b=sigma*0.0 + (1.0-sigma)*1.0e-04  ! adjust this
-
-!b3
       a=sigma*1.0e+06+ (1.0-sigma)*1.0e-06 ! adjust this
       b=sigma*0.0 + (1.0-sigma)*1.0e-04  ! adjust this
 
- !     write(3,*) "a is , b is", a, b
 
       pressure_mesh => extract_mesh( state( 1 ), "PressureMesh" )
 ! PETSC: MatSetValue or - use INSERT_VAUES or ADD_VALUES
@@ -778,25 +762,6 @@ end if
       u_all_solid=0.0
 
 
-!      do ele=1,Mdims%totele
-!      DO U_ILOC = 1, Mdims%u_nloc
-!                U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
-!                DO IPHASE = 1, Mdims%nphase
-!                    DO IDIM = 1, Mdims%ndim
-!                    u_all%val( IDIM, IPHASE, U_INOD ) = 0.0
-!                    if(sigma(ele).GT.0.5) THEN
-!                         u_all%val( 2, IPHASE, U_INOD ) = 10.0
-!                        ENDIF
-!                    END DO
-!                END DO
-!            END DO
-!            END DO
-
-      do cv_inod=1,Mdims%u_nonods
-!         ewrite(3,*) "velocity_all",u_all%val(:,1,cv_inod)
-!         uc_all%val(:,cv_inod)=cv_ug_all(:,cv_inod)
-      end do
-
       do ele=1,Mdims%totele
          do cv_iloc=1,Mdims%cv_nloc
             cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
@@ -819,7 +784,8 @@ end if
       do cv_inod=1,Mdims%cv_nonods
          u_all_cvmesh(:,:,cv_inod) = u_all_cvmesh(:,:,cv_inod)/vel_count(cv_inod)
  !        ewrite(3,*)"solid velocity", u_all_solid(:,:,cv_inod), vel_count_solid(cv_inod)
-         u_all_solid(:,:,cv_inod) = u_all_solid(:,:,cv_inod)/max(0.01, vel_count_solid(cv_inod) )
+         u_all_solid(:,:,cv_inod) = u_all_solid(:,:,cv_inod)/max(0.01, vel_count_solid(cv_inod) ) ! does this mean
+            ! max solid velocity acceptable is 0.01 m/s? 
       end do
 
       sigma_plus_bc(:) = min(1.0, 1000.0 * sigma_plus_bc(:)) ! if we have a non-zero value then def assume is a solid.
@@ -841,6 +807,9 @@ end if
          call DETNLXR(ele, X_ALL%val, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
 
          ! form the hydrostatic pressure eqn...
+         ! this is not actually forming the hydrostatic pressure... just reuse a code snippet from there.
+         ! these terms are the same as in forming the hydrostatic pressure: nxnx, nnx, nn
+         ! and a new one: ml = sum(nn) 
          do cv_iloc = 1, Mdims%cv_nloc
             cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
             do cv_jloc = 1, Mdims%cv_nloc
@@ -848,17 +817,25 @@ end if
                u_jnod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_jloc )
                nxnx = 0.0
                do idim = 1, Mdims%ndim
+                ! the integration inside an element is done via evaluating @ gaussian points 
+                ! and taking sum.
+                ! here, what's more, sum over idim is also taken.
+                ! so that nxnx = \int dv/dx dv/dx + dv/dy dv/dy + dv/dz dv/dz . 
+                ! where v is test functions at local CVs: cv_iloc, cv_jloc
+                ! and nnx = \int v dv/dx + v dv/dy + v dv/dz
                   nxnx = nxnx + sum( DevFuns%nx_all( idim, cv_iloc, : ) * &
                        DevFuns%nx_all( idim, cv_jloc, : ) * DevFuns%detwei(:)  )
                   nnx(idim) = sum( CV_funs%CVFEN( cv_iloc, : ) * &
                        DevFuns%nx_all( idim, cv_jloc, : ) * DevFuns%detwei(:)  )
                end do
+               ! nn = \int vi vj
                nn = sum( CV_funs%CVFEN( cv_iloc, : ) * CV_funs%CVFEN( cv_jloc, : ) * DevFuns%detwei(:)) ! form the hydrostatic pressure eqn...detwei(:)  )
                nxnx_mat = nxnx/a(ele) + b(ele)*nn
-
+               
                rhs_xyz_pet%val(cv_inod)=rhs_xyz_pet%val(cv_inod) - sum( nnx(:) * u_all%val(:,1,u_jnod) * sigma(ele) ) ! assume solid is in phase 1 if it exists.
-
+               ! ml = sum(nn) = vi (v1+v2+v3+... all cv shape functions in that element)
                ml(cv_inod)=ml(cv_inod)+nn
+               ewrite(3,*) ele, cv_iloc, cv_jloc, nn, ml
 
                call addto( matrix_pet, 1, 1, cv_inod, cv_jnod, nxnx_mat )
             end do ! do cv_jloc = 1, Mdims%cv_nloc
@@ -867,7 +844,7 @@ end if
 
       end do ! do ele = 1, Mdims%totele
 
-      uvwg_pet%val(:)=0.0 ! no initial guess
+      uvwg_pet%val(:)=0.0 ! no initial guess ！ psi
       call petsc_solve( uvwg_pet, matrix_pet, rhs_xyz_pet, option_path = trim(solver_option_path), iterations_taken = its_taken )
 
       cv_ug_all(:,:)=0.0
@@ -938,6 +915,7 @@ end if
 
       do ele=1,Mdims%totele
 
+        ! ============ from here =========================
       nod0=ndgln%x((ele-1)*Mdims%cv_nloc+1)
       nod1=ndgln%x((ele-1)*Mdims%cv_nloc+2)
       nod2=ndgln%x((ele-1)*Mdims%cv_nloc+3)
@@ -955,7 +933,8 @@ end if
       x3=X_ALL%val(1,nod3)
       y3=X_ALL%val(2,nod3)
       z3=X_ALL%val(3,nod3)
-
+        ! =================seems useless ===================
+        ! =============== to here===========================
 !      XP0DG_ALL%val(1,ele)=(x0+x1+x2+x3)/4.0
 !      XP0DG_ALL%val(2,ele)=(y0+y1+y2+y3)/4.0
 !      XP0DG_ALL%val(3,ele)=(z0+z1+z2+z3)/4.0
