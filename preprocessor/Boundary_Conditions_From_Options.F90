@@ -1122,29 +1122,27 @@ contains
              aligned_components=surface_aligned_components
              bc_type_path=trim(bc_path_i)//"/align_bc_with_surface"
           end if
-
           do j=1,3
              bc_component_path=trim(bc_type_path)//"/"//aligned_components(j)
              applies(j)=have_option(trim(bc_component_path))
           end do
-
           call get_boundary_condition(field, i+1, surface_mesh=surface_mesh, &
                surface_element_list=surface_element_list)
           ! map the coordinate field onto this mesh
           bc_position = get_coordinates_remapped_to_surface(position, surface_mesh, surface_element_list)
-
-          surface_field => extract_surface_field(field, bc_name, name="order_zero_coeffcient")
-          surface_field2 => extract_surface_field(field, bc_name, name="order_one_coeffcient")
+          surface_field => extract_surface_field(field, bc_name, name="order_zero_coefficient")
+          surface_field2 => extract_surface_field(field, bc_name, name="order_one_coefficient")
           do j=1,3
              if (j>surface_field%dim) then
-                FLAbort("Too many dimensions in boundary condition")
+               !If more values than dimensons just leave. No need for drama!!
+               exit
+                ! FLAbort("Too many dimensions in boundary condition")
              end if
-             bc_component_path=trim(bc_type_path)//"/"//aligned_components(j)//"/order_zero_coefficient"
+             bc_component_path=trim(bc_type_path)//"/"//trim(aligned_components(j))//"/order_zero_coefficient"
              surface_field_component=extract_scalar_field(surface_field, j)
              call initialise_vector_field_component(surface_field_component, state,  &
                 bc_component_path, bc_position, surface_element_list, j, time)
-
-             bc_component_path=trim(bc_type_path)//"/"//aligned_components(j)//"/order_one_coefficient"
+             bc_component_path=trim(bc_type_path)//"/"//trim(aligned_components(j))//"/order_one_coefficient"
              surface_field_component=extract_scalar_field(surface_field2, j)
              call initialise_vector_field_component(surface_field_component, state,  &
                 bc_component_path, bc_position, surface_element_list, j, time)
@@ -1260,7 +1258,6 @@ contains
     type(vector_field), pointer :: foamvel
     character(len=FIELD_NAME_LEN) parent_field_name
     integer:: stat
-
     ! first check for options that require state
     if (have_option(trim(bc_component_path)//"/foam_flow")) then
 

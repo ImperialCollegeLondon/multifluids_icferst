@@ -6,9 +6,6 @@
         <ref name="gravity_options"/>
       </optional>
       <optional>
-        <ref name="black_oil_options"/>
-      </optional>
-      <optional>
         <ref name="coriolis_options"/>
       </optional>
     </element>
@@ -107,36 +104,6 @@ where the return value is a float.</a:documentation>
           <ref name="python_code"/>
         </element>
       </choice>
-    </element>
-  </define>
-  <define name="black_oil_options">
-    <element name="black-oil_PVT_table">
-      <a:documentation>This option enables the use of an standard Black-Oil modelling
-based on PVT tables. The phase change is performed locally to the nodes.
-Introduce the relative path to the .csv file.
-Introduce "internal" to use the internal table.
-
-For an example of a csv table check the test case table
-
-The data introduced here overrides another parameters set in diamond.
-The viscosity of the first phase is retrieved from diamond, NOTE
-that the viscosities in the vtus are the diamond viscosities.</a:documentation>
-      <ref name="anystring"/>
-      <group>
-        <optional>
-          <element name="incompressible">
-            <a:documentation>Constant density, taken from the Black-Oil model at referent state
-However, the phase change is based on change of densities, so mass conservation is not guaranteed</a:documentation>
-            <empty/>
-          </element>
-        </optional>
-        <optional>
-          <element name="constant_visc">
-            <a:documentation>Constant viscosity, taken from the diamond input</a:documentation>
-            <empty/>
-          </element>
-        </optional>
-      </group>
     </element>
   </define>
   <define name="f_plane_options">

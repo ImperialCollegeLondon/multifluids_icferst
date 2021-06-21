@@ -73,7 +73,6 @@ module cv_advection
         WIC_T_BC_DIRI_ADV_AND_ROBIN = 3, WIC_D_BC_DIRICHLET = 1, &
         WIC_U_BC_DIRICHLET = 1, &
         WIC_U_BC_ROBIN = 2, &
-        WIC_U_BC_LOG_LAW = 3, &
         WIC_U_BC_DIRI_ADV_AND_ROBIN = 3, &
         WIC_U_BC_DIRICHLET_INOUT = 2, &
         WIC_P_BC_DIRICHLET = 1, &

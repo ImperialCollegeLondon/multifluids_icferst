@@ -43,13 +43,6 @@ characters in the simulation name should be avoided.</a:documentation>
           <a:documentation>Stokes flow simulator</a:documentation>
           <ref name="comment"/>
         </element>
-        <element name="poroelasticity">
-          <a:documentation>Poro-elasticity simulator:
-This requires to define through diamond the tensor field in phase 1 UAbsorB
-as an absorption term and also the RHS that should include the second time-derivative for the solid phase
-and also the coupling terms. The first phase is considered the solid phase.</a:documentation>
-          <ref name="comment"/>
-        </element>
       </choice>
       <ref name="geometry"/>
       <ref name="solver_options"/>
@@ -2196,6 +2189,41 @@ If on the tangents vectors must also be specified.</a:documentation>
       </optional>
     </element>
   </define>
+  <!-- and again for robin b.c.s -->
+  <define name="robin_velocity_components_choice">
+    <element name="align_bc_with_cartesian">
+      <optional>
+        <element name="x_component">
+          <element name="order_zero_coefficient">
+            <ref name="input_choice_real"/>
+          </element>
+          <element name="order_one_coefficient">
+            <ref name="input_choice_real"/>
+          </element>
+        </element>
+      </optional>
+      <optional>
+        <element name="y_component">
+          <element name="order_zero_coefficient">
+            <ref name="input_choice_real"/>
+          </element>
+          <element name="order_one_coefficient">
+            <ref name="input_choice_real"/>
+          </element>
+        </element>
+      </optional>
+      <optional>
+        <element name="z_component">
+          <element name="order_zero_coefficient">
+            <ref name="input_choice_real"/>
+          </element>
+          <element name="order_one_coefficient">
+            <ref name="input_choice_real"/>
+          </element>
+        </element>
+      </optional>
+    </element>
+  </define>
   <define name="velocity_boundary_conditions">
     <choice>
       <element name="type">
@@ -2290,15 +2318,16 @@ want this.</a:documentation>
         <ref name="velocity_components_choice"/>
       </element>
       <element name="type">
-        <a:documentation>Log law of the wall
+        <a:documentation>Apply a Robin BC type. This is for a wall type BC
 
-Should be used in combination with a no normal flow condition.</a:documentation>
+C0 * u + du/dx = C1
+
+&lt;b&gt;Viscosity BCs override these BC&lt;/b&gt;
+</a:documentation>
         <attribute name="name">
-          <value>log_law_of_wall</value>
+          <value>robin</value>
         </attribute>
-        <element name="surface_roughness">
-          <ref name="real"/>
-        </element>
+        <ref name="robin_velocity_components_choice"/>
       </element>
       <element name="type">
         <a:documentation>Momentun BC
