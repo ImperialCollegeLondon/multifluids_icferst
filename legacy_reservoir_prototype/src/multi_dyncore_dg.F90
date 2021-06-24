@@ -616,17 +616,17 @@ end if
 
 
 
-     SUBROUTINE one_eqn_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
-! *************************************************************************************************
-! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
-! *************************************************************************************************
-! sigma(ele)= 1.0 if in a solid and 0.0 else for element ele.
-! c(Mdims%nconc, cv_nonods) contains the concentration fields to try and move the mesh with and improve accuracy.
-! Mdims%nconc
-! u_lambda(idim) = weight to put on fixing the mesh to move with the velocities idim.
-! c_lamba(ic)= weight to put on fixing the mesh to move with the field (e.g. concentration) ic.
-! CV_SNDGLN = list of gobal node numbers for the surface elements
-! dt = time step size.
+    SUBROUTINE one_eqn_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+    ! *************************************************************************************************
+    ! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
+    ! *************************************************************************************************
+    ! sigma(ele)= 1.0 if in a solid and 0.0 else for element ele.
+    ! c(Mdims%nconc, cv_nonods) contains the concentration fields to try and move the mesh with and improve accuracy.
+    ! Mdims%nconc
+    ! u_lambda(idim) = weight to put on fixing the mesh to move with the velocities idim.
+    ! c_lamba(ic)= weight to put on fixing the mesh to move with the field (e.g. concentration) ic.
+    ! CV_SNDGLN = list of gobal node numbers for the surface elements
+    ! dt = time step size.
 
       implicit none
       type(multi_dimensions), intent( in ) :: Mdims
@@ -645,7 +645,7 @@ end if
       type( tensor_field ), pointer :: u_all, ComponentMassFraction
       type( scalar_field ), pointer :: sigma0
 
-! Can put a lot of memory on the stack these days.
+    ! Can put a lot of memory on the stack these days.
       real, dimension(:), allocatable :: sigma
       real, dimension(:,:), allocatable :: cv_ug_all, rhs
       real, dimension(:,:,:), allocatable :: u_all_cvmesh, u_all_solid
@@ -686,11 +686,11 @@ end if
       
       !JXiang c_lambda has allocated twice
 
-! JXiang add below line
+    ! JXiang add below line
 
       call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
 
-!      call allocate_multi_dev_shape_funs(CV_funs)  !JXiang CV_funs is input
+    !  call allocate_multi_dev_shape_funs(CV_funs)  !JXiang CV_funs is input
 
       call get_option( '/timestepping/timestep', dt )
 
@@ -699,15 +699,15 @@ end if
       end if
       solid_implicit = have_option( '/solid_implicit')
 
-      !      if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::GridVelocity')) then
-!      if (have_grid_velocity) then
-!        solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::GridVelocity'
-!      end if
-!      if(max_allowed_its < 0)  then
-!          call get_option( trim(solver_option_path)//"max_iterations",&
-!           max_allowed_its, default = 500)
-!      end if
-! define here so we can use for problems without solids as well
+        !      if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::GridVelocity')) then
+        !      if (have_grid_velocity) then
+        !        solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::GridVelocity'
+        !      end if
+        !      if(max_allowed_its < 0)  then
+        !          call get_option( trim(solver_option_path)//"max_iterations",&
+        !           max_allowed_its, default = 500)
+        !      end if
+        ! define here so we can use for problems without solids as well
       x_all => extract_vector_field( packed_state, "PressureCoordinate" )
       xold_all => extract_vector_field( state (1), "SolidOldCoordinate" )
       u_all => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
@@ -715,17 +715,17 @@ end if
       XV_ALL=> extract_vector_field( packed_state, "VelocityCoordinate" )
       XP0DG_ALL=> extract_vector_field( packed_state, "MaterialCoordinate" )
 
-!ewrite(3,*)"X_all",x_all%val
-!ewrite(3,*)"xold_all",xold_all%val
-!ewrite(3,*)"U_all",u_all%val
-!ewrite(3,*)"ug_all",ug_all%val
+        !ewrite(3,*)"X_all",x_all%val
+        !ewrite(3,*)"xold_all",xold_all%val
+        !ewrite(3,*)"U_all",u_all%val
+        !ewrite(3,*)"ug_all",ug_all%val
 
-!      UC_ALL=>extract_vector_field(state (1 ),"GridContinVelocity")
+        !      UC_ALL=>extract_vector_field(state (1 ),"GridContinVelocity")
 
       if(solid_implicit) then ! a global vriable
-!     x_all => extract_vector_field( packed_state, "PressureCoordinate" )
-!      xold_all => extract_vector_field( packed_state, "SolidOldCoordinate" )
-!      u_all => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
+    ! x_all => extract_vector_field( packed_state, "PressureCoordinate" )
+    !  xold_all => extract_vector_field( packed_state, "SolidOldCoordinate" )
+    !  u_all => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
 
          sigma0=>extract_scalar_field( state(1), "Sigma_Solid")
          sigma = sigma0%val
@@ -739,14 +739,14 @@ end if
 
 
       pressure_mesh => extract_mesh( state( 1 ), "PressureMesh" )
-! PETSC: MatSetValue or - use INSERT_VAUES or ADD_VALUES
-! look at multi_matirx_operations
+    ! PETSC: MatSetValue or - use INSERT_VAUES or ADD_VALUES
+    ! look at multi_matirx_operations
 
       sparsity => extract_csr_sparsity(packed_state,'CMCSparsity') ! use CMC matrix for sparcity.  PABLO
       call allocate( matrix_pet, sparsity, [ 1, 1 ], "matrix_grid_vel", .false. )
       call zero( matrix_pet )
-!      call allocate( matrix_pet, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix_pet )
-!        call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc",diag)
+    !  call allocate( matrix_pet, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix_pet )
+    !    call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc",diag)
       call allocate( rhs_xyz_pet, pressure_mesh, "rhs" )
       call allocate( uvwg_pet, pressure_mesh, "rhs" ) !; call zero ( uvwg_pet )
 
@@ -775,7 +775,7 @@ end if
                           + u_all%val(idim,iphase,u_inod)
                   u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
                           + u_all%val(idim,iphase,u_inod) * sigma(ele)
-!                  ewrite(3,*)"solid all  velocity",u_all_solid(idim,iphase,cv_inod), u_all%val(idim,iphase,u_inod),sigma(ele)
+                !  ewrite(3,*)"solid all  velocity",u_all_solid(idim,iphase,cv_inod), u_all%val(idim,iphase,u_inod),sigma(ele)
                end do
             end do
          end do
@@ -783,20 +783,20 @@ end if
 
       do cv_inod=1,Mdims%cv_nonods
          u_all_cvmesh(:,:,cv_inod) = u_all_cvmesh(:,:,cv_inod)/vel_count(cv_inod)
- !        ewrite(3,*)"solid velocity", u_all_solid(:,:,cv_inod), vel_count_solid(cv_inod)
-         u_all_solid(:,:,cv_inod) = u_all_solid(:,:,cv_inod)/max(0.01, vel_count_solid(cv_inod) ) ! does this mean
-            ! max solid velocity acceptable is 0.01 m/s? 
+        ! ewrite(3,*)"solid velocity", u_all_solid(:,:,cv_inod), vel_count_solid(cv_inod)
+         u_all_solid(:,:,cv_inod) = u_all_solid(:,:,cv_inod)/max(0.01, vel_count_solid(cv_inod) ) ! why limit vel_count_solid
+         ! to 0.01 here? 
       end do
 
       sigma_plus_bc(:) = min(1.0, 1000.0 * sigma_plus_bc(:)) ! if we have a non-zero value then def assume is a solid.
-! Set the boundary condtions on all surface elements around the domain to zero.
-!      IPHASE=1
-!      DO SELE=1,Mdims%stotel
-!         DO CV_SILOC=1,Mdims%cv_snloc
-!            CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
-!            SIGMA_PLUS_BC(CV_INOD) = 1.0
-!         END DO
-!      END DO  
+        ! Set the boundary condtions on all surface elements around the domain to zero.
+        !      IPHASE=1
+        !      DO SELE=1,Mdims%stotel
+        !         DO CV_SILOC=1,Mdims%cv_snloc
+        !            CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
+        !            SIGMA_PLUS_BC(CV_INOD) = 1.0
+        !         END DO
+        !      END DO  
 
       ml=0.0
       rhs_xyz_pet%val(:)=0.0
@@ -844,12 +844,12 @@ end if
 
       end do ! do ele = 1, Mdims%totele
 
-      uvwg_pet%val(:)=0.0 ! no initial guess ！ psi
+      uvwg_pet%val(:)=0.0 ! no initial guess  Psi
       call petsc_solve( uvwg_pet, matrix_pet, rhs_xyz_pet, option_path = trim(solver_option_path), iterations_taken = its_taken )
 
       cv_ug_all(:,:)=0.0
 
-! Now calc grid velocities cv_ug_all...
+    ! Now calc grid velocities cv_ug_all...
       do ele = 1, Mdims%totele
       ! calculate detwei,ra,nx,ny,nz for element ele
       ! calculate detwei,RA,NX,NY,NZ for the ith element
@@ -876,44 +876,44 @@ end if
       end do
 
 
-      ! force CV_UG_all equal to solid velcoity within solid, else zero
- !     cv_ug_all=0.0
- !     do ele = 1, Mdims%totele
- !       do cv_iloc = 1, Mdims%cv_nloc
- !           cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
- !          cv_ug_all(:,cv_inod)=u_all_solid(:,1,cv_inod)* sigma(ele)
- !        end do ! do cv_iloc = 1, Mdims%cv_nloc
- !     end do ! do ele = 1, Mdims%totele
+            ! force CV_UG_all equal to solid velcoity within solid, else zero
+        !     cv_ug_all=0.0
+        !     do ele = 1, Mdims%totele
+        !       do cv_iloc = 1, Mdims%cv_nloc
+        !           cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+        !          cv_ug_all(:,cv_inod)=u_all_solid(:,1,cv_inod)* sigma(ele)
+        !        end do ! do cv_iloc = 1, Mdims%cv_nloc
+        !     end do ! do ele = 1, Mdims%totele
 
 
 
 
-! exactly enforce the solid velocity equals the grid velocity:
+    ! exactly enforce the solid velocity equals the grid velocity:
       do cv_inod=1,Mdims%cv_nonods
          cv_ug_all(:,cv_inod) = u_all_solid(:,1,cv_inod)*SIGMA_PLUS_BC(CV_INOD) + cv_ug_all(:,cv_inod)*(1.0-SIGMA_PLUS_BC(CV_INOD)) 
-!         ewrite(3,*) "cv_ug_all",u_all_solid(:,1,cv_inod),SIGMA_PLUS_BC(CV_INOD), cv_ug_all(:,cv_inod)
-!         uc_all%val(:,cv_inod)=cv_ug_all(:,cv_inod)
+        ! ewrite(3,*) "cv_ug_all",u_all_solid(:,1,cv_inod),SIGMA_PLUS_BC(CV_INOD), cv_ug_all(:,cv_inod)
+        ! uc_all%val(:,cv_inod)=cv_ug_all(:,cv_inod)
       end do
       do cv_inod=1,Mdims%cv_nonods
-!      ewrite(3,*) "X_ALL, coordinate are ",x_all%val(1,cv_inod),x_all%val(2,cv_inod), x_all%val(3,cv_inod)
+    !  ewrite(3,*) "X_ALL, coordinate are ",x_all%val(1,cv_inod),x_all%val(2,cv_inod), x_all%val(3,cv_inod)
       end do
             IPHASE=1
       DO SELE=1,Mdims%stotel
          DO CV_SILOC=1,Mdims%cv_snloc
             CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
-!            SIGMA_PLUS_BC(CV_INOD) = 1.0
+        !    SIGMA_PLUS_BC(CV_INOD) = 1.0
            cv_ug_all(:,cv_INOD)=0.0
        END DO
       END DO
 
       x_all%val = xold_all%val + dt * cv_ug_all! get new grid positions
- !     xv_all%val=x_all%val
+    !  xv_all%val=x_all%val
       do cv_inod=1,Mdims%cv_nonods
-!      ewrite(3,*) "X_ALL, coordinate are ",x_all%val(1,cv_inod),x_all%val(2,cv_inod), x_all%val(3,cv_inod)
-!      ewrite(3,*) "XOLD_ALL, coordinate are ",xold_all%val(1,cv_inod),xold_all%val(2,cv_inod),xold_all%val(3,cv_inod)
+    !  ewrite(3,*) "X_ALL, coordinate are ",x_all%val(1,cv_inod),x_all%val(2,cv_inod), x_all%val(3,cv_inod)
+    !  ewrite(3,*) "XOLD_ALL, coordinate are ",xold_all%val(1,cv_inod),xold_all%val(2,cv_inod),xold_all%val(3,cv_inod)
       end do
 
-      do ele=1,Mdims%totele
+    do ele=1,Mdims%totele
 
         ! ============ from here =========================
       nod0=ndgln%x((ele-1)*Mdims%cv_nloc+1)
@@ -935,27 +935,27 @@ end if
       z3=X_ALL%val(3,nod3)
         ! =================seems useless ===================
         ! =============== to here===========================
-!      XP0DG_ALL%val(1,ele)=(x0+x1+x2+x3)/4.0
-!      XP0DG_ALL%val(2,ele)=(y0+y1+y2+y3)/4.0
-!      XP0DG_ALL%val(3,ele)=(z0+z1+z2+z3)/4.0
+        !  XP0DG_ALL%val(1,ele)=(x0+x1+x2+x3)/4.0
+        !  XP0DG_ALL%val(2,ele)=(y0+y1+y2+y3)/4.0
+        !  XP0DG_ALL%val(3,ele)=(z0+z1+z2+z3)/4.0
 
 
-!      ewrite(3,*)"XP0DG",XP0DG_ALL%val(1,ele),XP0DG_ALL%val(2,ele),XP0DG_ALL%val(3,ele)
+    !  ewrite(3,*)"XP0DG",XP0DG_ALL%val(1,ele),XP0DG_ALL%val(2,ele),XP0DG_ALL%val(3,ele)
          do u_iloc=1,Mdims%u_nloc
                   u_nodi=ndgln%u((ele-1)*Mdims%u_nloc+u_iloc) 
                   x_nodi=ndgln%x((ele-1)*Mdims%cv_nloc+u_iloc)
                    ug_all%val(:,u_nodi)= cv_ug_all(:,x_nodi)
-!                   ewrite(3,*) "velocity, coordinate are ", u_nodi, x_nodi, cv_ug_all(2,x_nodi)
-!ewrite(3,*)"XV_ALL,X_ALL",u_nodi,XV_ALL%val(:,u_nodi)
-!                   XV_ALL%val(:,u_nodi)=X_ALL%val(:,x_nodi)
-!ewrite(3,*)"XV_ALL,X_ALL",u_nodi,XV_ALL%val(:,u_nodi),x_nodi,X_ALL%val(:,x_nodi)
+        !                   ewrite(3,*) "velocity, coordinate are ", u_nodi, x_nodi, cv_ug_all(2,x_nodi)
+        !ewrite(3,*)"XV_ALL,X_ALL",u_nodi,XV_ALL%val(:,u_nodi)
+        !                   XV_ALL%val(:,u_nodi)=X_ALL%val(:,x_nodi)
+        !ewrite(3,*)"XV_ALL,X_ALL",u_nodi,XV_ALL%val(:,u_nodi),x_nodi,X_ALL%val(:,x_nodi)
          end do
-       end do
+    end do
       
 
       ewrite(3,*) "leaving one equation diffusion grid velocity solvefffffffvvvvvvv"
 
-! jxiang add deallocate
+    ! jxiang add deallocate
 
       deallocate(sigma, u_all_cvmesh, sigma_plus_bc, vel_count, cv_ug_all, u_all_solid)
       deallocate(ml, vel_count_solid, ident_cv,a,b,uvwg,rhs )

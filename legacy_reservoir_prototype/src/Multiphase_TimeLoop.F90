@@ -642,9 +642,7 @@ contains
                X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
                XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
                if(its==1) XOLD_ALL%val=X_ALL%val
-  !             ewrite(3,*)"before all_diffusion",its,XOLD_ALL%val
- !              ewrite(3,*)"X_ALL",its,X_ALL%val
-  !             ewrite(3,*)"after all_diffusion",its,XOLD_ALL%val
+
                END If
                if(diffusion_solid_implicit) then
                                       call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
