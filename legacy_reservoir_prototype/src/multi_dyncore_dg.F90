@@ -5007,7 +5007,7 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
         X0_ALL => extract_vector_field( state (1), "SolidOldCoordinate" )
         X_CO => extract_scalar_field( state (1), "SolidOriginalCoordinateX" )
         Y_CO => extract_scalar_field( state (1), "SolidOriginalCoordinateY" )
-        Z_CO => extract_scalar_field( state (1), "SolidOriginalCoordinateZ" )
+        if (Mdims%ndim .eq. 3)  Z_CO => extract_scalar_field( state (1), "SolidOriginalCoordinateZ" )
         UG_ALL=>extract_vector_field(state (1 ),"GridSolidVelocity")
 
         sum_udif=0.0
@@ -5050,7 +5050,7 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
       !          ewrite(3,*) "coodinate", X_NODI, X_CO%val(X_NODI),Y_CO%val(X_NODI),Z_CO%val(X_NODI)
                 LOC_X0_ALL(1,X_ILOC) = X_CO%val(X_NODI)
                 LOC_X0_ALL(2,X_ILOC) = Y_CO%val(X_NODI)
-                LOC_X0_ALL(3,X_ILOC) = Z_CO%val(X_NODI)
+                if (Mdims%ndim .eq. 3) LOC_X0_ALL(3,X_ILOC) = Z_CO%val(X_NODI)
                 LOC_VEL_ALL(:,X_ILOC) = UG_ALL%val(:,U_NODI)
 
             END DO
