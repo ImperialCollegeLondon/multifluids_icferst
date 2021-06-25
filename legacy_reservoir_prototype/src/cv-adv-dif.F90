@@ -5334,163 +5334,225 @@ end if
 
     SUBROUTINE CALC_STRESS_TEN_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE,  NDIM, NLOC,   &
     LOC_X_ALL,LOC_X0_ALL, LOC_VEL_ALL, TEN_VOL_RATIO_temp, ELE)
-    ! determine stress form of viscocity...
-    IMPLICIT NONE
-    type( state_type ), dimension( : ), intent( inout ) :: state !> Linked list containing all the fields defined in diamond and considered by Fluidity
+        ! determine stress form of viscocity...
+        IMPLICIT NONE
+        type( state_type ), dimension( : ), intent( inout ) :: state !> Linked list containing all the fields defined in diamond and considered by Fluidity
 
-    INTEGER, intent( in )  :: NDIM, NLOC , ELE ! linfeng needs index of element (ELE)
-    type( tensor_field ), pointer :: temp_stress    ! linfeng sets this temporary to update solid stress tensor
-    REAL, DIMENSION( :, :  ), intent( inOUT ) :: CAUCHY_STRESS_IJ_SOLID_ELE
- !   REAL, DIMENSION( :, :  ), intent( inOUT ) :: PRESSURE
-    REAL, intent( in ) :: TEN_VOL_RATIO_temp
-    REAL, DIMENSION( :,: ), intent( in ) :: LOC_X_ALL, LOC_VEL_ALL
-    REAL, DIMENSION( :,: ), intent( in ) :: LOC_X0_ALL
-    REAL :: F0( NDIM,NDIM ),FX( NDIM,NDIM ),F0inv( NDIM,NDIM ),Fxinv( NDIM,NDIM )
-    REAL :: voli,volc, LX( NDIM,NDIM ), L(NDIM,NDIM ),D(NDIM,NDIM )
+        INTEGER, intent( in )  :: NDIM, NLOC , ELE ! linfeng needs index of element (ELE)
+        type( tensor_field ), pointer :: temp_stress    ! linfeng sets this temporary to update solid stress tensor
+        REAL, DIMENSION( :, :  ), intent( inOUT ) :: CAUCHY_STRESS_IJ_SOLID_ELE
+        !   REAL, DIMENSION( :, :  ), intent( inOUT ) :: PRESSURE
+        REAL, intent( in ) :: TEN_VOL_RATIO_temp
+        REAL, DIMENSION( :,: ), intent( in ) :: LOC_X_ALL, LOC_VEL_ALL
+        REAL, DIMENSION( :,: ), intent( in ) :: LOC_X0_ALL
+        REAL :: F0( NDIM,NDIM ),FX( NDIM,NDIM ),F0inv( NDIM,NDIM ),Fxinv( NDIM,NDIM )
+        REAL :: voli,volc, LX( NDIM,NDIM ), L(NDIM,NDIM ),D(NDIM,NDIM )
 
-! TEN_VOL is volumetric viscocity - mostly set to zero other than q-scheme or use with kinetic theory
-!    REAL, DIMENSION( : ), intent( in ) :: UFENX_JLOC
-    ! Local variables...
-    REAL :: FEN_TEN_XX(NDIM,NDIM),FEN_TEN_VOL(NDIM),UFENX(NDIM,NDIM)
-    INTEGER :: IDIM,JDIM,KDIM,ILOC,II
-    REAL::DPEMU,DPELA,TEN_VOL_RATIO, hydro_pressure, DPEKS
-   !     ewrite(3,*)"enter stress tensor calculation, TEN_VOL_RATIO", TEN_VOL_RATIO
+        ! TEN_VOL is volumetric viscocity - mostly set to zero other than q-scheme or use with kinetic theory
+        !    REAL, DIMENSION( : ), intent( in ) :: UFENX_JLOC
+        ! Local variables...
+        REAL :: FEN_TEN_XX(NDIM,NDIM),FEN_TEN_VOL(NDIM),UFENX(NDIM,NDIM), trb
+        INTEGER :: IDIM,JDIM,KDIM,ILOC,II
+        REAL::DPEMU,DPELA,TEN_VOL_RATIO, hydro_pressure, DPEKS
+    !     ewrite(3,*)"enter stress tensor calculation, TEN_VOL_RATIO", TEN_VOL_RATIO
 
-    DPEMU=1.0e+05
-    DPELA=1.0e+05
-    DPEKS=300.
-                    temp_stress => extract_tensor_field(state(1), "StressTenSolid")
+        DPEMU=1.0e+05
+        DPELA=1.0e+05
+        DPEKS=300.
+        
+        temp_stress => extract_tensor_field(state(1), "StressTenSolid")
+        
+        if (ndim.eq.3 ) then
+            DO ILOC=2,NLOC
+            ii=ILOC-1
+                F0(1,ii)=LOC_X0_ALL(1,ILOC)-LOC_X0_ALL(1,1)
+                F0(2,ii)=LOC_X0_ALL(2,ILOC)-LOC_X0_ALL(2,1)
+                F0(3,ii)=LOC_X0_ALL(3,ILOC)-LOC_X0_ALL(3,1)
+                FX(1,ii)=LOC_X_ALL(1,ILOC)-LOC_X_ALL(1,1)
+                FX(2,ii)=LOC_X_ALL(2,ILOC)-LOC_X_ALL(2,1)
+                FX(3,ii)=LOC_X_ALL(3,ILOC)-LOC_X_ALL(3,1)
+                LX(1,ii)=LOC_VEL_ALL(1,ILOC)-LOC_VEL_ALL(1,1)
+                LX(2,ii)=LOC_VEL_ALL(2,ILOC)-LOC_VEL_ALL(2,1)
+                LX(3,ii)=LOC_VEL_ALL(3,ILOC)-LOC_VEL_ALL(3,1)
+            END DO
 
-    DO ILOC=2,NLOC
-       ii=ILOC-1
-        F0(1,ii)=LOC_X0_ALL(1,ILOC)-LOC_X0_ALL(1,1)
-        F0(2,ii)=LOC_X0_ALL(2,ILOC)-LOC_X0_ALL(2,1)
-        F0(3,ii)=LOC_X0_ALL(3,ILOC)-LOC_X0_ALL(3,1)
-        FX(1,ii)=LOC_X_ALL(1,ILOC)-LOC_X_ALL(1,1)
-        FX(2,ii)=LOC_X_ALL(2,ILOC)-LOC_X_ALL(2,1)
-        FX(3,ii)=LOC_X_ALL(3,ILOC)-LOC_X_ALL(3,1)
-        LX(1,ii)=LOC_VEL_ALL(1,ILOC)-LOC_VEL_ALL(1,1)
-        LX(2,ii)=LOC_VEL_ALL(2,ILOC)-LOC_VEL_ALL(2,1)
-        LX(3,ii)=LOC_VEL_ALL(3,ILOC)-LOC_VEL_ALL(3,1)
-    END DO
+            voli=F0(1,1)*(F0(2,2)*F0(3,3)-F0(2,3)*F0(3,2))-    &
+                F0(1,2)*(F0(2,1)*F0(3,3)-F0(2,3)*F0(3,1))+   &
+                F0(1,3)*(F0(2,1)*F0(3,2)-F0(2,2)*F0(3,1))    
+            F0inv(1,1)=(F0(2,2)*F0(3,3)-F0(2,3)*F0(3,2))/voli
+            F0inv(2,1)=(F0(2,3)*F0(3,1)-F0(2,1)*F0(3,3))/voli
+            F0inv(3,1)=(F0(2,1)*F0(3,2)-F0(2,2)*F0(3,1))/voli
+            F0inv(1,2)=(F0(1,3)*F0(3,2)-F0(1,2)*F0(3,3))/voli
+            F0inv(2,2)=(F0(1,1)*F0(3,3)-F0(1,3)*F0(3,1))/voli
+            F0inv(3,2)=(F0(1,2)*F0(3,1)-F0(1,1)*F0(3,2))/voli 
+            F0inv(1,3)=(F0(1,2)*F0(2,3)-F0(1,3)*F0(2,2))/voli 
+            F0inv(2,3)=(F0(1,3)*F0(2,1)-F0(1,1)*F0(2,3))/voli 
+            F0inv(3,3)=(F0(1,1)*F0(2,2)-F0(1,2)*F0(2,1))/voli 
 
-voli=F0(1,1)*(F0(2,2)*F0(3,3)-F0(2,3)*F0(3,2))-    &
-      F0(1,2)*(F0(2,1)*F0(3,3)-F0(2,3)*F0(3,1))+   &
-      F0(1,3)*(F0(2,1)*F0(3,2)-F0(2,2)*F0(3,1))    
-  F0inv(1,1)=(F0(2,2)*F0(3,3)-F0(2,3)*F0(3,2))/voli
-  F0inv(2,1)=(F0(2,3)*F0(3,1)-F0(2,1)*F0(3,3))/voli
-  F0inv(3,1)=(F0(2,1)*F0(3,2)-F0(2,2)*F0(3,1))/voli
-  F0inv(1,2)=(F0(1,3)*F0(3,2)-F0(1,2)*F0(3,3))/voli
-  F0inv(2,2)=(F0(1,1)*F0(3,3)-F0(1,3)*F0(3,1))/voli
-  F0inv(3,2)=(F0(1,2)*F0(3,1)-F0(1,1)*F0(3,2))/voli 
-  F0inv(1,3)=(F0(1,2)*F0(2,3)-F0(1,3)*F0(2,2))/voli 
-  F0inv(2,3)=(F0(1,3)*F0(2,1)-F0(1,1)*F0(2,3))/voli 
-  F0inv(3,3)=(F0(1,1)*F0(2,2)-F0(1,2)*F0(2,1))/voli 
+            volc=FX(1,1)*(FX(2,2)*FX(3,3)-FX(2,3)*FX(3,2))-    &
+                FX(1,2)*(FX(2,1)*FX(3,3)-FX(2,3)*FX(3,1))+    &
+                FX(1,3)*(FX(2,1)*FX(3,2)-FX(2,2)*FX(3,1))    
+            FXinv(1,1)=(FX(2,2)*FX(3,3)-FX(2,3)*FX(3,2))/volc
+            FXinv(2,1)=(FX(2,3)*FX(3,1)-FX(2,1)*FX(3,3))/volc
+            FXinv(3,1)=(FX(2,1)*FX(3,2)-FX(2,2)*FX(3,1))/volc
+            FXinv(1,2)=(FX(1,3)*FX(3,2)-FX(1,2)*FX(3,3))/volc
+            FXinv(2,2)=(FX(1,1)*FX(3,3)-FX(1,3)*FX(3,1))/volc
+            FXinv(3,2)=(FX(1,2)*FX(3,1)-FX(1,1)*FX(3,2))/volc
+            FXinv(1,3)=(FX(1,2)*FX(2,3)-FX(1,3)*FX(2,2))/volc
+            FXinv(2,3)=(FX(1,3)*FX(2,1)-FX(1,1)*FX(2,3))/volc
+            FXinv(3,3)=(FX(1,1)*FX(2,2)-FX(1,2)*FX(2,1))/volc
+            TEN_VOL_RATIO=volc/voli
 
-volc=FX(1,1)*(FX(2,2)*FX(3,3)-FX(2,3)*FX(3,2))-    &
-      FX(1,2)*(FX(2,1)*FX(3,3)-FX(2,3)*FX(3,1))+    &
-      FX(1,3)*(FX(2,1)*FX(3,2)-FX(2,2)*FX(3,1))    
-  FXinv(1,1)=(FX(2,2)*FX(3,3)-FX(2,3)*FX(3,2))/volc
-  FXinv(2,1)=(FX(2,3)*FX(3,1)-FX(2,1)*FX(3,3))/volc
-  FXinv(3,1)=(FX(2,1)*FX(3,2)-FX(2,2)*FX(3,1))/volc
-  FXinv(1,2)=(FX(1,3)*FX(3,2)-FX(1,2)*FX(3,3))/volc
-  FXinv(2,2)=(FX(1,1)*FX(3,3)-FX(1,3)*FX(3,1))/volc
-  FXinv(3,2)=(FX(1,2)*FX(3,1)-FX(1,1)*FX(3,2))/volc
-  FXinv(1,3)=(FX(1,2)*FX(2,3)-FX(1,3)*FX(2,2))/volc
-  FXinv(2,3)=(FX(1,3)*FX(2,1)-FX(1,1)*FX(2,3))/volc
-  FXinv(3,3)=(FX(1,1)*FX(2,2)-FX(1,2)*FX(2,1))/volc
-TEN_VOL_RATIO=volc/voli
+            UFENX=0.0
+            L=0.0
+            DO IDIM=1,NDIM
+            DO JDIM=1,NDIM
+                DO KDIM=1,NDIM
+                UFENX(IDIM,JDIM)=UFENX(IDIM,JDIM)+FX(IDIM,KDIM)*F0inv(KDIM,JDIM)
+                L(IDIM,JDIM)=L(IDIM,JDIM)+LX(IDIM,KDIM)*FXinv(KDIM,JDIM)
 
-    UFENX=0.0
-    L=0.0
-        DO IDIM=1,NDIM
-       DO JDIM=1,NDIM
-          DO KDIM=1,NDIM
-          UFENX(IDIM,JDIM)=UFENX(IDIM,JDIM)+FX(IDIM,KDIM)*F0inv(KDIM,JDIM)
-          L(IDIM,JDIM)=L(IDIM,JDIM)+LX(IDIM,KDIM)*FXinv(KDIM,JDIM)
-
-          END DO
-       END DO
-    END DO
-!    DO JDIM=1,NDIM
-!       DO IDIM=1,NDIM
-!         UFENX(IDIM,JDIM)=UFENX(IDIM,JDIM)+LOC_X_ALL(IDIM,JDIM)*UFENX0(JDIM,IDIM)
-!          DO ILOC=1,NLOC
-!          UFENX(IDIM,JDIM)=UFENX(IDIM,JDIM)+LOC_X_ALL(JDIM,ILOC)*UFENX0(JDIM,ILOC)
-!          END DO
-!       END DO
-!    END DO
-
-
-    FEN_TEN_XX=0.0
-    D=0.0
-    DO IDIM=1,NDIM
-        DO JDIM=1,NDIM
-           DO KDIM=1,NDIM
-           FEN_TEN_XX(IDIM,JDIM)=FEN_TEN_XX(IDIM,JDIM)+UFENX(IDIM,KDIM)*UFENX(JDIM,KDIM)
-!    FEN_TEN_XX(IDIM,JDIM)=FEN_TEN_XX(IDIM,JDIM)+UFENX_ILOC(IDIM,JDIM)*UFENX0(JDIM,IDIM)
-           END DO
-           D(IDIM,JDIM)=0.5*(L(IDIM,JDIM)+L(JDIM,IDIM))
-       END DO
-    END DO
-
-!    FEN_TEN_VOL(:)=UFENX_ILOC(:) * TEN_VOL
-
-    DO JDIM=1,NDIM
-       DO IDIM=1,NDIM
-          CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)+DPEKS*D(IDIM,JDIM)
-       END DO
-          CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM)+(DPELA*LOG(TEN_VOL_RATIO)-DPEMU)/TEN_VOL_RATIO
-    END DO
-
-    ! linfeng update solid stress, for output in vtk file.
-    ! ewrite(3, *) "++++++++++++  write solid stress  +++++++++++++"
-     DO JDIM=1,NDIM
-        DO IDIM=1,NDIM
-            temp_stress%val(IDIM, JDIM, ELE) = CAUCHY_STRESS_IJ_SOLID_ELE(IDIM, JDIM)
-        ENDDO
-    ENDDO
-    ! ewrite(3, *) "++++++++  write solid stress finished +++++++++"
-
-!    ewrite(3,*)"stress is", STRESS_IJ
-!    DO JDIM=1,NDIM
-!            PRESSURE = PRESSURE+STRESS_IJ( JDIM,JDIM )/NDIM
-!    END DO
-
-   hydro_pressure=DPELA*LOG(TEN_VOL_RATIO)/TEN_VOL_RATIO
-!   PRESSURE(:,:)=PRESSURE(:,:)+hydro_pressure
-
-    DO JDIM=1,NDIM    
-        CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM )-hydro_pressure
-    END DO
+                END DO
+            END DO
+            END DO
+                !    DO JDIM=1,NDIM
+                !       DO IDIM=1,NDIM
+                !         UFENX(IDIM,JDIM)=UFENX(IDIM,JDIM)+LOC_X_ALL(IDIM,JDIM)*UFENX0(JDIM,IDIM)
+                !          DO ILOC=1,NLOC
+                !          UFENX(IDIM,JDIM)=UFENX(IDIM,JDIM)+LOC_X_ALL(JDIM,ILOC)*UFENX0(JDIM,ILOC)
+                !          END DO
+                !       END DO
+                !    END DO
 
 
+            FEN_TEN_XX=0.0
+            D=0.0
+            DO IDIM=1,NDIM
+                DO JDIM=1,NDIM
+                DO KDIM=1,NDIM
+                FEN_TEN_XX(IDIM,JDIM)=FEN_TEN_XX(IDIM,JDIM)+UFENX(IDIM,KDIM)*UFENX(JDIM,KDIM)
+                    ! FEN_TEN_XX(IDIM,JDIM)=FEN_TEN_XX(IDIM,JDIM)+UFENX_ILOC(IDIM,JDIM)*UFENX0(JDIM,IDIM)
+                END DO
+                D(IDIM,JDIM)=0.5*(L(IDIM,JDIM)+L(JDIM,IDIM))
+            END DO
+            END DO
+
+            ! FEN_TEN_VOL(:)=UFENX_ILOC(:) * TEN_VOL
+
+            DO JDIM=1,NDIM
+            DO IDIM=1,NDIM
+                CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)+DPEKS*D(IDIM,JDIM)
+            END DO
+                CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM)+(DPELA*LOG(TEN_VOL_RATIO)-DPEMU)/TEN_VOL_RATIO
+            END DO
+
+            ! linfeng update solid stress, for output in vtk file.
+            ! ewrite(3, *) "++++++++++++  write solid stress  +++++++++++++"
+            DO JDIM=1,NDIM
+                DO IDIM=1,NDIM
+                    temp_stress%val(IDIM, JDIM, ELE) = CAUCHY_STRESS_IJ_SOLID_ELE(IDIM, JDIM)
+                ENDDO
+            ENDDO
+            ! ewrite(3, *) "++++++++  write solid stress finished +++++++++"
+
+            hydro_pressure=DPELA*LOG(TEN_VOL_RATIO)/TEN_VOL_RATIO
+
+            DO JDIM=1,NDIM    
+                CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM )-hydro_pressure
+            END DO
+
+        else if (ndim==2) then 
+            do iloc = 2,nloc 
+                ii = iloc - 1
+                f0(1,ii) = LOC_X0_ALL(1,iloc) - LOC_X0_ALL(1,1)
+                f0(2,ii) = LOC_X0_ALL(2,iloc) - LOC_X0_ALL(2,1)
+                fx(1,ii) = LOC_X_ALL(1,iloc) - LOC_X_ALL(1,1)
+                fx(2,ii) = LOC_X_ALL(2,iloc) - LOC_X_ALL(2,1)
+                lx(1,ii) = LOC_VEL_ALL(1,iloc) - LOC_VEL_ALL(1,1)
+                lx(2,ii) = LOC_VEL_ALL(2,iloc) - LOC_VEL_ALL(2,1)
+            enddo
+            
+            ! find F0_inverse: f0inv (initial configuration)
+            voli = f0(1,1) * f0(2,2) - f0(1,2) * f0(2,1)
+            f0inv(1,1) = f0(2,2)/voli
+            f0inv(1,2) = -f0(1,2)/voli
+            f0inv(2,1) = -f0(2,1)/voli
+            f0inv(2,2) = f0(2,2)/voli
+            ! find FX_inverse: fxinv (current configuration)
+            volc = fx(1,1) * fx(2,2) - fx(1,2) * fx(2,1)
+            fxinv(1,1) = fx(2,2)/volc
+            fxinv(1,2) = -fx(1,2)/volc
+            fxinv(2,1) = -fx(2,1)/volc
+            fxinv(2,2) = fx(2,2)/volc
+            ! J
+            TEN_VOL_RATIO=volc/voli
+
+            ! find deformation gradient tensor F and velocity gradient tensor L
+            UFENX=0.0   ! F
+            L=0.0       ! L
+            do idim = 1,NDIM
+                do jdim = 1,NDIM
+                    do kdim = 1,NDIM
+                        UFENX(idim, jdim) = UFENX(idim, jdim) + fx(idim, kdim) * f0inv(kdim, jdim)
+                        L(idim, jdim) = UFENX(idim, jdim) + lx(idim, kdim) * fxinv(kdim, jdim)
+                    enddo
+                enddo
+            enddo
+            
+            ! left Cauchy-Green strain = F*F^T (FEN_TEN_XX)
+            ! and deformation rate tensor D 
+            FEN_TEN_XX = 0.0
+            D = 0.0
+            do idim = 1,ndim
+                do jdim = 1,NDIM
+                    do kdim = 1,NDIM
+                        FEN_TEN_XX(idim, jdim) = FEN_TEN_XX(idim, jdim) + ufenx(idim, kdim)*ufenx(jdim, kdim)
+                    enddo
+                    d(idim, jdim) = 0.5 * ( l(idim,jdim) + l(jdim, idim) )
+                enddo
+            enddo
+            
+            ! now we are going to use constitutive models and cauclate Cauchy stress
+            ! let's use ... what kind of constitutive modesl?
+            trb = 0;
+            DO IDIM = 1,NDIM
+                trb = trb + FEN_TEN_XX(IDIM, IDIM)
+            ENDDO
+            CAUCHY_STRESS_IJ_SOLID_ELE = FEN_TEN_XX * DPEMU * TEN_VOL_RATIO**(-5./3.)
+            DO JDIM = 1,NDIM
+                CAUCHY_STRESS_IJ_SOLID_ELE(JDIM, JDIM) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM) - DPEMU * TEN_VOL_RATIO**(-5./3.) * 1./3. * trb
+            ENDDO 
+            
+            ! store solid stress to tensor field
+            DO JDIM=1,NDIM
+                DO IDIM=1,NDIM
+                    temp_stress%val(IDIM, JDIM, ELE) = CAUCHY_STRESS_IJ_SOLID_ELE(IDIM, JDIM)
+                ENDDO
+            ENDDO
+            
+        endif
+        
+        RETURN
+    END SUBROUTINE CALC_STRESS_TEN_SOLID
 
 
-  !      ewrite(3,*)"leave stress tensor calculation"
+    SUBROUTINE CALC_FORCE_SOLID( CAUCHY_STRESS_IJ_SOLID_ELE, NDIM, &
+    NLOC,LOC_X_ALL, solid_force)
+        IMPLICIT NONE
+        INTEGER, intent( in )  :: NDIM, NLOC
+        REAL, DIMENSION( :, :  ), intent( in ) :: CAUCHY_STRESS_IJ_SOLID_ELE
+        REAL, DIMENSION( :,: ), intent( inOUT ) :: solid_force
+        REAL, DIMENSION( :,: ), intent( in ) :: LOC_X_ALL
+        REAL :: nx, ny ,nz, tx, ty, tz
+        INTEGER :: ILOC, JLOC, KLOC, LLOC, IDIM,JDIM
 
-    RETURN
-
-END SUBROUTINE CALC_STRESS_TEN_SOLID
-
-
-SUBROUTINE CALC_FORCE_SOLID( CAUCHY_STRESS_IJ_SOLID_ELE, NDIM, &
-NLOC,LOC_X_ALL, solid_force)
-IMPLICIT NONE
-INTEGER, intent( in )  :: NDIM, NLOC
-REAL, DIMENSION( :, :  ), intent( in ) :: CAUCHY_STRESS_IJ_SOLID_ELE
-REAL, DIMENSION( :,: ), intent( inOUT ) :: solid_force
-REAL, DIMENSION( :,: ), intent( in ) :: LOC_X_ALL
-REAL :: nx, ny ,nz, tx, ty, tz
-INTEGER :: ILOC, JLOC, KLOC, LLOC, IDIM,JDIM
-
-Do ILOC=1,NLOC
-    JLOC=ILOC+1
-    if(JLOC.GT.4)JLOC=1
-        KLOC=JLOC+1
-        if(KLOC.GT.4)KLOC=1
-            LLOC=KLOC+1
-            if(LLOC.GT.4)LLOC=1
+        if (ndim==3) then
+            Do ILOC=1,NLOC
+                JLOC=ILOC+1
+                if(JLOC.GT.4)JLOC=1
+                KLOC=JLOC+1
+                if(KLOC.GT.4)KLOC=1
+                LLOC=KLOC+1
+                if(LLOC.GT.4)LLOC=1
 
                 nx=((LOC_X_ALL(2,KLOC)-LOC_X_ALL(2,JLOC))*     &
                     (LOC_X_ALL(3,LLOC)-LOC_X_ALL(3,JLOC))-     &
@@ -5519,16 +5581,31 @@ Do ILOC=1,NLOC
                         solid_force(3,ILOC)=solid_force(3,ILOC)+tz
                 else
 
-                       solid_force(1,ILOC)=solid_force(1,ILOC)-tx
+                    solid_force(1,ILOC)=solid_force(1,ILOC)-tx
                         solid_force(2,ILOC)=solid_force(2,ILOC)-ty
                         solid_force(3,ILOC)=solid_force(3,ILOC)-tz
-               Endif
+                Endif
+            END DO
+        else if (ndim==2) then 
+            do iloc = 1, nloc 
+                jloc = iloc+1
+                if (jloc .gt. 3) jloc=1
+                kloc = jloc+1
+                if (kloc .gt. 3) kloc=1
+                ! normal vector
+                nx = LOC_X_ALL(2,kloc) - LOC_X_ALL(2,jloc)
+                ny = LOC_X_ALL(1,jloc) - LOC_X_ALL(1,kloc)
+                ! traction
+                tx = CAUCHY_STRESS_IJ_SOLID_ELE(1,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(1,2)*ny
+                ty = CAUCHY_STRESS_IJ_SOLID_ELE(2,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(2,2)*ny 
+                ! add to solid_forces
+                solid_force(1,iloc) = solid_force(1,iloc) + tx 
+                solid_force(2,iloc) = solid_force(2,iloc) + ty 
+            end do
+        endif
+        RETURN
 
-              END DO
-
-RETURN
-
-END SUBROUTINE CALC_FORCE_SOLID
+    END SUBROUTINE CALC_FORCE_SOLID
 
     SUBROUTINE CALC_STRESS_TEN_REDUCE(STRESS_IJ, ZERO_OR_TWO_THIRDS, NDIM,    &
         FEN_TEN_XX, FEN_TEN_VOL,  UFENX_JLOC  )
