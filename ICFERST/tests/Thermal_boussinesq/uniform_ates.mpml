@@ -92,7 +92,7 @@
     <phase_properties>
       <Density>
         <compressible>
-          <Boussinesq_eos>
+          <Linear_eos>
             <reference_density>
               <real_value rank="0">1000</real_value>
             </reference_density>
@@ -102,7 +102,7 @@
             <beta>
               <real_value rank="0">8.8e-5</real_value>
             </beta>
-          </Boussinesq_eos>
+          </Linear_eos>
         </compressible>
       </Density>
       <Viscosity>
@@ -332,7 +332,7 @@
     <phase_properties>
       <Density>
         <compressible>
-          <Boussinesq_eos>
+          <Linear_eos>
             <reference_density>
               <real_value rank="0">1000</real_value>
             </reference_density>
@@ -342,7 +342,7 @@
             <beta>
               <real_value rank="0">8.8e-5</real_value>
             </beta>
-          </Boussinesq_eos>
+          </Linear_eos>
         </compressible>
       </Density>
       <Viscosity>

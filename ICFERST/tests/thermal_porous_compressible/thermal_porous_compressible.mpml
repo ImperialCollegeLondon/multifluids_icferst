@@ -69,7 +69,7 @@
     <phase_properties>
       <Density>
         <compressible>
-          <Boussinesq_eos>
+          <Linear_eos>
             <reference_density>
               <real_value rank="0">1000</real_value>
             </reference_density>
@@ -85,7 +85,7 @@
             <gamma>
               <real_value rank="0">0.46e-9</real_value>
             </gamma>
-          </Boussinesq_eos>
+          </Linear_eos>
         </compressible>
         <boundary_conditions name="all">
           <surface_ids>

@@ -4459,7 +4459,7 @@ DEN = A * P ^ B
                 <ref name="real"/>
               </element>
             </element>
-            <element name="Boussinesq_eos">
+            <element name="Linear_eos">
               <a:documentation>Boussinesq EOS
 
 &lt;b&gt;This EOS imposes the boussinesq approximation.&lt;/b&gt;
