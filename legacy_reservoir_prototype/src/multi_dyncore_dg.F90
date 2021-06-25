@@ -835,7 +835,7 @@ end if
                rhs_xyz_pet%val(cv_inod)=rhs_xyz_pet%val(cv_inod) - sum( nnx(:) * u_all%val(:,1,u_jnod) * sigma(ele) ) ! assume solid is in phase 1 if it exists.
                ! ml = sum(nn) = vi (v1+v2+v3+... all cv shape functions in that element)
                ml(cv_inod)=ml(cv_inod)+nn
-               ewrite(3,*) ele, cv_inod, cv_iloc, cv_jloc, nn, ml(cv_inod)
+            !    ewrite(3,*) ele, cv_inod, cv_iloc, cv_jloc, nn, ml(cv_inod)
 
                call addto( matrix_pet, 1, 1, cv_inod, cv_jnod, nxnx_mat )
             end do ! do cv_jloc = 1, Mdims%cv_nloc
