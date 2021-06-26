@@ -5493,12 +5493,12 @@ end if
                 do jdim = 1,NDIM
                     do kdim = 1,NDIM
                         UFENX(idim, jdim) = UFENX(idim, jdim) + fx(idim, kdim) * f0inv(kdim, jdim)
-                        L(idim, jdim) = UFENX(idim, jdim) + lx(idim, kdim) * fxinv(kdim, jdim)
+                        L(idim, jdim) = L(idim, jdim) + lx(idim, kdim) * fxinv(kdim, jdim)
                     enddo
                 enddo
             enddo
             
-            ! left Cauchy-Green strain = F*F^T (FEN_TEN_XX)
+            ! left Cauchy-Green strain b = F*F^T (FEN_TEN_XX)
             ! and deformation rate tensor D 
             FEN_TEN_XX = 0.0
             D = 0.0
