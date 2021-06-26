@@ -916,23 +916,23 @@ end if
     do ele=1,Mdims%totele
 
         ! ============ from here =========================
-      nod0=ndgln%x((ele-1)*Mdims%cv_nloc+1)
-      nod1=ndgln%x((ele-1)*Mdims%cv_nloc+2)
-      nod2=ndgln%x((ele-1)*Mdims%cv_nloc+3)
-      nod3=ndgln%x((ele-1)*Mdims%cv_nloc+4)
+        !   nod0=ndgln%x((ele-1)*Mdims%cv_nloc+1)
+        !   nod1=ndgln%x((ele-1)*Mdims%cv_nloc+2)
+        !   nod2=ndgln%x((ele-1)*Mdims%cv_nloc+3)
+        !   nod3=ndgln%x((ele-1)*Mdims%cv_nloc+4)
 
-      x0=X_ALL%val(1,nod0)
-      y0=X_ALL%val(2,nod0)
-      z0=X_ALL%val(3,nod0)
-      x1=X_ALL%val(1,nod1)
-      y1=X_ALL%val(2,nod1)
-      z1=X_ALL%val(3,nod1)
-      x2=X_ALL%val(1,nod2)
-      y2=X_ALL%val(2,nod2)
-      z2=X_ALL%val(3,nod2)
-      x3=X_ALL%val(1,nod3)
-      y3=X_ALL%val(2,nod3)
-      z3=X_ALL%val(3,nod3)
+        !   x0=X_ALL%val(1,nod0)
+        !   y0=X_ALL%val(2,nod0)
+        !   z0=X_ALL%val(3,nod0)
+        !   x1=X_ALL%val(1,nod1)
+        !   y1=X_ALL%val(2,nod1)
+        !   z1=X_ALL%val(3,nod1)
+        !   x2=X_ALL%val(1,nod2)
+        !   y2=X_ALL%val(2,nod2)
+        !   z2=X_ALL%val(3,nod2)
+        !   x3=X_ALL%val(1,nod3)
+        !   y3=X_ALL%val(2,nod3)
+        !   z3=X_ALL%val(3,nod3)
         ! =================seems useless ===================
         ! =============== to here===========================
         !  XP0DG_ALL%val(1,ele)=(x0+x1+x2+x3)/4.0
@@ -940,7 +940,7 @@ end if
         !  XP0DG_ALL%val(3,ele)=(z0+z1+z2+z3)/4.0
 
 
-    !  ewrite(3,*)"XP0DG",XP0DG_ALL%val(1,ele),XP0DG_ALL%val(2,ele),XP0DG_ALL%val(3,ele)
+        !  ewrite(3,*)"XP0DG",XP0DG_ALL%val(1,ele),XP0DG_ALL%val(2,ele),XP0DG_ALL%val(3,ele)
          do u_iloc=1,Mdims%u_nloc
                   u_nodi=ndgln%u((ele-1)*Mdims%u_nloc+u_iloc) 
                   x_nodi=ndgln%x((ele-1)*Mdims%cv_nloc+u_iloc)
