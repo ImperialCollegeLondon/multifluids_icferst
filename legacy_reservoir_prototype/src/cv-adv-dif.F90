@@ -5593,8 +5593,8 @@ end if
                 kloc = jloc+1
                 if (kloc .gt. 3) kloc=1
                 ! normal vector
-                nx = LOC_X_ALL(2,kloc) - LOC_X_ALL(2,jloc)
-                ny = LOC_X_ALL(1,jloc) - LOC_X_ALL(1,kloc)
+                nx = (LOC_X_ALL(2,kloc) - LOC_X_ALL(2,jloc))/2.
+                ny = (LOC_X_ALL(1,jloc) - LOC_X_ALL(1,kloc))/2.
                 ! traction
                 tx = CAUCHY_STRESS_IJ_SOLID_ELE(1,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(1,2)*ny
                 ty = CAUCHY_STRESS_IJ_SOLID_ELE(2,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(2,2)*ny 
