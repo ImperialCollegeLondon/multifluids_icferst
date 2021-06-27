@@ -785,7 +785,9 @@ end if
          u_all_cvmesh(:,:,cv_inod) = u_all_cvmesh(:,:,cv_inod)/vel_count(cv_inod)
         ! ewrite(3,*)"solid velocity", u_all_solid(:,:,cv_inod), vel_count_solid(cv_inod)
          u_all_solid(:,:,cv_inod) = u_all_solid(:,:,cv_inod)/max(0.01, vel_count_solid(cv_inod) ) ! why limit vel_count_solid
-         ! to 0.01 here? 
+         ! to 0.01 here? -> No. It's setting the minimum to 0.01.
+        !  ewrite(3,*) 'cv_inod', cv_inod, '|', u_all_cvmesh(:,:,cv_inod), vel_count(cv_inod), &
+        !     '|',u_all_solid(:,:,cv_inod),vel_count_solid(cv_inod)
       end do
 
       sigma_plus_bc(:) = min(1.0, 1000.0 * sigma_plus_bc(:)) ! if we have a non-zero value then def assume is a solid.
