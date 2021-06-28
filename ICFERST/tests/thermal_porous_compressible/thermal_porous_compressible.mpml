@@ -86,6 +86,7 @@
               <real_value rank="0">0.46e-9</real_value>
             </gamma>
           </Linear_eos>
+          <Boussinesq_approximation/>
         </compressible>
         <boundary_conditions name="all">
           <surface_ids>
