@@ -2868,7 +2868,7 @@ end if
           DO CV_ILOC = 1, Mdims%cv_nloc
             mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
             cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-            lhs_coef(1, cv_inod) = lhs_coef(1, cv_inod) + upwnd%inv_adv_coef(1,1,2,mat_nod)!upwnd%inv_adv_coef stored the value of phi^2/C
+            lhs_coef(1, cv_inod) = lhs_coef(1, cv_inod) + 1./multi_absorp%Magma%val(1, 1, 2, mat_nod)!multi_absorp%magma has stored the value of phi^2/C
             CV_counter(cv_inod) = CV_counter(cv_inod) + 1.0
           end do
         end do
