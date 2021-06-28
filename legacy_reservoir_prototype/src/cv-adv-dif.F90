@@ -5544,6 +5544,7 @@ end if
         REAL, DIMENSION( :,: ), intent( in ) :: LOC_X_ALL
         REAL :: nx, ny ,nz, tx, ty, tz
         INTEGER :: ILOC, JLOC, KLOC, LLOC, IDIM,JDIM
+        Real, DIMENSION( :, : ), ALLOCATABLE:: dXdx, dNdx, fij
 
         if (ndim==3) then
             Do ILOC=1,NLOC
@@ -5587,21 +5588,34 @@ end if
                 Endif
             END DO
         else if (ndim==2) then 
-            do iloc = 1, nloc 
-                jloc = iloc+1
-                if (jloc .gt. 3) jloc=1
-                kloc = jloc+1
-                if (kloc .gt. 3) kloc=1
-                ! normal vector
-                nx = (LOC_X_ALL(2,kloc) - LOC_X_ALL(2,jloc))/2.
-                ny = (LOC_X_ALL(1,jloc) - LOC_X_ALL(1,kloc))/2.
-                ! traction
-                tx = CAUCHY_STRESS_IJ_SOLID_ELE(1,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(1,2)*ny
-                ty = CAUCHY_STRESS_IJ_SOLID_ELE(2,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(2,2)*ny 
-                ! add to solid_forces
-                solid_force(1,iloc) = solid_force(1,iloc) + tx 
-                solid_force(2,iloc) = solid_force(2,iloc) + ty 
-            end do
+            ! do iloc = 1, nloc 
+            !     jloc = iloc+1
+            !     if (jloc .gt. 3) jloc=1
+            !     kloc = jloc+1
+            !     if (kloc .gt. 3) kloc=1
+            !     ! normal vector
+            !     nx = (LOC_X_ALL(2,kloc) - LOC_X_ALL(2,jloc))/2.
+            !     ny = (LOC_X_ALL(1,jloc) - LOC_X_ALL(1,kloc))/2.
+            !     ! traction
+            !     tx = CAUCHY_STRESS_IJ_SOLID_ELE(1,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(1,2)*ny
+            !     ty = CAUCHY_STRESS_IJ_SOLID_ELE(2,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(2,2)*ny 
+            !     ! add to solid_forces
+            !     solid_force(1,iloc) = solid_force(1,iloc) + tx 
+            !     solid_force(2,iloc) = solid_force(2,iloc) + ty 
+            ! end do
+            ! let's try another nodal forces formula. taken from Munjiza et al. Large
+            ! strain finite element method A practical course, Wiley 2015 pg. 351
+            ! [fij] = 1/2 * \sigma * (dXdx * dNdx)
+            allocate(dXdx(2,2), dNdx(2,3), fij(2,3))
+            dXdx(1,1) = LOC_X_ALL(2,3) - LOC_X_ALL(2,1)
+            dXdx(1,2) = LOC_X_ALL(2,1) - LOC_X_ALL(2,2)
+            dXdx(2,1) = LOC_X_ALL(1,1) - LOC_X_ALL(1,3)
+            dXdx(2,2) = LOC_X_ALL(1,2) - LOC_X_ALL(1,1)
+            dNdx = reshape((/1,1,-1,0,0,-1/), (/2,3/))
+            fij = 1/2 * matmul(CAUCHY_STRESS_IJ_SOLID_ELE, matmul( dXdx, dNdx) )
+            do iloc = 1, nloc
+                solid_force(:,iloc) = fij(:,iloc)
+            enddo
         endif
         RETURN
 
