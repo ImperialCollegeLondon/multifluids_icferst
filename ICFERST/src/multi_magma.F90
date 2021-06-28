@@ -578,7 +578,7 @@ contains
                  do iphase = 2, Mdims%nphase
                    upwnd%adv_coef(1,1,iphase,mat_nod) = Magma_absorp%val(1,1,iphase,mat_nod)/max(eps,satura%val(1,iphase,cv_inod))
                    !Now the inverse
-                   upwnd%inv_adv_coef(1,1,iphase,mat_nod) = 1./upwnd%adv_coef(1,1,iphase,mat_nod)                 
+                   upwnd%inv_adv_coef(1,1,iphase,mat_nod) = 1./upwnd%adv_coef(1,1,iphase,mat_nod)
                  end do
                end do
              end do
