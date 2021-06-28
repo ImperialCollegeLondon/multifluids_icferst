@@ -5476,13 +5476,13 @@ end if
             f0inv(1,1) = f0(2,2)/voli
             f0inv(1,2) = -f0(1,2)/voli
             f0inv(2,1) = -f0(2,1)/voli
-            f0inv(2,2) = f0(2,2)/voli
+            f0inv(2,2) = f0(1,1)/voli
             ! find FX_inverse: fxinv (current configuration)
             volc = fx(1,1) * fx(2,2) - fx(1,2) * fx(2,1)
             fxinv(1,1) = fx(2,2)/volc
             fxinv(1,2) = -fx(1,2)/volc
             fxinv(2,1) = -fx(2,1)/volc
-            fxinv(2,2) = fx(2,2)/volc
+            fxinv(2,2) = fx(1,1)/volc
             ! J
             TEN_VOL_RATIO=volc/voli
 
