@@ -2345,7 +2345,7 @@ end if
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases
         if (compute_compaction) call get_Darcy_phases_velocity()
         !Ensure that the velocity fulfils the continuity equation before moving on
-        call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+        if (.not. is_magma) call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
         call deallocate(deltaP)
         if (isParallel()) call halo_update(velocity)
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
@@ -2941,8 +2941,10 @@ end if
         call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, darcy_phases, &
             Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
         !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
-        CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:Mdims%nphase,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:Mdims%nphase,:) + CDP_tensor%val,&
+        CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
+        CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:Mdims%nphase,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:Mdims%nphase,:)*0 + CDP_tensor%val,&
             Mdims%ndim, darcy_phases, Mdims%totele, Mdims%u_nloc, ndgln%u )
+
 
       end subroutine get_Darcy_phases_velocity
 

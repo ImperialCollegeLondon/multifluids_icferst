@@ -576,13 +576,13 @@ contains
                  !Solid phase has a value of 1
                  upwnd%inv_adv_coef(1,1,1,mat_nod)=1.0; upwnd%adv_coef(1,1,1,mat_nod)=1.0
                  do iphase = 2, Mdims%nphase
-                   upwnd%adv_coef(1,1,iphase,mat_nod) = Magma_absorp%val(1,1,iphase,mat_nod)/max(eps,satura%val(1,iphase,cv_inod))
+                   upwnd%adv_coef(1,1,iphase,mat_nod) = Magma_absorp%val(1,1,iphase,mat_nod)*max(eps,satura%val(1,iphase,cv_inod))
                    !Now the inverse
                    upwnd%inv_adv_coef(1,1,iphase,mat_nod) = 1./upwnd%adv_coef(1,1,iphase,mat_nod)
                  end do
                end do
              end do
-
+             
              !Introduce perturbation, positive for the increasing and negative for decreasing phase
              !Make sure that the perturbation is between bounds
              PERT = 0.0001; allocate(Max_sat(Mdims%nphase), SATURA2(1, Mdims%nphase, Mdims%cv_nonods))
