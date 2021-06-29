@@ -5359,6 +5359,15 @@ end if
         DPEMU=1.0e+05
         DPELA=1.0e+05
         DPEKS=300.
+
+        call get_option( '/numerical_methods/lame_coefficient/lambda', &
+            DPELA, default = 1.0e+5 )
+        call get_option( '/numerical_methods/lame_coefficient/mu', &
+            DPEMU, default = 1.0e+5 )
+        call get_option( '/numerical_methods/lame_coefficient/damping', &
+            DPEKS, default = 300. )
+        
+        ewrite(3,*) 'DPE>>', dpela, dpemu, dpeks
         
         temp_stress => extract_tensor_field(state(1), "StressTenSolid")
         
