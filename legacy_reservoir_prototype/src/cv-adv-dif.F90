@@ -5367,8 +5367,6 @@ end if
         call get_option( '/numerical_methods/lame_coefficient/damping', &
             DPEKS, default = 300. )
         
-        ewrite(3,*) 'DPE>>', dpela, dpemu, dpeks
-        
         temp_stress => extract_tensor_field(state(1), "StressTenSolid")
         
         if (ndim.eq.3 ) then
