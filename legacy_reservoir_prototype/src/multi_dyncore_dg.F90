@@ -5851,7 +5851,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 END DO Loop_P_JLOC1
             END DO Loop_U_ILOC1
             IF ( .NOT.first_nonlinear_time_step &
-                        .AND. (RESID_BASED_STAB_DIF/=0) ) THEN
+                        .AND. (RESID_BASED_STAB_DIF/=0) &
+                        .AND. (sigma%val(ele)<0.5)) THEN ! linfeng: always don't use PG stab. in solid region
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 DO U_JLOC = 1, Mdims%u_nloc
@@ -5989,11 +5990,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                             ( -UFEN_REVERSED( GI, U_ILOC )*VOL_FRA_GI_DX_ALL(1:Mdims%ndim,IPHASE,GI) + UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC )*VOL_FRA_GI(IPHASE,GI) ),  UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
                                     ELSE
                                     ! JXiang
-                           !        if(solids_implicit) then
-  !                                      CALL CALC_STRESS_TEN_SOLID( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-   !                                         UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns0%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
-                              !     endif
-                                   ! JXiang end
+                                    !   if(solids_implicit) then
+                                    !        CALL CALC_STRESS_TEN_SOLID( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
+                                    !            UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns0%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
+                                    !   endif
+                                    ! JXiang end
                                         CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
                                             UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
                                     ENDIF
