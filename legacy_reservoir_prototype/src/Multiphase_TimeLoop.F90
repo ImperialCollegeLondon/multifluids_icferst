@@ -852,6 +852,7 @@ contains
                 x_coord=> extract_vector_field( state, "Coordinate" )
                 XOLD_ALL%val=X_ALL%val
                 x_coord%val=X_ALL%val
+                call halo_update(x_coord)
                 ! ewrite(3,*)"X0 coordinate",X0_ALL%val
             end if
  
