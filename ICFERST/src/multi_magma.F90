@@ -138,7 +138,7 @@ contains
         series(i)=d**2/a/mu*phi(i)**b !coupling%a/d**2*mu*phi(i)**(1-coupling%b)*scaling
       end do
     else
-      do i=1, N-1
+      do i=2, N
         if (phi(i)<=low) then
           series(i)= d**2/a/mu*phi(i)**b  !coupling%a/d**2*mu*phi(i)**(1-coupling%b)*scaling
         else if (phi(i)>=high) then
@@ -448,7 +448,7 @@ contains
     real, dimension(:), intent(in) :: c_phi_series !generated c coefficients
     !Local variables
     integer :: mat_nod, ele, CV_ILOC, cv_inod, iphase, jphase
-    real :: magma_coupling
+    real :: magma_coupling, phi
     integer:: c_phi_size ! length of c_phi_series
     real, dimension(4):: test
     c_phi_size=size(c_phi_series)
@@ -457,9 +457,10 @@ contains
       DO CV_ILOC = 1, Mdims%cv_nloc
         mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
         cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-          Do iphase =2, Mdims%nphase!Absorption is defined as a term mutiplying the velocity term, not the pressure
-            Magma_absorp(1, 1, iphase, mat_nod) = 1.0/phi2_over_c(saturation(1,iphase, cv_inod))
-          end Do
+        phi = max((1.0-saturation(1,1, cv_inod)),1e-5)
+        do iphase =2, Mdims%nphase!Absorption is defined as a term mutiplying the velocity term, not the pressure
+          Magma_absorp(1, 1, iphase, mat_nod) = phi/phi2_over_c(saturation(1,iphase, cv_inod))
+        end Do
       end DO
     end DO
   contains
@@ -575,14 +576,14 @@ contains
                  mat_nod = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
                  !Solid phase has a value of 1
                  upwnd%inv_adv_coef(1,1,1,mat_nod)=1.0; upwnd%adv_coef(1,1,1,mat_nod)=1.0
-                 do iphase = 2, Mdims%nphase
-                   upwnd%adv_coef(1,1,iphase,mat_nod) = Magma_absorp%val(1,1,iphase,mat_nod)*max(eps,satura%val(1,iphase,cv_inod))
+                 do iphase = 2, Mdims%nphase!if absorpt is the same we may want to reuse memory...
+                   upwnd%adv_coef(1,1,iphase,mat_nod) = Magma_absorp%val(1,1,iphase,mat_nod)
                    !Now the inverse
                    upwnd%inv_adv_coef(1,1,iphase,mat_nod) = 1./upwnd%adv_coef(1,1,iphase,mat_nod)
                  end do
                end do
              end do
-             
+
              !Introduce perturbation, positive for the increasing and negative for decreasing phase
              !Make sure that the perturbation is between bounds
              PERT = 0.0001; allocate(Max_sat(Mdims%nphase), SATURA2(1, Mdims%nphase, Mdims%cv_nonods))

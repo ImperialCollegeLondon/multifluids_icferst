@@ -2853,9 +2853,10 @@ end if
         real, dimension(:,:,:,:), allocatable :: rhs_coef
         type( scalar_field ), pointer :: sfield
         real, dimension(Mdims%ndim) :: g
-        real :: gravity_magnitude
+        real :: gravity_magnitude, phi
         type(vector_field), pointer :: gravity_direction
         real, dimension(Mdims%cv_nonods) :: CV_counter
+        real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
 
         allocate(F_fields(0, 0, 0), K_fields(0,0,0))
         allocate(lhs_coef(1, Mdims%cv_nonods), rhs_coef(1, Mdims%ndim, 1, Mdims%cv_nonods))
@@ -2867,8 +2868,9 @@ end if
         DO ELE = 1, Mdims%totele
           DO CV_ILOC = 1, Mdims%cv_nloc
             mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
-            cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-            lhs_coef(1, cv_inod) = lhs_coef(1, cv_inod) + 1./multi_absorp%Magma%val(1, 1, 2, mat_nod)!multi_absorp%magma has stored the value of phi^2/C
+            cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )!multi_absorp%magma has stored the value of phi/C but we need phi^2/c
+            phi = max((1.0-sfield%val(cv_inod)),1e-5)
+            lhs_coef(1, cv_inod) = lhs_coef(1, cv_inod) + phi/multi_absorp%Magma%val(1, 1, 2, mat_nod)
             CV_counter(cv_inod) = CV_counter(cv_inod) + 1.0
           end do
         end do
