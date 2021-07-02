@@ -2954,8 +2954,9 @@ end if
                         if (is_porous_media) then
                         UDGI_ALL(:, iv_iphase) = I_inv_adv_coef (iv_iphase)* matmul(perm%val(:,:,ele),&
                             matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI )))
-                        else
+                        else !If magma
                           UDGI_ALL(:, iv_iphase) = I_inv_adv_coef (iv_iphase)* matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
+                          if (iv_iphase > 1) UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) + UDGI_ALL(:, 1)!We add the solid velocity
                         end if
                         ! Here we assume that sigma_out/sigma_in is a diagonal matrix
                         ! which effectively assumes that the anisotropy just inside the domain
@@ -2983,11 +2984,12 @@ end if
                                 ENDIF
                                 if (is_porous_media) then
                                   UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)= I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc))
-                                else
+                                else!is magma
                                   UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)= I_inv_adv_coef (iv_iphase) * UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)
                                 end if
                             END DO
                         end if
+                        !I am not sure that if for magma this line below works...
                         if(iv_incomming_flow) UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) * iv_SUF_SIG_DIAGTEN_BC_GI
 
                     ELSE ! Specified vel bc.
@@ -3009,8 +3011,9 @@ end if
                         END DO
                         if (is_porous_media) then
                           UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UDGI_ALL_FOR_INV(:, iv_iphase))
-                        else
+                        else!is magma
                           UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + I_inv_adv_coef (iv_iphase) * UDGI_ALL_FOR_INV(:, iv_iphase)
+                          if (iv_iphase > 1) UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) + UDGI_ALL(:, 1)!We add the solid velocity
                         end if
                     END IF
                 END DO ! PHASE LOOP
@@ -3073,6 +3076,10 @@ end if
                       UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), perm%val(:,:,ele))
                     end do
                   end if
+                else !if magma
+                  do iv_iphase = 1,final_phase
+                    if (iv_iphase > 1) UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) + UDGI_ALL(:, 1)!We add the solid velocity
+                  end do
                 end if
                 if (not_OLD_VEL) then
                     do iv_idim = 1, Mdims%ndim

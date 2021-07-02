@@ -7,11 +7,14 @@
     <command_line>../../../bin/icferst *.mpml</command_line>
   </problem_definition>
   <variables>
-    <variable name="l2_vel_solid" language="python">from fluidity_tools import stat_parser as stat
-l2_vel_solid = stat("Magma_velocity_test.stat")["phase1"]["Velocity%magnitude"]["max"][-1]</variable>
+    <variable name="max_vel_solid" language="python">from fluidity_tools import stat_parser as stat
+max_vel_solid = stat("Magma_velocity_test.stat")["phase1"]["Velocity%magnitude"]["max"][-1]</variable>
+<variable name="max_vel_fluid" language="python">from fluidity_tools import stat_parser as stat
+max_vel_fluid = stat("Magma_velocity_test.stat")["phase2"]["DarcyVelocity%magnitude"]["max"][-1]</variable>
   </variables>
   <pass_tests>
-    <test name="Assert Velocity solid" language="python">assert(abs(l2_vel_solid - 8.3e-08)/8.3e-08 &lt; 0.05)</test>
+    <test name="Assert Velocity solid" language="python">assert(abs(max_vel_solid - 8.3e-08)/8.3e-08 &lt; 0.05)</test>
+    <test name="Assert Velocity fluid" language="python">assert(abs(max_vel_fluid - 5.7e-08)/5.7e-08 &lt; 0.05)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
