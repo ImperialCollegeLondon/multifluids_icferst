@@ -909,6 +909,7 @@ end if
       END DO
 
       x_all%val = xold_all%val + dt * cv_ug_all! get new grid positions
+      call halo_update(x_all)
     !  xv_all%val=x_all%val
       do cv_inod=1,Mdims%cv_nonods
     !  ewrite(3,*) "X_ALL, coordinate are ",x_all%val(1,cv_inod),x_all%val(2,cv_inod), x_all%val(3,cv_inod)
@@ -954,6 +955,7 @@ end if
          end do
     end do
       
+      call halo_update(ug_all)
 
       ewrite(3,*) "leaving one equation diffusion grid velocity solvefffffffvvvvvvv"
 
