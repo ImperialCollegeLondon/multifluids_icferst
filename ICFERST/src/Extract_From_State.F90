@@ -3644,14 +3644,14 @@ end subroutine get_DarcyVelocity
                 Vol_flux(iphase)
               end do
               if (has_temperature) then!Instead of max tem, maybe energy produced... Mass_FLUX*Cp*Temp
-                 do iphase = start_phase,end_phase
-                   outfluxes%totout(2, iphase, iofluxes) =  outfluxes%totout(2, iphase, iofluxes) + &
-                    Mass_flux(iphase) *4185. * temp_field%val(1,iphase,CV_NODI)
-                 end do
-                !do iphase = start_phase, end_phase
-                !!  outfluxes%totout(2, iphase, iofluxes) =  max(  temp_field%val(1,iphase,CV_NODI),&
-                !  outfluxes%totout(2, iphase, iofluxes)   )
-                !end do
+              !   do iphase = start_phase,end_phase
+              !     outfluxes%totout(2, iphase, iofluxes) =  outfluxes%totout(2, iphase, iofluxes) + &
+              !      Mass_flux(iphase) *4185. * temp_field%val(1,iphase,CV_NODI)
+              !   end do
+                do iphase = start_phase, end_phase
+                  outfluxes%totout(2, iphase, iofluxes) =  max(  temp_field%val(1,iphase,CV_NODI),&
+                  outfluxes%totout(2, iphase, iofluxes)   )
+                end do
               end if
               !Maybe rather than max_sat would be better Mass of C? Mass_flux*Concentration
               if (has_concentration) then
