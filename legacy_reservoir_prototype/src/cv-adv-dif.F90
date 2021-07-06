@@ -5356,16 +5356,16 @@ end if
         REAL::DPEMU,DPELA,TEN_VOL_RATIO, hydro_pressure, DPEKS
     !     ewrite(3,*)"enter stress tensor calculation, TEN_VOL_RATIO", TEN_VOL_RATIO
 
-        DPEMU=1.0e+05
-        DPELA=1.0e+05
-        DPEKS=300.
+        ! DPEMU=1.0e+05
+        ! DPELA=1.0e+05
+        ! DPEKS=300.
 
         call get_option( '/numerical_methods/lame_coefficient/lambda', &
             DPELA, default = 1.0e+5 )
         call get_option( '/numerical_methods/lame_coefficient/mu', &
             DPEMU, default = 1.0e+5 )
         call get_option( '/numerical_methods/lame_coefficient/damping', &
-            DPEKS, default = 300. )
+            DPEKS, default = 0. )
         
         temp_stress => extract_tensor_field(state(1), "StressTenSolid")
         
@@ -5477,8 +5477,6 @@ end if
                 lx(1,ii) = LOC_VEL_ALL(1,iloc) - LOC_VEL_ALL(1,1)
                 lx(2,ii) = LOC_VEL_ALL(2,iloc) - LOC_VEL_ALL(2,1)
             enddo
-            ewrite(3,*) 'LOC_X0_All', LOC_X0_ALL
-            ewrite(3,*) 'LOC_X_ALL', LOC_X_ALL
 
             ! find F0_inverse: f0inv (initial configuration)
             voli = f0(1,1) * f0(2,2) - f0(1,2) * f0(2,1)
@@ -5519,25 +5517,17 @@ end if
                 enddo
             enddo
             
-            ewrite(3,*) 'F0inv', F0inv
-            ewrite(3,*) 'Fxinv', Fxinv
-            ewrite(3,*) 'UFENX', UFENX
-            ewrite(3,*) 'L    ', L 
-            ewrite(3,*) 'FEN_T', FEN_TEN_XX
-            ewrite(3,*) 'd    ', d 
-            
             ! now we are going to use constitutive models and cauclate Cauchy stress
             ! let's use ... what kind of constitutive modesl?
             trb = 0;
             DO IDIM = 1,NDIM
                 trb = trb + FEN_TEN_XX(IDIM, IDIM)
             ENDDO
-            CAUCHY_STRESS_IJ_SOLID_ELE = FEN_TEN_XX * DPEMU * TEN_VOL_RATIO**(-5./3.)
+            CAUCHY_STRESS_IJ_SOLID_ELE = FEN_TEN_XX * DPEMU * TEN_VOL_RATIO**(-5./3.)+DPEKS*D
             DO JDIM = 1,NDIM
                 CAUCHY_STRESS_IJ_SOLID_ELE(JDIM, JDIM) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM) &
                 - DPEMU * TEN_VOL_RATIO**(-5./3.) * 1./2. * trb ! note that in 2D the coefficient to trb is 1/2 instead of 1/3
             ENDDO 
-            ewrite(3,*) 'STRES', CAUCHY_STRESS_IJ_SOLID_ELE
             
             ! ! let's use neo-Hookean (compressible)
             ! DO JDIM=1,NDIM
@@ -5613,38 +5603,34 @@ end if
                 Endif
             END DO
         else if (ndim==2) then 
-            ! do iloc = 1, nloc 
-            !     jloc = iloc+1
-            !     if (jloc .gt. 3) jloc=1
-            !     kloc = jloc+1
-            !     if (kloc .gt. 3) kloc=1
-            !     ! normal vector
-            !     nx = (LOC_X_ALL(2,kloc) - LOC_X_ALL(2,jloc))/2.
-            !     ny = (LOC_X_ALL(1,jloc) - LOC_X_ALL(1,kloc))/2.
-            !     ! traction
-            !     tx = CAUCHY_STRESS_IJ_SOLID_ELE(1,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(1,2)*ny
-            !     ty = CAUCHY_STRESS_IJ_SOLID_ELE(2,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(2,2)*ny 
-            !     ! add to solid_forces
-            !     solid_force(1,iloc) = solid_force(1,iloc) + tx 
-            !     solid_force(2,iloc) = solid_force(2,iloc) + ty 
-            ! end do
+            do iloc = 1, nloc 
+                jloc = iloc+1
+                if (jloc .gt. 3) jloc=1
+                kloc = jloc+1
+                if (kloc .gt. 3) kloc=1
+                ! normal vector
+                nx = (LOC_X_ALL(2,kloc) - LOC_X_ALL(2,jloc))/2.
+                ny = (LOC_X_ALL(1,jloc) - LOC_X_ALL(1,kloc))/2.
+                ! traction
+                tx = CAUCHY_STRESS_IJ_SOLID_ELE(1,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(1,2)*ny
+                ty = CAUCHY_STRESS_IJ_SOLID_ELE(2,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(2,2)*ny 
+                ! add to solid_forces
+                solid_force(1,iloc) = solid_force(1,iloc) + tx 
+                solid_force(2,iloc) = solid_force(2,iloc) + ty 
+            end do
             ! let's try another nodal forces formula. taken from Munjiza et al. Large
             ! strain finite element method A practical course, Wiley 2015 pg. 351
             ! [fij] = 1/2 * \sigma * (dXdx * dNdx)
-            allocate(dXdx(2,2), dNdx(2,3), fij(2,3))
-            dXdx(1,1) = LOC_X_ALL(2,3) - LOC_X_ALL(2,1)
-            dXdx(1,2) = LOC_X_ALL(2,1) - LOC_X_ALL(2,2)
-            dXdx(2,1) = LOC_X_ALL(1,1) - LOC_X_ALL(1,3)
-            dXdx(2,2) = LOC_X_ALL(1,2) - LOC_X_ALL(1,1)
-            dNdx = reshape((/1,1,-1,0,0,-1/), (/2,3/))
-            fij = 1./2. * matmul(CAUCHY_STRESS_IJ_SOLID_ELE, matmul( dXdx, dNdx) )
-            do iloc = 1, nloc
-                solid_force(:,iloc) = fij(:,iloc)
-            enddo
-            ewrite(3,*) 'dXdx', dXdx
-            ewrite(3,*) 'dNdx', dNdx
-            ewrite(3,*) 'fij', fij
-            ewrite(3,*) 'force', solid_force(:,:)
+            ! allocate(dXdx(2,2), dNdx(2,3), fij(2,3))
+            ! dXdx(1,1) = LOC_X_ALL(2,3) - LOC_X_ALL(2,1)
+            ! dXdx(1,2) = LOC_X_ALL(2,1) - LOC_X_ALL(2,2)
+            ! dXdx(2,1) = LOC_X_ALL(1,1) - LOC_X_ALL(1,3)
+            ! dXdx(2,2) = LOC_X_ALL(1,2) - LOC_X_ALL(1,1)
+            ! dNdx = reshape((/1,1,-1,0,0,-1/), (/2,3/))
+            ! fij = 1./2. * matmul(CAUCHY_STRESS_IJ_SOLID_ELE, matmul( dXdx, dNdx) )
+            ! do iloc = 1, nloc
+            !     solid_force(:,iloc) = fij(:,iloc)
+            ! enddo
         endif
         RETURN
 
