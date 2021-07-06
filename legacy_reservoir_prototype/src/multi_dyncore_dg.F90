@@ -5385,6 +5385,7 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
      !                                   loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) - 0.01*force_solids(:,iphase, :)
                                         rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) - 1.0*force_solids(:,iphase, :)
                                         loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
+                                        ewrite(3,*) ele, '|',loc_u_rhs(:,iphase,:), '|',force_solids(:,iphase,:)
                                    endif
                                 ENDIF
                             END DO

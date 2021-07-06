@@ -5477,7 +5477,9 @@ end if
                 lx(1,ii) = LOC_VEL_ALL(1,iloc) - LOC_VEL_ALL(1,1)
                 lx(2,ii) = LOC_VEL_ALL(2,iloc) - LOC_VEL_ALL(2,1)
             enddo
-            
+            ewrite(3,*) 'LOC_X0_All', LOC_X0_ALL
+            ewrite(3,*) 'LOC_X_ALL', LOC_X_ALL
+
             ! find F0_inverse: f0inv (initial configuration)
             voli = f0(1,1) * f0(2,2) - f0(1,2) * f0(2,1)
             f0inv(1,1) = f0(2,2)/voli
@@ -5504,7 +5506,6 @@ end if
                     enddo
                 enddo
             enddo
-            
             ! left Cauchy-Green strain b = F*F^T (FEN_TEN_XX)
             ! and deformation rate tensor D 
             FEN_TEN_XX = 0.0
@@ -5518,6 +5519,13 @@ end if
                 enddo
             enddo
             
+            ewrite(3,*) 'F0inv', F0inv
+            ewrite(3,*) 'Fxinv', Fxinv
+            ewrite(3,*) 'UFENX', UFENX
+            ewrite(3,*) 'L    ', L 
+            ewrite(3,*) 'FEN_T', FEN_TEN_XX
+            ewrite(3,*) 'd    ', d 
+            
             ! now we are going to use constitutive models and cauclate Cauchy stress
             ! let's use ... what kind of constitutive modesl?
             trb = 0;
@@ -5526,9 +5534,19 @@ end if
             ENDDO
             CAUCHY_STRESS_IJ_SOLID_ELE = FEN_TEN_XX * DPEMU * TEN_VOL_RATIO**(-5./3.)
             DO JDIM = 1,NDIM
-                CAUCHY_STRESS_IJ_SOLID_ELE(JDIM, JDIM) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM) - DPEMU * TEN_VOL_RATIO**(-5./3.) * 1./3. * trb
+                CAUCHY_STRESS_IJ_SOLID_ELE(JDIM, JDIM) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM) &
+                - DPEMU * TEN_VOL_RATIO**(-5./3.) * 1./2. * trb ! note that in 2D the coefficient to trb is 1/2 instead of 1/3
             ENDDO 
+            ewrite(3,*) 'STRES', CAUCHY_STRESS_IJ_SOLID_ELE
             
+            ! ! let's use neo-Hookean (compressible)
+            ! DO JDIM=1,NDIM
+            !     DO IDIM=1,NDIM
+            !         CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)+DPEKS*D(IDIM,JDIM)
+            !     END DO
+            !     CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM)+(DPELA*LOG(TEN_VOL_RATIO)-DPEMU)/TEN_VOL_RATIO
+            ! END DO
+
             ! store solid stress to tensor field
             DO JDIM=1,NDIM
                 DO IDIM=1,NDIM
@@ -5619,10 +5637,14 @@ end if
             dXdx(2,1) = LOC_X_ALL(1,1) - LOC_X_ALL(1,3)
             dXdx(2,2) = LOC_X_ALL(1,2) - LOC_X_ALL(1,1)
             dNdx = reshape((/1,1,-1,0,0,-1/), (/2,3/))
-            fij = 1/2 * matmul(CAUCHY_STRESS_IJ_SOLID_ELE, matmul( dXdx, dNdx) )
+            fij = 1./2. * matmul(CAUCHY_STRESS_IJ_SOLID_ELE, matmul( dXdx, dNdx) )
             do iloc = 1, nloc
                 solid_force(:,iloc) = fij(:,iloc)
             enddo
+            ewrite(3,*) 'dXdx', dXdx
+            ewrite(3,*) 'dNdx', dNdx
+            ewrite(3,*) 'fij', fij
+            ewrite(3,*) 'force', solid_force(:,:)
         endif
         RETURN
 
