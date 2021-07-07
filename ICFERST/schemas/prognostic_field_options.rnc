@@ -352,7 +352,13 @@ prognostic_pressure_field =
             input_choice_initial_condition_pressure
          }
       )+,
-      ## Boundary conditions
+      ## Boundary conditions.
+      ## For well phase, for ATES applications:
+      ## If flip of BCs required, specify pressure BCs as python
+      ## function, with value being a function of time for BOTH wells.
+      ## Specify positive pressure when it should be applied
+      ## and negative pressure when it should ignored.
+      ## Specify constant velocity BCs for both wells.
       element boundary_conditions {
          attribute name { string },
          ## Surface id:

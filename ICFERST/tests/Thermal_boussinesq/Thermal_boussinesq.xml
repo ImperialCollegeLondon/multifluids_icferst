@@ -14,7 +14,7 @@ int_temp1 = stat("uniform_ates_1.stat")["phase1"]["Temperature"]["integral"][-1]
   </variables>
   <pass_tests>
     <test name="Assert final max temperature 1" language="python">assert(abs(max_temp1 - 298)/298 &lt; 0.05)</test>
-    <test name="Assert integral temperature 1" language="python">assert(abs(int_temp1 - 14.5e10)/14.5e10 &lt; 0.05)</test>
+    <test name="Assert integral temperature 1" language="python">assert(abs(int_temp1 - 14.525e11)/14.525e11 &lt; 0.05)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
