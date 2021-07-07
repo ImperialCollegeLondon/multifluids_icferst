@@ -1938,6 +1938,17 @@ end if
                 PLIKE_GRAD_SOU_COEF%val, PLIKE_GRAD_SOU_GRAD%val, IPLIKE_GRAD_SOU)
         end if
 
+        if ( Mdims%npres > 1 ) then
+           call get_entire_boundary_condition( pressure, ['weakdirichlet','freesurface  '],&
+                pressure_BCs, WIC_P_BC_ALL )
+           !Array defined to check where to apply pressure or velocity BCs (for wells)
+           if (.not. associated(Mmat%WIC_FLIP_P_VEL_BCS)) then
+             allocate(Mmat%WIC_FLIP_P_VEL_BCS( 1,Mdims%npres,surface_element_count(pressure)))
+           end if
+           !Assing values to check later in multi_pipes when applying the BCs
+           call flip_p_and_v_bcs(Mdims, WIC_P_BC_ALL, pressure_BCs, Mmat%WIC_FLIP_P_VEL_BCS)
+        end if
+
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
              velocity, pressure, multi_absorp, eles_with_pipe, pipes_aux,&
@@ -1961,8 +1972,6 @@ end if
               SIGMA( IPHASE, : ) = velocity_absorption( (IPHASE-1)*Mdims%ndim+1, (IPHASE-1)*Mdims%ndim+1, : )
            END DO
 
-           call get_entire_boundary_condition( pressure, ['weakdirichlet','freesurface  '],&
-                pressure_BCs, WIC_P_BC_ALL )
            !Introduce well modelling
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe,&
                 associated(Mmat%PIVIT_MAT) .and. .not.Mmat%Stored, WIC_P_BC_ALL, pressure_BCs%val, SIGMA,&
@@ -2295,6 +2304,42 @@ end if
           end if
           deallocate(field_residuals, stored_field, ref_pressure)
         end subroutine Stokes_Anderson_acceleration
+
+        !---------------------------------------------------------------------------
+        !> @author Geraldine Regnier
+        !> @brief Flip P and V BCs for wells.
+        !>Implemented for ATES applications or other applications when  needing to
+        !>switch on and off wells. For this to work, need to define boundary conditions
+        !>for wells for both pressure and velocity in a time-dependent manner through
+        !>Diamond using a python function. When the user wants the pressure BC to be
+        !>ignored and the velocity BC to be applied, specify negative pressure.
+        !>When the user wants the pressure BC to applied, specify normal positive
+        !>pressure. Specify velocity BCs for both wells as a constant.
+        !---------------------------------------------------------------------------
+
+        subroutine flip_p_and_v_bcs(Mdims, WIC_P_BC_ALL, pressure_BCs, WIC_FLIP_P_VEL_BCS)
+          implicit none
+          type(multi_dimensions), intent(in) :: Mdims
+          integer :: SELE, CV_SILOC
+          INTEGER, DIMENSION( :,:,: ), INTENT( IN ) :: WIC_P_BC_ALL
+          INTEGER, PARAMETER :: WIC_P_BC_DIRICHLET = 1
+          type(tensor_field) :: pressure_BCs
+          INTEGER, DIMENSION( 1,Mdims%npres,surface_element_count(pressure)), INTENT(OUT):: WIC_FLIP_P_VEL_BCS
+
+          WIC_FLIP_P_VEL_BCS = 0!There is no flipping
+          DO SELE = 1, Mdims%stotel
+            IF ( WIC_P_BC_ALL( 1, 2, SELE ) == WIC_P_BC_DIRICHLET ) THEN
+              DO CV_SILOC = 1, Mdims%cv_snloc
+                if (pressure_BCs%val(1, 2, (SELE-1)*Mdims%cv_snloc + CV_SILOC) < -1) then
+                  WIC_FLIP_P_VEL_BCS(1, 2, SELE) = 1!Impose velocity BCs
+                else !Impose Pressure BCs
+                  WIC_FLIP_P_VEL_BCS(1, 2, SELE) = 10
+                end if
+              END DO
+            END IF
+          END DO
+
+        end subroutine flip_p_and_v_bcs
 
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas

@@ -189,6 +189,7 @@ module multi_data_types
         logical :: compact_PIVIT_MAT = .false. !>Flag to know whether to use a compacted mass matrix or not
         integer, dimension(:), pointer :: limiters_ELEMATPSI=> null()!>Stores locations used by the limiters
         real, dimension(:), pointer :: limiters_ELEMATWEI=> null()!>Stores weights used by the limiters
+        integer, dimension(:,:,:), pointer :: WIC_FLIP_P_VEL_BCS=> null()!Stores array to check when to flip BCs
     end type multi_matrices
 
 
@@ -1201,6 +1202,9 @@ contains
         end if
         if (associated(Mmat%ICOLOR)) then
             deallocate(Mmat%ICOLOR); nullify(Mmat%ICOLOR)
+        end if
+        if (associated(Mmat%WIC_FLIP_P_VEL_BCS)) then
+            deallocate(Mmat%WIC_FLIP_P_VEL_BCS); nullify(Mmat%WIC_FLIP_P_VEL_BCS)
         end if
         !Set flag to recalculate
         Mmat%stored = .false.
