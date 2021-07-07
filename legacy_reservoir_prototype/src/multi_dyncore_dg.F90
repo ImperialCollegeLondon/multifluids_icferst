@@ -5359,7 +5359,7 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                        if(solid_implicit) then ! add in the force from the solids.
                                        if(sigma%val(ele).GT.0.5) then
 !                    DO U_ILOC = 1, Mdims%u_nloc
-                        DO GI = 1, FE_GIdims%cv_ngi
+                        GI=1! DO GI = 1, FE_GIdims%cv_ngi
                             DO IPHASE = 1, Mdims%nphase
                                 IF ( STRESS_FORM ) THEN ! stress form of viscosity...
                                     IF(IDIVID_BY_VOL_FRAC.ne.1) THEN
@@ -5385,11 +5385,10 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
      !                                   loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) - 0.01*force_solids(:,iphase, :)
                                         rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) - 1.0*force_solids(:,iphase, :)
                                         loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
-                                        ewrite(3,*) ele, '|',loc_u_rhs(:,iphase,:), '|',force_solids(:,iphase,:)
                                    endif
                                 ENDIF
                             END DO
-                         END DO
+                        !  END DO
           !            END DO
                                       endif ! if(sigma%val(ele).GT.0.5) then
                                       endif ! if(solid_implicit) then
