@@ -3671,10 +3671,10 @@ end subroutine get_DarcyVelocity
                 Vol_flux(iphase)
               end do
               if (has_temperature) then!Instead of max tem, maybe energy produced... Mass_FLUX*Cp*Temp
-                ! do iphase = 1, nphase
-                !   outfluxes%totout(2, iphase, k) =  outfluxes%totout(2, iphase, k) + &
-                !     Mass_flux(iphase) * Cp(iphase) * temp_field%val(1,iphase,CV_NODI))
-                ! end do
+              !   do iphase = start_phase,end_phase
+              !     outfluxes%totout(2, iphase, iofluxes) =  outfluxes%totout(2, iphase, iofluxes) + &
+              !      Mass_flux(iphase) *4185. * temp_field%val(1,iphase,CV_NODI)
+              !   end do
                 do iphase = start_phase, end_phase
                   outfluxes%totout(2, iphase, iofluxes) =  max(  temp_field%val(1,iphase,CV_NODI),&
                   outfluxes%totout(2, iphase, iofluxes)   )

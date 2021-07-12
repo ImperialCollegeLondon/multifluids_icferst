@@ -425,7 +425,13 @@ requires a distinct name for the options dictionary.</a:documentation>
       </oneOrMore>
       <zeroOrMore>
         <element name="boundary_conditions">
-          <a:documentation>Boundary conditions</a:documentation>
+          <a:documentation>Boundary conditions.
+For well phase, for ATES applications:
+If flip of BCs required, specify pressure BCs as python
+function, with value being a function of time for BOTH wells.
+Specify positive pressure when it should be applied
+and negative pressure when it should ignored.
+Specify constant velocity BCs for both wells.</a:documentation>
           <attribute name="name">
             <data type="string"/>
           </attribute>

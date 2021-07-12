@@ -62,7 +62,7 @@
       <comment>259200 = 3 days</comment>
     </timestep>
     <finish_time>
-      <real_value rank="0">5256000</real_value>
+      <real_value rank="0">7776000</real_value>
     </finish_time>
   </timestepping>
   <physical_parameters>
@@ -75,7 +75,7 @@
           <mesh name="CoordinateMesh"/>
           <value name="WholeMesh">
             <constant>
-              <real_value shape="3" dim1="dim" rank="1">0 0 -1</real_value>
+              <real_value rank="1" dim1="dim" shape="3">0 0 -1</real_value>
             </constant>
           </value>
           <stat>
@@ -149,7 +149,7 @@
         </prescribed>
       </scalar_field>
     </phase_properties>
-    <scalar_field name="Pressure" rank="0">
+    <scalar_field rank="0" name="Pressure">
       <prognostic>
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
@@ -162,7 +162,7 @@
         </detectors>
         <adaptivity_options>
           <relative_measure>
-            <scalar_field name="InterpolationErrorBound" rank="0">
+            <scalar_field rank="0" name="InterpolationErrorBound">
               <prescribed>
                 <value name="WholeMesh">
                   <constant>
@@ -188,17 +188,17 @@
         <output/>
       </prognostic>
     </scalar_field>
-    <vector_field name="Velocity" rank="1">
+    <vector_field rank="1" name="Velocity">
       <prognostic>
         <mesh name="VelocityMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value shape="3" dim1="dim" rank="1">0 0 0</real_value>
+            <real_value rank="1" dim1="dim" shape="3">0 0 0</real_value>
           </constant>
         </initial_condition>
         <boundary_conditions name="all">
           <surface_ids>
-            <integer_value shape="8" rank="1">1 2 3 4 5 6 101 102</integer_value>
+            <integer_value rank="1" shape="8">1 2 3 4 5 6 101 102</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -230,7 +230,7 @@
         <output/>
       </prognostic>
     </vector_field>
-    <scalar_field name="PhaseVolumeFraction" rank="0">
+    <scalar_field rank="0" name="PhaseVolumeFraction">
       <prognostic>
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
@@ -240,7 +240,7 @@
         </initial_condition>
         <boundary_conditions name="all">
           <surface_ids>
-            <integer_value shape="8" rank="1">1 2 3 4 5 6 101 102</integer_value>
+            <integer_value rank="1" shape="8">1 2 3 4 5 6 101 102</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -259,7 +259,7 @@
         </galerkin_projection>
       </prognostic>
     </scalar_field>
-    <scalar_field name="Temperature" rank="0">
+    <scalar_field rank="0" name="Temperature">
       <prognostic>
         <mesh name="PressureMesh"/>
         <Impose_min_max>
@@ -272,7 +272,7 @@
         </Impose_min_max>
         <initial_condition name="WholeMesh">
           <python>
-            <string_value lines="20" type="code" language="python">def val(X, t):
+            <string_value type="code" language="python" lines="20">def val(X, t):
  baseT = 283
  Offset = 0
  grad = 0.03
@@ -284,12 +284,12 @@
         </initial_condition>
         <boundary_conditions name="all">
           <surface_ids>
-            <integer_value shape="8" rank="1">1 2 3 4 5 6 101 102</integer_value>
+            <integer_value rank="1" shape="8">1 2 3 4 5 6 101 102</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
             <python>
-              <string_value lines="20" type="code" language="python">def val(X, t):
+              <string_value type="code" language="python" lines="20">def val(X, t):
  baseT = 283
  Offset = 0
  grad = 0.03
@@ -305,7 +305,7 @@
         </detectors>
         <adaptivity_options>
           <absolute_measure>
-            <scalar_field name="InterpolationErrorBound" rank="0">
+            <scalar_field rank="0" name="InterpolationErrorBound">
               <prescribed>
                 <value name="WholeMesh">
                   <constant>
@@ -352,7 +352,7 @@
             <value name="WholeMesh">
               <anisotropic_asymmetric>
                 <constant>
-                  <real_value symmetric="false" dim2="dim" shape="3 3" dim1="dim" rank="2">3.0e-4 3.0e-4 3.0e-4 3.0e-4 3.0e-4 3.0e-4 3.0e-4 3.0e-4 3.0e-4</real_value>
+                  <real_value symmetric="false" rank="2" dim1="dim" dim2="dim" shape="3 3">3.0e-4 3.0e-4 3.0e-4 3.0e-4 3.0e-4 3.0e-4 3.0e-4 3.0e-4 3.0e-4</real_value>
                 </constant>
               </anisotropic_asymmetric>
             </value>
@@ -389,7 +389,7 @@
         </prescribed>
       </scalar_field>
     </phase_properties>
-    <scalar_field name="Pressure" rank="0">
+    <scalar_field rank="0" name="Pressure">
       <prognostic>
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
@@ -399,13 +399,42 @@
         </initial_condition>
         <boundary_conditions name="producer">
           <surface_ids>
-            <integer_value shape="1" rank="1">102</integer_value>
+            <integer_value rank="1" shape="1">102</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
-            <constant>
-              <real_value rank="0">8e6</real_value>
-            </constant>
+            <python>
+              <string_value type="code" language="python" lines="20">def val(X,t):
+  t_mod = int(t/4320001)+(t%4320001&gt;0) #rounding up
+  if (t ==0):
+    val = 8e6
+  else:
+    if (t_mod%2==0):
+      val = -100
+    else:
+      val = 8e6
+  return val</string_value>
+            </python>
+          </type>
+        </boundary_conditions>
+        <boundary_conditions name="injector">
+          <surface_ids>
+            <integer_value rank="1" shape="1">101</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <python>
+              <string_value type="code" language="python" lines="20">def val(X,t):
+  t_mod = int(t/4320001)+(t%4320001&gt;0) #rounding up
+  if (t ==0):
+    val = -100
+  else:
+    if (t_mod%2==0):
+      val = 8e6
+    else:
+      val = -100
+  return val</string_value>
+            </python>
           </type>
         </boundary_conditions>
         <detectors>
@@ -415,17 +444,17 @@
         <output/>
       </prognostic>
     </scalar_field>
-    <vector_field name="Velocity" rank="1">
+    <vector_field rank="1" name="Velocity">
       <prognostic>
         <mesh name="VelocityMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value shape="3" dim1="dim" rank="1">0 0 0</real_value>
+            <real_value rank="1" dim1="dim" shape="3">0 0 0</real_value>
           </constant>
         </initial_condition>
         <boundary_conditions name="the_rest">
           <surface_ids>
-            <integer_value shape="6" rank="1">1 2 3 4 5 6</integer_value>
+            <integer_value rank="1" shape="6">1 2 3 4 5 6</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -450,7 +479,7 @@
         </boundary_conditions>
         <boundary_conditions name="injector">
           <surface_ids>
-            <integer_value shape="1" rank="1">101</integer_value>
+            <integer_value rank="1" shape="2">101 102</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -480,7 +509,7 @@
         <output/>
       </prognostic>
     </vector_field>
-    <scalar_field name="PhaseVolumeFraction" rank="0">
+    <scalar_field rank="0" name="PhaseVolumeFraction">
       <prognostic>
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
@@ -490,7 +519,7 @@
         </initial_condition>
         <boundary_conditions name="all">
           <surface_ids>
-            <integer_value shape="6" rank="1">1 2 3 4 5 6</integer_value>
+            <integer_value rank="1" shape="6">1 2 3 4 5 6</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -505,7 +534,7 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
-    <scalar_field name="Temperature" rank="0">
+    <scalar_field rank="0" name="Temperature">
       <prognostic>
         <mesh name="PressureMesh"/>
         <Impose_min_max>
@@ -518,7 +547,7 @@
         </Impose_min_max>
         <initial_condition name="WholeMesh">
           <python>
-            <string_value lines="20" type="code" language="python">def val(X, t):
+            <string_value type="code" language="python" lines="20">def val(X, t):
  baseT = 283
  Offset = 0
  grad = 0.03
@@ -530,7 +559,7 @@
         </initial_condition>
         <boundary_conditions name="injector">
           <surface_ids>
-            <integer_value shape="1" rank="1">101</integer_value>
+            <integer_value rank="1" shape="1">101</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -541,12 +570,12 @@
         </boundary_conditions>
         <boundary_conditions name="rest">
           <surface_ids>
-            <integer_value shape="6" rank="1">1 2 3 4 5 6</integer_value>
+            <integer_value rank="1" shape="6">1 2 3 4 5 6</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
             <python>
-              <string_value lines="20" type="code" language="python">def val(X, t):
+              <string_value type="code" language="python" lines="20">def val(X, t):
  baseT = 283
  Offset = 0
  grad = 0.03
@@ -555,6 +584,17 @@
  val = -1 * grad * (X[dire] + Offset) + baseT
  return val</string_value>
             </python>
+          </type>
+        </boundary_conditions>
+        <boundary_conditions name="producer">
+          <surface_ids>
+            <integer_value rank="1" shape="1">102</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <constant>
+              <real_value rank="0">291</real_value>
+            </constant>
           </type>
         </boundary_conditions>
         <detectors>
@@ -570,7 +610,7 @@
         <mesh name="P0DG"/>
         <value name="mudstone">
           <region_ids>
-            <integer_value shape="7" rank="1">1 1004 1005 1006 2004 2005 2006</integer_value>
+            <integer_value rank="1" shape="7">1 1004 1005 1006 2004 2005 2006</integer_value>
           </region_ids>
           <constant>
             <real_value rank="0">0.01</real_value>
@@ -578,7 +618,7 @@
         </value>
         <value name="aquifer">
           <region_ids>
-            <integer_value shape="7" rank="1">2 1001 1002 1003 2001 2002 2003</integer_value>
+            <integer_value rank="1" shape="7">2 1001 1002 1003 2001 2002 2003</integer_value>
           </region_ids>
           <constant>
             <real_value rank="0">0.2</real_value>
@@ -596,7 +636,7 @@
         <mesh name="P0DG"/>
         <value name="mudstone">
           <region_ids>
-            <integer_value shape="7" rank="1">1 1004 1005 1006 2004 2005 2006</integer_value>
+            <integer_value rank="1" shape="7">1 1004 1005 1006 2004 2005 2006</integer_value>
             <comment>zone 02 layers with even numbers
 4 12 14 36 38 16 40 6 18 20 42 44 22 46 8 24 26 48 50 28 52 10 30 32 54 56 34 58</comment>
           </region_ids>
@@ -608,7 +648,7 @@
         </value>
         <value name="aquifer">
           <region_ids>
-            <integer_value shape="7" rank="1">2 1001 1002 1003 2001 2002 2003</integer_value>
+            <integer_value rank="1" shape="7">2 1001 1002 1003 2001 2002 2003</integer_value>
             <comment>zone 02 layers with odd numbers
 13 37 5 15 17 39 41 19 43 7 21 23 45 47 25 49 9 27 29 51 53 31 55 11 33 35 57 59</comment>
           </region_ids>
@@ -627,7 +667,7 @@
           <mesh name="P0DG"/>
           <value name="sandstone">
             <region_ids>
-              <integer_value shape="7" rank="1">2 1001 1002 1003 2001 2002 2003</integer_value>
+              <integer_value rank="1" shape="7">2 1001 1002 1003 2001 2002 2003</integer_value>
             </region_ids>
             <constant>
               <real_value rank="0">1600</real_value>
@@ -635,7 +675,7 @@
           </value>
           <value name="mudstone">
             <region_ids>
-              <integer_value shape="7" rank="1">1 1004 1005 1006 2004 2005 2006</integer_value>
+              <integer_value rank="1" shape="7">1 1004 1005 1006 2004 2005 2006</integer_value>
             </region_ids>
             <constant>
               <real_value rank="0">1800</real_value>
@@ -653,7 +693,7 @@
           <mesh name="P0DG"/>
           <value name="sandstone">
             <region_ids>
-              <integer_value shape="7" rank="1">2 1001 1002 1003 2001 2002 2003</integer_value>
+              <integer_value rank="1" shape="7">2 1001 1002 1003 2001 2002 2003</integer_value>
             </region_ids>
             <constant>
               <real_value rank="0">1730</real_value>
@@ -661,7 +701,7 @@
           </value>
           <value name="mudstone">
             <region_ids>
-              <integer_value shape="7" rank="1">1 1004 1005 1006 2004 2005 2006</integer_value>
+              <integer_value rank="1" shape="7">1 1004 1005 1006 2004 2005 2006</integer_value>
             </region_ids>
             <constant>
               <real_value rank="0">1800</real_value>
@@ -679,7 +719,7 @@
           <mesh name="P0DG"/>
           <value name="sandstone">
             <region_ids>
-              <integer_value shape="7" rank="1">2 1001 1002 1003 2001 2002 2003</integer_value>
+              <integer_value rank="1" shape="7">2 1001 1002 1003 2001 2002 2003</integer_value>
             </region_ids>
             <isotropic>
               <constant>
@@ -689,7 +729,7 @@
           </value>
           <value name="mudstone">
             <region_ids>
-              <integer_value shape="7" rank="1">1 1004 1005 1006 2004 2005 2006</integer_value>
+              <integer_value rank="1" shape="7">1 1004 1005 1006 2004 2005 2006</integer_value>
             </region_ids>
             <isotropic>
               <constant>
@@ -722,7 +762,7 @@
           <mesh name="PressureMesh"/>
           <value name="WholeMesh">
             <python>
-              <string_value lines="20" type="code" language="python">def val(X, t):
+              <string_value type="code" language="python" lines="20">def val(X, t):
  val = 0.
  Lim1 = -150
  Lim2 = -50
@@ -759,7 +799,7 @@
           <mesh name="PressureMesh"/>
           <value name="WholeMesh">
             <python>
-              <string_value lines="20" type="code" language="python">def val(X, t):
+              <string_value type="code" language="python" lines="20">def val(X, t):
  val=0.50
  
  return val</string_value>
@@ -812,7 +852,7 @@
         </calculate_sigma_pipe>
       </well_options>
       <well_volume_ids>
-        <integer_value shape="12" rank="1">1001 1002 1003 1004 1005 1006 2001 2002 2003 2004 2005 2006</integer_value>
+        <integer_value rank="1" shape="12">1001 1002 1003 1004 1005 1006 2001 2002 2003 2004 2005 2006</integer_value>
         <comment>Well region IDs
 Well01 : 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 60 61 62 63 64 65&#13;
 Well02 : 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 66 67 68 69 70 71</comment>

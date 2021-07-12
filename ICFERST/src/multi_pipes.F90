@@ -261,8 +261,11 @@ contains
               global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
               compact_phase = iphase + (Mdims%npres - 1)*final_phase
               IF ( WIC_U_BC_ALL( 1, global_phase, SELE ) == WIC_U_BC_DIRICHLET ) THEN
+                !If negative pressure or no flip defined
+                IF (Mmat%WIC_FLIP_P_VEL_BCS(1,2,SELE) < 9) THEN
                   MEAN_U(:,compact_phase) = MEAN_U(:,compact_phase) + &
-                        SUF_U_BC_ALL( :,global_phase, (SELE-1)*Mdims%u_snloc + U_SILOC ) / REAL(Mdims%u_snloc)
+                    SUF_U_BC_ALL( :,global_phase, (SELE-1)*Mdims%u_snloc + U_SILOC ) / REAL(Mdims%u_snloc)
+                END IF
               END IF
             end do
           END DO ! DO U_SILOC=1,Mdims%u_snloc
@@ -273,10 +276,13 @@ contains
               global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
               compact_phase = iphase + (Mdims%npres - 1)*final_phase
               IF ( WIC_U_BC_ALL( 1, global_phase, SELE ) == WIC_U_BC_DIRICHLET ) THEN
-                  WIC_U_BC_ALL_NODS( compact_phase, CV_NOD ) = WIC_U_BC_DIRICHLET
-                  SUF_U_BC_ALL_NODS( :,compact_phase, CV_NOD ) = SUF_U_BC_ALL_NODS( :,compact_phase, CV_NOD ) +&
+                  !If negative pressure or no flip defined
+                  IF (Mmat%WIC_FLIP_P_VEL_BCS(1,2,SELE) < 9) THEN
+                    WIC_U_BC_ALL_NODS( compact_phase, CV_NOD ) = WIC_U_BC_DIRICHLET
+                    SUF_U_BC_ALL_NODS( :,compact_phase, CV_NOD ) = SUF_U_BC_ALL_NODS( :,compact_phase, CV_NOD ) +&
                             MEAN_U(:,compact_phase)
-                  RVEC_SUM_U( compact_phase, CV_NOD ) = RVEC_SUM_U( compact_phase, CV_NOD ) + 1.0
+                    RVEC_SUM_U( compact_phase, CV_NOD ) = RVEC_SUM_U( compact_phase, CV_NOD ) + 1.0
+                  END IF
               END IF
             end do
 
@@ -1592,12 +1598,15 @@ contains
         DO SELE = 1, Mdims%stotel
             DO IPRES = 2, Mdims%npres
                 IF ( WIC_P_BC_ALL( 1, IPRES, SELE ) == WIC_P_BC_DIRICHLET ) THEN
+                  !Check if positive pressure or no flip defined
+                  IF (Mmat%WIC_FLIP_P_VEL_BCS(1,2,SELE) == 0 .or. Mmat%WIC_FLIP_P_VEL_BCS(1,2,SELE) == 10) THEN
                     DO CV_SILOC = 1, Mdims%cv_snloc
-                        CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
-                        WIC_P_BC_ALL_NODS( IPRES, CV_NOD ) = WIC_P_BC_DIRICHLET
-                        SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) = SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) + SUF_P_BC_ALL( 1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC )
-                        RVEC_SUM( IPRES, CV_NOD ) = RVEC_SUM( IPRES, CV_NOD ) + 1.0
+                      CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
+                      WIC_P_BC_ALL_NODS( IPRES, CV_NOD ) = WIC_P_BC_DIRICHLET
+                      SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) = SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) + SUF_P_BC_ALL( 1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC )
+                      RVEC_SUM( IPRES, CV_NOD ) = RVEC_SUM( IPRES, CV_NOD ) + 1.0
                     END DO
+                  END IF
                 END IF
             END DO
         END DO
