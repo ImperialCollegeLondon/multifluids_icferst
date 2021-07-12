@@ -152,18 +152,6 @@
           <nonlinear_scheme/>
         </viscosity_scheme>
       </Viscosity>
-      <tensor_field name="Solute_Diffusivity" rank="2">
-        <prescribed>
-          <value name="WholeMesh">
-            <isotropic>
-              <constant>
-                <real_value rank="0">1.88571e-5</real_value>
-              </constant>
-            </isotropic>
-          </value>
-          <output/>
-        </prescribed>
-      </tensor_field>
     </phase_properties>
     <scalar_field name="Pressure" rank="0">
       <prognostic>
@@ -331,6 +319,18 @@
             <real_value rank="0">1</real_value>
           </max_limit>
         </Impose_min_max>
+        <tensor_field name="Diffusivity" rank="2">
+          <prescribed>
+            <value name="WholeMesh">
+              <isotropic>
+                <constant>
+                  <real_value rank="0">1.88571e-5</real_value>
+                </constant>
+              </isotropic>
+            </value>
+            <output/>
+          </prescribed>
+        </tensor_field>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.00001</real_value>

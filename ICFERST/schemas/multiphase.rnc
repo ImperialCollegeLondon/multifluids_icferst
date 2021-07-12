@@ -2466,6 +2466,26 @@ scalar_field_choice =
                     ##Impose max limit. Only the first phase is read
                     element max_limit{real}
                   )}?,
+                  ## Diffusivity for field (in S.I. m^2/s ).
+                  element tensor_field {
+                     attribute name { "Diffusivity" },
+                     attribute rank { "2" },
+                     (
+                        element prescribed {
+                            mesh_choice?,
+                            prescribed_tensor_field_no_adapt,
+                            output_options
+                        }|
+                      element diagnostic {
+                         (
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
+                     )
+                  }?,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -3877,26 +3897,6 @@ phase_properties_options =
                        ),
                        diagnostic_scalar_field_no_adapt
                     }
-                 )
-              }?,
-              ## Concentration diffusivity (in S.I. m^2/s ).
-              element tensor_field {
-                 attribute name { "Solute_Diffusivity" },
-                 attribute rank { "2" },
-                 (
-                    element prescribed {
-                        mesh_choice?,
-                        prescribed_tensor_field_no_adapt,
-                            output_options
-                    }|
-                      element diagnostic {
-                         (
-                            mesh_choice?,
-                            tensor_python_diagnostic_algorithm,
-                            output_options
-                         ),
-                         diagnostic_scalar_field_no_adapt
-                      }
                  )
               }?,
                 ## Stabilisation for Inertia dominated flow.

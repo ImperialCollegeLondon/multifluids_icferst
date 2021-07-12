@@ -989,18 +989,6 @@ contains
                 "/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic/scalar_field::HeatCapacity")
               ! end if
             end if
-            !Easiest way to create the diffusivity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
-            if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity")) then
-              ! FLAbort("Solute Diffusivity specified but no prognostic Concentration field specified.")! Not all the phases need to have concentration defined
-              if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Concentration/prognostic")) then
-                call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity",&
-                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::Concentration/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
-              else
-                call get_option("/material_phase["// int2str( i - 1 )//"]/name", option_name)
-                ewrite(0, *) "ERROR: Solute_Diffusivity specified for phase: "// trim(option_name)// " but Concentration is not defined."
-                stop
-              end if
-            end if
 
             if ((have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") ) .and. i == 1) then
               !Add a prognostic field named HydrostaticPressure (do we need BCs or initial conditions for this?)
