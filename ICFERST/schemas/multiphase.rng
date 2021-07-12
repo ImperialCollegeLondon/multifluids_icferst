@@ -3184,7 +3184,8 @@ mass fraction with a particular phase</a:documentation>
         </choice>
       </element>
       <element name="scalar_field">
-        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;</a:documentation>
+        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
+Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
@@ -3256,6 +3257,7 @@ This imposes the tracer to be between bounds..</a:documentation>
       </element>
       <element name="scalar_field">
         <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
+Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
 
 This is just an example of how it works.</a:documentation>
         <attribute name="rank">

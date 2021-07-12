@@ -2654,6 +2654,7 @@ scalar_field_choice =
             )
          }|
          ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
+         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
          element scalar_field {
             attribute rank { "0" },
             attribute name { "PassiveTracer" },
@@ -2705,6 +2706,7 @@ scalar_field_choice =
             )
          }|
          ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
+         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
          ##
          ## This is just an example of how it works.
          element scalar_field {
