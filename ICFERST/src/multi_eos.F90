@@ -1687,7 +1687,7 @@ contains
 
 
       do iphase = 1, Mdims%n_in_pres
-        if ( .not. have_option( "/material_phase["// int2str( i - 1 )//"]/scalar_field::Concentration/prognostic/tensor_field::Diffusivity")) cycle
+        if ( .not. have_option( "/material_phase["// int2str( iphase - 1 )//"]/scalar_field::Concentration/prognostic/tensor_field::Diffusivity")) cycle
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
 
         do ele = 1, Mdims%totele
