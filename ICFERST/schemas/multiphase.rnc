@@ -1912,7 +1912,7 @@ velocity_boundary_conditions =
             velocity_components_choice
          }|
          ## Apply a Robin BC type. This is for a wall type BC
-         ## 
+         ##
          ## C0 * u + du/dx = C1
          ##
          ## <b>Viscosity BCs override these BC</b>
@@ -3730,7 +3730,7 @@ element Density{(
                         ##
                         ## NOTE: This equation is only valid when density varies less than 5%.
                         ## Internally it is bounded to not vary more than 10%
-                        element Boussinesq_eos {
+                        element Linear_eos {
                            ## This is the density value at reference properties
                            element reference_density {
                               real

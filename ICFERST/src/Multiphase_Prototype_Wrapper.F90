@@ -1113,8 +1113,7 @@ contains
         has_concentration = have_option( '/material_phase[0]/scalar_field::Concentration/' )
         !Check boussinesq flag
         has_boussinesq_aprox = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" ) &
-                     .or. have_option( "/material_phase[0]/phase_properties/Density/python_state/Boussinesq_approximation") .or.&
-                     have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_eos")
+                     .or. have_option( "/material_phase[0]/phase_properties/Density/python_state/Boussinesq_approximation")
 
         ! Check if Porous media model initialisation
         is_porous_initialisation =  have_option("/porous_media/FWL")

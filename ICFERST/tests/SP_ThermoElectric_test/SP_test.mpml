@@ -61,14 +61,14 @@
     <phase_properties>
       <Density>
         <compressible>
-          <Boussinesq_eos>
+          <Linear_eos>
             <reference_density>
               <real_value rank="0">1000</real_value>
             </reference_density>
             <alpha>
               <real_value rank="0">0.001461</real_value>
             </alpha>
-          </Boussinesq_eos>
+          </Linear_eos>
         </compressible>
         <boundary_conditions name="all">
           <surface_ids>

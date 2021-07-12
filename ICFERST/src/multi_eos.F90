@@ -524,7 +524,7 @@ contains
              dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             deallocate( eos_coefs )
 
-          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Boussinesq_eos' ) then
+          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Linear_eos' ) then
               !!$ Den = den0 * ( 1 + alpha * DeltaC - beta * DeltaT + gamma * DeltaP)
 
               allocate( eos_coefs( 7 ) ) ; eos_coefs = 0.
@@ -535,38 +535,29 @@ contains
               call get_option( trim( eos_option_path ) // '/beta', eos_coefs( 5 ), default = -1.)
               call get_option( trim( eos_option_path ) // '/P0', eos_coefs( 6 ), default = 1e5 )
               call get_option( trim( eos_option_path ) // '/gamma', eos_coefs( 7 ), default = -1.)
-              Rho = 1.0
-              !Add the concentration contribution
-              if (eos_coefs( 3 ) > 0 ) then
-                if (.not. has_concentration) print *, "ERROR: EOS defined to use concentration but concentration field is not defined"
-                Rho =  Rho + eos_coefs( 3 ) * (Concentration % val - eos_coefs( 2 ) )
+              !Now compute formula
+              call linear_EOS_formula(rho)
+
+              if (has_boussinesq_aprox .or. eos_coefs( 7 ) < 0) then
+                !If boussinesq or not pressure dependency the derivative is zero
+                dRhodP = 0.0
+              else !Compute pressure derivatives
+                ! Back up pressure and density before we start perturbing stuff...
+                allocate( pressure_back_up( node_count( pressure ) ), density_back_up( node_count( pressure ) ) )
+                pressure_back_up = pressure % val(1,1,:); density_back_up = density % val
+                ! redefine p as p+pert and p-pert and then run python state again to get dRho / d P...
+                perturbation_pressure = 1.e-5
+                pressure % val(1,1,:) = pressure_back_up + perturbation_pressure
+                call linear_EOS_formula(RhoPlus)
+                pressure % val(1,1,:) = pressure_back_up - perturbation_pressure
+                call linear_EOS_formula(RhoMinus)
+                ! derivative
+                dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
+                ! Restore pressure and density values in state
+                pressure % val(1,1,:) = pressure_back_up; density % val = density_back_up
+                deallocate(pressure_back_up, density_back_up)
+
               end if
-              !add the temperature contribution
-              if (eos_coefs( 5 ) > 0) then
-                if (.not. has_temperature) print *, "ERROR: EOS defined to use temperature but temperature field is not defined"
-                Rho = Rho - eos_coefs( 5 ) * (temperature % val - eos_coefs( 4 ))
-              end if
-              !add pressure contribution
-              if (eos_coefs( 7 ) > 0. ) Rho =  Rho + eos_coefs( 7 ) * (pressure%val(1,1,:) - eos_coefs( 6 ) )
-              !Now add values from scalar fields such as passive tracers
-              buffer = "/material_phase["// int2str( iphase -1 ) //"]/phase_properties/Density/compressible/Boussinesq_eos/"
-              nfields = option_count(trim(buffer)//"scalar_field")
-              do ifield = 1, nfields
-                call get_option(trim(buffer)//"scalar_field["// int2str( ifield - 1 )//"]/name",option_name)
-                pnt_sfield => extract_scalar_field( state( iphase ), trim(option_name), stat )
-                if (stat /=0) then
-                  FLAbort("ERROR: Field defined for Boussinesq EOS does not exists. Field name: "// trim(option_name))
-                end if!We now reuse coefficients
-                call get_option( trim(buffer)//"scalar_field["// int2str( ifield - 1 )//"]/R0", eos_coefs( 2 ))!Reference
-                call get_option( trim(buffer)//"scalar_field["// int2str( ifield - 1 )//"]/Coef", eos_coefs( 3 ))!Coefficient
-                !Now include into EOS
-                Rho =  Rho + eos_coefs( 3 ) * (pnt_sfield % val - eos_coefs( 2 ) )
-              end do
-              !Finally multiply by the reference density
-              Rho = Rho * eos_coefs( 1 )
-              !Ensure that the density does not vary more than 10%, in theory it should never pass 5%
-              Rho = min(max(Rho, eos_coefs( 1 )/1.1), eos_coefs( 1 )*1.1)
-              dRhodP = 0.0
               deallocate( eos_coefs )
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 
@@ -671,6 +662,43 @@ contains
         !No need to update halos as all the operations are local, and all the
         !input fields have to be updated already
         ! if (IsParallel()) call halo_update(density)
+
+    contains
+      subroutine linear_EOS_formula(rho_internal)
+        real, dimension( : ), intent( inout ) :: rho_internal
+        rho_internal = 1.0
+        !Add the concentration contribution
+        if (eos_coefs( 3 ) > 0 ) then
+          if (.not. has_concentration) print *, "ERROR: EOS defined to use concentration but concentration field is not defined"
+          rho_internal =  rho_internal + eos_coefs( 3 ) * (Concentration % val - eos_coefs( 2 ) )
+        end if
+        !add the temperature contribution
+        if (eos_coefs( 5 ) > 0) then
+          if (.not. has_temperature) print *, "ERROR: EOS defined to use temperature but temperature field is not defined"
+          rho_internal = rho_internal - eos_coefs( 5 ) * (temperature % val - eos_coefs( 4 ))
+        end if
+        !add pressure contribution
+        if (eos_coefs( 7 ) > 0. ) rho_internal =  rho_internal + eos_coefs( 7 ) * (pressure%val(1,1,:) - eos_coefs( 6 ) )
+        !Now add values from scalar fields such as passive tracers
+        buffer = "/material_phase["// int2str( iphase -1 ) //"]/phase_properties/Density/compressible/Linear_eos/"
+        nfields = option_count(trim(buffer)//"scalar_field")
+        do ifield = 1, nfields
+          call get_option(trim(buffer)//"scalar_field["// int2str( ifield - 1 )//"]/name",option_name)
+          pnt_sfield => extract_scalar_field( state( iphase ), trim(option_name), stat )
+          if (stat /=0) then
+            FLAbort("ERROR: Field defined for Boussinesq EOS does not exists. Field name: "// trim(option_name))
+          end if!We now reuse coefficients
+          call get_option( trim(buffer)//"scalar_field["// int2str( ifield - 1 )//"]/R0", eos_coefs( 2 ))!Reference
+          call get_option( trim(buffer)//"scalar_field["// int2str( ifield - 1 )//"]/Coef", eos_coefs( 3 ))!Coefficient
+          !Now include into EOS
+          rho_internal =  rho_internal + eos_coefs( 3 ) * (pnt_sfield % val - eos_coefs( 2 ) )
+        end do
+        !Finally multiply by the reference density
+        rho_internal = rho_internal * eos_coefs( 1 )
+        !Ensure that the density does not vary more than 10%, in theory it should never pass 5%
+        rho_internal = min(max(rho_internal, eos_coefs( 1 )/1.1), eos_coefs( 1 )*1.1)
+
+      end subroutine
     end subroutine Calculate_Rho_dRhodP
 
     !--------------------------------------------
@@ -787,8 +815,8 @@ contains
             elseif( have_option( trim( eos_option_path_out ) // '/exponential_in_pressure' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/exponential_in_pressure'
 
-              elseif( have_option( trim( eos_option_path_out ) // '/Boussinesq_eos' ) ) then
-                  eos_option_path_out = trim( eos_option_path_out ) // '/Boussinesq_eos'
+              elseif( have_option( trim( eos_option_path_out ) // '/Linear_eos' ) ) then
+                  eos_option_path_out = trim( eos_option_path_out ) // '/Linear_eos'
 
             elseif( have_option( trim( eos_option_path_out ) // '/Temperature_Pressure_correlation' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/Temperature_Pressure_correlation'
@@ -2355,7 +2383,7 @@ contains
         call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_B/constant', ref_rho )
       elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/exponential_in_pressure' ) then
         call get_option( trim( eos_option_path ) // '/coefficient_A', ref_rho )
-      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Boussinesq_eos' ) then
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Linear_eos' ) then
         !!$ Den = den0 * ( 1 + alpha * solute mass fraction - beta * DeltaT )
         call get_option( trim( eos_option_path ) // '/reference_density', ref_rho )
       else if( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
