@@ -2954,36 +2954,6 @@ This imposes the tracer to be between bounds.</a:documentation>
                 </element>
               </element>
             </optional>
-            <optional>
-              <element name="tensor_field">
-                <a:documentation>Diffusivity for field (in S.I. m^2/s ).</a:documentation>
-                <attribute name="name">
-                  <value>Diffusivity</value>
-                </attribute>
-                <attribute name="rank">
-                  <value>2</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <optional>
-                      <ref name="mesh_choice"/>
-                    </optional>
-                    <ref name="prescribed_tensor_field_no_adapt"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="diagnostic">
-                    <group>
-                      <optional>
-                        <ref name="mesh_choice"/>
-                      </optional>
-                      <ref name="tensor_python_diagnostic_algorithm"/>
-                      <ref name="output_options"/>
-                    </group>
-                    <ref name="diagnostic_scalar_field_no_adapt"/>
-                  </element>
-                </choice>
-              </element>
-            </optional>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
@@ -3184,7 +3154,8 @@ mass fraction with a particular phase</a:documentation>
         </choice>
       </element>
       <element name="scalar_field">
-        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;</a:documentation>
+        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
+Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
@@ -3256,6 +3227,7 @@ This imposes the tracer to be between bounds..</a:documentation>
       </element>
       <element name="scalar_field">
         <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
+Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
 
 This is just an example of how it works.</a:documentation>
         <attribute name="rank">
@@ -4693,6 +4665,36 @@ alternating directions. Devised by C.Pain.</a:documentation>
                 <ref name="scalar_python_diagnostic_algorithm"/>
                 <ref name="internal_algorithm"/>
               </choice>
+              <ref name="diagnostic_scalar_field_no_adapt"/>
+            </element>
+          </choice>
+        </element>
+      </optional>
+      <optional>
+        <element name="tensor_field">
+          <a:documentation>Concentration diffusivity (in S.I. m^2/s ).</a:documentation>
+          <attribute name="name">
+            <value>Solute_Diffusivity</value>
+          </attribute>
+          <attribute name="rank">
+            <value>2</value>
+          </attribute>
+          <choice>
+            <element name="prescribed">
+              <optional>
+                <ref name="mesh_choice"/>
+              </optional>
+              <ref name="prescribed_tensor_field_no_adapt"/>
+              <ref name="output_options"/>
+            </element>
+            <element name="diagnostic">
+              <group>
+                <optional>
+                  <ref name="mesh_choice"/>
+                </optional>
+                <ref name="tensor_python_diagnostic_algorithm"/>
+                <ref name="output_options"/>
+              </group>
               <ref name="diagnostic_scalar_field_no_adapt"/>
             </element>
           </choice>

@@ -2466,26 +2466,6 @@ scalar_field_choice =
                     ##Impose max limit. Only the first phase is read
                     element max_limit{real}
                   )}?,
-                  ## Diffusivity for field (in S.I. m^2/s ).
-                  element tensor_field {
-                     attribute name { "Diffusivity" },
-                     attribute rank { "2" },
-                     (
-                        element prescribed {
-                            mesh_choice?,
-                            prescribed_tensor_field_no_adapt,
-                            output_options
-                        }|
-                      element diagnostic {
-                         (
-                            mesh_choice?,
-                            tensor_python_diagnostic_algorithm,
-                            output_options
-                         ),
-                         diagnostic_scalar_field_no_adapt
-                      }
-                     )
-                  }?,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2654,6 +2634,7 @@ scalar_field_choice =
             )
          }|
          ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
+         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
          element scalar_field {
             attribute rank { "0" },
             attribute name { "PassiveTracer" },
@@ -2705,6 +2686,7 @@ scalar_field_choice =
             )
          }|
          ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
+         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
          ##
          ## This is just an example of how it works.
          element scalar_field {
@@ -3895,6 +3877,26 @@ phase_properties_options =
                        ),
                        diagnostic_scalar_field_no_adapt
                     }
+                 )
+              }?,
+              ## Concentration diffusivity (in S.I. m^2/s ).
+              element tensor_field {
+                 attribute name { "Solute_Diffusivity" },
+                 attribute rank { "2" },
+                 (
+                    element prescribed {
+                        mesh_choice?,
+                        prescribed_tensor_field_no_adapt,
+                            output_options
+                    }|
+                      element diagnostic {
+                         (
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
                  )
               }?,
                 ## Stabilisation for Inertia dominated flow.

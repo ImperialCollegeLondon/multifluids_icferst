@@ -1438,12 +1438,13 @@ contains
     end subroutine calculate_u_source_cv
 
     !>@brief: Here we compute component/solute/thermal diffusion coefficient
-    subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, TracerName, divide_by_rho_CP)
+    subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, TracerName, calculate_solute_diffusivity, divide_by_rho_CP)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
+      logical, optional, intent(in) :: calculate_solute_diffusivity !If present, calculates solute diffusivity instead of thermal diffusivity
       logical, optional, intent(in) :: divide_by_rho_CP !> If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp
       character(len=*), optional, intent(in) :: TracerName !> For PassiveTracer with diffusion we pass down the name of the tracer
       !Local variables
@@ -1494,10 +1495,14 @@ contains
           !expo used to switch between boussinesq (density ==1) or normal
           expo = 1.; if (has_boussinesq_aprox) expo = 0.
 
-          if (present(TracerName)) then
+          if (present_and_true(calculate_solute_diffusivity) .or. present(TracerName)) then
             do iphase = 1, Mdims%nphase
               !Check if the field is defined for that phase, if the property is defined but not the field then ignore the property
-              diffusivity => extract_tensor_field( state(iphase), trim(TracerName)//'Diffusivity', stat )
+              if (present_and_true(calculate_solute_diffusivity)) then
+                diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
+              else if (present(TracerName)) then
+                diffusivity => extract_tensor_field( state(iphase), trim(TracerName)//'Diffusivity', stat )
+              end if
               if (stat /= 0) cycle!If no field defined then cycle
 
               do ele = 1, Mdims%totele
@@ -1543,10 +1548,37 @@ contains
               end do
             end do
           endif
+          !####UP TO HERE DIFFUSIVITY FOR POROUS MEDIA ONLY####
+          ! else if (have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
+          !   sfield=> extract_scalar_field( state(1), "SolidConcentration" )
+          !   !tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+          !   ScalarAdvectionField_Diffusion = 0.
+          !   do iphase = 1, Mdims%nphase
+          !     if (present_and_true(calculate_solute_diffusivity)) then
+          !       diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
+          !     else
+          !       diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+          !     endif
+          !     do ele = 1, Mdims%totele
+          !       ele_nod = min(size(sfield%val), ele)
+          !       !t_ele_nod = min(size(tfield%val, 3), ele)
+          !       do iloc = 1, Mdims%mat_nloc
+          !         mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+          !         cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+          !         do idim = 1, Mdims%ndim
+          !           ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+          !           ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+          !           ( 1.0 - sfield%val(ele_nod)) * node_val( diffusivity, idim, idim, mat_inod )
+          !         end do
+          !       end do
+          !     end do
+          !   end do
         else
           do iphase = 1, Mdims%nphase
 
-            if (present(TracerName)) then
+            if (present_and_true(calculate_solute_diffusivity)) then
+              diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
+            else if (present(TracerName)) then
               diffusivity => extract_tensor_field( state(iphase), trim(TracerName)//'Diffusivity', stat )
             else
               diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
@@ -1566,6 +1598,12 @@ contains
               end do
             end do
           end do
+          !do iphase = 1, Mdims%nphase
+          !    diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+          !    do idim = 1, Mdims%ndim
+          !        ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, iphase )
+          !    end do
+          !end do
         end if
       end if
       if ( harmonic_average ) then
@@ -1581,8 +1619,8 @@ contains
         end do
       end if
       do iphase = 1, Mdims%nphase
-        if (present(TracerName)) then
-          ewrite(3,*) trim(TracerName), 'diffusivity min_max', iphase, &
+        if (present_and_true(calculate_solute_diffusivity)) then
+          ewrite(3,*) 'Solute diffusivity min_max', iphase, &
           minval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) ), &
           maxval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) )
         else
