@@ -734,7 +734,8 @@ end if
       end if
 
 
-      a=sigma*1.0e+06+ (1.0-sigma)*1.0e-06 ! adjust this
+      a=sigma*1.0e+06+ (1.0-sigma)*1.0e-06 ! adjust this 
+    !   a=sigma*1.0e+06+ (1.0-sigma)*1.0e-03 ! adjust this 
       b=sigma*0.0 + (1.0-sigma)*1.0e-04  ! adjust this
 
 
@@ -5364,6 +5365,7 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                 IF ( STRESS_FORM ) THEN ! stress form of viscosity...
                                     IF(IDIVID_BY_VOL_FRAC.ne.1) THEN
 !                                        DO U_JLOC = 1, Mdims%u_nloc
+                                        ! LOC_X0_ALL(1,:) = LOC_X_ALL(1,:) - LOC_X_ALL(2,:)*0.1 ! homogeneous shear
                                            CALL CALC_STRESS_TEN_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE( :, :), Mdims%ndim, &
                                              Mdims%x_nloc, LOC_X_ALL(:,:),LOC_X0_ALL(:,:), LOC_VEL_ALL(:,:), &
                                              TEN_VOL_RATIO(GI), ele )
