@@ -734,7 +734,8 @@ end if
       end if
 
 
-      a=sigma*1.0e+06+ (1.0-sigma)*1.0e-06 ! adjust this
+      a=sigma*1.0e+06+ (1.0-sigma)*1.0e-06 ! adjust this 
+    !   a=sigma*1.0e+06+ (1.0-sigma)*1.0e-03 ! adjust this 
       b=sigma*0.0 + (1.0-sigma)*1.0e-04  ! adjust this
 
 

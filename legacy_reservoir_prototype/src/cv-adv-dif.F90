@@ -5443,29 +5443,49 @@ end if
             END DO
             END DO
 
-            ! FEN_TEN_VOL(:)=UFENX_ILOC(:) * TEN_VOL
+            ! ! FEN_TEN_VOL(:)=UFENX_ILOC(:) * TEN_VOL
 
-            DO JDIM=1,NDIM
-            DO IDIM=1,NDIM
-                CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)+DPEKS*D(IDIM,JDIM)
-            END DO
-                CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM)+(DPELA*LOG(TEN_VOL_RATIO)-DPEMU)/TEN_VOL_RATIO
-            END DO
+            ! DO JDIM=1,NDIM
+            ! DO IDIM=1,NDIM
+            !     CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)+DPEKS*D(IDIM,JDIM)
+            ! END DO
+            !     CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM)+(DPELA*LOG(TEN_VOL_RATIO)-DPEMU)/TEN_VOL_RATIO
+            ! END DO
 
-            ! linfeng update solid stress, for output in vtk file.
-            ! ewrite(3, *) "++++++++++++  write solid stress  +++++++++++++"
-            DO JDIM=1,NDIM
-                DO IDIM=1,NDIM
-                    temp_stress%val(IDIM, JDIM, ELE) = CAUCHY_STRESS_IJ_SOLID_ELE(IDIM, JDIM)
+            ! ! linfeng update solid stress, for output in vtk file.
+            ! ! ewrite(3, *) "++++++++++++  write solid stress  +++++++++++++"
+            ! DO JDIM=1,NDIM
+            !     DO IDIM=1,NDIM
+            !         temp_stress%val(IDIM, JDIM, ELE) = CAUCHY_STRESS_IJ_SOLID_ELE(IDIM, JDIM)
+            !     ENDDO
+            ! ENDDO
+            ! ! ewrite(3, *) "++++++++  write solid stress finished +++++++++"
+
+            ! hydro_pressure=DPELA*LOG(TEN_VOL_RATIO)/TEN_VOL_RATIO
+
+            ! DO JDIM=1,NDIM    
+            !     CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM )-hydro_pressure
+            ! END DO
+
+                ! Yang, Liang PhD Thesis.
+                ! deviatoric stress: sigma' = GJ^(-5/3)*[b- 1/3 * tr(b)I]
+                ! note that 'FEN_TEN_XX' above is b here.
+                ! and that G = mu = DPEMU , 2nd lame coefficient
+                trb = 0;
+                DO IDIM = 1,NDIM
+                    trb = trb + FEN_TEN_XX(IDIM, IDIM)
                 ENDDO
-            ENDDO
-            ! ewrite(3, *) "++++++++  write solid stress finished +++++++++"
-
-            hydro_pressure=DPELA*LOG(TEN_VOL_RATIO)/TEN_VOL_RATIO
-
-            DO JDIM=1,NDIM    
-                CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM )-hydro_pressure
-            END DO
+                CAUCHY_STRESS_IJ_SOLID_ELE = FEN_TEN_XX * DPEMU * TEN_VOL_RATIO**(-5./3.)+DPEKS*D
+                DO JDIM = 1,NDIM
+                    CAUCHY_STRESS_IJ_SOLID_ELE(JDIM, JDIM) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM) &
+                    - DPEMU * TEN_VOL_RATIO**(-5./3.) * 1./3. * trb
+                ENDDO 
+                            ! store solid stress to tensor field
+                DO JDIM=1,NDIM
+                    DO IDIM=1,NDIM
+                        temp_stress%val(IDIM, JDIM, ELE) = CAUCHY_STRESS_IJ_SOLID_ELE(IDIM, JDIM)
+                    ENDDO
+                ENDDO
 
         else if (ndim==2) then 
             do iloc = 2,nloc 
@@ -5519,23 +5539,27 @@ end if
             
             ! now we are going to use constitutive models and cauclate Cauchy stress
             ! let's use ... what kind of constitutive modesl?
-            trb = 0;
-            DO IDIM = 1,NDIM
-                trb = trb + FEN_TEN_XX(IDIM, IDIM)
-            ENDDO
-            CAUCHY_STRESS_IJ_SOLID_ELE = FEN_TEN_XX * DPEMU * TEN_VOL_RATIO**(-5./3.)+DPEKS*D
-            DO JDIM = 1,NDIM
-                CAUCHY_STRESS_IJ_SOLID_ELE(JDIM, JDIM) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM) &
-                - DPEMU * TEN_VOL_RATIO**(-5./3.) * 1./2. * trb ! note that in 2D the coefficient to trb is 1/2 instead of 1/3
-            ENDDO 
+            ! trb = 0;
+            ! DO IDIM = 1,NDIM
+            !     trb = trb + FEN_TEN_XX(IDIM, IDIM)
+            ! ENDDO
+            ! CAUCHY_STRESS_IJ_SOLID_ELE = FEN_TEN_XX * DPEMU * TEN_VOL_RATIO**(-5./3.)+DPEKS*D
+            ! DO JDIM = 1,NDIM
+            !     CAUCHY_STRESS_IJ_SOLID_ELE(JDIM, JDIM) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM) &
+            !     - DPEMU * TEN_VOL_RATIO**(-5./3.) * 1./2. * trb ! note that in 2D the coefficient to trb is 1/2 instead of 1/3
+            ! ENDDO 
             
-            ! ! let's use neo-Hookean (compressible)
-            ! DO JDIM=1,NDIM
-            !     DO IDIM=1,NDIM
-            !         CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)+DPEKS*D(IDIM,JDIM)
-            !     END DO
-            !     CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM)+(DPELA*LOG(TEN_VOL_RATIO)-DPEMU)/TEN_VOL_RATIO
-            ! END DO
+            ! let's use neo-Hookean (compressible)
+            DO JDIM=1,NDIM
+                DO IDIM=1,NDIM
+                    CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)+DPEKS*D(IDIM,JDIM)
+                END DO
+                CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM)+(DPELA*LOG(TEN_VOL_RATIO)-DPEMU)/TEN_VOL_RATIO
+            END DO
+            hydro_pressure=DPELA*LOG(TEN_VOL_RATIO)/TEN_VOL_RATIO
+            DO JDIM=1,NDIM    
+                CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM )-hydro_pressure
+            END DO
 
             ! store solid stress to tensor field
             DO JDIM=1,NDIM
