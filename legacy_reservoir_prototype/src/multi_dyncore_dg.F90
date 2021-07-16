@@ -4166,7 +4166,7 @@ end if
         LOGICAL, PARAMETER :: STORED_AC_SPAR_PT=.FALSE.
         INTEGER, PARAMETER :: IDO_STORE_AC_SPAR_PT=0
         ! options for implicit solids using one eqn approach...
-        LOGICAL, PARAMETER :: solid_visc_ele_imp=.false. ! treat implicitly inside an element.
+        LOGICAL, PARAMETER :: solid_visc_ele_imp=.true. ! treat implicitly inside an element.
         LOGICAL, PARAMETER :: solid_visc_ele_imp_stab=.false. ! treat implicitly inside an element for the projection method (suggest =.false., but may be more atable=.true.).
         LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false. ! treat implicitly between elements.
         ! re-calculate Mmat%C matrix...
