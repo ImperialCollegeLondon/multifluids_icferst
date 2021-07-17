@@ -829,7 +829,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            p => extract_tensor_field( packed_state, "PackedFEPressure" )
 
-           if (has_boussinesq_aprox) then
+           if (has_boussinesq_aprox .or. is_magma) then
              !We do not consider variations of density in transport
                den_all = 1
                denold_all =1
@@ -851,14 +851,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end do
 
            !Introduce the source/sink term between the phases
-           if (is_magma) then
-             sfield => extract_scalar_field(state(1), "Magma_comp_source")
-             do cv_nodi = 1, Mdims%cv_nonods
-               ! The gain of the first phase  is the loss of the second phase
-               T_SOURCE(1,cv_nodi) = T_SOURCE(1,cv_nodi) + sfield%val(cv_nodi)
-               T_SOURCE(2,cv_nodi) = T_SOURCE(2,cv_nodi) - sfield%val(cv_nodi)
-             end do
-           end if
+           ! if (is_magma) then
+           !   sfield => extract_scalar_field(state(1), "Magma_comp_source")
+           !   do cv_nodi = 1, Mdims%cv_nonods
+           !     ! The gain of the first phase  is the loss of the second phase
+           !     T_SOURCE(1,cv_nodi) = T_SOURCE(1,cv_nodi) + sfield%val(cv_nodi)
+           !     T_SOURCE(2,cv_nodi) = T_SOURCE(2,cv_nodi) - sfield%val(cv_nodi)
+           !   end do
+           ! end if
            !sprint to do, just pass down the other values...
            cv_disopt = Mdisopt%t_disopt
            cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
@@ -882,6 +882,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION)
              TDIFFUSION = TDIFFUSION + CDISPERSION
            end if
+
+           if (is_magma) TDIFFUSION=0.0
            !Start with the process to apply the min max principle
            call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
@@ -912,6 +914,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
 
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
+
                call CV_ASSEMB( state, packed_state, &
                    nconc_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
                    tracer, velocity, density, multi_absorp, &
@@ -2432,6 +2435,7 @@ end if
           !For parallel
           call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
           conv_test = inf_norm_scalar_normalised(P_ALL%val(1,:,:), ref_pressure, 1.0, totally_min_max)
+
           if ( conv_test < solver_tolerance) then
             ewrite(1,*)"No need for AA"
             deallocate(ref_pressure)

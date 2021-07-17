@@ -1751,14 +1751,14 @@ contains
                                       if (asssembling_enthalpy ) then!TODO: sprint_to_do Currently only for two phases
                                         !Solid phase
                                         LOC_CV_RHS_I(1) = LOC_CV_RHS_I(1) + &
-                                            Latent_heat * density%val(1, 1, CV_NODI) *SdevFuns%DETWEI(GI) * LIMT2(1) * &
+                                            Latent_heat  *SdevFuns%DETWEI(GI) * LIMT2(1) * &   !* density%val(1, 1, CV_NODI)
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                               ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * (LOC_T2_J(2) - LOC_T2_I(2))&
                                         !Advection term solid
                                             +  NDOTQNEW(1) * (1 + LOC_T2_I(2)) )
                                         !Liquid phase
                                         LOC_CV_RHS_I(2) = LOC_CV_RHS_I(2) + &
-                                            Latent_heat * density%val(1, 2, CV_NODI)*SdevFuns%DETWEI(GI) * LIMT2(2) * &
+                                            Latent_heat*SdevFuns%DETWEI(GI) * LIMT2(2) * &   ! * density%val(1, 2, CV_NODI)
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                               ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * (LOC_T2_J(2) - LOC_T2_I(2))&
                                         !Advection term fluid
@@ -1786,14 +1786,14 @@ contains
                                       if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
                                         !Solid phase
                                         LOC_CV_RHS_J(1) = LOC_CV_RHS_J(1) + &
-                                            Latent_heat * density%val(1, 1, CV_NODJ) *SdevFuns%DETWEI(GI)* LIMT2(1) * &
+                                            Latent_heat  *SdevFuns%DETWEI(GI)* LIMT2(1) * & !* density%val(1, 1, CV_NODJ)
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                              ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * (LOC_T2_I(2) - LOC_T2_J(2))&
                                         !Advection term solid
                                             -  (1. + LOC_T2_J(2)) * NDOTQNEW(1)  )
                                         !Liquid phase
                                         LOC_CV_RHS_J(2) = LOC_CV_RHS_J(2) + &
-                                            Latent_heat * density%val(1, 2, CV_NODJ) *SdevFuns%DETWEI(GI) * LIMT2(2) * &
+                                            Latent_heat *SdevFuns%DETWEI(GI) * LIMT2(2) * & ! * density%val(1, 2, CV_NODJ)
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                              ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * (LOC_T2_I(2) - LOC_T2_J(2)) &
                                         !Advection term fluid

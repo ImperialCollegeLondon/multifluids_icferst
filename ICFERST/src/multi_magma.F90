@@ -321,10 +321,12 @@ contains
 
   !Local variables
   integer :: cv_nodi, iphase
-  type( tensor_field ), pointer :: enthalpy, temperature,  saturation, rhoCp
+  type( tensor_field ), pointer :: enthalpy, temperature,  saturation, rhoCp, Den
+  ! type( scalar_field ), pointer :: Cp
   real, dimension(Mdims%cv_nonods) :: enthalpy_dim
   !real, parameter :: tol = 1e-5
   rhoCp =>extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+  Den =>extract_tensor_field( packed_state, 'PackedDensity')
   enthalpy => extract_tensor_field( packed_state,"PackedEnthalpy" )
   temperature =>  extract_tensor_field( packed_state, "PackedTemperature" )
   saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
@@ -334,7 +336,7 @@ contains
   do cv_nodi = 1, Mdims%cv_nonods
     do iphase = 1, Mdims%nphase
       !First enthalpy stored in each phase
-      enthalpy%val(1,1,cv_nodi)=enthalpy%val(1,1,cv_nodi) + temperature%val(1,1,cv_nodi) * rhoCp%val(1,iphase, cv_nodi) * saturation%val(1,iphase,cv_nodi)
+      enthalpy%val(1,1,cv_nodi)=enthalpy%val(1,1,cv_nodi) + temperature%val(1,1,cv_nodi) *rhoCp%val(1, iphase, cv_nodi) /Den%val(1,iphase,cv_nodi) * saturation%val(1,iphase,cv_nodi)
     end do
     !Now consider the latent heat
     enthalpy%val(1,1,cv_nodi)= enthalpy%val(1,1,cv_nodi) + phase_coef%Lf*(1.-saturation%val(1,1,cv_nodi))
