@@ -278,7 +278,7 @@ contains
 
   !Local variables
   integer :: cv_nodi, iphase
-  type( tensor_field ), pointer :: enthalpy, temperature,  saturation, rhoCp
+  type( tensor_field ), pointer :: enthalpy, temperature,  saturation, rhoCp, Den
   real, dimension(Mdims%cv_nonods) :: enthalpy_dim
   !real, parameter :: tol = 1e-5
     !Temporary until deciding if creating a Cp in packed_state as well
@@ -286,11 +286,12 @@ contains
     enthalpy => extract_tensor_field( packed_state,"PackedEnthalpy" )
     temperature =>  extract_tensor_field( packed_state, "PackedTemperature" )
     saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+    Den =>extract_tensor_field( packed_state, 'PackedDensity')
 
     !FYI: IT CONSIDERS ONE SINGLE TEMPERATURE!!! WHICH MAKE SENSE BECAUSE AT THAT TIME SCALE THINGS ARE IN EQUILIBRIUM...
     !Calculate temperature using the generic formula T = (H - Lf*porosity)/Cp
     do cv_nodi = 1, Mdims%cv_nonods
-      temperature%val(1,1,cv_nodi)=(enthalpy%val(1,1,cv_nodi)- phase_coef%Lf*saturation%val(1,2,cv_nodi))/rhoCp%val(1, 1, cv_nodi)
+      temperature%val(1,1,cv_nodi)=(enthalpy%val(1,1,cv_nodi)- phase_coef%Lf*saturation%val(1,2,cv_nodi))/rhoCp%val(1, 1, cv_nodi)*Den%val(1,1,cv_nodi)
     end do
     !Now add corrections if required
     where (1. - saturation%val(1,1, :) > 0.) !If porosity > 0.
