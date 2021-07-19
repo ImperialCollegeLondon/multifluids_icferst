@@ -759,6 +759,7 @@ enable_option_checking
 enable_debugging
 enable_python
 enable_cgal
+enable_iphreeqc
 with_blas
 with_blas_dir
 with_lapack
@@ -1443,6 +1444,7 @@ Optional Features:
   --enable-debugging      turns on debugging flags
   --enable-python         embed python in fluidity for generic functions.
   --enable-cgal           turns on use of the CGAL library
+  --enable-iphreeqc       turns on use of the iphreeqc library
   --enable-openmp         turns on OpenMP support
   --disable-openmp        do not use OpenMP
   --enable-shared         Compile objects with -fPIC to enable the 'make
@@ -6578,6 +6580,16 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
   LIBS="$LIBS -lgmp -lmpfr"
+fi
+
+# Check whether --enable-iphreeqc was given.
+if test "${enable_iphreeqc+set}" = set; then :
+  enableval=$enable_iphreeqc;
+fi
+
+if test "x$enable_iphreeqc" = "xyes" ; then
+  HAVE_IPHREEQC=yes
+  LIBS="$LIBS -liphreeqc"
 fi
 
 # Find a library which will give us blas and lapack routines

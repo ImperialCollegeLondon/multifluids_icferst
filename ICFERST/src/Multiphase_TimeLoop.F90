@@ -793,6 +793,11 @@ contains
                     exit Loop_NonLinearIteration
                 end if
 
+
+#ifdef HAVE_IPHREEQC
+
+#endif
+
                 !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 3, calculate_mass_delta, &
