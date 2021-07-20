@@ -33,7 +33,6 @@ module cv_advection
     use adapt_state_prescribed_module
     use sparse_tools
     use sparsity_patterns
-    use surface_integrals, only :integrate_over_surface_element
     use petsc_tools
     use vtk_interfaces
 

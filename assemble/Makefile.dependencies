@@ -653,6 +653,20 @@ OceanSurfaceForcing.o ../include/oceansurfaceforcing.mod: \
    ../include/parallel_fields.mod ../include/parallel_tools.mod \
    ../include/state_module.mod ../include/transform_elements.mod
 
+../include/particle_diagnostics.mod: Particle_Diagnostics.o
+	@true
+
+Particle_Diagnostics.o ../include/particle_diagnostics.mod: \
+   Particle_Diagnostics.F90 ../include/detector_data_types.mod \
+   ../include/detector_tools.mod ../include/elements.mod ../include/fdebug.h \
+   ../include/field_options.mod ../include/fields.mod \
+   ../include/fields_base.mod ../include/fields_calculations.mod \
+   ../include/fldebug.mod ../include/futils.mod \
+   ../include/global_parameters.mod ../include/halos.mod \
+   ../include/multimaterial_module.mod ../include/parallel_fields.mod \
+   ../include/parallel_tools.mod ../include/particles.mod \
+   ../include/pickers.mod ../include/profiler.mod ../include/state_module.mod
+
 ../include/petsc_solve_state_module.mod: Petsc_Solve_State.o
 	@true
 

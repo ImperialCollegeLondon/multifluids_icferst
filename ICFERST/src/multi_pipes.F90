@@ -25,7 +25,6 @@ module multi_pipes
     use Petsc_Tools
     use Sparse_tools
     use sparse_tools_petsc
-    use surface_integrals, only :integrate_over_surface_element
     use shape_functions_Linear_Quadratic
     use shape_functions_NDim
     use shape_functions_prototype
@@ -1841,7 +1840,7 @@ contains
                         JDIM = IDIM
                         i_indx = IDIM + (IPHASE-1)*Mdims%ndim + (U_ILOC-1)*Mdims%ndim*Mdims%nphase
                         j_indx = JDIM + (JPHASE-1)*Mdims%ndim + (U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                        WHERE ( abs( Mmat%PIVIT_MAT(i_indx, j_indx, :) ) < 1.0e-10 )
+                        WHERE ( abs( Mmat%PIVIT_MAT(i_indx, j_indx, :) ) < 1.0e-30 )
                             Mmat%PIVIT_MAT(i_indx, j_indx, :) = 1.0
                         END WHERE
                     END DO

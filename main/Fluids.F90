@@ -36,7 +36,7 @@ module fluids_module
        simulation_start_time, &
        simulation_start_cpu_time, &
        simulation_start_wall_time, &
-       topology_mesh_name, FIELD_NAME_LEN, is_porous_media
+       topology_mesh_name, FIELD_NAME_LEN
   use futils, only: int2str
   use reference_counting, only: print_references
   use parallel_tools
@@ -62,6 +62,7 @@ module fluids_module
   use reserve_state_module
   use write_state_module
   use detector_parallel, only: sync_detector_coordinates, deallocate_detector_list_array
+  use particles
   use diagnostic_variables
   use populate_state_module
   use vertical_extrapolation_module
@@ -228,6 +229,9 @@ contains
     call get_option("/timestepping/nonlinear_iterations/tolerance", &
          & nonlinear_iteration_tolerance, default=0.0)
 
+    ! Initialise positions of particles before adapt_at_first_timestep
+    call initialise_particles(filename, state)
+
     if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
 
        if(have_option("/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt")) then
@@ -332,6 +336,10 @@ contains
     ! Initialise multimaterial fields:
     call initialise_diagnostic_material_properties(state)
 
+
+
+
+
     ! Calculate diagnostic variables:
     call calculate_diagnostic_variables(state)
     call calculate_diagnostic_variables_new(state)
@@ -366,13 +374,14 @@ contains
          & .and. .not. have_option("/io/disable_dump_at_start") &
          & ) then
        call write_state(dump_no, state)
+       call write_particles_loop(state, timestep, current_time)
     end if
 
     call initialise_convergence(filename, state)
     call initialise_steady_state(filename, state)
     call initialise_advection_convergence(state)
 
-    if(have_option("/io/stat/output_at_start")) call write_diagnostics(state, current_time, dt, timestep, not_to_move_det_yet=.true.)
+    if(have_option("/io/stat/output_at_start")) call write_diagnostics(state, current_time, dt, timestep)
 
     not_to_move_det_yet=.false.
 
@@ -725,13 +734,22 @@ contains
 !       if(have_option("/ocean_forcing/iceshelf_meltrate/Holland08/") ) then
 !          call melt_surf_calc(state(1))
 !       end if
+
+       ! Call move and write particles
+       call move_particles(state, dt)
+       call initialise_particles_during_simulation(state, current_time)
+
+       call update_particle_attributes_and_fields(state, current_time, dt)
+
+       call write_particles_loop(state, timestep, current_time)
+!       end if
        ! calculate and write diagnostics before the timestep gets changed
        call calculate_diagnostic_variables(State, exclude_nonrecalculated=.true.)
        call calculate_diagnostic_variables_new(state, exclude_nonrecalculated = .true.)
 
        ! Call the modern and significantly less satanic version of study
        call write_diagnostics(state, current_time, dt, timestep)
-       ! Work out the domain volume by integrating the water depth function over the surface if using wetting and drying
+
        if (have_option("/mesh_adaptivity/mesh_movement/free_surface/wetting_and_drying")) then
           ewrite(1, *) "Domain volume (\int_{fs} (\eta.-b)n.n_z)): ", calculate_volume_by_surface_integral(state(1))
        end if
@@ -774,14 +792,14 @@ contains
              call pre_adapt_tasks(sub_state)
 
              call qmesh(state, metric_tensor)
-             if(have_option("/io/stat/output_before_adapts")) call write_diagnostics(state, current_time, dt, timestep, not_to_move_det_yet=.true.)
+             if(have_option("/io/stat/output_before_adapts")) call write_diagnostics(state, current_time, dt, timestep)
              call run_diagnostics(state)
 
              call adapt_state(state, metric_tensor)
 
              call update_state_post_adapt(state, metric_tensor, dt, sub_state, nonlinear_iterations, nonlinear_iterations_adapt)
 
-             if(have_option("/io/stat/output_after_adapts")) call write_diagnostics(state, current_time, dt, timestep, not_to_move_det_yet=.true.)
+             if(have_option("/io/stat/output_after_adapts")) call write_diagnostics(state, current_time, dt, timestep)
              call run_diagnostics(state)
 
           end if
@@ -790,13 +808,13 @@ contains
 
              call pre_adapt_tasks(sub_state)
 
-             if(have_option("/io/stat/output_before_adapts")) call write_diagnostics(state, current_time, dt, timestep, not_to_move_det_yet=.true.)
+             if(have_option("/io/stat/output_before_adapts")) call write_diagnostics(state, current_time, dt, timestep)
              call run_diagnostics(state)
 
              call adapt_state_prescribed(state, current_time)
              call update_state_post_adapt(state, metric_tensor, dt, sub_state, nonlinear_iterations, nonlinear_iterations_adapt)
 
-             if(have_option("/io/stat/output_after_adapts")) call write_diagnostics(state, current_time, dt, timestep, not_to_move_det_yet=.true.)
+             if(have_option("/io/stat/output_after_adapts")) call write_diagnostics(state, current_time, dt, timestep)
              call run_diagnostics(state)
 
           end if
@@ -830,6 +848,9 @@ contains
 
     ! deallocate the array of all detector lists
     call deallocate_detector_list_array()
+
+    ! deallocate the array of particle lists
+    call destroy_particles()
 
     ewrite(1, *) "Printing references before final deallocation"
     call print_references(1)
@@ -946,13 +967,12 @@ contains
             ewrite(-1,*) "Warning: you have adaptive timestep adjustment after &&
                           && adapt, but have not set a minimum timestep"
         end if
-    !else
+    else
         ! Timestep adapt
-        ! Commented this in order to avoid duplicate change on dt (or a new change that it is not controlled by IC-FERST)
-        ! if(have_option("/timestepping/adaptive_timestep") .and. .not. is_porous_media) then
-        !    call calc_cflnumber_field_based_dt(state, dt, force_calculation = .true.)
-        !    call set_option("/timestepping/timestep", dt)
-        ! end if
+        if(have_option("/timestepping/adaptive_timestep")) then
+            call calc_cflnumber_field_based_dt(state, dt, force_calculation = .true.)
+            call set_option("/timestepping/timestep", dt)
+        end if
     end if
 
     ! Ocean boundaries
@@ -964,6 +984,11 @@ contains
       end if
       call CalculateTopBottomDistance(state(1))
     end if
+
+    !Diagnostic fields based on particles
+
+
+
 
     ! Diagnostic fields
     call calculate_diagnostic_variables(state)
