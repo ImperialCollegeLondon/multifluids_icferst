@@ -759,6 +759,8 @@ contains
 
                   !Here we  Calculate melt fraction from phase diagram
                   call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
+                  !we impose backtrack_or_convergence = 1 to ensure that the convergence check works
+                  backtrack_or_convergence = 1.0
                   ! ! Update the temperature field
                   call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
                   call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
