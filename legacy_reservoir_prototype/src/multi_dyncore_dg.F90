@@ -4168,7 +4168,7 @@ end if
         ! options for implicit solids using one eqn approach...
         LOGICAL, PARAMETER :: solid_visc_ele_imp=.true. ! treat implicitly inside an element.
         LOGICAL, PARAMETER :: solid_visc_ele_imp_stab=.false. ! treat implicitly inside an element for the projection method (suggest =.false., but may be more atable=.true.).
-        LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false. ! treat implicitly between elements.
+        LOGICAL, PARAMETER :: solid_visc_sufele_imp=.true. ! treat implicitly between elements.
         ! re-calculate Mmat%C matrix...
         LOGICAL :: got_c_matrix
         INTEGER, DIMENSION( :, : ), allocatable ::  FACE_ELE
@@ -4412,6 +4412,9 @@ end if
         REAL :: LOC_VEL_ALL(Mdims%ndim, Mdims%X_NLOC)
         type( scalar_field ), pointer :: X_CO, Y_CO, Z_CO
 
+
+        ! report solid iimplicitness options
+        ewrite(3, *) 'implicitness option 1 2 3 ?:', solid_visc_ele_imp, solid_visc_ele_imp_stab, solid_visc_sufele_imp
         !JXiang
 !        ALLOCATE(TEN_VOL_RATIO,Mdims%totele)
         ALLOCATE(UDIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
@@ -6970,12 +6973,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                           DO IDIM=1,Mdims%ndim
                                             DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE)  &
                                                 =DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC ) &
-                                               +DT*STRESS_IJ_SOLID_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC )  ! JXiang
+                                               +STRESS_IJ_SOLID_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC )  ! JXiang
                                           END DO
                                         ELSE
                                         DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
                                             =DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC ) &
-                                             +DT*STRESS_IJ_SOLID_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC )   ! JXiang
+                                             +STRESS_IJ_SOLID_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC )   ! JXiang
                                         END IF
                                         IF(PIVIT_ON_VISC) THEN
                                             DO IDIM=1,Mdims%ndim
@@ -6984,7 +6987,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
                                                     Mmat%PIVIT_MAT(I,J,ELE) &
                                                         =Mmat%PIVIT_MAT(I,J,ELE) + ws * STRESS_IJ_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC ) &
-                                                         + ws * DT*STRESS_IJ_SOLID_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC )    ! JXiang
+                                                         + ws * STRESS_IJ_SOLID_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC )    ! JXiang
                                                 END DO
                                             END DO
                                         ENDIF
@@ -6993,12 +6996,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                           DO IDIM=1,Mdims%ndim
                                             BIGM_CON( 1,:, IPHASE,JPHASE,1,U_JLOC2,COUNT_ELE)  &
                                             =BIGM_CON( 1,:, IPHASE,JPHASE,1,U_JLOC2,COUNT_ELE)+ STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc ) &
-                                             +DT*STRESS_IJ_SOLID_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )   ! JXiang
+                                             +STRESS_IJ_SOLID_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )   ! JXiang
                                           END DO
                                         ELSE
                                           BIGM_CON( :,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)  &
                                           =BIGM_CON( :,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)+ STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc ) &
-                                           +DT*STRESS_IJ_SOLID_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )  !JXiang
+                                           +STRESS_IJ_SOLID_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )  !JXiang
                                         END IF
                                         ! subtract the implicit solids so it eventually makes no contibution...
                                        if(solid_implicit) then ! add in the force from the solids.
@@ -7007,10 +7010,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                             !   U_JNOD2 = ndgln%u((ELE2-1)*Mdims%u_nloc + U_JLOC2 )
                                            DO IDIM=1,Mdims%ndim
                                               LOC_U_RHS( IDIM,IPHASE,U_ILOC ) = LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
-                                                     + DT*STRESS_IJ_SOLID_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC ) &
+                                                     + STRESS_IJ_SOLID_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC ) &
                                                         * LOC_U( IDIM, IPHASE, U_JLOC ) &
                                                     !    * U_ALL( IDIM, IPHASE, U_JNOD )
-                                                     + DT*STRESS_IJ_SOLID_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc ) &
+                                                     + STRESS_IJ_SOLID_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc ) &
                                                         * LOC2_U( IDIM, IPHASE, U_JLOC2 )
                                                     !    * U_ALL( IDIM, IPHASE, U_JNOD2 )
                                                     !    * SLOC2_U( IDIM, IPHASE, U_SJLOC ) * LOC2_U( IDIM, IPHASE, U_JLOC2 ) ************
@@ -7036,11 +7039,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                     IF(LUMP_DIAG_MOM) THEN
                                                       DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)  &
                                                           =DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)+ STRESS_IJ_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC ) &
-                                                                                              +DT*STRESS_IJ_SOLID_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC )  ! JXiang
+                                                                                              +STRESS_IJ_SOLID_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC )  ! JXiang
                                                     ELSE
                                                     DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
                                                         =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)+ STRESS_IJ_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC ) &
-                                                                     +DT*STRESS_IJ_SOLID_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC )    ! JXiang
+                                                                     +STRESS_IJ_SOLID_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC )    ! JXiang
                                                     END IF
                                                     IF(PIVIT_ON_VISC) THEN
                                                         I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
