@@ -76,7 +76,7 @@ AC_ARG_ENABLE(debugging,
 	    [turns on debugging flags])])
 
 FLFEMDEM="femdem"
-
+FLPHREEQC="phreeqc"
 # Check system type
 AC_CANONICAL_HOST
 
@@ -652,6 +652,30 @@ fi
 AC_SUBST(FLFEMDEM_PATH)
 AC_SUBST(LIB_FEMDEM)
 AC_SUBST(FEMDEM)
+
+
+##########################################
+# Are we using phreeqc
+##########################################
+AC_ARG_WITH(phreeqc,
+    [AC_HELP_STRING([--with-phreeqc@<:@=phreeqc_library@:>@],
+        [specify the phreeqc path])])
+if test -n "$with_phreeqc" ; then
+  FLPHREEQC_PATH="${with_phreeqc}"
+  LIB_FEMDEM="${with_phreeqc}""/lib/libiphreeqc.a"
+  PHREEQC="yes"
+  cat >> confdefs.h << EOF
+#define USING_PHREEQC 1
+EOF
+else
+  FLPHREEQC_PATH=""
+  LIB_PHREEQC=""
+  PHREEQC=""
+fi
+AC_SUBST(FLPHREEQC_PATH)
+AC_SUBST(LIB_PHREEQC)
+AC_SUBST(PHREEQC)
+
 
 ##########################################
 # Are we using OASIS

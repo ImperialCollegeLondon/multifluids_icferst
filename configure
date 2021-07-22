@@ -660,6 +660,9 @@ MPIF90
 MPICC
 ENABLE_PSMILE
 FLPSMILE_PATH
+PHREEQC
+LIB_PHREEQC
+FLPHREEQC_PATH
 FEMDEM
 LIB_FEMDEM
 FLFEMDEM_PATH
@@ -768,6 +771,7 @@ enable_openmp
 enable_shared
 enable_verbose
 with_femdem
+with_phreeqc
 with_psmile
 with_netcdf
 enable_petscdebug
@@ -1480,6 +1484,8 @@ Optional Packages:
   --with-lapack-dir=<dir> look for LAPACK library in <dir>
   --with-femdem[=femdem_library]
                           specify the femdem path
+  --with-phreeqc[=phreeqc_library]
+                          specify the phreeqc path
   --with-psmile[=psmile_library]
                           specify the oasis4 path
   --with-netcdf[=netcdf_ROOT]
@@ -2971,7 +2977,7 @@ fi
 
 
 FLFEMDEM="femdem"
-
+FLPHREEQC="phreeqc"
 # Check system type
 ac_aux_dir=
 for ac_dir in "$srcdir" "$srcdir/.." "$srcdir/../.."; do
@@ -10908,6 +10914,33 @@ else
   LIB_FEMDEM=""
   FEMDEM=""
 fi
+
+
+
+
+
+##########################################
+# Are we using phreeqc
+##########################################
+
+# Check whether --with-phreeqc was given.
+if test "${with_phreeqc+set}" = set; then :
+  withval=$with_phreeqc;
+fi
+
+if test -n "$with_phreeqc" ; then
+  FLPHREEQC_PATH="${with_phreeqc}"
+  LIB_FEMDEM="${with_phreeqc}""/lib/libiphreeqc.a"
+  PHREEQC="yes"
+  cat >> confdefs.h << EOF
+#define USING_PHREEQC 1
+EOF
+else
+  FLPHREEQC_PATH=""
+  LIB_PHREEQC=""
+  PHREEQC=""
+fi
+
 
 
 

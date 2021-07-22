@@ -794,8 +794,8 @@ contains
                 end if
 
 
-#ifdef HAVE_IPHREEQC
-
+#ifdef USING_PHREEQC
+print *, "MEOW"
 #endif
 
                 !Finally calculate if the time needs to be adapted or not
