@@ -21,6 +21,9 @@ module multiphase_time_loop
   use petsc
 #endif
 
+#ifdef USING_PHREEQC
+  use IPhreeqc
+#endif
 
     use field_options
     use write_state_module
@@ -795,7 +798,7 @@ contains
 
 
 #ifdef USING_PHREEQC
-print *, "MEOW"
+call testing_IPHREEQC()
 #endif
 
                 !Finally calculate if the time needs to be adapted or not
@@ -1616,6 +1619,14 @@ print *, "MEOW"
         end select
 
     end subroutine adapt_mesh_within_FPI
+
+
+    subroutine testing_IPHREEQC()
+      implicit none
+
+      print *, "MEOW MEOW"
+
+    end subroutine testing_IPHREEQC
 
  end subroutine MultiFluids_SolveTimeLoop
 
