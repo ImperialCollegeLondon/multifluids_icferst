@@ -790,9 +790,14 @@ contains
                                       - CT_CON(IDIM,IPHASE) * SUF_U_BC_ALL_NODS(IDIM,IPHASE,JCV_NOD)
                               END DO
                           ELSE
+                            if (U_P0DG) then !For P0DG we impose direction positive at the Pressure BC, we do that by getting the absolute of ct_con
+                              Mmat%CT( :, IPHASE, COUNT2 ) = Mmat%CT( :, IPHASE, COUNT2 ) + abs(CT_CON( :, IPHASE ))
+                            else
                               Mmat%CT( :, IPHASE, COUNT2 ) = Mmat%CT( :, IPHASE, COUNT2 ) + CT_CON( :, IPHASE )
+                            end if
                           END IF
                       END DO
+
                       call addto( Mmat%CT_RHS, Mdims%npres, jcv_nod, &
                           sum( LOC_CT_RHS_U_ILOC( 1+(Mdims%npres-1)*final_phase : Mdims%npres*final_phase ) ) )
                   END IF ! IF ( GETCT ) THEN
@@ -1806,7 +1811,10 @@ contains
                         JU_NOD = U_GL_GL( U_LILOC )
                         direction_norm = +direction ! for the b.c it must be positive at the top of element
                     END IF
+
                     IF ( JCV_NOD /= 0 ) THEN
+                        !For P0DG we impose direction positive at the Pressure BC
+                        if (U_P0DG) direction_norm = +direction
                         ! Add in Mmat%C matrix contribution: (DG velocities)
                         ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
                         ! over the element of the pressure like source term.
