@@ -716,7 +716,7 @@ contains
                   JCV_NOD = JCV_NOD1
                   U_LILOC = 1
                   JU_NOD = U_GL_GL( U_LILOC )
-                  direction_norm = - direction ! for the b.c it must be -ve at the bottom of element
+                  direction_norm = + direction ! for the b.c it must be -ve at the bottom of element
               end if
               IF ( WIC_B_BC_ALL_NODS( JCV_NOD2 ) == WIC_B_BC_DIRICHLET ) THEN
                   CV_LILOC = CV_LNLOC
@@ -790,11 +790,7 @@ contains
                                       - CT_CON(IDIM,IPHASE) * SUF_U_BC_ALL_NODS(IDIM,IPHASE,JCV_NOD)
                               END DO
                           ELSE
-                            if (U_P0DG) then !For P0DG we impose direction positive at the Pressure BC, we do that by getting the absolute of ct_con
-                              Mmat%CT( :, IPHASE, COUNT2 ) = Mmat%CT( :, IPHASE, COUNT2 ) + abs(CT_CON( :, IPHASE ))
-                            else
                               Mmat%CT( :, IPHASE, COUNT2 ) = Mmat%CT( :, IPHASE, COUNT2 ) + CT_CON( :, IPHASE )
-                            end if
                           END IF
                       END DO
 
@@ -1802,7 +1798,7 @@ contains
                         JCV_NOD = JCV_NOD1
                         U_LILOC = 1
                         JU_NOD = U_GL_GL( U_LILOC )
-                        direction_norm = - direction ! for the b.c it must be negative at the bottom of element
+                        direction_norm = + direction ! for the b.c it must be negative at the bottom of element
                     END IF
                     IF ( WIC_P_BC_ALL_NODS( IPRES, JCV_NOD2 ) == WIC_P_BC_DIRICHLET ) THEN
                         CV_LILOC = CV_LNLOC
@@ -1813,8 +1809,6 @@ contains
                     END IF
 
                     IF ( JCV_NOD /= 0 ) THEN
-                        !For P0DG we impose direction positive at the Pressure BC
-                        if (U_P0DG) direction_norm = +direction
                         ! Add in Mmat%C matrix contribution: (DG velocities)
                         ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
                         ! over the element of the pressure like source term.
