@@ -717,7 +717,7 @@ contains
                   JCV_NOD = JCV_NOD1
                   U_LILOC = 1
                   JU_NOD = U_GL_GL( U_LILOC )
-                  direction_norm = + direction ! for the b.c it must be -ve at the bottom of element
+                  direction_norm = - direction ! for the b.c it must be -ve at the bottom of element
               end if
               IF ( WIC_B_BC_ALL_NODS( JCV_NOD2 ) == WIC_B_BC_DIRICHLET ) THEN
                   CV_LILOC = CV_LNLOC
@@ -1798,7 +1798,7 @@ contains
                         JCV_NOD = JCV_NOD1
                         U_LILOC = 1
                         JU_NOD = U_GL_GL( U_LILOC )
-                        direction_norm = + direction ! for the b.c it must be negative at the bottom of element
+                        direction_norm = - direction ! for the b.c it must be negative at the bottom of element
                     END IF
                     IF ( WIC_P_BC_ALL_NODS( IPRES, JCV_NOD2 ) == WIC_P_BC_DIRICHLET ) THEN
                         CV_LILOC = CV_LNLOC
