@@ -717,7 +717,7 @@ contains
                   JCV_NOD = JCV_NOD1
                   U_LILOC = 1
                   JU_NOD = U_GL_GL( U_LILOC )
-                  direction_norm = + direction ! for the b.c it must be -ve at the bottom of element
+                  direction_norm = - direction ! for the b.c it must be -ve at the bottom of element
               end if
               IF ( WIC_B_BC_ALL_NODS( JCV_NOD2 ) == WIC_B_BC_DIRICHLET ) THEN
                   CV_LILOC = CV_LNLOC
@@ -773,8 +773,11 @@ contains
                   ! Prepare aid variable NMX_ALL to improve the speed of the calculations
                   suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
                   IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS on the boundary...
-
-
+                    IF (U_P0DG) THEN
+                      IF ( WIC_U_BC_ALL_NODS( 2, JCV_NOD ) /= WIC_U_BC_DIRICHLET ) THEN
+                        direction_NORM = + direction
+                      END IF
+                    END IF
                       DO IDIM = 1, Mdims%ndim
                           CT_CON(IDIM,:) = LIMDT * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI / DEN_ALL%val(1,:,JCV_NOD)
                       END DO
@@ -1798,7 +1801,7 @@ contains
                         JCV_NOD = JCV_NOD1
                         U_LILOC = 1
                         JU_NOD = U_GL_GL( U_LILOC )
-                        direction_norm = + direction ! for the b.c it must be negative at the bottom of element
+                        direction_norm = - direction ! for the b.c it must be negative at the bottom of element
                     END IF
                     IF ( WIC_P_BC_ALL_NODS( IPRES, JCV_NOD2 ) == WIC_P_BC_DIRICHLET ) THEN
                         CV_LILOC = CV_LNLOC
@@ -1808,6 +1811,9 @@ contains
                         direction_norm = +direction ! for the b.c it must be positive at the top of element
                     END IF
                     IF ( JCV_NOD /= 0 ) THEN
+                      IF (U_P0DG) THEN
+                        direction_norm = + direction
+                      END IF
                         ! Add in Mmat%C matrix contribution: (DG velocities)
                         ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
                         ! over the element of the pressure like source term.
