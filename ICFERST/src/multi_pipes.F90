@@ -1812,7 +1812,9 @@ contains
                     END IF
                     IF ( JCV_NOD /= 0 ) THEN
                       IF (U_P0DG) THEN
-                        direction_norm = + direction
+                        IF ( WIC_P_BC_ALL_NODS( 2, JCV_NOD ) == WIC_P_BC_DIRICHLET ) THEN
+                          direction_NORM = + direction
+                        END IF
                       END IF
                         ! Add in Mmat%C matrix contribution: (DG velocities)
                         ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
