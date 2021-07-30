@@ -5580,16 +5580,23 @@ end if
     END SUBROUTINE CALC_STRESS_TEN_SOLID
 
 
-    SUBROUTINE CALC_FORCE_SOLID( CAUCHY_STRESS_IJ_SOLID_ELE, NDIM, &
-    NLOC,LOC_X_ALL, solid_force)
+    SUBROUTINE CALC_FORCE_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE, NDIM, &
+    NLOC,LOC_X_ALL, solid_force, Mdims, ndgln, ele)
         IMPLICIT NONE
+        type( state_type ), dimension( : ), intent( inout ) :: state !> Linked list containing all the fields defined in diamond and considered by Fluidity
         INTEGER, intent( in )  :: NDIM, NLOC
         REAL, DIMENSION( :, :  ), intent( in ) :: CAUCHY_STRESS_IJ_SOLID_ELE
         REAL, DIMENSION( :,: ), intent( inOUT ) :: solid_force
         REAL, DIMENSION( :,: ), intent( in ) :: LOC_X_ALL
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_ndgln), intent(in) :: ndgln
+        integer, intent(in) :: ele
         REAL :: nx, ny ,nz, tx, ty, tz
-        INTEGER :: ILOC, JLOC, KLOC, LLOC, IDIM,JDIM
+        INTEGER :: ILOC, JLOC, KLOC, LLOC, IDIM,JDIM, u_nodi
         Real, DIMENSION( :, : ), ALLOCATABLE:: dXdx, dNdx, fij
+        type( vector_field ), pointer :: solid_force_field
+
+        solid_force_field => extract_vector_field( state(1), "SolidForce")
 
         if (ndim==3) then
             Do ILOC=1,NLOC
@@ -5627,10 +5634,13 @@ end if
                         solid_force(3,ILOC)=solid_force(3,ILOC)+tz
                 else
 
-                    solid_force(1,ILOC)=solid_force(1,ILOC)-tx
+                        solid_force(1,ILOC)=solid_force(1,ILOC)-tx
                         solid_force(2,ILOC)=solid_force(2,ILOC)-ty
                         solid_force(3,ILOC)=solid_force(3,ILOC)-tz
                 Endif
+
+                u_nodi = ndgln%u( (ele-1)*Mdims%u_nloc + iloc)
+                solid_force_field%val(:, u_nodi) = solid_force(:,iloc)
             END DO
         else if (ndim==2) then 
             do iloc = 1, nloc 
@@ -5647,6 +5657,10 @@ end if
                 ! add to solid_forces
                 solid_force(1,iloc) = solid_force(1,iloc) + tx 
                 solid_force(2,iloc) = solid_force(2,iloc) + ty 
+
+                u_nodi = ndgln%u( (ele-1)*Mdims%u_nloc + iloc)
+                solid_force_field%val(:, u_nodi) = solid_force(:,iloc)
+                
             end do
             ! let's try another nodal forces formula. taken from Munjiza et al. Large
             ! strain finite element method A practical course, Wiley 2015 pg. 351
