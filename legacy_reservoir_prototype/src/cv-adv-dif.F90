@@ -5651,7 +5651,7 @@ end if
             ! (x2-x1)*(y3-y1) - (x3-x1)*(y2-y1) > 0 => right-hand ordering
             ! else => left-hand ordering
             isRightHand =( (LOC_X_ALL(1,2)-LOC_X_ALL(1,1)) * (LOC_X_ALL(2,3)-LOC_X_ALL(2,1)) &
-                        - (LOC_X_ALL(1,3)-LOC_X_ALL(1,1)) * (LOC_X_ALL(2,2)-LOC_X_ALL(x,1))  ).gt. 0
+                        - (LOC_X_ALL(1,3)-LOC_X_ALL(1,1)) * (LOC_X_ALL(2,2)-LOC_X_ALL(2,1))  ).gt. 0
             do iloc = 1, nloc 
                 jloc = iloc+1
                 if (jloc .gt. 3) jloc=1
@@ -5660,7 +5660,7 @@ end if
                 ! normal vector
                 if (isRightHand) then 
                     nx = (LOC_X_ALL(2,kloc) - LOC_X_ALL(2,jloc))/2.
-                    ny = (LOC_X_ALL(1,jloc) - LOC_X_ALL(1,kloc))/2. 4
+                    ny = (LOC_X_ALL(1,jloc) - LOC_X_ALL(1,kloc))/2. 
                 else
                     nx = -(LOC_X_ALL(2,kloc) - LOC_X_ALL(2,jloc))/2.
                     ny = -(LOC_X_ALL(1,jloc) - LOC_X_ALL(1,kloc))/2.
