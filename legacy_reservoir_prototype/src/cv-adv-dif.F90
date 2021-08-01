@@ -5590,6 +5590,7 @@ end if
         REAL :: nx, ny ,nz, tx, ty, tz
         INTEGER :: ILOC, JLOC, KLOC, LLOC, IDIM,JDIM
         Real, DIMENSION( :, : ), ALLOCATABLE:: dXdx, dNdx, fij
+        logical :: isRightHand
 
         if (ndim==3) then
             Do ILOC=1,NLOC
@@ -5633,14 +5634,27 @@ end if
                 Endif
             END DO
         else if (ndim==2) then 
+            ! we found that Mba2d_integration.F90:adapt_mesh_mba2d can change the node ordering
+            ! after edge swapping. That is, to change a right-hand element to a left-hand 
+            ! element. Therefore, we'd better check the node ordering before calculate (out)-normal
+            ! vector.
+            ! (x2-x1)*(y3-y1) - (x3-x1)*(y2-y1) > 0 => right-hand ordering
+            ! else => left-hand ordering
+            isRightHand =( (LOC_X_ALL(1,2)-LOC_X_ALL(1,1)) * (LOC_X_ALL(2,3)-LOC_X_ALL(2,1)) &
+                        - (LOC_X_ALL(1,3)-LOC_X_ALL(1,1)) * (LOC_X_ALL(2,2)-LOC_X_ALL(x,1))  ).gt. 0
             do iloc = 1, nloc 
                 jloc = iloc+1
                 if (jloc .gt. 3) jloc=1
                 kloc = jloc+1
                 if (kloc .gt. 3) kloc=1
                 ! normal vector
-                nx = (LOC_X_ALL(2,kloc) - LOC_X_ALL(2,jloc))/2.
-                ny = (LOC_X_ALL(1,jloc) - LOC_X_ALL(1,kloc))/2.
+                if (isRightHand) then 
+                    nx = (LOC_X_ALL(2,kloc) - LOC_X_ALL(2,jloc))/2.
+                    ny = (LOC_X_ALL(1,jloc) - LOC_X_ALL(1,kloc))/2. 4
+                else
+                    nx = -(LOC_X_ALL(2,kloc) - LOC_X_ALL(2,jloc))/2.
+                    ny = -(LOC_X_ALL(1,jloc) - LOC_X_ALL(1,kloc))/2.
+                endif
                 ! traction
                 tx = CAUCHY_STRESS_IJ_SOLID_ELE(1,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(1,2)*ny
                 ty = CAUCHY_STRESS_IJ_SOLID_ELE(2,1)*nx + CAUCHY_STRESS_IJ_SOLID_ELE(2,2)*ny 
