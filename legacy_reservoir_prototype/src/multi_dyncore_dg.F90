@@ -4168,7 +4168,7 @@ end if
         ! options for implicit solids using one eqn approach...
         LOGICAL, PARAMETER :: solid_visc_ele_imp=.true. ! treat implicitly inside an element.
         LOGICAL, PARAMETER :: solid_visc_ele_imp_stab=.false. ! treat implicitly inside an element for the projection method (suggest =.false., but may be more atable=.true.).
-        LOGICAL, PARAMETER :: solid_visc_sufele_imp=.true. ! treat implicitly between elements.
+        LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false. ! treat implicitly between elements.
         ! re-calculate Mmat%C matrix...
         LOGICAL :: got_c_matrix
         INTEGER, DIMENSION( :, : ), allocatable ::  FACE_ELE
@@ -5377,8 +5377,8 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                         Mdims%x_nloc, LOC_X_ALL(:,:),LOC_X0_ALL(:,:), LOC_VEL_ALL(:,:), &
                                         TEN_VOL_RATIO(GI), ele )
                                     force_solids( :, IPHASE, : )=0.0
-                                    CALL CALC_FORCE_SOLID( CAUCHY_STRESS_IJ_SOLID_ELE( :, :),  Mdims%ndim, &
-                                        Mdims%x_nloc,LOC_X_ALL(:,:),force_solids(:,IPHASE,:))
+                                    CALL CALC_FORCE_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE( :, :),  Mdims%ndim, &
+                                        Mdims%x_nloc,LOC_X_ALL(:,:),force_solids(:,IPHASE,:), Mdims, ndgln, ele)
 !                                           DO IDIM=1,Mdims%ndim
 !                                              force_solids(IDIM,IPHASE,U_ILOC) = force_solids(IDIM,IPHASE,U_ILOC) &
 !                                               - SUM( STRESS_IJ_solid_ELE( IDIM, :, IPHASE, U_ILOC, U_JLOC ) * UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ))* DevFuns%DETWEI( GI )
