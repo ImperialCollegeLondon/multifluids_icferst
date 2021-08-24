@@ -798,6 +798,7 @@ contains
 
 
 #ifdef USING_PHREEQC
+
 call testing_IPHREEQC()
 #endif
 
@@ -1620,12 +1621,63 @@ call testing_IPHREEQC()
 
     end subroutine adapt_mesh_within_FPI
 
+    subroutine EHandler()
+      use IPhreeqc
+      IMPLICIT NONE
+      integer :: Id
+      call OutputErrorString(Id)
+      stop
+    end subroutine EHandler
+
 
     subroutine testing_IPHREEQC()
+      use IPhreeqc
       implicit none
-
+      integer :: Id, j
+      integer    (kind=4), dimension(8) :: vt
+      real       (kind=8), dimension(8) :: dv
+      character (len=100), dimension(8) :: sv
       print *, "MEOW MEOW"
+      Id = CreateIPhreeqc()
+      if (LoadDatabase(Id, "phreeqc.dat") .ne. 0) call EHandler()
+      !Reading in the inputs
+       if (AccumulateLine(Id, "SOLUTION 1") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,"    temp      25") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,"    pH        5") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,"    pe        4") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,"    redox     pe") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,"    units     mol/kgw") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,"    density   1") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,"    Cl        0.05") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,"    Na        0.05") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,"    Ca        0") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,"    C(4)      0") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,"    -water    1 # kg") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,"EQUILIBRIUM_PHASES 1") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,"    Calcite   0 18") .ne. 0) call EHandler()
+       if (AccumulateLine(Id,'SELECTED_OUTPUT  1') .ne. 0) call EHandler()
+       !if (AccumulateLine(Id,'PRINT') .ne. 0) call EHandler()
+       if (AccumulateLine(id,'-reset false') .ne. 0) call EHandler()
+       !if (AccumulateLine(id,'-species false') .ne. 0) call EHandler()
 
+       !This defines outputs we want to read later
+       if (AccumulateLine(id,'USER_PUNCH  1')  .ne. 0) call EHandler()
+       if (AccumulateLine(id,'-Heading  charge    H   O   C   Ca  Na   Cl   pH')  .ne. 0) call EHandler()
+       if (AccumulateLine(id,'10 PUNCH charge_balance')  .ne. 0) call EHandler()
+       if (AccumulateLine(id,'20 PUNCH TOTMOLE("H"), TOTMOLE("O"), TOTMOLE("C")')  .ne. 0) call EHandler()
+       if (AccumulateLine(id,'30 PUNCH TOTMOLE("Ca"), TOTMOLE("Na"), TOTMOLE("Cl")')  .ne. 0) call EHandler()
+       if (AccumulateLine(id,'40 PUNCH -LA("H+")')  .ne. 0) call EHandler()
+
+       !Ensure simulation outputs are saved in a file to check
+       if (SetOutputFileOn(Id,.true.).ne. 0) call EHandler()
+       !Run the inputs
+       if (RunAccumulated(Id) .ne. 0) call EHandler()
+       !Read the defined outputs from memory
+       do J=1,8
+        if (GetSelectedOutputValue(id,2,j,VT(j),DV(j),SV(j)) .ne. 0) call EHandler()
+       end do
+       !print outputs
+       print *, dv
     end subroutine testing_IPHREEQC
 
  end subroutine MultiFluids_SolveTimeLoop
