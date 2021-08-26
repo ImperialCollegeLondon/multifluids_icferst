@@ -23,6 +23,7 @@ module multiphase_time_loop
 
 #ifdef USING_PHREEQC
   use IPhreeqc
+  use PhreeqcRM
 #endif
 
     use field_options
@@ -1632,52 +1633,140 @@ call testing_IPHREEQC()
 
     subroutine testing_IPHREEQC()
       use IPhreeqc
+      use PhreeqcRM
       implicit none
-      integer :: Id, j
-      integer    (kind=4), dimension(8) :: vt
-      real       (kind=8), dimension(8) :: dv
-      character (len=100), dimension(8) :: sv
-      print *, "MEOW MEOW"
-      Id = CreateIPhreeqc()
-      if (LoadDatabase(Id, "phreeqc.dat") .ne. 0) call EHandler()
-      !Reading in the inputs
-       if (AccumulateLine(Id, "SOLUTION 1") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,"    temp      25") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,"    pH        5") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,"    pe        4") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,"    redox     pe") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,"    units     mol/kgw") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,"    density   1") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,"    Cl        0.05") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,"    Na        0.05") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,"    Ca        0") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,"    C(4)      0") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,"    -water    1 # kg") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,"EQUILIBRIUM_PHASES 1") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,"    Calcite   0 18") .ne. 0) call EHandler()
-       if (AccumulateLine(Id,'SELECTED_OUTPUT  1') .ne. 0) call EHandler()
-       !if (AccumulateLine(Id,'PRINT') .ne. 0) call EHandler()
-       if (AccumulateLine(id,'-reset false') .ne. 0) call EHandler()
-       !if (AccumulateLine(id,'-species false') .ne. 0) call EHandler()
+      integer :: id, j
+      integer :: nxyz
+      integer :: nthreads
+      integer :: status
+      integer :: save_on
 
-       !This defines outputs we want to read later
-       if (AccumulateLine(id,'USER_PUNCH  1')  .ne. 0) call EHandler()
-       if (AccumulateLine(id,'-Heading  charge    H   O   C   Ca  Na   Cl   pH')  .ne. 0) call EHandler()
-       if (AccumulateLine(id,'10 PUNCH charge_balance')  .ne. 0) call EHandler()
-       if (AccumulateLine(id,'20 PUNCH TOTMOLE("H"), TOTMOLE("O"), TOTMOLE("C")')  .ne. 0) call EHandler()
-       if (AccumulateLine(id,'30 PUNCH TOTMOLE("Ca"), TOTMOLE("Na"), TOTMOLE("Cl")')  .ne. 0) call EHandler()
-       if (AccumulateLine(id,'40 PUNCH -LA("H+")')  .ne. 0) call EHandler()
+      double precision, dimension(:), allocatable, target :: hydraulic_K
+      double precision, dimension(:), allocatable   :: rv
+      double precision, dimension(:), allocatable   :: por
+      double precision, dimension(:), allocatable   :: sat
+      character(100)                                :: string
+      integer                                       :: ncomps, nspecies
+      character(100),   dimension(:), allocatable   :: components, species_name
+      integer,          dimension(:,:), allocatable :: ic1, ic2
+      double precision, dimension(:,:), allocatable :: f1
+      double precision, dimension(:,:), allocatable :: c
+      double precision                              :: time, time_step
+      double precision, dimension(:), allocatable   :: density
+      double precision, dimension(:), allocatable   :: volume
+      double precision, dimension(:), allocatable   :: temperature
+      double precision                              :: pH
+      double precision, dimension(:,:), allocatable :: species_c
 
-       !Ensure simulation outputs are saved in a file to check
-       if (SetOutputFileOn(Id,.true.).ne. 0) call EHandler()
-       !Run the inputs
-       if (RunAccumulated(Id) .ne. 0) call EHandler()
-       !Read the defined outputs from memory
-       do J=1,8
-        if (GetSelectedOutputValue(id,2,j,VT(j),DV(j),SV(j)) .ne. 0) call EHandler()
-       end do
-       !print outputs
-       print *, dv
+      nxyz = 1
+      nthreads = 0
+      id = RM_Create(nxyz, nthreads)
+
+      !Load database
+      status = RM_LoadDatabase(id, "phreeqc.dat.in")
+
+      ! Set properties
+      status = RM_SetErrorOn(id, 1)
+      status = RM_SetErrorHandlerMode(id, 2)  ! exit on error
+      status = RM_SetComponentH2O(id, 0)
+      status = RM_SetRebalanceFraction(id, 0.5d0)
+      status = RM_SetRebalanceByCell(id, 1)
+      status = RM_UseSolutionDensityVolume(id, 0)
+      status = RM_SetPartitionUZSolids(id, 0)
+
+      ! Set concentration units
+      status = RM_SetUnitsSolution(id, 2)      ! 1, mg/L; 2, mol/L; 3, kg/kgs
+      status = RM_SetUnitsPPassemblage(id, 1)  ! 0, mol/L cell; 1, mol/L water; 2 mol/L rock
+      status = RM_SetUnitsExchange(id, 1)      ! 0, mol/L cell; 1, mol/L water; 2 mol/L rock
+      status = RM_SetUnitsSurface(id, 1)       ! 0, mol/L cell; 1, mol/L water; 2 mol/L rock
+      status = RM_SetUnitsGasPhase(id, 1)      ! 0, mol/L cell; 1, mol/L water; 2 mol/L rock
+      status = RM_SetUnitsSSassemblage(id, 1)  ! 0, mol/L cell; 1, mol/L water; 2 mol/L rock
+      status = RM_SetUnitsKinetics(id, 1)      ! 0, mol/L cell; 1, mol/L water; 2 mol/L rock
+
+      ! Set conversion from seconds to user units (days)
+      status = RM_SetTimeConversion(id, dble(1.0 / 86400.0))
+
+      ! Set representative volume
+      allocate(rv(nxyz))
+      rv = 1.0
+      status = RM_SetRepresentativeVolume(id, rv)
+      ! Set initial porosity
+      allocate(por(nxyz))
+      por = 0.2
+      status = RM_SetPorosity(id, por)
+
+      !Read input file
+      status = RM_RunFile(id, 1, 1, 1, "test.pqi.in")
+      ! Clear contents of workers and utility
+      string = "DELETE; -all"
+      status = RM_RunString(id, 1, 0, 1, string)  ! workers, initial_phreeqc, utility
+      ! Determine number of components to transport
+      ncomps = RM_FindComponents(id)
+
+      allocate(components(ncomps))
+      do i = 1, ncomps
+        status = RM_GetComponent(id, i, components(i))
+      enddo
+      !Setting up intial conditions - I think this is basically saying what kind
+      !of reactions are expecting Phreeqc to run
+      allocate(ic1(nxyz,7), ic2(nxyz,7), f1(nxyz,7))
+      ic1 = -1
+      ic2 = -1
+      f1 = 1.0
+      do i = 1, nxyz
+        ic1(i,1) = 1       ! Solution 1
+        ic1(i,2) = 1      ! Equilibrium phases 1
+        ic1(i,3) = -1       ! Exchange none
+        ic1(i,4) = -1      ! Surface none
+        ic1(i,5) = -1      ! Gas phase none
+        ic1(i,6) = -1      ! Solid solutions none
+        ic1(i,7) = -1      ! Kinetics none
+      enddo
+
+      !Transfer solutions and reactants from the InitialPhreeqc instance
+      !to the reaction-module workers - basically the part will actually be running things
+      status = RM_InitialPhreeqc2Module(id, ic1, ic2, f1)
+     ! No mixing is defined, so the following is equivalent
+        status = RM_InitialPhreeqc2Module(id, ic1)
+        time = 0.0
+        time_step = 0.0
+        allocate(c(nxyz, ncomps))
+        status = RM_SetTime(id, time)
+        status = RM_SetTimeStep(id, time_step)
+        save_on = RM_SetSpeciesSaveOn(id, 1)
+        !Run inputs
+        status = RM_RunCells(id)
+        !Get the output data
+        status = RM_GetConcentrations(id, c)
+        nspecies = RM_GetSpeciesCount(id)
+        allocate(species_c(nxyz, nspecies))
+        allocate(species_name(nspecies))
+        status = RM_GetSpeciesConcentrations(id, species_c)
+
+        print *, "Concentration values for each component:"
+        do i = 1, ncomps
+          print *, components(i),c(1,i)
+        enddo
+
+        print *, "Concentration values for each species:"
+        do i = 1, nspecies
+         status = RM_GetSpeciesName(id, i, species_name(i))
+         print *, species_name(i), species_c(1,i)
+       enddo
+
+       !Then try and modify inputs
+       allocate(temperature(nxyz))
+       temperature = 40.
+       c(1,7) = 0
+       status = RM_SetTemperature(id, temperature)
+       status = RM_SetConcentrations(id, c)
+       status = RM_RunCells(id)
+       status = RM_GetConcentrations(id, c)
+
+       print *, "Concentration after modifying inputs:"
+       do i = 1, ncomps
+         print *, components(i),c(1,i)
+       enddo
     end subroutine testing_IPHREEQC
 
  end subroutine MultiFluids_SolveTimeLoop

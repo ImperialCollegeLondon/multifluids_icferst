@@ -10918,7 +10918,7 @@ fi
 
 if test -n "$with_phreeqc" ; then
   FLPHREEQC_PATH="${with_phreeqc}"
-  LIB_FEMDEM="${with_phreeqc}""/lib/libiphreeqc.a"
+  LIB_FEMDEM="${with_phreeqc}""/lib/libphreeqcrm.so"
   PHREEQC="yes"
   cat >> confdefs.h << EOF
 #define USING_PHREEQC 1

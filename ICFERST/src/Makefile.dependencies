@@ -79,8 +79,13 @@ Multiphase_TimeLoop.o ../include/multiphase_time_loop.mod: \
    ../include/multi_magma.mod ../include/multi_pipes.mod \
    ../include/multi_sp.mod ../include/multi_tools.mod \
    ../include/multiphase_1d_engine.mod ../include/multiphase_eos.mod \
-   ../include/multiphase_fractures_3d.mod \
+   ../include/multiphase_fractures_3d.mod ../include/phreeqcrm.mod \
    ../include/shape_functions_linear_quadratic.mod ../include/spact.mod
+
+../include/phreeqcrm.mod: RM_interface.o
+	@true
+
+RM_interface.o ../include/phreeqcrm.mod: RM_interface.F90
 
 ../include/cv_advection.mod: cv-adv-dif.o
 	@true
@@ -267,14 +272,14 @@ multi_shape_fct.o ../include/shape_functions_prototype.mod: \
    ../include/shape_functions_linear_quadratic.mod \
    ../include/shape_functions_ndim.mod
 
-../include/shape_functions_ndim.mod: multi_shape_fct_ND.o
-	@true
-
 ../include/shape_functions_linear_quadratic.mod: multi_shape_fct_ND.o
 	@true
 
-multi_shape_fct_ND.o ../include/shape_functions_ndim.mod \
-   ../include/shape_functions_linear_quadratic.mod: multi_shape_fct_ND.F90 \
+../include/shape_functions_ndim.mod: multi_shape_fct_ND.o
+	@true
+
+multi_shape_fct_ND.o ../include/shape_functions_linear_quadratic.mod \
+   ../include/shape_functions_ndim.mod: multi_shape_fct_ND.F90 \
    ../../include/confdefs.h ../../include/fdebug.h \
    ../../include/fields_allocates.mod ../../include/fields_data_types.mod \
    ../../include/fldebug.mod ../../include/shape_functions.mod \
