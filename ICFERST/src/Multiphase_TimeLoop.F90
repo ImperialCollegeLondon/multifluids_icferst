@@ -218,6 +218,8 @@ contains
         logical :: have_Passive_Tracers = .true.
         integer :: fields
         character( len = option_path_len ) :: option_name
+        integer :: id
+        double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -428,6 +430,11 @@ contains
             call Initialise_Saturation_sums_one(Mdims, ndgln, packed_state, .true.)
         end if
 
+#ifdef USING_PHREEQC
+  print *, "Initialising phreeqc"
+    call init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
+#endif
+
         !!$ Starting Time Loop
         itime = 0
         ! if this is not a zero timestep simulation (otherwise, there would
@@ -545,7 +552,9 @@ contains
 #endif
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
 
-
+#ifdef USING_PHREEQC
+      call testing_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
+#endif
             !!$ Start non-linear loop
             first_nonlinear_time_step = .true.
             its = 1
@@ -798,10 +807,6 @@ contains
                 end if
 
 
-#ifdef USING_PHREEQC
-
-call testing_IPHREEQC()
-#endif
 
                 !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
@@ -829,6 +834,7 @@ call testing_IPHREEQC()
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
+
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
               ewrite(0,*) "Iterations taken by the pressure linear solver:", pres_its_taken
             end if
@@ -1622,20 +1628,13 @@ call testing_IPHREEQC()
 
     end subroutine adapt_mesh_within_FPI
 
-    subroutine EHandler()
-      use IPhreeqc
-      IMPLICIT NONE
-      integer :: Id
-      call OutputErrorString(Id)
-      stop
-    end subroutine EHandler
+    subroutine init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
 
-
-    subroutine testing_IPHREEQC()
       use IPhreeqc
       use PhreeqcRM
       implicit none
-      integer :: id, j
+      integer, INTENT(out) :: id
+      integer :: i,j,k
       integer :: nxyz
       integer :: nthreads
       integer :: status
@@ -1650,19 +1649,28 @@ call testing_IPHREEQC()
       character(100),   dimension(:), allocatable   :: components, species_name
       integer,          dimension(:,:), allocatable :: ic1, ic2
       double precision, dimension(:,:), allocatable :: f1
-      double precision, dimension(:,:), allocatable :: c
+      double precision, dimension(:,:), allocatable, INTENT(OUT) :: concetration_phreeqc
       double precision                              :: time, time_step
-      double precision, dimension(:), allocatable   :: density
-      double precision, dimension(:), allocatable   :: volume
-      double precision, dimension(:), allocatable   :: temperature
       double precision                              :: pH
       double precision, dimension(:,:), allocatable :: species_c
+      type( state_type ), intent( inout ) :: packed_state
+      type(multi_dimensions), intent( in ) :: Mdims
+      integer :: cv_nod, iphase
+      type(tensor_field), pointer :: H_field,O_field, charge_field, Ca_field, Cl_field
+      type(tensor_field), pointer :: K_field, N_field, Na_field
 
-      nxyz = 1
+      H_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_H")
+      O_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_O")
+      charge_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_charge")
+      Ca_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Ca")
+      Cl_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Cl")
+      K_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_K")
+      N_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_N")
+      Na_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Na")
+
+      nxyz = Mdims%cv_nonods
       nthreads = 0
       id = RM_Create(nxyz, nthreads)
-
-      !Load database
       status = RM_LoadDatabase(id, "phreeqc.dat.in")
 
       ! Set properties
@@ -1684,7 +1692,7 @@ call testing_IPHREEQC()
       status = RM_SetUnitsKinetics(id, 1)      ! 0, mol/L cell; 1, mol/L water; 2 mol/L rock
 
       ! Set conversion from seconds to user units (days)
-      status = RM_SetTimeConversion(id, dble(1.0 / 86400.0))
+      !status = RM_SetTimeConversion(id, dble(1.0 / 86400.0))
 
       ! Set representative volume
       allocate(rv(nxyz))
@@ -1715,8 +1723,8 @@ call testing_IPHREEQC()
       f1 = 1.0
       do i = 1, nxyz
         ic1(i,1) = 1       ! Solution 1
-        ic1(i,2) = 1      ! Equilibrium phases 1
-        ic1(i,3) = -1       ! Exchange none
+        ic1(i,2) = -1      ! Equilibrium phases 1
+        ic1(i,3) = 1       ! Exchange none
         ic1(i,4) = -1      ! Surface none
         ic1(i,5) = -1      ! Gas phase none
         ic1(i,6) = -1      ! Solid solutions none
@@ -1726,52 +1734,80 @@ call testing_IPHREEQC()
       !Transfer solutions and reactants from the InitialPhreeqc instance
       !to the reaction-module workers - basically the part will actually be running things
       status = RM_InitialPhreeqc2Module(id, ic1, ic2, f1)
-     ! No mixing is defined, so the following is equivalent
-        status = RM_InitialPhreeqc2Module(id, ic1)
-        time = 0.0
-        time_step = 0.0
-        allocate(c(nxyz, ncomps))
-        status = RM_SetTime(id, time)
-        status = RM_SetTimeStep(id, time_step)
-        save_on = RM_SetSpeciesSaveOn(id, 1)
-        !Run inputs
-        status = RM_RunCells(id)
-        !Get the output data
-        status = RM_GetConcentrations(id, c)
-        nspecies = RM_GetSpeciesCount(id)
-        allocate(species_c(nxyz, nspecies))
-        allocate(species_name(nspecies))
-        status = RM_GetSpeciesConcentrations(id, species_c)
+      time = 0.0
+      time_step = 720.
+      allocate(concetration_phreeqc(nxyz, ncomps))
+      status = RM_SetTime(id, time)
+      status = RM_SetTimeStep(id, time_step)
+      save_on = RM_SetSpeciesSaveOn(id, 1)
 
-        print *, "Concentration values for each component:"
-        do i = 1, ncomps
-          print *, components(i),c(1,i)
-        enddo
+      status = RM_RunCells(id)
+      !Get the output data
+      status = RM_GetConcentrations(id, concetration_phreeqc)
+      H_field%val(1,1,:) = concetration_phreeqc(:,1)
+      O_field%val(1,1,:) = concetration_phreeqc(:,2)
+      charge_field%val(1,1,:) = concetration_phreeqc(:,3)
+      Ca_field%val(1,1,:) = concetration_phreeqc(:,4)
+      Cl_field%val(1,1,:) = concetration_phreeqc(:,5)
+      K_field%val(1,1,:) = concetration_phreeqc(:,6)
+      N_field%val(1,1,:) = concetration_phreeqc(:,7)
+      Na_field%val(1,1,:) = concetration_phreeqc(:,8)
 
-        print *, "Concentration values for each species:"
-        do i = 1, nspecies
-         status = RM_GetSpeciesName(id, i, species_name(i))
-         print *, species_name(i), species_c(1,i)
-       enddo
 
-       !Then try and modify inputs
-       allocate(temperature(nxyz))
-       temperature = 40.
-       c(1,7) = 0
-       status = RM_SetTemperature(id, temperature)
-       status = RM_SetConcentrations(id, c)
-       status = RM_RunCells(id)
-       status = RM_GetConcentrations(id, c)
+    print *, maxval(K_field%val)
 
-       print *, "Concentration after modifying inputs:"
-       do i = 1, ncomps
-         print *, components(i),c(1,i)
-       enddo
-    end subroutine testing_IPHREEQC
+    end subroutine init_PHREEQC
+
+    subroutine testing_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
+      use IPhreeqc
+      use PhreeqcRM
+      implicit none
+      integer , INTENT(INOUT) :: id
+      integer :: status
+
+      double precision, dimension(:,:),INTENT(INOUT) :: concetration_phreeqc
+      double precision :: time, time_step
+      type( state_type ), intent( inout ) :: packed_state
+      type(multi_dimensions), intent( in ) :: Mdims
+      type(tensor_field), pointer :: H_field,O_field, charge_field, Ca_field, Cl_field
+      type(tensor_field), pointer :: K_field, N_field, Na_field
+      integer :: cv_nod, iphase
+
+      H_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_H")
+      O_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_O")
+      charge_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_charge")
+      Ca_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Ca")
+      Cl_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Cl")
+      K_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_K")
+      N_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_N")
+      Na_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Na")
+
+
+      concetration_phreeqc(:,1) =  H_field%val(1,1,:)
+      concetration_phreeqc(:,2) =  O_field%val(1,1,:)
+      concetration_phreeqc(:,3) =  charge_field%val(1,1,:)
+      concetration_phreeqc(:,4) =  Ca_field%val(1,1,:)
+      concetration_phreeqc(:,5) =  Cl_field%val(1,1,:)
+      concetration_phreeqc(:,6) =  K_field%val(1,1,:)
+      concetration_phreeqc(:,7) =  N_field%val(1,1,:)
+      concetration_phreeqc(:,8) =  Na_field%val(1,1,:)
+      status = RM_SetConcentrations(id, concetration_phreeqc)
+      status = RM_RunCells(id)
+      !Get the output data
+      status = RM_GetConcentrations(id, concetration_phreeqc)
+      H_field%val(1,1,:) = concetration_phreeqc(:,1)
+      O_field%val(1,1,:) = concetration_phreeqc(:,2)
+      charge_field%val(1,1,:) = concetration_phreeqc(:,3)
+      Ca_field%val(1,1,:) = concetration_phreeqc(:,4)
+      Cl_field%val(1,1,:) = concetration_phreeqc(:,5)
+      K_field%val(1,1,:) = concetration_phreeqc(:,6)
+      N_field%val(1,1,:) = concetration_phreeqc(:,7)
+      Na_field%val(1,1,:) = concetration_phreeqc(:,8)
+
+
+    end subroutine testing_PHREEQC
 
  end subroutine MultiFluids_SolveTimeLoop
-
-
 
 
 
