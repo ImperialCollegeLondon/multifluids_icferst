@@ -72,6 +72,8 @@ module multi_phreeqc
         type(tensor_field), pointer :: H_field,O_field, charge_field, Ca_field, Cl_field
         type(tensor_field), pointer :: K_field, N_field, Na_field
         character( len = option_path_len ) :: option_path, option_name
+        character(len=option_path_len), dimension(:),  allocatable :: file_strings
+        character(len=25), dimension(7) :: reaction_types
 
         H_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_H")
         O_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_O")
@@ -133,25 +135,37 @@ module multi_phreeqc
         enddo
         !Setting up intial conditions - I think this is basically saying what kind
         !of reactions are expecting Phreeqc to run
+        reaction_types(1) = 'SOLUTION'
+        reaction_types(2) = 'EQUILIBRIUM_PHASES'
+        reaction_types(3) = 'EXCHANGE'
+        reaction_types(4) = 'SURFACE'
+        reaction_types(5) = 'GAS_PHASE'
+        reaction_types(6) = 'SOLID_SOLUTIONS'
+        reaction_types(7) = 'KINETICS'
+
+        call read_inputfile(file_strings)
+
         allocate(ic1(nxyz,7), ic2(nxyz,7), f1(nxyz,7))
         ic1 = -1
         ic2 = -1
-        f1 = 1.0
-        do i = 1, nxyz
-          ic1(i,1) = 1       ! Solution 1
-          ic1(i,2) = -1      ! Equilibrium phases 1
-          ic1(i,3) = 1       ! Exchange none
-          ic1(i,4) = -1      ! Surface none
-          ic1(i,5) = -1      ! Gas phase none
-          ic1(i,6) = -1      ! Solid solutions none
-          ic1(i,7) = -1      ! Kinetics none
-        enddo
+        f1 = 1.
+
+        do k =1,1000
+          if (len(trim(file_strings(k))) == 0) cycle
+          do i = 1,7
+            if (index(file_strings(k), trim(reaction_types(i))) /= 0) then
+              do j = 1,nxyz
+                ic1(j,i) = 1
+              end do
+            end if
+          end do
+        end do
 
         !Transfer solutions and reactants from the InitialPhreeqc instance
         !to the reaction-module workers - basically the part will actually be running things
         status = RM_InitialPhreeqc2Module(id, ic1, ic2, f1)
         time = 0.0
-        time_step = 720.
+        time_step = 120.
         allocate(concetration_phreeqc(nxyz, ncomps))
         status = RM_SetTime(id, time)
         status = RM_SetTimeStep(id, time_step)
@@ -220,5 +234,28 @@ module multi_phreeqc
 
 
       end subroutine testing_PHREEQC
+
+      subroutine read_inputfile(file_strings)
+
+        implicit none
+
+        integer :: i, start, ierr
+        character( len = option_path_len ) :: option_path, option_name
+        character(len=option_path_len), dimension(:),  allocatable, intent(out) :: file_strings
+
+        allocate(file_strings(1000))
+        call get_option("/porous_media/Phreeqc_coupling/simulation_name",option_name)
+        open(unit= 89, file=trim(option_name), status='old', action='read')
+        i = 1
+        start = 1
+        do while (.true.)
+            read(89,'(a)', iostat=ierr) file_strings(i)
+            if (ierr/=0) exit
+            i = i + 1
+        end do
+        close(89)
+
+
+      end subroutine
 
 end module multi_phreeqc
