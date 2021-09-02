@@ -906,14 +906,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end if
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
-                !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
-               if (is_porous_media) then
-                   !Get information for capillary pressure to be use in CV_ASSEMB
-                   Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, totally_min_max, .true.)
-               else
                 Phase_with_Ovrel = -1
-               end if
 
                !Solves a PETSC warning saying that we are storing information out of range
                call allocate(Mmat%petsc_ACV,sparsity,[nconc,nconc],"ACV_INTENERGE")
