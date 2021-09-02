@@ -136,7 +136,7 @@ module multi_phreeqc
           end if
         end do
         !PHREEQC will have an extra one which is charge
-        if (ncomps - 1 /= ICncomp) then 
+        if (ncomps - 1 /= ICncomp) then
           FLAbort("The number of Species defined in ICFERST and PHREEQC do not match. Please double check both input files.")
         end if
 
@@ -186,7 +186,7 @@ module multi_phreeqc
         !Get the output data
         status = RM_GetConcentrations(id, concetration_phreeqc)
         do iphase = 1, 1!Mdims%nphase!SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
-          do icomp = 1, ncomps 
+          do icomp = 1, ncomps
             tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp)))
             do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
               tfield%val(1,iphase,cv_inod) = concetration_phreeqc(cv_inod, icomp)
@@ -237,7 +237,7 @@ module multi_phreeqc
         ! Na_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Na")
 
         do iphase = 1, 1!Mdims%nphase!SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
-          do icomp = 1, ncomps 
+          do icomp = 1, ncomps
             tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp)))
             do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
               concetration_phreeqc(cv_inod, icomp) = tfield%val(1,iphase,cv_inod)
@@ -258,7 +258,7 @@ module multi_phreeqc
         !Get the output data
         status = RM_GetConcentrations(id, concetration_phreeqc)
         do iphase = 1, 1!Mdims%nphase!SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
-          do icomp = 1, ncomps 
+          do icomp = 1, ncomps
             tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp)))
             do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
               tfield%val(1,iphase,cv_inod) = concetration_phreeqc(cv_inod, icomp)
@@ -278,7 +278,6 @@ module multi_phreeqc
 
       end subroutine testing_PHREEQC
 
-<<<<<<< HEAD
       subroutine read_inputfile(file_strings)
 
         implicit none
@@ -301,7 +300,7 @@ module multi_phreeqc
 
 
       end subroutine
-=======
+
   !>@author Geraldine Regnier, Pablo Salinas
   !>@brief: Finds the field name in diamond given a name in PHREEQC. Fields have the convention of being named in ICFERST as SPECIES_component,
   !> for example Species_O for oxygen.
@@ -316,7 +315,7 @@ module multi_phreeqc
       do k = 1, option_count("/material_phase[0]/scalar_field")!We check the first phase only
         call get_option("/material_phase[0]/scalar_field["// int2str( k - 1)//"]/name", option_name)
         if (option_name(1:7)=="Species") then
-          !To avoid finding names that are not supposed to be, for example if we have Carbon and Calcite, 
+          !To avoid finding names that are not supposed to be, for example if we have Carbon and Calcite,
           !we would have C and Ca we dont want to identify Ca as Carbon we limit the lenght of the search
           !Check that the name contains the PHREEQC name, if it does, then use that name
           buffer = 8+len(trim(PHREEQC_name))
@@ -324,6 +323,5 @@ module multi_phreeqc
         end if
       end do
     end function
->>>>>>> d5351993307d252811640d8c2cec9a98a750de72
 
 end module multi_phreeqc
