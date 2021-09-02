@@ -2654,7 +2654,6 @@ scalar_field_choice =
             )
          }|
          ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
-         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
          element scalar_field {
             attribute rank { "0" },
             attribute name { "PassiveTracer" },
@@ -2705,13 +2704,16 @@ scalar_field_choice =
                }
             )
          }|
-         ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
-         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
+         ## Species. This scalar field is devoted for the PHREEQC coupling. Components being used in 
+         ## Phreeqc need to be defined using this naming convention in ICFERST. For example if you have Oxygen and Nitrogen your components
+         ## in ICFERST should be named: Species_O and Species_N
+         ## 
+         ## <b>You can add as many passive Species as you want as long as the name starts with Species</b>
          ##
          ## This is just an example of how it works.
          element scalar_field {
             attribute rank { "0" },
-            attribute name { "PassiveTracer_Example2" },
+            attribute name { "Species" },
             (
                element prognostic {
                   pressure_mesh_choice,

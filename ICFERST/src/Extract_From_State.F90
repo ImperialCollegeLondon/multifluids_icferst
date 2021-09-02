@@ -964,7 +964,7 @@ contains
         fields = option_count("/material_phase[0]/scalar_field")
         do k = 1, fields
           call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-          if (option_name(1:13)=="PassiveTracer") then
+          if (option_name(1:13)=="PassiveTracer" .or. option_name(1:7)=="Species") then
             if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
               call insert_sfield(packed_state,trim(option_name),1,nphase,&
               add_source=.false.,add_absorption=.false.)!This introduces memory issues, keep them in state only
@@ -1293,7 +1293,7 @@ contains
                 fields = option_count("/material_phase[0]/scalar_field")
                 do k = 1, fields
                   call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                  if (option_name(1:13)=="PassiveTracer") then
+                  if (option_name(1:13)=="PassiveTracer".or. option_name(1:7)=="Species") then
                     if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
                       call unpack_sfield(state(i),packed_state,"Old"//trim(option_name),1,iphase,&
                       check_paired(extract_scalar_field(state(i),trim(option_name)),&
@@ -1363,7 +1363,7 @@ contains
         fields = option_count("/material_phase[0]/scalar_field")
         do k = 1, fields
           call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-          if (option_name(1:13)=="PassiveTracer") then
+          if (option_name(1:13)=="PassiveTracer".or. option_name(1:7)=="Species") then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,trim(option_name))
           end if
         end do

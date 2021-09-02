@@ -3184,8 +3184,7 @@ mass fraction with a particular phase</a:documentation>
         </choice>
       </element>
       <element name="scalar_field">
-        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
-Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.</a:documentation>
+        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
@@ -3256,15 +3255,18 @@ This imposes the tracer to be between bounds..</a:documentation>
         </choice>
       </element>
       <element name="scalar_field">
-        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
-Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
+        <a:documentation>Species. This scalar field is devoted for the PHREEQC coupling. Components being used in 
+Phreeqc need to be defined using this naming convention in ICFERST. For example if you have Oxygen and Nitrogen your components
+in ICFERST should be named: Species_O and Species_N
+
+&lt;b&gt;You can add as many passive Species as you want as long as the name starts with Species&lt;/b&gt;
 
 This is just an example of how it works.</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
         <attribute name="name">
-          <value>PassiveTracer_Example2</value>
+          <value>Species</value>
         </attribute>
         <choice>
           <element name="prognostic">

@@ -428,11 +428,13 @@ contains
             !Ensure that the initial condition for the saturation sum to 1.
             call Initialise_Saturation_sums_one(Mdims, ndgln, packed_state, .true.)
         end if
-
+        if (have_option("/porous_media/Phreeqc_coupling"))then
 #ifdef USING_PHREEQC
-  print *, "Initialising phreeqc"
-    call init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
+call init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
+#else 
+    FLExit( "PHREEQC coupling option activated by the link to PHREEQRM is not activated." )
 #endif
+        end if
 
         !!$ Starting Time Loop
         itime = 0
@@ -550,7 +552,6 @@ contains
             end if
 #endif
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
-
 #ifdef USING_PHREEQC
       call testing_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
 #endif
@@ -782,7 +783,7 @@ contains
                   fields = option_count("/material_phase[0]/scalar_field")
                   do k = 1, fields
                     call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                    if (option_name(1:13)=="PassiveTracer") then
+                    if (option_name(1:13)=="PassiveTracer".or. option_name(1:7)=="Species") then
                       have_Passive_Tracers = .true.!OK there are passive tracers so remember for next time
                       tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
                       call Passive_Tracer_Assemble_Solve( trim(option_name), state, packed_state, &
