@@ -18,11 +18,10 @@
 
 module multi_phreeqc
 
-
-    #ifdef USING_PHREEQC
-        use IPhreeqc
-        use PhreeqcRM
-    #endif
+#ifdef USING_PHREEQC
+  use IPhreeqc
+  use PhreeqcRM
+#endif
 
     use fldebug
     use state_module
@@ -41,6 +40,9 @@ module multi_phreeqc
     use multi_data_types
     use multi_tools
 
+    implicit none
+
+  contains
 
     subroutine init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
         implicit none
@@ -50,7 +52,7 @@ module multi_phreeqc
         integer :: nthreads
         integer :: status
         integer :: save_on
-  
+
         double precision, dimension(:), allocatable, target :: hydraulic_K
         double precision, dimension(:), allocatable   :: rv
         double precision, dimension(:), allocatable   :: por
@@ -69,7 +71,8 @@ module multi_phreeqc
         integer :: cv_nod, iphase
         type(tensor_field), pointer :: H_field,O_field, charge_field, Ca_field, Cl_field
         type(tensor_field), pointer :: K_field, N_field, Na_field
-  
+        character( len = option_path_len ) :: option_path, option_name
+
         H_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_H")
         O_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_O")
         charge_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_charge")
@@ -78,12 +81,13 @@ module multi_phreeqc
         K_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_K")
         N_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_N")
         Na_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Na")
-  
+
         nxyz = Mdims%cv_nonods
         nthreads = 0
         id = RM_Create(nxyz, nthreads)
-        status = RM_LoadDatabase(id, "phreeqc.dat.in")
-  
+        call get_option("/porous_media/Phreeqc_coupling/database_name",option_name,default='phreeqc.dat.in')
+        status = RM_LoadDatabase(id, trim(option_name))
+
         ! Set properties
         status = RM_SetErrorOn(id, 1)
         status = RM_SetErrorHandlerMode(id, 2)  ! exit on error
@@ -92,7 +96,7 @@ module multi_phreeqc
         status = RM_SetRebalanceByCell(id, 1)
         status = RM_UseSolutionDensityVolume(id, 0)
         status = RM_SetPartitionUZSolids(id, 0)
-  
+
         ! Set concentration units
         status = RM_SetUnitsSolution(id, 2)      ! 1, mg/L; 2, mol/L; 3, kg/kgs
         status = RM_SetUnitsPPassemblage(id, 1)  ! 0, mol/L cell; 1, mol/L water; 2 mol/L rock
@@ -101,10 +105,10 @@ module multi_phreeqc
         status = RM_SetUnitsGasPhase(id, 1)      ! 0, mol/L cell; 1, mol/L water; 2 mol/L rock
         status = RM_SetUnitsSSassemblage(id, 1)  ! 0, mol/L cell; 1, mol/L water; 2 mol/L rock
         status = RM_SetUnitsKinetics(id, 1)      ! 0, mol/L cell; 1, mol/L water; 2 mol/L rock
-  
+
         ! Set conversion from seconds to user units (days)
         !status = RM_SetTimeConversion(id, dble(1.0 / 86400.0))
-  
+
         ! Set representative volume
         allocate(rv(nxyz))
         rv = 1.0
@@ -113,15 +117,16 @@ module multi_phreeqc
         allocate(por(nxyz))
         por = 0.2
         status = RM_SetPorosity(id, por)
-  
+
         !Read input file
-        status = RM_RunFile(id, 1, 1, 1, "test.pqi.in")
+        call get_option("/porous_media/Phreeqc_coupling/simulation_name",option_name)
+        status = RM_RunFile(id, 1, 1, 1, trim(option_name))
         ! Clear contents of workers and utility
         string = "DELETE; -all"
         status = RM_RunString(id, 1, 0, 1, string)  ! workers, initial_phreeqc, utility
         ! Determine number of components to transport
         ncomps = RM_FindComponents(id)
-  
+
         allocate(components(ncomps))
         do i = 1, ncomps
           status = RM_GetComponent(id, i, components(i))
@@ -141,7 +146,7 @@ module multi_phreeqc
           ic1(i,6) = -1      ! Solid solutions none
           ic1(i,7) = -1      ! Kinetics none
         enddo
-  
+
         !Transfer solutions and reactants from the InitialPhreeqc instance
         !to the reaction-module workers - basically the part will actually be running things
         status = RM_InitialPhreeqc2Module(id, ic1, ic2, f1)
@@ -151,7 +156,7 @@ module multi_phreeqc
         status = RM_SetTime(id, time)
         status = RM_SetTimeStep(id, time_step)
         save_on = RM_SetSpeciesSaveOn(id, 1)
-  
+
         status = RM_RunCells(id)
         !Get the output data
         status = RM_GetConcentrations(id, concetration_phreeqc)
@@ -163,17 +168,17 @@ module multi_phreeqc
         K_field%val(1,1,:) = concetration_phreeqc(:,6)
         N_field%val(1,1,:) = concetration_phreeqc(:,7)
         Na_field%val(1,1,:) = concetration_phreeqc(:,8)
-  
-  
+
+
     !   print *, maxval(K_field%val)
-  
+
       end subroutine init_PHREEQC
-  
+
       subroutine testing_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
         implicit none
         integer , INTENT(INOUT) :: id
         integer :: status
-  
+
         double precision, dimension(:,:),INTENT(INOUT) :: concetration_phreeqc
         double precision :: time, time_step
         type( state_type ), intent( inout ) :: packed_state
@@ -181,7 +186,7 @@ module multi_phreeqc
         type(tensor_field), pointer :: H_field,O_field, charge_field, Ca_field, Cl_field
         type(tensor_field), pointer :: K_field, N_field, Na_field
         integer :: cv_nod, iphase
-  
+
         H_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_H")
         O_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_O")
         charge_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_charge")
@@ -190,8 +195,8 @@ module multi_phreeqc
         K_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_K")
         N_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_N")
         Na_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Na")
-  
-  
+
+
         concetration_phreeqc(:,1) =  H_field%val(1,1,:)
         concetration_phreeqc(:,2) =  O_field%val(1,1,:)
         concetration_phreeqc(:,3) =  charge_field%val(1,1,:)
@@ -212,8 +217,8 @@ module multi_phreeqc
         K_field%val(1,1,:) = concetration_phreeqc(:,6)
         N_field%val(1,1,:) = concetration_phreeqc(:,7)
         Na_field%val(1,1,:) = concetration_phreeqc(:,8)
-  
-  
+
+
       end subroutine testing_PHREEQC
 
 end module multi_phreeqc
