@@ -47,7 +47,7 @@ module multi_phreeqc
     subroutine init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
         implicit none
         integer, INTENT(out) :: id
-        integer :: i,j,k
+        integer :: i,j,k, ICncomp, iphase, icomp, cv_inod
         integer :: nxyz
         integer :: nthreads
         integer :: status
@@ -68,19 +68,18 @@ module multi_phreeqc
         double precision, dimension(:,:), allocatable :: species_c
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent( in ) :: Mdims
-        integer :: cv_nod, iphase
-        type(tensor_field), pointer :: H_field,O_field, charge_field, Ca_field, Cl_field
+        type(tensor_field), pointer :: H_field,O_field, charge_field, Ca_field, Cl_field, tfield
         type(tensor_field), pointer :: K_field, N_field, Na_field
         character( len = option_path_len ) :: option_path, option_name
 
-        H_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_H")
-        O_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_O")
-        charge_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_charge")
-        Ca_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Ca")
-        Cl_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Cl")
-        K_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_K")
-        N_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_N")
-        Na_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Na")
+        ! H_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_H")
+        ! O_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_O")
+        ! charge_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_charge")
+        ! Ca_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Ca")
+        ! Cl_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Cl")
+        ! K_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_K")
+        ! N_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_N")
+        ! Na_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Na")
 
         nxyz = Mdims%cv_nonods
         nthreads = 0
@@ -126,6 +125,18 @@ module multi_phreeqc
         status = RM_RunString(id, 1, 0, 1, string)  ! workers, initial_phreeqc, utility
         ! Determine number of components to transport
         ncomps = RM_FindComponents(id)
+        !Check how many species have been defined for Fotran and check that they match!
+        ICncomp= 0
+        do k = 1, option_count("/material_phase[0]/scalar_field")!We check the first phase only
+          call get_option("/material_phase[0]/scalar_field["// int2str( k - 1)//"]/name", option_name)
+          if (option_name(1:7)=="Species") then
+            ICncomp = ICncomp + 1
+          end if
+        end do
+        !PHREEQC will have an extra one which is charge
+        if (ncomps - 1 /= ICncomp) then 
+          FLAbort("The number of Species defined in ICFERST and PHREEQC do not match. Please double check both input files.")
+        end if
 
         allocate(components(ncomps))
         do i = 1, ncomps
@@ -160,14 +171,24 @@ module multi_phreeqc
         status = RM_RunCells(id)
         !Get the output data
         status = RM_GetConcentrations(id, concetration_phreeqc)
-        H_field%val(1,1,:) = concetration_phreeqc(:,1)
-        O_field%val(1,1,:) = concetration_phreeqc(:,2)
-        charge_field%val(1,1,:) = concetration_phreeqc(:,3)
-        Ca_field%val(1,1,:) = concetration_phreeqc(:,4)
-        Cl_field%val(1,1,:) = concetration_phreeqc(:,5)
-        K_field%val(1,1,:) = concetration_phreeqc(:,6)
-        N_field%val(1,1,:) = concetration_phreeqc(:,7)
-        Na_field%val(1,1,:) = concetration_phreeqc(:,8)
+        do iphase = 1, 1!Mdims%nphase!SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
+          do icomp = 1, ncomps 
+            tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp)))
+            do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
+              tfield%val(1,iphase,cv_inod) = concetration_phreeqc(cv_inod, icomp)
+            end do
+          end do
+        end do
+
+
+        ! H_field%val(1,1,:) = concetration_phreeqc(:,1)
+        ! O_field%val(1,1,:) = concetration_phreeqc(:,2)
+        ! charge_field%val(1,1,:) = concetration_phreeqc(:,3)
+        ! Ca_field%val(1,1,:) = concetration_phreeqc(:,4)
+        ! Cl_field%val(1,1,:) = concetration_phreeqc(:,5)
+        ! K_field%val(1,1,:) = concetration_phreeqc(:,6)
+        ! N_field%val(1,1,:) = concetration_phreeqc(:,7)
+        ! Na_field%val(1,1,:) = concetration_phreeqc(:,8)
 
 
     !   print *, maxval(K_field%val)
@@ -177,48 +198,93 @@ module multi_phreeqc
       subroutine testing_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
         implicit none
         integer , INTENT(INOUT) :: id
-        integer :: status
+        integer :: status, iphase, icomp, cv_inod, ncomps, i
 
         double precision, dimension(:,:),INTENT(INOUT) :: concetration_phreeqc
         double precision :: time, time_step
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent( in ) :: Mdims
         type(tensor_field), pointer :: H_field,O_field, charge_field, Ca_field, Cl_field
-        type(tensor_field), pointer :: K_field, N_field, Na_field
-        integer :: cv_nod, iphase
+        type(tensor_field), pointer :: K_field, N_field, Na_field, tfield
+        character(100),   dimension(:), allocatable   :: components
+        ! Determine number of components to transport
+        ncomps = RM_FindComponents(id)
+        allocate(components(ncomps))
+        do i = 1, ncomps
+          status = RM_GetComponent(id, i, components(i))
+        enddo
+        ! H_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_H")
+        ! O_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_O")
+        ! charge_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_charge")
+        ! Ca_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Ca")
+        ! Cl_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Cl")
+        ! K_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_K")
+        ! N_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_N")
+        ! Na_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Na")
 
-        H_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_H")
-        O_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_O")
-        charge_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_charge")
-        Ca_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Ca")
-        Cl_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Cl")
-        K_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_K")
-        N_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_N")
-        Na_field=>extract_tensor_field(packed_state, "PackedPassiveTracer_Na")
+        do iphase = 1, 1!Mdims%nphase!SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
+          do icomp = 1, ncomps 
+            tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp)))
+            do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
+              concetration_phreeqc(cv_inod, icomp) = tfield%val(1,iphase,cv_inod)
+            end do
+          end do
+        end do
 
-
-        concetration_phreeqc(:,1) =  H_field%val(1,1,:)
-        concetration_phreeqc(:,2) =  O_field%val(1,1,:)
-        concetration_phreeqc(:,3) =  charge_field%val(1,1,:)
-        concetration_phreeqc(:,4) =  Ca_field%val(1,1,:)
-        concetration_phreeqc(:,5) =  Cl_field%val(1,1,:)
-        concetration_phreeqc(:,6) =  K_field%val(1,1,:)
-        concetration_phreeqc(:,7) =  N_field%val(1,1,:)
-        concetration_phreeqc(:,8) =  Na_field%val(1,1,:)
+        ! concetration_phreeqc(:,1) =  H_field%val(1,1,:)
+        ! concetration_phreeqc(:,2) =  O_field%val(1,1,:)
+        ! concetration_phreeqc(:,3) =  charge_field%val(1,1,:)
+        ! concetration_phreeqc(:,4) =  Ca_field%val(1,1,:)
+        ! concetration_phreeqc(:,5) =  Cl_field%val(1,1,:)
+        ! concetration_phreeqc(:,6) =  K_field%val(1,1,:)
+        ! concetration_phreeqc(:,7) =  N_field%val(1,1,:)
+        ! concetration_phreeqc(:,8) =  Na_field%val(1,1,:)
         status = RM_SetConcentrations(id, concetration_phreeqc)
         status = RM_RunCells(id)
         !Get the output data
         status = RM_GetConcentrations(id, concetration_phreeqc)
-        H_field%val(1,1,:) = concetration_phreeqc(:,1)
-        O_field%val(1,1,:) = concetration_phreeqc(:,2)
-        charge_field%val(1,1,:) = concetration_phreeqc(:,3)
-        Ca_field%val(1,1,:) = concetration_phreeqc(:,4)
-        Cl_field%val(1,1,:) = concetration_phreeqc(:,5)
-        K_field%val(1,1,:) = concetration_phreeqc(:,6)
-        N_field%val(1,1,:) = concetration_phreeqc(:,7)
-        Na_field%val(1,1,:) = concetration_phreeqc(:,8)
+        do iphase = 1, 1!Mdims%nphase!SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
+          do icomp = 1, ncomps 
+            tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp)))
+            do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
+              tfield%val(1,iphase,cv_inod) = concetration_phreeqc(cv_inod, icomp)
+            end do
+          end do
+        end do
+
+        ! H_field%val(1,1,:) = concetration_phreeqc(:,1)
+        ! O_field%val(1,1,:) = concetration_phreeqc(:,2)
+        ! charge_field%val(1,1,:) = concetration_phreeqc(:,3)
+        ! Ca_field%val(1,1,:) = concetration_phreeqc(:,4)
+        ! Cl_field%val(1,1,:) = concetration_phreeqc(:,5)
+        ! K_field%val(1,1,:) = concetration_phreeqc(:,6)
+        ! N_field%val(1,1,:) = concetration_phreeqc(:,7)
+        ! Na_field%val(1,1,:) = concetration_phreeqc(:,8)
 
 
       end subroutine testing_PHREEQC
+
+  !>@author Geraldine Regnier, Pablo Salinas
+  !>@brief: Finds the field name in diamond given a name in PHREEQC. Fields have the convention of being named in ICFERST as SPECIES_component,
+  !> for example Species_O for oxygen.
+    function get_packed_Species_name(PHREEQC_name)
+      implicit none
+      character(len = option_path_len) :: PHREEQC_name
+      character (len = option_path_len) :: get_packed_Species_name
+      !Local variables
+      integer :: k, buffer
+      character( len = option_path_len ) :: option_name
+
+      do k = 1, option_count("/material_phase[0]/scalar_field")!We check the first phase only
+        call get_option("/material_phase[0]/scalar_field["// int2str( k - 1)//"]/name", option_name)
+        if (option_name(1:7)=="Species") then
+          !To avoid finding names that are not supposed to be, for example if we have Carbon and Calcite, 
+          !we would have C and Ca we dont want to identify Ca as Carbon we limit the lenght of the search
+          !Check that the name contains the PHREEQC name, if it does, then use that name
+          buffer = 8+len(trim(PHREEQC_name))
+          if (index(option_name(8:buffer), "_"//trim(PHREEQC_name)) /= 0) get_packed_Species_name = "Packed"//trim(option_name)
+        end if
+      end do
+    end function
 
 end module multi_phreeqc

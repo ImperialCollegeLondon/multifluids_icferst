@@ -3322,7 +3322,7 @@ This imposes the tracer to be between bounds.</a:documentation>
       <element name="scalar_field">
         <a:documentation>Species. This scalar field is devoted for the PHREEQC coupling. Components being used in 
 Phreeqc need to be defined using this naming convention in ICFERST. For example if you have Oxygen and Nitrogen your components
-in ICFERST should be named: Species_O and Species_N
+in ICFERST should be named: Species_O and Species_N. &lt;b&gt;You MUST use _ to separate Species and O, for example.&lt;/b&gt;
 
 &lt;b&gt;You can add as many passive Species as you want as long as the name starts with Species&lt;/b&gt;
 
