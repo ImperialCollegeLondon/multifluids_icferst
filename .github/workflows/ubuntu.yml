@@ -8,6 +8,7 @@ on:
       - magma_dev
       - linfeng_dev
       - geraldine_dev
+      - pablo_dev2
 
 jobs:
 

@@ -1266,6 +1266,23 @@ Example: 500.0,500.0,-1000.0</a:documentation>
             </element>
           </optional>
           <optional>
+            <element name="Phreeqc_coupling">
+              <a:documentation>Activates phreeqc coupling</a:documentation>
+              <element name="simulation_name">
+                <a:documentation>Name of Phreeqc input file. Must be in same folder as where
+simulation is run or absolute path.</a:documentation>
+                <ref name="anystring"/>
+              </element>
+              <optional>
+                <element name="database_name">
+                  <a:documentation>Name of Phreeqc database file. Default is considering, in the folder
+where simulation is run: phreeqc.dat.in</a:documentation>
+                  <ref name="anystring"/>
+                </element>
+              </optional>
+            </element>
+          </optional>
+          <optional>
             <element name="SelfPotential">
               <a:documentation>Activates the SelfPotential solver. (S.I. Volts)
 
@@ -2788,14 +2805,26 @@ i.e. excluding the components</a:documentation>
 EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <element name="min_limit">
+                <choice>
                   <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
-                <element name="max_limit">
+                  <element name="min_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_min_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+                <choice>
                   <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
+                  <element name="max_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_max_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <optional>
@@ -2880,14 +2909,26 @@ This imposes the tracer to be between bounds.</a:documentation>
 EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <element name="min_limit">
+                <choice>
                   <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
-                <element name="max_limit">
+                  <element name="min_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_min_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+                <choice>
                   <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
+                  <element name="max_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_max_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
@@ -2944,14 +2985,26 @@ for fields within the same material_phase.</a:documentation>
 EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <element name="min_limit">
+                <choice>
                   <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
-                <element name="max_limit">
+                  <element name="min_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_min_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+                <choice>
                   <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
+                  <element name="max_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_max_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <optional>
@@ -3202,15 +3255,27 @@ mass fraction with a particular phase</a:documentation>
 
 EXTREMELY RECOMMENDED!
 
-This imposes the tracer to be between bounds..</a:documentation>
-                <element name="min_limit">
+This imposes the tracer to be between bounds.</a:documentation>
+                <choice>
                   <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
-                <element name="max_limit">
+                  <element name="min_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_min_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+                <choice>
                   <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
+                  <element name="max_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_max_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <optional>
@@ -3280,14 +3345,26 @@ This is just an example of how it works.</a:documentation>
 EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <element name="min_limit">
+                <choice>
                   <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
-                <element name="max_limit">
+                  <element name="min_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_min_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+                <choice>
                   <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
+                  <element name="max_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_max_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <optional>

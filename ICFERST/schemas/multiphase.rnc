@@ -1036,6 +1036,19 @@ start =
                       )
                  }*
              }?,
+           ## Activates phreeqc coupling
+           element Phreeqc_coupling{(
+           ## Name of Phreeqc input file. Must be in same folder as where
+           ## simulation is run or absolute path.
+           element simulation_name {
+              anystring
+           },
+           ## Name of Phreeqc database file. Default is considering, in the folder
+           ## where simulation is run: phreeqc.dat.in
+           element database_name {
+               anystring
+           }?
+           )}?,
           ## Activates the SelfPotential solver. (S.I. Volts)
           ##
           ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase,
@@ -2340,11 +2353,15 @@ scalar_field_choice =
                     ## EXTREMELY RECOMMENDED!
                     ##
 	                  ## This imposes the tracer to be between bounds.
-                                    element Impose_min_max{(
+                    element Impose_min_max{(
                     ##Impose min limit. Only the first phase is read
-                    element min_limit{real},
+                    (element min_limit{real}|
+                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_min_limit{empty}),
                     ##Impose max limit. Only the first phase is read
-                    element max_limit{real}
+                    (element max_limit{real}|
+                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_max_limit{empty})
                   )}?,
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
@@ -2410,11 +2427,15 @@ scalar_field_choice =
                     ## EXTREMELY RECOMMENDED!
                     ##
 	                  ## This imposes the tracer to be between bounds.
-                                    element Impose_min_max{(
+                    element Impose_min_max{(
                     ##Impose min limit. Only the first phase is read
-                    element min_limit{real},
+                    (element min_limit{real}|
+                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_min_limit{empty}),
                     ##Impose max limit. Only the first phase is read
-                    element max_limit{real}
+                    (element max_limit{real}|
+                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_max_limit{empty})
                   )}?,
                   prognostic_scalar_field
                }|
@@ -2453,18 +2474,22 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                     ## The non-linear solver can be accelerated by imposing physical constraints.
+                    ## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
                     ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
                     ##
                     ## EXTREMELY RECOMMENDED!
                     ##
 	                  ## This imposes the tracer to be between bounds.
-                                    element Impose_min_max{(
+                    element Impose_min_max{(
                     ##Impose min limit. Only the first phase is read
-                    element min_limit{real},
+                    (element min_limit{real}|
+                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_min_limit{empty}),
                     ##Impose max limit. Only the first phase is read
-                    element max_limit{real}
+                    (element max_limit{real}|
+                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_max_limit{empty})
                   )}?,
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
@@ -2660,18 +2685,22 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                     ## The non-linear solver can be accelerated by imposing physical constraints.
+                    ## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
                     ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
                     ##
                     ## EXTREMELY RECOMMENDED!
                     ##
-	                  ## This imposes the tracer to be between bounds..
-                  element Impose_min_max{(
+	                  ## This imposes the tracer to be between bounds.
+                    element Impose_min_max{(
                     ##Impose min limit. Only the first phase is read
-                    element min_limit{real},
+                    (element min_limit{real}|
+                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_min_limit{empty}),
                     ##Impose max limit. Only the first phase is read
-                    element max_limit{real}
+                    (element max_limit{real}|
+                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_max_limit{empty})
                   )}?,
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
@@ -2717,18 +2746,22 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                     ## The non-linear solver can be accelerated by imposing physical constraints.
+                    ## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
                     ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
                     ##
                     ## EXTREMELY RECOMMENDED!
                     ##
 	                  ## This imposes the tracer to be between bounds.
-                                    element Impose_min_max{(
+                    element Impose_min_max{(
                     ##Impose min limit. Only the first phase is read
-                    element min_limit{real},
+                    (element min_limit{real}|
+                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_min_limit{empty}),
                     ##Impose max limit. Only the first phase is read
-                    element max_limit{real}
+                    (element max_limit{real}|
+                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_max_limit{empty})
                   )}?,
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {

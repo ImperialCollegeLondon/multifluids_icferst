@@ -74,12 +74,12 @@ Multiphase_TimeLoop.o ../include/multiphase_time_loop.mod: \
    ../../include/state_module.mod ../../include/vector_tools.mod \
    ../../include/vtk_interfaces.mod ../../include/write_state_module.mod \
    ../include/compositional_terms.mod ../include/copy_outof_state.mod \
-   ../include/cv_advection.mod ../include/iphreeqc.mod \
-   ../include/multi_data_types.mod ../include/multi_interpolation.mod \
-   ../include/multi_magma.mod ../include/multi_pipes.mod \
+   ../include/cv_advection.mod ../include/multi_data_types.mod \
+   ../include/multi_interpolation.mod ../include/multi_magma.mod \
+   ../include/multi_phreeqc.mod ../include/multi_pipes.mod \
    ../include/multi_sp.mod ../include/multi_tools.mod \
    ../include/multiphase_1d_engine.mod ../include/multiphase_eos.mod \
-   ../include/multiphase_fractures_3d.mod ../include/phreeqcrm.mod \
+   ../include/multiphase_fractures_3d.mod \
    ../include/shape_functions_linear_quadratic.mod ../include/spact.mod
 
 ../include/phreeqcrm.mod: RM_interface.o
@@ -231,6 +231,21 @@ multi_matrix_operations.o ../include/matrix_operations.mod: \
    ../../include/state_module.mod ../include/multi_data_types.mod \
    ../include/multi_tools.mod
 
+../include/multi_phreeqc.mod: multi_phreeqc.o
+	@true
+
+multi_phreeqc.o ../include/multi_phreeqc.mod: multi_phreeqc.F90 \
+   ../../include/boundary_conditions_from_options.mod ../../include/confdefs.h \
+   ../../include/fdebug.h ../../include/field_options.mod \
+   ../../include/fields.mod ../../include/fldebug.mod ../../include/futils.mod \
+   ../../include/global_parameters.mod ../../include/halos.mod \
+   ../../include/initialise_fields_module.mod \
+   ../../include/memory_diagnostics.mod ../../include/parallel_fields.mod \
+   ../../include/parallel_tools.mod ../../include/spud.mod \
+   ../../include/state_module.mod ../include/iphreeqc.mod \
+   ../include/multi_data_types.mod ../include/multi_tools.mod \
+   ../include/phreeqcrm.mod
+
 ../include/multi_pipes.mod: multi_pipes.o
 	@true
 
@@ -301,17 +316,17 @@ multi_solvers.o ../include/solvers_module.mod: multi_solvers.F90 \
    ../include/shape_functions_linear_quadratic.mod \
    ../include/shape_functions_prototype.mod
 
-../include/sparsity_1d.mod: multi_sparsity.o
+../include/sparsity_nd.mod: multi_sparsity.o
 	@true
 
 ../include/spact.mod: multi_sparsity.o
 	@true
 
-../include/sparsity_nd.mod: multi_sparsity.o
+../include/sparsity_1d.mod: multi_sparsity.o
 	@true
 
-multi_sparsity.o ../include/sparsity_1d.mod ../include/spact.mod \
-   ../include/sparsity_nd.mod: multi_sparsity.F90 ../../include/confdefs.h \
+multi_sparsity.o ../include/sparsity_nd.mod ../include/spact.mod \
+   ../include/sparsity_1d.mod: multi_sparsity.F90 ../../include/confdefs.h \
    ../../include/fdebug.h ../../include/fldebug.mod ../../include/futils.mod \
    ../../include/global_parameters.mod ../../include/spud.mod \
    ../include/copy_outof_state.mod ../include/cv_advection.mod \
