@@ -431,7 +431,7 @@ contains
         if (have_option("/porous_media/Phreeqc_coupling"))then
 #ifdef USING_PHREEQC
 call init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
-#else 
+#else
     FLAbort( "PHREEQC coupling option activated by the link to PHREEQRM is not activated." )
 #endif
         end if
