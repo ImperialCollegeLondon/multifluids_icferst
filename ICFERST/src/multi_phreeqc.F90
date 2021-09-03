@@ -74,6 +74,7 @@ module multi_phreeqc
         character( len = option_path_len ) :: option_path, option_name
         character(len=option_path_len), dimension(:),  allocatable :: file_strings
         character(len=25), dimension(7) :: reaction_types
+        type(vector_field), pointer :: porosity_field
 
         nxyz = Mdims%cv_nonods
         nthreads = 0
@@ -108,6 +109,7 @@ module multi_phreeqc
         status = RM_SetRepresentativeVolume(id, rv)
         ! Set initial porosity
         allocate(por(nxyz))
+      !  porosity_field=>extract_vector_field(packed_state,"Porosity")
         por = 0.2
         status = RM_SetPorosity(id, por)
 
@@ -153,50 +155,44 @@ module multi_phreeqc
         ic2 = -1
         f1 = 1.
 
-    !    do k =1,1000
-        !  if (len(trim(file_strings(k))) == 0) cycle
-    !      do i = 1,7
-    !        if (index(file_strings(k), trim(reaction_types(i))) /= 0) then
-    !          do j = 1,nxyz
-    !            ic1(j,i) = 1
-    !          end do
-    !        end if
-    !      end do
-    !    end do
-        do i = 1, nxyz
-          ic1(i,1) = 1       ! Solution 1
-          ic1(i,2) = -1      ! Equilibrium phases 1
-          ic1(i,3) = 1       ! Exchange none
-          ic1(i,4) = -1      ! Surface none
-          ic1(i,5) = -1      ! Gas phase none
-          ic1(i,6) = -1      ! Solid solutions none
-          ic1(i,7) = -1      ! Kinetics none
-        enddo
+       do k =1,1000
+         if (len(trim(file_strings(k))) == 0) cycle
+         do i = 1,7
+           if (index(file_strings(k), trim(reaction_types(i))) /= 0) then
+             do j = 1,nxyz
+               ic1(j,i) = 1
+             end do
+           end if
+         end do
+       end do
+
         !Transfer solutions and reactants from the InitialPhreeqc instance
         !to the reaction-module workers - basically the part will actually be running things
         status = RM_InitialPhreeqc2Module(id, ic1, ic2, f1)
-        time = 0.0
-        time_step = 120.
+        call get_option( '/timestepping/timestep', time_step )
+        call get_option( '/timestepping/current_time', time )
         allocate(concetration_phreeqc(nxyz, ncomps))
         status = RM_SetTime(id, time)
         status = RM_SetTimeStep(id, time_step)
         save_on = RM_SetSpeciesSaveOn(id, 1)
 
-        status = RM_RunCells(id)
-        !Get the output data
-        status = RM_GetConcentrations(id, concetration_phreeqc)
-        do iphase = 1, 1!Mdims%nphase!TODO SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
-          do icomp = 1, ncomps
-            tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp)))
-            do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
-              tfield%val(1,iphase,cv_inod) = concetration_phreeqc(cv_inod, icomp)
+        if (time < 1e-30) then
+          status = RM_RunCells(id)
+          !Get the output data
+          status = RM_GetConcentrations(id, concetration_phreeqc)
+          do iphase = 1, 1!Mdims%nphase!TODO SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
+            do icomp = 1, ncomps
+              tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp)))
+              do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
+                tfield%val(1,iphase,cv_inod) = concetration_phreeqc(cv_inod, icomp)
+              end do
             end do
           end do
-        end do
+        end if
 
       end subroutine init_PHREEQC
 
-      subroutine testing_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
+      subroutine run_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
         implicit none
         integer , INTENT(INOUT) :: id
         integer :: status, iphase, icomp, cv_inod, ncomps, i

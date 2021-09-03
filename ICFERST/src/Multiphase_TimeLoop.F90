@@ -428,13 +428,6 @@ contains
             !Ensure that the initial condition for the saturation sum to 1.
             call Initialise_Saturation_sums_one(Mdims, ndgln, packed_state, .true.)
         end if
-        if (have_option("/porous_media/Phreeqc_coupling"))then
-#ifdef USING_PHREEQC
-call init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
-#else
-    FLAbort( "PHREEQC coupling option activated by the link to PHREEQRM is not activated." )
-#endif
-        end if
 
         !!$ Starting Time Loop
         itime = 0
@@ -552,9 +545,7 @@ call init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
             end if
 #endif
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
-#ifdef USING_PHREEQC
-      call testing_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
-#endif
+
             !!$ Start non-linear loop
             first_nonlinear_time_step = .true.
             its = 1
@@ -645,6 +636,20 @@ call init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
+
+                !#=================================================================================================================
+                !# Initialisation of PHREEQC - must be after FORCE_BAL_CTY_ASSEM_SOLVE. Needs a field which is calculate only there.
+                !#=================================================================================================================
+
+                if (after_adapt .or. (itime == 1 .and. its == 1)) then
+                  if (have_option("/porous_media/Phreeqc_coupling"))then
+#ifdef USING_PHREEQC
+                    call init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
+#else
+                    FLAbort( "PHREEQC coupling option activated by the link to PHREEQRM is not activated." )
+#endif
+                  end if
+                end if
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma) ) then
 
@@ -771,6 +776,14 @@ call init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
                 !# End Compositional transport -> Move to -> Analysis of the non-linear convergence
                 !#=================================================================================================================
 
+                !# Solving for species fields through PHREEQC
+                !#=================================================================================================================
+
+#ifdef USING_PHREEQC
+                if (.not. have_option("/porous_media/Phreeqc_coupling/one_way_coupling") .or. its == 1) then
+                      call run_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
+                end if
+#endif
 
                 if (have_Passive_Tracers) then
                   !We make sure to only enter here once if there are no passive tracers
@@ -799,6 +812,8 @@ call init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
                   end do
                 end if
                 !#=================================================================================================================
+
+
 
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then

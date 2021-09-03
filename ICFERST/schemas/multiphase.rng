@@ -1280,6 +1280,13 @@ where simulation is run: phreeqc.dat.in</a:documentation>
                   <ref name="anystring"/>
                 </element>
               </optional>
+              <optional>
+                <element name="one_way_coupling">
+                  <a:documentation>One way coupling between phreeqc and IC-FERST. No check for convergence of species field.
+Quality of results is relative to CFL number. If option not enabled, default is two way coupling</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
             </element>
           </optional>
           <optional>
@@ -3320,7 +3327,7 @@ This imposes the tracer to be between bounds.</a:documentation>
         </choice>
       </element>
       <element name="scalar_field">
-        <a:documentation>Species. This scalar field is devoted for the PHREEQC coupling. Components being used in 
+        <a:documentation>Species. This scalar field is devoted for the PHREEQC coupling. Components being used in
 Phreeqc need to be defined using this naming convention in ICFERST. For example if you have Oxygen and Nitrogen your components
 in ICFERST should be named: Species_O and Species_N. &lt;b&gt;You MUST use _ to separate Species and O, for example.&lt;/b&gt;
 
