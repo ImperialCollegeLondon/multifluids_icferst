@@ -60,7 +60,6 @@ module multi_phreeqc
 
         real, dimension(:), allocatable, target :: hydraulic_K
         real, dimension(:), allocatable   :: rv
-        real, dimension(:), allocatable   :: por
         real, dimension(:), allocatable   :: sat
         character(100)                                :: string
         integer                                       :: ncomps, nspecies
@@ -71,6 +70,7 @@ module multi_phreeqc
         real  :: pH
         real, dimension(:,:), allocatable :: species_c
         type(tensor_field), pointer :: tfield
+        type(vector_field), pointer :: vfield
         character( len = option_path_len ) :: option_path, option_name
         character(len=option_path_len), dimension(:),  allocatable :: file_strings
         character(len=25), dimension(7) :: reaction_types
@@ -103,13 +103,12 @@ module multi_phreeqc
         !status = RM_SetTimeConversion(id, dble(1.0 / 86400.0))
 
         ! Set representative volume
-        allocate(rv(nxyz))
-        rv = 1.0
+        allocate(rv(nxyz)); rv = 1.0
         status = RM_SetRepresentativeVolume(id, rv)
+        deallocate(rv)
         ! Set initial porosity
-        allocate(por(nxyz))
-        por = 0.2
-        status = RM_SetPorosity(id, por)
+        vfield=>extract_vector_field(packed_state,"MeanPoreCV")
+        status = RM_SetPorosity(id, vfield%val(1,:))
 
         !Read input file
         call get_option("/porous_media/Phreeqc_coupling/simulation_name",option_name)
