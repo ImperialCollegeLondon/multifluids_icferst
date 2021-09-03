@@ -2181,19 +2181,22 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     real, optional, intent(in) :: Accum_Courant, Courant_tol, Current_Courant
     real, dimension(:,:), optional :: calculate_mass_delta!> 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
     !Local variables
+    real, dimension(:,:), allocatable :: Tracers_avg!> Average of all the passiveTracers for checking
     logical :: adapting_within_happening_now !> Do not show convergence if we are adapting the mesh within the FPI and this is the first guess
     integer, save :: nonlinear_its=0!> Needed for adapt_within_fpi to consider all the non-linear iterations together
     real, save :: stored_dt = -1 !> Backup of the time-step size
     logical, save :: adjusted_ts_to_dump = .false.!> Flag to see if we need to modify dt to ensure we match a certain time level
     logical, save :: Check_temp_and_tracer = .false. !> Flag to see if we are in the case of checking temperature and tracer
+    logical, save :: have_passive_tracers
+    integer, save :: Ntracers
     real :: dt, auxR, dump_period
-    integer :: Aim_num_FPI, auxI, incr_threshold, stat1, stat2
+    integer :: Aim_num_FPI, auxI, auxJ, incr_threshold, stat1, stat2, fields
     integer, save :: show_FPI_conv!> Whether printing out to the user convergence or not
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
     real, dimension(:,:,:), pointer :: pressure
     real, dimension(:,:), pointer :: phasevolumefraction
-    type(tensor_field), pointer :: temperature, Concentration, enthalpy
+    type(tensor_field), pointer :: temperature, Concentration, enthalpy, tracer_field
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message =''
     !Variables for automatic non-linear iterations
@@ -2204,7 +2207,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     real, dimension(2) :: totally_min_max
     logical :: PID_controller !> Are we using a Proportional integration derivator controller of the time-step size?
     !Variables for adaptive time stepping based on non-linear iterations
-    real :: increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val, finish_time
+    real :: Tracers_ref_val, increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val, finish_time
     integer :: variable_selection, NonLinearIteration
     !Variables to convert output time into days if it is very big
     real, save :: conversor = 1.0 !> Variables to convert output time into days if it is very big
@@ -2344,37 +2347,60 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     reference_field(1,:,:) = phasevolumefraction
                 case (4,5)!Tracer
 
-                  temperature => extract_tensor_field(packed_state, "PackedTemperature", stat1)
-                  Concentration => extract_tensor_field(packed_state, "PackedConcentration", stat2)
-                  Check_temp_and_tracer = (stat1==0 .and. stat2==0)
-                  auxI = 2
-
-                  if (Check_temp_and_tracer) auxI = 3
-                    if (allocated(reference_field)) then
-                        if (size(reference_field,2) /= size(phasevolumefraction,1) .or. &
-                            size(reference_field,3) /= size(phasevolumefraction,2) ) then
-                            deallocate(reference_field)
-                            !Always keep an eye on the saturation, if both two tracers then temperature goes in 3
-                            allocate (reference_field(0:auxI,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
+                    temperature => extract_tensor_field(packed_state, "PackedTemperature", stat1)
+                    Concentration => extract_tensor_field(packed_state, "PackedConcentration", stat2)
+                    fields = option_count("/material_phase[0]/scalar_field")
+                    Ntracers = 0; have_Passive_Tracers = .false.
+                    do k = 1, fields
+                        call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                        if (option_name(1:13)=="PassiveTracer".or. option_name(1:7)=="Species") then
+                            have_Passive_Tracers = .true.
+                            Ntracers = Ntracers + 1
+                        end if 
+                    end do
+                    auxJ = 0
+                    if (have_Passive_Tracers) auxJ = -1
+                    Check_temp_and_tracer = (stat1==0 .and. stat2==0)
+                    auxI = 2
+                    if (Check_temp_and_tracer) auxI = 3
+                        if (allocated(reference_field)) then
+                            if (size(reference_field,2) /= size(phasevolumefraction,1) .or. &
+                                size(reference_field,3) /= size(phasevolumefraction,2) ) then
+                                deallocate(reference_field)
+                                !Always keep an eye on the saturation, if both two tracers then temperature goes in 3
+                                allocate (reference_field(auxJ:auxI,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
+                            end if
+                        else
+                            allocate (reference_field(auxJ:auxI,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
                         end if
-                    else
-                        allocate (reference_field(0:auxI,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
-                    end if
-                    reference_field(0,1,:) = pressure(1,1,:)
-                    if (Check_temp_and_tracer) then
-                      reference_field(1,1:size(Concentration%val,2),:) = Concentration%val(1,1:size(Concentration%val,2),:)
-                      !Special position for temperature, why not!
-                      reference_field(3,1:size(temperature%val,2),:) = temperature%val(1,1:size(temperature%val,2),:)
-                    else if (stat1==0) then
-                      reference_field(1,1:size(temperature%val,2),:) = temperature%val(1,1:size(temperature%val,2),:)
-                    else if (stat2==0) then
-                      reference_field(1,1:size(Concentration%val,2),:) = Concentration%val(1,1:size(Concentration%val,2),:)
-                    end if
-                    !Instead of enthalpy we may as well check the temperature field
-                    ! temperature => extract_tensor_field([packed_state, PackedEnthalpy, stat])
-                    ! if (stat/=0) reference_field(1,:,:) = Enthalpy(1:size(Concentration,1),:)
+                        reference_field(0,1,:) = pressure(1,1,:)
+                        if (Check_temp_and_tracer) then
+                            reference_field(1,1:size(Concentration%val,2),:) = Concentration%val(1,1:size(Concentration%val,2),:)
+                            !Special position for temperature, why not!
+                            reference_field(3,1:size(temperature%val,2),:) = temperature%val(1,1:size(temperature%val,2),:)
+                        else if (stat1==0) then
+                            reference_field(1,1:size(temperature%val,2),:) = temperature%val(1,1:size(temperature%val,2),:)
+                        else if (stat2==0) then
+                            reference_field(1,1:size(Concentration%val,2),:) = Concentration%val(1,1:size(Concentration%val,2),:)
+                        end if
+                        !Special position for the average of all the passiveTracers/Species in -1
+                        if (have_Passive_Tracers) then 
+                            reference_field(-1,1:size(tracer_field%val,2),:) = 0.
+                            fields = option_count("/material_phase[0]/scalar_field")
+                            do k = 1, fields
+                              call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                              if (option_name(1:13)=="PassiveTracer".or. option_name(1:7)=="Species") then
+                                tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
+                                reference_field(-1,1:size(tracer_field%val,2),:) = reference_field(-1,1:size(tracer_field%val,2),:) +&
+                                        tracer_field%val(1,1:size(tracer_field%val,2),:)/real(Ntracers)
+                              end if
+                            end do 
+                        end if
+                        !Instead of enthalpy we may as well check the temperature field
+                        ! temperature => extract_tensor_field([packed_state, PackedEnthalpy, stat])
+                        ! if (stat/=0) reference_field(1,:,:) = Enthalpy(1:size(Concentration,1),:)
 
-                    reference_field(2,:,:) = phasevolumefraction
+                        reference_field(2,:,:) = phasevolumefraction
                 case default !Default as pressure is always defined and changes more smoothly than velocity
                     if (allocated(reference_field)) then
                         if (size(reference_field,3) /= size(pressure,3) ) then
@@ -2402,8 +2428,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             Repeat_time_step = .false.
             call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
                 phasevolumefraction = phasevolumefraction)
-
-            inf_norm_pres = 0
+            !Initialise convergence check values
+            inf_norm_pres = 0.; inf_norm_val = 0.; ts_ref_val = 0.; inf_norm_temp = 0.; Tracers_ref_val = 0.
             !Consider pressure in all the cases but velocity
             if (variable_selection>2) then
               !Calculate normalized infinite norm of the difference
@@ -2463,6 +2489,25 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     !Overwrite for the output message, since it is not being used by the tracer
                     ts_ref_val = inf_norm_temp
                   end if
+                  if (have_Passive_Tracers) then 
+                    allocate(Tracers_avg(Mdims%nphase, Mdims%cv_nonods)); Tracers_avg = 0.
+                    reference_field(-1,1:size(tracer_field%val,2),:) = 0.
+                    fields = option_count("/material_phase[0]/scalar_field")
+                    do k = 1, fields
+                      call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                      if (option_name(1:13)=="PassiveTracer".or. option_name(1:7)=="Species") then
+                        tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
+                        Tracers_avg(1:size(tracer_field%val,2),:) = Tracers_avg(1:size(tracer_field%val,2),:) +&
+                                tracer_field%val(1,1:size(tracer_field%val,2),:)/real(Ntracers)
+                      end if
+                    end do 
+                    !Perform the check with the averaged tracers values
+                    Tracers_ref_val = inf_norm_scalar_normalised(Tracers_avg(1:Mdims%n_in_pres,:), reference_field(-1,1:size(Concentration%val,2),:), 1.0, totally_min_max)
+                    deallocate(Tracers_avg)
+                  end if
+
+
+
                   !For single phase there is no backtracking and therefore no backtracking correction
                   if (Mdims%n_in_pres == 1) backtrack_or_convergence = 1.0
                   !Calculate value of the l infinitum for the saturation as well
@@ -2488,6 +2533,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 call allmax(ts_ref_val)
                 call allmax(max_calculate_mass_delta)
                 call allmax(inf_norm_val)
+                call allmax(Tracers_ref_val)
             end if
 
             !If single phase then no point in checking the saturation or mass conservation!
@@ -2501,13 +2547,14 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Saturation (Relative L2): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, &
                   "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
             else if (is_porous_media .and. variable_selection >= 4) then!Tracer
-               if (.not. Check_temp_and_tracer) then
-                write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Tracer (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val,&
-                 "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
-               else
-                 write(output_message, '(a, E10.3,a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Tracer (L_inf): ",ts_ref_val,"; Temperature (L_inf): ",inf_norm_temp, &
-                 "; Saturation (L_inf):", inf_norm_val,"; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
-               end if
+            !    if (.not. Check_temp_and_tracer) then
+            !     write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Tracer (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val,&
+            !      "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
+            !    else
+                 write(output_message, '(a, E10.3, a, E10.3, a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Tracer (L_inf): ",&
+                    ts_ref_val,"; Temperature (L_inf): ",inf_norm_temp, "; Saturation (L_inf):", inf_norm_val, "; PassiveTracers/Species (L_inf):",&
+                    Tracers_ref_val, "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
+            !    end if
             else
                 write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", nonlinear_its
             end if
@@ -2518,16 +2565,16 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 select case (variable_selection)
                 case (4, 5)!For temperature only infinite norms for saturation and temperature
                         ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
-                            .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
-                    case default
-                        !For very tiny time-steps ts_ref_val may not be good as is it a relative value
-                        !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
-                        if (inf_norm_val * 5. < Infinite_norm_tol) then
-                            ts_ref_val = tolerance_between_non_linear/2.
+                            .and. max_calculate_mass_delta < calculate_mass_tol .and. Tracers_ref_val < Infinite_norm_tol) .or. its >= NonLinearIteration )
+                case default
+                    !For very tiny time-steps ts_ref_val may not be good as is it a relative value
+                    !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
+                    if (inf_norm_val * 5. < Infinite_norm_tol) then
+                        ts_ref_val = tolerance_between_non_linear/2.
 !                            if (getprocno() == 1) output_message = trim(output_message)// "; Infinite norm 5 times better than requested. Ignoring FPI convergence tolerance."
-                        end if
-                        ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
-                            .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
+                    end if
+                    ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
+                        .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
                 end select
             else
                 ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres) .or. its >= NonLinearIteration
