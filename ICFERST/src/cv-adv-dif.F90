@@ -1435,15 +1435,23 @@ contains
                               If_GOT_CAPDIFFUS: IF ( VAD_activated ) THEN
                                   IF(SELE == 0) THEN
                                       CAP_DIFF_COEF_DIVDX = 0.
-                                      do iphase =1, final_phase
-                                          rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODI),&
-                                              CVNORMX_ALL(:, GI) ))
-                                          rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODJ),&
-                                              CVNORMX_ALL(:, GI) ))
-                                      end do
-                                      CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
-                                          * rsum_nodi*(1.-INCOME(:)) +&
-                                          CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
+                                      if (is_porous_media) then
+                                        !Project permeability at the GI point
+                                        auxR = dot_product(CVNORMX_ALL(:, GI), matmul(perm%val(:,:,ele),CVNORMX_ALL(:, GI) ))
+                                        do iphase =1, final_phase
+                                            rsum_nodi(iphase) = upwnd%inv_adv_coef(1,1,iphase,MAT_NODI)*auxR
+                                        end do
+                                        if (between_elements) auxR = dot_product(CVNORMX_ALL(:, GI), matmul(perm%val(:,:,ele2),CVNORMX_ALL(:, GI) ))
+                                        do iphase =1, final_phase
+                                            rsum_nodj(iphase) = upwnd%inv_adv_coef(1,1,iphase,MAT_NODJ)*auxR
+                                        end do
+                                        CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
+                                            * rsum_nodi*(1.-INCOME) +&
+                                            CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
+                                      else
+                                        CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
+                                        * (1.-INCOME) +CAP_DIFFUSION( :, MAT_NODJ ) * INCOME) /HDC
+                                      end if
                                   ELSE
                                       CAP_DIFF_COEF_DIVDX = 0.0
                                   ENDIF
