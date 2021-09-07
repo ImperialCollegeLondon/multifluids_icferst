@@ -1087,7 +1087,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer :: nits_flux_lim, its_flux_lim
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
-           REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
+           REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION, CDISPERSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
            REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
@@ -1181,9 +1181,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            RETRIEVE_SOLID_CTY = .false.
 
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
-           TDIFFUSION=0.0
+           TDIFFUSION=0.0; CDISPERSION = 0.
 
            call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, TracerName= trim(Passive_Tracer_name))
+
+           !Calculates solute dispersion with specific longitudinal and transverse dispersivity
+           if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
+            call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION)
+            TDIFFUSION = TDIFFUSION + CDISPERSION
+           end if
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 

@@ -2190,7 +2190,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     logical, save :: have_passive_tracers
     integer, save :: Ntracers
     real :: dt, auxR, dump_period
-    integer :: Aim_num_FPI, auxI, auxJ, incr_threshold, stat1, stat2, fields
+    integer :: Aim_num_FPI, auxI, auxJ, incr_threshold, stat1, stat2, nfields, k
     integer, save :: show_FPI_conv!> Whether printing out to the user convergence or not
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
@@ -2199,6 +2199,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     type(tensor_field), pointer :: temperature, Concentration, enthalpy, tracer_field
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message =''
+    character( len = option_path_len ) :: option_name
     !Variables for automatic non-linear iterations
     real, save :: dt_by_user = -1
     real :: tolerance_between_non_linear, min_ts, max_ts,&
@@ -2340,7 +2341,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                             deallocate(reference_field)
                             allocate (reference_field(0:1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
                         end if
-                    else
+                    else 
                         allocate (reference_field(0:1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
                     end if
                     reference_field(0,1,:) = pressure(1,1,:)
@@ -2349,11 +2350,11 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
 
                     temperature => extract_tensor_field(packed_state, "PackedTemperature", stat1)
                     Concentration => extract_tensor_field(packed_state, "PackedConcentration", stat2)
-                    fields = option_count("/material_phase[0]/scalar_field")
+                    nfields = option_count("/material_phase[0]/scalar_field")
                     Ntracers = 0; have_Passive_Tracers = .false.
-                    do k = 1, fields
+                    do k = 1, nfields
                         call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                        if (option_name(1:13)=="PassiveTracer".or. option_name(1:7)=="Species") then
+                        if (option_name(1:13)=="PassiveTracer" .or. option_name(1:7)=="Species") then
                             have_Passive_Tracers = .true.
                             Ntracers = Ntracers + 1
                         end if 
@@ -2386,8 +2387,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                         !Special position for the average of all the passiveTracers/Species in -1
                         if (have_Passive_Tracers) then 
                             reference_field(-1,1:size(tracer_field%val,2),:) = 0.
-                            fields = option_count("/material_phase[0]/scalar_field")
-                            do k = 1, fields
+                            nfields = option_count("/material_phase[0]/scalar_field")
+                            do k = 1, nfields
                               call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
                               if (option_name(1:13)=="PassiveTracer".or. option_name(1:7)=="Species") then
                                 tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
@@ -2492,8 +2493,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                   if (have_Passive_Tracers) then 
                     allocate(Tracers_avg(Mdims%nphase, Mdims%cv_nonods)); Tracers_avg = 0.
                     reference_field(-1,1:size(tracer_field%val,2),:) = 0.
-                    fields = option_count("/material_phase[0]/scalar_field")
-                    do k = 1, fields
+                    nfields = option_count("/material_phase[0]/scalar_field")
+                    do k = 1, nfields
                       call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
                       if (option_name(1:13)=="PassiveTracer".or. option_name(1:7)=="Species") then
                         tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
