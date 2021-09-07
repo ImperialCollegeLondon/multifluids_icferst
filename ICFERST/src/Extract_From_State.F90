@@ -3511,12 +3511,15 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
                 do iphase = 1, Mdims%n_in_pres
                   if (is_porous_media) then
                     sat_weight_velocity = upwnd%inv_adv_coef(1,1,iphase,imat) * matmul(perm%val(:,:,ele), velocity%val(:,iphase,u_inod))
-                  else if (iphase /= 1) then  !We need to add the solid velocity to the fluid velocities
-                    sat_weight_velocity = velocity%val(:,1,u_inod) + upwnd%inv_adv_coef(1,1,iphase,imat) * velocity%val(:,iphase,u_inod)
+                    !P0 darcy velocities per element
+                    darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
+                    sat_weight_velocity*saturation%val(1,iphase,cv_loc)/real(Mdims%cv_nloc)
+                  else
+                    if (iphase /= 1) then   !We need to add the solid velocity to the fluid velocities
+                      sat_weight_velocity =  upwnd%inv_adv_coef(1,1,iphase,imat) * velocity%val(:,iphase,u_inod)+velocity%val(:,1,u_inod)
+                      darcy_velocity(iphase)%ptr%val(:,u_inod) = darcy_velocity(iphase)%ptr%val(:,u_inod) + sat_weight_velocity/real(Mdims%cv_nloc)
+                    end if
                   end if
-                  !P0 darcy velocities per element
-                  darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
-                  sat_weight_velocity*saturation%val(1,iphase,cv_loc)/real(Mdims%cv_nloc)
                 end do
             end do
         end do

@@ -470,12 +470,16 @@ contains
           if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
               VAD_activated = Phase_with_Pc >0
           end if
+
           !this is true if the user is asking for high order advection scheme
           use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
           !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
           !we only do this for the first non-linear iteration
           if (present(nonlinear_iteration) .and. VAD_activated) use_porous_limiter = use_porous_limiter .and. nonlinear_iteration > 1
           logical_igot_theta_flux = IGOT_THETA_FLUX == 1
+
+
+
 
 
           loc_assemble_collapsed_to_one_phase = .false.
@@ -1755,14 +1759,14 @@ contains
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                               ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * (LOC_T2_J(2) - LOC_T2_I(2))&
                                         !Advection term solid
-                                            +  NDOTQNEW(1) * (1 + LOC_T2_I(2)) )
+                                            +  NDOTQNEW(1) * (1 - LIMT2(2)**2)*0)
                                         !Liquid phase
                                         LOC_CV_RHS_I(2) = LOC_CV_RHS_I(2) + &
                                             Latent_heat*SdevFuns%DETWEI(GI) * LIMT2(2) * &   ! * density%val(1, 2, CV_NODI)
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                               ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * (LOC_T2_J(2) - LOC_T2_I(2))&
                                         !Advection term fluid
-                                            +  NDOTQNEW(2) * LOC_T2_I(2))
+                                            +  NDOTQNEW(2) * LIMT2(2)**2)
                                       end if
 
                                   if(integrate_other_side_and_not_boundary) then
@@ -1790,14 +1794,14 @@ contains
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                              ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * (LOC_T2_I(2) - LOC_T2_J(2))&
                                         !Advection term solid
-                                            -  (1. + LOC_T2_J(2)) * NDOTQNEW(1)  )
+                                            -  (1. - LIMT2(2)**2) * NDOTQNEW(1)*0)
                                         !Liquid phase
                                         LOC_CV_RHS_J(2) = LOC_CV_RHS_J(2) + &
                                             Latent_heat *SdevFuns%DETWEI(GI) * LIMT2(2) * & ! * density%val(1, 2, CV_NODJ)
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                              ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * (LOC_T2_I(2) - LOC_T2_J(2)) &
                                         !Advection term fluid
-                                            -   NDOTQNEW(2) * LOC_T2_J(2) )
+                                            -   NDOTQNEW(2) * LIMT2(2)**2)
                                       end if
                                   endif
                                   IF ( GET_GTHETA ) THEN
@@ -3011,7 +3015,7 @@ end if
                         END DO
                         if (is_porous_media) then
                           UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UDGI_ALL_FOR_INV(:, iv_iphase))
-                        else!is magma
+                        else !is magma
                           UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + I_inv_adv_coef (iv_iphase) * UDGI_ALL_FOR_INV(:, iv_iphase)
                           if (iv_iphase > 1) UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) + UDGI_ALL(:, 1)!We add the solid velocity
                         end if
@@ -3025,6 +3029,12 @@ end if
                     UDGI2_ALL(:, iv_iphase) = J_inv_adv_coef(iv_iphase)*&
                         matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
                 end do
+                if (is_magma) then !We add the solid velocity
+                  do iv_iphase = 2,final_phase
+                    UDGI_ALL(:, iv_iphase) =  UDGI_ALL(:, iv_iphase) + UDGI_ALL(:, 1)
+                    UDGI2_ALL(:, iv_iphase) = UDGI2_ALL(:, iv_iphase) + UDGI2_ALL(:, 1)
+                  end do
+                end if
                 !Get the projected velocity
                 NDOTQ  = MATMUL( CVNORMX_ALL(:, GI), UDGI_ALL )
                 !Get the direction of the flow
@@ -3076,11 +3086,8 @@ end if
                       UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), perm%val(:,:,ele))
                     end do
                   end if
-                else !if magma
-                  do iv_iphase = 1,final_phase
-                    if (iv_iphase > 1) UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) + UDGI_ALL(:, 1)!We add the solid velocity
-                  end do
                 end if
+
                 if (not_OLD_VEL) then
                     do iv_idim = 1, Mdims%ndim
                       if (is_porous_media) then

@@ -2344,9 +2344,15 @@ end if
                                           MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
           call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
-        !######################## CORRECTION VELOCITY STEP####################################
+
+
+
+
+                !######################## CORRECTION VELOCITY STEP####################################
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases
         if (compute_compaction) call get_Darcy_phases_velocity()
+
+        ! if (is_magma) call smooth_CDP_or_velocity(Mmat, velocity)
         !Ensure that the velocity fulfils the continuity equation before moving on
         if (.not. is_magma) call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
         call deallocate(deltaP)
@@ -2380,6 +2386,69 @@ end if
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
       contains
+
+        subroutine smooth_CDP_or_velocity(Mmat, Tensor, Iphase, method)
+
+          implicit none
+          type (multi_matrices), intent(in) :: Mmat
+          !real, dimension(Mdims%ndim * final_phase, Mdims%u_nonods), intent(in) :: U_RHS!Conversion to two entries
+          type(tensor_field), intent(inout) ::  Tensor  ! CDP tensor or velocity fields
+          integer, intent(in) :: Iphase ! the phase to be averaged
+          integer, intent(in) :: method ! 1: average within the element. 2: average the nodal value among the shared elements
+
+          !Local variables
+          integer, dimension(Mdims%u_nloc) :: unlocs, uilocs
+          real, dimension(Mdims%ndim, Mdims%xu_nonods) :: Tensor_on_xu
+          real, dimension(Mdims%xu_nonods) :: num_Tensor_on_xu
+          real :: average
+          integer :: j, cv_iloc, cv_loc, imat, u_iloc, u_inod, xu_inod, JDIM, JPHASE
+
+
+          if (method==1) then
+            do u_iloc = 1, Mdims%u_nloc
+                uilocs(u_iloc)=u_iloc
+            end do
+            do ele = 1, Mdims%totele
+                unlocs=ndgln%u((ele-1)*Mdims%u_nloc+uilocs)
+                      do JPHASE = Iphase, Iphase
+                        DO JDIM = 1, Mdims%ndim
+                          average=sum(Tensor%val(JDIM, JPHASE,unlocs))/Mdims%u_nloc
+                            do u_iloc = 1, Mdims%u_nloc
+                              Tensor%val(JDIM, JPHASE,unlocs(u_iloc))=average
+                            end do
+                        end DO
+                      end do
+            end do
+
+          elseif (method==2) then
+            Tensor_on_xu = 0.0
+            num_Tensor_on_xu = 0
+
+            do ele = 1, Mdims%totele
+              do u_iloc = 1, Mdims%u_nloc
+                xu_inod = ndgln%xu ( (ele - 1 ) * Mdims%u_nloc + u_iloc )
+                u_inod  = ndgln%u  ( (ele - 1 ) * Mdims%u_nloc + u_iloc )
+                Tensor_on_xu(:, xu_inod) = Tensor_on_xu(:, xu_inod) + Tensor%val(:, Iphase, u_inod)
+                num_Tensor_on_xu(xu_inod) = num_Tensor_on_xu(xu_inod) + 1
+              end do
+            end do
+
+            do xu_inod = 1, Mdims%xu_nonods
+              Tensor_on_xu(:, xu_inod) = Tensor_on_xu(:, xu_inod)/num_Tensor_on_xu(xu_inod)
+            end do
+
+            do ele = 1, Mdims%totele
+              do u_iloc = 1, Mdims%u_nloc
+                xu_inod = ndgln%xu ( (ele - 1 ) * Mdims%u_nloc + u_iloc )
+                u_inod  = ndgln%u  ( (ele - 1 ) * Mdims%u_nloc + u_iloc )
+                Tensor%val(:, Iphase, u_inod) = Tensor_on_xu (:, xu_inod)
+              end do
+            end do
+            print *, 'test', Tensor_on_xu (1, 50)
+          end if
+
+        end subroutine smooth_CDP_or_velocity
+
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas
         !> @brief Generic subroutine that perform the Anderson acceleration solver.
@@ -2944,8 +3013,11 @@ end if
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
         call deallocate(CDP_tensor);
         call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), darcy_phases/)); call zero(cdp_tensor)
+
         call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, darcy_phases, &
             Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+
+        call smooth_CDP_or_velocity(Mmat, CDP_tensor, darcy_phases, 2)
         !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
         CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:Mdims%nphase,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:Mdims%nphase,:)*0 + CDP_tensor%val,&
@@ -3559,6 +3631,7 @@ end if
             END DO
           END DO
         END DO
+
 
       end subroutine
     END SUBROUTINE porous_assemb_force_cty
