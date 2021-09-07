@@ -44,13 +44,14 @@ module multi_phreeqc
 
   contains
 
-    subroutine init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
+    subroutine init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc, after_adapt)
         implicit none
 
         integer, INTENT(out) :: id
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent( in ) :: Mdims
         real, dimension(:,:), allocatable, INTENT(OUT) :: concetration_phreeqc
+        logical, intent (in) :: after_adapt
 
         integer :: i,j,k, ICncomp, iphase, icomp, cv_inod
         integer :: nxyz
@@ -69,7 +70,7 @@ module multi_phreeqc
         real  :: time, time_step
         real  :: pH
         real, dimension(:,:), allocatable :: species_c
-        type(tensor_field), pointer :: tfield
+        type(tensor_field), pointer :: tfield, tfield_old
         type(vector_field), pointer :: vfield
         character( len = option_path_len ) :: option_path, option_name
         character(len=option_path_len), dimension(:),  allocatable :: file_strings
@@ -172,19 +173,22 @@ module multi_phreeqc
         status = RM_SetTime(id, time)
         status = RM_SetTimeStep(id, time_step)
         save_on = RM_SetSpeciesSaveOn(id, 1)
-
-        if (time < 1e-30) then
+        if (time <time_step+1.) then
           status = RM_RunCells(id)
+          if (.not. after_adapt) then
           !Get the output data
           status = RM_GetConcentrations(id, concetration_phreeqc)
-          do iphase = 1, 1!Mdims%nphase!TODO SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
-            do icomp = 1, ncomps
-              tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp)))
-              do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
-                tfield%val(1,iphase,cv_inod) = concetration_phreeqc(cv_inod, icomp)
+            do iphase = 1, 1!Mdims%nphase!TODO SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
+              do icomp = 1, ncomps
+                tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp), .false.))
+                tfield_old=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp), .true.))
+                do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
+                  tfield%val(1,iphase,cv_inod) = concetration_phreeqc(cv_inod, icomp)
+                  tfield_old%val(1,iphase,cv_inod) = concetration_phreeqc(cv_inod, icomp)
+                end do
               end do
             end do
-          end do
+          end if
         end if
 
       end subroutine init_PHREEQC
@@ -209,7 +213,7 @@ module multi_phreeqc
 
         do iphase = 1, 1!Mdims%nphase!SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
           do icomp = 1, ncomps
-            tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp)))
+            tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp), .false.))
             do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
               concetration_phreeqc(cv_inod, icomp) = tfield%val(1,iphase,cv_inod)
             end do
@@ -222,14 +226,13 @@ module multi_phreeqc
         status = RM_GetConcentrations(id, concetration_phreeqc)
         do iphase = 1, 1!Mdims%nphase!SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
           do icomp = 1, ncomps
-            tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp)))
+            tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp), .false.))
             do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
               tfield%val(1,iphase,cv_inod) = concetration_phreeqc(cv_inod, icomp)
             end do
           end do
         end do
-
-      end subroutine testing_PHREEQC
+      end subroutine run_PHREEQC
 
       subroutine read_inputfile(file_strings)
 
@@ -254,12 +257,14 @@ module multi_phreeqc
 
       end subroutine
 
+
   !>@author Geraldine Regnier, Pablo Salinas
   !>@brief: Finds the field name in diamond given a name in PHREEQC. Fields have the convention of being named in ICFERST as SPECIES_component,
   !> for example Species_O for oxygen.
-    function get_packed_Species_name(PHREEQC_name)
+    function get_packed_Species_name(PHREEQC_name, old_field)
       implicit none
       character(len = *), INTENT(IN) :: PHREEQC_name
+      logical, intent(in) :: old_field
       character (len = option_path_len) :: get_packed_Species_name
       !Local variables
       integer :: k, buffer
@@ -273,7 +278,11 @@ module multi_phreeqc
           !Check that the name contains the PHREEQC name, if it does, then use that name
           buffer = 8+len(trim(PHREEQC_name))
           if (option_name(8:) == "_"//trim(PHREEQC_name)) then
-            get_packed_Species_name = "PackedSpecies"//trim(option_name(8:))
+            if (old_field) then
+              get_packed_Species_name = "PackedOldSpecies"//trim(option_name(8:))
+            else
+              get_packed_Species_name = "PackedSpecies"//trim(option_name(8:))
+            end if
           end if
         end if
       end do

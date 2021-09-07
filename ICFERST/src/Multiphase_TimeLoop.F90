@@ -217,7 +217,7 @@ contains
         logical :: have_Passive_Tracers = .true.
         integer :: fields
         character( len = option_path_len ) :: option_name
-        integer :: id
+        integer :: phreeqc_id
         double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -644,7 +644,7 @@ contains
                 if (after_adapt .or. (itime == 1 .and. its == 1)) then
                   if (have_option("/porous_media/Phreeqc_coupling"))then
 #ifdef USING_PHREEQC
-                    call init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
+                    call init_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc, after_adapt)
 #else
                     FLAbort( "PHREEQC coupling option activated by the link to PHREEQRM is not activated." )
 #endif
@@ -779,11 +779,11 @@ contains
                 !# Solving for species fields through PHREEQC
                 !#=================================================================================================================
 
-#ifdef USING_PHREEQC
-                if (.not. have_option("/porous_media/Phreeqc_coupling/one_way_coupling") .or. its == 1) then
-                      call run_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
-                end if
-#endif
+! #ifdef USING_PHREEQC
+!                 if (.not. have_option("/porous_media/Phreeqc_coupling/one_way_coupling") .or. its == 1) then
+!                       call run_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
+!                 end if
+! #endif
 
                 if (have_Passive_Tracers) then
                   !We make sure to only enter here once if there are no passive tracers
@@ -849,6 +849,10 @@ contains
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
+
+#ifdef USING_PHREEQC
+            call run_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc)
+#endif
 
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
               ewrite(0,*) "Iterations taken by the pressure linear solver:", pres_its_taken

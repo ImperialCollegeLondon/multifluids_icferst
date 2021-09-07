@@ -662,7 +662,7 @@ AC_ARG_WITH(phreeqc,
         [specify the phreeqc path])])
 if test -n "$with_phreeqc" ; then
   FLPHREEQC_PATH="${with_phreeqc}"
-  LIB_FEMDEM="${with_phreeqc}""/lib/libphreeqcrm.so"
+  LIB_FEMDEM="${with_phreeqc}""/lib/libphreeqcrm.sp"
   PHREEQC="yes"
   cat >> confdefs.h << EOF
 #define USING_PHREEQC 1
