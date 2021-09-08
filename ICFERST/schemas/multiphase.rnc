@@ -762,6 +762,10 @@ start =
             ## For <b>GEOTHERMAL</b> simulations, density, heat capacity and conductivity are <b>MANDATORY</b>
             element porous_properties{
                 ## Specify scalar field density of the porous media
+                ## 
+                ## The value specified here is the <b>component</b> value.
+                ## This is the bulk value divided by (1-porosity).
+                ## Note: Bulk density is the one normally obtained in lab experiments.
                 element scalar_field {
                    attribute name { "porous_density" },
                    (
@@ -777,6 +781,10 @@ start =
                    )
                 },
                 ## Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
+                ## 
+                ## The value specified here is the <b>component</b> value.
+                ## This is the bulk value divided by (1-porosity).
+                ## Note: Bulk density is the one normally obtained in lab experiments.
                 element scalar_field {
                    attribute name { "porous_heat_capacity" },
                    (
@@ -795,6 +803,10 @@ start =
 
 
                 ## Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin => W/(m·K) )
+                ## 
+                ## The value specified here is the <b>component</b> value.
+                ## This is the bulk value divided by (1-porosity).
+                ## Note: Bulk density is the one normally obtained in lab experiments.
                element tensor_field {
                   attribute name { "porous_thermal_conductivity" },
                   element prescribed {
@@ -808,7 +820,7 @@ start =
                ## ( in Pa-1 den = den_surface*exp(Coef*(P_res-P_surface))
                ## with P_surf = 10^5 Pa )
                ##
-               ## Here the term <b>Coef<\b> is specified.
+               ## Here the term <b>Coef</b> is specified.
                ##
                ## Temporarily P_surface can be defined from /numerical_methods/Surface_pressure
                element scalar_field {

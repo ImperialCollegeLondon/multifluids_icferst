@@ -936,7 +936,11 @@ ONLY specify for the wetting phase</a:documentation>
               <a:documentation>Rock properties
 For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conductivity are &lt;b&gt;MANDATORY&lt;/b&gt;</a:documentation>
               <element name="scalar_field">
-                <a:documentation>Specify scalar field density of the porous media</a:documentation>
+                <a:documentation>Specify scalar field density of the porous media
+
+The value specified here is the &lt;b&gt;component&lt;/b&gt; value.
+This is the bulk value divided by (1-porosity).
+Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
                 <attribute name="name">
                   <value>porous_density</value>
                 </attribute>
@@ -954,7 +958,11 @@ For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conduc
               </element>
               <optional>
                 <element name="scalar_field">
-                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )</a:documentation>
+                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
+
+The value specified here is the &lt;b&gt;component&lt;/b&gt; value.
+This is the bulk value divided by (1-porosity).
+Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
                   <attribute name="name">
                     <value>porous_heat_capacity</value>
                   </attribute>
@@ -973,7 +981,11 @@ For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conduc
               </optional>
               <optional>
                 <element name="tensor_field">
-                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )</a:documentation>
+                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )
+
+The value specified here is the &lt;b&gt;component&lt;/b&gt; value.
+This is the bulk value divided by (1-porosity).
+Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
                   <attribute name="name">
                     <value>porous_thermal_conductivity</value>
                   </attribute>
@@ -990,7 +1002,7 @@ For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conduc
 ( in Pa-1 den = den_surface*exp(Coef*(P_res-P_surface))
 with P_surf = 10^5 Pa )
 
-Here the term &lt;b&gt;Coef&lt;\b&gt; is specified.
+Here the term &lt;b&gt;Coef&lt;/b&gt; is specified.
 
 Temporarily P_surface can be defined from /numerical_methods/Surface_pressure</a:documentation>
                   <attribute name="name">
