@@ -763,7 +763,7 @@ start =
             element porous_properties{
                 ## Specify scalar field density of the porous media
                 ## 
-                ## The value specified here is the <b>component</b> value.
+                ## The value to specify here is the value of the minerals or grains that make up the rock.
                 ## This is the bulk value divided by (1-porosity).
                 ## Note: Bulk density is the one normally obtained in lab experiments.
                 element scalar_field {
@@ -782,7 +782,7 @@ start =
                 },
                 ## Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
                 ## 
-                ## The value specified here is the <b>component</b> value.
+                ## The value to specify here is the value of the minerals or grains that make up the rock.
                 ## This is the bulk value divided by (1-porosity).
                 ## Note: Bulk density is the one normally obtained in lab experiments.
                 element scalar_field {
@@ -804,7 +804,7 @@ start =
 
                 ## Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin => W/(m·K) )
                 ## 
-                ## The value specified here is the <b>component</b> value.
+                ## The value to specify here is the value of the minerals or grains that make up the rock.
                 ## This is the bulk value divided by (1-porosity).
                 ## Note: Bulk density is the one normally obtained in lab experiments.
                element tensor_field {

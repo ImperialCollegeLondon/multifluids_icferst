@@ -938,7 +938,7 @@ For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conduc
               <element name="scalar_field">
                 <a:documentation>Specify scalar field density of the porous media
 
-The value specified here is the &lt;b&gt;component&lt;/b&gt; value.
+The value to specify here is the value of the minerals or grains that make up the rock.
 This is the bulk value divided by (1-porosity).
 Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
                 <attribute name="name">
@@ -960,7 +960,7 @@ Note: Bulk density is the one normally obtained in lab experiments.</a:documenta
                 <element name="scalar_field">
                   <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
 
-The value specified here is the &lt;b&gt;component&lt;/b&gt; value.
+The value to specify here is the value of the minerals or grains that make up the rock.
 This is the bulk value divided by (1-porosity).
 Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
                   <attribute name="name">
@@ -983,7 +983,7 @@ Note: Bulk density is the one normally obtained in lab experiments.</a:documenta
                 <element name="tensor_field">
                   <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )
 
-The value specified here is the &lt;b&gt;component&lt;/b&gt; value.
+The value to specify here is the value of the minerals or grains that make up the rock.
 This is the bulk value divided by (1-porosity).
 Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
                   <attribute name="name">
