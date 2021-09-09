@@ -1265,24 +1265,41 @@ contains
                     call unpack_sfield(state(i),packed_state,"Enthalpy",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Enthalpy"),"Enthalpy")
                 end if
+                !Passive Tracers
+                if(have_option(trim(state(i)%option_path)&
+                    //'/scalar_field::Concentration')) then
+                    call unpack_sfield(state(i),packed_state,"OldConcentration",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"Concentration"),&
+                        extract_scalar_field(state(i),"OldConcentration")))
+                    call unpack_sfield(state(i),packed_state,"IteratedConcentration",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"Concentration"),&
+                        extract_scalar_field(state(i),"IteratedConcentration")))
+                    !Subfields are now only present in state as including them inside packed state generate deallocation issues
+                    ! call unpack_sfield(state(i),packed_state,"ConcentrationSource",1,iphase)!Diagnostic fields do not get along with this...
+                    ! call unpack_sfield(state(i),packed_state,"ConcentrationAbsorption",1,iphase)!Diagnostic fields do not get along with this...
+                    call unpack_sfield(state(i),packed_state,"Concentration",1,iphase)
+                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Concentration"),"Concentration")
+                end if
 
                 !Passive Tracers
                 fields = option_count("/material_phase[0]/scalar_field")
                 do k = 1, fields
                   call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                  if (is_Tracer_field(option_name)) then
-                    if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
-                      call unpack_sfield(state(i),packed_state,"Old"//trim(option_name),1,iphase,&
-                      check_paired(extract_scalar_field(state(i),trim(option_name)),&
-                      extract_scalar_field(state(i),"Old"//trim(option_name))))
-                      call unpack_sfield(state(i),packed_state,"Iterated"//trim(option_name),1,iphase,&
-                      check_paired(extract_scalar_field(state(i),trim(option_name)),&
-                      extract_scalar_field(state(i),"Iterated"//trim(option_name))))
-                      !Subfields are now only present in state as including them inside packed state generate deallocation issues
-                      ! call unpack_sfield(state(i),packed_state,trim(option_name)//"Source",1,iphase)!Diagnostic fields do not get along with this...
-                      ! call unpack_sfield(state(i),packed_state,trim(option_name)//"Absorption",1,iphase)!Diagnostic fields do not get along with this...
-                      call unpack_sfield(state(i),packed_state,trim(option_name),1,iphase)
-                      call insert(multi_state(1,iphase),extract_scalar_field(state(i),trim(option_name)),trim(option_name))
+                  if(have_option(trim(state(i)%option_path)//'/scalar_field::'//trim(option_name))) then
+                    if (is_Tracer_field(option_name)) then
+                        if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
+                        call unpack_sfield(state(i),packed_state,"Old"//trim(option_name),1,iphase,&
+                        check_paired(extract_scalar_field(state(i),trim(option_name)),&
+                        extract_scalar_field(state(i),"Old"//trim(option_name))))
+                        call unpack_sfield(state(i),packed_state,"Iterated"//trim(option_name),1,iphase,&
+                        check_paired(extract_scalar_field(state(i),trim(option_name)),&
+                        extract_scalar_field(state(i),"Iterated"//trim(option_name))))
+                        !Subfields are now only present in state as including them inside packed state generate deallocation issues
+                        ! call unpack_sfield(state(i),packed_state,trim(option_name)//"Source",1,iphase)!Diagnostic fields do not get along with this...
+                        ! call unpack_sfield(state(i),packed_state,trim(option_name)//"Absorption",1,iphase)!Diagnostic fields do not get along with this...
+                        call unpack_sfield(state(i),packed_state,trim(option_name),1,iphase)
+                        call insert(multi_state(1,iphase),extract_scalar_field(state(i),trim(option_name)),trim(option_name))
+                        end if
                     end if
                   end if
                 end do
@@ -2465,7 +2482,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                   end if
                   if (have_Passive_Tracers) then 
                     allocate(Tracers_avg(Mdims%nphase, Mdims%cv_nonods)); Tracers_avg = 0.
-                    reference_field(-1,1:size(tracer_field%val,2),:) = 0.
+                    reference_field(-1,:,:) = 0.
                     nfields = option_count("/material_phase[0]/scalar_field")
                     do k = 1, nfields
                       call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
