@@ -954,17 +954,11 @@ contains
             call insert_sfield(packed_state,"FEEnthalpy",1,nphase)
         end if
 
-        if (option_count("/material_phase/scalar_field::Concentration")>0) then
-            call insert_sfield(packed_state,"Concentration",1,nphase,&
-                add_source=.false.,add_absorption=.false.)
-        if (.not. is_porous_media) call insert_sfield(packed_state,"FEConcentration",1,nphase)
-        end if
-
         !Here we add iteratively all the fields named PassiveTracer_NUMBER
         fields = option_count("/material_phase[0]/scalar_field")
         do k = 1, fields
           call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-          if (option_name(1:13)=="PassiveTracer" .or. option_name(1:7)=="Species") then
+          if (is_Tracer_field(option_name)) then
             if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
               call insert_sfield(packed_state,trim(option_name),1,nphase,&
               add_source=.false.,add_absorption=.false.)!This introduces memory issues, keep them in state only
@@ -1273,27 +1267,10 @@ contains
                 end if
 
                 !Passive Tracers
-                if(have_option(trim(state(i)%option_path)&
-                    //'/scalar_field::Concentration')) then
-                    call unpack_sfield(state(i),packed_state,"OldConcentration",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"Concentration"),&
-                        extract_scalar_field(state(i),"OldConcentration")))
-                    call unpack_sfield(state(i),packed_state,"IteratedConcentration",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"Concentration"),&
-                        extract_scalar_field(state(i),"IteratedConcentration")))
-                    !Subfields are now only present in state as including them inside packed state generate deallocation issues
-                    ! call unpack_sfield(state(i),packed_state,"ConcentrationSource",1,iphase)!Diagnostic fields do not get along with this...
-                    ! call unpack_sfield(state(i),packed_state,"ConcentrationAbsorption",1,iphase)!Diagnostic fields do not get along with this...
-                    call unpack_sfield(state(i),packed_state,"Concentration",1,iphase)
-                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Concentration"),"Concentration")
-                end if
-
-
-                !Passive Tracers
                 fields = option_count("/material_phase[0]/scalar_field")
                 do k = 1, fields
                   call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                  if (option_name(1:13)=="PassiveTracer".or. option_name(1:7)=="Species") then
+                  if (is_Tracer_field(option_name)) then
                     if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
                       call unpack_sfield(state(i),packed_state,"Old"//trim(option_name),1,iphase,&
                       check_paired(extract_scalar_field(state(i),trim(option_name)),&
@@ -1356,14 +1333,10 @@ contains
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Enthalpy")
         end if
 
-        if (option_count("/material_phase/scalar_field::Concentration")>0) then
-            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Concentration")
-        end if
-
         fields = option_count("/material_phase[0]/scalar_field")
         do k = 1, fields
           call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-          if (option_name(1:13)=="PassiveTracer".or. option_name(1:7)=="Species") then
+          if (is_Tracer_field(option_name)) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,trim(option_name))
           end if
         end do
@@ -2354,7 +2327,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     Ntracers = 0; have_Passive_Tracers = .false.
                     do k = 1, nfields
                         call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                        if (option_name(1:13)=="PassiveTracer" .or. option_name(1:7)=="Species") then
+                        if (is_Tracer_field(option_name, ignore_concentration = .true.)) then
                             have_Passive_Tracers = .true.
                             Ntracers = Ntracers + 1
                         end if 
@@ -2386,11 +2359,11 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                         end if
                         !Special position for the average of all the passiveTracers/Species in -1
                         if (have_Passive_Tracers) then 
-                            reference_field(-1,1:size(tracer_field%val,2),:) = 0.
+                            reference_field(-1,:,:) = 0.
                             nfields = option_count("/material_phase[0]/scalar_field")
                             do k = 1, nfields
                               call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                              if (option_name(1:13)=="PassiveTracer".or. option_name(1:7)=="Species") then
+                              if (is_Tracer_field(option_name)) then
                                 tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
                                 reference_field(-1,1:size(tracer_field%val,2),:) = reference_field(-1,1:size(tracer_field%val,2),:) +&
                                         tracer_field%val(1,1:size(tracer_field%val,2),:)/real(Ntracers)
@@ -2496,7 +2469,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     nfields = option_count("/material_phase[0]/scalar_field")
                     do k = 1, nfields
                       call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                      if (option_name(1:13)=="PassiveTracer".or. option_name(1:7)=="Species") then
+                      if (is_Tracer_field(option_name)) then
                         tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
                         Tracers_avg(1:size(tracer_field%val,2),:) = Tracers_avg(1:size(tracer_field%val,2),:) +&
                                 tracer_field%val(1,1:size(tracer_field%val,2),:)/real(Ntracers)
