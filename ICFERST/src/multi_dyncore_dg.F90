@@ -841,7 +841,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer :: nits_flux_lim, its_flux_lim
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
-           REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION, CDISPERSION
+           REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
+           REAL, DIMENSION( :,:,:,: ), allocatable :: CDISPERSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
            REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
@@ -876,7 +877,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer :: Phase_with_Ovrel
            !temperature backup for the petsc bug
            logical :: repeat_assemb_solve
-           logical :: boussinesq = .true.
            !Parameters for stabilisation and compact solving, i.e. solving only concentration for some phases
            real, parameter :: min_val = 0.
            integer :: nconc !> Number of phases with tracer, this works if the phases with concentration start from the first one and are consecutive
@@ -912,10 +912,16 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            p => extract_tensor_field( packed_state, "PackedFEPressure" )
 
-           if (boussinesq) then
-               den_all = 1
-               denold_all =1
-           endif
+           if (has_boussinesq_aprox) then
+            !We do not consider variations of density in transport
+              den_all = 1
+              denold_all =1
+          else
+             den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
+             denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
+             den_all    = den_all2 % val ( 1, :, : )
+             denold_all = denold_all2 % val ( 1, :, : )
+          endif
 
            IGOT_T2_loc = 1
 
@@ -935,14 +941,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            RETRIEVE_SOLID_CTY = .false.
 
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
-           TDIFFUSION=0.0; CDISPERSION = 0.
-
+           TDIFFUSION=0.0;
            call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, TracerName= trim(Passive_Tracer_name))
 
            !Calculates solute dispersion with specific longitudinal and transverse dispersivity
            if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
+            allocate(CDISPERSION(Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase)); CDISPERSION = 0.
             call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION)
             TDIFFUSION = TDIFFUSION + CDISPERSION
+            deallocate(CDISPERSION)
            end if
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
@@ -1025,7 +1032,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            if (allocated(denold_all)) deallocate(denold_all)
            if (allocated(T_SOURCE)) deallocate(T_SOURCE)
            call deallocate(solution); nullify(solution%val)
-           ewrite(3,*) 'Leaving Concentration_assem_solve'
+           ewrite(3,*) 'Leaving' //trim(Passive_Tracer_name)//'_assem_solve'
 
   END SUBROUTINE Passive_Tracer_Assemble_Solve
 
