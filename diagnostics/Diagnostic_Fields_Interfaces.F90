@@ -27,7 +27,7 @@
 
 #include "fdebug.h"
 
-subroutine calculate_diagnostic_variables_multiple(states, states_size, exclude_nonrecalculated)
+subroutine calculate_diagnostic_variables_multiple(states, states_size, exclude_nonrecalculated, exclude_interpolated)
   
   use fldebug
   use fields
@@ -40,8 +40,8 @@ subroutine calculate_diagnostic_variables_multiple(states, states_size, exclude_
   
   type(state_type), dimension(states_size), intent(inout) :: states
   logical, intent(in) :: exclude_nonrecalculated
-  
-  call calculate_diagnostic_variables_internal(states, exclude_nonrecalculated = exclude_nonrecalculated)
+  logical, optional, intent(in) :: exclude_interpolated
+  call calculate_diagnostic_variables_internal(states, exclude_nonrecalculated = exclude_nonrecalculated, exclude_interpolated = exclude_interpolated)
   
 end subroutine calculate_diagnostic_variables_multiple
 

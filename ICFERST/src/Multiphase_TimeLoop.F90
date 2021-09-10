@@ -840,11 +840,21 @@ contains
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
 
+            !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
             !!$ Calculate diagnostic fields (it should be outside the timeloop as a one-way coupling field only)
+            call get_option( '/timestepping/timestep', dt); !Backup of dt
+            !dT may have changed for the next time level, however for diagnostics we need it as it has been done for this time level
+            !therefore we compute it based on the actual difference of time
+            call set_option( '/timestepping/timestep', acctim-old_acctim)
+            !Now compute diagnostics
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
-
+            !Now we ensure that the time-step is the correct one
+            call set_option( '/timestepping/timestep', dt)
+            !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
+            !Generate the statistics file .stat file
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
+            
 
             if (is_porous_media .and. getprocno() == 1) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
