@@ -1265,21 +1265,6 @@ contains
                     call unpack_sfield(state(i),packed_state,"Enthalpy",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Enthalpy"),"Enthalpy")
                 end if
-                !Passive Tracers
-                if(have_option(trim(state(i)%option_path)&
-                    //'/scalar_field::Concentration')) then
-                    call unpack_sfield(state(i),packed_state,"OldConcentration",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"Concentration"),&
-                        extract_scalar_field(state(i),"OldConcentration")))
-                    call unpack_sfield(state(i),packed_state,"IteratedConcentration",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"Concentration"),&
-                        extract_scalar_field(state(i),"IteratedConcentration")))
-                    !Subfields are now only present in state as including them inside packed state generate deallocation issues
-                    ! call unpack_sfield(state(i),packed_state,"ConcentrationSource",1,iphase)!Diagnostic fields do not get along with this...
-                    ! call unpack_sfield(state(i),packed_state,"ConcentrationAbsorption",1,iphase)!Diagnostic fields do not get along with this...
-                    call unpack_sfield(state(i),packed_state,"Concentration",1,iphase)
-                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Concentration"),"Concentration")
-                end if
 
                 !Passive Tracers
                 fields = option_count("/material_phase[0]/scalar_field")
