@@ -203,7 +203,8 @@ module multi_phreeqc
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent( in ) :: Mdims
         type(tensor_field), pointer :: tfield
-#ifdef USING_PHREEQC        
+        character(100),   dimension(:), allocatable   :: components
+#ifdef USING_PHREEQC
         ! Determine number of components to transport
         ncomps = RM_FindComponents(id)
         allocate(components(ncomps))
