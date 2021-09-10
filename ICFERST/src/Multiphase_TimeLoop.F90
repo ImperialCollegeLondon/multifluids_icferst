@@ -755,7 +755,7 @@ contains
                 !#=================================================================================================================
 
 ! #ifdef USING_PHREEQC
-!                 if (have_option("/porous_media/Phreeqc_coupling/two_way_coupling") .or. its == 1) then
+!                 if (.not. have_option("/porous_media/Phreeqc_coupling/one_way_coupling") .or. its == 1) then
 !                       call run_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
 !                 end if
 ! #endif
@@ -1006,7 +1006,6 @@ contains
         call deallocate_porous_adv_coefs(upwnd)
         call deallocate_multi_absorption(multi_absorp, .true.)
         call deallocate_multi_pipe_package(pipes_aux)
-        call deallocate_PHREEQC(phreeqc_id)
         !***************************************
         ! INTERPOLATION MEMORY CLEANUP
         if (numberfields_CVGalerkin_interp > 0) then
@@ -1369,7 +1368,6 @@ contains
                 !Destroy what remains of the matrices
                 call destroy_multi_matrices(Mmat)
                 !!$ Calculating Global Node Numbers
-                call deallocate_PHREEQC(phreeqc_id)
                 call allocate_multi_ndgln(ndgln, Mdims)
                 call Compute_Node_Global_Numbers(state, ndgln)
                 !!$
