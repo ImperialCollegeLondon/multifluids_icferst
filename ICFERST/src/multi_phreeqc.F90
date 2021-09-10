@@ -75,7 +75,7 @@ module multi_phreeqc
         character( len = option_path_len ) :: option_path, option_name
         character(len=option_path_len), dimension(:),  allocatable :: file_strings
         character(len=25), dimension(7) :: reaction_types
-
+#ifdef USING_PHREEQC
         nxyz = Mdims%cv_nonods
         nthreads = 0
         id = RM_Create(nxyz, nthreads)
@@ -190,7 +190,7 @@ module multi_phreeqc
             end do
           end if
         end if
-
+#endif
       end subroutine init_PHREEQC
 
       subroutine run_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
@@ -203,7 +203,7 @@ module multi_phreeqc
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent( in ) :: Mdims
         type(tensor_field), pointer :: tfield
-        character(100),   dimension(:), allocatable   :: components
+#ifdef USING_PHREEQC        
         ! Determine number of components to transport
         ncomps = RM_FindComponents(id)
         allocate(components(ncomps))
@@ -254,7 +254,7 @@ module multi_phreeqc
         end do
         close(89)
 
-
+#endif
       end subroutine
 
       subroutine deallocate_PHREEQC(id)
