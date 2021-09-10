@@ -257,6 +257,17 @@ module multi_phreeqc
 
       end subroutine
 
+      subroutine deallocate_PHREEQC(id)
+
+        implicit none
+
+        integer, intent(in) :: id
+        integer :: status
+
+        status = RM_Destroy(id)
+        
+      end subroutine
+
 
   !>@author Geraldine Regnier, Pablo Salinas
   !>@brief: Finds the field name in diamond given a name in PHREEQC. Fields have the convention of being named in ICFERST as SPECIES_component,

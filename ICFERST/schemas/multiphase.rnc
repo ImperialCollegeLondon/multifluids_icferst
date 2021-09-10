@@ -1048,9 +1048,9 @@ start =
            element database_name {
                anystring
            }?,
-           ## One way coupling between phreeqc and IC-FERST. No check for convergence of species field.
-           ## Quality of results is relative to CFL number. If option not enabled, default is two way coupling
-           element one_way_coupling {empty}?
+           ## Two way coupling between phreeqc and IC-FERST. Check for convergence of species field.
+           ## If option not enabled, default is one way coupling for now
+           element two_way_coupling {empty}?
            )}?,
           ## Activates the SelfPotential solver. (S.I. Volts)
           ##
