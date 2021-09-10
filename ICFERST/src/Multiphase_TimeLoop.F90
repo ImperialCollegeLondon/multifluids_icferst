@@ -293,10 +293,6 @@ contains
         mass_ele=0.
         !!$
 
-        !!$ Calculate diagnostic fields
-        call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
-        call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!allocates the memory for a fixed mesh
-        !!$
         !!$ Computing shape function scalars
         igot_t2 = 0 ; igot_theta_flux = 0
         if( Mdims%ncomp /= 0 )then
@@ -844,7 +840,7 @@ contains
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
 
-            !!$ Calculate diagnostic fields
+            !!$ Calculate diagnostic fields (it should be outside the timeloop as a one-way coupling field only)
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
 
