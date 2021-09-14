@@ -264,9 +264,9 @@ module multi_phreeqc
 
         integer, intent(in) :: id
         integer :: status
-
+#ifdef USING_PHREEQC
         status = RM_Destroy(id)
-
+#endif
       end subroutine
 
   !>@author Geraldine Regnier, Pablo Salinas
