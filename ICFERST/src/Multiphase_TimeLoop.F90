@@ -1006,6 +1006,10 @@ contains
         call deallocate_porous_adv_coefs(upwnd)
         call deallocate_multi_absorption(multi_absorp, .true.)
         call deallocate_multi_pipe_package(pipes_aux)
+#ifdef USING_PHREEQC
+        call deallocate_PHREEQC(phreeqc_id)
+#endif
+
         !***************************************
         ! INTERPOLATION MEMORY CLEANUP
         if (numberfields_CVGalerkin_interp > 0) then
@@ -1339,6 +1343,9 @@ contains
                     not_to_move_det_yet = .false.
                 end if Conditional_Adaptivity
                 call deallocate(packed_state)
+#ifdef USING_PHREEQC
+                call deallocate_PHREEQC(phreeqc_id)
+#endif
                 call deallocate(multiphase_state)
                 call deallocate(multicomponent_state )
                 !call unlinearise_components()
