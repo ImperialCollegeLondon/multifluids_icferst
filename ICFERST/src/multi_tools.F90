@@ -917,14 +917,18 @@ END subroutine RotationMatrix
     !> @brief: This subroutine uses python run string to run the python_scalar_diagnostic to read a field
     !> the only difference with the normal approach is that here the Dummy field is used and the returned field is an array.
     !> IMPORTANT: state is used here, NOT packed_state
-    subroutine compute_python_scalar_field(state, iphase, option_path_python, scalar_result)
+    !> It can be used for a given array, scalar_result, scalar fields, vector fields or tensor fields, but only one at a time
+    subroutine multi_compute_python_field(state, iphase, option_path_python, scalar_result, sfield, vfield, tfield)
       implicit none
       type( state_type ), dimension(:), intent( inout ) :: state
       integer, intent(in) :: iphase
       character( len = * ), intent(in) :: option_path_python
-      real, dimension(:), intent(inout) :: scalar_result
+      real, dimension(:), intent(inout), optional :: scalar_result
+      type (scalar_field), intent(inout), optional :: sfield
+      type (vector_field), intent(inout), optional :: vfield
+      type (tensor_field), intent(inout), optional :: tfield
       !Local variables
-      type (scalar_field), pointer :: sfield
+      type (scalar_field), pointer :: s_field
       character( len = python_func_len ) :: pycode
       character( len = option_path_len ) :: buffer
       real :: dt, current_time
@@ -935,18 +939,24 @@ END subroutine RotationMatrix
          FLAbort("Python eos requires NumPy, which cannot be located.")
 #endif
 
-      if (.not.have_option("/material_phase["// int2str( iphase - 1)//"]/scalar_field::Dummy")) then
-          ewrite(0, *) "ERROR: Trying to compute a python scalar_field without enabling the Dummy field in the corresponding phase."
-        stop 657483
-      end if
       call python_reset()
-      ! call get_option(trim(option_path_python) // "/algorithm::scalar_python_diagnostic/material_phase_support/", buffer)
-      
       call python_add_state( state(iphase) )
-      sfield => extract_scalar_field(state(iphase), "Dummy");
-      !Impose initially the given value
-      sfield%val = scalar_result
-      call python_run_string("field = state.scalar_fields['Dummy']")
+
+      !Depending on the input field we define field in a different way
+      if (present(scalar_result)) then 
+        if (.not.have_option("/material_phase["// int2str( iphase - 1)//"]/scalar_field::Dummy")) then
+            ewrite(0, *) "ERROR: Trying to compute a python scalar_field without enabling the Dummy field in the corresponding phase."
+          stop 657483
+        end if
+        s_field => extract_scalar_field(state(iphase), "Dummy");
+        !Impose initially the given value
+        s_field%val = scalar_result
+        call python_run_string("field = state.scalar_fields['Dummy']")
+      end if     
+      if (present(sfield)) call python_run_string("field = state.scalar_fields['"//trim(sfield%name)//"']")
+      if (present(vfield)) call python_run_string("field = state.vector_fields['"//trim(vfield%name)//"']")
+      if (present(tfield)) call python_run_string("field = state.tensor_fields['"//trim(tfield%name)//"']")
+
       call get_option("/timestepping/current_time", current_time)
       write(buffer,*) current_time
       call python_run_string("time="//trim(buffer))
@@ -957,9 +967,10 @@ END subroutine RotationMatrix
       call get_option( trim( option_path_python ) // '/algorithm', pycode )
       ! Run the code
       call python_run_string( trim( pycode ) )
-      scalar_result = sfield%val
+
+      if (present(scalar_result)) scalar_result = s_field%val
       call python_reset()
-    end subroutine
+    end subroutine multi_compute_python_field
 
 
     !---------------------------------------------------------------------------

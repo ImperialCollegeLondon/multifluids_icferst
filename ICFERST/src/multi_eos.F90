@@ -564,7 +564,7 @@ contains
             density => extract_scalar_field( state( iphase ), 'Density', stat )
             rho = density % val
             !Obtain density from the python code
-            call compute_python_scalar_field(state, iphase, trim( option_path_python ), Rho)
+            call multi_compute_python_field(state, iphase, trim( option_path_python ), Rho)
             ! Back up pressure before we start perturbing stuff...
             density % val = Rho
             if (has_boussinesq_aprox ) then
@@ -577,9 +577,9 @@ contains
               ! redefine p as p+pert and p-pert and then run python state again to get dRho / d P...
               perturbation_pressure = 1.e-5
               pressure % val(1,1,:) = pressure_back_up + perturbation_pressure; RhoPlus = Rho
-              call compute_python_scalar_field(state, iphase, trim( option_path_python ), RhoPlus)
+              call multi_compute_python_field(state, iphase, trim( option_path_python ), RhoPlus)
               pressure % val(1,1,:) = pressure_back_up - perturbation_pressure; RhoMinus = Rho
-              call compute_python_scalar_field(state, iphase, trim( option_path_python ), RhoMinus)
+              call multi_compute_python_field(state, iphase, trim( option_path_python ), RhoMinus)
               ! derivative
               dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
 
@@ -815,11 +815,11 @@ contains
         option_path_python = "/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
         "::Viscosity/diagnostic/algorithm::tensor_python_diagnostic"
           if (have_option(trim(option_path_python)))then 
-            call compute_python_scalar_field(state, iphase, trim( option_path_python ), viscosities(iphase,:))
             state_viscosity => extract_tensor_field( state( iphase ), 'Viscosity' )
+            call multi_compute_python_field(state, iphase, trim( option_path_python ), tfield = state_viscosity)
             !Copy into state
             do i = 1, Mdims%cv_nonods 
-              state_viscosity%val(:,:,i) = viscosities(iphase,i)
+              viscosities(iphase,i) = state_viscosity%val(1,1,i)
             end do
           else
             call set_viscosity(nphase, Mdims, state, viscosities)
