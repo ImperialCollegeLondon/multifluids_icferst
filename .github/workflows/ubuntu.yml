@@ -9,6 +9,7 @@ on:
       - linfeng_dev
       - geraldine_dev
       - pablo_dev2
+      - phreeqc_link
 
 jobs:
 

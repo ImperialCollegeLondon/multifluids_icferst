@@ -1054,4 +1054,18 @@ version and using & profiling, please configure WITHOUT 'petscdebug'"
 
     end subroutine petsc_logging
 
+      !> @brief: Returns true if the input name is a PassievTracer type, Species, Concentration or any other reserved work 
+      !> This function is used to easily identify passive Tracers that may have diffusion, sources/sinks, dispersion, etc.
+    logical function is_Tracer_field(input_name, ignore_concentration) 
+        implicit none 
+        character( len = * ), intent( in ) :: input_name
+        logical, optional, INTENT(IN) :: ignore_concentration
+
+        is_Tracer_field = input_name(1:13)=="PassiveTracer" .or. &
+                          input_name(1:7) =="Species"
+        !For checking convergence, concentration is a special field so we may want to diferenciate it
+        if (present_and_true(ignore_concentration)) return
+
+        is_Tracer_field = is_Tracer_field .or. trim(input_name)=="Concentration"
+    end function is_Tracer_field
 end module multi_tools
