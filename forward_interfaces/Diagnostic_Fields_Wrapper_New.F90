@@ -41,13 +41,12 @@ module diagnostic_fields_wrapper_new
   public :: calculate_diagnostic_variables, calculate_diagnostic_variable, calculate_diagnostic_variable_dep
 
   interface calculate_diagnostic_variables_ext
-    subroutine calculate_diagnostic_variables_multiple(states, states_size, exclude_nonrecalculated, exclude_interpolated)    
+    subroutine calculate_diagnostic_variables_multiple(states, states_size, exclude_nonrecalculated)    
       use state_module
       implicit none
       integer, intent(in) :: states_size    
       type(state_type), dimension(states_size), intent(inout) :: states
       logical, intent(in) :: exclude_nonrecalculated
-      logical, intent(in), optional :: exclude_interpolated
     end subroutine calculate_diagnostic_variables_multiple
   end interface calculate_diagnostic_variables_ext
   
@@ -165,12 +164,11 @@ module diagnostic_fields_wrapper_new
 
 contains
 
-  subroutine calculate_diagnostic_variables(states, exclude_nonrecalculated, exclude_interpolated)
+  subroutine calculate_diagnostic_variables(states, exclude_nonrecalculated)
     type(state_type), dimension(:), intent(inout) :: states
-    logical, optional, intent(in) :: exclude_nonrecalculated, exclude_interpolated
+    logical, optional, intent(in) :: exclude_nonrecalculated
     
-    call calculate_diagnostic_variables_ext(states, size(states), present_and_true(exclude_nonrecalculated),&
-                                            present_and_true(exclude_interpolated))
+    call calculate_diagnostic_variables_ext(states, size(states), present_and_true(exclude_nonrecalculated))
     
   end subroutine calculate_diagnostic_variables
 

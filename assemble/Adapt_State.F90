@@ -1065,8 +1065,8 @@ contains
       call copy_to_stored_values(states,"Iterated")
       call relax_to_nonlinear(states)
 
-      call calculate_diagnostic_variables(states)!Calculates default diagnostic fields
-      call calculate_diagnostic_variables_new(states, exclude_interpolated = .true.)!For python fields etc (I think)
+      call calculate_diagnostic_variables(states)
+      call calculate_diagnostic_variables_new(states)
 
       call enforce_discrete_properties(states)
       if(have_option("/timestepping/adaptive_timestep/at_first_timestep")) then

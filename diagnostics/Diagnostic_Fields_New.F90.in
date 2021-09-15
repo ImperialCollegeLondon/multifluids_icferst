@@ -284,11 +284,11 @@ contains
     
   end subroutine check_diagnostic_dependencies
 
-  subroutine calculate_diagnostic_variables(states, exclude_nonrecalculated, exclude_interpolated)
+  subroutine calculate_diagnostic_variables(states, exclude_nonrecalculated)
     !!< Calculate diagnostic fields
   
     type(state_type), dimension(:), intent(inout) :: states
-    logical, intent(in), optional :: exclude_nonrecalculated, exclude_interpolated
+    logical, intent(in), optional :: exclude_nonrecalculated
     
     integer :: i, j
     type(scalar_field), pointer :: s_field
@@ -308,13 +308,7 @@ contains
         if(.not. recalculate_diagnostic_variable(s_field, exclude_nonrecalculated = exclude_nonrecalculated)) cycle
         ! and whether this field has already been calculated (as a dependency)
         if(has_scalar_field(calculated_states(i), trim(s_field%name))) cycle
-        ! and if the field is being interpolated 
-        if (present_and_true(exclude_interpolated)) then 
-          if (have_option(trim(s_field%option_path) // "/diagnostic/galerkin_projection") .or. &
-          have_option(trim(s_field%option_path) // "/diagnostic/consistent_interpolation") .or. &
-          have_option(trim(s_field%option_path) // "/diagnostic/CVgalerkin_interpolation") .or. &
-          have_option(trim(s_field%option_path) // "/diagnostic/grandy_interpolation")) cycle
-        end if   
+       
         ! Calculate dependencies
         call calculate_dependencies(states, i, s_field, &
           & dep_states_mask = calculated_states, exclude_nonrecalculated = exclude_nonrecalculated)
@@ -421,7 +415,7 @@ contains
     
     recalculate = .not. present_and_true(exclude_nonrecalculated) &
       & .or. .not. do_not_recalculate(path)
-
+  
   end function recalculate_diagnostic_variable_path
   
   recursive subroutine calculate_dependencies_scalar(states, state_index, s_field, dep_states_mask, exclude_nonrecalculated)
