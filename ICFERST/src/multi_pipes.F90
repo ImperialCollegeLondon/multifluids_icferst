@@ -773,11 +773,6 @@ contains
                   ! Prepare aid variable NMX_ALL to improve the speed of the calculations
                   suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
                   IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS on the boundary...
-                    IF (U_P0DG) THEN
-                      IF ( WIC_U_BC_ALL_NODS( 2, JCV_NOD ) /= WIC_U_BC_DIRICHLET ) THEN
-                        direction_NORM = + direction
-                      END IF
-                    END IF
                       DO IDIM = 1, Mdims%ndim
                           CT_CON(IDIM,:) = LIMDT * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI / DEN_ALL%val(1,:,JCV_NOD)
                       END DO
@@ -1811,11 +1806,6 @@ contains
                         direction_norm = +direction ! for the b.c it must be positive at the top of element
                     END IF
                     IF ( JCV_NOD /= 0 ) THEN
-                      IF (U_P0DG) THEN
-                        IF ( WIC_P_BC_ALL_NODS( 2, JCV_NOD ) == WIC_P_BC_DIRICHLET ) THEN
-                          direction_NORM = + direction
-                        END IF
-                      END IF
                         ! Add in Mmat%C matrix contribution: (DG velocities)
                         ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
                         ! over the element of the pressure like source term.
@@ -1828,13 +1818,17 @@ contains
                         suf_area = PI * ( (0.5*PIPE_DIAM_END)**2. ) * ELE_ANGLE/ ( 2.0 * PI )
                         NMX_ALL( : ) = direction_norm* suf_area
                         LOC_U_RHS_U_ILOC = 0.0
-                        DO IPHASE = 1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
-                            DO IDIM = 1, Mdims%ndim
-                                Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) + NMX_ALL( IDIM )
-                                LOC_U_RHS_U_ILOC( IDIM, IPHASE) =  LOC_U_RHS_U_ILOC( IDIM, IPHASE ) &
-                                    - NMX_ALL( IDIM ) * SUF_P_BC_ALL_NODS( IPRES,JCV_NOD )
-                            END DO
-                        END DO
+                        !For P0DG make an exception and impose pressure BCS strongly - see impose_strong_bcs_wells in multi_dyncore for
+                        !rest of implementation. For P0DG, we don't do anything with the RHS here.
+                        if (.not. is_P0DGP1) then
+                          DO IPHASE = 1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
+                              DO IDIM = 1, Mdims%ndim
+                                  Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) + NMX_ALL( IDIM )
+                                  LOC_U_RHS_U_ILOC( IDIM, IPHASE) =  LOC_U_RHS_U_ILOC( IDIM, IPHASE ) &
+                                      - NMX_ALL( IDIM ) * SUF_P_BC_ALL_NODS( IPRES,JCV_NOD )
+                              END DO
+                          END DO
+                        end if
                         Mmat%U_RHS( :, Mdims%n_in_pres+1:Mdims%nphase, JU_NOD ) = Mmat%U_RHS( :, Mdims%n_in_pres+1:Mdims%nphase, JU_NOD ) + LOC_U_RHS_U_ILOC( :, Mdims%n_in_pres+1:Mdims%nphase)
                     END IF
                 END DO ! DO IPRES = 2, Mdims%npres
