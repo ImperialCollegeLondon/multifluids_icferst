@@ -3832,6 +3832,7 @@ element Density{(
                      ## The "Dummy" diagnotic field on the pressure mesh is required for this option
                      element python_state{(
                        scalar_python_diagnostic_algorithm,
+                       ## Use the boussinesq approximation. Useful for small variations of density.
                         element Boussinesq_approximation { (
                         ## For porous media a reference density is necessary when using the Boussinesq approximation
                         element reference_density{real}?) }?)

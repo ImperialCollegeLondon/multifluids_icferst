@@ -4642,6 +4642,7 @@ For porous media only the formulate, including linear pressure, with a reference
           <ref name="scalar_python_diagnostic_algorithm"/>
           <optional>
             <element name="Boussinesq_approximation">
+              <a:documentation>Use the boussinesq approximation. Useful for small variations of density.</a:documentation>
               <optional>
                 <element name="reference_density">
                   <a:documentation>For porous media a reference density is necessary when using the Boussinesq approximation</a:documentation>
