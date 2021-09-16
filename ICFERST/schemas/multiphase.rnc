@@ -1048,6 +1048,21 @@ start =
                       )
                  }*
              }?,
+           ## Activates phreeqc coupling
+           element Phreeqc_coupling{(
+           ## Name of Phreeqc input file. Must be in same folder as where
+           ## simulation is run or absolute path.
+           element simulation_name {
+              anystring
+           },
+           ## Name of Phreeqc database file. Default is considering, in the folder
+           ## where simulation is run: phreeqc.dat.in
+           element database_name {
+               anystring
+           }?,
+           ## Place holder for 2 way coupling between phreeqc and IC-FERST.
+           element two_way_coupling {empty}?
+           )}?,
           ## Activates the SelfPotential solver. (S.I. Volts)
           ##
           ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase,
@@ -2678,7 +2693,6 @@ scalar_field_choice =
             )
          }|
          ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
-         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
          element scalar_field {
             attribute rank { "0" },
             attribute name { "PassiveTracer" },
@@ -2733,13 +2747,16 @@ scalar_field_choice =
                }
             )
          }|
-         ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
-         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
+         ## Species. This scalar field is devoted for the PHREEQC coupling. Components being used in
+         ## Phreeqc need to be defined using this naming convention in ICFERST. For example if you have Oxygen and Nitrogen your components
+         ## in ICFERST should be named: Species_O and Species_N. <b>You MUST use _ to separate Species and O, for example.</b>
+         ##
+         ## <b>You can add as many passive Species as you want as long as the name starts with Species</b>
          ##
          ## This is just an example of how it works.
          element scalar_field {
             attribute rank { "0" },
-            attribute name { "PassiveTracer_Example2" },
+            attribute name { "Species" },
             (
                element prognostic {
                   pressure_mesh_choice,
