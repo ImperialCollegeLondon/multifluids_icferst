@@ -1820,7 +1820,14 @@ contains
                         LOC_U_RHS_U_ILOC = 0.0
                         !For P0DG make an exception and impose pressure BCS strongly - see impose_strong_bcs_wells in multi_dyncore for
                         !rest of implementation. For P0DG, we don't do anything with the RHS here.
-                        if (.not. is_P0DGP1) then
+                        if (is_P0DGP1) then
+                            DO IPHASE = 1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
+                                DO IDIM = 1, Mdims%ndim!We need to zero this so the continuity equation is correctly imposed, 
+                                    !although still something is missing...
+                                    Mmat%C( IDIM, IPHASE, COUNT ) = 0.
+                                END DO
+                            END DO
+                        else
                           DO IPHASE = 1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
                               DO IDIM = 1, Mdims%ndim
                                   Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) + NMX_ALL( IDIM )
