@@ -752,11 +752,11 @@ contains
                 !Do not change the ordering of these if, this one has to occur after calling ENTHALPY_ASSEM_SOLVE and Concentration_assem_solve
                 !The ordering is important to be able to compute the Composition_magma_source term of mass exchange between the concentration between phases
                 IF (is_magma) then
-                  !Backup of the composition and melt fraction to be used to compute the phase change source term
+                !   Backup of the composition and melt fraction to be used to compute the phase change source term
                   tracer_field=>extract_tensor_field(packed_state,"PackedConcentration")
                   allocate(Compostion_temp(Mdims%cv_nonods), melt_temp(Mdims%cv_nonods))
                   Compostion_temp= tracer_field%val(1,2,:); melt_temp = saturation_field%val(1,2,:)! second phase is the melt!
-
+                  
                   !Here we  Calculate melt fraction from phase diagram
                   call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
                   !we impose backtrack_or_convergence = 1 to ensure that the convergence check works

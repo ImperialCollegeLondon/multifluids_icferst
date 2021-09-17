@@ -455,7 +455,6 @@ contains
     integer:: c_phi_size ! length of c_phi_series
     real, dimension(4):: test
     c_phi_size=size(c_phi_series)
-    ! print *, 'phi2/c', phi2_over_c(saturation%val(1,2, 10))
     DO ELE = 1, Mdims%totele
       DO CV_ILOC = 1, Mdims%cv_nloc
         mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
@@ -589,7 +588,7 @@ contains
 
              !Introduce perturbation, positive for the increasing and negative for decreasing phase
              !Make sure that the perturbation is between bounds
-             PERT = 0.0001; allocate(Max_sat(Mdims%nphase), SATURA2(1, Mdims%nphase, Mdims%cv_nonods))
+             PERT = 0.00000; allocate(Max_sat(Mdims%nphase), SATURA2(1, Mdims%nphase, Mdims%cv_nonods))
              OldSatura=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
              do ele = 1, Mdims%totele
                  do cv_iloc = 1, Mdims%cv_nloc
@@ -621,7 +620,6 @@ contains
                  END DO
                end do
              END DO
-
              deallocate( satura2, Max_sat, Magma_absorp2)
 
          end subroutine Calculate_PorousMagma_adv_terms

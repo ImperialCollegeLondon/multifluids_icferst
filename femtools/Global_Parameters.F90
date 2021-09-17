@@ -175,7 +175,7 @@ module global_parameters
   logical :: is_porous_initialisation = .false.
   !! Multiphase prototype, magma simulator
   logical :: is_magma = .false.
-  !! To only assemble and solve the first phase of a multiphase model in the momentum equation, used for magma  
+  !! To only assemble and solve the first phase of a multiphase model in the momentum equation, used for magma
   logical :: compute_compaction = .false.
   !! Multiphase prototype, poro-elasticity simulator
   logical :: is_poroelasticity = .false.

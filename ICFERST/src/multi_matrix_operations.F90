@@ -839,7 +839,7 @@ contains
                 aux = aux + PIVIT_MAT(k, k, 1)
             end do
             !If all the information is contained in the diagonals, then the mass matrix is lumped
-            lumped_matrix = ((sum(abs(PIVIT_MAT(:, :, 1))) - aux)/sum(abs(PIVIT_MAT(:, :, 1))) < 1d-8)
+            lumped_matrix = ((sum(abs(PIVIT_MAT(:, :, 1))) - abs(aux))/sum(abs(PIVIT_MAT(:, :, 1))) < 1d-8)
         end if
 
         if (lumped_matrix) then

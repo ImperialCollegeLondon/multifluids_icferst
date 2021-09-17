@@ -1418,6 +1418,7 @@ contains
                               ELSE WHERE
                                   INCOME_J = 1.
                               END WHERE
+
                               !Calculate the courant number for porous media
                               !SPRINT_TO_DO Currently if temperature/Concentration multiphase we are doing this more than once...
                               if (present(Courant_number) .and. is_porous_media.and. .not. on_domain_boundary) then
@@ -1759,7 +1760,7 @@ contains
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                               ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * (LOC_T2_J(2) - LOC_T2_I(2))&
                                         !Advection term solid
-                                            +  NDOTQNEW(1) * (1 - LIMT2(2)**2)*0)
+                                            +  NDOTQNEW(1) * (1 - LIMT2(2)**2))
                                         !Liquid phase
                                         LOC_CV_RHS_I(2) = LOC_CV_RHS_I(2) + &
                                             Latent_heat*SdevFuns%DETWEI(GI) * LIMT2(2) * &   ! * density%val(1, 2, CV_NODI)
@@ -1794,7 +1795,7 @@ contains
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                              ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * (LOC_T2_I(2) - LOC_T2_J(2))&
                                         !Advection term solid
-                                            -  (1. - LIMT2(2)**2) * NDOTQNEW(1)*0)
+                                            -  (1. - LIMT2(2)**2) * NDOTQNEW(1))
                                         !Liquid phase
                                         LOC_CV_RHS_J(2) = LOC_CV_RHS_J(2) + &
                                             Latent_heat *SdevFuns%DETWEI(GI) * LIMT2(2) * & ! * density%val(1, 2, CV_NODJ)
@@ -3032,7 +3033,7 @@ end if
                 if (is_magma) then !We add the solid velocity
                   do iv_iphase = 2,final_phase
                     UDGI_ALL(:, iv_iphase) =  UDGI_ALL(:, iv_iphase) + UDGI_ALL(:, 1)
-                    UDGI2_ALL(:, iv_iphase) = UDGI2_ALL(:, iv_iphase) + UDGI2_ALL(:, 1)
+                    UDGI2_ALL(:, iv_iphase) = UDGI2_ALL(:, iv_iphase) + UDGI2_ALL(:, 1)                    
                   end do
                 end if
                 !Get the projected velocity
