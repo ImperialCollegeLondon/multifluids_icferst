@@ -1760,14 +1760,14 @@ contains
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                               ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * (LOC_T2_J(2) - LOC_T2_I(2))&
                                         !Advection term solid
-                                            +  NDOTQNEW(1) * (1 - LIMT2(2)**2))
+                                            +  NDOTQNEW(1) * (1 + LIMT2(2)))
                                         !Liquid phase
                                         LOC_CV_RHS_I(2) = LOC_CV_RHS_I(2) + &
                                             Latent_heat*SdevFuns%DETWEI(GI) * LIMT2(2) * &   ! * density%val(1, 2, CV_NODI)
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                               ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * (LOC_T2_J(2) - LOC_T2_I(2))&
                                         !Advection term fluid
-                                            +  NDOTQNEW(2) * LIMT2(2)**2)
+                                            +  NDOTQNEW(2) * LIMT2(2))
                                       end if
 
                                   if(integrate_other_side_and_not_boundary) then
@@ -1795,14 +1795,14 @@ contains
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                              ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * (LOC_T2_I(2) - LOC_T2_J(2))&
                                         !Advection term solid
-                                            -  (1. - LIMT2(2)**2) * NDOTQNEW(1))
+                                            -  (1. + LIMT2(2)) * NDOTQNEW(1))
                                         !Liquid phase
                                         LOC_CV_RHS_J(2) = LOC_CV_RHS_J(2) + &
                                             Latent_heat *SdevFuns%DETWEI(GI) * LIMT2(2) * & ! * density%val(1, 2, CV_NODJ)
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                              ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * (LOC_T2_I(2) - LOC_T2_J(2)) &
                                         !Advection term fluid
-                                            -   NDOTQNEW(2) * LIMT2(2)**2)
+                                            -   NDOTQNEW(2) * LIMT2(2))
                                       end if
                                   endif
                                   IF ( GET_GTHETA ) THEN
