@@ -35,6 +35,7 @@ module multi_pipes
     use multi_tools
     use multi_data_types
     use write_state_module, only: write_state
+    use boundary_conditions
     implicit none
 #include "petsc_legacy.h"
     private
@@ -1820,14 +1821,7 @@ contains
                         LOC_U_RHS_U_ILOC = 0.0
                         !For P0DG make an exception and impose pressure BCS strongly - see impose_strong_bcs_wells in multi_dyncore for
                         !rest of implementation. For P0DG, we don't do anything with the RHS here.
-                        if (is_P0DGP1) then
-                            DO IPHASE = 1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
-                                DO IDIM = 1, Mdims%ndim!We need to zero this so the continuity equation is correctly imposed, 
-                                    !although still something is missing...
-                                    Mmat%C( IDIM, IPHASE, COUNT ) = 0.
-                                END DO
-                            END DO
-                        else
+                        if (.not. P0DG_Well_Strong_BCs) then
                           DO IPHASE = 1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
                               DO IDIM = 1, Mdims%ndim
                                   Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) + NMX_ALL( IDIM )
@@ -2749,38 +2743,105 @@ contains
 
     end subroutine retrieve_pipes_coords
 
-    subroutine initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
+    subroutine initialize_pipes_package_and_gamma(state, packed_state, pipes_aux, Mdims, Mspars, ndgln)
         implicit none
         type(state_type), dimension(:), intent(in) :: state
+        type(state_type), intent(in) :: packed_state
         type (multi_pipe_package), intent(inout) :: pipes_aux
         type (multi_dimensions), intent(in)  ::Mdims
         type (multi_sparsities), intent(in) :: Mspars
+        type(multi_ndgln), intent(in) :: ndgln
          !Local variables
-        type( scalar_field ), pointer :: sfield
+        type( scalar_field ), pointer :: sfield, PIPE_Diameter
+        INTEGER, PARAMETER :: WIC_P_BC_DIRICHLET = 1
+        logical, save :: CheckGamma = .false.
         !Variables to initialize pipes_aux
-        integer :: ipres, iphase, jpres, jphase, iphase_real, jphase_real
+        integer :: ipres, iphase, jpres, jphase, iphase_real, jphase_real, cv_nod, CV_SILOC, SELE
+        INTEGER, DIMENSION ( :,:,: ), allocatable :: WIC_P_BC_ALL
+        type(tensor_field) :: pressure_BCs
+        type(tensor_field), pointer :: pressure
+        logical, save :: ShowMsg = .true.
         !Initialize memory, despite we call it, if it is already allocated no memory is re-allocated
         call allocate_multi_pipe_package(pipes_aux, Mdims, Mspars)
 
         !Initialize gamma
         sfield=>extract_scalar_field(state(1),"Gamma",ipres)
+        
         pipes_aux%GAMMA_PRES_ABS = 0.0
         do ipres = 1, Mdims%npres
-           do iphase = 1+(ipres-1)*Mdims%n_in_pres, ipres*Mdims%n_in_pres
-              do jpres = 1, Mdims%npres
-                 if ( ipres /= jpres ) then
-                    do jphase = 1+(jpres-1)*Mdims%n_in_pres, jpres*Mdims%n_in_pres
-                       iphase_real = iphase-(ipres-1)*Mdims%n_in_pres
-                       jphase_real = jphase-(jpres-1)*Mdims%n_in_pres
-                       if ( iphase_real == jphase_real ) then
-                          call assign_val(pipes_aux%GAMMA_PRES_ABS(IPHASE,JPHASE,:),sfield%val)
-                       end if
-                    end do
-                 end if
-              end do
-           end do
+            do iphase = 1+(ipres-1)*Mdims%n_in_pres, ipres*Mdims%n_in_pres
+                do jpres = 1, Mdims%npres
+                    if ( ipres /= jpres ) then
+                        do jphase = 1+(jpres-1)*Mdims%n_in_pres, jpres*Mdims%n_in_pres
+                            iphase_real = iphase-(ipres-1)*Mdims%n_in_pres
+                            jphase_real = jphase-(jpres-1)*Mdims%n_in_pres
+                            if ( iphase_real == jphase_real ) then
+                                call assign_val(pipes_aux%GAMMA_PRES_ABS(IPHASE,JPHASE,:),sfield%val)
+                            end if
+                        end do
+                    end if
+                end do
+            end do
         end do
+
+        P0DG_Well_Strong_BCs = have_option("/numerical_methods/Strong_BCs_for_P0DG_wells")
+        !Now ensure that gamma is zero at the pressure BCs so the strong BCs work properly (Only P0DGP1)
+        if (is_P0DGP1) then 
+            !Retrieve pressure
+            pressure=>extract_tensor_field(packed_state,"PackedFEPressure",ipres)
+            allocate(WIC_P_BC_ALL(1, Mdims%npres, surface_element_count(pressure)))
+            !Retrieve diameter
+            PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
+            call get_entire_boundary_condition(pressure, ['weakdirichlet','freesurface  '],&
+                                                pressure_BCs,WIC_P_BC_ALL)
+            
+            first_sele_loop: DO SELE = 1, Mdims%stotel
+                DO IPRES = 2, Mdims%npres
+                    !Find element where we have a pressure BC defined
+                    if (WIC_P_BC_ALL(1, IPRES, SELE ) == WIC_P_BC_DIRICHLET) then
+                        DO CV_SILOC = 1, Mdims%cv_snloc
+                            CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
+                            !If pipe diameter = 0, no changes made
+                            if (PIPE_Diameter%val(cv_nod) <= 1e-8) cycle
+                            !If gamma =0 and pressure bc and P0DG then we need to impose strong BCs
+                            if (maxval(abs(pipes_aux%GAMMA_PRES_ABS(:,:,cv_nod))) < 1e-8) then 
+                              if(getprocno() == 1 .and. ShowMsg ) then
+                                ewrite(0,*) "MESSAGE: Using strong BCs for wells. Well nodes at the boundary closed to the reservoir, i.e. imposed gamma = 0. at the well BCs."
+                              end if
+                              ShowMsg = .false.
+                              P0DG_Well_Strong_BCs = .true.
+                              exit first_sele_loop
+                            end if
+                        end do 
+                    end if 
+                end do 
+            end do first_sele_loop
+            
+            if (P0DG_Well_Strong_BCs) then 
+              !Now we impose gamma zero for all the wells since we have only a boolean controlling this
+              DO SELE = 1, Mdims%stotel
+                DO IPRES = 2, Mdims%npres
+                    !Find element where we have a pressure BC defined
+                    if (WIC_P_BC_ALL(1, IPRES, SELE ) == WIC_P_BC_DIRICHLET) then
+                        DO CV_SILOC = 1, Mdims%cv_snloc
+                            CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
+                            !If pipe diameter = 0, no changes made
+                            if (PIPE_Diameter%val(cv_nod) <= 1e-8) cycle
+                            pipes_aux%GAMMA_PRES_ABS(:,:,cv_nod) = 0.
+                              !To show in paraview if possible
+                            if (size(sfield%val)> 2) sfield%val(cv_nod) = 0.
+                          end do 
+                      end if 
+                  end do 
+              end do
+            end if
+
+
+            deallocate(WIC_P_BC_ALL)
+            call deallocate(pressure_BCs)
+        end if
         pipes_aux%GAMMA_PRES_ABS_NANO = pipes_aux%GAMMA_PRES_ABS
+
     end subroutine initialize_pipes_package_and_gamma
 
 end module multi_pipes

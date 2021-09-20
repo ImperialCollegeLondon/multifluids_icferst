@@ -461,7 +461,6 @@ contains
         if (Mdims%npres > 1) then
            !Retrieve the elements with pipes and the corresponding coordinates
            call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
-           ! call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
         end if
 
         !HH Initialize all the magma simulation related coefficients
@@ -494,7 +493,7 @@ contains
 
             ! initialise the porous media model if needed. Simulation will stop once gravity capillary equilibration is reached
             !Prepapre the pipes
-            if (Mdims%npres > 1) call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)!Re-read pipe properties such as gamma
+            if (Mdims%npres > 1) call initialize_pipes_package_and_gamma(state, packed_state, pipes_aux, Mdims, Mspars, ndgln)!Re-read pipe properties such as gamma
             call initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
 
             if (exit_initialise_porous_media) exit Loop_Time
@@ -1384,7 +1383,7 @@ contains
                     if (Mdims%npres > 1) then
                         call deallocate_multi_pipe_package(pipes_aux)
                         call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
-                        call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
+                        call initialize_pipes_package_and_gamma(state, packed_state, pipes_aux, Mdims, Mspars, ndgln)
                     end if
                     if (.not. have_option("/numerical_methods/do_not_bound_after_adapt")) then
                       !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes

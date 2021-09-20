@@ -1475,6 +1475,13 @@ This option is useful if your field is suddenly changing after adapting the mesh
             </element>
           </optional>
           <optional>
+            <element name="Strong_BCs_for_P0DG_wells">
+              <a:documentation>Impose strong BCs for wells, only on the pressure BCs. Also imposes gamma to be zero at those nodes.
+Note that this is already imposed for wells when using P0DGP1 and gamma = 0. at one pressure BC.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
             <element name="use_ENO_scheme">
               <a:documentation>Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods</a:documentation>
               <empty/>

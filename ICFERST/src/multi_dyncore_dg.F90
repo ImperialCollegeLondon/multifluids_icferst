@@ -2307,12 +2307,11 @@ end if
         call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
         rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
         call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-        !Call impose strong BCs must be here before the rescaling and after include wells and compressibility - only done if using P0DG. Weak application of pressure BCs is not possible
-        !And leads to zero in CMC matrix. Strong BCs are required.
-        if (is_P0DGP1 .and. Mdims%npres>1) then
-          call impose_strong_bcs_wells(state,Mdims,Mmat, ndgln, CMC_petsc,pressure,rhs_p%val)
-        end if
-  !      call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
+        !Call impose strong BCs must be here before the rescaling and after include wells and 
+        !compressibility - only done if using P0DG and gamma is zero at the BC see 
+        !subroutine initialize_pipes_package_and_gamma for more information
+        if (P0DG_Well_Strong_BCs) call impose_strong_bcs_wells(state,Mdims,Mmat, ndgln, CMC_petsc,pressure,rhs_p%val)
+! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
         !Re-scale system so we can deal with SI units of permeability
         if (is_porous_media) then
           call scale(cmc_petsc, 1.0/rescaleVal)
@@ -9151,8 +9150,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       INTEGER :: SELE, IPRES, CV_SILOC, CV_NOD, i_indx, ierr
       type(tensor_field) :: pressure_BCs
       type(scalar_field), pointer :: pipe_diameter
-      INTEGER, DIMENSION(Mdims%npres, Mdims%cv_nonods) :: WIC_P_BC_ALL_NODS
-      REAL, DIMENSION(Mdims%npres, Mdims%cv_nonods) ::SUF_P_BC_ALL_NODS, RVEC_SUM
 
       call get_entire_boundary_condition(pressure,&
           ['weakdirichlet','freesurface  '],&
@@ -9160,16 +9157,15 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
 
       !Only for wells
-      if (is_P0DGP1) then
-        CMC_petsc%is_assembled=.false.
-        call assemble( CMC_petsc )
-        DO SELE = 1, Mdims%stotel
+      CMC_petsc%is_assembled=.false.
+      call assemble( CMC_petsc )
+      DO SELE = 1, Mdims%stotel
           DO IPRES = 2, Mdims%npres
-            !Find element where we have a pressure BC defined
-            if (WIC_P_BC_ALL(1, IPRES, SELE ) == WIC_P_BC_DIRICHLET) then
+          !Find element where we have a pressure BC defined
+          if (WIC_P_BC_ALL(1, IPRES, SELE ) == WIC_P_BC_DIRICHLET) then
               !If no flip required or positive pressure
               IF (Mmat%WIC_FLIP_P_VEL_BCS(1,IPRES,SELE) == 0 .or. Mmat%WIC_FLIP_P_VEL_BCS(1,IPRES,SELE) == 10) THEN
-                DO CV_SILOC = 1, Mdims%cv_snloc
+              DO CV_SILOC = 1, Mdims%cv_snloc
                   CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
                   !If pipe diameter = 0, no changes made
                   if (PIPE_Diameter%val(cv_nod) <= 1e-8) cycle
@@ -9177,16 +9173,15 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                   call MatZeroRows(CMC_petsc%M, 1, (/i_indx/), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
                   !Impose P_BC in the right hand side
                   rhs_p(ipres,cv_nod) = pressure_BCs%val(1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC ) - &
-                    pressure%val(1,IPRES, CV_NOD)
-                end do
+                  pressure%val(1,IPRES, CV_NOD)
+              end do
               end if
-            end if
+          end if
           END DO
-        end do
-      end if
+      end do
       !Re-assemble just in case
       CMC_petsc%is_assembled=.false.
       call assemble( CMC_petsc )
-
+      call deallocate( pressure_BCs )
     end subroutine
  end module multiphase_1D_engine

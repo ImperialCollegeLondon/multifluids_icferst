@@ -192,7 +192,8 @@ module global_parameters
   logical :: is_blasting = .false.
   !! Has boussinesq option on
   logical :: has_boussinesq_aprox = .false.
-
+  !! This flag is used to trigger the imposition of strong BCs for P0DG for wells, only necessary if gamma=0 at the BC
+  logical :: P0DG_Well_Strong_BCs = .false.
   !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
   real :: backtrack_or_convergence
   logical :: FPI_have_converged = .false.
