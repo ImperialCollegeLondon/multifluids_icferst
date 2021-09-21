@@ -2103,6 +2103,10 @@ end if
         call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
         rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
         call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+        !Call impose strong BCs must be here before the rescaling and after include wells and
+        !compressibility - only done if using P0DG and gamma is zero at the BC see 
+        !subroutine initialize_pipes_package_and_gamma for more information
+        if (is_P0DGP1 .and. Mdims%npres > 1) call impose_strong_bcs_wells(state, pipes_aux, Mdims, Mmat, ndgln, CMC_petsc,pressure,rhs_p%val) 
         !Re-scale system so we can deal with SI units of permeability
         if (is_porous_media) then
           call scale(cmc_petsc, 1.0/rescaleVal)
@@ -8919,5 +8923,64 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       call deallocate(v_solution)
       call deallocate( Mmat%CV_RHS ); call deallocate( Mmat%petsc_ACV )
     end subroutine generate_and_solve_Laplacian_system
+
+    !> @author Pablo Salinas, Geraldine Regnier
+    !>@brief: In this subroutine, we modify the CMC matrix and the RHS for the pressure to strongly impose the
+    !> pressure boundary conditions for wells ONLY. This is required only when using P0DG-P1
+    !> If not imposing strong pressure BCs and using P0DG-P1, the formulation for weak pressure BCs
+    !> leads to a 0 in the diagonal of the CMC matrix, therefore strong BCs are required.
+    subroutine impose_strong_bcs_wells(state,pipes_aux,Mdims,Mmat, ndgln, CMC_petsc,pressure,rhs_p)
+
+        ! form pressure matrix CMC using a colouring approach
+        type(multi_dimensions), intent(in) :: Mdims
+        type (multi_matrices), intent(in) :: Mmat
+        type( state_type ), dimension(:), intent( in ) :: state
+        type(multi_ndgln), intent(in) :: ndgln
+        type(petsc_csr_matrix), intent(inout)::  CMC_petsc
+        real, dimension (:,:), intent(inout) :: rhs_p
+        type( tensor_field ), intent(in) :: pressure
+        type (multi_pipe_package), intent(in) :: pipes_aux
+        INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
+        INTEGER, PARAMETER :: WIC_P_BC_DIRICHLET = 1
+        ! Local variables
+        INTEGER :: SELE, IPRES, CV_SILOC, CV_NOD, i_indx, ierr
+        type(tensor_field) :: pressure_BCs
+        type(scalar_field), pointer :: pipe_diameter
+  
+        call get_entire_boundary_condition(pressure,&
+            ['weakdirichlet','freesurface  '],&
+            pressure_BCs,WIC_P_BC_ALL)
+        PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
+  
+        !Only for wells
+        CMC_petsc%is_assembled=.false.
+        call assemble( CMC_petsc )
+        DO SELE = 1, Mdims%stotel
+          DO IPRES = 2, Mdims%npres
+            !Find element where we have a pressure BC defined
+            if (WIC_P_BC_ALL(1, IPRES, SELE ) == WIC_P_BC_DIRICHLET) then
+              !If no flip required or positive pressure
+              IF (Mmat%WIC_FLIP_P_VEL_BCS(1,IPRES,SELE) == 0 .or. Mmat%WIC_FLIP_P_VEL_BCS(1,IPRES,SELE) == 10) THEN
+                DO CV_SILOC = 1, Mdims%cv_snloc
+                  CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
+                  !Check if we are in an element that may need strongly imposed BCs
+                  if (.not. pipes_aux%impose_strongBCs(CV_NOD)) cycle
+                  ! !If pipe diameter = 0, no changes made
+                  ! if (PIPE_Diameter%val(cv_nod) <= 1e-8) cycle
+                  i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+                  call MatZeroRows(CMC_petsc%M, 1, (/i_indx/), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
+                  !Impose P_BC in the right hand side
+                  rhs_p(ipres,cv_nod) = pressure_BCs%val(1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC ) - &
+                  pressure%val(1,IPRES, CV_NOD)
+                  end do
+                end if
+            end if
+          END DO
+        end do
+        !Re-assemble just in case
+        CMC_petsc%is_assembled=.false.
+        call assemble( CMC_petsc )
+        call deallocate( pressure_BCs )
+      end subroutine
 
  end module multiphase_1D_engine
