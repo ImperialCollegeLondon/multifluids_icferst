@@ -455,8 +455,8 @@ contains
                     if (.not.have_option("/numerical_methods/porous_output_force_density") .and.&
                     .not.have_option("/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu")) then
                       !For the first phase of magma we want the normal velocity, dot show velocity otherwise
-                      ! if (.not. (is_magma .and. i == 1)) call copy_option("simulation_name", &
-                      !     "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu")
+                      if (.not. (is_magma .and. i == 1)) call copy_option("simulation_name", &
+                          "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu")
                       !For the first phase of magma we dont want to show Darcy velocity
                       if (is_magma .and. i == 1) call copy_option("simulation_name", &
                           "/material_phase["// int2str( i - 1 )//"]/vector_field::DarcyVelocity/prescribed/output/exclude_from_vtu")

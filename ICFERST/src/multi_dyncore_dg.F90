@@ -2309,10 +2309,6 @@ end if
         pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
 ! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 
-        !If solving for compaction, we need to include the
-        !pressure dependant terms of the Schur complement CMC and the corresponding RHS
-        if (compute_compaction) call include_remaining_CTY_terms(CMC_petsc, Mmat%CT_RHS)
-
         !This section is to impose a pressure of zero at some node (when solving for only a gradient of pressure)
         !This is deprecated as the remove_null space method works much better (provided by PETSc)
         call get_option( '/material_phase[0]/scalar_field::Pressure/' // 'prognostic/reference_node', ndpset, default = 0 )
@@ -2324,7 +2320,7 @@ end if
         rhs_p%val = 0.
         call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
         if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
-        rhs_p%val = - rhs_p%val
+        rhs_p%val = - rhs_p%val! + Mmat%CT_RHS%val
         call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
 
         !Re-scale system so we can deal with SI units of permeability
@@ -2348,7 +2344,6 @@ end if
           if ((solve_stokes .or. solve_mom_iteratively)) then
             call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
                                           MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
-          !call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
                 !######################## CORRECTION VELOCITY STEP####################################
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases        
@@ -2378,7 +2373,6 @@ end if
             DEALLOCATE( Mmat%PIVIT_MAT )
             nullify(Mmat%PIVIT_MAT)
         end if
-        if (compute_compaction) call deallocate(Mmat%petsc_ACV)
         !Using associate doesn't seem to be stable enough
         if (((solve_stokes .or. solve_mom_iteratively) &
              .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
@@ -2664,7 +2658,7 @@ end if
         end subroutine mult_inv_Mass_vel_vector
 
         !---------------------------------------------------------------------------
-        !> @author Pablo Salinas
+        !> @author Pablo Salinas, Haiyang Hu
         !> @brief Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not.
         !> For magma only the first phase is imposed here as for Darcy the Mass matrix is generated in ASSEM_FORCE_CTY
         !---------------------------------------------------------------------------
@@ -2962,74 +2956,6 @@ end if
 
       end subroutine compute_DIV_U
 
-      !---------------------------------------------------------------------------
-      !> @author Pablo Salinas
-      !> @brief Include in the Schur complement (CMC matrix) the Laplacian of the pressure and the divergence of the gravity terms that are required
-      !> to form the continuity equation when solvig, for example, for compaction
-      !---------------------------------------------------------------------------
-      subroutine  include_remaining_CTY_terms(CMC_petsc, CT_RHS)
-
-        implicit none
-        type(petsc_csr_matrix), intent(inout)::  CMC_petsc
-        type( vector_field ), intent(inout) :: CT_RHS
-        !Local variables
-        integer :: stat, cv_inod, ele, cv_iloc, mat_nod
-        real, dimension(:, :, :), allocatable :: F_fields, K_fields
-        real, dimension(:,:), allocatable :: lhs_coef
-        real, dimension(:,:,:,:), allocatable :: rhs_coef
-        type( scalar_field ), pointer :: sfield
-        real, dimension(Mdims%ndim) :: g
-        real :: gravity_magnitude, phi
-        type(vector_field), pointer :: gravity_direction
-        real, dimension(Mdims%cv_nonods) :: CV_counter
-        real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
-
-        allocate(F_fields(0, 0, 0), K_fields(0,0,0))
-        allocate(lhs_coef(1, Mdims%cv_nonods), rhs_coef(1, Mdims%ndim, 1, Mdims%cv_nonods))
-
-        sfield => extract_scalar_field( state(1), "PhaseVolumeFraction", stat )
-
-        !For the term multipliying Grad P porosity^2/c !How would this be for more phases??
-        lhs_coef = 0.; CV_counter = 0.
-        DO ELE = 1, Mdims%totele
-          DO CV_ILOC = 1, Mdims%cv_nloc
-            mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
-            cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )!multi_absorp%magma has stored the value of phi/C but we need phi^2/c
-            phi = max((1.0-sfield%val(cv_inod)),1e-5)
-            lhs_coef(1, cv_inod) = lhs_coef(1, cv_inod) + phi/multi_absorp%Magma%val(1, 1, 2, mat_nod)
-            CV_counter(cv_inod) = CV_counter(cv_inod) + 1.0
-          end do
-        end do
-        !Perform average
-        lhs_coef(1,:) = lhs_coef(1,:) / CV_counter
-        !Introduce gravity terms
-        call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
-        rhs_coef = 0.
-        if( stat == 0 ) then
-
-          gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
-            do cv_inod = 1, Mdims%cv_nonods
-              g = node_val( gravity_direction, cv_inod ) * gravity_magnitude
-              do iphase = 2, Mdims%nphase
-                do idim = 1, Mdims%ndim
-                  rhs_coef( 1, idim, 1, cv_inod ) = rhs_coef( 1, idim, 1, cv_inod ) + DEN_ALL2%VAL(1, iphase, cv_inod ) * g( idim ) * lhs_coef(1, cv_inod)
-                end do
-              end do
-            end do
-        end if
-
-        call generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, lhs_coef, &
-          sfield, K_fields, F_fields, rhs_coef, intface_val_type = 100)!intface_val_type normal mean
-        call assemble(Mmat%petsc_ACV); call assemble(CMC_petsc)
-        !Now we perform CMC = CMC + D
-        !call MatAXPY(CMC_petsc%M,1.0,Mmat%petsc_ACV%M, SAME_NONZERO_PATTERN, stat)
-        !We update also the RHS of the continuity equation
-        CT_RHS%val = CT_RHS%val - Mmat%CV_RHS%val*0     ! for use_potential=true, no need to add the divergence of gravity term anyway
-        !We do not deallocate here Mmat%petsc_ACV as it may be needed in the BfB/stokes solver later on
-        call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
-        deallocate(F_fields, K_fields, lhs_coef, rhs_coef)
-
-      end subroutine include_remaining_CTY_terms
 
       !---------------------------------------------------------------------------
       !> @author Pablo Salinas
