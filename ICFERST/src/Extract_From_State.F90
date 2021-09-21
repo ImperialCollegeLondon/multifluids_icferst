@@ -2233,6 +2233,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     show_FPI_conv = .not.have_option( '/io/Show_Convergence')
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
         Aim_num_FPI, default = int(0.20 * NonLinearIteration) )
+    Aim_num_FPI = min(Aim_num_FPI, NonLinearIteration)!People may ask for higher Aim_num_FPI...
+
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Test_mass_consv', &
             calculate_mass_tol, default = 1d-2)
     PID_controller = have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
