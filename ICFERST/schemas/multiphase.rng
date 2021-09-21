@@ -936,7 +936,11 @@ ONLY specify for the wetting phase</a:documentation>
               <a:documentation>Rock properties
 For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conductivity are &lt;b&gt;MANDATORY&lt;/b&gt;</a:documentation>
               <element name="scalar_field">
-                <a:documentation>Specify scalar field density of the porous media</a:documentation>
+                <a:documentation>Specify scalar field density of the porous media
+
+The value to specify here is the value of the minerals or grains that make up the rock.
+This is the bulk value divided by (1-porosity).
+Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
                 <attribute name="name">
                   <value>porous_density</value>
                 </attribute>
@@ -954,7 +958,11 @@ For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conduc
               </element>
               <optional>
                 <element name="scalar_field">
-                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )</a:documentation>
+                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
+
+The value to specify here is the value of the minerals or grains that make up the rock.
+This is the bulk value divided by (1-porosity).
+Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
                   <attribute name="name">
                     <value>porous_heat_capacity</value>
                   </attribute>
@@ -973,7 +981,11 @@ For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conduc
               </optional>
               <optional>
                 <element name="tensor_field">
-                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )</a:documentation>
+                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )
+
+The value to specify here is the value of the minerals or grains that make up the rock.
+This is the bulk value divided by (1-porosity).
+Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
                   <attribute name="name">
                     <value>porous_thermal_conductivity</value>
                   </attribute>
@@ -990,7 +1002,7 @@ For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conduc
 ( in Pa-1 den = den_surface*exp(Coef*(P_res-P_surface))
 with P_surf = 10^5 Pa )
 
-Here the term &lt;b&gt;Coef&lt;\b&gt; is specified.
+Here the term &lt;b&gt;Coef&lt;/b&gt; is specified.
 
 Temporarily P_surface can be defined from /numerical_methods/Surface_pressure</a:documentation>
                   <attribute name="name">
@@ -1240,6 +1252,29 @@ Example: 500.0,500.0,-1000.0</a:documentation>
                   </group>
                 </element>
               </zeroOrMore>
+            </element>
+          </optional>
+          <optional>
+            <element name="Phreeqc_coupling">
+              <a:documentation>Activates phreeqc coupling</a:documentation>
+              <element name="simulation_name">
+                <a:documentation>Name of Phreeqc input file. Must be in same folder as where
+simulation is run or absolute path.</a:documentation>
+                <ref name="anystring"/>
+              </element>
+              <optional>
+                <element name="database_name">
+                  <a:documentation>Name of Phreeqc database file. Default is considering, in the folder
+where simulation is run: phreeqc.dat.in</a:documentation>
+                  <ref name="anystring"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="two_way_coupling">
+                  <a:documentation>Place holder for 2 way coupling between phreeqc and IC-FERST.</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
             </element>
           </optional>
           <optional>
@@ -2772,14 +2807,26 @@ i.e. excluding the components</a:documentation>
 EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <element name="min_limit">
+                <choice>
                   <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
-                <element name="max_limit">
+                  <element name="min_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_min_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+                <choice>
                   <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
+                  <element name="max_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_max_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <optional>
@@ -2864,14 +2911,26 @@ This imposes the tracer to be between bounds.</a:documentation>
 EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <element name="min_limit">
+                <choice>
                   <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
-                <element name="max_limit">
+                  <element name="min_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_min_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+                <choice>
                   <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
+                  <element name="max_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_max_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
@@ -2928,14 +2987,26 @@ for fields within the same material_phase.</a:documentation>
 EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <element name="min_limit">
+                <choice>
                   <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
-                <element name="max_limit">
+                  <element name="min_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_min_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+                <choice>
                   <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
+                  <element name="max_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_max_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <optional>
@@ -3168,8 +3239,7 @@ mass fraction with a particular phase</a:documentation>
         </choice>
       </element>
       <element name="scalar_field">
-        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
-Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.</a:documentation>
+        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
@@ -3187,15 +3257,27 @@ Passive Tracers do not have diffusion and the boussinesq approximation for this 
 
 EXTREMELY RECOMMENDED!
 
-This imposes the tracer to be between bounds..</a:documentation>
-                <element name="min_limit">
+This imposes the tracer to be between bounds.</a:documentation>
+                <choice>
                   <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
-                <element name="max_limit">
+                  <element name="min_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_min_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+                <choice>
                   <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
+                  <element name="max_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_max_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <optional>
@@ -3240,15 +3322,18 @@ This imposes the tracer to be between bounds..</a:documentation>
         </choice>
       </element>
       <element name="scalar_field">
-        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
-Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
+        <a:documentation>Species. This scalar field is devoted for the PHREEQC coupling. Components being used in
+Phreeqc need to be defined using this naming convention in ICFERST. For example if you have Oxygen and Nitrogen your components
+in ICFERST should be named: Species_O and Species_N. &lt;b&gt;You MUST use _ to separate Species and O, for example.&lt;/b&gt;
+
+&lt;b&gt;You can add as many passive Species as you want as long as the name starts with Species&lt;/b&gt;
 
 This is just an example of how it works.</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
         <attribute name="name">
-          <value>PassiveTracer_Example2</value>
+          <value>Species</value>
         </attribute>
         <choice>
           <element name="prognostic">
@@ -3262,14 +3347,26 @@ This is just an example of how it works.</a:documentation>
 EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <element name="min_limit">
+                <choice>
                   <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
-                <element name="max_limit">
+                  <element name="min_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_min_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+                <choice>
                   <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <ref name="real"/>
-                </element>
+                  <element name="max_limit">
+                    <ref name="real"/>
+                  </element>
+                  <element name="automatic_max_limit">
+                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <optional>
@@ -4529,6 +4626,7 @@ For porous media only the formulate, including linear pressure, with a reference
           <ref name="scalar_python_diagnostic_algorithm"/>
           <optional>
             <element name="Boussinesq_approximation">
+              <a:documentation>Use the boussinesq approximation. Useful for small variations of density.</a:documentation>
               <optional>
                 <element name="reference_density">
                   <a:documentation>For porous media a reference density is necessary when using the Boussinesq approximation</a:documentation>

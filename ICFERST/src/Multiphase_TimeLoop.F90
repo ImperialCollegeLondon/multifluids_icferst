@@ -21,6 +21,9 @@ module multiphase_time_loop
   use petsc
 #endif
 
+#ifdef USING_PHREEQC
+  use multi_phreeqc
+#endif
 
     use field_options
     use write_state_module
@@ -214,6 +217,8 @@ contains
         logical :: have_Passive_Tracers = .true.
         integer :: fields
         character( len = option_path_len ) :: option_name
+        integer :: phreeqc_id
+        double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -293,10 +298,6 @@ contains
         mass_ele=0.
         !!$
 
-        !!$ Calculate diagnostic fields
-        call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
-        call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!allocates the memory for a fixed mesh
-        !!$
         !!$ Computing shape function scalars
         igot_t2 = 0 ; igot_theta_flux = 0
         if( Mdims%ncomp /= 0 )then
@@ -540,7 +541,6 @@ contains
 #endif
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
 
-
             !!$ Start non-linear loop
             first_nonlinear_time_step = .true.
             its = 1
@@ -632,6 +632,20 @@ contains
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
 
+                !#=================================================================================================================
+                !# Initialisation of PHREEQC - must be after FORCE_BAL_CTY_ASSEM_SOLVE. Needs a field which is calculate only there.
+                !#=================================================================================================================
+
+                if (after_adapt .or. (itime == 1 .and. its == 1)) then
+                  if (have_option("/porous_media/Phreeqc_coupling"))then
+#ifdef USING_PHREEQC
+                    call init_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc, after_adapt)
+#else
+                    FLAbort( "PHREEQC coupling option activated by the link to PHREEQRM is not activated." )
+#endif
+                  end if
+                end if
+
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma) ) then
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
@@ -710,31 +724,6 @@ contains
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
-
-               !$ Solve advection of the scalar 'Concentration':
-               Conditional_ScalarAdvectionField2: if( have_concentration_field .and. &
-                   have_option( '/material_phase[0]/scalar_field::Concentration/prognostic' ) ) then
-                   ewrite(3,*)'Now advecting Concentration Field'
-                   call set_nu_to_u( packed_state )
-                   tracer_field=>extract_tensor_field(packed_state,"PackedConcentration")
-                   velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                   !Recalculate densities before computations
-                   call Calculate_All_Rhos( state, packed_state, Mdims )
-                   call Concentration_assem_solve( state, packed_state, &
-                       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                       tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                       suf_sig_diagten_bc, Porosity_field%val, &
-                       !!$
-                       0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                       THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                       saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
-
-                   nullify(tracer_field)
-
-                end if Conditional_ScalarAdvectionField2
-
                 !#=================================================================================================================
                   call petsc_logging(3,stages,ierrr,default=.true.)
                   call petsc_logging(2,stages,ierrr,default=.true., push_no=5)
@@ -757,6 +746,14 @@ contains
                 !# End Compositional transport -> Move to -> Analysis of the non-linear convergence
                 !#=================================================================================================================
 
+                !# Solving for species fields through PHREEQC
+                !#=================================================================================================================
+
+! #ifdef USING_PHREEQC
+!                 if (.not. have_option("/porous_media/Phreeqc_coupling/one_way_coupling") .or. its == 1) then
+!                       call run_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
+!                 end if
+! #endif
 
                 if (have_Passive_Tracers) then
                   !We make sure to only enter here once if there are no passive tracers
@@ -769,7 +766,7 @@ contains
                   fields = option_count("/material_phase[0]/scalar_field")
                   do k = 1, fields
                     call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                    if (option_name(1:13)=="PassiveTracer") then
+                    if (is_Tracer_field(option_name)) then
                       have_Passive_Tracers = .true.!OK there are passive tracers so remember for next time
                       tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
                       call Passive_Tracer_Assemble_Solve( trim(option_name), state, packed_state, &
@@ -786,11 +783,15 @@ contains
                 end if
                 !#=================================================================================================================
 
+
+
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then
                     ewrite(1,*) "Caught signal, exiting nonlinear loop"
                     exit Loop_NonLinearIteration
                 end if
+
+
 
                 !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
@@ -818,6 +819,11 @@ contains
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
+
+#ifdef USING_PHREEQC
+            call run_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc)
+#endif
+
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
               ewrite(0,*) "Iterations taken by the pressure linear solver:", pres_its_taken
             end if
@@ -843,10 +849,20 @@ contains
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
 
-            !!$ Calculate diagnostic fields
+            !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
+            !!$ Calculate diagnostic fields (it should be outside the timeloop as a one-way coupling field only)
+            call get_option( '/timestepping/timestep', dt); !Backup of dt
+            !dT may have changed for the next time level, however for diagnostics we need it as it has been done for this time level
+            !therefore we compute it based on the actual difference of time
+            call set_option( '/timestepping/timestep', acctim-old_acctim)
+            !Now compute diagnostics
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
+            !calculate_diagnostic_variables_new <= computes other diagnostics such as python-based fields
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
-
+            !Now we ensure that the time-step is the correct one
+            call set_option( '/timestepping/timestep', dt)
+            !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
+            !Now we ensure that the time-step is the correct one
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
             if (is_porous_media .and. getprocno() == 1) then
@@ -857,10 +873,8 @@ contains
                 end if
             end if
 
-
             !Call to create the output vtu files, if required and also checkpoint
             call create_dump_vtu_and_checkpoints()
-
 
             call petsc_logging(3,stages,ierrr,default=.true.)
             call petsc_logging(2,stages,ierrr,default=.true., push_no=7)
@@ -995,6 +1009,10 @@ contains
         call deallocate_porous_adv_coefs(upwnd)
         call deallocate_multi_absorption(multi_absorp, .true.)
         call deallocate_multi_pipe_package(pipes_aux)
+#ifdef USING_PHREEQC
+        call deallocate_PHREEQC(phreeqc_id)
+#endif
+
         !***************************************
         ! INTERPOLATION MEMORY CLEANUP
         if (numberfields_CVGalerkin_interp > 0) then
@@ -1328,6 +1346,9 @@ contains
                     not_to_move_det_yet = .false.
                 end if Conditional_Adaptivity
                 call deallocate(packed_state)
+#ifdef USING_PHREEQC
+                call deallocate_PHREEQC(phreeqc_id)
+#endif
                 call deallocate(multiphase_state)
                 call deallocate(multicomponent_state )
                 !call unlinearise_components()
@@ -1611,9 +1632,9 @@ contains
 
     end subroutine adapt_mesh_within_FPI
 
+
+
  end subroutine MultiFluids_SolveTimeLoop
-
-
 
 
 

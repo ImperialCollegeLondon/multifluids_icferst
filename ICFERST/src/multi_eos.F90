@@ -561,98 +561,32 @@ contains
               deallocate( eos_coefs )
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 
-#ifdef HAVE_NUMPY
-         ewrite(3,*) "Have both NumPy and a python eos..."
-#else
-            FLAbort("Python eos requires NumPy, which cannot be located.")
-#endif
+            density => extract_scalar_field( state( iphase ), 'Density', stat )
+            rho = density % val
+            !Obtain density from the python code
+            call multi_compute_python_field(state, iphase, trim( option_path_python ), Rho)
+            ! Back up pressure before we start perturbing stuff...
+            density % val = Rho
+            if (has_boussinesq_aprox ) then
+              !If boussinesq or not pressure dependency the derivative is zero
+              dRhodP = 0.0
+            else
+              ! Calculating dRho / dP
+              allocate( pressure_back_up( node_count( pressure ) ))
+              pressure_back_up = pressure % val(1,1,:)
+              ! redefine p as p+pert and p-pert and then run python state again to get dRho / d P...
+              perturbation_pressure = 1.e-5
+              pressure % val(1,1,:) = pressure_back_up + perturbation_pressure; RhoPlus = Rho
+              call multi_compute_python_field(state, iphase, trim( option_path_python ), RhoPlus)
+              pressure % val(1,1,:) = pressure_back_up - perturbation_pressure; RhoMinus = Rho
+              call multi_compute_python_field(state, iphase, trim( option_path_python ), RhoMinus)
+              ! derivative
+              dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
 
-            density => extract_scalar_field( packed_state, 'Dummy' )
-            call zero( density )
-
-            call python_reset()
-            call python_add_state( packed_state )
-
-
-            call python_run_string("field = state.scalar_fields['Dummy']")
-            call get_option("/timestepping/current_time", current_time)
-            write(buffer,*) current_time
-            call python_run_string("time="//trim(buffer))
-            call get_option("/timestepping/timestep", dt)
-            write(buffer,*) dt
-            call python_run_string("dt="//trim(buffer))
-
-            ! Get the code
-            call get_option( trim( option_path_python ) // '/algorithm', pycode )
-
-            ! Run the code
-            call python_run_string( trim( pycode ) )
-
-            ! Copy result to protoype memory
-            Rho = density % val
-
-            ! Back up pressure and density before we start perturbing stuff...
-            allocate( pressure_back_up( node_count( pressure ) ), density_back_up( node_count( pressure ) ) )
-            pressure_back_up = 0. ; density_back_up = 0.
-            pressure_back_up = pressure % val(1,1,:)
-            density_back_up = density % val
-
-            call python_reset()
-
-            ! Calculating dRho / dP
-            ! redefine p as p+pert and p-pert and then run python state again to get dRho / d P...
-            perturbation_pressure = 1.e-5
-
-            pressure % val(1,1,:) = pressure % val(1,1,:) + perturbation_pressure
-            call zero( density )
-
-            call python_reset()
-            call python_add_state( packed_state )
-
-            call python_run_string("field = state.scalar_fields['Dummy']")
-
-            call get_option("/timestepping/current_time", current_time)
-            write(buffer,*) current_time
-            call python_run_string("time="//trim(buffer))
-            call get_option("/timestepping/timestep", dt)
-            write(buffer,*) dt
-            call python_run_string("dt="//trim(buffer))
-
-            call python_run_string(trim(pycode))
-            RhoPlus = density % val
-
-            call python_reset()
-
-            pressure % val(1,1,:) = pressure_back_up
-            pressure % val(1,1,:) = pressure % val(1,1,:) - perturbation_pressure
-            call zero( density )
-
-            call python_reset()
-            call python_add_state( packed_state )
-
-            call python_run_string("field = state.scalar_fields['Dummy']")
-
-            call get_option("/timestepping/current_time", current_time)
-            write(buffer,*) current_time
-            call python_run_string("time="//trim(buffer))
-            call get_option("/timestepping/timestep", dt)
-            write(buffer,*) dt
-            call python_run_string("dt="//trim(buffer))
-
-            call python_run_string(trim(pycode))
-            RhoMinus = density % val
-
-            call python_reset()
-
-            ! derivative
-            dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
-
-            ! Restore pressure and density values in state
-            pressure % val(1,1,:) = pressure_back_up
-            density % val = density_back_up
-
-            deallocate( pressure_back_up, density_back_up )
-
+              ! Restore pressure and density values in state
+              pressure % val(1,1,:) = pressure_back_up
+              deallocate( pressure_back_up )
+            end if
         else
             FLAbort( 'No option given for choice of EOS' )
         end if Conditional_EOS_Option
@@ -860,10 +794,11 @@ contains
        !Local variables
        type( tensor_field ), pointer :: perm, state_viscosity
        real, dimension(:,:), allocatable :: viscosities
-       integer :: i, j, ele, n_in_pres
+       integer :: i, j, ele, n_in_pres, iphase
        real :: Angle, bad_element_perm_mult, Max_aspect_ratio, height ! the height of an isosceles triangle for the top angle to be equal to the trigger angle
        real, dimension(Mdims%ndim,Mdims%ndim) :: trans_matrix, rot_trans_matrix ! for bad_element permeability transformation matrix
        real, parameter :: pi = acos(0.0) * 2.0 ! Define pi
+       character( len = option_path_len ) :: option_path_python
 
        perm => extract_tensor_field( packed_state, "Permeability" )
        !Define n_in_pres based on the local version of nphase
@@ -875,16 +810,21 @@ contains
            upwnd%inv_permeability( :, :, i)=inverse(perm%val( :, :, i))
        end do
 
-       if (have_option_for_any_phase("phase_properties/Viscosity/tensor_field::Viscosity/diagnostic", Mdims%nphase)) then
-           allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
-           do i = 1,  Mdims%nphase
-             state_viscosity => extract_tensor_field( state( i ), 'Viscosity' )
-             viscosities(i, :) = state_viscosity%val(1,1,:)!Take the first term only as for porous media we consider only scalar
-           end do
-       else
-            allocate(viscosities(Mdims%nphase, 1))
-            call set_viscosity(nphase, Mdims, state, viscosities(:,1))
-       end if
+       allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
+       DO IPHASE = 1, Mdims%nphase!Get viscosity for all the phases
+        option_path_python = "/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
+        "::Viscosity/diagnostic/algorithm::tensor_python_diagnostic"
+          if (have_option(trim(option_path_python)))then 
+            state_viscosity => extract_tensor_field( state( iphase ), 'Viscosity' )
+            call multi_compute_python_field(state, iphase, trim( option_path_python ), tfield = state_viscosity)
+            !Copy into state
+            do i = 1, Mdims%cv_nonods 
+              viscosities(iphase,i) = state_viscosity%val(1,1,i)
+            end do
+          else
+            call set_viscosity(nphase, Mdims, state, viscosities)
+          end if
+        end do 
        call Calculate_PorousMedia_adv_terms( nphase, state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
               upwnd, viscosities)
 
@@ -1102,7 +1042,7 @@ contains
             integer, intent(in) :: nphase
             type( multi_dimensions ), intent( in ) :: Mdims
             type( state_type ), dimension( : ), intent( in ) :: state
-            real, dimension(:), intent(inout) :: visc_phases
+            real, dimension(:,:), intent(inout) :: visc_phases
             !Local variables
             integer :: iphase, ipres, global_phase, compact_phase
             real :: mobility
@@ -1115,7 +1055,7 @@ contains
                   global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
                   compact_phase = iphase + (ipres - 1)*n_in_pres
                   viscosity_ph => extract_tensor_field( state( global_phase ), 'Viscosity' )
-                  visc_phases(compact_phase) = viscosity_ph%val( 1, 1, 1 )!So far we only consider scalar viscosity
+                  visc_phases(compact_phase,:) = viscosity_ph%val( 1, 1, 1 )!So far we only consider scalar viscosity
               end do
             end do
         end subroutine set_viscosity
@@ -1438,13 +1378,12 @@ contains
     end subroutine calculate_u_source_cv
 
     !>@brief: Here we compute component/solute/thermal diffusion coefficient
-    subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, TracerName, calculate_solute_diffusivity, divide_by_rho_CP)
+    subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, TracerName, divide_by_rho_CP)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
-      logical, optional, intent(in) :: calculate_solute_diffusivity !If present, calculates solute diffusivity instead of thermal diffusivity
       logical, optional, intent(in) :: divide_by_rho_CP !> If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp
       character(len=*), optional, intent(in) :: TracerName !> For PassiveTracer with diffusion we pass down the name of the tracer
       !Local variables
@@ -1495,14 +1434,10 @@ contains
           !expo used to switch between boussinesq (density ==1) or normal
           expo = 1.; if (has_boussinesq_aprox) expo = 0.
 
-          if (present_and_true(calculate_solute_diffusivity) .or. present(TracerName)) then
+          if (present(TracerName)) then
             do iphase = 1, Mdims%nphase
               !Check if the field is defined for that phase, if the property is defined but not the field then ignore the property
-              if (present_and_true(calculate_solute_diffusivity)) then
-                diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
-              else if (present(TracerName)) then
-                diffusivity => extract_tensor_field( state(iphase), trim(TracerName)//'Diffusivity', stat )
-              end if
+              diffusivity => extract_tensor_field( state(iphase), trim(TracerName)//'Diffusivity', stat )
               if (stat /= 0) cycle!If no field defined then cycle
 
               do ele = 1, Mdims%totele
@@ -1548,37 +1483,10 @@ contains
               end do
             end do
           endif
-          !####UP TO HERE DIFFUSIVITY FOR POROUS MEDIA ONLY####
-          ! else if (have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
-          !   sfield=> extract_scalar_field( state(1), "SolidConcentration" )
-          !   !tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
-          !   ScalarAdvectionField_Diffusion = 0.
-          !   do iphase = 1, Mdims%nphase
-          !     if (present_and_true(calculate_solute_diffusivity)) then
-          !       diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
-          !     else
-          !       diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-          !     endif
-          !     do ele = 1, Mdims%totele
-          !       ele_nod = min(size(sfield%val), ele)
-          !       !t_ele_nod = min(size(tfield%val, 3), ele)
-          !       do iloc = 1, Mdims%mat_nloc
-          !         mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-          !         cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-          !         do idim = 1, Mdims%ndim
-          !           ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-          !           ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-          !           ( 1.0 - sfield%val(ele_nod)) * node_val( diffusivity, idim, idim, mat_inod )
-          !         end do
-          !       end do
-          !     end do
-          !   end do
         else
           do iphase = 1, Mdims%nphase
 
-            if (present_and_true(calculate_solute_diffusivity)) then
-              diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
-            else if (present(TracerName)) then
+            if (present(TracerName)) then
               diffusivity => extract_tensor_field( state(iphase), trim(TracerName)//'Diffusivity', stat )
             else
               diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
@@ -1619,8 +1527,8 @@ contains
         end do
       end if
       do iphase = 1, Mdims%nphase
-        if (present_and_true(calculate_solute_diffusivity)) then
-          ewrite(3,*) 'Solute diffusivity min_max', iphase, &
+        if (present(TracerName)) then
+          ewrite(3,*) trim(TracerName), 'diffusivity min_max', iphase, &
           minval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) ), &
           maxval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) )
         else
@@ -1687,7 +1595,8 @@ contains
 
 
       do iphase = 1, Mdims%n_in_pres
-        if ( .not. have_option( "/material_phase["// int2str( iphase - 1 )//"]/scalar_field::Concentration/prognostic/tensor_field::Diffusivity")) cycle
+        ! if ( .not. have_option( "/material_phase["// int2str( iphase - 1 )//"]/scalar_field::"//trim(TracerName)//"/prognostic/tensor_field::Diffusivity")) cycle
+
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
 
         do ele = 1, Mdims%totele

@@ -56,7 +56,7 @@ module multiphase_1D_engine
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
-    public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, Concentration_assem_solve, VolumeFraction_Assemble_Solve, &
+    public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
     FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system, Passive_Tracer_Assemble_Solve
 
 contains
@@ -108,7 +108,7 @@ contains
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
+           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
            REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
@@ -529,7 +529,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
+           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
            REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
@@ -729,252 +729,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
   END SUBROUTINE ENTHALPY_ASSEM_SOLVE
 
 
-  !> @author Chris Pain, Pablo Salinas, Arash Hamzeloo
-  !> @brief Calls to generate and solve the transport equation for the concentration field.
-  !---------------------------------------------------------------------------
-  SUBROUTINE Concentration_assem_solve( state, packed_state, &
-       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
-       tracer, velocity, density, multi_absorp, DT, &
-       SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
-       IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
-       THETA_GDIFF, eles_with_pipe, pipes_aux, &
-       mass_ele_transp, &
-       THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
-
-           implicit none
-           type( state_type ), dimension( : ), intent( inout ) :: state
-           type( state_type ), intent( inout ) :: packed_state
-           type(multi_dimensions), intent(in) :: Mdims
-           type(multi_GI_dimensions), intent(in) :: CV_GIdims
-           type(multi_shape_funs), intent(inout) :: CV_funs
-           type (multi_sparsities), intent(in) :: Mspars
-           type(multi_ndgln), intent(in) :: ndgln
-           type (multi_discretization_opts) :: Mdisopt
-           type (multi_matrices), intent(inout) :: Mmat
-           type (porous_adv_coefs), intent(inout) :: upwnd
-           type(tensor_field), intent(inout) :: tracer
-           type(tensor_field), intent(in) :: velocity, density
-           type(multi_absorption), intent(inout) :: multi_absorp
-           INTEGER, intent( in ) :: IGOT_T2, igot_theta_flux
-           LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
-           REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
-           REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-           REAL, intent( in ) :: DT
-           REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-           REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
-           real, dimension( : ), intent( inout ), optional :: mass_ele_transp
-           type(tensor_field), intent(in), optional :: saturation
-           type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
-           integer, optional :: icomp, nonlinear_iteration
-           type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
-           type (multi_pipe_package), intent(in) :: pipes_aux
-           real, optional, dimension(:), intent(inout) :: Courant_number
-           ! Local variables
-           LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
-           integer :: nits_flux_lim, its_flux_lim, stat
-           REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
-           REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION, CDISPERSION
-           REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
-           real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
-           REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
-           REAL, DIMENSION( : , : ), target, allocatable :: den_all
-           REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
-           type( tensor_field ), pointer :: P, Q
-           INTEGER :: IPHASE, its_taken, ipres
-           LOGICAL :: RETRIEVE_SOLID_CTY
-           type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
-           type( vector_field ), pointer  :: MeanPoreCV, python_vfield
-           integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat
-           type(vector_field)  :: residual
-           type(csr_sparsity), pointer :: sparsity
-           real, dimension(:,:,:), allocatable :: Velocity_Absorption
-           real, dimension(:,:,:), pointer :: T_AbsorB=>null()
-           integer :: ncomp_diff_coef, comp_diffusion_opt
-           real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
-           type( tensor_field ), pointer :: perm, python_tfield
-           integer :: cv_disopt, cv_dg_vel_int_opt
-           real :: cv_theta, cv_beta
-           type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
-           character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
-           !Variables to stabilize the non-linear iteration solver
-           real, dimension(2) :: totally_min_max
-           logical :: impose_min_max
-           real :: aux
-           real, save :: inf_tolerance = -1
-           !Variables to control the PETCs solver
-           integer, save :: max_allowed_its = -1
-           !Variables for vanishing diffusion
-           real, dimension(Mdims%cv_nonods) :: OvRelax_param
-           integer :: Phase_with_Ovrel
-           !temperature backup for the petsc bug
-           logical :: repeat_assemb_solve
-           !Parameters for stabilisation and compact solving, i.e. solving only concentration for some phases
-           real, parameter :: min_concentration = 0.
-           integer, save :: nconc = -1 !> Number of phases with concentration, this works if the phases with concentration start from the first one and are consecutive
-           integer, save :: nconc_in_pres
-           type(vector_field) :: solution
-           !Retrieve the number of phases that have Concentration fraction, and then if they are concecutive and start from the first one
-           if (nconc < 0) then
-             nconc = option_count("/material_phase/scalar_field::Concentration")
-             nconc_in_pres = nconc
-             if (Mdims%npres > 1) nconc_in_pres = max(nconc_in_pres / 2, 1)
-             do iphase = 1, nconc_in_pres
-               if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::Concentration')) then
-                 FLAbort('Concentration must either be defined in all the phases or to start from the first one and consecutively from that one.')
-               end if
-             end do
-           end if
-
-           if (present(Permeability_tensor_field)) then
-              perm => Permeability_tensor_field
-           else
-              perm=>extract_tensor_field(packed_state,"Permeability")
-           end if
-
-           lcomp = 0
-           if ( present( icomp ) ) lcomp = icomp
-
-           call allocate(Mmat%CV_RHS,nconc,tracer%mesh,"RHS")
-           call allocate(solution,nconc,tracer%mesh,"sol_tracer")!; call zero(solution)
-           sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-           allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
-
-           allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0!SPRINT_TO_DO TURN THESE T_SOURCE INTO POINTERS OR DIRECTLY REMOVE THEM
-           IGOT_T2_loc = 0
-
-           p => extract_tensor_field( packed_state, "PackedFEPressure" )
-
-           if (has_boussinesq_aprox) then
-             !We do not consider variations of density in transport
-               den_all = 1
-               denold_all =1
-           else
-              den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
-              denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
-              den_all    = den_all2 % val ( 1, :, : )
-              denold_all = denold_all2 % val ( 1, :, : )
-           endif
-
-           IGOT_T2_loc = 1
-
-           call get_option( '/material_phase[0]/scalar_field::Concentration/prognostic/temporal_discretisation/' // &
-               'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
-           Field_selector = 1
-           do iphase = 1, Mdims%nphase
-             sfield => extract_scalar_field( state(iphase), "ConcentrationSource", stat )
-             if (stat == 0) call assign_val(T_source( iphase, : ),sfield%val)
-           end do
-
-           !sprint to do, just pass down the other values...
-           cv_disopt = Mdisopt%t_disopt
-           cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
-           cv_theta = Mdisopt%t_theta
-           cv_beta = Mdisopt%t_beta
-
-
-
-           RETRIEVE_SOLID_CTY = .false.
-
-           deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
-           TDIFFUSION=0.0
-           CDISPERSION=0.0
-
-           !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
-           call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, &
-           calculate_solute_diffusivity = .true.)
-
-           !Calculates solute dispersion with specific longitudinal and transverse dispersivity
-           if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
-             call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION)
-             TDIFFUSION = TDIFFUSION + CDISPERSION
-           end if
-           !Start with the process to apply the min max principle
-           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
-
-           MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-           NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
-
-           solver_option_path = "/solver_options/Linear_solver"
-           if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::Concentration')) then
-             solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::Concentration'
-           end if
-           if(max_allowed_its < 0)  then
-               call get_option( trim(solver_option_path)//"max_iterations",&
-                max_allowed_its, default = 500)
-           end if
-           Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
-
-                !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
-               if (is_porous_media) then
-                   !Get information for capillary pressure to be use in CV_ASSEMB
-                   Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, totally_min_max, .true.)
-               else
-                Phase_with_Ovrel = -1
-               end if
-
-               !Solves a PETSC warning saying that we are storing information out of range
-               call allocate(Mmat%petsc_ACV,sparsity,[nconc,nconc],"ACV_INTENERGE")
-               call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
-
-               !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
-               call CV_ASSEMB( state, packed_state, &
-                   nconc_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-                   tracer, velocity, density, multi_absorp, &
-                   DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                   DEN_ALL, DENOLD_ALL, &
-                   cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
-                   SUF_SIG_DIAGTEN_BC, &
-                   DERIV%val(1,:,:), P%val, &
-                   T_SOURCE, T_ABSORB, VOLFRA_PORE, &
-                   GETCV_DISC, GETCT, &
-                   IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
-                   THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                   MeanPoreCV%val, &
-                   mass_Mn_pres, .false., RETRIEVE_SOLID_CTY, &
-                   .true.,  mass_Mn_pres, &
-                   mass_ele_transp, &
-                   TDIFFUSION = TDIFFUSION,&
-                   saturation=saturation, Permeability_tensor_field = perm,&
-                   eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   solving_compositional = lcomp > 0, &
-                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
-                   ! call zero_non_owned(Mmat%CV_RHS)
-                   call zero(solution)
-                   call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
-                   !Ensure that the solution is above zero always
-                  solution%val = max(solution%val,min_concentration)
-
-                   !Copy solution back to tracer(not ideal...)
-                   do ipres =1, mdims%npres
-                     do iphase = 1 , nconc_in_pres
-                      tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*nconc_in_pres,:)
-                    end do
-                   end do
-
-                   !Apply if required the min max principle
-                   call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
-                   !Just after the solvers
-                   call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
-                   !Update halo communications
-                   call halo_update(tracer)
-                   !Checking solver not fully implemented
-                   solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
-                   call allor(solver_not_converged)
-                   exit!good to go!
-
-           END DO Loop_NonLinearFlux
-
-           call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
-           if (allocated(den_all)) deallocate(den_all)
-           if (allocated(denold_all)) deallocate(denold_all)
-           if (allocated(T_SOURCE)) deallocate(T_SOURCE)
-           call deallocate(solution); nullify(solution%val)
-           ewrite(3,*) 'Leaving Concentration_assem_solve'
-
-  END SUBROUTINE Concentration_assem_solve
 
 
   !>@brief: To help the stability of the system,if there are no sources/sinks it is known that
@@ -986,9 +740,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     integer, intent(in) :: entrance
     real, dimension(2), intent(inout) :: totally_min_max
     !Local variables
+    integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
     logical :: apply_minmax_principle
+    type(tensor_field) :: tracer_BCs
     real, parameter :: tol = 1e-30
-    logical :: has_imposed_min_limit, has_imposed_max_limit
+    logical :: has_imposed_min_limit, has_imposed_max_limit, has_auto_min_limit, has_auto_max_limit
+    logical, save :: WarningMsgShown = .false.
 
     !Check whether to apply the minmax principle
     apply_minmax_principle = have_option_for_any_phase("scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", Mdims%ndim)
@@ -1001,7 +758,33 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit")
         if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/min_limit", totally_min_max(1))
         if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit", totally_min_max(2))
+        has_auto_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/automatic_min_limit")
+        has_auto_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/automatic_max_limit")
+        if (.not. WarningMsgShown) then 
+            if (has_auto_min_limit .or. has_auto_max_limit ) then 
+                if (getprocno() == 1) then
+                    ewrite(0,*) 'MESSAGE: Automatic MinMax activated: This should ONLY be used if there are not sources or sinks, and the BCs are Dirichtlet.'
+                end if
+                WarningMsgShown = .true.
+            end if
+        end if
+
+        allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
+        call get_entire_boundary_condition(tracer,&
+        ['weakdirichlet'], tracer_BCs, WIC_T_BC_ALL)
+        !Use boundaries for min/max
+        if (has_auto_min_limit) totally_min_max(1)=minval(tracer_BCs%val)
+        if (has_auto_max_limit) totally_min_max(2)=maxval(tracer_BCs%val)
+        !Check domain
+        if (has_auto_min_limit) then
+          totally_min_max(1)=min(totally_min_max(1), minval(tracer%val(:,1:Mdims%n_in_pres,:))) !First the reservoir
+          if (Mdims%npres > 1) & !Next the wells (this is to avoid the zero values in the well domain outside of the defined regions )
+          totally_min_max(1)=min(totally_min_max(1), minval(tracer%val(:, Mdims%n_in_pres+1:,:), MASK = tracer%val(:, Mdims%n_in_pres+1:,:) > tol))
+        end if
+        if (has_auto_max_limit) totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))
+        !For parallel
         call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+        deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs)
       case (2)
         tracer%val = max(min(tracer%val,totally_min_max(2)), totally_min_max(1))
       end select
@@ -1059,6 +842,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
            REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
+           REAL, DIMENSION( :,:,:,: ), allocatable :: CDISPERSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
            REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
@@ -1093,7 +877,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer :: Phase_with_Ovrel
            !temperature backup for the petsc bug
            logical :: repeat_assemb_solve
-           logical :: boussinesq = .true.
            !Parameters for stabilisation and compact solving, i.e. solving only concentration for some phases
            real, parameter :: min_val = 0.
            integer :: nconc !> Number of phases with tracer, this works if the phases with concentration start from the first one and are consecutive
@@ -1129,9 +912,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            p => extract_tensor_field( packed_state, "PackedFEPressure" )
 
-           if (boussinesq) then
+           if (has_boussinesq_aprox) then
+            !We do not consider variations of density in transport
                den_all = 1
                denold_all =1
+          else
+             den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
+             denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
+             den_all    = den_all2 % val ( 1, :, : )
+             denold_all = denold_all2 % val ( 1, :, : )
            endif
 
            IGOT_T2_loc = 1
@@ -1152,9 +941,16 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            RETRIEVE_SOLID_CTY = .false.
 
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
-           TDIFFUSION=0.0
-
+           TDIFFUSION=0.0;
            call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, TracerName= trim(Passive_Tracer_name))
+
+           !Calculates solute dispersion with specific longitudinal and transverse dispersivity
+           if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
+            allocate(CDISPERSION(Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase)); CDISPERSION = 0.
+            call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION)
+            TDIFFUSION = TDIFFUSION + CDISPERSION
+            deallocate(CDISPERSION)
+           end if
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
@@ -1236,7 +1032,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            if (allocated(denold_all)) deallocate(denold_all)
            if (allocated(T_SOURCE)) deallocate(T_SOURCE)
            call deallocate(solution); nullify(solution%val)
-           ewrite(3,*) 'Leaving Concentration_assem_solve'
+           ewrite(3,*) 'Leaving' //trim(Passive_Tracer_name)//'_assem_solve'
 
   END SUBROUTINE Passive_Tracer_Assemble_Solve
 
@@ -2206,7 +2002,7 @@ end if
            !Introduce well modelling
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe,&
                 associated(Mmat%PIVIT_MAT) .and. .not.Mmat%Stored, WIC_P_BC_ALL, pressure_BCs%val, SIGMA,&
-                velocity%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL, pipes_aux )
+                velocity%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL )
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
@@ -2307,11 +2103,6 @@ end if
         call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
         rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
         call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-        !Call impose strong BCs must be here before the rescaling and after include wells and 
-        !compressibility - only done if using P0DG and gamma is zero at the BC see 
-        !subroutine initialize_pipes_package_and_gamma for more information
-        if (is_P0DGP1 .and. Mdims%npres > 1) call impose_strong_bcs_wells(state, pipes_aux, Mdims, Mmat, ndgln, CMC_petsc,pressure,rhs_p%val)
-! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
         !Re-scale system so we can deal with SI units of permeability
         if (is_porous_media) then
           call scale(cmc_petsc, 1.0/rescaleVal)
@@ -9129,62 +8920,4 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       call deallocate( Mmat%CV_RHS ); call deallocate( Mmat%petsc_ACV )
     end subroutine generate_and_solve_Laplacian_system
 
-    !> @author Pablo Salinas, Geraldine Regnier
-    !>@brief: In this subroutine, we modify the CMC matrix and the RHS for the pressure to strongly impose the
-    !> pressure boundary conditions for wells ONLY. This is required only when using P0DG-P1
-    !> If not imposing strong pressure BCs and using P0DG-P1, the formulation for weak pressure BCs
-    !> leads to a 0 in the diagonal of the CMC matrix, therefore strong BCs are required.
-    subroutine impose_strong_bcs_wells(state,pipes_aux,Mdims,Mmat, ndgln, CMC_petsc,pressure,rhs_p)
-
-      ! form pressure matrix CMC using a colouring approach
-      type(multi_dimensions), intent(in) :: Mdims
-      type (multi_matrices), intent(in) :: Mmat
-      type( state_type ), dimension(:), intent( in ) :: state
-      type(multi_ndgln), intent(in) :: ndgln
-      type(petsc_csr_matrix), intent(inout)::  CMC_petsc
-      real, dimension (:,:), intent(inout) :: rhs_p
-      type( tensor_field ), intent(in) :: pressure
-      type (multi_pipe_package), intent(in) :: pipes_aux
-      INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
-      INTEGER, PARAMETER :: WIC_P_BC_DIRICHLET = 1
-      ! Local variables
-      INTEGER :: SELE, IPRES, CV_SILOC, CV_NOD, i_indx, ierr
-      type(tensor_field) :: pressure_BCs
-      type(scalar_field), pointer :: pipe_diameter
-
-      call get_entire_boundary_condition(pressure,&
-          ['weakdirichlet','freesurface  '],&
-          pressure_BCs,WIC_P_BC_ALL)
-      PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
-
-      !Only for wells
-      CMC_petsc%is_assembled=.false.
-      call assemble( CMC_petsc )
-      DO SELE = 1, Mdims%stotel
-        DO IPRES = 2, Mdims%npres
-          !Find element where we have a pressure BC defined
-          if (WIC_P_BC_ALL(1, IPRES, SELE ) == WIC_P_BC_DIRICHLET) then
-            !If no flip required or positive pressure
-            IF (Mmat%WIC_FLIP_P_VEL_BCS(1,IPRES,SELE) == 0 .or. Mmat%WIC_FLIP_P_VEL_BCS(1,IPRES,SELE) == 10) THEN
-              DO CV_SILOC = 1, Mdims%cv_snloc
-                CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
-                !Check if we are in an element that may need strongly imposed BCs
-                if (.not. pipes_aux%impose_strongBCs(CV_NOD)) cycle
-                ! !If pipe diameter = 0, no changes made
-                ! if (PIPE_Diameter%val(cv_nod) <= 1e-8) cycle
-                i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
-                call MatZeroRows(CMC_petsc%M, 1, (/i_indx/), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
-                !Impose P_BC in the right hand side
-                rhs_p(ipres,cv_nod) = pressure_BCs%val(1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC ) - &
-                pressure%val(1,IPRES, CV_NOD)
-                end do
-              end if
-          end if
-        END DO
-      end do
-      !Re-assemble just in case
-      CMC_petsc%is_assembled=.false.
-      call assemble( CMC_petsc )
-      call deallocate( pressure_BCs )
-    end subroutine
  end module multiphase_1D_engine
