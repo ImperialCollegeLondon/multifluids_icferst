@@ -1361,8 +1361,6 @@ contains
     end if
 
     if (have_option("/porous_media/wells_and_pipes")) then
-      call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Pipe', &
-      states(1), field_name='Pipe')
       call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Gamma', &
       states(1), field_name='Gamma')
       call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Sigma', &

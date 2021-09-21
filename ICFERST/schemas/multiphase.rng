@@ -1027,29 +1027,6 @@ Temporarily P_surface can be defined from /numerical_methods/Surface_pressure</a
             <element name="wells_and_pipes">
               <a:documentation>Options to specify the wells/pipes</a:documentation>
               <element name="scalar_field">
-                <a:documentation>Option to define laterals from diamond
-if in doubt set it to 1.</a:documentation>
-                <attribute name="name">
-                  <value>Pipe</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="diagnostic">
-                    <ref name="vector_python_diagnostic_algorithm"/>
-                    <ref name="diagnostic_scalar_field_no_adapt"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                </choice>
-              </element>
-              <element name="scalar_field">
                 <a:documentation>Specify where and how much the well/pipes are opened
 It goes from 0 to 1. If completely opened, set it to 1.</a:documentation>
                 <attribute name="name">
@@ -1506,6 +1483,13 @@ is run to guarantee physically plausible solutions. Nonetheless this may spread 
 that otherwise might have been cut off. Enable this option to avoid doing this operation.
 
 This option is useful if your field is suddenly changing after adapting the mesh.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="Strong_BCs_for_P0DG_wells">
+              <a:documentation>Impose strong BCs for wells, only on the pressure BCs. Also imposes gamma to be zero at those nodes.
+Note that this is already imposed for wells when using P0DGP1 and gamma = 0. at one pressure BC.</a:documentation>
               <empty/>
             </element>
           </optional>
