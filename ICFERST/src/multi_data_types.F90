@@ -242,11 +242,12 @@ module multi_data_types
     type multi_pipe_package
         !>Contains all the information required to model pipes.
         real, dimension( :, :, : ), pointer  :: gamma_pres_abs=> null()
-        real, dimension( :, :, : ), pointer  :: gamma_pres_abs_nano=> null()
         real, dimension( : ), pointer        :: mass_pipe=> null()
         real, dimension( : ), pointer        :: mass_cvfem2pipe=> null()
         real, dimension( : ), pointer        :: mass_pipe2cvfem=> null()
         real, dimension( : ), pointer        :: mass_cvfem2pipe_true=> null()
+        logical, dimension( : ), pointer     :: impose_strongBCs=> null()!> This flag is used to trigger the imposition of 
+                                                                            !>strong BCs for P0DG for wells, only necessary if gamma=0 at the BC
     end type
 
     type multi_outfluxes
@@ -1340,14 +1341,13 @@ contains
 
         if (Mdims%npres > 1) then
             if (.not.associated(pipes%gamma_pres_abs))        allocate( pipes%gamma_pres_abs( mdims%nphase,mdims%nphase,mdims%cv_nonods ))
-            if (.not.associated(pipes%gamma_pres_abs_nano))   allocate( pipes%gamma_pres_abs_nano( mdims%nphase,mdims%nphase,mdims%cv_nonods ))
             if (.not.associated(pipes%mass_pipe))             allocate( pipes%mass_pipe( mdims%cv_nonods ))
             if (.not.associated(pipes%mass_cvfem2pipe))       allocate(pipes%mass_cvfem2pipe( mspars%cmc%ncol ))
             if (.not.associated(pipes%mass_pipe2cvfem))       allocate( pipes%mass_pipe2cvfem( mspars%cmc%ncol ))
             if (.not.associated(pipes%mass_cvfem2pipe_true))  allocate( pipes%mass_cvfem2pipe_true( mspars%cmc%ncol ))
+            if (.not.associated(pipes%impose_strongBCs))      allocate( pipes%impose_strongBCs( mdims%cv_nonods ))
         else
 !            if (.not.associated(pipes%gamma_pres_abs))        allocate( pipes%gamma_pres_abs( 0,0,0 ))
-!            if (.not.associated(pipes%gamma_pres_abs_nano))   allocate( pipes%gamma_pres_abs_nano( 0,0,0 ))
 !            if (.not.associated(pipes%mass_pipe))             allocate( pipes%mass_pipe( 0 ))
 !            if (.not.associated(pipes%mass_cvfem2pipe))       allocate(pipes%mass_cvfem2pipe( 0 ))
 !            if (.not.associated(pipes%mass_pipe2cvfem))       allocate( pipes%mass_pipe2cvfem( 0 ))
@@ -1361,9 +1361,6 @@ contains
         if (associated(pipes%gamma_pres_abs)) then
             deallocate( pipes%gamma_pres_abs); nullify(pipes%gamma_pres_abs)
         end if
-        if (associated(pipes%gamma_pres_abs_nano)) then
-            deallocate( pipes%gamma_pres_abs_nano); nullify(pipes%gamma_pres_abs_nano)
-        end if
         if (associated(pipes%mass_pipe)) then
             deallocate(pipes%mass_pipe); nullify(pipes%mass_pipe)
         end if
@@ -1376,7 +1373,9 @@ contains
         if (associated(pipes%mass_cvfem2pipe_true)) then
             deallocate(pipes%mass_cvfem2pipe_true); nullify(pipes%mass_cvfem2pipe_true)
         end if
-
+        if (associated(pipes%impose_strongBCs)) then
+            deallocate(pipes%impose_strongBCs); nullify(pipes%impose_strongBCs)
+        end if
     end subroutine deallocate_multi_pipe_package
 
     subroutine initialize_multi_outfluxes(outfluxes)

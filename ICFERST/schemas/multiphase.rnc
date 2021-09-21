@@ -843,27 +843,6 @@ start =
 
              ## Options to specify the wells/pipes
              element wells_and_pipes {
-                ## Option to define laterals from diamond
-                ## if in doubt set it to 1.
-                element scalar_field {
-                   attribute name { "Pipe" },
-                   (
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field,
-                     output_options
-                      }|
-                    element diagnostic {
-                      vector_python_diagnostic_algorithm,
-                      diagnostic_scalar_field_no_adapt,
-                     output_options
-                    }|
-                      element aliased {
-                         generic_aliased_field,
-                     output_options
-                      }
-                   )
-                },
                 ## Specify where and how much the well/pipes are opened
                 ## It goes from 0 to 1. If completely opened, set it to 1.
                 element scalar_field {
@@ -1236,6 +1215,11 @@ start =
             element do_not_bound_after_adapt {
                empty
             }?,
+            ## Impose strong BCs for wells, only on the pressure BCs. Also imposes gamma to be zero at those nodes.
+            ## Note that this is already imposed for wells when using P0DGP1 and gamma = 0. at one pressure BC.
+            element Strong_BCs_for_P0DG_wells {
+               empty
+            }?,            
             ## Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods
             element use_ENO_scheme {
                empty

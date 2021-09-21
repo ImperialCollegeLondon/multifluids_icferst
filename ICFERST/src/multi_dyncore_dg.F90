@@ -840,7 +840,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
+           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
            REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
            REAL, DIMENSION( :,:,:,: ), allocatable :: CDISPERSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
@@ -914,14 +914,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            if (has_boussinesq_aprox) then
             !We do not consider variations of density in transport
-              den_all = 1
-              denold_all =1
+               den_all = 1
+               denold_all =1
           else
              den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
              denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
              den_all    = den_all2 % val ( 1, :, : )
              denold_all = denold_all2 % val ( 1, :, : )
-          endif
+           endif
 
            IGOT_T2_loc = 1
 
