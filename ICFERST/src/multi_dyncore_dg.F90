@@ -108,7 +108,7 @@ contains
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
+           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
            REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
@@ -529,7 +529,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
+           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
            REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
@@ -774,7 +774,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim, stat
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
+           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
            REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION, CDISPERSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
@@ -1057,7 +1057,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
+           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
            REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
@@ -2206,7 +2206,7 @@ end if
            !Introduce well modelling
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe,&
                 associated(Mmat%PIVIT_MAT) .and. .not.Mmat%Stored, WIC_P_BC_ALL, pressure_BCs%val, SIGMA,&
-                velocity%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL )
+                velocity%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL, pipes_aux )
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
@@ -2310,7 +2310,7 @@ end if
         !Call impose strong BCs must be here before the rescaling and after include wells and 
         !compressibility - only done if using P0DG and gamma is zero at the BC see 
         !subroutine initialize_pipes_package_and_gamma for more information
-        if (P0DG_Well_Strong_BCs) call impose_strong_bcs_wells(state,Mdims,Mmat, ndgln, CMC_petsc,pressure,rhs_p%val)
+        if (is_P0DGP1 .and. Mdims%npres > 1) call impose_strong_bcs_wells(state, pipes_aux, Mdims, Mmat, ndgln, CMC_petsc,pressure,rhs_p%val)
 ! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
         !Re-scale system so we can deal with SI units of permeability
         if (is_porous_media) then
@@ -9134,7 +9134,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     !> pressure boundary conditions for wells ONLY. This is required only when using P0DG-P1
     !> If not imposing strong pressure BCs and using P0DG-P1, the formulation for weak pressure BCs
     !> leads to a 0 in the diagonal of the CMC matrix, therefore strong BCs are required.
-    subroutine impose_strong_bcs_wells(state,Mdims,Mmat, ndgln, CMC_petsc,pressure,rhs_p)
+    subroutine impose_strong_bcs_wells(state,pipes_aux,Mdims,Mmat, ndgln, CMC_petsc,pressure,rhs_p)
 
       ! form pressure matrix CMC using a colouring approach
       type(multi_dimensions), intent(in) :: Mdims
@@ -9144,6 +9144,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       type(petsc_csr_matrix), intent(inout)::  CMC_petsc
       real, dimension (:,:), intent(inout) :: rhs_p
       type( tensor_field ), intent(in) :: pressure
+      type (multi_pipe_package), intent(in) :: pipes_aux
       INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
       INTEGER, PARAMETER :: WIC_P_BC_DIRICHLET = 1
       ! Local variables
@@ -9160,24 +9161,26 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       CMC_petsc%is_assembled=.false.
       call assemble( CMC_petsc )
       DO SELE = 1, Mdims%stotel
-          DO IPRES = 2, Mdims%npres
+        DO IPRES = 2, Mdims%npres
           !Find element where we have a pressure BC defined
           if (WIC_P_BC_ALL(1, IPRES, SELE ) == WIC_P_BC_DIRICHLET) then
-              !If no flip required or positive pressure
-              IF (Mmat%WIC_FLIP_P_VEL_BCS(1,IPRES,SELE) == 0 .or. Mmat%WIC_FLIP_P_VEL_BCS(1,IPRES,SELE) == 10) THEN
+            !If no flip required or positive pressure
+            IF (Mmat%WIC_FLIP_P_VEL_BCS(1,IPRES,SELE) == 0 .or. Mmat%WIC_FLIP_P_VEL_BCS(1,IPRES,SELE) == 10) THEN
               DO CV_SILOC = 1, Mdims%cv_snloc
-                  CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
-                  !If pipe diameter = 0, no changes made
-                  if (PIPE_Diameter%val(cv_nod) <= 1e-8) cycle
-                  i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
-                  call MatZeroRows(CMC_petsc%M, 1, (/i_indx/), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
-                  !Impose P_BC in the right hand side
-                  rhs_p(ipres,cv_nod) = pressure_BCs%val(1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC ) - &
-                  pressure%val(1,IPRES, CV_NOD)
-              end do
+                CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
+                !Check if we are in an element that may need strongly imposed BCs
+                if (.not. pipes_aux%impose_strongBCs(CV_NOD)) cycle
+                ! !If pipe diameter = 0, no changes made
+                ! if (PIPE_Diameter%val(cv_nod) <= 1e-8) cycle
+                i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+                call MatZeroRows(CMC_petsc%M, 1, (/i_indx/), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
+                !Impose P_BC in the right hand side
+                rhs_p(ipres,cv_nod) = pressure_BCs%val(1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC ) - &
+                pressure%val(1,IPRES, CV_NOD)
+                end do
               end if
           end if
-          END DO
+        END DO
       end do
       !Re-assemble just in case
       CMC_petsc%is_assembled=.false.

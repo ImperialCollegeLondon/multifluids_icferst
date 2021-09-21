@@ -1112,8 +1112,7 @@ contains
         ! hack to define a lateral from diamond
         if(npres>1) then
             vfield=>extract_vector_field(packed_state,"Porosity")
-            sfield=>extract_scalar_field(state(1),"Pipe")
-            call assign_val(vfield%val(2,:),sfield%val)
+            call assign_val(vfield%val(2,:),(/1.0/))
         end if
 
         if (has_scalar_field(state(1),"Longitudinal_Dispersivity")) then
@@ -1127,8 +1126,7 @@ contains
             call set(Longitudinal_Dispersivity,1,ldfield)
             if(npres>1) then
               ldvfield=>extract_vector_field(packed_state,"Longitudinal_Dispersivity")
-              ldfield=>extract_scalar_field(state(1),"Pipe")
-              call assign_val(ldvfield%val(2,:),ldfield%val)
+              call assign_val(ldvfield%val(2,:),(/1.0/))
             end if
             if (have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
               call allocate(Transverse_Dispersivity,npres,element_mesh,"Transverse_Dispersivity")
@@ -1142,8 +1140,7 @@ contains
                 call set(Transverse_Dispersivity,1,tdfield)
                 if(npres>1) then
                   tdvfield=>extract_vector_field(packed_state,"Transverse_Dispersivity")
-                  tdfield=>extract_scalar_field(state(1),"Pipe")
-                  call assign_val(tdvfield%val(2,:),tdfield%val)
+                  call assign_val(tdvfield%val(2,:),(/1.0/))
                 end if
               end if
             end if

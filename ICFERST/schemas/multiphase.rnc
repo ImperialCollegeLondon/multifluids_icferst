@@ -831,27 +831,6 @@ start =
 
              ## Options to specify the wells/pipes
              element wells_and_pipes {
-                ## Option to define laterals from diamond
-                ## if in doubt set it to 1.
-                element scalar_field {
-                   attribute name { "Pipe" },
-                   (
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field,
-                     output_options
-                      }|
-                    element diagnostic {
-                      vector_python_diagnostic_algorithm,
-                      diagnostic_scalar_field_no_adapt,
-                     output_options
-                    }|
-                      element aliased {
-                         generic_aliased_field,
-                     output_options
-                      }
-                   )
-                },
                 ## Specify where and how much the well/pipes are opened
                 ## It goes from 0 to 1. If completely opened, set it to 1.
                 element scalar_field {
