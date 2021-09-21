@@ -1569,6 +1569,7 @@ solver_options =
                       empty,
                         ## Time-step size is controlled to try to always perform the specified number of FPI introduced here.
                         ## By default this is the 20% of the maximum number of non-linear iterations.
+                        ## Please double-check that the number of 'Non_Linear_Solver' iterations is greater than 'Aim_num_FPI'
                         element Aim_num_FPI {
                           integer
                         }?
