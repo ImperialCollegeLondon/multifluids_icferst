@@ -2002,7 +2002,7 @@ end if
            !Introduce well modelling
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe,&
                 associated(Mmat%PIVIT_MAT) .and. .not.Mmat%Stored, WIC_P_BC_ALL, pressure_BCs%val, SIGMA,&
-                velocity%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL )
+                velocity%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL, pipes_aux )
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
