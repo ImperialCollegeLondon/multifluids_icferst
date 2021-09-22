@@ -2678,66 +2678,55 @@ end if
           type( tensor_field ), pointer :: viscosity
           type( scalar_field ), pointer :: saturation
           real, dimension( :, :, : ), allocatable :: mu_tmp
+          real :: auxR
+          real, parameter :: tol = 1e-16
           !Matrix already initialised !
           Mmat%PIVIT_MAT = 0.
 
           if (Pivit_type==1) then  !Pivit contains only the mass matrix
             do ele = 1, Mdims%totele
-              DO U_JLOC = 1, Mdims%u_nloc
-                u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
-                DO JDIM = 1, Mdims%ndim
-                  DO JPHASE = 1, final_phase
-                    JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
-                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
-                    Mmat%PIVIT_MAT(J, J, ELE) = (MASS_ELE(ele)/dble(Mdims%u_nloc))
-                  end do
-                end do
+              auxR = MASS_ELE(ele)/dble(Mdims%u_nloc)
+              DO U_JLOC = 1, Mdims%u_nloc * Mdims%ndim * final_phase
+                Mmat%PIVIT_MAT(J, J, ELE) = auxR
               end do
             end do
-          elseif(Pivit_type==2 ) then !Pivit contains -c/phi^2 * mass
-                saturation => extract_scalar_field(state(2), "PhaseVolumeFraction")
-                do ele = 1, Mdims%totele
-                    do u_iloc = 1, Mdims%u_nloc
-                        u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
-                        do cv_iloc = 1, Mdims%cv_nloc
-                            imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
-                            cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                            do JPHASE = 1, final_phase
-                                DO JDIM = 1, Mdims%ndim
-                                    J = JDIM+(JPHASE-1)*Mdims%ndim+(u_iloc-1)*Mdims%ndim*final_phase
-                                    ! the second phase of upwnd%adv_coef containts c/phi
-                                    Mmat%PIVIT_MAT(J, J, ELE) = (MASS_ELE(ele)/dble(Mdims%u_nloc))*upwnd%adv_coef(1,1,2,imat)/max(saturation%val(cv_loc), 1e-6) ! we'd better set a uiform global minimal phi value somewhere else
-                                END DO
-                            end do
-                        end do
-                    end do
+          else if(Pivit_type==2 ) then !Pivit contains -c/phi^2 * mass
+            saturation => extract_scalar_field(state(1), "PhaseVolumeFraction")!1 - sat1 = porosity
+            do ele = 1, Mdims%totele
+                !Perform a CV to P0DG projection. We just take a quarter(P1 3D) of each CV per element
+                auxR = 0.
+                do cv_iloc = 1, Mdims%cv_nloc
+                    imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+                    cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)   
+                    ! the second phase of upwnd%adv_coef containts c/phi
+                    auxR = auxR + (upwnd%adv_coef(1,1,2,imat)/((1.0 + tol  - saturation%val(cv_loc))))/dble(Mdims%cv_nloc)   
                 end do
-            else !Not used for now
-                viscosity => extract_tensor_field(state(1), "Viscosity")
-                allocate(mu_tmp( viscosity%dim(1), viscosity%dim(2), Mdims%cv_nloc ) )
+                !Include now the corresponding element mass
+                auxR = (MASS_ELE(ele)/dble(Mdims%u_nloc)) * auxR 
+                !Introduce into the pivit matrix
+                do j = 1, Mdims%u_nloc * final_phase * Mdims%ndim
+                  Mmat%PIVIT_MAT(J, J, ELE) = auxR 
+                end do
+            end do
+          else !Not used for now
+              viscosity => extract_tensor_field(state(1), "Viscosity")
+              allocate(mu_tmp( viscosity%dim(1), viscosity%dim(2), Mdims%cv_nloc ) )
 
-                saturation => extract_scalar_field(state(1), "PhaseVolumeFraction")
-                do ele = 1, Mdims%totele
-                    mu_tmp = ele_val( viscosity, ele )
-                    do u_iloc = 1, Mdims%u_nloc
-                        u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
-                        do cv_iloc = 1, Mdims%cv_nloc
-                            imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
-                            cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                            do JPHASE = 1, final_phase
-                            DO JDIM = 1, Mdims%ndim
-                                J = JDIM+(JPHASE-1)*Mdims%ndim+(u_iloc-1)*Mdims%ndim*final_phase
-                                !THIS SPLIT IS TEMPORARY SO WE PASS THE TEST CASES BUT A PROPER SCALING NEEDS TO BE FOUND AND IMPLEMENTED CONSISTENTLY
-                                if (is_magma) then
-                                Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)*mu_tmp( 1, 1, cv_iloc )* max(saturation%val(cv_loc), 1e-5)/1000
-                                else
-                                Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)
-                                end if
-                            END DO
-                            end do
-                        end do
-                    end do
-                end do                
+              saturation => extract_scalar_field(state(1), "PhaseVolumeFraction")
+              do ele = 1, Mdims%totele
+                mu_tmp = ele_val( viscosity, ele )
+                do cv_iloc = 1, Mdims%cv_nloc
+                  cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+                  !Store mass data
+                  auxR = MASS_ELE(ele)/dble(Mdims%u_nloc) 
+                  !Scale for magma
+                  if (is_magma)  auxR = auxR * mu_tmp( 1, 1, cv_iloc )* max(saturation%val(cv_loc), 1e-5)/1000
+                  !THIS SPLIT IS TEMPORARY SO WE PASS THE TEST CASES BUT A PROPER SCALING NEEDS TO BE FOUND AND IMPLEMENTED CONSISTENTLY
+                  do j = 1, Mdims%u_nloc * final_phase*Mdims%ndim
+                    Mmat%PIVIT_MAT(J, J, ELE) =  auxR
+                  end do
+                end do
+              end do                
           end if
         end subroutine
         !---------------------------------------------------------------------------
