@@ -2540,7 +2540,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 select case (variable_selection)
                 case (4, 5)!For temperature only infinite norms for saturation and temperature
                         ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
-                            .and. max_calculate_mass_delta < calculate_mass_tol .and. Tracers_ref_val < Infinite_norm_tol) .or. its >= NonLinearIteration )
+                            .and. max_calculate_mass_delta < calculate_mass_tol .and. Tracers_ref_val < Infinite_norm_tol .and. inf_norm_temp < Infinite_norm_tol)&
+                             .or. its >= NonLinearIteration )
                 case default
                     !For very tiny time-steps ts_ref_val may not be good as is it a relative value
                     !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
