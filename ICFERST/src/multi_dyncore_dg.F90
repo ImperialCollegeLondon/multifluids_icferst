@@ -2309,10 +2309,6 @@ end if
         pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
 ! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 
-        !If solving for compaction, we need to include the
-        !pressure dependant terms of the Schur complement CMC and the corresponding RHS
-        if (compute_compaction) call include_remaining_CTY_terms(CMC_petsc, Mmat%CT_RHS)
-
         !This section is to impose a pressure of zero at some node (when solving for only a gradient of pressure)
         !This is deprecated as the remove_null space method works much better (provided by PETSc)
         call get_option( '/material_phase[0]/scalar_field::Pressure/' // 'prognostic/reference_node', ndpset, default = 0 )
@@ -2324,7 +2320,7 @@ end if
         rhs_p%val = 0.
         call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
         if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
-        rhs_p%val = - rhs_p%val
+        rhs_p%val = - rhs_p%val! + Mmat%CT_RHS%val
         call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
 
         !Re-scale system so we can deal with SI units of permeability
@@ -2348,7 +2344,6 @@ end if
           if ((solve_stokes .or. solve_mom_iteratively)) then
             call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
                                           MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
-          !call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
                 !######################## CORRECTION VELOCITY STEP####################################
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases        
@@ -2378,7 +2373,6 @@ end if
             DEALLOCATE( Mmat%PIVIT_MAT )
             nullify(Mmat%PIVIT_MAT)
         end if
-        if (compute_compaction) call deallocate(Mmat%petsc_ACV)
         !Using associate doesn't seem to be stable enough
         if (((solve_stokes .or. solve_mom_iteratively) &
              .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
@@ -2664,7 +2658,7 @@ print *, k,':', conv_test
         end subroutine mult_inv_Mass_vel_vector
 
         !---------------------------------------------------------------------------
-        !> @author Pablo Salinas
+        !> @author Pablo Salinas, Haiyang Hu
         !> @brief Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not.
         !> For magma only the first phase is imposed here as for Darcy the Mass matrix is generated in ASSEM_FORCE_CTY
         !---------------------------------------------------------------------------
@@ -2684,66 +2678,55 @@ print *, k,':', conv_test
           type( tensor_field ), pointer :: viscosity
           type( scalar_field ), pointer :: saturation
           real, dimension( :, :, : ), allocatable :: mu_tmp
+          real :: auxR
+          real, parameter :: tol = 1e-16
           !Matrix already initialised !
           Mmat%PIVIT_MAT = 0.
 
           if (Pivit_type==1) then  !Pivit contains only the mass matrix
             do ele = 1, Mdims%totele
-              DO U_JLOC = 1, Mdims%u_nloc
-                u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
-                DO JDIM = 1, Mdims%ndim
-                  DO JPHASE = 1, final_phase
-                    JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
-                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*final_phase
-                    Mmat%PIVIT_MAT(J, J, ELE) = (MASS_ELE(ele)/dble(Mdims%u_nloc))
-                  end do
-                end do
+              auxR = MASS_ELE(ele)/dble(Mdims%u_nloc)
+              DO U_JLOC = 1, Mdims%u_nloc * Mdims%ndim * final_phase
+                Mmat%PIVIT_MAT(J, J, ELE) = auxR
               end do
             end do
-          elseif(Pivit_type==2 ) then !Pivit contains -c/phi^2 * mass
-                saturation => extract_scalar_field(state(2), "PhaseVolumeFraction")
-                do ele = 1, Mdims%totele
-                    do u_iloc = 1, Mdims%u_nloc
-                        u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
-                        do cv_iloc = 1, Mdims%cv_nloc
-                            imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
-                            cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                            do JPHASE = 1, final_phase
-                                DO JDIM = 1, Mdims%ndim
-                                    J = JDIM+(JPHASE-1)*Mdims%ndim+(u_iloc-1)*Mdims%ndim*final_phase
-                                    ! the second phase of upwnd%adv_coef containts c/phi
-                                    Mmat%PIVIT_MAT(J, J, ELE) = (MASS_ELE(ele)/dble(Mdims%u_nloc))*upwnd%adv_coef(1,1,2,imat)/max(saturation%val(cv_loc), 1e-6) ! we'd better set a uiform global minimal phi value somewhere else
-                                END DO
-                            end do
-                        end do
-                    end do
+          else if(Pivit_type==2 ) then !Pivit contains -c/phi^2 * mass
+            saturation => extract_scalar_field(state(1), "PhaseVolumeFraction")!1 - sat1 = porosity
+            do ele = 1, Mdims%totele
+                !Perform a CV to P0DG projection. We just take a quarter(P1 3D) of each CV per element
+                auxR = 0.
+                do cv_iloc = 1, Mdims%cv_nloc
+                    imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+                    cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)   
+                    ! the second phase of upwnd%adv_coef containts c/phi
+                    auxR = auxR + (upwnd%adv_coef(1,1,2,imat)/((1.0 + tol  - saturation%val(cv_loc))))/dble(Mdims%cv_nloc)   
                 end do
-            else !Not used for now
-                viscosity => extract_tensor_field(state(1), "Viscosity")
-                allocate(mu_tmp( viscosity%dim(1), viscosity%dim(2), Mdims%cv_nloc ) )
+                !Include now the corresponding element mass
+                auxR = (MASS_ELE(ele)/dble(Mdims%u_nloc)) * auxR 
+                !Introduce into the pivit matrix
+                do j = 1, Mdims%u_nloc * final_phase * Mdims%ndim
+                  Mmat%PIVIT_MAT(J, J, ELE) = auxR 
+                end do
+            end do
+          else !Not used for now
+              viscosity => extract_tensor_field(state(1), "Viscosity")
+              allocate(mu_tmp( viscosity%dim(1), viscosity%dim(2), Mdims%cv_nloc ) )
 
-                saturation => extract_scalar_field(state(1), "PhaseVolumeFraction")
-                do ele = 1, Mdims%totele
-                    mu_tmp = ele_val( viscosity, ele )
-                    do u_iloc = 1, Mdims%u_nloc
-                        u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
-                        do cv_iloc = 1, Mdims%cv_nloc
-                            imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
-                            cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                            do JPHASE = 1, final_phase
-                            DO JDIM = 1, Mdims%ndim
-                                J = JDIM+(JPHASE-1)*Mdims%ndim+(u_iloc-1)*Mdims%ndim*final_phase
-                                !THIS SPLIT IS TEMPORARY SO WE PASS THE TEST CASES BUT A PROPER SCALING NEEDS TO BE FOUND AND IMPLEMENTED CONSISTENTLY
-                                if (is_magma) then
-                                Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)*mu_tmp( 1, 1, cv_iloc )* max(saturation%val(cv_loc), 1e-5)/1000
-                                else
-                                Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)
-                                end if
-                            END DO
-                            end do
-                        end do
-                    end do
-                end do                
+              saturation => extract_scalar_field(state(1), "PhaseVolumeFraction")
+              do ele = 1, Mdims%totele
+                mu_tmp = ele_val( viscosity, ele )
+                do cv_iloc = 1, Mdims%cv_nloc
+                  cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+                  !Store mass data
+                  auxR = MASS_ELE(ele)/dble(Mdims%u_nloc) 
+                  !Scale for magma
+                  if (is_magma)  auxR = auxR * mu_tmp( 1, 1, cv_iloc )* max(saturation%val(cv_loc), 1e-5)/1000
+                  !THIS SPLIT IS TEMPORARY SO WE PASS THE TEST CASES BUT A PROPER SCALING NEEDS TO BE FOUND AND IMPLEMENTED CONSISTENTLY
+                  do j = 1, Mdims%u_nloc * final_phase*Mdims%ndim
+                    Mmat%PIVIT_MAT(J, J, ELE) =  auxR
+                  end do
+                end do
+              end do                
           end if
         end subroutine
         !---------------------------------------------------------------------------
@@ -2962,74 +2945,6 @@ print *, k,':', conv_test
 
       end subroutine compute_DIV_U
 
-      !---------------------------------------------------------------------------
-      !> @author Pablo Salinas
-      !> @brief Include in the Schur complement (CMC matrix) the Laplacian of the pressure and the divergence of the gravity terms that are required
-      !> to form the continuity equation when solvig, for example, for compaction
-      !---------------------------------------------------------------------------
-      subroutine  include_remaining_CTY_terms(CMC_petsc, CT_RHS)
-
-        implicit none
-        type(petsc_csr_matrix), intent(inout)::  CMC_petsc
-        type( vector_field ), intent(inout) :: CT_RHS
-        !Local variables
-        integer :: stat, cv_inod, ele, cv_iloc, mat_nod
-        real, dimension(:, :, :), allocatable :: F_fields, K_fields
-        real, dimension(:,:), allocatable :: lhs_coef
-        real, dimension(:,:,:,:), allocatable :: rhs_coef
-        type( scalar_field ), pointer :: sfield
-        real, dimension(Mdims%ndim) :: g
-        real :: gravity_magnitude, phi
-        type(vector_field), pointer :: gravity_direction
-        real, dimension(Mdims%cv_nonods) :: CV_counter
-        real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
-
-        allocate(F_fields(0, 0, 0), K_fields(0,0,0))
-        allocate(lhs_coef(1, Mdims%cv_nonods), rhs_coef(1, Mdims%ndim, 1, Mdims%cv_nonods))
-
-        sfield => extract_scalar_field( state(1), "PhaseVolumeFraction", stat )
-
-        !For the term multipliying Grad P porosity^2/c !How would this be for more phases??
-        lhs_coef = 0.; CV_counter = 0.
-        DO ELE = 1, Mdims%totele
-          DO CV_ILOC = 1, Mdims%cv_nloc
-            mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
-            cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )!multi_absorp%magma has stored the value of phi/C but we need phi^2/c
-            phi = max((1.0-sfield%val(cv_inod)),1e-5)
-            lhs_coef(1, cv_inod) = lhs_coef(1, cv_inod) + phi/multi_absorp%Magma%val(1, 1, 2, mat_nod)
-            CV_counter(cv_inod) = CV_counter(cv_inod) + 1.0
-          end do
-        end do
-        !Perform average
-        lhs_coef(1,:) = lhs_coef(1,:) / CV_counter
-        !Introduce gravity terms
-        call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
-        rhs_coef = 0.
-        if( stat == 0 ) then
-
-          gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
-            do cv_inod = 1, Mdims%cv_nonods
-              g = node_val( gravity_direction, cv_inod ) * gravity_magnitude
-              do iphase = 2, Mdims%nphase
-                do idim = 1, Mdims%ndim
-                  rhs_coef( 1, idim, 1, cv_inod ) = rhs_coef( 1, idim, 1, cv_inod ) + DEN_ALL2%VAL(1, iphase, cv_inod ) * g( idim ) * lhs_coef(1, cv_inod)
-                end do
-              end do
-            end do
-        end if
-
-        call generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, lhs_coef, &
-          sfield, K_fields, F_fields, rhs_coef, intface_val_type = 100)!intface_val_type normal mean
-        call assemble(Mmat%petsc_ACV); call assemble(CMC_petsc)
-        !Now we perform CMC = CMC + D
-        !call MatAXPY(CMC_petsc%M,1.0,Mmat%petsc_ACV%M, SAME_NONZERO_PATTERN, stat)
-        !We update also the RHS of the continuity equation
-        CT_RHS%val = CT_RHS%val - Mmat%CV_RHS%val*0     ! for use_potential=true, no need to add the divergence of gravity term anyway
-        !We do not deallocate here Mmat%petsc_ACV as it may be needed in the BfB/stokes solver later on
-        call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
-        deallocate(F_fields, K_fields, lhs_coef, rhs_coef)
-
-      end subroutine include_remaining_CTY_terms
 
       !---------------------------------------------------------------------------
       !> @author Pablo Salinas
