@@ -2551,22 +2551,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             end if
             !Asssemble finally the output message
             output_message = trim(output_message) // " "// trim(temp_string) 
-            !Store output messages
-            ! if (is_porous_media .and. variable_selection == 3) then
-            !     write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Saturation (Relative L2): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, &
-            !       "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
-            ! else if (is_porous_media .and. variable_selection >= 4) then!Tracer
-            ! !    if (.not. Check_temp_and_tracer) then
-            ! !     write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Tracer (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val,&
-            ! !      "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
-            ! !    else
-            !      write(output_message, '(a, E10.3, a, E10.3, a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Tracer (L_inf): ",&
-            !         ts_ref_val,"; Temperature (L_inf): ",inf_norm_temp, "; Saturation (L_inf):", inf_norm_val, "; PassiveTracers/Species (L_inf):",&
-            !         Tracers_ref_val, "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
-            ! !    end if
-            ! else
-            !     write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", nonlinear_its
-            ! end if
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
             !Automatic non-linear iteration checking
