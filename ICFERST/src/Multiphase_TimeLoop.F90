@@ -825,7 +825,7 @@ contains
 #endif
 
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
-              ewrite(0,*) "Iterations taken by the pressure linear solver:", pres_its_taken
+              ewrite(1,*) "Iterations taken by the pressure linear solver:", pres_its_taken
             end if
             !Store the combination of Nonlinear iterations performed. Only account of SFPI if multiphase porous media flow
             if (.not. is_porous_media .or. mdims%n_in_pres == 1) SFPI_taken = 0
