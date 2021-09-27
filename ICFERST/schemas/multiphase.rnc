@@ -1488,7 +1488,7 @@ solver_options =
                     ## Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
                     ##
                     ## A Variable to check has to be chosen:
-                    ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
+                    ## 1 = All fields but velocity (default); 2 = Velocity;
                     ##
                     ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for Concentration and/or Temperature</b>
                     ##
@@ -1550,7 +1550,7 @@ solver_options =
                 ## Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
                 ##
                 ## A Variable to check has to be chosen:
-                ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
+                ## 1 = All fields but velocity (default); 2 = Velocity;
                 ##
                 ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for Concentration and/or Temperature</b>
 

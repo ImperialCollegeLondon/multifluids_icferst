@@ -2213,10 +2213,10 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
     !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation), 4 (Temperature)
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations', &
-        variable_selection, default = 3)!by default saturation so it is effectively disabled for single phase
+        variable_selection, default = 4)!by default saturation so it is effectively disabled for single phase
     if (have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear')) then
         call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
-            variable_selection, default = 3)!by default saturation so it is effectively disabled for single phase
+            variable_selection, default = 4)!by default saturation so it is effectively disabled for single phase
     end if
     if (variable_selection == 3 .and. .not. have_option("/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic")) then
         ewrite(0,*) "WARNING: Not prognostic saturation should not be used to control the FPI convergence, changed to pressure."
@@ -2280,8 +2280,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             max_ts = min(max_ts, dump_period)
         end if
     end if
-
-
+    !Initialise convergence check values
+    inf_norm_pres = 0.; inf_norm_val = 0.; ts_ref_val = 0.; inf_norm_temp = 0.; Tracers_ref_val = 0.
     select case (order)
         case (1)!Store or get from backup
             !If we do not have adaptive time stepping then there is nothing to backup
@@ -2308,20 +2308,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                         allocate (reference_field(size(velocity,1),size(velocity,2),size(velocity,3) ))
                     end if
                     reference_field(:,:,:) = velocity
-                case (3)!Phase volume fraction
-
-                    if (allocated(reference_field)) then
-                        if (size(reference_field,2) /= size(phasevolumefraction,1) .or. &
-                            size(reference_field,3) /= size(phasevolumefraction,2) ) then
-                            deallocate(reference_field)
-                            allocate (reference_field(0:1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
-                        end if
-                    else 
-                        allocate (reference_field(0:1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
-                    end if
-                    reference_field(0,1,:) = pressure(1,1,:)
-                    reference_field(1,:,:) = phasevolumefraction
-                case (4,5)!Tracer
+                case default
 
                     temperature => extract_tensor_field(packed_state, "PackedTemperature", stat1)
                     Concentration => extract_tensor_field(packed_state, "PackedConcentration", stat2)
@@ -2377,16 +2364,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                         ! if (stat/=0) reference_field(1,:,:) = Enthalpy(1:size(Concentration,1),:)
 
                         reference_field(2,:,:) = phasevolumefraction
-                case default !Default as pressure is always defined and changes more smoothly than velocity
-                    if (allocated(reference_field)) then
-                        if (size(reference_field,3) /= size(pressure,3) ) then
-                            deallocate(reference_field)
-                            allocate (reference_field(1,size(pressure,2),size(pressure,3) ))
-                        end if
-                    else
-                        allocate (reference_field(1,size(pressure,2),size(pressure,3) ))
-                    end if
-                    reference_field(1,1,:) = pressure(1,1,:)
             end select
 
         case default!Check how is the process going on and decide
@@ -2404,8 +2381,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             Repeat_time_step = .false.
             call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
                 phasevolumefraction = phasevolumefraction)
-            !Initialise convergence check values
-            inf_norm_pres = 0.; inf_norm_val = 0.; ts_ref_val = 0.; inf_norm_temp = 0.; Tracers_ref_val = 0.
+            
             !Consider pressure in all the cases but velocity
             if (variable_selection>2) then
               !Calculate normalized infinite norm of the difference
@@ -2424,21 +2400,12 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     inf_norm_val = maxval(abs(reference_field-velocity))
                     ts_ref_val = inf_norm_val!Use the infinite norm for the time being
                     tolerance_between_non_linear = 1d9!Only infinite norm for the time being
-                case (3)!Phase volume fraction
-                    !Calculate infinite norm, not consider wells
-                    inf_norm_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-phasevolumefraction(1:Mdims%n_in_pres,:)))/backtrack_or_convergence
-
-                    !Calculate value of the functional (considering wells and reservoir)
-                    ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, nonlinear_its)
-                    backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence)
-
-                case (4,5)!Tracer
+                case default
                   temperature => extract_tensor_field(packed_state, "PackedTemperature", stat1)
                   Concentration => extract_tensor_field(packed_state, "PackedConcentration", stat2)
                   !#################TEMPERATURE############################
                   !Calculate normalized infinite norm of the difference
 
-                  inf_norm_temp = 0.
                   if (stat1==0) then
                     auxI = 1
                     if (stat2==0) auxI = 3
@@ -2481,24 +2448,11 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     Tracers_ref_val = inf_norm_scalar_normalised(Tracers_avg(1:Mdims%n_in_pres,:), reference_field(-1,1:size(Concentration%val,2),:), 1.0, totally_min_max)
                     deallocate(Tracers_avg)
                   end if
-
-
-
                   !For single phase there is no backtracking and therefore no backtracking correction
                   if (Mdims%n_in_pres == 1) backtrack_or_convergence = 1.0
                   !Calculate value of the l infinitum for the saturation as well
                   inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
-
-                case default!Pressure
-                    !Calculate normalized infinite norm of the difference
-                    totally_min_max(1)=minval(reference_field)!use stored pressure
-                    totally_min_max(2)=maxval(reference_field)!use stored pressure
-                    !For parallel
-                    call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-                    !Analyse the difference
-                    inf_norm_val = inf_norm_scalar_normalised(pressure(1,1:Mdims%npres,:), reference_field(1,1:Mdims%npres,:), 1.0, totally_min_max)
-                    ts_ref_val = inf_norm_val!Use the infinite norm for the time being
-                    tolerance_between_non_linear = 1d9!Only infinite norm for the time being
+ 
             end select
             ! find the maximum mass error to compare with the tolerance below
             ! This is the maximum error of each indivial phase
