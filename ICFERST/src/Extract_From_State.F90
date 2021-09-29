@@ -2176,7 +2176,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     !Variables for automatic non-linear iterations
     real, save :: dt_by_user = -1
     real :: tolerance_between_non_linear, min_ts, max_ts,&
-        Infinite_norm_tol, calculate_mass_tol, inf_norm_pres, Infinite_norm_tol_pres, inf_norm_temp
+        Infinite_norm_tol, calculate_mass_tol, inf_norm_pres, Infinite_norm_tol_pres, inf_norm_temp, inf_norm_conc
     real :: max_calculate_mass_delta !> local variable, holds the maximum mass error
     real, dimension(2) :: totally_min_max
     logical :: PID_controller !> Are we using a Proportional integration derivator controller of the time-step size?
@@ -2281,7 +2281,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
         end if
     end if
     !Initialise convergence check values
-    inf_norm_pres = 0.; inf_norm_val = 0.; ts_ref_val = 0.; inf_norm_temp = 0.; Tracers_ref_val = 0.
+    inf_norm_pres = 0.; inf_norm_val = 0.; ts_ref_val = 0.; inf_norm_temp = 0.; Tracers_ref_val = 0.; inf_norm_conc=0.
     select case (order)
         case (1)!Store or get from backup
             !If we do not have adaptive time stepping then there is nothing to backup
@@ -2383,7 +2383,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 phasevolumefraction = phasevolumefraction)
             
             !Consider pressure in all the cases but velocity
-            if (variable_selection>2) then
+            if (variable_selection/=2) then
               !Calculate normalized infinite norm of the difference
               !For parallel
               totally_min_max(1)=0.!minval(reference_field(0,1,:))!use stored pressure
@@ -2415,54 +2415,62 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
                     !Analyse the difference !Calculate infinite norm, not consider wells
                     inf_norm_temp = inf_norm_scalar_normalised(temperature%val(1,1:size(temperature%val,2),:), reference_field(auxI,1:size(temperature%val,2),:), 1.0, totally_min_max)
-                  end if
+                end if
 
-                  if (stat2==0) then
-
+                if (stat2==0) then
+                    
                     totally_min_max(1)=minval(reference_field(1,:,:))
                     totally_min_max(2)=maxval(reference_field(1,:,:))!use stored temperature
                     !For parallel
                     call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
                     !Analyse the difference !Calculate infinite norm, not consider wells
-                    ts_ref_val = inf_norm_scalar_normalised(Concentration%val(1,1:size(Concentration%val,2),:), reference_field(1,1:size(Concentration%val,2),:), 1.0, totally_min_max)
-                    ! ts_ref_val = maxval(abs(reference_field(1,1:size(Concentration%val,2),:)-Concentration%val(1, 1:size(Concentration%val,2),:)))!/backtrack_or_convergence
-                    inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))!/backtrack_or_convergence
-                  else
+                    inf_norm_conc = inf_norm_scalar_normalised(Concentration%val(1,1:size(Concentration%val,2),:), reference_field(1,1:size(Concentration%val,2),:), 1.0, totally_min_max)
+                else
                     !Overwrite for the output message, since it is not being used by the tracer
-                    ts_ref_val = inf_norm_temp
-                  end if
-                  if (have_Passive_Tracers) then 
+                    inf_norm_conc = inf_norm_temp
+                end if
+                if (have_Passive_Tracers) then 
                     allocate(Tracers_avg(Mdims%nphase, Mdims%cv_nonods)); Tracers_avg = 0.
                     reference_field(-1,:,:) = 0.
                     nfields = option_count("/material_phase[0]/scalar_field")
                     do k = 1, nfields
-                      call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                      if (is_Tracer_field(option_name)) then
-                        tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
-                        Tracers_avg(1:size(tracer_field%val,2),:) = Tracers_avg(1:size(tracer_field%val,2),:) +&
-                                tracer_field%val(1,1:size(tracer_field%val,2),:)/real(Ntracers)
+                        call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                        if (is_Tracer_field(option_name)) then
+                            tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
+                            Tracers_avg(1:size(tracer_field%val,2),:) = Tracers_avg(1:size(tracer_field%val,2),:) +&
+                            tracer_field%val(1,1:size(tracer_field%val,2),:)/real(Ntracers)
                       end if
                     end do 
                     !Perform the check with the averaged tracers values
                     Tracers_ref_val = inf_norm_scalar_normalised(Tracers_avg(1:Mdims%n_in_pres,:), reference_field(-1,1:size(Concentration%val,2),:), 1.0, totally_min_max)
                     deallocate(Tracers_avg)
-                  end if
-                  !For single phase there is no backtracking and therefore no backtracking correction
-                  if (Mdims%n_in_pres == 1) backtrack_or_convergence = 1.0
-                  !Calculate value of the l infinitum for the saturation as well
-                  inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
- 
+                end if
+                !For single phase there is no backtracking and therefore no backtracking correction
+                if (Mdims%n_in_pres == 1) then 
+                    backtrack_or_convergence = 1.0
+                    inf_norm_val = 0.; ts_ref_val = 0.
+                else
+                    !Calculate infinite norm, not consider wells
+                    inf_norm_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-phasevolumefraction(1:Mdims%n_in_pres,:)))/backtrack_or_convergence
+
+                    !Calculate value of the functional (considering wells and reservoir)
+                    ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, nonlinear_its)
+                    backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence)
+                end if
             end select
             ! find the maximum mass error to compare with the tolerance below
             ! This is the maximum error of each indivial phase
             max_calculate_mass_delta = calculate_mass_delta(1,2)
-
+            !For very tiny time-steps ts_ref_val may not be good as is it a relative value
+!            !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
+            if (inf_norm_val * 5. < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) then
                 call allmax(ts_ref_val)
                 call allmax(max_calculate_mass_delta)
                 call allmax(inf_norm_val)
                 call allmax(Tracers_ref_val)
+                call allmax(inf_norm_conc)
             end if
 
             !If single phase then no point in checking the saturation or mass conservation!
@@ -2477,21 +2485,23 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
 
             if (is_porous_media) then
                 select case (variable_selection)
-                case (1,2)
+                case (2)
                     write(temp_string, '(a, E10.3,a,i0)' ) "| L_inf:", inf_norm_val
-                case (3)
-                    write(temp_string, '(a, E10.3, a, E10.3)' ) "| Saturation (Relative L2): ",ts_ref_val,"| Saturation:", inf_norm_val
                 case default
                     if (abs(inf_norm_val) > 1e-30) then 
                         write(temp_string, '(a, E10.3)' ) "| Saturation:", inf_norm_val
+                        output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                    end if
+                    if (abs(ts_ref_val) > 1e-30) then 
+                        write(temp_string, '(a, E10.3)' ) "| Saturation(Rel L2)::", ts_ref_val
                         output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
                     end if
                     if (abs(inf_norm_temp) > 1e-30) then 
                         write(temp_string, '(a, E10.3)' ) "| Temperature: ",inf_norm_temp
                         output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
                     end if
-                    if (abs(ts_ref_val) > 1e-30 .and. (abs(inf_norm_temp-ts_ref_val)>1e-8)) then 
-                        write(temp_string, '(a, E10.3)' ) "| Tracer: ", ts_ref_val
+                    if (abs(inf_norm_conc) > 1e-30 .and. (abs(inf_norm_temp-inf_norm_conc)>1e-8)) then 
+                        write(temp_string, '(a, E10.3)' ) "| Tracer: ", inf_norm_conc
                         output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
                     end if
                     if (abs(Tracers_ref_val) > 1e-30) then 
@@ -2502,27 +2512,16 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             else
                 write(temp_string, '(a, E10.3,a,i0)' ) "| L_inf:", inf_norm_val 
             end if
+            
             !Asssemble finally the output message
             output_message = trim(output_message) // " "// trim(temp_string) 
-            !TEMPORARY, re-use of global variable backtrack_or_convergence to send
-            !information about convergence to the trust_region_method
+
             !Automatic non-linear iteration checking
             if (is_porous_media) then
-                ! select case (variable_selection)
-                ! case (4, 5)!For temperature only infinite norms for saturation and temperature
-                ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
-                    .and. max_calculate_mass_delta < calculate_mass_tol .and. Tracers_ref_val < Infinite_norm_tol .and. inf_norm_temp < Infinite_norm_tol)&
-                        .or. its >= NonLinearIteration )
-!                 case default
-!                     !For very tiny time-steps ts_ref_val may not be good as is it a relative value
-!                     !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
-!                     if (inf_norm_val * 5. < Infinite_norm_tol) then
-!                         ts_ref_val = tolerance_between_non_linear/2.
-! !                            if (getprocno() == 1) output_message = trim(output_message)// "; Infinite norm 5 times better than requested. Ignoring FPI convergence tolerance."
-!                     end if
-!                     ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
-!                         .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
-!                 end select
+                ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
+                    .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_conc < Infinite_norm_tol &
+                    .and. max_calculate_mass_delta < calculate_mass_tol .and. Tracers_ref_val < Infinite_norm_tol &
+                    .and. inf_norm_temp < Infinite_norm_tol) .or. its >= NonLinearIteration )
             else
                 ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres) .or. its >= NonLinearIteration
             end if
