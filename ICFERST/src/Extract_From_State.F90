@@ -2413,9 +2413,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     totally_min_max(2)=maxval(reference_field(auxI,:,:))!use stored temperature
                     !For parallel
                     call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-
                     !Analyse the difference !Calculate infinite norm, not consider wells
-                    inf_norm_temp = inf_norm_scalar_normalised(temperature%val(1,1:size(temperature%val,2),:), reference_field(1,1:size(temperature%val,2),:), 1.0, totally_min_max)
+                    inf_norm_temp = inf_norm_scalar_normalised(temperature%val(1,1:size(temperature%val,2),:), reference_field(auxI,1:size(temperature%val,2),:), 1.0, totally_min_max)
                   end if
 
                   if (stat2==0) then
@@ -2509,21 +2508,21 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             !information about convergence to the trust_region_method
             !Automatic non-linear iteration checking
             if (is_porous_media) then
-                select case (variable_selection)
-                case (4, 5)!For temperature only infinite norms for saturation and temperature
-                        ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
-                            .and. max_calculate_mass_delta < calculate_mass_tol .and. Tracers_ref_val < Infinite_norm_tol .and. inf_norm_temp < Infinite_norm_tol)&
-                             .or. its >= NonLinearIteration )
-                case default
-                    !For very tiny time-steps ts_ref_val may not be good as is it a relative value
-                    !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
-                    if (inf_norm_val * 5. < Infinite_norm_tol) then
-                        ts_ref_val = tolerance_between_non_linear/2.
-!                            if (getprocno() == 1) output_message = trim(output_message)// "; Infinite norm 5 times better than requested. Ignoring FPI convergence tolerance."
-                    end if
-                    ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
-                        .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
-                end select
+                ! select case (variable_selection)
+                ! case (4, 5)!For temperature only infinite norms for saturation and temperature
+                ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
+                    .and. max_calculate_mass_delta < calculate_mass_tol .and. Tracers_ref_val < Infinite_norm_tol .and. inf_norm_temp < Infinite_norm_tol)&
+                        .or. its >= NonLinearIteration )
+!                 case default
+!                     !For very tiny time-steps ts_ref_val may not be good as is it a relative value
+!                     !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
+!                     if (inf_norm_val * 5. < Infinite_norm_tol) then
+!                         ts_ref_val = tolerance_between_non_linear/2.
+! !                            if (getprocno() == 1) output_message = trim(output_message)// "; Infinite norm 5 times better than requested. Ignoring FPI convergence tolerance."
+!                     end if
+!                     ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
+!                         .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
+!                 end select
             else
                 ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres) .or. its >= NonLinearIteration
             end if
@@ -2772,12 +2771,21 @@ real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, tota
     real, dimension(2), intent(in) :: totally_min_max
     !Local variables
     integer :: cv_inod, iphase
+    real, parameter :: tol = 1e-8
     !Same as normalising values but should be quicker
-    inf_norm_scalar_normalised = maxval(abs(reference_tracer-tracer))/max((totally_min_max(2)-totally_min_max(1)), 1e-5)
-
+    !First we obtain the difference
+    inf_norm_scalar_normalised = maxval(abs(reference_tracer-tracer))
     call allmax(inf_norm_scalar_normalised)
-    !rescale with accumulated dumping, if no dumping just pass down a 1.0
-    inf_norm_scalar_normalised = inf_norm_scalar_normalised/dumping
+    !Now we proceed to normalise the values if the difference of min-max is nonzero
+    !we also check that the range of the values is actually not below the tolerance
+    if (inf_norm_scalar_normalised > tol .and. abs(totally_min_max(2))> tol) then 
+        inf_norm_scalar_normalised = inf_norm_scalar_normalised/(totally_min_max(2)-totally_min_max(1))
+        !rescale with accumulated dumping, if no dumping just pass down a 1.0
+        inf_norm_scalar_normalised = inf_norm_scalar_normalised/dumping
+    else 
+        !If it is zero also it means nothing happens so we consider everything is good...
+        inf_norm_scalar_normalised = 0.
+    end if
 
 end function
 
