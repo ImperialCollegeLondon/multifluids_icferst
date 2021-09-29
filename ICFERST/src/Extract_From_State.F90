@@ -2771,21 +2771,9 @@ real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, tota
     real, dimension(2), intent(in) :: totally_min_max
     !Local variables
     integer :: cv_inod, iphase
-    real, parameter :: tol = 1e-8
+    real, parameter :: tol = 1e-5
     !Same as normalising values but should be quicker
-    !First we obtain the difference
-    inf_norm_scalar_normalised = maxval(abs(reference_tracer-tracer))
-    call allmax(inf_norm_scalar_normalised)
-    !Now we proceed to normalise the values if the difference of min-max is nonzero
-    !we also check that the range of the values is actually not below the tolerance
-    if (inf_norm_scalar_normalised > tol .and. abs(totally_min_max(2))> tol) then 
-        inf_norm_scalar_normalised = inf_norm_scalar_normalised/(totally_min_max(2)-totally_min_max(1))
-        !rescale with accumulated dumping, if no dumping just pass down a 1.0
-        inf_norm_scalar_normalised = inf_norm_scalar_normalised/dumping
-    else 
-        !If it is zero also it means nothing happens so we consider everything is good...
-        inf_norm_scalar_normalised = 0.
-    end if
+    inf_norm_scalar_normalised = maxval(abs(reference_tracer-tracer))/max((totally_min_max(2)-totally_min_max(1)), tol)
 
 end function
 
