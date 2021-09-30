@@ -2377,7 +2377,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
 
             !Initialise convergence check values
             inf_norm_pres = 0.; inf_norm_val = 0.; ts_ref_val = 0.; inf_norm_temp = 0.; Tracers_ref_val = 0.; inf_norm_conc=0.
-            
+
             !#################PRESSURE############################
             if (variable_selection/=2) then!not for velocity
               !Calculate normalized infinite norm of the difference
@@ -2423,8 +2423,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 end if
                 !#################CONCENTRATION############################
                 if (stat2==0) then
-                    totally_min_max(1)=minval(reference_field(1,:,:))
-                    totally_min_max(2)=maxval(reference_field(1,:,:))!use stored temperature
+                    totally_min_max(1)=minval(reference_field(2,:,:))
+                    totally_min_max(2)=maxval(reference_field(2,:,:))!use stored temperature
                     !For parallel
                     call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
                     !Analyse the difference !Calculate infinite norm, not consider wells
@@ -2452,14 +2452,12 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             max_calculate_mass_delta = calculate_mass_delta(1,2)
             !For very tiny time-steps ts_ref_val may not be good as is it a relative value
 !            !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
-            if (inf_norm_val * 5. < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
+            if (inf_norm_val * 5. < Infinite_norm_tol .and. Mdims%n_in_pres > 1) ts_ref_val = tolerance_between_non_linear/2.
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) then
-                call allmax(ts_ref_val)
-                call allmax(max_calculate_mass_delta)
-                call allmax(inf_norm_val)
-                call allmax(Tracers_ref_val)
-                call allmax(inf_norm_conc)
+              call allmax(max_calculate_mass_delta)
+              call allmax(ts_ref_val);call allmax(inf_norm_val);call allmax(inf_norm_pres)
+              call allmax(Tracers_ref_val);call allmax(inf_norm_conc);call allmax(inf_norm_temp)
             end if
 
             !If single phase then no point in checking the saturation or mass conservation!
