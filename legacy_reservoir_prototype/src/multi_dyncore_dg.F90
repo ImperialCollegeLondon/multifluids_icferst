@@ -97,7 +97,7 @@ contains
         Logical:: diffusion_solid_implicit
 
         diffusion_solid_implicit= have_option( '/solid_implicit')
-        diffusion_solid_implicit=.FALSE.
+        diffusion_solid_implicit=.true.
         if(diffusion_solid_implicit) then ! the 3 diffusion eqns for the grid velocities...
            call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
         else
@@ -263,7 +263,7 @@ contains
       end if
       nconc=ic
       ndim_nphase = Mdims%ndim * Mdims%nphase
-!      ndim_nphase=0
+      ndim_nphase=0
       number_fields = ndim_nphase + nconc
 
       if(nconc>0) then
@@ -273,23 +273,14 @@ contains
          allocate(cc(number_fields,Mdims%cv_nonods))
          allocate(lambda(number_fields),cc_x(Mdims%ndim,number_fields,Mdims%cv_nonods))
          allocate(lambda_xx(number_fields),cc_xx(Mdims%ndim,Mdims%ndim,number_fields,Mdims%cv_nonods))
-         cc=0
-         cc_x=0
-         cc_xx=0
-       endif
+      endif
 
 !      allocate(c_field(max(nconc,1),Mdims%cv_nonods),cc(max(number_fields,1),Mdims%cv_nonods))
 !      allocate(c_lambda(max(nconc,1)),lambda(max(number_fields,1)),cc_x(Mdims%ndim,max(number_fields,1),Mdims%cv_nonods))
 !      allocate(lambda_xx(max(number_fields,1)),cc_xx(Mdims%ndim,Mdims%ndim,max(number_fields,1),Mdims%cv_nonods))
 
-!      if(ndim_nphase>0) u_lambda = 1.0
-!      if(number_fields>0) c_lambda = 10.0
-!      if(ndim_nphase>0) u_lambda = 1.0
-!      if(number_fields>0) c_lambda = 1.0
-      u_lambda = 0.0
-      c_lambda = 0.0
- !      u_lambda = 1.0
- !     c_lambda = 0.0
+      if(ndim_nphase>0) u_lambda = 1.0
+      if(number_fields>0) c_lambda = 10.0
       if(ndim_nphase/=0) lambda(1:ndim_nphase)=u_lambda(1:ndim_nphase)
       if(nconc/=0) lambda(ndim_nphase+1:ndim_nphase+nconc)=c_lambda(1:nconc)
       if(interpolation_error) then ! use interpolation theory and a Hessian to form variational principle
@@ -307,7 +298,6 @@ contains
          ic=ic+1
          c_field(ic,:) = Temperature%val(1,1,:)
       end if
-!      ic=0
       if((Mdims%ncomp>1).and.(nconc>0)) then
         ComponentMassFraction  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
         do icomp=1,Mdims%ncomp
@@ -359,7 +349,7 @@ contains
          u_all_solid(:,:,cv_inod) = u_all_solid(:,:,cv_inod)/max(0.01, vel_count_solid(cv_inod) )
       end do
 !JXiang comment the below line temporarily
-      if(nconc/=0) cc(ndim_nphase+1:ndim_nphase+nconc, :) = c_field(1:nconc,:)   
+      if(nconc/=0) cc(ndim_nphase+1:ndim_nphase+number_fields, :) = c_field(1:nconc,:)   
 
       sigma_plus_bc(:) = min(1.0, 1000.0 * sigma_plus_bc(:)) ! if we have a non-zero value then def assume is a solid.
 ! Set the boundary condtions on all surface elements around the domain to zero.
@@ -375,11 +365,12 @@ contains
       matrix_diag=0.0
       rhs=0.0
 
-ewrite(3,*) "before loop"
+!ewrite(3,*) "before loop"
 
       do ele = 1, Mdims%totele
       ! calculate detwei,ra,nx,ny,nz for element ele
       ! calculate detwei,RA,NX,NY,NZ for the ith element
+!      ewrite(3,*) "inside loop",ele
       call DETNLXR(ele, X_ALL%val, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
 
 
@@ -409,12 +400,11 @@ ewrite(3,*) "before loop"
                nxnx_mat= nxnx*(1.0-sigma_plus_bc(cv_inod))  + rhs_r
 
   !             ewrite(3,*) "rhs_r",rhs_r
-  !             ewrite(3,*) "nxnx",nxnx
-  !             ewrite(3,*) "sigma_plus_bc",sigma_plus_bc(cv_inod)
-  !             ewrite(3,*) "matrix_diag",matrix_diag(cv_inod)
-  !             ewrite(3,*) "nnx",nnx
-  !             ewrite(3,*) "nxnx_all",nxnx_all
-               rhs(:,cv_inod)=rhs(:,cv_inod) + rhs_r * u_all_solid(:,1,cv_jnod) ! assume solid is in phase 1 if it exists.
+ !              ewrite(3,*) "nxnx",nxnx
+   !            ewrite(3,*) "sigma_plus_bc",sigma_plus_bc(cv_inod)
+   !            ewrite(3,*) "matrix_diag",matrix_diag(cv_inod)
+
+               rhs(:,cv_inod)=rhs(:,cv_inod) + 2.0*rhs_r * u_all_solid(:,1,cv_jnod) ! assume solid is in phase 1 if it exists.
 
                ml(cv_inod)=ml(cv_inod)+nn
                do idim = 1, Mdims%ndim
@@ -422,11 +412,9 @@ ewrite(3,*) "before loop"
 !                  do iphase = 1, number_fields
                    if(ndim_nphase+nconc>0) then
                       cc_x(idim,:,cv_inod) = cc_x(idim,:,cv_inod) + nnx(idim)*cc(:,cv_inod)
-                      do jdim = 1, Mdims%ndim ! Hessian matrix:
- !                    ewrite(3,*) "cc_xx",cc_xx(idim,jdim,:,cv_inod) 
+                      do jdim = 1, Mdims%ndim ! Hessian matrix: 
                          cc_xx(idim,jdim,:,cv_inod) = cc_xx(idim,jdim,:,cv_inod) + nxnx_all(idim,jdim)*cc(:,cv_inod)
-! ewrite(3,*) "cc_xx,nxnx_all,cc",Mdims%cv_nonods,cc_xx(idim,jdim,:,cv_inod),nxnx_all(idim,jdim),cc(:,cv_inod),cv_inod,idim,jdim
-                         end do
+                      end do
                    endif
 !                  end do
                end do
@@ -442,7 +430,7 @@ ewrite(3,*) "before loop"
 
       if(ndim_nphase+nconc>0) then
 !ewrite(3,*) "cc_x", cc_x
-! ewrite(3,*) "cc_xx", cc_xx
+!ewrite(3,*) "cc_xx", cc_xx
       endif
 
 
@@ -533,9 +521,9 @@ ewrite(3,*) "before loop"
       end do
       end do
 
-! ewrite(3,*) "rhs", rhs, h_abs_mat
+!ewrite(3,*) "rhs", rhs, h_abs_mat
 if(number_fields>0) then 
-  !      ewrite(3,*) "lambda",lambda,lambda_xx
+!        ewrite(3,*) "lambda",lambda,lambda_xx
 end if
 !ewrite(3,*) "sigma_plus_bc",sigma_plus_bc
       do its=1,nits_ug2
@@ -554,12 +542,10 @@ end if
               if(idim.eq.2) call addto( matrix_pet2, 1, 1, cv_inod, cv_inod, matrix_diag(cv_inod) + h_abs_mat(idim, idim, cv_inod))
               if(idim.eq.3) call addto( matrix_pet3, 1, 1, cv_inod, cv_inod, matrix_diag(cv_inod) + h_abs_mat(idim, idim, cv_inod))
             end if 
-   !           ewrite(3,*)"nits_ug2, idim",idim,rhs_xyz_pet%val(cv_inod),h_abs_mat(idim, idim, cv_inod)
+!              ewrite(3,*)"nits_ug2, idim",idim,rhs_xyz_pet%val(cv_inod),h_abs_mat(idim, idim, cv_inod)
 
             end do
-!            ewrite(3,*)"nits_ug2, idim",matrix_pet1,rhs_xyz_pet%val(cv_inod),h_abs_mat(idim, idim, cv_inod)
-!            ewrite(3,*)"nits_ug2, idim",matrix_pet2,rhs_xyz_pet%val(cv_inod),h_abs_mat(idim, idim, cv_inod)
-   !         ewrite(3,*)"nits_ug2, idim",rhs_xyz_pet%val(cv_inod),h_abs_mat(idim, idim, cv_inod)
+!            ewrite(3,*)"nits_ug2, idim",matrix_pet,rhs_xyz_pet%val(cv_inod),h_abs_mat(idim, idim, cv_inod)
             if(idim.eq.1) call petsc_solve( uvwg_pet, matrix_pet1, rhs_xyz_pet, option_path = trim(solver_option_path) )
             if(idim.eq.2) call petsc_solve( uvwg_pet, matrix_pet2, rhs_xyz_pet, option_path = trim(solver_option_path) )
             if(idim.eq.3) call petsc_solve( uvwg_pet, matrix_pet3, rhs_xyz_pet, option_path = trim(solver_option_path) )
@@ -579,7 +565,6 @@ end if
 
           !                                                      end do ! do ele = 1, Mdims%totele
 
-       ewrite(3,*) "after loop"
 !       ewrite(3,*) "cv_ug_all", cv_ug_all
       x_all%val = xold_all%val + dt * cv_ug_all! get new grid positions
 
@@ -597,7 +582,7 @@ end if
 ! jxiang add deallocate
 
       if(nconc>0) deallocate(c_field,c_lambda)
-      if(number_fields>0) deallocate(cc,lambda,cc_x,lambda_xx,cc_xx)
+      if(number_fields>0) deallocate(cc,lambda,cc_x,cc_xx)
       deallocate(u_lambda)
 
       deallocate(sigma, rhs, h_abs_mat, u_all_cvmesh, sigma_plus_bc, vel_count, cv_ug_all, u_all_solid)
@@ -613,6 +598,7 @@ end if
       return
   
   END SUBROUTINE diffusion_ug_solve
+
 
 
 
