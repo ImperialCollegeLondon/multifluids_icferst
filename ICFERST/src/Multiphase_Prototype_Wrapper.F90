@@ -888,15 +888,7 @@ contains
               call set_option(trim(option_path)//"/Backtracking_factor",-10.)
             else !single phase
               call add_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", stat = stat)
-              if (have_option('/material_phase[0]/scalar_field::Temperature')) then
-                call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 4)
-              elseif (have_option('/material_phase[0]/scalar_field::Concentration')) then
-                call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 5)
-              else !If nothing, then pressure
-                call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 1)
-              end if
-
-              call add_option(trim(option_path)//"/Impose_min_max", stat = stat)
+              call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 4)
             end if
 
           else
