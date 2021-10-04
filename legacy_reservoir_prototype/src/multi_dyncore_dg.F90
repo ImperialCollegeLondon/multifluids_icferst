@@ -279,8 +279,8 @@ contains
 !      allocate(c_lambda(max(nconc,1)),lambda(max(number_fields,1)),cc_x(Mdims%ndim,max(number_fields,1),Mdims%cv_nonods))
 !      allocate(lambda_xx(max(number_fields,1)),cc_xx(Mdims%ndim,Mdims%ndim,max(number_fields,1),Mdims%cv_nonods))
 
-      if(ndim_nphase>0) u_lambda = 1.0
-      if(number_fields>0) c_lambda = 10.0
+      if(ndim_nphase>0) u_lambda = 0.0  ! orig value 1.0
+      if(number_fields>0) c_lambda = 0.0 ! orig value 10.0
       if(ndim_nphase/=0) lambda(1:ndim_nphase)=u_lambda(1:ndim_nphase)
       if(nconc/=0) lambda(ndim_nphase+1:ndim_nphase+nconc)=c_lambda(1:nconc)
       if(interpolation_error) then ! use interpolation theory and a Hessian to form variational principle
@@ -396,7 +396,7 @@ contains
 ! use a lifting scheme and form 3 different rhs vectors.
 !               rhs_r= nxnx*ident_cv(cv_iloc,cv_jloc)*sigma_plus_bc(cv_inod)
                rhs_r= nxnx*ident_cv(cv_iloc,cv_jloc)*sigma_plus_bc(cv_inod)
-               matrix_diag(cv_inod)=matrix_diag(cv_inod) + nxnx*ident_cv(cv_iloc,cv_jloc)
+            !    matrix_diag(cv_inod)=matrix_diag(cv_inod) + nxnx*ident_cv(cv_iloc,cv_jloc)
                nxnx_mat= nxnx*(1.0-sigma_plus_bc(cv_inod))  + rhs_r
 
   !             ewrite(3,*) "rhs_r",rhs_r
@@ -404,7 +404,7 @@ contains
    !            ewrite(3,*) "sigma_plus_bc",sigma_plus_bc(cv_inod)
    !            ewrite(3,*) "matrix_diag",matrix_diag(cv_inod)
 
-               rhs(:,cv_inod)=rhs(:,cv_inod) + 2.0*rhs_r * u_all_solid(:,1,cv_jnod) ! assume solid is in phase 1 if it exists.
+               rhs(:,cv_inod)=rhs(:,cv_inod) + rhs_r * u_all_solid(:,1,cv_jnod) ! assume solid is in phase 1 if it exists.
 
                ml(cv_inod)=ml(cv_inod)+nn
                do idim = 1, Mdims%ndim
