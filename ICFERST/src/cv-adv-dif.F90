@@ -1421,14 +1421,18 @@ contains
 
                               !Calculate the courant number for porous media
                               !SPRINT_TO_DO Currently if temperature/Concentration multiphase we are doing this more than once...
-                              if (present(Courant_number) .and. is_porous_media.and. .not. on_domain_boundary) then
-                                  !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
-                                  Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
-                                  !and the shock-front Courant number
-                                  if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, ELE))) then
-                                      !ndotq = velocity * normal
-                                      Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
-                                  end if
+                              if (present(Courant_number) .and. .not. on_domain_boundary) then
+                                    if (is_porous_media) then
+                                        !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
+                                        Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
+                                        !and the shock-front Courant number
+                                        if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, ELE))) then
+                                            !ndotq = velocity * normal
+                                            Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
+                                        end if
+                                    else if (is_magma) then 
+                                        Courant_number = max(Courant_number, abs ( dt * maxval(ndotq(1:final_phase)) / hdc))
+                                    end if
                               end if
                               If_GOT_CAPDIFFUS: IF ( VAD_activated ) THEN
                                   IF(SELE == 0) THEN
@@ -2043,8 +2047,7 @@ contains
           if (VAD_activated) deallocate(CAP_DIFFUSION)
           if (allocated(ENTH_RHS_DIFF_COEF_DIVDX)) deallocate(ENTH_RHS_DIFF_COEF_DIVDX)
           ewrite(3,*) 'Leaving CV_ASSEMB'
-          if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
-
+          if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)          
           RETURN
       contains
 
@@ -3217,7 +3220,7 @@ end if
                         END DO
                     END DO
                 END IF
-            end if
+            end if            
             RETURN
         END SUBROUTINE GET_INT_VEL_POROUS_VEL
 

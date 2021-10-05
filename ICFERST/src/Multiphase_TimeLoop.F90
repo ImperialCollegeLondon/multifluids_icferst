@@ -917,7 +917,7 @@ contains
                 call get_option( '/timestepping/adaptive_timestep/maximum_timestep', maxc, stat, default = 66.e6)
                 call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat, default = 1.1)
                 !For porous media we need to use the Courant number obtained in cv_assemb
-                if (is_porous_media) then
+                if (is_porous_media .or. is_magma) then
                   !We use stat here as a normal integer
                   stat = 1
                   if (have_option("/timestepping/adaptive_timestep/requested_cfl/Shock_front_CFL")) stat = 2
@@ -1410,10 +1410,13 @@ contains
                     mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
                 call put_CSR_spars_into_packed_state()
 
-                if (is_porous_media) then
-                    call get_RockFluidProp(state, packed_state)
+                if (is_porous_media .or. is_magma) then 
                     call deallocate_porous_adv_coefs(upwnd)
                     call allocate_porous_adv_coefs(Mdims, upwnd)
+                end if
+                
+                if (is_porous_media) then
+                    call get_RockFluidProp(state, packed_state)
                     !Clean the pipes memory if required
                     if (Mdims%npres > 1) then
                         call deallocate_multi_pipe_package(pipes_aux)
