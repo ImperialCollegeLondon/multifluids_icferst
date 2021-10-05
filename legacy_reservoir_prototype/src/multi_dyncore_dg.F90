@@ -160,7 +160,7 @@ contains
                 v(Mdims%ndim,Mdims%ndim), d(Mdims%ndim) 
 !      logical :: priscr 
 
-      real :: nxnx,nn,rhs_r, dt, nxnx_mat
+      real :: nxnx,nn, rhs_r,rhs_c, dt, nxnx_mat, pure_fluids
       real :: nnx(Mdims%ndim), nxnx_all(Mdims%ndim,Mdims%ndim)
       type( mesh_type ), pointer :: pressure_mesh
       type( tensor_field ), pointer :: Temperature
@@ -395,16 +395,20 @@ contains
 
 ! use a lifting scheme and form 3 different rhs vectors.
 !               rhs_r= nxnx*ident_cv(cv_iloc,cv_jloc)*sigma_plus_bc(cv_inod)
-               rhs_r= nxnx*ident_cv(cv_iloc,cv_jloc)*sigma_plus_bc(cv_inod)
-            !    matrix_diag(cv_inod)=matrix_diag(cv_inod) + nxnx*ident_cv(cv_iloc,cv_jloc)
-               nxnx_mat= nxnx*(1.0-sigma_plus_bc(cv_inod))  + rhs_r
+               pure_fluids = (1.0-sigma_plus_bc(cv_inod))*(1.0-sigma_plus_bc(cv_jnod))
+               rhs_r= nxnx*(1.0-pure_fluids)*ident_cv(cv_iloc,cv_jloc)
+               rhs_c= nxnx*sigma_plus_bc(cv_jnod)*(1.0-sigma_plus_bc(cv_inod))*(1.0 - ident_cv(cv_iloc,cv_jloc)) ! the matrix coln in the lisfting scheme.
+!               matrix_diag(cv_inod)=matrix_diag(cv_inod) + nxnx*ident_cv(cv_iloc,cv_jloc)
+               nxnx_mat = nxnx*pure_fluids  & ! dont include a contribution in matrix if associated with solid or bc. 
+                        + rhs_r ! put back into diagonal only if not pure fluids.
 
   !             ewrite(3,*) "rhs_r",rhs_r
  !              ewrite(3,*) "nxnx",nxnx
    !            ewrite(3,*) "sigma_plus_bc",sigma_plus_bc(cv_inod)
    !            ewrite(3,*) "matrix_diag",matrix_diag(cv_inod)
 
-               rhs(:,cv_inod)=rhs(:,cv_inod) + rhs_r * u_all_solid(:,1,cv_jnod) ! assume solid is in phase 1 if it exists.
+               rhs(:,cv_inod)=rhs(:,cv_inod) + rhs_r * u_all_solid(:,1,cv_jnod) & ! assume solid is in phase 1 if it exists.
+                                             - rhs_c * u_all_solid(:,1,cv_jnod) ! include 
 
                ml(cv_inod)=ml(cv_inod)+nn
                do idim = 1, Mdims%ndim
