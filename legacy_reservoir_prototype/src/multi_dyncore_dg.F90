@@ -354,12 +354,13 @@ contains
       sigma_plus_bc(:) = min(1.0, 1000.0 * sigma_plus_bc(:)) ! if we have a non-zero value then def assume is a solid.
 ! Set the boundary condtions on all surface elements around the domain to zero.
  !     IPHASE=1
- !     DO SELE=1,Mdims%stotel
- !        DO CV_SILOC=1,Mdims%cv_snloc
- !           CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
- !           SIGMA_PLUS_BC(CV_INOD) = 1.0
- !        END DO
- !     END DO  
+        DO SELE=1,Mdims%stotel
+            DO CV_SILOC=1,Mdims%cv_snloc
+            CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
+            SIGMA_PLUS_BC(CV_INOD) = 1.0
+            u_all_solid(:,:,cv_inod) = 0.0
+            END DO
+        END DO  
       ml=0.0
       if(number_fields>0) cc_x=0.0
       matrix_diag=0.0
