@@ -572,7 +572,7 @@ end if
 
 !       ewrite(3,*) "cv_ug_all", cv_ug_all
       x_all%val = xold_all%val + dt * cv_ug_all! get new grid positions
-
+      call halo_update(x_all)
       do ele=1,Mdims%totele
          do u_iloc=1,Mdims%u_nloc
                   u_nodi=ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
@@ -581,7 +581,7 @@ end if
  !                  ewrite(3,*) "velocity, coordinate are ", u_nodi, x_nodi, cv_ug_all(2,x_nodi)
          end do
        end do
-
+       call halo_update(ug_all)
       ewrite(3,*) "leaving diffusion grid velocity solvefffffffvvvvvvv"
 
 ! jxiang add deallocate
