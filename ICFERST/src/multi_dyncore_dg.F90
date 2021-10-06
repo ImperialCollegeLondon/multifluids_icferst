@@ -341,7 +341,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end if
            !Allocate the RHS
            call allocate(Mmat%CV_RHS,nphase,tracer%mesh,"RHS")
-           call allocate(solution,nphase,tracer%mesh,"sol_tracer")!; call zero(solution)
+           call allocate(solution,nphase,tracer%mesh,"sol_temp")!; call zero(solution)
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
                !Get information for capillary pressure to be use in CV_ASSEMB
@@ -632,7 +632,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end if
 
            call allocate(Mmat%CV_RHS,1 , tracer%mesh,"RHS")
-           call allocate(solution,1,tracer%mesh,"sol_tracer")!; call zero(solution)
+           call allocate(solution,1,tracer%mesh,"sol_enthalpy")!; call zero(solution)
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
@@ -820,7 +820,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            if ( present( icomp ) ) lcomp = icomp
 
            call allocate(Mmat%CV_RHS,nconc,tracer%mesh,"RHS")
-           call allocate(solution,nconc,tracer%mesh,"sol_tracer")!; call zero(solution)
+           call allocate(solution,nconc,tracer%mesh,"sol_concentration")!; call zero(solution)
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
 

@@ -1429,6 +1429,7 @@ contains
                     end if
                     call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
                 end if
+
                 if (.not. have_option("/numerical_methods/do_not_bound_after_adapt")) then
                   if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
                   if (has_concentration) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedConcentration" ,min_max_limits = concentration_min_max_limits_before)
@@ -1494,7 +1495,7 @@ contains
                     END DO
                     DEALLOCATE( RSUM )
                 end if
-                call Calculate_All_Rhos( state, packed_state, Mdims )
+                call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = is_magma )
             end if Conditional_ReallocatingFields
         end subroutine adapt_mesh_mp
 
