@@ -1966,7 +1966,7 @@ end if
         end if
 
         if ( Mdims%npres > 1 ) then
-           call get_entire_boundary_condition( pressure, ['weakdirichlet','freesurface  '],&
+           call get_entire_boundary_condition( pressure, ['weakdirichlet'],&
                 pressure_BCs, WIC_P_BC_ALL )
            !Array defined to check where to apply pressure or velocity BCs (for wells)
            if (.not. associated(Mmat%WIC_FLIP_P_VEL_BCS)) then
@@ -7796,7 +7796,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       ! local variables...
 
       integer :: ph_ngi, ph_nloc, ph_snloc, &
-                stat, max_allowed_its,ele, &
+                stat, ele, &
                 ph_ele_type, iloop, &
                 cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, &
                 ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod, tmp_cv_nloc, other_nloc
@@ -7811,15 +7811,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       real, dimension(:,:,:), pointer :: phfenx_all, ufenx_all
 
-      real, dimension( :, :, : ), allocatable :: u_ph_source_vel, u_ph_source_cv
-      real, dimension( :, : ), allocatable :: alpha_cv, coef_alpha_cv
+      real, dimension( :, :, : ), allocatable :: u_ph_source_cv
 
-      real, dimension( :, :, : ), allocatable :: u_ph_source_ph, dx_ph_gi
-      real, dimension( :, : ), allocatable :: alpha_ph, coef_alpha_ph, HydrostaticPressure
+      real, dimension( :, :, : ), allocatable :: dx_ph_gi
 
-      real, dimension( :, :, : ), allocatable :: u_s_gi, dx_alpha_gi
-      real, dimension( :, : ), allocatable :: coef_alpha_gi, den_gi, inv_den_gi
-      real, dimension( :, : ), allocatable :: sigma_gi, volfra_gi
+      real, dimension( :, :, : ), allocatable :: u_s_gi
+      real, dimension( :, : ), allocatable :: den_gi, inv_den_gi
+      real, dimension( :, : ), allocatable :: volfra_gi
 
       real, dimension( : ), pointer :: tmp_cv_weight
       real, dimension( :, : ), pointer :: tmp_cvfen
@@ -7830,7 +7828,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       real :: nxnx, gravity_magnitude, dt, zmax
       type( scalar_field ), pointer  :: ph_pressure
-      type( scalar_field ) :: rhs, ph_sol
+      type( scalar_field ) :: rhs
       type( petsc_csr_matrix ) :: matrix
       type( csr_sparsity ), pointer :: sparsity
 
@@ -7852,10 +7850,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       solver_option_path = "/solver_options/Linear_solver"
       if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure')) then
         solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure'
-      end if
-      if(max_allowed_its < 0)  then
-          call get_option( trim(solver_option_path)//"max_iterations",&
-           max_allowed_its, default = 500)
       end if
 
 
@@ -7891,6 +7885,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       call allocate_multi_shape_funs( ph_funs, phdims, phGIdims )
       call cv_fem_shape_funs( ph_funs, phdims, phGIdims, ph_ele_type, quad_over_whole_ele = .true. )
+
+      !This is to present the results in paraview; sprint_to_do mix this results with pressure before creating a vtu file and then remove them
+      ph_pressure => extract_scalar_field( state( 1 ), "HydrostaticPressure", stat )
 
       ph_ngi = phGIdims%cv_ngi
       x => extract_vector_field( packed_state, "PressureCoordinate" )
@@ -7929,36 +7926,21 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       allocate(detwei(ph_ngi))
       allocate(ra(ph_ngi))
 
-      allocate( u_ph_source_vel( Mdims%ndim, nphase, Mdims%u_nonods ), &
-           &    u_ph_source_cv( Mdims%ndim, nphase, Mdims%cv_nonods ), &
-           &    alpha_cv( nphase, Mdims%cv_nonods ), &
-           &    coef_alpha_cv( nphase, Mdims%cv_nonods ) )
-
-      allocate( u_ph_source_ph( Mdims%ndim, nphase, ph_nonods ), &
-           &    alpha_ph( nphase, ph_nonods ), &
-           &    HydrostaticPressure( nphase, ph_nonods ), &
-           &    coef_alpha_ph( nphase, ph_nonods ) )
+      allocate( u_ph_source_cv( Mdims%ndim, nphase, Mdims%cv_nonods ))
 
       allocate( dx_ph_gi( ph_ngi, Mdims%ndim, nphase ) )
 
-      allocate( u_s_gi( ph_ngi, Mdims%ndim, nphase ), &
-           &    dx_alpha_gi( ph_ngi, Mdims%ndim, nphase ), &
-           &    coef_alpha_gi( ph_ngi, nphase ) )
+      allocate( u_s_gi( ph_ngi, Mdims%ndim, nphase ))
 
       allocate( den_gi( ph_ngi, nphase ), inv_den_gi( ph_ngi, nphase ), &
-                sigma_gi( ph_ngi, nphase ), volfra_gi( ph_ngi, nphase ) )
-
-      ! initialise memory
-      u_ph_source_vel = 0.0 ; alpha_cv = 0.0 ; coef_alpha_cv = 0.0
-      u_ph_source_ph = 0.0 ; alpha_ph = 0.0 ; coef_alpha_ph = 0.0
-      u_ph_source_cv = 0.0
+                volfra_gi( ph_ngi, nphase ) )
 
       ! set the gravity term
       rho => extract_tensor_field( packed_state, "PackedDensity" )
       volfra => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
       call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude )
       gravity_direction => extract_vector_field( state( 1 ), "GravityDirection" )
-
+      !Initialise rhs
       do iphase = 1, nphase
          do idim = 1, Mdims%ndim
             u_ph_source_cv( idim, iphase, : ) = rho % val( 1, iphase, : ) * &
@@ -7969,7 +7951,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix )
       call allocate( rhs, phmesh, "rhs" ); call zero ( rhs )
-      call allocate( ph_sol, phmesh, "ph_sol" ); call zero( ph_sol )
 
       do iloop = 1, 2
 
@@ -7985,30 +7966,15 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                  other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
                  other_fenx_all)
 
-            if ( Mdims%u_nloc == tmp_cv_nloc ) then
-                ufenx_all => tmp_cvfenx_all
-            else
-                ufenx_all => other_fenx_all
-            end if
-            if ( ph_nloc == tmp_cv_nloc ) then
-                phfenx_all => tmp_cvfenx_all
-            else
-                phfenx_all => other_fenx_all
-            end if
+            !Select shape functions to use
+            ufenx_all => other_fenx_all
+            if ( Mdims%u_nloc == tmp_cv_nloc ) ufenx_all => tmp_cvfenx_all
 
-            u_s_gi = 0.0 ; dx_alpha_gi = 0.0 ; coef_alpha_gi = 0.0
-            dx_ph_gi = 0.0 ; den_gi = 0.0 ; sigma_gi = 0.0 ; volfra_gi = 0.0
+            phfenx_all => other_fenx_all
+            if ( ph_nloc == tmp_cv_nloc ) phfenx_all => tmp_cvfenx_all
 
-            do u_iloc = 1, Mdims%u_nloc
-               u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + u_iloc )
-               do iphase = 1, nphase
-                  do idim = 1, Mdims%ndim
-                     u_s_gi( :, idim, iphase ) = u_s_gi( :, idim, iphase ) + &
-                          ph_funs%ufen( u_iloc, : ) * u_ph_source_vel( idim, iphase, u_inod )
-                  end do
-               end do
-            end do
-
+            u_s_gi = 0.0 ; dx_ph_gi = 0.0 ; den_gi = 0.0 ;
+            volfra_gi = 0.0
 
             do cv_iloc = 1, Mdims%cv_nloc
                cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
@@ -8016,13 +7982,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
                do iphase = 1, nphase
                   do idim = 1, Mdims%ndim
-                     dx_alpha_gi( :, idim, iphase ) = dx_alpha_gi( :, idim, iphase ) + &
-                          tmp_cvfenx_all( idim, cv_iloc, : ) * alpha_cv( iphase, cv_inod )
                      u_s_gi( :, idim, iphase ) = u_s_gi( :, idim, iphase ) + &
                           tmp_cvfen( cv_iloc, : ) * u_ph_source_cv( idim, iphase, cv_inod )
                   end do
-                  coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
-                       tmp_cvfen( cv_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
 
                   if ( has_boussinesq_aprox ) then
                      den_gi( :, iphase ) = 1.0
@@ -8030,9 +7992,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                      den_gi( :, iphase ) = den_gi( :, iphase ) + &
                           tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
                   end if
-
-                  sigma_gi( :, iphase ) = sigma_gi( :, iphase ) + &
-                        tmp_cvfen( cv_iloc, : ) * u_absorbin(  1, iphase, mat_inod )
 
                   volfra_gi( :, iphase ) = volfra_gi( :, iphase ) + &
                         tmp_cvfen( cv_iloc, : ) * volfra % val( 1, iphase, cv_inod )
@@ -8046,13 +8005,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
                do iphase = 1, nphase
                   do idim = 1, Mdims%ndim
-                     dx_alpha_gi( :, idim, iphase ) = dx_alpha_gi( :, idim, iphase ) + &
-                          phfenx_all( idim, ph_iloc, : ) * alpha_ph( iphase, ph_inod )
                      dx_ph_gi( :, idim, iphase ) = dx_ph_gi( :, idim, iphase ) + &
-                          phfenx_all( idim, ph_iloc, : ) * HydrostaticPressure( iphase, ph_inod )
+                          phfenx_all( idim, ph_iloc, : ) * ph_pressure%val( ph_inod )
                   end do
-                  coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
-                       ph_funs%cvfen( ph_iloc, : ) * coef_alpha_ph( iphase, ph_inod )
                end do
             end do
 
@@ -8077,23 +8032,20 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                      do idim = 1, Mdims%ndim
                         call addto( rhs, ph_inod, &
                              sum( phfenx_all( idim, ph_iloc, : ) * inv_den_gi( :, iphase ) * ( &
-                             u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
-                             dx_alpha_gi( :, idim, iphase ) ) * detwei ) )
+                             u_s_gi( :, idim, iphase ) ) * detwei ) )
                      end do
                   end do
                end do
 
-            else
-
-               ! form rhs of the momentum eqn...
+              else if (iloop == 2 ) then
+                ! form rhs of the momentum eqn...
                do u_iloc = 1, Mdims%u_nloc
                   u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + u_iloc )
                   do iphase = 1, nphase
                      do idim = 1, Mdims%ndim
                         u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + &
                              sum( ph_funs%ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
-                             + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
-                             dx_alpha_gi( :, idim, iphase ) ) * detwei )
+                             + u_s_gi( :, idim, iphase ) ) * detwei )
                      end do
                   end do
                end do
@@ -8102,8 +8054,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
          end do ! ele loop
 
+        
          if ( iloop == 1 ) then
-
+          !This part is very badly writen apart from being unnecessary since it is better to use remove_null_space
             got_free_surf = .false. ; same_mesh = (Mdims%cv_nloc==ph_nloc)
             pfield => extract_tensor_field( packed_state, "PackedFEPressure" )
             do i = 1, get_boundary_condition_count( pfield )
@@ -8118,96 +8071,84 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             ! else don't forget to remove the null space
             matrix%is_assembled =.false.
             call assemble( matrix )
-
-            if ( got_free_surf .and. same_mesh ) then
-               findph => sparsity % findrm
-               colph => sparsity % colm
-               do inod = 1, size( surface_node_list )
-                  ph_inod = surface_node_list( inod )
-                  rhs % val( ph_inod ) = 0.0
-                  do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
-                     ph_jnod = colph( count )
-                     if ( ph_jnod /= ph_inod ) then
-                        i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
-                        j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
-                        call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                        do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
-                           ph_jnod2 = colph( count2 )
-                           if ( ph_jnod2 == ph_inod ) then
-                              i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
-                              j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
-                              call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                           end if
-                        end do
-                     end if
-                  end do
-               end do
+            if ( got_free_surf) then 
+              if ( same_mesh ) then
+                findph => sparsity % findrm
+                colph => sparsity % colm
+                do inod = 1, size( surface_node_list )
+                    ph_inod = surface_node_list( inod )
+                    rhs % val( ph_inod ) = 0.0
+                    do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
+                      ph_jnod = colph( count )
+                      if ( ph_jnod /= ph_inod ) then
+                          i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
+                          j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
+                          call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                          do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
+                            ph_jnod2 = colph( count2 )
+                            if ( ph_jnod2 == ph_inod ) then
+                                i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
+                                j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
+                                call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                            end if
+                          end do
+                      end if
+                    end do
+                end do
+              else
+                findph => sparsity % findrm
+                colph => sparsity % colm
+                x2 => extract_vector_field( state( 1 ), "DiagnosticCoordinate" )
+                zmax = maxval( x2%val(Mdims%ndim,:) )
+                do inod = 1, ph_nonods
+                    if ( abs( x2%val(Mdims%ndim,inod)-zmax )<1.0e-6 ) then
+                      ph_inod = inod
+                      rhs % val( ph_inod ) = 0.0
+                      do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
+                          ph_jnod = colph( count )
+                          if ( ph_jnod /= ph_inod ) then
+                            i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
+                            j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
+                            call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                            do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
+                                ph_jnod2 = colph( count2 )
+                                if ( ph_jnod2 == ph_inod ) then
+                                  i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
+                                  j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
+                                  call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                                end if
+                            end do
+                          end if
+                      end do
+                    end if
+                end do
+              end if
             end if
-
-            if ( got_free_surf .and. .not.same_mesh ) then
-               findph => sparsity % findrm
-               colph => sparsity % colm
-               x2 => extract_vector_field( state( 1 ), "DiagnosticCoordinate" )
-               zmax = maxval( x2%val(Mdims%ndim,:) )
-               do inod = 1, ph_nonods
-                  if ( abs( x2%val(Mdims%ndim,inod)-zmax )<1.0e-6 ) then
-                     ph_inod = inod
-                     rhs % val( ph_inod ) = 0.0
-                     do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
-                        ph_jnod = colph( count )
-                        if ( ph_jnod /= ph_inod ) then
-                           i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
-                           j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
-                           call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                           do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
-                              ph_jnod2 = colph( count2 )
-                              if ( ph_jnod2 == ph_inod ) then
-                                 i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
-                                 j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
-                                 call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                              end if
-                           end do
-                        end if
-                     end do
-                  end if
-               end do
-            end if
-
             matrix%is_assembled =.false.
-
-            ! call assemble( matrix )
-
+          end if
+          !Now it is time to solve the system
+          if ( iloop == 1 ) then
+            call assemble( matrix )
             !Add remove null_space if not bcs specified for the field
             if ( .not.got_free_surf ) call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
-            call zero(ph_sol) !; call zero_non_owned(rhs)
-            call petsc_solve( ph_sol, matrix, rhs, option_path = trim(solver_option_path) )
+            call zero(ph_pressure) !; call zero_non_owned(rhs)
+            call petsc_solve( ph_pressure, matrix, rhs, option_path = trim(solver_option_path) )
 
 ! call MatView(matrix%M,   PETSC_VIEWER_STDOUT_SELF, iphase)
 ! read*
             !Remove remove_null_space
             if ( .not.got_free_surf ) call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
-            if (IsParallel()) call halo_update(ph_sol)
-
-            do iphase = 1, nphase
-               HydrostaticPressure( iphase, : ) = ph_sol % val ! assume 1 phase for the time being
-            end do
-            !This is to present the results in paraview; sprint_to_do mix this results with pressure before creating a vtu file and then remove them
-            ph_pressure => extract_scalar_field( state( 1 ), "HydrostaticPressure", stat )
-            if ( stat == 0 ) ph_pressure%val = ph_sol%val
-         end if
+            if (IsParallel()) call halo_update(ph_pressure)
+          end if
 
       end do
 
       ! deallocate
       call deallocate_multi_shape_funs( ph_funs )
       call deallocate( rhs )
-      call deallocate( ph_sol )
       call deallocate( matrix )
-      deallocate( u_ph_source_vel, u_ph_source_cv, alpha_cv, &
-                  coef_alpha_cv, u_ph_source_ph, alpha_ph, &
-                  HydrostaticPressure, coef_alpha_ph, dx_ph_gi, u_s_gi, &
-                  dx_alpha_gi, coef_alpha_gi, den_gi, inv_den_gi, &
-                  sigma_gi, volfra_gi, &
+      deallocate( u_ph_source_cv, dx_ph_gi, u_s_gi, &
+                  den_gi, inv_den_gi, volfra_gi, &
                   tmp_cvfenx_all, other_fenx_all, detwei, ra )
       ewrite(3,*) "leaving high_order_pressure_solve"
 
@@ -8948,7 +8889,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         type(scalar_field), pointer :: pipe_diameter
   
         call get_entire_boundary_condition(pressure,&
-            ['weakdirichlet','freesurface  '],&
+            ['weakdirichlet'],&
             pressure_BCs,WIC_P_BC_ALL)
         PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
   
