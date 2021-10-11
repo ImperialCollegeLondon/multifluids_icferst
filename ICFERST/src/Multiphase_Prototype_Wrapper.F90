@@ -334,9 +334,9 @@ contains
         !         end if
         !     end do
         ! end if
-        if (is_magma) then
+        if (is_magma .and. .not. have_option("/material_phase[0]/scalar_field::Magma_comp_source")) then
           !For magma we need a scalar field, maybe in the future a vector field, or a scalar field per phase, for the time being one is enough as
-          !for the other phase the value is just the negative
+          !for the other phase the value is just the negative. If already defined do not do anything
           !We need it in diamond to make sure it is interpolated when the mesh is adapted
           i = 1
           option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::"
