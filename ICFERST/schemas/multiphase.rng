@@ -2799,7 +2799,7 @@ i.e. excluding the components</a:documentation>
           <a:documentation>Field type</a:documentation>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
-            <optional>
+            <choice>
               <element name="Impose_min_max">
                 <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
@@ -2809,27 +2809,31 @@ EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
                 <choice>
-                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <element name="min_limit">
-                    <ref name="real"/>
-                  </element>
                   <element name="automatic_min_limit">
-                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <a:documentation>Automatically choses the limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
                     <empty/>
+                  </element>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
                   </element>
                 </choice>
                 <choice>
-                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <element name="max_limit">
-                    <ref name="real"/>
-                  </element>
                   <element name="automatic_max_limit">
-                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <a:documentation>Automatically choses the limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
                     <empty/>
+                  </element>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
                   </element>
                 </choice>
               </element>
-            </optional>
+              <element name="Dot_not_impose_min_max">
+                <a:documentation>Do not impose physical constraints to the.</a:documentation>
+                <empty/>
+              </element>
+            </choice>
             <optional>
               <element name="tensor_field">
                 <a:documentation>Diffusivity for field (in S.I. m^2/s ).</a:documentation>
@@ -2903,7 +2907,7 @@ This imposes the tracer to be between bounds.</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
-            <optional>
+            <choice>
               <element name="Impose_min_max">
                 <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
@@ -2913,27 +2917,31 @@ EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
                 <choice>
-                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <element name="min_limit">
-                    <ref name="real"/>
-                  </element>
                   <element name="automatic_min_limit">
-                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <a:documentation>Automatically choses the limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
                     <empty/>
+                  </element>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
                   </element>
                 </choice>
                 <choice>
-                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <element name="max_limit">
-                    <ref name="real"/>
-                  </element>
                   <element name="automatic_max_limit">
-                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <a:documentation>Automatically choses the limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
                     <empty/>
+                  </element>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
                   </element>
                 </choice>
               </element>
-            </optional>
+              <element name="Dot_not_impose_min_max">
+                <a:documentation>Do not impose physical constraints to the.</a:documentation>
+                <empty/>
+              </element>
+            </choice>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
@@ -2979,7 +2987,7 @@ for fields within the same material_phase.</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
-            <optional>
+            <choice>
               <element name="Impose_min_max">
                 <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
@@ -2989,27 +2997,31 @@ EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
                 <choice>
-                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <element name="min_limit">
-                    <ref name="real"/>
-                  </element>
                   <element name="automatic_min_limit">
-                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <a:documentation>Automatically choses the limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
                     <empty/>
+                  </element>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
                   </element>
                 </choice>
                 <choice>
-                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <element name="max_limit">
-                    <ref name="real"/>
-                  </element>
                   <element name="automatic_max_limit">
-                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <a:documentation>Automatically choses the limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
                     <empty/>
+                  </element>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
                   </element>
                 </choice>
               </element>
-            </optional>
+              <element name="Dot_not_impose_min_max">
+                <a:documentation>Do not impose physical constraints to the.</a:documentation>
+                <empty/>
+              </element>
+            </choice>
             <optional>
               <element name="tensor_field">
                 <a:documentation>Diffusivity for field (in S.I. m^2/s ).</a:documentation>
@@ -3250,7 +3262,7 @@ mass fraction with a particular phase</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
-            <optional>
+            <choice>
               <element name="Impose_min_max">
                 <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
@@ -3260,27 +3272,31 @@ EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
                 <choice>
-                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <element name="min_limit">
-                    <ref name="real"/>
-                  </element>
                   <element name="automatic_min_limit">
-                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <a:documentation>Automatically choses the limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
                     <empty/>
+                  </element>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
                   </element>
                 </choice>
                 <choice>
-                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <element name="max_limit">
-                    <ref name="real"/>
-                  </element>
                   <element name="automatic_max_limit">
-                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <a:documentation>Automatically choses the limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
                     <empty/>
+                  </element>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
                   </element>
                 </choice>
               </element>
-            </optional>
+              <element name="Dot_not_impose_min_max">
+                <a:documentation>Do not impose physical constraints to the.</a:documentation>
+                <empty/>
+              </element>
+            </choice>
             <optional>
               <element name="tensor_field">
                 <a:documentation>Diffusivity for field (in S.I. m^2/s ).</a:documentation>
@@ -3339,7 +3355,7 @@ This is just an example of how it works.</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
-            <optional>
+            <choice>
               <element name="Impose_min_max">
                 <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
 
@@ -3349,27 +3365,31 @@ EXTREMELY RECOMMENDED!
 
 This imposes the tracer to be between bounds.</a:documentation>
                 <choice>
-                  <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
-                  <element name="min_limit">
-                    <ref name="real"/>
-                  </element>
                   <element name="automatic_min_limit">
-                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <a:documentation>Automatically choses the limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
                     <empty/>
+                  </element>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
                   </element>
                 </choice>
                 <choice>
-                  <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
-                  <element name="max_limit">
-                    <ref name="real"/>
-                  </element>
                   <element name="automatic_max_limit">
-                    <a:documentation>Automatically choses the min limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <a:documentation>Automatically choses the limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
                     <empty/>
+                  </element>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
                   </element>
                 </choice>
               </element>
-            </optional>
+              <element name="Dot_not_impose_min_max">
+                <a:documentation>Do not impose physical constraints to the.</a:documentation>
+                <empty/>
+              </element>
+            </choice>
             <optional>
               <element name="tensor_field">
                 <a:documentation>Diffusivity for field (in S.I. m^2/s ).</a:documentation>

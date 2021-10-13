@@ -2050,7 +2050,7 @@ contains
             !Use only coordinates instead of a nastran file
             do k = 1, option_count("/porous_media/wells_and_pipes/well_from_coordinates")
                 !First identify the well trajectory
-                allocate(nodes(3, 2), edges(2, 1))
+                allocate(nodes(Mdims%ndim, 2), edges(2, 1))
                 call get_option("/porous_media/wells_and_pipes/well_from_coordinates["// int2str(k-1) //"]/top_coordinates", nodes(:, 1))
                 call get_option("/porous_media/wells_and_pipes/well_from_coordinates["// int2str(k-1) //"]/bottom_coordinates", nodes(:, 2))
                 edges(1, 1) = 1; edges(2, 1) = 2!Stablish connection between the nodes
