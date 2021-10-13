@@ -148,12 +148,8 @@ contains
            logical :: repeat_assemb_solve, assemble_collapsed_to_one_phase
            type(vector_field) :: solution
 
-           if (present(Permeability_tensor_field)) then
-              perm => Permeability_tensor_field
-           else
-              perm=>extract_tensor_field(packed_state,"Permeability")
-           end if
-
+           !Initialise with an out of range value to be able to check it hasn't been
+           totally_min_max = 1e30
            lcomp = 0
            if ( present( icomp ) ) lcomp = icomp
 
@@ -348,7 +344,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media .and. thermal) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, totally_min_max, .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel&
+                                      , totally_min_max = totally_min_max, for_transport = .true.)
                    if (assemble_collapsed_to_one_phase) OvRelax_param = OvRelax_param/ dble(mdims%n_in_pres)
                else
                 Phase_with_Ovrel = -1
@@ -376,15 +373,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, &
                    TDIFFUSION = TDIFFUSION,&
-                   saturation=saturation, Permeability_tensor_field = perm,&
+                   saturation=saturation, &
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    porous_heat_coef = porous_heat_coef,porous_heat_coef_old = porous_heat_coef_old,solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, &
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
-
-               ! vtracer=as_vector(tracer,dim=2)
-               ! call zero(vtracer)
-               call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                   ! vtracer=as_vector(tracer,dim=2)
+                   ! call zero(vtracer)
+                   call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
 
                !Copy solution back to tracer(not ideal...)
                do ipres =1, mdims%npres
@@ -567,6 +563,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type(magma_phase_diagram) :: magma_phase_coefficients
            logical :: assemble_collapsed_to_one_phase
 
+           !Initialise with an out of range value to be able to check it hasn't been
+           totally_min_max = 1e30
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
            else
@@ -659,7 +657,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media .and. thermal) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel&
+                   , totally_min_max = totally_min_max, for_transport = .true.)
                else
                 Phase_with_Ovrel = -1
                end if
@@ -881,6 +880,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer :: nconc_in_pres
            type(vector_field) :: solution
 
+           !Initialise with an out of range value to be able to check it hasn't been
+           totally_min_max = 1e30
            !Retrieve the number of phases that have this tracer, and then if they are concecutive and start from the first one
            nconc = option_count("/material_phase/scalar_field::"//trim(Passive_Tracer_name))
            nconc_in_pres = nconc
@@ -970,7 +971,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel,&
+                                                          totally_min_max = totally_min_max, for_transport = .true.)
                else
                 Phase_with_Ovrel = -1
                end if
@@ -2195,7 +2197,7 @@ end if
           logical :: restart_now
           type(tensor_field) :: aux_velocity
           type( vector_field ) :: packed_vel, packed_CDP_tensor, packed_aux_velocity
-          real, dimension(2) :: totally_min_max
+          real, dimension(2) :: totally_min_max = 1e30!Initialise with an out of range value to be able to check it hasn't been
 
           !Retrieve settings from diamond
           if (solver_tolerance<0) then
@@ -7655,7 +7657,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              if (present_and_true(for_transport)) then
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
                 !This method was designed for fields between 0 and 1, so for transport fields, we need to adjust Pe_aux to ensure consistency
-                if (present(totally_min_max)) Pe_aux = Pe_aux*abs(totally_min_max(2) - totally_min_max(1)) !THIS means making it HIGHER
+                if (present(totally_min_max)) then 
+                  !Means that min_max is defined
+                  if (abs(totally_min_max(2)) < 1e20) Pe_aux = Pe_aux*max(abs(totally_min_max(2) - totally_min_max(1)),1.0) !THIS means making it HIGHER
+                end if
              else
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
              end if
