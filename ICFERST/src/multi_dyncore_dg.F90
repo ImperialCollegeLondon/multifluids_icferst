@@ -154,6 +154,12 @@ contains
            if ( present( icomp ) ) lcomp = icomp
 
 
+           if (present(Permeability_tensor_field)) then
+            perm => Permeability_tensor_field
+           else
+            perm=>extract_tensor_field(packed_state,"Permeability")
+           end if
+
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
 
@@ -373,7 +379,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, &
                    TDIFFUSION = TDIFFUSION,&
-                   saturation=saturation, &
+                   saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    porous_heat_coef = porous_heat_coef,porous_heat_coef_old = porous_heat_coef_old,solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, &
