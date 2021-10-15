@@ -72,7 +72,7 @@ contains
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
+       icomp, saturation, Permeability_tensor_field, nonlinear_iteration )
            ! Solve for internal energy using a control volume method.
            implicit none
            type( state_type ), dimension( : ), intent( inout ) :: state
@@ -103,7 +103,6 @@ contains
            integer, optional :: icomp, nonlinear_iteration
            type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
            type (multi_pipe_package), intent(in) :: pipes_aux
-           real, optional, dimension(:), intent(inout) :: Courant_number
            ! Local variables
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
@@ -149,15 +148,17 @@ contains
            logical :: repeat_assemb_solve, assemble_collapsed_to_one_phase
            type(vector_field) :: solution
 
-           if (present(Permeability_tensor_field)) then
-              perm => Permeability_tensor_field
-           else
-              perm=>extract_tensor_field(packed_state,"Permeability")
-           end if
-
+           !Initialise with an out of range value to be able to check it hasn't been
+           totally_min_max = 1e30
            lcomp = 0
            if ( present( icomp ) ) lcomp = icomp
 
+
+           if (present(Permeability_tensor_field)) then
+            perm => Permeability_tensor_field
+           else
+            perm=>extract_tensor_field(packed_state,"Permeability")
+           end if
 
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
@@ -349,7 +350,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media .and. thermal) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, totally_min_max, .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel&
+                                      , totally_min_max = totally_min_max, for_transport = .true.)
                    if (assemble_collapsed_to_one_phase) OvRelax_param = OvRelax_param/ dble(mdims%n_in_pres)
                else
                 Phase_with_Ovrel = -1
@@ -380,12 +382,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    porous_heat_coef = porous_heat_coef,porous_heat_coef_old = porous_heat_coef_old,solving_compositional = lcomp > 0, &
-                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number, &
+                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, &
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
-
-               ! vtracer=as_vector(tracer,dim=2)
-               ! call zero(vtracer)
-               call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                   ! vtracer=as_vector(tracer,dim=2)
+                   ! call zero(vtracer)
+                   call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
 
                !Copy solution back to tracer(not ideal...)
                do ipres =1, mdims%npres
@@ -492,7 +493,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number, &
+       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, &
        magma_phase_coefficients)
            ! Solve for enthalpy energy using a control volume method.
            implicit none
@@ -524,7 +525,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer, optional :: icomp, nonlinear_iteration
            type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
            type (multi_pipe_package), intent(in) :: pipes_aux
-           real, optional, dimension(:), intent(inout) :: Courant_number
            ! Local variables
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
@@ -569,6 +569,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type(magma_phase_diagram) :: magma_phase_coefficients
            logical :: assemble_collapsed_to_one_phase
 
+           !Initialise with an out of range value to be able to check it hasn't been
+           totally_min_max = 1e30
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
            else
@@ -661,7 +663,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media .and. thermal) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel&
+                   , totally_min_max = totally_min_max, for_transport = .true.)
                else
                 Phase_with_Ovrel = -1
                end if
@@ -686,7 +689,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    solving_compositional = lcomp > 0, &
-                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number, &
+                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, &
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase, Latent_heat = magma_phase_coefficients%Lf)
 
                  call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
@@ -883,6 +886,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer :: nconc_in_pres
            type(vector_field) :: solution
 
+           !Initialise with an out of range value to be able to check it hasn't been
+           totally_min_max = 1e30
            !Retrieve the number of phases that have this tracer, and then if they are concecutive and start from the first one
            nconc = option_count("/material_phase/scalar_field::"//trim(Passive_Tracer_name))
            nconc_in_pres = nconc
@@ -972,7 +977,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel,&
+                                                          totally_min_max = totally_min_max, for_transport = .true.)
                else
                 Phase_with_Ovrel = -1
                end if
@@ -1044,7 +1050,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
-         nonlinear_iteration, SFPI_taken, Courant_number,&
+         nonlinear_iteration, SFPI_taken,Courant_number, &
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state, multicomponent_state
@@ -1231,13 +1237,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      .false.,  mass_Mn_pres, &
                      mass_ele_transp, &          !Capillary variables
                      VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                     eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
                      nonlinear_iteration = nonlinear_iteration)
-
-                 !Make the inf norm of the Courant number across cpus
-                 if (IsParallel()) then
-                    call allmax(Courant_number(1)); call allmax(Courant_number(2))
-                 end if
 
                  !Time to solve the system
                  !If using FPI with backtracking
@@ -1646,7 +1647,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
         DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, &
         IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J,&
-        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its)
+        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, Courant_number)
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -1674,6 +1675,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type (multi_outfluxes), intent(inout) :: outfluxes
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
         integer, intent(inout) :: pres_its_taken
+        real, dimension(:), intent(inout) :: Courant_number
         ! Local Variables
         character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
         character(len=option_path_len) :: solver_option_velocity = "/solver_options/Linear_solver"
@@ -1984,7 +1986,7 @@ end if
             CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
             DT, MASS_MN_PRES, MASS_ELE,& ! pressure matrix for projection method
             got_free_surf,  MASS_SUF, SUF_SIG_DIAGTEN_BC, &
-            V_SOURCE, VOLFRA_PORE, &
+            V_SOURCE, VOLFRA_PORE, Courant_number, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
@@ -2201,7 +2203,7 @@ end if
           logical :: restart_now
           type(tensor_field) :: aux_velocity
           type( vector_field ) :: packed_vel, packed_CDP_tensor, packed_aux_velocity
-          real, dimension(2) :: totally_min_max
+          real, dimension(2) :: totally_min_max = 1e30!Initialise with an out of range value to be able to check it hasn't been
 
           !Retrieve settings from diamond
           if (solver_tolerance<0) then
@@ -2763,7 +2765,7 @@ end if
         MASS_MN_PRES, MASS_ELE,&
         got_free_surf,  MASS_SUF, &
         SUF_SIG_DIAGTEN_BC, &
-        V_SOURCE, VOLFRA_PORE, &
+        V_SOURCE, VOLFRA_PORE, Courant_number, &
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, &
@@ -2816,7 +2818,7 @@ end if
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
         REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  DIAG_BIGM_CON
         REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  BIGM_CON
-
+        real, dimension(:), intent(inout) :: Courant_number
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
@@ -2890,7 +2892,13 @@ end if
             got_free_surf,  MASS_SUF, &
             dummy_transp, &
             eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, &
-            calculate_mass_delta = calculate_mass_delta, outfluxes = outfluxes)
+            calculate_mass_delta = calculate_mass_delta, outfluxes = outfluxes,&
+            Courant_number = Courant_number)
+
+            !Make the inf norm of the Courant number across cpus
+            if (IsParallel()) then
+              call allmax(Courant_number(1)); call allmax(Courant_number(2))
+           end if
 
         ewrite(3,*)'Back from cv_assemb'
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
@@ -7655,7 +7663,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              if (present_and_true(for_transport)) then
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
                 !This method was designed for fields between 0 and 1, so for transport fields, we need to adjust Pe_aux to ensure consistency
-                if (present(totally_min_max)) Pe_aux = Pe_aux*abs(totally_min_max(2) - totally_min_max(1)) !THIS means making it HIGHER
+                if (present(totally_min_max)) then 
+                  !Means that min_max is defined
+                  if (abs(totally_min_max(2)) < 1e20) Pe_aux = Pe_aux*max(abs(totally_min_max(2) - totally_min_max(1)),1.0) !THIS means making it HIGHER
+                end if
              else
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
              end if

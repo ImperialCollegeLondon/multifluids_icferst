@@ -623,7 +623,7 @@ contains
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
                         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        calculate_mass_delta, outfluxes, pres_its_taken, its)
+                        calculate_mass_delta, outfluxes, pres_its_taken, its, Courant_number)
                 end if Conditional_ForceBalanceEquation
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
@@ -690,7 +690,7 @@ contains
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = .true.,&
                         ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
+                        saturation=saturation_field, nonlinear_iteration = its)
 
                 else IF (is_magma) then !... in which case we solve for enthalpy instead
 
@@ -711,7 +711,7 @@ contains
                   THETA_GDIFF, eles_with_pipe, pipes_aux, &
                   option_path = '/material_phase[0]/scalar_field::Enthalpy', &
                   thermal = .false.,saturation=saturation_field, nonlinear_iteration = its, &
-                  Courant_number = Courant_number, magma_phase_coefficients=  magma_phase_coef)
+                  magma_phase_coefficients=  magma_phase_coef)
 
                   ! ! Calculate melt fraction from phase diagram
                   call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)

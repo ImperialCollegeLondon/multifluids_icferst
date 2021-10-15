@@ -90,6 +90,9 @@ module multi_phreeqc
         status = RM_SetRebalanceByCell(id, 1)
         status = RM_UseSolutionDensityVolume(id, 0)
         status = RM_SetPartitionUZSolids(id, 0)
+      !#################################################################################################
+    ! TODO DO WE NEED CONVERSION SINCE WE CONSIDER IN ICFERST SI, BUT PHREEQC USES MOL/M^3
+      !#################################################################################################
 
         ! Set concentration units
         status = RM_SetUnitsSolution(id, 2)      ! 1, mg/L; 2, mol/L; 3, kg/kgs
