@@ -132,6 +132,7 @@ contains
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
            REAL, DIMENSION( : ), allocatable :: porous_heat_coef, porous_heat_coef_old
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+           REAL, DIMENSION( :,:,:,: ), allocatable :: CDISPERSION
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2) :: totally_min_max
            logical :: impose_min_max
@@ -273,6 +274,13 @@ contains
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
                 !For porous media thermal two fields are returned. Being one the diffusivity of the porous medium
                 call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION)
+                !Calculates dispersion with specific longitudinal and transverse dispersivity
+                if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
+                  allocate(CDISPERSION(Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase)); CDISPERSION = 0.
+                  call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION)
+                  TDIFFUSION = TDIFFUSION + CDISPERSION
+                  deallocate(CDISPERSION)
+                 end if                
            end if
 
            ! get diffusivity for compositional
