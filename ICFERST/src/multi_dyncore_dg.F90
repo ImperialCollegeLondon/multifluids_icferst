@@ -168,25 +168,25 @@ contains
            IGOT_T2_loc = 0
 
            assemble_collapsed_to_one_phase = .false.
-            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
+           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
 
                p => extract_tensor_field( packed_state, "PackedCVPressure", stat )
                if (stat/=0) p => extract_tensor_field( packed_state, "PackedFEPressure", stat )
                if (is_porous_media) then
-                 !If it is thermal and porous media we need to consider thermal equilibirum between phases and porous medium
-                 !in this case we need to solve then only for one temperature per region(reservoir/wells)
-                 assemble_collapsed_to_one_phase = .true.
-                !Check that the extra parameters required for porous media thermal simulations are present
-                if (.not.have_option('/porous_media/porous_properties/scalar_field::porous_density') .or. &
-                    .not.have_option('/porous_media/porous_properties/scalar_field::porous_heat_capacity') .or. &
-                    .not.have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity')) then
-                    FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
-                end if
-                !need to perform average of the effective heat capacity times density for the diffusion and time terms
-                allocate(porous_heat_coef(Mdims%cv_nonods))
-                allocate(porous_heat_coef_old(Mdims%cv_nonods))
-                call effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
-                end if
+                  !If it is thermal and porous media we need to consider thermal equilibirum between phases and porous medium
+                  !in this case we need to solve then only for one temperature per region(reservoir/wells)
+                  assemble_collapsed_to_one_phase = .true.
+                  !Check that the extra parameters required for porous media thermal simulations are present
+                  if (.not.have_option('/porous_media/porous_properties/scalar_field::porous_density') .or. &
+                      .not.have_option('/porous_media/porous_properties/scalar_field::porous_heat_capacity') .or. &
+                      .not.have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity')) then
+                      FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
+                  end if
+                  !need to perform average of the effective heat capacity times density for the diffusion and time terms
+                  allocate(porous_heat_coef(Mdims%cv_nonods))
+                  allocate(porous_heat_coef_old(Mdims%cv_nonods))
+                  call effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
+               end if
                den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity", stat )
                if (stat /= 0) then
@@ -195,12 +195,12 @@ contains
                end if
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
-			   	if(have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
+			   	      if(have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
                    solid_concentration => extract_scalar_field( packed_state, "SolidConcentration" )
                    den_all( 1, : ) = den_all ( 1, : ) * (1.0 - solid_concentration % val)
                end if
                IGOT_T2_loc = 1
-            else if ( lcomp > 0 ) then
+           else if ( lcomp > 0 ) then
                p => extract_tensor_field( packed_state, "PackedFEPressure" )
                den_all2 => extract_tensor_field( packed_state, "PackedComponentDensity" )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
@@ -211,6 +211,7 @@ contains
                den_all=1.0
                denold_all=1.0
            end if
+
            !Need to change this to use a reference density/rho_cp so for porous media the rock/fluid ratio is kept
            if (has_boussinesq_aprox) then
              if (is_porous_media) then
@@ -228,8 +229,8 @@ contains
               !Copy to old to ensure no time variation
               denold_all = den_all
              else
-             !We do not consider variations of density nor CP in transport
-             den_all = 1.0; denold_all = 1.0
+              !We do not consider variations of density nor CP in transport
+              den_all = 1.0; denold_all = 1.0
             end if
            end if
            if( present( option_path ) ) then ! solving for Temperature or Internal Energy or k_epsilon model
@@ -277,7 +278,7 @@ contains
                 !Calculates dispersion with specific longitudinal and transverse dispersivity
                 if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
                   allocate(CDISPERSION(Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase)); CDISPERSION = 0.
-                  call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION)
+                  call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, den_all, CDISPERSION)
                   TDIFFUSION = TDIFFUSION + CDISPERSION
                   deallocate(CDISPERSION)
                  end if                
@@ -925,7 +926,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            p => extract_tensor_field( packed_state, "PackedFEPressure" )
 
-           if (has_boussinesq_aprox) then
+          if (has_boussinesq_aprox) then
             !We do not consider variations of density in transport
                den_all = 1
                denold_all =1
@@ -960,7 +961,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !Calculates solute dispersion with specific longitudinal and transverse dispersivity
            if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
             allocate(CDISPERSION(Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase)); CDISPERSION = 0.
-            call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION)
+            call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, den_all, CDISPERSION)
             TDIFFUSION = TDIFFUSION + CDISPERSION
             deallocate(CDISPERSION)
            end if
