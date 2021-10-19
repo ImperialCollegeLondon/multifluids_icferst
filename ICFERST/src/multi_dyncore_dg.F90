@@ -8895,7 +8895,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         INTEGER, PARAMETER :: WIC_P_BC_DIRICHLET = 1
         ! Local variables
-        INTEGER :: SELE, IPRES, CV_SILOC, CV_NOD, i_indx, ierr
+        INTEGER :: SELE, IPRES, CV_SILOC, CV_NOD, i, ierr, k
+        integer, dimension(Mdims%stotel) :: Impose_strong
         type(tensor_field) :: pressure_BCs
         type(scalar_field), pointer :: pipe_diameter
   
@@ -8903,7 +8904,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             ['weakdirichlet'],&
             pressure_BCs,WIC_P_BC_ALL)
         PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
-  
+        !Initialise array to store universal numbering of strong BC positions
+        Impose_strong = -1; k = 1
         !Only for wells
         CMC_petsc%is_assembled=.false.
         call assemble( CMC_petsc )
@@ -8917,10 +8919,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                   CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
                   !Check if we are in an element that may need strongly imposed BCs
                   if (.not. pipes_aux%impose_strongBCs(CV_NOD)) cycle
-                  ! !If pipe diameter = 0, no changes made
-                  ! if (PIPE_Diameter%val(cv_nod) <= 1e-8) cycle
-                  i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
-                  call MatZeroRows(CMC_petsc%M, 1, (/i_indx/), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
+                  !Store the universal numbering, required by PETSc
+                  Impose_strong(k) = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+                  k = k + 1
                   !Impose P_BC in the right hand side
                   rhs_p(ipres,cv_nod) = pressure_BCs%val(1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC ) - &
                   pressure%val(1,IPRES, CV_NOD)
@@ -8929,6 +8930,16 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             end if
           END DO
         end do
+
+        !Now ensure that all the processors call MatZeroRows consistently
+        i = 0
+        do k = 1, Mdims%stotel
+          if (isparallel()) call allmax(Impose_strong(k))
+          if (Impose_strong(k) < 0) exit
+          i = i + 1
+        end do
+        call MatZeroRows(CMC_petsc%M, i, Impose_strong(1:i), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
+
         !Re-assemble just in case
         CMC_petsc%is_assembled=.false.
         call assemble( CMC_petsc )
