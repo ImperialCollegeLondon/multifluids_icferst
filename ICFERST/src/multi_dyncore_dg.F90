@@ -132,6 +132,7 @@ contains
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
            REAL, DIMENSION( : ), allocatable :: porous_heat_coef, porous_heat_coef_old
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+           REAL, DIMENSION( :,:,:,: ), allocatable :: CDISPERSION
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2) :: totally_min_max
            logical :: impose_min_max
@@ -167,25 +168,25 @@ contains
            IGOT_T2_loc = 0
 
            assemble_collapsed_to_one_phase = .false.
-            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
+           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
 
                p => extract_tensor_field( packed_state, "PackedCVPressure", stat )
                if (stat/=0) p => extract_tensor_field( packed_state, "PackedFEPressure", stat )
                if (is_porous_media) then
-                 !If it is thermal and porous media we need to consider thermal equilibirum between phases and porous medium
-                 !in this case we need to solve then only for one temperature per region(reservoir/wells)
-                 assemble_collapsed_to_one_phase = .true.
-                !Check that the extra parameters required for porous media thermal simulations are present
-                if (.not.have_option('/porous_media/porous_properties/scalar_field::porous_density') .or. &
-                    .not.have_option('/porous_media/porous_properties/scalar_field::porous_heat_capacity') .or. &
-                    .not.have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity')) then
-                    FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
-                end if
-                !need to perform average of the effective heat capacity times density for the diffusion and time terms
-                allocate(porous_heat_coef(Mdims%cv_nonods))
-                allocate(porous_heat_coef_old(Mdims%cv_nonods))
-                call effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
-                end if
+                  !If it is thermal and porous media we need to consider thermal equilibirum between phases and porous medium
+                  !in this case we need to solve then only for one temperature per region(reservoir/wells)
+                  assemble_collapsed_to_one_phase = .true.
+                  !Check that the extra parameters required for porous media thermal simulations are present
+                  if (.not.have_option('/porous_media/porous_properties/scalar_field::porous_density') .or. &
+                      .not.have_option('/porous_media/porous_properties/scalar_field::porous_heat_capacity') .or. &
+                      .not.have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity')) then
+                      FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
+                  end if
+                  !need to perform average of the effective heat capacity times density for the diffusion and time terms
+                  allocate(porous_heat_coef(Mdims%cv_nonods))
+                  allocate(porous_heat_coef_old(Mdims%cv_nonods))
+                  call effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
+               end if
                den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity", stat )
                if (stat /= 0) then
@@ -194,12 +195,12 @@ contains
                end if
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
-			   	if(have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
+			   	      if(have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
                    solid_concentration => extract_scalar_field( packed_state, "SolidConcentration" )
                    den_all( 1, : ) = den_all ( 1, : ) * (1.0 - solid_concentration % val)
                end if
                IGOT_T2_loc = 1
-            else if ( lcomp > 0 ) then
+           else if ( lcomp > 0 ) then
                p => extract_tensor_field( packed_state, "PackedFEPressure" )
                den_all2 => extract_tensor_field( packed_state, "PackedComponentDensity" )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
@@ -210,6 +211,7 @@ contains
                den_all=1.0
                denold_all=1.0
            end if
+
            !Need to change this to use a reference density/rho_cp so for porous media the rock/fluid ratio is kept
            if (has_boussinesq_aprox) then
              if (is_porous_media) then
@@ -227,8 +229,8 @@ contains
               !Copy to old to ensure no time variation
               denold_all = den_all
              else
-             !We do not consider variations of density nor CP in transport
-             den_all = 1.0; denold_all = 1.0
+              !We do not consider variations of density nor CP in transport
+              den_all = 1.0; denold_all = 1.0
             end if
            end if
            if( present( option_path ) ) then ! solving for Temperature or Internal Energy or k_epsilon model
@@ -273,6 +275,13 @@ contains
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
                 !For porous media thermal two fields are returned. Being one the diffusivity of the porous medium
                 call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION)
+                !Calculates dispersion with specific longitudinal and transverse dispersivity
+                if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
+                  allocate(CDISPERSION(Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase)); CDISPERSION = 0.
+                  call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, den_all, CDISPERSION)
+                  TDIFFUSION = TDIFFUSION + CDISPERSION
+                  deallocate(CDISPERSION)
+                 end if                
            end if
 
            ! get diffusivity for compositional
@@ -917,7 +926,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            p => extract_tensor_field( packed_state, "PackedFEPressure" )
 
-           if (has_boussinesq_aprox) then
+          if (has_boussinesq_aprox) then
             !We do not consider variations of density in transport
                den_all = 1
                denold_all =1
@@ -952,7 +961,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !Calculates solute dispersion with specific longitudinal and transverse dispersivity
            if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
             allocate(CDISPERSION(Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase)); CDISPERSION = 0.
-            call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION)
+            call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, den_all, CDISPERSION)
             TDIFFUSION = TDIFFUSION + CDISPERSION
             deallocate(CDISPERSION)
            end if
@@ -8895,7 +8904,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         INTEGER, PARAMETER :: WIC_P_BC_DIRICHLET = 1
         ! Local variables
-        INTEGER :: SELE, IPRES, CV_SILOC, CV_NOD, i_indx, ierr
+        INTEGER :: SELE, IPRES, CV_SILOC, CV_NOD, i, ierr, k
+        integer, dimension(Mdims%stotel) :: Impose_strong
         type(tensor_field) :: pressure_BCs
         type(scalar_field), pointer :: pipe_diameter
   
@@ -8903,7 +8913,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             ['weakdirichlet'],&
             pressure_BCs,WIC_P_BC_ALL)
         PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
-  
+        !Initialise array to store universal numbering of strong BC positions
+        Impose_strong = -1; k = 1
         !Only for wells
         CMC_petsc%is_assembled=.false.
         call assemble( CMC_petsc )
@@ -8917,10 +8928,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                   CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
                   !Check if we are in an element that may need strongly imposed BCs
                   if (.not. pipes_aux%impose_strongBCs(CV_NOD)) cycle
-                  ! !If pipe diameter = 0, no changes made
-                  ! if (PIPE_Diameter%val(cv_nod) <= 1e-8) cycle
-                  i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
-                  call MatZeroRows(CMC_petsc%M, 1, (/i_indx/), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
+                  !Store the universal numbering, required by PETSc
+                  Impose_strong(k) = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+                  k = k + 1
                   !Impose P_BC in the right hand side
                   rhs_p(ipres,cv_nod) = pressure_BCs%val(1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC ) - &
                   pressure%val(1,IPRES, CV_NOD)
@@ -8929,6 +8939,16 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             end if
           END DO
         end do
+
+        !Now ensure that all the processors call MatZeroRows consistently
+        i = 0
+        do k = 1, Mdims%stotel
+          if (isparallel()) call allmax(Impose_strong(k))
+          if (Impose_strong(k) < 0) exit
+          i = i + 1
+        end do
+        call MatZeroRows(CMC_petsc%M, i, Impose_strong(1:i), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
+
         !Re-assemble just in case
         CMC_petsc%is_assembled=.false.
         call assemble( CMC_petsc )

@@ -1558,16 +1558,17 @@ contains
       return
     end subroutine calculate_diffusivity
 
-    !>@brief: Dispersion for isotropic porous media
-    subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, SoluteDispersion)
+    !>@brief: Dispersion for porous media
+    !> For thermal, the field density needs to be passed down, which ensures that even for boussinesq a reference density is still used
+    subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, density, SoluteDispersion)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
+      real, dimension(:,:), target, intent(in) :: density !>If present density means that we need to use a reference density to ensure consistency with the rest of the equation
       real, dimension(:, :, :, :), intent(inout) :: SoluteDispersion
       !Local variables
       type(scalar_field), pointer :: component, sfield, ldfield, tdfield
-      type(tensor_field), pointer :: den
       type (vector_field_pointer), dimension(Mdims%n_in_pres) ::darcy_velocity
       integer :: icomp, iphase, idim, stat, ele, idim1, idim2
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc, cv_loc, cv_iloc, ele_nod_disp
@@ -1581,7 +1582,6 @@ contains
       DispCoeffMat = 0.
       DispDiaComp = 0.
 
-      den => extract_tensor_field( packed_state,"PackedDensity" )
       sfield=>extract_scalar_field(state(1),"Porosity")
       ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
 
@@ -1651,16 +1651,9 @@ contains
                     SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
                     sfield%val(ele_nod)*DispDiaComp(idim1)
                   endif
-
-                  if (has_boussinesq_aprox) then
-                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
-                    SoluteDispersion( mat_inod, idim1, idim2, iphase )
-                  else
-                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
-                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) *&
-                    den%val(1, 1, cv_loc)
-                  endif
-
+                  SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
+                  SoluteDispersion( mat_inod, idim1, idim2, iphase ) *&
+                  density(iphase, cv_loc)
                 end do
               end do
             end do
