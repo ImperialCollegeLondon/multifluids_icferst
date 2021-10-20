@@ -123,7 +123,7 @@ contains
 
     !We try two times only unless it is the final chance!
     Max_FS_attempts = 2
-    if (final_adapt) Max_FS_attempts = 3!With stronger settings
+    if (final_adapt .and. have_option("/mesh_adaptivity/hr_adaptivity/robust_fail_safe")) Max_FS_attempts = 3!With stronger settings
 
     if(isparallel()) then
       ! generate stripped versions of the position and metric fields
