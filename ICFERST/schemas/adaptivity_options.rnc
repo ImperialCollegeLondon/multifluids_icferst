@@ -490,6 +490,17 @@ hr_adaptivity =
          element aspect_ratio_bound {
            real
          }?,
+         ## By default, adaptivity has a fail-safe that works as follow:
+         ##
+         ## 1) A second try with more robust settings is attempted 
+         ##
+         ## 2) The old mesh is re-used.
+         ##
+         ## This options adds 1.b) in which even more robust settings are used to try to get a new mesh.
+         ## NOTE that this option may slow down your simulations significantly. Normally having more elements per core can also help.
+         element robust_fail_safe {
+           empty
+         }?,
          ## Adapt at first timestep
          element adapt_at_first_timestep {
             ## Number of adapts done after initialisation but

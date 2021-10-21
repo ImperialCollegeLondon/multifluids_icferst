@@ -115,7 +115,7 @@ contains
     logical, intent(inout), optional :: FS_succeded
     type(vector_field) :: expanded_positions
     !variable to retry mesh adapt if there is an error
-    logical :: adapt_error, local_adapt_error
+    logical :: adapt_error, global_and_adapt_error
     integer :: Max_FS_attempts
     integer :: i
     logical, save :: Message_shown = .false.
@@ -123,7 +123,7 @@ contains
 
     !We try two times only unless it is the final chance!
     Max_FS_attempts = 2
-    if (final_adapt) Max_FS_attempts = 3!With stronger settings
+    if (final_adapt .and. have_option("/mesh_adaptivity/hr_adaptivity/robust_fail_safe")) Max_FS_attempts = 3!With stronger settings
 
     if(isparallel()) then
       ! generate stripped versions of the position and metric fields
@@ -153,67 +153,33 @@ contains
           do i = 1, Max_FS_attempts
               call adapt_mesh_3d(stripped_positions, stripped_metric, new_positions, &
                   force_preserve_regions=force_preserve_regions, lock_faces=lock_faces, adapt_error = adapt_error)
-              local_adapt_error = adapt_error
-              if (i/=3 ) call allor(adapt_error)
+              call allor(adapt_error)
               !#####Section to ensure that mesh adaptivity does not stop the simulation#######
               if (.not.adapt_error) then
                 FS_succeded = .true.
                 exit!Life is good! We can continue!
               else
-                  !First deallocate new mesh as it is useless
-                  if (associated(new_positions%refcount)) call deallocate(new_positions)
-
-                  if (i == Max_FS_attempts .or. FS_succeded) then !Last time, back to original mesh... or if we already got a new mesh in a iterative process
-                    !This can also be potentially improved by only forcing the cpu domain that has failed to go back to the old mesh...
-                    if (getprocno() == 1) then
-                      if (FS_succeded) then
-                        ewrite(1,*) "New mesh already obtained in the process. Fail-safe deactivated for this loop."
-                      else
-                        ewrite(1,*) "WARNING 3: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used."
-                      end if
+                !First and second time, we retry with more conservative settings
+                !imposed in Adapt_Integration.F90
+                if (getprocno() == 1) then
+                  select case (i)
+                  case (1)
+                    if (.not. Message_shown) then
+                      ewrite(0,*) "+++ NOTIFICATION: Mesh adaptivity failed to create a new mesh, fail-safe method activated for the rest of the simulation."
+                      ewrite(1,*) "WARNING: Mesh adaptivity failed to create a mesh, using more robust settings."
+                      Message_shown = .true.
                     end if
-                    if (local_adapt_error) then !For the sections that this failed, re-use old mesh
-                      if(isparallel()) then
-                        ewrite(1,*) "Domain associated to processor number", getprocno()," has failed to adapt the mesh"
-                      end if
-                      call allocate(new_positions,old_positions%dim,old_positions%mesh,name=trim(old_positions%name))
-                      call set(new_positions,old_positions)
-                      call incref(new_positions)
-                    else !Normal process for parts of the domain that work normally
-                      if(isparallel()) then
-                        expanded_positions = expand_positions_halo(new_positions)
-                        call deallocate(new_positions)
-                        new_positions = expanded_positions
-                      end if
-                    end if
-                    call allor(adapt_error) !Used as mpi_barrier
-                    !...deallocate everything and leave subroutine
-                    call deallocate(stripped_metric)
-                    call deallocate(stripped_positions)
-                    return
-                  else !First and second time, we retry with more conservative settings
-                    !imposed in Adapt_Integration.F90
-                    !Restart to original mesh
-                    if (getprocno() == 1) then
-                      select case (i)
-                      case (1)
-                        if (.not. Message_shown) then
-                          ewrite(0,*) "+++ NOTIFICATION: Mesh adaptivity failed to create a new mesh, fail-safe method activated for the rest of the simulation."
-                          ewrite(1,*) "WARNING: Mesh adaptivity failed to create a mesh, using more robust settings."
-                          Message_shown = .true.
-                        end if
-                      case default
-                        ewrite(1,*) "WARNING 2: Mesh adaptivity failed again to create a mesh, using even more robust settings."
-                      end select
-                    end if
-                    if(isparallel()) then
-                      ! generate stripped versions of the position and metric fields
-                      call strip_l2_halo(old_positions, metric, stripped_positions, stripped_metric)
-                    else
-                      stripped_positions = old_positions
-                      stripped_metric = metric
-                    end if
-                  end if
+                  case default
+                    ewrite(1,*) "WARNING 2: Mesh adaptivity failed again to create a mesh, using even more robust settings."
+                  end select
+                end if
+                if(isparallel()) then
+                  ! generate stripped versions of the position and metric fields
+                  call strip_l2_halo(old_positions, metric, stripped_positions, stripped_metric)
+                else
+                  stripped_positions = old_positions
+                  stripped_metric = metric
+                end if
               end if
               !###############################################################################
           end do
