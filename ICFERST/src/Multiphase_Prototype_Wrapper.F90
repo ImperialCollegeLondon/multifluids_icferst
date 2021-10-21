@@ -1124,6 +1124,13 @@ contains
           end if
         end if
 
+        !Check if FEM_continuity_equation is being used for porous media and if so show a warning message
+        if (is_porous_media .and. have_option("/geometry/Advance_options/FE_Pressure/FEM_continuity_equation)")) then 
+          if (GetProcNo() == 1) then
+            FLAbort( "ERROR: FEM_continuity_equation should not be used for porous media. For stability use DCVFEM. If you still want to use it disable this error.")
+          end if
+        end if
+
     end subroutine get_simulation_type
 
 end subroutine multiphase_prototype_wrapper
