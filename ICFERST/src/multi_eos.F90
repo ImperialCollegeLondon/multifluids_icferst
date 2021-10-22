@@ -1461,7 +1461,10 @@ contains
             ! NOTE: for porous media we consider thermal equilibrium and therefore unifiying lambda is a must
             ! Multiplied by the saturation so we use the same paradigm that for the phases,
             !but in the equations it isn't, but here because we iterate over phases and collapse this is required
-            ! therefore: lambda = SUM_of_phases saturation * [(1-porosity) * lambda_p + porosity * lambda_f)]
+            ! therefore: lambda = SUM_of_phases saturation * [(1-porosity) * lambda_p + porosity * lambda_f)] for classic
+            !weighted average of conductivities (left in comments if ever needed for future use). 
+            !Here, instead we are using a more accurate Hashin and Shtrikman definition
+            !lambda_p+3*lambda_p*(lambda_f-lambda_p)*porosity/(3*lambda_p+(lambda_f-lambda_p)(1-porosity))
             saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
             do iphase = 1, Mdims%nphase
               diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
@@ -1477,7 +1480,7 @@ contains
                     ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                     ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
                   !  (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                  !  +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod))
+                  !  +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod)) ! for classic weighted approach
                   (tfield%val(idim, idim, t_ele_nod)+3*tfield%val(idim, idim, t_ele_nod)* &
                   (node_val( diffusivity, idim, idim, mat_inod ) - tfield%val(idim, idim, t_ele_nod))*sfield%val(ele_nod)/ &
                   (3*tfield%val(idim, idim, t_ele_nod)+(node_val( diffusivity, idim, idim, mat_inod )-tfield%val(idim, idim, t_ele_nod))* &
