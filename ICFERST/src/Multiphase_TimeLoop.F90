@@ -958,7 +958,6 @@ contains
                 dt = max(min(dt, finish_time - current_time), 1d-8)
                 if (current_time+dt>=finish_time) exit Loop_Time
                 call allmin(dt)
-print *, dt                
                 call set_option( '/timestepping/timestep', dt )
             end if
             ! ####UP TO HERE####
