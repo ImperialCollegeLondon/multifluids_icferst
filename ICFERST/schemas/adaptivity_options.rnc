@@ -494,7 +494,7 @@ hr_adaptivity =
          ##
          ## 1) A second try with more robust settings is attempted 
          ##
-         ## 2) The old mesh is re-used.
+         ## 2) The old mesh is re-used (CPU domain-wise in parallel).
          ##
          ## This options adds 1.b) in which even more robust settings are used to try to get a new mesh.
          ## NOTE that this option may slow down your simulations significantly. Normally having more elements per core can also help.

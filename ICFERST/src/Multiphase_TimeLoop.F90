@@ -887,7 +887,6 @@ contains
 
             call petsc_logging(3,stages,ierrr,default=.true.)
             call petsc_logging(2,stages,ierrr,default=.true., push_no=8)
-
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
                 nonlinear_dt = dt!To use if also the nonlinear adapt time-step is on
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
@@ -923,7 +922,7 @@ contains
                     if (dt>maxc) then
                         stored_dt=dt
                     end if
-				    ! Checking if previous time step was reduced (dt) for meeting dump_period requirement
+				            ! Checking if previous time step was reduced (dt) for meeting dump_period requirement
                     if (ic<stored_dt/dt .and. dt>0) then
                         ! If so, change increase/decrease dt tolerance (so it can catch up faster on dt-before-reduction-by-period-dump)
                         ic=stored_dt/dt
@@ -955,9 +954,8 @@ contains
                 end if
                 ! dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc ) Original
                 !Make sure we finish at required time and we don't get dt = 0
-                dt = max(min(dt, finish_time - current_time), 1d-8)
-                if (current_time+dt>=finish_time) exit Loop_Time
-                call allmin(dt)
+                dt = max(min(dt, finish_time - current_time), 1d-8); call allmin(dt)
+                if (current_time+dt>=finish_time) exit Loop_Time           
                 call set_option( '/timestepping/timestep', dt )
             end if
             ! ####UP TO HERE####
