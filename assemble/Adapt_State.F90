@@ -158,8 +158,9 @@ contains
               if (.not.adapt_error) then
                 FS_succeded = .true.
                 exit!Life is good! We can continue!
-              else !First and second time, we retry with more conservative settings
-                !imposed in Adapt_Integration.F90, here we only have messages
+              else
+                !First and second time, we retry with more conservative settings
+                !imposed in Adapt_Integration.F90
                 if (getprocno() == 1) then
                   select case (i)
                   case (1)
@@ -171,6 +172,13 @@ contains
                   case default
                     ewrite(1,*) "WARNING 2: Mesh adaptivity failed again to create a mesh, using even more robust settings."
                   end select
+                end if
+                if(isparallel()) then
+                  ! generate stripped versions of the position and metric fields
+                  call strip_l2_halo(old_positions, metric, stripped_positions, stripped_metric)
+                else
+                  stripped_positions = old_positions
+                  stripped_metric = metric
                 end if
               end if
               !###############################################################################
