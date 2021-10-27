@@ -490,16 +490,20 @@ hr_adaptivity =
          element aspect_ratio_bound {
            real
          }?,
-         ## By default, adaptivity has a fail-safe that works as follow:
+         ## Here you can control the level of the Fail-Safe of adaptivity. 
+         ## 
+         ## In all the cases if a new mesh cannot be obtained the old mesh is re-used. Being CPU domain-wise in parallel.
+         ## 
+         ## 1 => The old mesh is re-used
          ##
-         ## 1) A second try with more robust settings is attempted 
+         ## 2 => A second try with more robust settings is attempted.
          ##
-         ## 2) The old mesh is re-used (CPU domain-wise in parallel).
+         ## 3 => A third attemp with even more robust settings is used to try to get a new mesh.
+         ## NOTE that level 3 may significantly reduce the speed of the simulation.
          ##
-         ## This options adds 1.b) in which even more robust settings are used to try to get a new mesh.
-         ## NOTE that this option may slow down your simulations significantly. Normally having more elements per core can also help.
-         element robust_fail_safe {
-           empty
+         ## By default in parallel the level is set to 1 and in serial to 2.
+         element fail_safe {
+           integer
          }?,
          ## Adapt at first timestep
          element adapt_at_first_timestep {

@@ -121,9 +121,16 @@ contains
     logical, save :: Message_shown = .false.
     assert(.not. mesh_periodic(old_positions))
 
-    !We try two times only unless it is the final chance!
-    Max_FS_attempts = 2
-    if (final_adapt .and. have_option("/mesh_adaptivity/hr_adaptivity/robust_fail_safe")) Max_FS_attempts = 3!With stronger settings
+    !Retrieve fail-safe options
+    if(isparallel()) then
+      call get_option("/mesh_adaptivity/hr_adaptivity/fail_safe", Max_FS_attempts, default = 1)
+    else
+      call get_option("/mesh_adaptivity/hr_adaptivity/fail_safe", Max_FS_attempts, default = 2)
+    end if
+    !Maximum of 3 attemps
+    Max_FS_attempts = max(min(Max_FS_attempts, 3),1)
+    !We try a maximum of two times only unless it is the final option!
+    if (.not. final_adapt) Max_FS_attempts = min(Max_FS_attempts,2)
 
     if(isparallel()) then
       ! generate stripped versions of the position and metric fields
@@ -154,26 +161,16 @@ contains
               call adapt_mesh_3d(stripped_positions, stripped_metric, new_positions, &
                   force_preserve_regions=force_preserve_regions, lock_faces=lock_faces, adapt_error = adapt_error)
               call allor(adapt_error)
+              if (adapt_error) call show_fail_safe_message()
               !#####Section to ensure that mesh adaptivity does not stop the simulation#######
-              if (.not.adapt_error) then
+              if (.not.adapt_error .or. i == Max_FS_attempts) then
                 FS_succeded = .true.
                 exit!Life is good! We can continue!
               else
-                !First and second time, we retry with more conservative settings
-                !imposed in Adapt_Integration.F90
-                if (getprocno() == 1) then
-                  select case (i)
-                  case (1)
-                    if (.not. Message_shown) then
-                      ewrite(0,*) "+++ NOTIFICATION: Mesh adaptivity failed to create a new mesh, fail-safe method activated for the rest of the simulation."
-                      ewrite(1,*) "WARNING: Mesh adaptivity failed to create a mesh, using more robust settings."
-                      Message_shown = .true.
-                    end if
-                  case default
-                    ewrite(1,*) "WARNING 2: Mesh adaptivity failed again to create a mesh, using even more robust settings."
-                  end select
-                end if
+                !Deallocate new mesh to retry
+                call deallocate(new_positions)
                 if(isparallel()) then
+                  call deallocate(stripped_metric);call deallocate(stripped_positions)
                   ! generate stripped versions of the position and metric fields
                   call strip_l2_halo(old_positions, metric, stripped_positions, stripped_metric)
                 else
@@ -197,6 +194,26 @@ contains
     call deallocate(stripped_metric)
     call deallocate(stripped_positions)
 
+    contains 
+    !> @brief: Show message when the Fail-safe of DMO is activated
+    subroutine show_fail_safe_message()
+      implicit none
+      !First and second time, we retry with more conservative settings
+      !imposed in Adapt_Integration.F90
+      if (getprocno() == 1) then
+        select case (i)
+        case (1)
+          if (.not. Message_shown) then
+            ewrite(0,*) "+++ NOTIFICATION: Mesh adaptivity failed to create a new mesh, fail-safe method activated for the rest of the simulation."
+            ewrite(1,*) "WARNING: Mesh adaptivity failed to create a mesh, using more robust settings."
+            Message_shown = .true.
+          end if
+        case default
+          ewrite(1,*) "WARNING 2: Mesh adaptivity failed again to create a mesh, using even more robust settings."
+        end select
+      end if
+
+    end subroutine show_fail_safe_message
   end subroutine adapt_mesh_simple
 
   subroutine strip_l2_halo(positions, metric, stripped_positions, stripped_metric)
