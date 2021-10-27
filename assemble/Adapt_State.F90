@@ -121,9 +121,12 @@ contains
     logical, save :: Message_shown = .false.
     assert(.not. mesh_periodic(old_positions))
 
-    !We try two times only unless it is the final chance!
-    Max_FS_attempts = 2
-    if (final_adapt .and. have_option("/mesh_adaptivity/hr_adaptivity/robust_fail_safe")) Max_FS_attempts = 3!With stronger settings
+    !Retrieve fail-safe options
+    call get_option("/mesh_adaptivity/hr_adaptivity/fail_safe", Max_FS_attempts, default = 2)
+    !Maximum of 3 attemps
+    Max_FS_attempts = max(min(Max_FS_attempts, 3),1)
+    !We try a maximum of two times only unless it is the final option!
+    if (.not. final_adapt) Max_FS_attempts = min(Max_FS_attempts,2)
 
     if(isparallel()) then
       ! generate stripped versions of the position and metric fields
@@ -155,7 +158,7 @@ contains
                   force_preserve_regions=force_preserve_regions, lock_faces=lock_faces, adapt_error = adapt_error)
               call allor(adapt_error)
               !#####Section to ensure that mesh adaptivity does not stop the simulation#######
-              if (.not.adapt_error) then
+              if (.not.adapt_error .or. i == Max_FS_attempts) then
                 FS_succeded = .true.
                 exit!Life is good! We can continue!
               else
