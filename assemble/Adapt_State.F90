@@ -122,7 +122,11 @@ contains
     assert(.not. mesh_periodic(old_positions))
 
     !Retrieve fail-safe options
-    call get_option("/mesh_adaptivity/hr_adaptivity/fail_safe", Max_FS_attempts, default = 2)
+    if(isparallel()) then
+      call get_option("/mesh_adaptivity/hr_adaptivity/fail_safe", Max_FS_attempts, default = 1)
+    else
+      call get_option("/mesh_adaptivity/hr_adaptivity/fail_safe", Max_FS_attempts, default = 2)
+    end if
     !Maximum of 3 attemps
     Max_FS_attempts = max(min(Max_FS_attempts, 3),1)
     !We try a maximum of two times only unless it is the final option!
@@ -176,6 +180,8 @@ contains
                     ewrite(1,*) "WARNING 2: Mesh adaptivity failed again to create a mesh, using even more robust settings."
                   end select
                 end if
+                !Deallocate new mesh to retry
+                call deallocate(new_positions)
                 if(isparallel()) then
                   ! generate stripped versions of the position and metric fields
                   call strip_l2_halo(old_positions, metric, stripped_positions, stripped_metric)

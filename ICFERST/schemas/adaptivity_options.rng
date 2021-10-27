@@ -586,7 +586,7 @@ In all the cases if a new mesh cannot be obtained the old mesh is re-used. Being
 3 =&gt; A third attemp with even more robust settings is used to try to get a new mesh.
 NOTE that level 3 may significantly reduce the speed of the simulation.
 
-By default level 2 is used.</a:documentation>
+By default in parallel the level is set to 1 and in serial to 2.</a:documentation>
           <ref name="integer"/>
         </element>
       </optional>

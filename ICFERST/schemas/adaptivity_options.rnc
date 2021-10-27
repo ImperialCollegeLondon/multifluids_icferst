@@ -501,7 +501,7 @@ hr_adaptivity =
          ## 3 => A third attemp with even more robust settings is used to try to get a new mesh.
          ## NOTE that level 3 may significantly reduce the speed of the simulation.
          ##
-         ## By default level 2 is used.
+         ## By default in parallel the level is set to 1 and in serial to 2.
          element fail_safe {
            integer
          }?,
