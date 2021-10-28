@@ -3252,7 +3252,10 @@ mass fraction with a particular phase</a:documentation>
         </choice>
       </element>
       <element name="scalar_field">
-        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;</a:documentation>
+        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
+
+PassiveTracers are not part of the convergence criteria and are computed outside the non-linear loop. 
+Also, to reduce their cost, low order methods are used for their computation.</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
@@ -3339,11 +3342,98 @@ This imposes the tracer to be between bounds.</a:documentation>
         </choice>
       </element>
       <element name="scalar_field">
+        <a:documentation>Tracer. &lt;b&gt;You can add as many Tracers as you want as long as the name starts with Tracer&lt;/b&gt;</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>Tracer</value>
+        </attribute>
+        <choice>
+          <element name="prognostic">
+            <ref name="pressure_mesh_choice"/>
+            <choice>
+              <element name="Impose_min_max">
+                <a:documentation>The non-linear solver can be accelerated by imposing physical constraints.
+
+&lt;b&gt;Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.&lt;/b&gt;
+
+EXTREMELY RECOMMENDED!
+
+This imposes the tracer to be between bounds.</a:documentation>
+                <choice>
+                  <element name="automatic_min_limit">
+                    <a:documentation>Automatically choses the limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </choice>
+                <choice>
+                  <element name="automatic_max_limit">
+                    <a:documentation>Automatically choses the limit. &lt;b&gt;Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="Dot_not_impose_min_max">
+                <a:documentation>Do not impose physical constraints to the.</a:documentation>
+                <empty/>
+              </element>
+            </choice>
+            <optional>
+              <element name="tensor_field">
+                <a:documentation>Diffusivity for field (in S.I. m^2/s ).</a:documentation>
+                <attribute name="name">
+                  <value>Diffusivity</value>
+                </attribute>
+                <attribute name="rank">
+                  <value>2</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <optional>
+                      <ref name="mesh_choice"/>
+                    </optional>
+                    <ref name="prescribed_tensor_field_no_adapt"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="diagnostic">
+                    <group>
+                      <optional>
+                        <ref name="mesh_choice"/>
+                      </optional>
+                      <ref name="tensor_python_diagnostic_algorithm"/>
+                      <ref name="output_options"/>
+                    </group>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                </choice>
+              </element>
+            </optional>
+            <ref name="prognostic_scalar_field"/>
+          </element>
+          <element name="prescribed">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prescribed_scalar_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
         <a:documentation>Species. This scalar field is devoted for the PHREEQC coupling. Components being used in
 Phreeqc need to be defined using this naming convention in ICFERST. For example if you have Oxygen and Nitrogen your components
 in ICFERST should be named: Species_O and Species_N. &lt;b&gt;You MUST use _ to separate Species and O, for example.&lt;/b&gt;
 
-&lt;b&gt;You can add as many passive Species as you want as long as the name starts with Species&lt;/b&gt;
+&lt;b&gt;You can add as many Species as you want as long as the name starts with Species&lt;/b&gt;
 
 This is just an example of how it works.</a:documentation>
         <attribute name="rank">
@@ -4564,13 +4654,11 @@ DEN = A * P ^ B
               </element>
             </element>
             <element name="Linear_eos">
-              <a:documentation>Boussinesq EOS
-
-&lt;b&gt;This EOS imposes the boussinesq approximation.&lt;/b&gt;
+              <a:documentation>Linear EOS
 
 DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))
 
-NOTE: This equation is only valid when density varies less than 5%.
+NOTE: This equation is only valid for small changes in density.
 Internally it is bounded to not vary more than 10%</a:documentation>
               <element name="reference_density">
                 <a:documentation>This is the density value at reference properties</a:documentation>
@@ -4618,7 +4706,7 @@ Internally it is bounded to not vary more than 10%</a:documentation>
 
 DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0) + field_Coef (field - field_reference) + ...)
 
-Introduce the same name as the scalar field being used. For example: PassiveTracer_CO2</a:documentation>
+Introduce the same name as the scalar field being used. For example: Tracer_CO2</a:documentation>
                   <attribute name="name">
                     <data type="string" datatypeLibrary=""/>
                   </attribute>

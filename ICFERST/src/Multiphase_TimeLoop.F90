@@ -214,6 +214,7 @@ contains
         type(magma_phase_diagram) :: magma_phase_coef
         real :: bulk_power
         !Variables for passive tracers
+        logical :: have_Active_Tracers = .true.
         logical :: have_Passive_Tracers = .true.
         integer :: fields
         character( len = option_path_len ) :: option_name
@@ -755,9 +756,9 @@ contains
 !                 end if
 ! #endif
 
-                if (have_Passive_Tracers) then
+                if (have_Active_Tracers) then
                   !We make sure to only enter here once if there are no passive tracers
-                  have_Passive_Tracers = .false.
+                  have_Active_Tracers = .false.
                   velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
@@ -766,10 +767,10 @@ contains
                   fields = option_count("/material_phase[0]/scalar_field")
                   do k = 1, fields
                     call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                    if (is_Tracer_field(option_name)) then
-                      have_Passive_Tracers = .true.!OK there are passive tracers so remember for next time
+                    if (is_Active_Tracer_field(option_name)) then
+                      have_Active_Tracers = .true.!OK there are tracers so remember for next time
                       tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
-                      call Passive_Tracer_Assemble_Solve( trim(option_name), state, packed_state, &
+                      call Tracer_Assemble_Solve( trim(option_name), state, packed_state, &
                       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                       tracer_field,velocity_field,density_field, multi_absorp, dt, &
                       suf_sig_diagten_bc, Porosity_field%val, &
@@ -819,6 +820,35 @@ contains
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
+
+            if (have_Passive_Tracers) then
+              !We make sure to only enter here once if there are no passive tracers
+              have_Passive_Tracers = .false.
+              velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+              density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+              saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+              call set_nu_to_u( packed_state )
+              !Passive fields taken from phase 1, automatically should detect internally if other phases need it
+              fields = option_count("/material_phase[0]/scalar_field")
+              do k = 1, fields
+                call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                if (is_PassiveTracer_field(option_name)) then
+                  have_Passive_Tracers = .true.!OK there are passive tracers so remember for next time
+                  tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
+                  call Tracer_Assemble_Solve( trim(option_name), state, packed_state, &
+                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                    tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                    suf_sig_diagten_bc, Porosity_field%val, &
+                    !!$
+                    0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                    THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                    saturation=saturation_field, nonlinear_iteration = its)
+                  nullify(tracer_field)
+                end if
+              end do
+            end if
+
+
 
 #ifdef USING_PHREEQC
             call run_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc)

@@ -954,7 +954,7 @@ contains
             call insert_sfield(packed_state,"FEEnthalpy",1,nphase)
         end if
 
-        !Here we add iteratively all the fields named PassiveTracer_NUMBER
+        !Here we add iteratively all the fields Tracers (PassiveTracers, Species, Concentration)
         fields = option_count("/material_phase[0]/scalar_field")
         do k = 1, fields
           call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
@@ -1263,7 +1263,7 @@ contains
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Enthalpy"),"Enthalpy")
                 end if
 
-                !Passive Tracers
+                !Tracers
                 fields = option_count("/material_phase[0]/scalar_field")
                 do k = 1, fields
                   call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
@@ -2158,7 +2158,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     integer, save :: nonlinear_its=0!> Needed for adapt_within_fpi to consider all the non-linear iterations together
     real, save :: stored_dt = -1 !> Backup of the time-step size
     logical, save :: adjusted_ts_to_dump = .false.!> Flag to see if we need to modify dt to ensure we match a certain time level
-    logical, save :: have_passive_tracers
+    logical, save :: have_Active_Tracers
     integer, save :: Ntracers
     real :: dt, auxR, dump_period
     integer :: Aim_num_FPI, auxI, auxJ, incr_threshold, stat1, stat2, nfields, k
@@ -2306,16 +2306,16 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                   temperature => extract_tensor_field(packed_state, "PackedTemperature", stat1)
                   Concentration => extract_tensor_field(packed_state, "PackedConcentration", stat2)
                   nfields = option_count("/material_phase[0]/scalar_field")
-                  Ntracers = 0; have_Passive_Tracers = .false.
+                  Ntracers = 0; have_Active_Tracers = .false.
                   do k = 1, nfields
                       call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                      if (is_Tracer_field(option_name, ignore_concentration = .true.)) then
-                          have_Passive_Tracers = .true.
+                      if (is_Active_Tracer_field(option_name, ignore_concentration = .true.)) then
+                          have_Active_Tracers = .true.
                           Ntracers = Ntracers + 1
                       end if 
                   end do
                   auxJ = 0
-                  if (have_Passive_Tracers) auxJ = -1
+                  if (have_Active_Tracers) auxJ = -1
                   auxI = 1
                   if (stat1==0) auxI = auxI + 1
                   if (stat2==0) auxI = auxI + 1
@@ -2338,12 +2338,12 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                   !Special position for temperature, why not!
                   if (stat1==0) reference_field(1:size(temperature%val,2),:,auxI) = temperature%val(1,1:size(temperature%val,2),:)
                   !Special position for the average of all the passiveTracers/Species in -1
-                  if (have_Passive_Tracers) then 
+                  if (have_Active_Tracers) then 
                       reference_field(:,:,-1) = 0.
                       nfields = option_count("/material_phase[0]/scalar_field")
                       do k = 1, nfields
                         call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                        if (is_Tracer_field(option_name)) then
+                        if (is_Active_Tracer_field(option_name)) then
                           tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
                           reference_field(1:size(tracer_field%val,2),:,-1) = reference_field(1:size(tracer_field%val,2),:,-1) +&
                                   abs(tracer_field%val(1,1:size(tracer_field%val,2),:))/real(Ntracers)
@@ -2425,14 +2425,14 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     inf_norm_conc = inf_norm_scalar_normalised(Concentration%val(1,1:size(Concentration%val,2),:),&
                                      reference_field(1:size(Concentration%val,2),:,2), 1.0, totally_min_max)
                 end if
-                if (have_Passive_Tracers) then 
+                if (have_Active_Tracers) then 
                     allocate(Tracers_avg(Mdims%nphase, Mdims%cv_nonods)); Tracers_avg = 0.
                     totally_min_max(1)=minval(reference_field(:,:,-1))
                     totally_min_max(2)=maxval(reference_field(:,:,-1))
                     nfields = option_count("/material_phase[0]/scalar_field")
                     do k = 1, nfields
                         call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                        if (is_Tracer_field(option_name)) then
+                        if (is_Active_Tracer_field(option_name)) then
                             tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
                             Tracers_avg(1:size(tracer_field%val,2),:) = Tracers_avg(1:size(tracer_field%val,2),:) +&
                             abs(tracer_field%val(1,1:size(tracer_field%val,2),:))/real(Ntracers)

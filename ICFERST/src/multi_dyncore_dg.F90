@@ -57,7 +57,7 @@ module multiphase_1D_engine
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
     public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
-    FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system, Passive_Tracer_Assemble_Solve
+    FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system, Tracer_Assemble_Solve
 
 contains
   !---------------------------------------------------------------------------
@@ -810,7 +810,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
   !> A boussinesq approximation is enforced on these tracers as the are totally INERT
   !> CURRENTLY NO DIFFUSION
   !---------------------------------------------------------------------------
-  SUBROUTINE Passive_Tracer_Assemble_Solve( Passive_Tracer_name, state, packed_state, &
+  SUBROUTINE Tracer_Assemble_Solve( Tracer_name, state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
@@ -821,7 +821,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
        icomp, saturation, Permeability_tensor_field, nonlinear_iteration )
 
            implicit none
-           character(len=*), intent(in) :: Passive_Tracer_name
+           character(len=*), intent(in) :: Tracer_name
            type( state_type ), dimension( : ), intent( inout ) :: state
            type( state_type ), intent( inout ) :: packed_state
            type(multi_dimensions), intent(in) :: Mdims
@@ -898,11 +898,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !Initialise with an out of range value to be able to check it hasn't been
            totally_min_max = 1e30
            !Retrieve the number of phases that have this tracer, and then if they are concecutive and start from the first one
-           nconc = option_count("/material_phase/scalar_field::"//trim(Passive_Tracer_name))
+           nconc = option_count("/material_phase/scalar_field::"//trim(Tracer_name))
            nconc_in_pres = nconc
            if (Mdims%npres > 1) nconc_in_pres = max(nconc_in_pres / 2, 1)
            do iphase = 1, nconc_in_pres
-             if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::'//trim(Passive_Tracer_name))) then
+             if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::'//trim(Tracer_name))) then
                FLAbort('Concentration must either be defined in all the phases or to start from the first one and consecutively from that one.')
              end if
            end do
@@ -944,19 +944,23 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
           !Retrieve source term; sprint_to_do something equivalent should be done for absoprtion
            do iphase = 1, Mdims%nphase !IF THIS WORKS DO THE SAME FOR THE OTHER SCALAR FIELDS
-             sfield => extract_scalar_field( state(iphase), trim(Passive_Tracer_name)//"Source", stat )
+             sfield => extract_scalar_field( state(iphase), trim(Tracer_name)//"Source", stat )
              if (stat == 0) call assign_val(T_source( iphase, : ),sfield%val)
            end do
 
            !sprint to do, just pass down the other values...
            cv_disopt = Mdisopt%t_disopt; cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
            cv_theta = Mdisopt%t_theta; cv_beta = Mdisopt%t_beta
-
+           !For passive tracers use low order, the idea is to re-use the matrix when possible
+           if (is_PassiveTracer_field(Tracer_name)) then 
+            cv_disopt = 0!Force upwind
+            cv_theta = 1!For implicit euler
+           end if
            RETRIEVE_SOLID_CTY = .false.
 
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            TDIFFUSION=0.0;
-           call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, TracerName= trim(Passive_Tracer_name))
+           call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, TracerName= trim(Tracer_name))
 
            !Calculates solute dispersion with specific longitudinal and transverse dispersivity
            if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
@@ -1047,9 +1051,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            if (allocated(denold_all)) deallocate(denold_all)
            if (allocated(T_SOURCE)) deallocate(T_SOURCE)
            call deallocate(solution); nullify(solution%val)
-           ewrite(3,*) 'Leaving' //trim(Passive_Tracer_name)//'_assem_solve'
+           ewrite(3,*) 'Leaving' //trim(Tracer_name)//'_assem_solve'
 
-  END SUBROUTINE Passive_Tracer_Assemble_Solve
+  END SUBROUTINE Tracer_Assemble_Solve
 
 
     !---------------------------------------------------------------------------
@@ -7612,6 +7616,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      real, dimension(:,:,:), pointer :: p
      real, dimension(:,:), pointer :: satura, immobile_fraction, Cap_entry_pressure, Cap_exponent, X_ALL
      type( tensor_field ), pointer :: Velocity
+     type( vector_field ), pointer :: DarcyVelocity
      type( scalar_field ), pointer :: PIPE_Diameter
 
 
@@ -7697,9 +7702,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              if (Pe_aux<0) then!Automatic set up for Pe
                  !Method based on calculating an entry pressure for a given Peclet number;
                  !Peclet = V * L / Diffusivity; We consider only the entry pressure for the diffusivity
-                 !Pe = Vel * L/ Peclet. At present we are using the velocity that includes the sigma. Maybe might be worth it using the Darcy velocity?
+                 !Pe = Vel * L/ Peclet. At present we are using the Darcy Velocity 
                  Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
-
+                ! DarcyVelocity => extract_vector_field( state(Phase_with_Pc), "DarcyVelocity" )
+              
                  !Since it is an approximation, the domain length is the maximum distance, we only calculate it once
                  if (domain_length < 0) then
                    do idim = 1, Mdims%ndim
@@ -7721,7 +7727,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                          u_inod = ndgln%u(( ELE - 1 ) * Mdims%u_nloc +u_iloc )
                          do cv_iloc = 1, Mdims%cv_nloc
                              cv_nodi = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                             Pe(cv_nodi) = Pe(cv_nodi) + (1./Pe_aux) * (sum(abs(Velocity%val(:,Phase_with_Pc,u_inod)))/real(Mdims%ndim) * domain_length)/real(Mdims%u_nloc)
+                             Pe(cv_nodi) = Pe(cv_nodi) + (1./Pe_aux) * (sum(abs(Velocity%val(:,Phase_with_Pc, u_inod)))/real(Mdims%ndim) * domain_length)/real(Mdims%u_nloc)
                          end do
                      end do
                  end do
@@ -7749,6 +7755,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
          end if
 
+         !For transport we don't use the pseudo capillary pressure function
+         if (present_and_true(for_transport)) then
+          Overrelaxation = - Pe
+          return
+         end if
          !Calculate the overrrelaxation parameter, the numbering might be different for Pe and real capillary
          !values, hence we calculate it differently
          if (Artificial_Pe) then

@@ -1076,18 +1076,39 @@ version and using & profiling, please configure WITHOUT 'petscdebug'"
 
     end subroutine petsc_logging
 
-      !> @brief: Returns true if the input name is a PassievTracer type, Species, Concentration or any other reserved work 
-      !> This function is used to easily identify passive Tracers that may have diffusion, sources/sinks, dispersion, etc.
-    logical function is_Tracer_field(input_name, ignore_concentration) 
+      !> @brief: Returns true if the input name is a Tracer type:PassiveTracer, Tracer, Species, Concentration or any other reserved word
+      !> This function is used to easily identify Tracers that may have diffusion, sources/sinks, dispersion, etc.
+    logical function is_Tracer_field(input_name) 
+        implicit none 
+        character( len = * ), intent( in ) :: input_name
+        
+        is_Tracer_field = input_name(1:min(len(input_name), 13))=="PassiveTracer"&
+                 .or. input_name(1:min(len(input_name), 6))=="Tracer" .or.&
+                input_name(1:min(len(input_name), 7)) =="Species".or. trim(input_name)=="Concentration"
+    end function is_Tracer_field
+    
+    !> @brief: Returns true if the input name is an Active Tracer type, Tracer, Species, Concentration or any other reserved word 
+    !> This function is used to easily identify Tracers that may have diffusion, sources/sinks, dispersion, etc.
+    logical function is_Active_Tracer_field(input_name, ignore_concentration) 
         implicit none 
         character( len = * ), intent( in ) :: input_name
         logical, optional, INTENT(IN) :: ignore_concentration
 
-        is_Tracer_field = input_name(1:13)=="PassiveTracer" .or. &
-                          input_name(1:7) =="Species"
+        is_Active_Tracer_field = input_name(1:min(len(input_name), 7)) =="Species" &
+                            .or. input_name(1:min(len(input_name), 6))=="Tracer"
         !For checking convergence, concentration is a special field so we may want to diferenciate it
         if (present_and_true(ignore_concentration)) return
 
-        is_Tracer_field = is_Tracer_field .or. trim(input_name)=="Concentration"
-    end function is_Tracer_field
+        is_Active_Tracer_field = is_Active_Tracer_field .or. trim(input_name)=="Concentration"
+    end function is_Active_Tracer_field
+
+    !> @brief: Returns true if the input name is a PassievTracer type.
+    logical function is_PassiveTracer_field(input_name) 
+        implicit none 
+        character( len = * ), intent( in ) :: input_name
+        
+        is_PassiveTracer_field = input_name(1:min(len(input_name), 13))=="PassiveTracer"
+
+    end function is_PassiveTracer_field
+
 end module multi_tools

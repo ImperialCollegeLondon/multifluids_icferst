@@ -99,7 +99,11 @@
             <real_value rank="0">0</real_value>
           </constant>
         </initial_condition>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <no_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -169,7 +173,11 @@
           </diagnostic>
           <default_absorption/>
         </vector_field>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -185,6 +193,9 @@
         return 0.2</string_value>
           </python>
         </initial_condition>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -335,7 +346,11 @@
           </diagnostic>
           <default_absorption/>
         </vector_field>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -351,6 +366,9 @@
         return 0.8</string_value>
           </python>
         </initial_condition>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -386,6 +404,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <scalar_field name="Permeability">
@@ -400,6 +419,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
   </porous_media>
