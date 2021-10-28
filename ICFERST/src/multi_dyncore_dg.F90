@@ -7615,6 +7615,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      logical :: Artificial_Pe
      real, dimension(:,:,:), pointer :: p
      real, dimension(:,:), pointer :: satura, immobile_fraction, Cap_entry_pressure, Cap_exponent, X_ALL
+     type( tensor_field ), pointer :: Velocity
      type( vector_field ), pointer :: DarcyVelocity
      type( scalar_field ), pointer :: PIPE_Diameter
 
@@ -7702,7 +7703,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                  !Method based on calculating an entry pressure for a given Peclet number;
                  !Peclet = V * L / Diffusivity; We consider only the entry pressure for the diffusivity
                  !Pe = Vel * L/ Peclet. At present we are using the Darcy Velocity 
-                DarcyVelocity => extract_vector_field( state(Phase_with_Pc), "DarcyVelocity" )
+                 Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
+                ! DarcyVelocity => extract_vector_field( state(Phase_with_Pc), "DarcyVelocity" )
               
                  !Since it is an approximation, the domain length is the maximum distance, we only calculate it once
                  if (domain_length < 0) then
@@ -7725,7 +7727,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                          u_inod = ndgln%u(( ELE - 1 ) * Mdims%u_nloc +u_iloc )
                          do cv_iloc = 1, Mdims%cv_nloc
                              cv_nodi = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                             Pe(cv_nodi) = Pe(cv_nodi) + (1./Pe_aux) * (sum(abs(DarcyVelocity%val(:,u_inod)))/real(Mdims%ndim) * domain_length)/real(Mdims%u_nloc)
+                             Pe(cv_nodi) = Pe(cv_nodi) + (1./Pe_aux) * (sum(abs(Velocity%val(:,Phase_with_Pc, u_inod)))/real(Mdims%ndim) * domain_length)/real(Mdims%u_nloc)
                          end do
                      end do
                  end do
