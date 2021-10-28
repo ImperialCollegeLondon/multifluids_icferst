@@ -4654,13 +4654,11 @@ DEN = A * P ^ B
               </element>
             </element>
             <element name="Linear_eos">
-              <a:documentation>Boussinesq EOS
-
-&lt;b&gt;This EOS imposes the boussinesq approximation.&lt;/b&gt;
+              <a:documentation>Linear EOS
 
 DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))
 
-NOTE: This equation is only valid when density varies less than 5%.
+NOTE: This equation is only valid for small changes in density.
 Internally it is bounded to not vary more than 10%</a:documentation>
               <element name="reference_density">
                 <a:documentation>This is the density value at reference properties</a:documentation>

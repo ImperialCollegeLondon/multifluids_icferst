@@ -3828,13 +3828,11 @@ element Density{(
                               real
                            }
                         }|
-                        ## Boussinesq EOS
-                        ##
-			                  ## <b>This EOS imposes the boussinesq approximation.</b>
+                        ## Linear EOS
                         ##
                         ## DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))
                         ##
-                        ## NOTE: This equation is only valid when density varies less than 5%.
+                        ## NOTE: This equation is only valid for small changes in density.
                         ## Internally it is bounded to not vary more than 10%
                         element Linear_eos {
                            ## This is the density value at reference properties
