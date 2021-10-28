@@ -1,0 +1,350 @@
+<?xml version='1.0' encoding='utf-8'?>
+<icferst_options>
+  <simulation_name>
+    <string_value lines="1">QuickTest_DG</string_value>
+  </simulation_name>
+  <porous_media_simulator/>
+  <geometry>
+    <dimension>
+      <integer_value rank="0">2</integer_value>
+    </dimension>
+    <mesh name="CoordinateMesh">
+      <from_file file_name="mesh_structured">
+        <format name="gmsh"/>
+        <stat>
+          <include_in_stat/>
+        </stat>
+      </from_file>
+    </mesh>
+    <simulation_quality>
+      <string_value>fast</string_value>
+    </simulation_quality>
+  </geometry>
+  <solver_options>
+    <Non_Linear_Solver>
+      <integer_value rank="0">20</integer_value>
+      <Fixed_Point_Iteration>
+        <real_value rank="0">5e-2</real_value>
+        <Infinite_norm_tol>
+          <real_value rank="0">0.01</real_value>
+          <adaptive_non_linear_iterations>
+            <integer_value rank="0">4</integer_value>
+          </adaptive_non_linear_iterations>
+        </Infinite_norm_tol>
+        <Backtracking_factor>
+          <real_value rank="0">-10</real_value>
+        </Backtracking_factor>
+        <Vanishing_relaxation>
+          <real_value rank="0">-3e2</real_value>
+          <Vanishing_for_transport>
+            <real_value rank="0">-1e2</real_value>
+          </Vanishing_for_transport>
+        </Vanishing_relaxation>
+      </Fixed_Point_Iteration>
+    </Non_Linear_Solver>
+  </solver_options>
+  <io>
+    <dump_format>
+      <string_value>vtk</string_value>
+    </dump_format>
+    <dump_period_in_timesteps>
+      <constant>
+        <integer_value rank="0">1</integer_value>
+      </constant>
+    </dump_period_in_timesteps>
+  </io>
+  <timestepping>
+    <current_time>
+      <real_value rank="0">0</real_value>
+    </current_time>
+    <timestep>
+      <real_value rank="0">10e-3</real_value>
+    </timestep>
+    <finish_time>
+      <real_value rank="0">0.2</real_value>
+    </finish_time>
+  </timestepping>
+  <material_phase name="phase1">
+    <phase_properties>
+      <Density>
+        <incompressible>
+          <real_value rank="0">1</real_value>
+        </incompressible>
+      </Density>
+      <Viscosity>
+        <tensor_field name="Viscosity" rank="2">
+          <prescribed>
+            <mesh name="PressureMesh"/>
+            <value name="WholeMesh">
+              <isotropic>
+                <constant>
+                  <real_value rank="0">1</real_value>
+                </constant>
+              </isotropic>
+            </value>
+          </prescribed>
+        </tensor_field>
+        <viscosity_scheme>
+          <tensor_form/>
+          <nonlinear_scheme/>
+        </viscosity_scheme>
+      </Viscosity>
+    </phase_properties>
+    <scalar_field name="Pressure" rank="0">
+      <prognostic>
+        <mesh name="PressureMesh"/>
+        <initial_condition name="WholeMesh">
+          <constant>
+            <real_value rank="0">0</real_value>
+          </constant>
+        </initial_condition>
+        <boundary_conditions name="outlet">
+          <surface_ids>
+            <integer_value shape="1" rank="1">3</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <constant>
+              <real_value rank="0">0</real_value>
+            </constant>
+          </type>
+        </boundary_conditions>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
+        <no_interpolation/>
+        <output/>
+      </prognostic>
+    </scalar_field>
+    <vector_field name="Velocity" rank="1">
+      <prognostic>
+        <mesh name="VelocityMesh"/>
+        <initial_condition name="WholeMesh">
+          <constant>
+            <real_value shape="2" dim1="dim" rank="1">0 0</real_value>
+          </constant>
+        </initial_condition>
+        <boundary_conditions name="up">
+          <surface_ids>
+            <integer_value shape="1" rank="1">2</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <align_bc_with_cartesian>
+              <x_component>
+                <constant>
+                  <real_value rank="0">0</real_value>
+                </constant>
+              </x_component>
+              <y_component>
+                <constant>
+                  <real_value rank="0">0</real_value>
+                </constant>
+              </y_component>
+            </align_bc_with_cartesian>
+          </type>
+        </boundary_conditions>
+        <boundary_conditions name="down">
+          <surface_ids>
+            <integer_value shape="1" rank="1">4</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <align_bc_with_cartesian>
+              <x_component>
+                <constant>
+                  <real_value rank="0">0</real_value>
+                </constant>
+              </x_component>
+              <y_component>
+                <constant>
+                  <real_value rank="0">0</real_value>
+                </constant>
+              </y_component>
+            </align_bc_with_cartesian>
+          </type>
+        </boundary_conditions>
+        <boundary_conditions name="inlet">
+          <surface_ids>
+            <integer_value shape="1" rank="1">1</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <align_bc_with_cartesian>
+              <x_component>
+                <constant>
+                  <real_value rank="0">0.2</real_value>
+                </constant>
+              </x_component>
+              <y_component>
+                <constant>
+                  <real_value rank="0">0</real_value>
+                </constant>
+              </y_component>
+            </align_bc_with_cartesian>
+          </type>
+        </boundary_conditions>
+        <vector_field name="Absorption" rank="1">
+          <diagnostic>
+            <mesh name="PressureMesh_Discontinuous"/>
+            <algorithm name="Internal" material_phase_support="multiple"/>
+            <stat>
+              <include_in_stat/>
+            </stat>
+            <convergence>
+              <include_in_convergence/>
+            </convergence>
+            <detectors>
+              <include_in_detectors/>
+            </detectors>
+            <steady_state>
+              <include_in_steady_state/>
+            </steady_state>
+          </diagnostic>
+          <default_absorption/>
+        </vector_field>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
+        <consistent_interpolation/>
+        <output/>
+      </prognostic>
+    </vector_field>
+    <scalar_field name="PhaseVolumeFraction" rank="0">
+      <prognostic>
+        <mesh name="PressureMesh"/>
+        <initial_condition name="WholeMesh">
+          <constant>
+            <real_value rank="0">0.2</real_value>
+          </constant>
+        </initial_condition>
+        <boundary_conditions name="inlet">
+          <surface_ids>
+            <integer_value shape="1" rank="1">1</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <constant>
+              <real_value rank="0">1</real_value>
+            </constant>
+          </type>
+        </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
+        <consistent_interpolation/>
+      </prognostic>
+    </scalar_field>
+    <scalar_field name="Tracer" rank="0">
+      <prognostic>
+        <mesh name="PressureMesh"/>
+        <Impose_min_max>
+          <min_limit>
+            <real_value rank="0">0.2</real_value>
+          </min_limit>
+          <max_limit>
+            <real_value rank="0">1</real_value>
+          </max_limit>
+        </Impose_min_max>
+        <tensor_field name="Diffusivity" rank="2">
+          <prescribed>
+            <value name="WholeMesh">
+              <isotropic>
+                <constant>
+                  <real_value rank="0">1</real_value>
+                </constant>
+              </isotropic>
+            </value>
+            <output/>
+          </prescribed>
+        </tensor_field>
+        <initial_condition name="WholeMesh">
+          <constant>
+            <real_value rank="0">0.2</real_value>
+          </constant>
+        </initial_condition>
+        <boundary_conditions name="inlet">
+          <surface_ids>
+            <integer_value shape="1" rank="1">1</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <constant>
+              <real_value rank="0">1</real_value>
+            </constant>
+          </type>
+        </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
+        <consistent_interpolation/>
+      </prognostic>
+    </scalar_field>
+    <scalar_field name="TracerVapour" rank="0">
+      <prognostic>
+        <mesh name="PressureMesh"/>
+        <Impose_min_max>
+          <min_limit>
+            <real_value rank="0">0.2</real_value>
+          </min_limit>
+          <max_limit>
+            <real_value rank="0">1</real_value>
+          </max_limit>
+        </Impose_min_max>
+        <initial_condition name="WholeMesh">
+          <constant>
+            <real_value rank="0">0.2</real_value>
+          </constant>
+        </initial_condition>
+        <boundary_conditions name="inlet">
+          <surface_ids>
+            <integer_value shape="4" rank="1">1 2 3 4</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <constant>
+              <real_value rank="0">1</real_value>
+            </constant>
+          </type>
+        </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
+        <consistent_interpolation/>
+        <output/>
+      </prognostic>
+    </scalar_field>
+  </material_phase>
+  <porous_media>
+    <scalar_field name="Porosity">
+      <prescribed>
+        <mesh name="P0DG"/>
+        <value name="WholeMesh">
+          <constant>
+            <real_value rank="0">0.20</real_value>
+          </constant>
+        </value>
+        <stat/>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
+        <output/>
+      </prescribed>
+    </scalar_field>
+    <scalar_field name="Permeability">
+      <prescribed>
+        <mesh name="P0DG"/>
+        <value name="WholeMesh">
+          <constant>
+            <real_value rank="0">1</real_value>
+          </constant>
+        </value>
+        <stat/>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
+        <output/>
+      </prescribed>
+    </scalar_field>
+  </porous_media>
+</icferst_options>
