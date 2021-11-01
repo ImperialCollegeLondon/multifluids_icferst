@@ -116,7 +116,7 @@ contains
     type( tensor_field ), pointer :: t_field !liquid viscosity
     type(coupling_term_coef), intent(in) :: coupling
     integer :: N  !number of items in the series
-
+    real :: verylow, tol
     real :: scaling ! a temporal fix for the scaling difference between the viscosity in ICFERST and the models
     scaling=1.0    ! the viscosity difference between ICFERST and the model
     N = size(series)
@@ -130,6 +130,9 @@ contains
     low=coupling%cut_low
     high=coupling%cut_high
 
+    verylow=0.001
+    tol=1e-3
+    ! print *, 'check:', 0.02**2/(a*mu/d**2*verylow**(2-b)+(2-b)*a*mu/d**2*verylow**(1-b)*(0.02-verylow))
     do i=1, N
       phi(i) = real(i - 1) / (N - 1)
     end do
@@ -139,7 +142,9 @@ contains
       end do
     else
       do i=2, N
-        if (phi(i)<=low) then
+        if (phi(i)<=verylow) then
+          series(i)= phi(i)**2/(a*mu/d**2*verylow**(2-b)+(2-b)*a*mu/d**2*verylow**(1-b)*(phi(i)-verylow))
+        else if (phi(i)<=low) then
           series(i)= d**2/a/mu*phi(i)**b  !coupling%a/d**2*mu*phi(i)**(1-coupling%b)*scaling
         else if (phi(i)>=high) then
           series(i)= d**2/mu*phi(i)**7/(1-phi(i))!1/d**2*mu*phi(i)**(-6)*(1-phi(i))*scaling
