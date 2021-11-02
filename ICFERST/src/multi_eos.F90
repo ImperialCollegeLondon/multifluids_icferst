@@ -814,17 +814,17 @@ contains
        DO IPHASE = 1, Mdims%nphase!Get viscosity for all the phases
         option_path_python = "/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
         "::Viscosity/diagnostic/algorithm::tensor_python_diagnostic"
-          if (have_option(trim(option_path_python)))then 
+          if (have_option(trim(option_path_python)))then
             state_viscosity => extract_tensor_field( state( iphase ), 'Viscosity' )
             call multi_compute_python_field(state, iphase, trim( option_path_python ), tfield = state_viscosity)
             !Copy into state
-            do i = 1, Mdims%cv_nonods 
+            do i = 1, Mdims%cv_nonods
               viscosities(iphase,i) = state_viscosity%val(1,1,i)
             end do
           else
             call set_viscosity(nphase, Mdims, state, viscosities)
           end if
-        end do 
+        end do
        call Calculate_PorousMedia_adv_terms( nphase, state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
               upwnd, viscosities)
 
@@ -1461,7 +1461,10 @@ contains
             ! NOTE: for porous media we consider thermal equilibrium and therefore unifiying lambda is a must
             ! Multiplied by the saturation so we use the same paradigm that for the phases,
             !but in the equations it isn't, but here because we iterate over phases and collapse this is required
-            ! therefore: lambda = SUM_of_phases saturation * [(1-porosity) * lambda_p + porosity * lambda_f)]
+            ! therefore: lambda = SUM_of_phases saturation * [(1-porosity) * lambda_p + porosity * lambda_f)] for classic
+            !weighted average of conductivities Wiener method).
+            !Default option is to use a more accurate Hashin and Shtrikman definition:
+            !lambda_p+3*lambda_p*(lambda_f-lambda_p)*porosity/(3*lambda_p+(lambda_f-lambda_p)(1-porosity))
             saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
             do iphase = 1, Mdims%nphase
               diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
@@ -1473,12 +1476,23 @@ contains
                 do iloc = 1, Mdims%mat_nloc
                   mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                   cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                  do idim = 1, Mdims%ndim
-                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
-                    (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                    +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod))
-                  enddo
+                  if (have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/Wiener_conductivity')) then
+                    do idim = 1, Mdims%ndim
+                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
+                      (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
+                      +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod)) ! for classic weighted approach (Wiener approach)
+                    end do
+                  else
+                    do idim = 1, Mdims%ndim
+                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
+                      (tfield%val(idim, idim, t_ele_nod)+3*tfield%val(idim, idim, t_ele_nod)* &
+                      (node_val( diffusivity, idim, idim, mat_inod ) - tfield%val(idim, idim, t_ele_nod))*sfield%val(ele_nod)/ &
+                      (3*tfield%val(idim, idim, t_ele_nod)+(node_val( diffusivity, idim, idim, mat_inod )-tfield%val(idim, idim, t_ele_nod))* &
+                      (1-sfield%val(ele_nod))))
+                    end do
+                  end if
                 end do
               end do
             end do

@@ -762,7 +762,7 @@ start =
             ## For <b>GEOTHERMAL</b> simulations, density, heat capacity and conductivity are <b>MANDATORY</b>
             element porous_properties{
                 ## Specify scalar field density of the porous media
-                ## 
+                ##
                 ## The value to specify here is the value of the minerals or grains that make up the rock.
                 ## This is the bulk value divided by (1-porosity).
                 ## Note: Bulk density is the one normally obtained in lab experiments.
@@ -781,7 +781,7 @@ start =
                    )
                 },
                 ## Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
-                ## 
+                ##
                 ## The value to specify here is the value of the minerals or grains that make up the rock.
                 ## This is the bulk value divided by (1-porosity).
                 ## Note: Bulk density is the one normally obtained in lab experiments.
@@ -803,7 +803,7 @@ start =
 
 
                 ## Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin => W/(m·K) )
-                ## 
+                ##
                 ## The value to specify here is the value of the minerals or grains that make up the rock.
                 ## This is the bulk value divided by (1-porosity).
                 ## Note: Bulk density is the one normally obtained in lab experiments.
@@ -813,7 +813,12 @@ start =
                      material_mesh_choice,
                      prescribed_tensor_field,
                      output_options
-                  }
+                  },
+                  ## Apply Wiener method for calculating effective thermal conductivity k = phi*k_f+(1-phi)*k_s
+                  ## This method will overestimate the effective thermal conductivity. Default is to use Hashin & Shtrikman
+                  ## method which provides a better estimate of the effective thermal conductivity. Only select this option
+                  ## if you want to use the Wiener method.
+                  element Wiener_conductivity {empty}?
                }?,
 
                ## Specify scalar field compressibility of the porous media
@@ -1219,7 +1224,7 @@ start =
             ## Note that this is already imposed for wells when using P0DGP1 and gamma = 0. at one pressure BC.
             element Strong_BCs_for_P0DG_wells {
                empty
-            }?,            
+            }?,
             ## Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods
             element use_ENO_scheme {
                empty

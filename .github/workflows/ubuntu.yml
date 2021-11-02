@@ -10,7 +10,7 @@ on:
       - geraldine_dev
       - pablo_dev2
       - phreeqc_link
-
+      - geraldine_dev_new
 jobs:
 
   build:
@@ -25,7 +25,7 @@ jobs:
 
           - name: "Build Bionic"
             release: bionic
-            
+
           - name: "Build Focal"
             release: focal
     steps:
@@ -65,7 +65,7 @@ jobs:
             release: bionic
             command: "make THREADS=2 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
-            
+
           - name: "Focal"
             release: focal
             command: "make THREADS=2 serialtest-mp-xml"
@@ -93,7 +93,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v2
 
-      - name: ${{ matrix.name }}               
+      - name: ${{ matrix.name }}
         uses: mikepenz/action-junit-report@v2
         with:
           report_paths: './artifact/*-multiphase_test_results.xml'
