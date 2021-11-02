@@ -1345,11 +1345,18 @@ contains
         real, dimension(:,:,:), intent(inout) :: u_source_cv
 
         type(vector_field), pointer :: gravity_direction
-        real, dimension(Mdims%ndim) :: g
+        real, dimension(Mdims%ndim) :: g, ref_density
         logical :: have_gravity, high_order_Ph
         real :: gravity_magnitude
         integer :: idim, iphase, nod, stat, start_phase
 
+        ref_density = 0.
+        if (have_option("/physical_parameters/gravity/remove_hydrostatic_contribution")) then
+          do iphase = 1, Mdims%nphase
+            ref_density(iphase) = retrieve_reference_density(state, packed_state, iphase, 0, Mdims%nphase)
+          end do
+        end if
+        
         call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
         have_gravity = ( stat == 0 )
 
@@ -1369,7 +1376,7 @@ contains
                 g = node_val( gravity_direction, nod ) * gravity_magnitude
                 do iphase = start_phase, Mdims%nphase
                     do idim = 1, Mdims%ndim
-                        u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim )
+                        u_source_cv( idim, iphase, nod ) = (den( iphase, nod ) - ref_density(iphase)) * g( idim )
                     end do
                 end do
             end do
