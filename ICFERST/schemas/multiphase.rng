@@ -994,6 +994,15 @@ Note: Bulk density is the one normally obtained in lab experiments.</a:documenta
                     <ref name="prescribed_tensor_field"/>
                     <ref name="output_options"/>
                   </element>
+                  <optional>
+                    <element name="Wiener_conductivity">
+                      <a:documentation>Apply Wiener method for calculating effective thermal conductivity k = phi*k_f+(1-phi)*k_s
+This method will overestimate the effective thermal conductivity. Default is to use Hashin &amp; Shtrikman
+method which provides a better estimate of the effective thermal conductivity. Only select this option
+if you want to use the Wiener method.</a:documentation>
+                      <empty/>
+                    </element>
+                  </optional>
                 </element>
               </optional>
               <optional>
