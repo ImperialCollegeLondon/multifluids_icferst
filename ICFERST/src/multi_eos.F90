@@ -1977,21 +1977,28 @@ contains
     !>them into packed state
     !>By index this is: 1) immobile fraction, 2) relperm max, 3)relperm exponent
     !> 4)Capillary entry pressure 5) Capillary exponent 6) Capillary imbition term
-    subroutine get_RockFluidProp(state, packed_state)
+    !> The effective inmobile fraction is the min(inmobile,saturation), 
+    !> being the saturation the value after a succesful non-linear solver convergence! NEVER do it within the non-linear solver
+    subroutine get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only)
         implicit none
+        type( multi_dimensions ), intent( in ) :: Mdims
         type(state_type), dimension(:), intent(inout) :: state
+        type( multi_ndgln ), intent( in ) :: ndgln
         type( state_type ), intent( inout ) :: packed_state
+        logical, optional, intent(in) :: update_only
         !Local variables
-        type (tensor_field), pointer :: t_field
-        type (scalar_field), target :: targ_Store
+        type (tensor_field), pointer :: t_field, Saturation
+        type (scalar_field), target :: targ_Store, targ_immobile
         type (scalar_field), pointer :: s_field
         type (vector_field), pointer :: position
         type(mesh_type), pointer :: fl_mesh
         type(mesh_type) :: Auxmesh
-        integer :: iphase, nphase
+        real :: auxR
+        integer :: iphase, nphase, ele, cv_iloc, cv_nod
         character(len=500) :: path, path2, path3
 
         t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
+        Saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         nphase = size(t_field%val,2)
         !By default the pressure mesh (position 1)
         s_field => extract_scalar_field(state(1),1)
@@ -2000,37 +2007,62 @@ contains
         fl_mesh => extract_mesh( state(1), "P0DG" )
         Auxmesh = fl_mesh
         call allocate (targ_Store, Auxmesh, "Temporary_get_RockFluidProp")
-
-        !Retrieve Immobile fractions
+        call allocate (targ_immobile, Auxmesh, "Temporary_immobile_fraction")
+        !Retrieve Immobile fractions and retrieve relperm max
         do iphase = 1, nphase
-            path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/immobile_fraction/scalar_field::value/prescribed/value"
-            if (have_option(trim(path))) then
-                call initialise_field_over_regions(targ_Store, trim(path) , position)
-                t_field%val(1,iphase,:) = targ_Store%val(:)
+          path2 = "/material_phase["//int2str(iphase-1)//&
+          "]/multiphase_properties/immobile_fraction/scalar_field::value/prescribed/value"
+          !Relperm max also
+          path = "/material_phase["//int2str(iphase-1)//&
+          "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
+            if (have_option(trim(path2))) then
+                call initialise_field_over_regions(targ_immobile, trim(path2) , position)
+                !We may want to update the inmobile fraction to allow to trap fluid if the initial saturation is below the inmobile fraction
+                do ele = 1, Mdims%totele
+                  do cv_iloc = 1, Mdims%cv_nloc
+                    cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+                    t_field%val(1,iphase,ele) = min(targ_immobile%val(ele), Saturation%val(1,iphase, cv_nod))
+                  end do 
+                end do
+                !Now obtain relpermMax
+                if (have_option(trim(path))) then
+                  call initialise_field_over_regions(targ_Store, trim(path) , position)
+                  do ele = 1, Mdims%totele
+                    if ( (targ_immobile%val(ele)- t_field%val(1,iphase,ele) ) > 1e-8 ) then 
+                      !If we are outside bounds then we compute a relpermMax linearly so it is 1 at saturation = 1. and Krmax at Swirr
+                      auxR = (targ_Store%val(ele) - 1.)/targ_immobile%val(ele) * t_field%val(1,iphase,ele) + 1
+                    else !No need for anything special
+                      auxR = targ_Store%val(ele)
+                    end if
+                    t_field%val(2,iphase,ele) = max(min( auxR  , 1.0), 0.0)
+                  end do
+                else !default value ( no need for potential adjustments)
+                  t_field%val(2,iphase,:) = 1.0
+                end if
             else !default value
                 t_field%val(1,iphase,:) = 0.0
+                !If immobile fractions = 0. then no adjustment for relpermMax
+                if (have_option(trim(path))) then
+                  call initialise_field_over_regions(targ_Store, trim(path) , position)
+                  t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
+                else !default value
+                  t_field%val(2,iphase,:) = 1.0
+                end if
             end if
         end do
-
-        !Retrieve relperm max
-        do iphase = 1, nphase
-            path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
-            if (have_option(trim(path))) then
-                call initialise_field_over_regions(targ_Store, trim(path) , position)
-                t_field%val(2,iphase,:) = max(min(targ_Store%val(:), 1.0), 0.0)
-            else !default value
-                t_field%val(2,iphase,:) = 1.0
-            end if
-        end do
+        call deallocate(targ_immobile)
+        !If only updating there is no need to update the other parameters
+        if (present_and_true(update_only)) then 
+          call deallocate(targ_Store)
+          return
+        end if
         !Retrieve relperm exponent
         do iphase = 1, nphase
             path = "/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_exponent/prescribed/value"
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
-                t_field%val(3,iphase,:) = targ_Store%val(:)
+                t_field%val(3,iphase,:) = targ_Store%val
             else !default value
                 t_field%val(3,iphase,:) = 2.0
             end if
@@ -2046,10 +2078,10 @@ contains
                     "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::C/prescribed/value"
                 if (have_option(trim(path))) then
                     call initialise_field_over_regions(targ_Store, trim(path) , position)
-                    t_field%val(4,iphase,:) = targ_Store%val(:)
+                    t_field%val(4,iphase,:) = targ_Store%val
                 elseif (have_option(trim(path3))) then
                     call initialise_field_over_regions(targ_Store, trim(path3) , position)
-                    t_field%val(4,iphase,:) = targ_Store%val(:)
+                    t_field%val(4,iphase,:) = targ_Store%val
                 else !default value
                     t_field%val(4,iphase,:) = 0.0
                 end if
@@ -2063,10 +2095,10 @@ contains
                     "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::a/prescribed/value"
                 if (have_option(trim(path))) then
                     call initialise_field_over_regions(targ_Store, trim(path) , position)
-                    t_field%val(5,iphase,:) = targ_Store%val(:)
+                    t_field%val(5,iphase,:) = targ_Store%val
                 elseif (have_option(trim(path3))) then
                     call initialise_field_over_regions(targ_Store, trim(path3) , position)
-                    t_field%val(5,iphase,:) = targ_Store%val(:)
+                    t_field%val(5,iphase,:) = targ_Store%val
                 else !default value
                     t_field%val(5,iphase,:) = 1.0
                 end if
@@ -2077,7 +2109,7 @@ contains
                     "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::B/prescribed/value"
                 if (have_option(trim(path))) then
                     call initialise_field_over_regions(targ_Store, trim(path) , position)
-                    t_field%val(6,iphase,:) = targ_Store%val(:)
+                    t_field%val(6,iphase,:) = targ_Store%val
                 else !default value
                     t_field%val(6,iphase,:) = 0.0
                 end if
