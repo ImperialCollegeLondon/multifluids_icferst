@@ -25,6 +25,10 @@ module multiphase_time_loop
   use multi_phreeqc
 #endif
 
+#ifdef USING_XGBOOST
+  use multi_machine_learning
+#endif
+
     use field_options
     use write_state_module
     use diagnostic_variables
@@ -231,7 +235,9 @@ contains
 #endif
 
 
-
+#ifdef USING_XGBOOST
+call init_xgboost()
+#endif
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
 
