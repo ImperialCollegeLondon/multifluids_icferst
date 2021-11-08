@@ -2010,13 +2010,9 @@ contains
         call allocate (targ_immobile, Auxmesh, "Temporary_immobile_fraction")
         !Retrieve Immobile fractions and retrieve relperm max
         do iphase = 1, nphase
-          path2 = "/material_phase["//int2str(iphase-1)//&
-          "]/multiphase_properties/immobile_fraction/scalar_field::value/prescribed/value"
-          !Relperm max also
-          path = "/material_phase["//int2str(iphase-1)//&
-          "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
-            if (have_option(trim(path2))) then
-                call initialise_field_over_regions(targ_immobile, trim(path2) , position)
+          path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/"
+            if (have_option(trim(path)//"immobile_fraction/scalar_field::value/prescribed/value")) then
+                call initialise_field_over_regions(targ_immobile, trim(path)//"immobile_fraction/scalar_field::value/prescribed/value" , position)
                 !We may want to update the inmobile fraction to allow to trap fluid if the initial saturation is below the inmobile fraction
                 do ele = 1, Mdims%totele
                   do cv_iloc = 1, Mdims%cv_nloc
@@ -2025,8 +2021,8 @@ contains
                   end do 
                 end do
                 !Now obtain relpermMax
-                if (have_option(trim(path))) then
-                  call initialise_field_over_regions(targ_Store, trim(path) , position)
+                if (have_option(trim(path)//"Relperm_Corey/scalar_field::relperm_max/prescribed/value")) then
+                  call initialise_field_over_regions(targ_Store, trim(path)//"Relperm_Corey/scalar_field::relperm_max/prescribed/value", position)
                   do ele = 1, Mdims%totele
                     if ( (targ_immobile%val(ele)- t_field%val(1,iphase,ele) ) > 1e-8 ) then 
                       !If we are outside bounds then we compute a relpermMax linearly so it is 1 at saturation = 1. and Krmax at Swirr
@@ -2039,11 +2035,11 @@ contains
                 else !default value ( no need for potential adjustments)
                   t_field%val(2,iphase,:) = 1.0
                 end if
-            else !default value
+            else !default value for immiscible values
                 t_field%val(1,iphase,:) = 0.0
                 !If immobile fractions = 0. then no adjustment for relpermMax
-                if (have_option(trim(path))) then
-                  call initialise_field_over_regions(targ_Store, trim(path) , position)
+                if (have_option(trim(path)//"Relperm_Corey/scalar_field::relperm_max/prescribed/value")) then
+                  call initialise_field_over_regions(targ_Store, trim(path)//"Relperm_Corey/scalar_field::relperm_max/prescribed/value", position)
                   t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
                 else !default value
                   t_field%val(2,iphase,:) = 1.0
