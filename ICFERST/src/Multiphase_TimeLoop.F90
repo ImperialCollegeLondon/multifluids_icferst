@@ -419,7 +419,7 @@ contains
             end do
 
             !Get into packed state relative permeability, immobile fractions, ...
-            call get_RockFluidProp(state, packed_state)
+            call get_RockFluidProp(state, packed_state, Mdims, ndgln)
             !Allocate the memory to obtain the sigmas at the interface between elements
             call allocate_porous_adv_coefs(Mdims, upwnd)
             !Ensure that the initial condition for the saturation sum to 1.
@@ -497,7 +497,6 @@ contains
             !Prepapre the pipes
             if (Mdims%npres > 1) call initialize_pipes_package_and_gamma(state, packed_state, pipes_aux, Mdims, Mspars, ndgln)!Re-read pipe properties such as gamma
             call initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
-
             if (exit_initialise_porous_media) exit Loop_Time
 
             !Check first time step
@@ -556,6 +555,9 @@ contains
             ! evaluate prescribed fields at time = current_time+dt
             call set_prescribed_field_values( state, exclude_interpolated = .true., &
                 exclude_nonreprescribed = .true., time = acctim )
+
+            !Update immobile fractions values (based on Phasevolumefractions and inmobile fractions) do this OUTSIDE the non-linear loop
+            call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)
 
             !Initialise to zero the SFPI counter
             SFPI_taken = 0
@@ -1425,7 +1427,7 @@ contains
                 call put_CSR_spars_into_packed_state()
 
                 if (is_porous_media) then
-                    call get_RockFluidProp(state, packed_state)
+                    call get_RockFluidProp(state, packed_state, Mdims, ndgln)
                     call deallocate_porous_adv_coefs(upwnd)
                     call allocate_porous_adv_coefs(Mdims, upwnd)
                     !Clean the pipes memory if required

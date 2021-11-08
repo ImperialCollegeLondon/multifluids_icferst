@@ -97,7 +97,7 @@ contains
         real :: mm
         integer, dimension( : ), pointer ::  x_ndgln, cv_ndgln
         type( vector_field ), pointer :: x
-        real, dimension(:,:), pointer :: Immobile_fraction
+        real, dimension(:,:), pointer :: Immobile_fraction, OldPhaseVolumeFraction
         if (present_and_true(for_sat)) then
             field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         else
