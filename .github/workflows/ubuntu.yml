@@ -11,6 +11,7 @@ on:
       - pablo_dev2
       - phreeqc_link
       - geraldine_dev_new
+      - vinicius_dev
 jobs:
 
   build:
