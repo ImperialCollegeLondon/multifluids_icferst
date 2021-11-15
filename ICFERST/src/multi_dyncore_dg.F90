@@ -1920,7 +1920,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         !Re-scale parameter can be re-used
         real, save :: rescaleVal = -1.0
         !CMC using petsc format
-        type(petsc_csr_matrix)::  CMC_petsc
+        type(petsc_csr_matrix)::  CMC_petsc, CMC_petsc2
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: IPRES, JPRES, iphase_real, jphase_real
         REAL, DIMENSION( :, : ), allocatable :: UDEN_ALL, UDENOLD_ALL
@@ -2257,13 +2257,13 @@ end if
             end if
             if (solve_stokes .or. solve_mom_iteratively) then
                 if (compute_compaction) then
-                    call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 2) !generate matrix D
+                    call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 3) !generate modified D matrix                   
                 else
                     call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 1) 
                 end if
             end if      
           !Now invert the Mass matrix
-          CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
+          if (.not. compute_compaction)CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
         ! solve using a projection method
         call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), final_phase/)); call zero(cdp_tensor)
@@ -2309,6 +2309,15 @@ end if
         pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
 ! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 
+        if (compute_compaction) then  !generate D matrix
+            call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 2) 
+            CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
+            call allocate(CMC_petsc2,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc2",diag)
+            CALL COLOR_GET_CMC_PHA( Mdims, final_phase, Mspars, ndgln, Mmat,&
+            DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+            CMC_petsc2, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
+            pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
+        end if
         !This section is to impose a pressure of zero at some node (when solving for only a gradient of pressure)
         !This is deprecated as the remove_null space method works much better (provided by PETSc)
         call get_option( '/material_phase[0]/scalar_field::Pressure/' // 'prognostic/reference_node', ndpset, default = 0 )
@@ -2346,11 +2355,11 @@ end if
                                           MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
         end if
                 !######################## CORRECTION VELOCITY STEP####################################
-        !If solving for compaction now we proceed to obtain the velocity for the Darcy phases        
-        if (compute_compaction) call get_Darcy_phases_velocity()
-
-        if (.not. compute_compaction)call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, Pressure, deltap, cdp_tensor, rhs_p, upwnd)
+        call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, Pressure, deltap, cdp_tensor, rhs_p, upwnd)
         call deallocate(deltaP)
+
+        !If solving for compaction now we proceed to obtain the velocity for the Darcy phases, must put after the corection velocity step for magma        
+        if (compute_compaction) call get_Darcy_phases_velocity()
 
 
         if (isParallel()) call halo_update(velocity)
@@ -2482,6 +2491,7 @@ end if
           type(tensor_field) :: aux_velocity, ref_CDP_tensor
           type( vector_field ) :: packed_CDP_tensor, packed_aux_velocity
           real, dimension(2) :: totally_min_max
+          integer :: TEST
 
           !Retrieve settings from diamond
           if (solver_tolerance<0) then
@@ -2545,7 +2555,8 @@ end if
             totally_min_max(2)=maxval(CDP_tensor%val)!use stored field
             !For parallel
             call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-            conv_test = inf_norm_vector_normalised(CDP_tensor%val, ref_CDP_tensor%val, totally_min_max)
+            ! conv_test = inf_norm_vector_normalised(CDP_tensor%val, ref_CDP_tensor%val, totally_min_max)
+            conv_test = maxval(abs(rhs_p%val(1,:)))
             ref_CDP_tensor%val = CDP_tensor%val
             !We use deltaP as residual check for convergence
             if ( conv_test < solver_tolerance .or.  k == stokes_max_its*Max_restarts) then
@@ -2555,8 +2566,10 @@ end if
               exit stokesloop
             end if
             M = i - 2; if (M <= 0) M = stokes_max_its + M
+            TEST=0
+            call get_option("/numerical_methods/max_sat_its", TEST)
               !Find the optimal combination of pressure fields that minimise the residual
-            if (i > 2) call get_Anderson_acceleration_new_guess(size(stored_field,1), M, P_all%val(1,1,:), &
+            if (i > 2 .and. TEST == 1) call get_Anderson_acceleration_new_guess(size(stored_field,1), M, P_all%val(1,1,:), &
                        stored_field(:,1:i), field_residuals(:,1:i), stokes_max_its, BAK_matrix, restart_now)
 
 ! print *, k,':', conv_test
@@ -2609,7 +2622,7 @@ end if
 
             if (isParallel()) call halo_update(P_all)
             !Update residual with the variation from the guessed value and the actual value obtained after appliying the function
-            field_residuals(:, i) = P_all%val(1,1,:) - stored_field(:, i) !deltap%val(1,:)
+            field_residuals(:, i) = rhs_p%val(1,:)!P_all%val(1,1,:) - stored_field(:, i) !deltap%val(1,:)
             !##########################Now solve the equations##########################
             i = i + 1;
             if (i == stokes_max_its + 1 ) then
@@ -2674,11 +2687,11 @@ end if
           type (porous_adv_coefs), intent(inout) :: upwnd 
           integer, intent(in) :: Pivit_type
           !Local variables
-          integer :: j, cv_iloc, cv_loc, imat, u_iloc, u_inod
+          integer :: j, cv_iloc, cv_loc, imat, u_iloc, u_inod, i
           type( tensor_field ), pointer :: viscosity
           type( scalar_field ), pointer :: saturation
           real, dimension( :, :, : ), allocatable :: mu_tmp
-          real :: auxR
+          real :: auxR, TEST
           real, parameter :: tol = 1e-16
           !Matrix already initialised !
           Mmat%PIVIT_MAT = 0.
@@ -2686,7 +2699,7 @@ end if
           if (Pivit_type==1) then  !Pivit contains only the mass matrix
             do ele = 1, Mdims%totele
               auxR = MASS_ELE(ele)/dble(Mdims%u_nloc)
-              DO U_JLOC = 1, Mdims%u_nloc * Mdims%ndim * final_phase
+              DO j = 1, Mdims%u_nloc * Mdims%ndim * final_phase
                 Mmat%PIVIT_MAT(J, J, ELE) = auxR
               end do
             end do
@@ -2699,7 +2712,7 @@ end if
                     imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
                     cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)   
                     ! the second phase of upwnd%adv_coef containts c/phi
-                    auxR = auxR + (upwnd%adv_coef(1,1,2,imat)/((1.0 + tol  - saturation%val(cv_loc))))/dble(Mdims%cv_nloc)   
+                    auxR = auxR + (upwnd%adv_coef(1,1,2,imat)/((1.0 + tol  - saturation%val(cv_loc))))/dble(Mdims%cv_nloc)
                 end do
                 !Include now the corresponding element mass
                 auxR = (MASS_ELE(ele)/dble(Mdims%u_nloc)) * auxR 
@@ -2709,25 +2722,72 @@ end if
                 end do
             end do
           else !Not used for now
-              viscosity => extract_tensor_field(state(1), "Viscosity")
-              allocate(mu_tmp( viscosity%dim(1), viscosity%dim(2), Mdims%cv_nloc ) )
+            !   viscosity => extract_tensor_field(state(1), "Viscosity")
+            !   allocate(mu_tmp( viscosity%dim(1), viscosity%dim(2), Mdims%cv_nloc ) )
 
               saturation => extract_scalar_field(state(1), "PhaseVolumeFraction")
-              do ele = 1, Mdims%totele
-                mu_tmp = ele_val( viscosity, ele )
-                do cv_iloc = 1, Mdims%cv_nloc
-                  cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                  !Store mass data
-                  auxR = MASS_ELE(ele)/dble(Mdims%u_nloc) 
-                  !Scale for magma
-                  if (is_magma)  auxR = auxR * mu_tmp( 1, 1, cv_iloc )* max(saturation%val(cv_loc), 1e-5)/1000
-                  !THIS SPLIT IS TEMPORARY SO WE PASS THE TEST CASES BUT A PROPER SCALING NEEDS TO BE FOUND AND IMPLEMENTED CONSISTENTLY
-                  do j = 1, Mdims%u_nloc * final_phase*Mdims%ndim
-                    Mmat%PIVIT_MAT(J, J, ELE) =  auxR
-                  end do
-                end do
-              end do                
-          end if
+               ! do ele = 1, Mdims%totele
+                !     do u_iloc = 1, Mdims%u_nloc
+                !         u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
+                !         do cv_iloc = 1, Mdims%cv_nloc
+                !             imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+                !             cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+                !             do iphase = 1, final_phase
+                !                 DO idim = 1, Mdims%ndim
+                !                     ! D=Ct* phi^2/c *C,  thus we need this extra coeffecient phi^2/c here, 
+                !                     velocity%val(idim, iphase, u_inod) = velocity%val(idim, iphase, u_inod)+DU_VEL(idim, iphase, u_inod)*upwnd%inv_adv_coef(1,1,2,imat)*saturation%val(cv_loc)  
+                !                 END DO
+                !             end do
+                !         end do
+                !     end do
+                ! end do 
+
+             call get_option("/magma_parameters/Phase_diagram_coefficients/ae", TEST)
+             do ele = 1, Mdims%totele
+            !    mu_tmp = ele_val( viscosity, ele )
+                auxR = 0.
+                    do cv_iloc = 1, Mdims%cv_nloc
+                        imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+                        cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)   
+                        ! the second phase of upwnd%adv_coef containts c/phi
+                        ! auxR = auxR + (upwnd%adv_coef(1,1,2,imat)/((1.0 + tol  - saturation%val(cv_loc))))/dble(Mdims%cv_nloc)
+                        auxR = auxR + (1.0 + tol  - saturation%val(cv_loc))/upwnd%adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
+                    end do
+            !    auxR = (MASS_ELE(ele)/dble(Mdims%u_nloc)) * auxR 
+                 auxR = dble(Mdims%u_nloc)/MASS_ELE(ele)*auxR 
+                   !Store mass data
+                   ! auxR = MASS_ELE(ele)/dble(Mdims%u_nloc) 
+                   !Scale for magma
+                   !THIS SPLIT IS TEMPORARY SO WE PASS THE TEST CASES BUT A PROPER SCALING NEEDS TO BE FOUND AND IMPLEMENTED CONSISTENTLY
+                do u_iloc = 1, Mdims%u_nloc
+                    u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
+                    do i = 1, final_phase*Mdims%ndim
+                        j = i + (u_iloc-1)*final_phase*Mdims%ndim
+                        Mmat%PIVIT_MAT(J, J, ELE) = auxR+TEST*1./diagonal_A%val(i,u_inod)
+                    end do
+                end do    
+                ! do j = 1, Mdims%u_nloc * final_phase * Mdims%ndim
+                !     Mmat%PIVIT_MAT(J, J, ELE) = auxR 
+                !   end do                
+             end do 
+             
+            !  do ele = 1, Mdims%totele
+            !     !Perform a CV to P0DG projection. We just take a quarter(P1 3D) of each CV per element
+            !     auxR = 0.
+            !     do cv_iloc = 1, Mdims%cv_nloc
+            !         imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+            !         cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)   
+            !         ! the second phase of upwnd%adv_coef containts c/phi
+            !         auxR = auxR + (upwnd%adv_coef(1,1,2,imat)/((1.0 + tol  - saturation%val(cv_loc))))/dble(Mdims%cv_nloc)
+            !     end do
+            !     !Include now the corresponding element mass
+            !     auxR = (MASS_ELE(ele)/dble(Mdims%u_nloc)) * auxR 
+            !     !Introduce into the pivit matrix
+            !     do j = 1, Mdims%u_nloc * final_phase * Mdims%ndim
+            !       Mmat%PIVIT_MAT(J, J, ELE) = auxR 
+            !     end do
+            ! end do
+         end if
         end subroutine
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas
@@ -2774,7 +2834,6 @@ end if
     call deallocate(packed_vel); call deallocate(rhs)
 #endif
 
-! print *, velocity % VAL(1,:1,:)
 
         end subroutine solve_and_update_velocity
         !---------------------------------------------------------------------------
@@ -2832,56 +2891,66 @@ end if
           !Local variables
           REAL, DIMENSION( Mdims%ndim,  final_phase, Mdims%u_nonods ) :: DU_VEL
           type( scalar_field ), pointer :: saturation
-          integer :: u_inod, idim, iphase, cv_iloc, ele, imat, cv_loc
+          type(tensor_field) :: cdp_tensor2 ! the correction term to the original pressure tensor 
+          integer :: u_iloc, u_inod, idim, iphase, cv_iloc, ele, imat, cv_loc
+          real :: auxR  
+          if (compute_compaction) then  ! for compaction formulation, we correct the pressure gradient instead of the solid velocity
+            ! recalculate the residue from the newest pressure and velocity
+            rhs_p%val=0.
+            call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
+            if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
+            rhs_p%val = - rhs_p%val
 
-        !   if (compute_compaction) then ! For compaction formulation, we need to regenerate the residue for correcting the velocity with the newest pressure 
-        !     print *, 'DivU', maxval(abs(rhs_p%val(1,:)))
-        !     call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)            
-        !     print *, 'DivU+LapP', maxval(abs(rhs_p%val(1,:)))
-        !     rhs_p%val =  -rhs_p%val
-        !     ! call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-        !     call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val, update_pres= .false.)  ! Mmat%petsc_ACV
-        !     ! we need to regenerate the pivit matrix as containin only the mass matrix
-        !     call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 1) 
-        !     CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
-        !   end if
+            ! calculate the current pressure gradient
+            CDP_tensor%val=0.
+            call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
 
-          !Perform C * DP
-          call zero(cdp_tensor)
-          call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, deltap%val, CDP_tensor)
+            ! Calculate the corection term for the pressure gradient
+            ! cmc_petsc2 is CT phi^2/c C, rhs_p is the latest residue from the continuity equation
+            call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc2, diagonal_CMC%val, update_pres= .false.)
+            call allocate(cdp_tensor2,velocity%mesh,"CDP",dim = (/velocity%dim(1), final_phase/)); call zero(cdp_tensor2)
+            call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, deltap%val, CDP_tensor2)
+            ! multiply CDP_tensor2 with phi^2/c
+            ! saturation => extract_scalar_field(state(2), "PhaseVolumeFraction")
+            ! do ele = 1, Mdims%totele
+            !     do u_iloc = 1, Mdims%u_nloc
+            !         u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
+            !         do cv_iloc = 1, Mdims%cv_nloc
+            !             imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+            !             cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+            !             do iphase = 1, final_phase
+            !                 DO idim = 1, Mdims%ndim
+            !                     ! the second phase of upwnd%inv_adv_coef containts phi/c
+            !                     CDP_tensor2%val(idim, iphase, u_inod) = CDP_tensor2%val(idim, iphase, u_inod)*upwnd%inv_adv_coef(1,1,2,imat)*saturation%val(cv_loc)  
+            !                 END DO
+            !             end do
+            !         end do
+            !     end do
+            ! end do
+            ! correct the pressure gradient
+            ! Generate pivit matrix which only contains mass matrix
+            call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 1)  
+            DU_VEL = 0.
+            CALL Mass_matrix_MATVEC( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor2%val, Mdims%ndim, final_phase , Mdims%totele, Mdims%u_nloc, ndgln%u )
+            CDP_tensor%val=CDP_tensor%val+DU_VEL
+        else
+            !Perform C * DP
+            call zero(cdp_tensor)
+            call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, deltap%val, CDP_tensor)
 
-          ! DU = BLOCK_MAT * CDP: Project back the velocity from a non divergent-free space to a divergent free space
-          DU_VEL = 0.
-          CALL Mass_matrix_MATVEC( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, final_phase , Mdims%totele, Mdims%u_nloc, ndgln%u )
-          !Update the velocity
-            if (.not. compute_compaction) then
-                do u_inod = 1, Mdims%u_nonods
-                    do iphase = 1, final_phase
-                        do idim = 1, Mdims%ndim
-                        velocity%val(idim, iphase, u_inod) = velocity%val(idim, iphase, u_inod)+ DU_VEL(idim, iphase, u_inod)!
-                        end do
+            ! DU = BLOCK_MAT * CDP: Project back the velocity from a non divergent-free space to a divergent free space
+            DU_VEL = 0.
+            CALL Mass_matrix_MATVEC( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, final_phase , Mdims%totele, Mdims%u_nloc, ndgln%u )
+            !Update the velocity
+
+            do u_inod = 1, Mdims%u_nonods
+                do iphase = 1, final_phase
+                    do idim = 1, Mdims%ndim
+                    velocity%val(idim, iphase, u_inod) = velocity%val(idim, iphase, u_inod)+ DU_VEL(idim, iphase, u_inod)!
                     end do
                 end do
-            else 
-                ! saturation => extract_scalar_field(state(2), "PhaseVolumeFraction")
-                ! do ele = 1, Mdims%totele
-                !     do u_iloc = 1, Mdims%u_nloc
-                !         u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
-                !         do cv_iloc = 1, Mdims%cv_nloc
-                !             imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
-                !             cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                !             do iphase = 1, final_phase
-                !                 DO idim = 1, Mdims%ndim
-                !                     ! D=Ct* phi^2/c *C,  thus we need this extra coeffecient phi^2/c here, 
-                !                     velocity%val(idim, iphase, u_inod) = velocity%val(idim, iphase, u_inod)+DU_VEL(idim, iphase, u_inod)*upwnd%inv_adv_coef(1,1,2,imat)*saturation%val(cv_loc)  
-                !                 END DO
-                !             end do
-                !         end do
-                !     end do
-                ! end do
-            end if 
-          !if (solve_stokes) we will have to change this, as this only works as for inertia as long as M only contains the mass of the elements
-
+            end do
+        end if
         end subroutine project_velocity_to_affine_space
 
         !---------------------------------------------------------------------------
@@ -2979,12 +3048,12 @@ end if
           Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL2%val, U_SOURCE_CV_ALL)
         deallocate(U_SOURCE_CV_ALL)
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
-        call deallocate(CDP_tensor);
-        call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), darcy_phases/)); call zero(cdp_tensor)
+        ! call deallocate(CDP_tensor);
+        ! call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), darcy_phases/)); call zero(cdp_tensor)
+        !call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, darcy_phases, &
+        !    Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )       
 
-        call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, darcy_phases, &
-            Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )       
-
+        ! Here we use the updated pressure gradient CDP_tensor which is passed down from velocity correction to calculated the darcy velocity of the liquid phase
         !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
         CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:Mdims%nphase,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:Mdims%nphase,:)*0 + CDP_tensor%val,&
@@ -3008,7 +3077,7 @@ end if
         type( vector_field ) :: vpressure
 
         vpressure=as_packed_vector(Pressure)
-        call mult(vfield, cmc_petsc, vpressure) !Mmat%petsc_ACV
+        call mult(vfield, CMC_petsc2, vpressure) !Mmat%petsc_ACV
         rhs_p%val = rhs_p%val + vfield%val
       end subroutine include_Laplacian_P_into_RHS
 
