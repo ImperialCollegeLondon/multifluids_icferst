@@ -661,36 +661,73 @@ Capillary pressure disabled.
 
 Inmobile fraction = 0.</a:documentation>
               <optional>
-                <element name="Relperm_Corey">
-                  <a:documentation>Option for relperm type in prototype code
-Corey relperm:
+                <choice>
+                  <a:documentation>Option for relperm</a:documentation>
+                  <element name="Relperm_Corey">
+                    <a:documentation>Corey relperm:
 
-relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent</a:documentation>
-                  <element name="scalar_field">
-                    <a:documentation>Relative permeability end point
+relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent
+
+&lt;b&gt; YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES&lt;/b&gt;</a:documentation>
+                    <element name="scalar_field">
+                      <a:documentation>Relative permeability end point
 
 Value between 0 and 1. Default value 1.0</a:documentation>
-                    <attribute name="name">
-                      <value>relperm_max</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
+                      <attribute name="name">
+                        <value>relperm_max</value>
+                      </attribute>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                      </element>
                     </element>
-                  </element>
-                  <element name="scalar_field">
-                    <a:documentation>Relative permeability exponent
+                    <element name="scalar_field">
+                      <a:documentation>Relative permeability exponent
 
 Default value 2.0</a:documentation>
-                    <attribute name="name">
-                      <value>relperm_exponent</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
+                      <attribute name="name">
+                        <value>relperm_exponent</value>
+                      </attribute>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                      </element>
                     </element>
                   </element>
-                </element>
+                  <element name="Relperm_Land">
+                    <a:documentation>Relative permeability curve for drainage. Useful for CO2 trapping modelling
+
+This model computes the immobile fractions. So do not introduce the immobile fractions.
+
+## &lt;b&gt; YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES&lt;/b&gt;</a:documentation>
+                    <element name="scalar_field">
+                      <a:documentation>Control the level of hysteresis. 
+
+High hysteresis ~ 0.2. Low hysteresis &gt; 5
+
+Land_coefficient = 1/Immobile_Fraction - 1; Also known as "C".</a:documentation>
+                      <attribute name="name">
+                        <value>Land_coefficient</value>
+                      </attribute>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                      </element>
+                    </element>
+                    <element name="scalar_field">
+                      <a:documentation>Relative permeability exponent
+
+Default value 2.0</a:documentation>
+                      <attribute name="name">
+                        <value>relperm_exponent</value>
+                      </attribute>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                      </element>
+                    </element>
+                  </element>
+                </choice>
               </optional>
               <optional>
                 <element name="capillary_pressure">
@@ -698,57 +735,56 @@ Default value 2.0</a:documentation>
 
 &lt;b&gt;You should specify this ONLY for the wetting phase&lt;/b&gt;</a:documentation>
                   <optional>
-                    <element name="type_Brooks_Corey">
-                      <a:documentation>Brooks-Corey equation
+                    <choice>
+                      <element name="type_Brooks_Corey">
+                        <a:documentation>Brooks-Corey equation
 
 Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a; here c is the entry pressure
 
 For imbibition swith the formula is:
 
 ## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure</a:documentation>
-                      <element name="scalar_field">
-                        <a:documentation>Entry pressure of the formula</a:documentation>
-                        <attribute name="name">
-                          <value>C</value>
-                        </attribute>
-                        <element name="prescribed">
-                          <ref name="material_mesh_choice"/>
-                          <ref name="prescribed_scalar_field"/>
-                        </element>
-                      </element>
-                      <optional>
                         <element name="scalar_field">
-                          <a:documentation>Imbibition term. if on, entry pressure = C - B;
-By default this value is set to zero.</a:documentation>
+                          <a:documentation>Entry pressure of the formula</a:documentation>
                           <attribute name="name">
-                            <value>B</value>
+                            <value>C</value>
                           </attribute>
                           <element name="prescribed">
                             <ref name="material_mesh_choice"/>
                             <ref name="prescribed_scalar_field"/>
                           </element>
                         </element>
-                      </optional>
-                      <element name="scalar_field">
-                        <a:documentation>exponent -a</a:documentation>
-                        <attribute name="name">
-                          <value>a</value>
-                        </attribute>
-                        <choice>
-                          <element name="prescribed">
-                            <ref name="material_mesh_choice"/>
-                            <ref name="prescribed_scalar_field"/>
+                        <optional>
+                          <element name="scalar_field">
+                            <a:documentation>Imbibition term. if on, entry pressure = C - B;
+By default this value is set to zero.</a:documentation>
+                            <attribute name="name">
+                              <value>B</value>
+                            </attribute>
+                            <element name="prescribed">
+                              <ref name="material_mesh_choice"/>
+                              <ref name="prescribed_scalar_field"/>
+                            </element>
                           </element>
-                          <element name="aliased">
-                            <ref name="generic_aliased_field"/>
-                          </element>
-                        </choice>
+                        </optional>
+                        <element name="scalar_field">
+                          <a:documentation>exponent -a</a:documentation>
+                          <attribute name="name">
+                            <value>a</value>
+                          </attribute>
+                          <choice>
+                            <element name="prescribed">
+                              <ref name="material_mesh_choice"/>
+                              <ref name="prescribed_scalar_field"/>
+                            </element>
+                            <element name="aliased">
+                              <ref name="generic_aliased_field"/>
+                            </element>
+                          </choice>
+                        </element>
                       </element>
-                    </element>
-                  </optional>
-                  <optional>
-                    <element name="type_Power_Law">
-                      <a:documentation>Power Law equation
+                      <element name="type_Power_Law">
+                        <a:documentation>Power Law equation
 
 Pc = c*(1-s_eff)**a
 
@@ -759,37 +795,38 @@ c = maximum pc pressure; a = pc exponent
 (no entry pressure)
 
 ONLY specify for the wetting phase</a:documentation>
-                      <element name="scalar_field">
-                        <a:documentation>Maximum pressure</a:documentation>
-                        <attribute name="name">
-                          <value>C</value>
-                        </attribute>
-                        <choice>
-                          <element name="prescribed">
-                            <ref name="material_mesh_choice"/>
-                            <ref name="prescribed_scalar_field"/>
-                          </element>
-                          <element name="aliased">
-                            <ref name="generic_aliased_field"/>
-                          </element>
-                        </choice>
+                        <element name="scalar_field">
+                          <a:documentation>Maximum pressure</a:documentation>
+                          <attribute name="name">
+                            <value>C</value>
+                          </attribute>
+                          <choice>
+                            <element name="prescribed">
+                              <ref name="material_mesh_choice"/>
+                              <ref name="prescribed_scalar_field"/>
+                            </element>
+                            <element name="aliased">
+                              <ref name="generic_aliased_field"/>
+                            </element>
+                          </choice>
+                        </element>
+                        <element name="scalar_field">
+                          <a:documentation>exponent a</a:documentation>
+                          <attribute name="name">
+                            <value>a</value>
+                          </attribute>
+                          <choice>
+                            <element name="prescribed">
+                              <ref name="material_mesh_choice"/>
+                              <ref name="prescribed_scalar_field"/>
+                            </element>
+                            <element name="aliased">
+                              <ref name="generic_aliased_field"/>
+                            </element>
+                          </choice>
+                        </element>
                       </element>
-                      <element name="scalar_field">
-                        <a:documentation>exponent a</a:documentation>
-                        <attribute name="name">
-                          <value>a</value>
-                        </attribute>
-                        <choice>
-                          <element name="prescribed">
-                            <ref name="material_mesh_choice"/>
-                            <ref name="prescribed_scalar_field"/>
-                          </element>
-                          <element name="aliased">
-                            <ref name="generic_aliased_field"/>
-                          </element>
-                        </choice>
-                      </element>
-                    </element>
+                    </choice>
                   </optional>
                 </element>
               </optional>

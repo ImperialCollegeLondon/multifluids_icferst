@@ -874,7 +874,7 @@ contains
                allocate( satura2( nphase, size(SATURA,2) ) );satura2 = 0.
 
                CALL calculate_absorption2( nphase, packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA(1:Mdims%n_in_pres,:), &
-                   viscosities)
+                      OldSatura(1:Mdims%n_in_pres,:),viscosities)
 
                !Introduce perturbation, positive for the increasing and negative for decreasing phase
                !Make sure that the perturbation is between bounds
@@ -896,7 +896,7 @@ contains
 
 
                call allocate_multi_field( Mdims, PorousMedia_absorp2, size(PorousMedia_absorp%val,4), field_name="PorousMedia_AbsorptionTerm")
-               CALL calculate_absorption2( nphase, packed_state, PorousMedia_absorp2, Mdims, ndgln, SATURA2, viscosities)
+               CALL calculate_absorption2( nphase, packed_state, PorousMedia_absorp2, Mdims, ndgln, SATURA2, OldSatura(1:Mdims%n_in_pres,:), viscosities)
 
                do ipres = 2, Mdims%npres
                    Spipe => extract_scalar_field( state(1), "Sigma" )
@@ -1017,8 +1017,8 @@ contains
                                            cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * Mdims%stotel * Mdims%cv_snloc
                                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + cv_iloc  )
                                            call get_material_absorption(Mdims%n_in_pres, iphase, sigma_out,&
-                                               ! this is the boundary condition
-                                               volfrac_BCs%val(1,:,cv_snodi), viscosities(:,visc_node),&
+                                               ! this is the boundary condition (we pass as old sat the same BC)
+                                               volfrac_BCs%val(1,:,cv_snodi), volfrac_BCs%val(1,:,cv_snodi),viscosities(:,visc_node),&
                                                Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                            ! Adjust suf_sig_diagten_bc based on the internal absorption
                                             suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) =  &
@@ -1067,7 +1067,7 @@ contains
 
 
     !>@brief: Subroutine where the absorption for the porous media is actually computed
-    SUBROUTINE calculate_absorption2( nphase, packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA, &
+    SUBROUTINE calculate_absorption2( nphase, packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA, OLDSATURA, &
         viscosities, inv_PorousMedia_absorp)
         ! Calculate absorption for momentum eqns
         implicit none
@@ -1076,7 +1076,7 @@ contains
         type (multi_field) :: PorousMedia_absorp
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
-        REAL, DIMENSION( :, : ), intent( in ) :: SATURA
+        REAL, DIMENSION( :, : ), intent( in ) :: SATURA, OLDSATURA
         real, intent(in), dimension(:,:) :: viscosities
         real, dimension(:,:,:), INTENT(INOUT), optional :: inv_PorousMedia_absorp
         ! Local variable
@@ -1107,7 +1107,7 @@ contains
                 DO IPHASE = 1, n_in_pres
                     CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * Mdims%cv_nonods
                     call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(1, 1, iphase, mat_nod),&
-                        SATURA(:, CV_NOD), viscosities(:,visc_node),Immobile_fraction, Corey_exponent, Endpoint_relperm)
+                        SATURA(:, CV_NOD), OLDSATURA(:, CV_NOD),viscosities(:,visc_node),Immobile_fraction, Corey_exponent, Endpoint_relperm)
                 END DO
             END DO
         END DO
@@ -1117,18 +1117,18 @@ contains
 
 
     !>@brief:Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
-    subroutine get_material_absorption(nphase, iphase, material_absorption, sat, visc, Immobile_fraction, &
+    subroutine get_material_absorption(nphase, iphase, material_absorption, sat, old_sat, visc, Immobile_fraction, &
             Corey_exponent, Endpoint_relperm )
         implicit none
         real, intent(inout) :: material_absorption
-        real, dimension(:), intent(in) :: sat, visc, Immobile_fraction, Corey_exponent, Endpoint_relperm
+        real, dimension(:), intent(in) :: sat, old_sat, visc, Immobile_fraction, Corey_exponent, Endpoint_relperm
         integer, intent(in) :: iphase, nphase
         !local variables
         real :: Kr
         !Local parameters
         real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
 
-        call get_relperm(nphase, iphase, sat, Immobile_fraction, Corey_exponent, Endpoint_relperm, Kr )
+        call get_relperm(nphase, iphase, sat, old_sat, Immobile_fraction, Corey_exponent, Endpoint_relperm, Kr )
 
         material_absorption = (visc(iphase) * max(eps, sat(iphase))) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
 
@@ -1139,10 +1139,10 @@ contains
       end subroutine get_material_absorption
 
     !>@brief:Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
-    subroutine get_relperm(nphase, iphase, sat, Immobile_fraction, Corey_exponent, Endpoint_relperm, Kr)
+    subroutine get_relperm(nphase, iphase, sat, old_sat, Immobile_fraction, Corey_exponent, Endpoint_relperm, Kr)
         implicit none
         real, INTENT(INOUT) :: Kr
-        real, dimension(:), intent(in) :: sat, Immobile_fraction, Corey_exponent, Endpoint_relperm
+        real, dimension(:), intent(in) :: sat, old_sat, Immobile_fraction, Corey_exponent, Endpoint_relperm
         integer, intent(in) :: iphase, nphase
         !Local parameters
         real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
@@ -1205,6 +1205,40 @@ contains
           !Make sure that the relperm is between bounds
           Kr = min(max(epsilon, relperm(iphase)),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
         end subroutine relperm_stone
+
+
+        !>@brief: Land model for drainage. It considers the wetting phase to be phase1 and the non-wetting the phase 2
+        !>This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
+        !>when dividing it to obtain the sigma.
+        SUBROUTINE relperm_land_hysteresis( Kr )
+          IMPLICIT NONE
+          REAL, intent( inout ) :: Kr
+          ! Local variables...
+          REAL :: satg_f, satg_r, satg_t, satg_r_max, C
+          ! real, parameter :: C = 5.25
+          real, parameter :: exponent = 2.
+          real, parameter :: tol = 1e-8
+          !EndPoint_relperm contains the Land coefficient (I hate myself for this...)
+          C = Endpoint_relperm(iphase)
+          !Obtain residual gas and flowing gas
+          satg_r = tol
+          if (old_sat(2) > tol) satg_r = old_sat(2)/ (1 + c * old_sat(2))
+          satg_f = 0.5 * ((sat(2) - satg_r) + sqrt((sat(2) - satg_r)**2 + 4./c*(sat(2) - satg_r) ))
+          
+          select case (iphase)
+            case (1) !Wetting phase (water)
+              satg_t = sat(2) - satg_f
+              satg_r_max = 1.0/ (1 + c * 1.0)
+              KR = sat(iphase)**4. + sat(iphase)**2. * ( &
+                  (2. *sat(iphase) +  satg_t - 2. / (1-satg_r_max)) * satg_r-&
+                  -2./c**2. * log((satg_r_max**2. * (sat(iphase)+ satg_r) )/(satg_r))  )
+            case(2) !Non wetting phase (gas)
+              KR = satg_f**2 * (1. - (1 - satg_f)**exponent)
+          end select
+          ! KR = Endpoint_relperm(iphase)*( max( sat(iphase) - Immobile_fraction(iphase), sat(iphase)*eps+eps) / aux ) ** Corey_exponent(iphase)
+          !Make sure that the relperm is between bounds
+          KR = min(max(epsilon, KR),1.0)!Lower value just to make sure we do not divide by zero.
+        END SUBROUTINE relperm_land_hysteresis
 
     end subroutine get_relperm
 
@@ -1988,7 +2022,7 @@ contains
         logical, optional, intent(in) :: update_only
         !Local variables
         type (tensor_field), pointer :: t_field, Saturation
-        type (scalar_field), target :: targ_Store, targ_immobile
+        type (scalar_field), target :: targ_Store
         type (scalar_field), pointer :: s_field
         type (vector_field), pointer :: position
         type(mesh_type), pointer :: fl_mesh
@@ -2007,111 +2041,115 @@ contains
         fl_mesh => extract_mesh( state(1), "P0DG" )
         Auxmesh = fl_mesh
         call allocate (targ_Store, Auxmesh, "Temporary_get_RockFluidProp")
-        call allocate (targ_immobile, Auxmesh, "Temporary_immobile_fraction")
-        !Retrieve Immobile fractions and retrieve relperm max
-        do iphase = 1, nphase
-          path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/"
-            if (have_option(trim(path)//"immobile_fraction/scalar_field::value/prescribed/value")) then
-                call initialise_field_over_regions(targ_immobile, trim(path)//"immobile_fraction/scalar_field::value/prescribed/value" , position)
-                !We may want to update the inmobile fraction to allow to trap fluid if the initial saturation is below the inmobile fraction
-                do ele = 1, Mdims%totele
-                  do cv_iloc = 1, Mdims%cv_nloc
-                    cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                    t_field%val(1,iphase,ele) = min(targ_immobile%val(ele), Saturation%val(1,iphase, cv_nod))
-                  end do 
-                end do
-                !Now obtain relpermMax
-                if (have_option(trim(path)//"Relperm_Corey/scalar_field::relperm_max/prescribed/value")) then
-                  call initialise_field_over_regions(targ_Store, trim(path)//"Relperm_Corey/scalar_field::relperm_max/prescribed/value", position)
-                  do ele = 1, Mdims%totele
-                    if ( (targ_immobile%val(ele)- t_field%val(1,iphase,ele) ) > 1e-8 ) then 
-                      !If we are outside bounds then we compute a relpermMax linearly so it is 1 at saturation = 1. and Krmax at Swirr
-                      auxR = (targ_Store%val(ele) - 1.)/targ_immobile%val(ele) * t_field%val(1,iphase,ele) + 1
-                    else !No need for anything special
-                      auxR = targ_Store%val(ele)
-                    end if
-                    t_field%val(2,iphase,ele) = max(min( auxR  , 1.0), 0.0)
-                  end do
-                else !default value ( no need for potential adjustments)
-                  t_field%val(2,iphase,:) = 1.0
-                end if
-            else !default value for immiscible values
-                t_field%val(1,iphase,:) = 0.0
-                !If immobile fractions = 0. then no adjustment for relpermMax
-                if (have_option(trim(path)//"Relperm_Corey/scalar_field::relperm_max/prescribed/value")) then
-                  call initialise_field_over_regions(targ_Store, trim(path)//"Relperm_Corey/scalar_field::relperm_max/prescribed/value", position)
-                  t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
-                else !default value
-                  t_field%val(2,iphase,:) = 1.0
-                end if
-            end if
-        end do
-        call deallocate(targ_immobile)
+
         !If only updating there is no need to update the other parameters
-        if (present_and_true(update_only)) then 
-          call deallocate(targ_Store)
-          return
+        if (.not.present_and_true(update_only)) then 
+          if (.not. have_option("/material_phase[0]/multiphase_properties/Relperm_Land")) then 
+            !Now obtain relpermMax
+            do iphase = 1, nphase
+              path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
+              if (have_option(trim(path))) then
+                call initialise_field_over_regions(targ_Store, trim(path), position)
+                t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
+              else !default value
+                t_field%val(2,iphase,:) = 1.0
+              end if
+            end do
+
+            !Retrieve relperm exponent
+            do iphase = 1, nphase
+                path = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_exponent/prescribed/value"
+                if (have_option(trim(path))) then
+                    call initialise_field_over_regions(targ_Store, trim(path) , position)
+                    t_field%val(3,iphase,:) = targ_Store%val
+                else !default value
+                    t_field%val(3,iphase,:) = 2.0
+                end if
+            end do
+          else !If Land model
+            !Now obtain Land coefficient (Stored in the position of relpermMax)
+            do iphase = 1, nphase
+              path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Relperm_Land/scalar_field::Land_coefficient/prescribed/value"
+              if (have_option(trim(path))) then
+                call initialise_field_over_regions(targ_Store, trim(path), position)
+                t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
+              end if
+            end do
+
+            !Retrieve relperm exponent
+            do iphase = 1, nphase
+                path = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/Relperm_Land/scalar_field::relperm_exponent/prescribed/value"
+                if (have_option(trim(path))) then
+                    call initialise_field_over_regions(targ_Store, trim(path) , position)
+                    t_field%val(3,iphase,:) = targ_Store%val
+                end if
+            end do
+
+          end if
+          !Initialize capillary pressure
+          if (have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
+              !Get cap pressure constant, C
+              do iphase = 1, nphase
+                  path = "/material_phase["//int2str(iphase-1)//&
+                      "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
+                  path3 = "/material_phase["//int2str(iphase-1)//&
+                      "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::C/prescribed/value"
+                  if (have_option(trim(path))) then
+                      call initialise_field_over_regions(targ_Store, trim(path) , position)
+                      t_field%val(4,iphase,:) = targ_Store%val
+                  elseif (have_option(trim(path3))) then
+                      call initialise_field_over_regions(targ_Store, trim(path3) , position)
+                      t_field%val(4,iphase,:) = targ_Store%val
+                  else !default value
+                      t_field%val(4,iphase,:) = 0.0
+                  end if
+              end do
+
+              !Get cap exponent, a
+              do iphase = 1, nphase
+                  path = "/material_phase["//int2str(iphase-1)//&
+                      "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
+                  path3 = "/material_phase["//int2str(iphase-1)//&
+                      "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::a/prescribed/value"
+                  if (have_option(trim(path))) then
+                      call initialise_field_over_regions(targ_Store, trim(path) , position)
+                      t_field%val(5,iphase,:) = targ_Store%val
+                  elseif (have_option(trim(path3))) then
+                      call initialise_field_over_regions(targ_Store, trim(path3) , position)
+                      t_field%val(5,iphase,:) = targ_Store%val
+                  else !default value
+                      t_field%val(5,iphase,:) = 1.0
+                  end if
+              end do
+              !Get imbibition term
+              do iphase = 1, nphase
+                  path = "/material_phase["//int2str(iphase-1)//&
+                      "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::B/prescribed/value"
+                  if (have_option(trim(path))) then
+                      call initialise_field_over_regions(targ_Store, trim(path) , position)
+                      t_field%val(6,iphase,:) = targ_Store%val
+                  else !default value
+                      t_field%val(6,iphase,:) = 0.0
+                  end if
+              end do
+          end if
         end if
-        !Retrieve relperm exponent
+        !Retrieve Immobile fractions
         do iphase = 1, nphase
-            path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_exponent/prescribed/value"
+          path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/immobile_fraction/scalar_field::value/prescribed/value"
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
-                t_field%val(3,iphase,:) = targ_Store%val
-            else !default value
-                t_field%val(3,iphase,:) = 2.0
+            else if (have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Relperm_Land")) then 
+              !Then the immobile fraction depends on the Land coefficient as follows (this must occur outside the non-linear loop!)
+              do cv_nod = 1, Mdims%cv_nonods !Formula is: Immobile = S/(1+C*S)
+                t_field%val(1,iphase,cv_nod) = Saturation%val(1,iphase,cv_nod)/(1. + t_field%val(2,iphase,cv_nod) * Saturation%val(1,iphase,cv_nod))
+              end do
+            else !default value for immiscible values
+                t_field%val(1,iphase,:) = 0.0
             end if
         end do
-
-        !Initialize capillary pressure
-        if (have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
-            !Get cap pressure constant, C
-            do iphase = 1, nphase
-                path = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
-                path3 = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::C/prescribed/value"
-                if (have_option(trim(path))) then
-                    call initialise_field_over_regions(targ_Store, trim(path) , position)
-                    t_field%val(4,iphase,:) = targ_Store%val
-                elseif (have_option(trim(path3))) then
-                    call initialise_field_over_regions(targ_Store, trim(path3) , position)
-                    t_field%val(4,iphase,:) = targ_Store%val
-                else !default value
-                    t_field%val(4,iphase,:) = 0.0
-                end if
-            end do
-
-            !Get cap exponent, a
-            do iphase = 1, nphase
-                path = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-                path3 = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::a/prescribed/value"
-                if (have_option(trim(path))) then
-                    call initialise_field_over_regions(targ_Store, trim(path) , position)
-                    t_field%val(5,iphase,:) = targ_Store%val
-                elseif (have_option(trim(path3))) then
-                    call initialise_field_over_regions(targ_Store, trim(path3) , position)
-                    t_field%val(5,iphase,:) = targ_Store%val
-                else !default value
-                    t_field%val(5,iphase,:) = 1.0
-                end if
-            end do
-            !Get imbibition term
-            do iphase = 1, nphase
-                path = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::B/prescribed/value"
-                if (have_option(trim(path))) then
-                    call initialise_field_over_regions(targ_Store, trim(path) , position)
-                    t_field%val(6,iphase,:) = targ_Store%val
-                else !default value
-                    t_field%val(6,iphase,:) = 0.0
-                end if
-            end do
-        end if
-
 
         call deallocate(targ_Store)
     end subroutine get_RockFluidProp
