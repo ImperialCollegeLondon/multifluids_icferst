@@ -2141,6 +2141,7 @@ contains
           path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/immobile_fraction/scalar_field::value/prescribed/value"
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
+                t_field%val(1,iphase,:) = targ_Store%val
             else if (have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Relperm_Land")) then 
               !Then the immobile fraction depends on the Land coefficient as follows (this must occur outside the non-linear loop!)
               do cv_nod = 1, Mdims%cv_nonods !Formula is: Immobile = S/(1+C*S)
@@ -2150,7 +2151,6 @@ contains
                 t_field%val(1,iphase,:) = 0.0
             end if
         end do
-
         call deallocate(targ_Store)
     end subroutine get_RockFluidProp
     !!JWL equation functions

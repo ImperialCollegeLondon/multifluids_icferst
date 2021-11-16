@@ -541,7 +541,7 @@ start =
                element Relperm_Corey {
                      ## Relative permeability end point
                      ##
-                     ## Value between 0 and 1. Default value 1.0
+                     ## Value between 0 and 1.
                     element scalar_field {
                        attribute name { "relperm_max" },
                        (
@@ -553,7 +553,7 @@ start =
                     },
                      ## Relative permeability exponent
                      ##
-                     ## Default value 2.0
+                     ## Typical value 2.0
                      element scalar_field {
                         attribute name { "relperm_exponent" },
                         (
@@ -586,7 +586,7 @@ start =
                     },
                      ## Relative permeability exponent
                      ##
-                     ## Default value 2.0
+                     ## Typical value 2.0
                      element scalar_field {
                         attribute name { "relperm_exponent" },
                         (
@@ -596,7 +596,7 @@ start =
                   }
                         )
                      }
-                })?,
+                }),
                ## Options for capillary pressure
                ##
                ## <b>You should specify this ONLY for the wetting phase</b>

@@ -660,75 +660,73 @@ Relperm: Brooks-Corey model with exponent = 2 and Krmax = 1.
 Capillary pressure disabled.
 
 Inmobile fraction = 0.</a:documentation>
-              <optional>
-                <choice>
-                  <a:documentation>Option for relperm</a:documentation>
-                  <element name="Relperm_Corey">
-                    <a:documentation>Corey relperm:
+              <choice>
+                <a:documentation>Option for relperm</a:documentation>
+                <element name="Relperm_Corey">
+                  <a:documentation>Corey relperm:
 
 relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent
 
 &lt;b&gt; YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES&lt;/b&gt;</a:documentation>
-                    <element name="scalar_field">
-                      <a:documentation>Relative permeability end point
+                  <element name="scalar_field">
+                    <a:documentation>Relative permeability end point
 
-Value between 0 and 1. Default value 1.0</a:documentation>
-                      <attribute name="name">
-                        <value>relperm_max</value>
-                      </attribute>
-                      <element name="prescribed">
-                        <ref name="material_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
-                      </element>
-                    </element>
-                    <element name="scalar_field">
-                      <a:documentation>Relative permeability exponent
-
-Default value 2.0</a:documentation>
-                      <attribute name="name">
-                        <value>relperm_exponent</value>
-                      </attribute>
-                      <element name="prescribed">
-                        <ref name="material_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
-                      </element>
+Value between 0 and 1.</a:documentation>
+                    <attribute name="name">
+                      <value>relperm_max</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
                     </element>
                   </element>
-                  <element name="Relperm_Land">
-                    <a:documentation>Relative permeability curve for drainage. Useful for CO2 trapping modelling
+                  <element name="scalar_field">
+                    <a:documentation>Relative permeability exponent
+
+Typical value 2.0</a:documentation>
+                    <attribute name="name">
+                      <value>relperm_exponent</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                    </element>
+                  </element>
+                </element>
+                <element name="Relperm_Land">
+                  <a:documentation>Relative permeability curve for drainage. Useful for CO2 trapping modelling
 
 This model computes the immobile fractions. So do not introduce the immobile fractions.
 
 ## &lt;b&gt; YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES&lt;/b&gt;</a:documentation>
-                    <element name="scalar_field">
-                      <a:documentation>Control the level of hysteresis. 
+                  <element name="scalar_field">
+                    <a:documentation>Control the level of hysteresis. 
 
 High hysteresis ~ 0.2. Low hysteresis &gt; 5
 
 Land_coefficient = 1/Immobile_Fraction - 1; Also known as "C".</a:documentation>
-                      <attribute name="name">
-                        <value>Land_coefficient</value>
-                      </attribute>
-                      <element name="prescribed">
-                        <ref name="material_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
-                      </element>
-                    </element>
-                    <element name="scalar_field">
-                      <a:documentation>Relative permeability exponent
-
-Default value 2.0</a:documentation>
-                      <attribute name="name">
-                        <value>relperm_exponent</value>
-                      </attribute>
-                      <element name="prescribed">
-                        <ref name="material_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
-                      </element>
+                    <attribute name="name">
+                      <value>Land_coefficient</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
                     </element>
                   </element>
-                </choice>
-              </optional>
+                  <element name="scalar_field">
+                    <a:documentation>Relative permeability exponent
+
+Typical value 2.0</a:documentation>
+                    <attribute name="name">
+                      <value>relperm_exponent</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                    </element>
+                  </element>
+                </element>
+              </choice>
               <optional>
                 <element name="capillary_pressure">
                   <a:documentation>Options for capillary pressure
