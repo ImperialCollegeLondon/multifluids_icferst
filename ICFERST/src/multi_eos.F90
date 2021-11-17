@@ -966,11 +966,13 @@ contains
                type(tensor_field), pointer :: velocity, volfrac, perm
                type(tensor_field) :: velocity_BCs, volfrac_BCs
                integer :: one_or_zero, visc_node, n_in_pres
+               logical :: relperm_hysteresis
                !Define n_in_pres based on the local version of nphase
                n_in_pres = nphase/Mdims%npres
                !Prepapre index for viscosity
                one_or_zero = (size(viscosities,2)==Mdims%cv_nonods)
-
+               !Check if we are using the second type of relperm
+               relperm_hysteresis = have_option_for_any_phase("/multiphase_properties/Relperm_Land", nphase)
                !Get from packed_state
                volfrac=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                velocity=>extract_tensor_field(packed_state,"PackedVelocity")
@@ -1019,7 +1021,7 @@ contains
                                            call get_material_absorption(Mdims%n_in_pres, iphase, sigma_out,&
                                                ! this is the boundary condition (we pass as old sat the same BC)
                                                volfrac_BCs%val(1,:,cv_snodi), volfrac_BCs%val(1,:,cv_snodi),viscosities(:,visc_node),&
-                                               Immobile_fraction, Corey_exponent, Endpoint_relperm)
+                                               Immobile_fraction, Corey_exponent, Endpoint_relperm, relperm_hysteresis)
                                            ! Adjust suf_sig_diagten_bc based on the internal absorption
                                             suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) =  &
                                                   (sigma_out  +  PorousMedia_absorp%val(1,1,iphase, mat_nod)**2./sigma_out )&
@@ -1086,6 +1088,7 @@ contains
         INTEGER :: ELE, CV_ILOC, CV_NOD, CV_PHA_NOD, MAT_NOD, JPHA_JDIM, &
             IPHA_IDIM, IDIM, JDIM, IPHASE, id_reg, n_in_pres
         integer :: one_or_zero, visc_node
+        logical :: relperm_hysteresis
         !Prepapre index for viscosity
         one_or_zero = (size(viscosities,2)==Mdims%cv_nonods)
 
@@ -1094,6 +1097,7 @@ contains
 
         RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
         ewrite(3,*) 'In calculate_absorption2'
+        relperm_hysteresis = have_option_for_any_phase("/multiphase_properties/Relperm_Land", nphase)
 
         DO ELE = 1, Mdims%totele
             !Get properties from packed state
@@ -1107,7 +1111,8 @@ contains
                 DO IPHASE = 1, n_in_pres
                     CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * Mdims%cv_nonods
                     call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(1, 1, iphase, mat_nod),&
-                        SATURA(:, CV_NOD), OLDSATURA(:, CV_NOD),viscosities(:,visc_node),Immobile_fraction, Corey_exponent, Endpoint_relperm)
+                        SATURA(:, CV_NOD), OLDSATURA(:, CV_NOD),viscosities(:,visc_node),Immobile_fraction, Corey_exponent,&
+                         Endpoint_relperm, relperm_hysteresis)
                 END DO
             END DO
         END DO
@@ -1118,17 +1123,18 @@ contains
 
     !>@brief:Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
     subroutine get_material_absorption(nphase, iphase, material_absorption, sat, old_sat, visc, Immobile_fraction, &
-            Corey_exponent, Endpoint_relperm )
+            Corey_exponent, Endpoint_relperm, relperm_hysteresis )
         implicit none
         real, intent(inout) :: material_absorption
         real, dimension(:), intent(in) :: sat, old_sat, visc, Immobile_fraction, Corey_exponent, Endpoint_relperm
         integer, intent(in) :: iphase, nphase
+        logical, intent(in) :: relperm_hysteresis
         !local variables
         real :: Kr
         !Local parameters
         real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
 
-        call get_relperm(nphase, iphase, sat, old_sat, Immobile_fraction, Corey_exponent, Endpoint_relperm, Kr )
+        call get_relperm(nphase, iphase, sat, old_sat, Immobile_fraction, Corey_exponent, Endpoint_relperm, relperm_hysteresis, Kr )
 
         material_absorption = (visc(iphase) * max(eps, sat(iphase))) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
 
@@ -1139,11 +1145,12 @@ contains
       end subroutine get_material_absorption
 
     !>@brief:Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
-    subroutine get_relperm(nphase, iphase, sat, old_sat, Immobile_fraction, Corey_exponent, Endpoint_relperm, Kr)
+    subroutine get_relperm(nphase, iphase, sat, old_sat, Immobile_fraction, Corey_exponent, Endpoint_relperm, relperm_hysteresis, Kr)
         implicit none
         real, INTENT(INOUT) :: Kr
         real, dimension(:), intent(in) :: sat, old_sat, Immobile_fraction, Corey_exponent, Endpoint_relperm
         integer, intent(in) :: iphase, nphase
+        logical, intent(in) :: relperm_hysteresis
         !Local parameters
         real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
         real, parameter :: epsilon = 1d-8!This value should in theory never be used, the real lower limit
@@ -1154,7 +1161,11 @@ contains
             case (3)
                 call relperm_stone(Kr)
             case default
-                call relperm_corey_epsilon(Kr)
+                if (relperm_hysteresis) then 
+                  call relperm_land_hysteresis(Kr)
+                else 
+                  call relperm_corey_epsilon(Kr)
+                end if
         end select
 
       contains
@@ -1216,7 +1227,7 @@ contains
           ! Local variables...
           REAL :: satg_f, satg_r, satg_t, satg_r_max, C
           ! real, parameter :: C = 5.25
-          real, parameter :: exponent = 2.
+          real, parameter :: exponent = 1.
           real, parameter :: tol = 1e-8
           !EndPoint_relperm contains the Land coefficient (I hate myself for this...)
           C = Endpoint_relperm(iphase)
