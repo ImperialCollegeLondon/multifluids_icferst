@@ -144,10 +144,10 @@ multi_dyncore_dg.o ../include/multiphase_1d_engine.mod: multi_dyncore_dg.F90 \
    ../../include/spud.mod ../../include/state_module.mod \
    ../include/compositional_terms.mod ../include/copy_outof_state.mod \
    ../include/cv_advection.mod ../include/matrix_operations.mod \
-   ../include/multi_data_types.mod ../include/multi_magma.mod \
-   ../include/multi_pipes.mod ../include/multi_surface_tension.mod \
-   ../include/multi_tools.mod ../include/multiphase_eos.mod \
-   ../include/shape_functions_ndim.mod \
+   ../include/multi_data_types.mod ../include/multi_machine_learning.mod \
+   ../include/multi_magma.mod ../include/multi_pipes.mod \
+   ../include/multi_surface_tension.mod ../include/multi_tools.mod \
+   ../include/multiphase_eos.mod ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod ../include/solvers_module.mod \
    ../include/spact.mod
 
@@ -210,16 +210,8 @@ multi_interpolation.o ../include/multi_interpolation.mod: \
 	@true
 
 multi_machine_learning.o ../include/multi_machine_learning.mod: \
-   multi_machine_learning.F90 \
-   ../../include/boundary_conditions_from_options.mod ../../include/confdefs.h \
-   ../../include/fdebug.h ../../include/field_options.mod \
-   ../../include/fields.mod ../../include/fldebug.mod ../../include/futils.mod \
-   ../../include/global_parameters.mod ../../include/halos.mod \
-   ../../include/initialise_fields_module.mod \
-   ../../include/memory_diagnostics.mod ../../include/parallel_fields.mod \
-   ../../include/parallel_tools.mod ../../include/spud.mod \
-   ../../include/state_module.mod ../include/multi_data_types.mod \
-   ../include/multi_tools.mod ../include/xgb_interface.mod
+   multi_machine_learning.F90 ../../include/confdefs.h ../../include/fdebug.h \
+   ../include/xgb_interface.mod
 
 ../include/multi_magma.mod: multi_magma.o
 	@true

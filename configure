@@ -10926,7 +10926,7 @@ fi
 
 if test -n "$with_phreeqc" ; then
   FLPHREEQC_PATH="${with_phreeqc}"
-  LIB_PHREEQC="${with_phreeqc}""/lib/libphreeqcrm.so"
+  LIB_PHREEQC="-Wl,-rpath,${with_phreeqc} ${with_phreeqc}""/libphreeqcrm.so"
   PHREEQC="yes"
   cat >> confdefs.h << EOF
 #define USING_PHREEQC 1
@@ -10952,7 +10952,7 @@ fi
 
 if test -n "$with_xgboost" ; then
   FLXGBOOST_PATH="${with_xgboost}"
-  LIB_XGBOOST="${with_xgboost}""/lib/libxgboost.so"
+  LIB_XGBOOST="-Wl,-rpath,${with_xgboost} ${with_xgboost}""/libxgboost.so"
   XGBOOST="yes"
   cat >> confdefs.h << EOF
 #define USING_XGBOOST 1

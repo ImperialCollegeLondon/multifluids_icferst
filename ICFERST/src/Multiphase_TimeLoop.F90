@@ -26,7 +26,7 @@ module multiphase_time_loop
 #endif
 
 #ifdef USING_XGBOOST
-  use multi_machine_learning
+    use multi_machine_learning
 #endif
 
     use field_options
@@ -234,10 +234,6 @@ contains
       assert(ierr == ZOLTAN_OK)
 #endif
 
-
-#ifdef USING_XGBOOST
-call init_xgboost()
-#endif
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
 
@@ -1031,6 +1027,15 @@ call init_xgboost()
 
         end do Loop_Time
 
+!#=================================================================================================================
+!# Vinicius: Free XGB model
+!#=================================================================================================================        
+#ifdef USING_XGBOOST
+        call xgboost_free_model()
+#endif
+!#=================================================================================================================
+!# Vinicius: Free XGB model
+!#=================================================================================================================
 
         if (has_references(metric_tensor)) call deallocate(metric_tensor)
         !!$ Now deallocating arrays:

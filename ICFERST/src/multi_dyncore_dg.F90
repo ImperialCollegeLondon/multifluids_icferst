@@ -51,6 +51,10 @@ module multiphase_1D_engine
     use parallel_tools, only : allmax, allmin, isparallel
     use ieee_arithmetic
     use multi_magma
+#ifdef USING_XGBOOST
+    use multi_machine_learning
+    use iso_c_binding
+#endif
 
     implicit none
 
@@ -9030,6 +9034,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !logical, save :: readed_por = .false.
         logical, save :: readed_sizes = .false.
         logical, save  :: written_file = .false. 
+        logical, save  :: loaded_file = .false. 
         real, dimension(:,:), pointer :: X_ALL, saturation, Imble_frac, cap_entry_pres, end_point_relperm, exponent_relperm
         type(tensor_field), pointer :: permeability, state_viscosity, density, velocity
         type(vector_field), pointer :: porosity, gravity_direction 
@@ -9055,8 +9060,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         real :: average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
         real :: average_overrelaxation, max_overrelaxation, min_overrelaxation
         real :: average_invPeclet, max_invPeclet, min_invPeclet
-        real :: shockfront_number_ratio, btpf
-        
+        real :: shockfront_number_ratio, btpf        
 
         !*************************************!
         !!! ***Getting support variables*** !!!
@@ -9462,10 +9466,11 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             average_invPeclet = 0.
         end if
         
-        ! !***************************!
-        ! !!! **Call the ML model** !!!
-        ! !***************************!
-        ! block
+        !***************************!
+        !!! **Call the ML model** !!!
+        !***************************!
+
+        block
         !     character(len=16) :: c_aspect_ratio, c_courant_number, c_shockfront_courant_number, c_shockfront_number_ratio, c_min_total_mobility, c_max_total_mobility, c_average_total_mobility, c_min_Darcy_velocity, c_max_Darcy_velocity, c_average_Darcy_velocity, c_min_shockfront_mobratio, c_max_shockfront_mobratio, c_average_shockfront_mobratio, c_average_longitudinal_capillary, c_average_transverse_capillary, c_max_longitudinal_capillary, c_max_transverse_capillary, c_min_longitudinal_capillary, c_min_transverse_capillary, c_average_buoyancy_number, c_average_longitudinal_buoyancy, c_average_transverse_buoyancy, c_max_buoyancy_number, c_max_longitudinal_buoyancy, c_max_transverse_buoyancy, c_min_buoyancy_number, c_min_longitudinal_buoyancy, c_min_transverse_buoyancy, c_average_overrelaxation, c_max_overrelaxation, c_min_overrelaxation, c_average_invPeclet, c_max_invPeclet, c_min_invPeclet, c_res, c_resold, c_res_resold, c_backtrack_par_factor, c_outer_nonlinear_iteration
             
         !     write(c_aspect_ratio,'(E16.8)')   aspect_ratio
@@ -9516,46 +9521,79 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !     read(74,*) btpf
         !     close(74)
         !     backtrack_par_factor = btpf
-        ! endblock  
-        ! !***************************!
-        ! !!! ***Write into file*** !!!
-        ! !***************************!
-    
-        !inquire(file="AI_backtracking_parameters.csv", exist=file_exist) 
-        if (.not. written_file) then
-            open(73, file="AI_backtracking_parameters.csv", status="replace")
-            !call date_and_time(VALUES=date_values)          
-            !write(73,'(8i5)') date_values
-            ! Write column names
-            write(73, '(6(A,",",X))', advance="NO") "gravity", "cap_pressure", "black_oil", "ov_relaxation", "one_phase", "wells"
-            write(73, '(5(A,",",X))', advance="NO") "n_phases", "n_components", "aspect_ratio", "courant_number", "shockfront_courant_number"
-            write(73, '(1(A,",",X))', advance="NO") "shockfront_number_ratio"
-            write(73, '(3(A,",",X))', advance="NO") "min_total_mobility", "max_total_mobility", "average_total_mobility"
-            write(73, '(3(A,",",X))', advance="NO") "min_Darcy_velocity", "max_Darcy_velocity", "average_Darcy_velocity"
-            write(73, '(3(A,",",X))', advance="NO") "min_shockfront_mobratio", "max_shockfront_mobratio", "average_shockfront_mobratio"
-            write(73, '(6(A,",",X))', advance="NO") "average_longitudinal_capillary", "average_transverse_capillary", "max_longitudinal_capillary", "max_transverse_capillary", "min_longitudinal_capillary", "min_transverse_capillary"
-            write(73, '(9(A,",",X))', advance="NO") "average_buoyancy_number", "average_longitudinal_buoyancy", "average_transverse_buoyancy", "max_buoyancy_number", "max_longitudinal_buoyancy", "max_transverse_buoyancy", "min_buoyancy_number", "min_longitudinal_buoyancy", "min_transverse_buoyancy"
-            write(73, '(3(A,",",X))', advance="NO") "average_overrelaxation", "max_overrelaxation", "min_overrelaxation"
-            write(73, '(3(A,",",X))', advance="NO") "average_invPeclet", "max_invPeclet", "min_invPeclet"
-            write(73, '(5(A,",",X))') "res", "resold", "res_resold", "backtrack_par_factor", "btpf"
-            close(73)
-            written_file = .true.
+
+        real(c_float), dimension(17)  :: raw_input 
+        real(c_float), pointer        :: out_result(:)
+        
+        if (.not. loaded_file) then
+            call xgboost_load_model()
+            loaded_file = .true.
         end if
 
-        ! Write values
-        open(73, file="AI_backtracking_parameters.csv", status="unknown", position="append")
-        write(73, '(6(L,",",X))',     advance="NO") gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
-        write(73, '(5(E15.8,",",X))', advance="NO") n_phases, n_components, aspect_ratio, courant_number, shockfront_courant_number
-        write(73, '(1(E15.8,",",X))', advance="NO") shockfront_number_ratio
-        write(73, '(3(E15.8,",",X))', advance="NO") min_total_mobility, max_total_mobility, average_total_mobility
-        write(73, '(3(E15.8,",",X))', advance="NO") min_Darcy_velocity, max_Darcy_velocity, average_Darcy_velocity
-        write(73, '(3(E15.8,",",X))', advance="NO") min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
-        write(73, '(6(E15.8,",",X))', advance="NO") average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
-        write(73, '(9(E15.8,",",X))', advance="NO") average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
-        write(73, '(3(E15.8,",",X))', advance="NO") average_overrelaxation, max_overrelaxation, min_overrelaxation
-        write(73, '(3(E15.8,",",X))', advance="NO") average_invPeclet, max_invPeclet, min_invPeclet
-        write(73, '(5(E15.8,",",X))') res, resold, res/resold, backtrack_par_factor, btpf
-        close(73)
+        raw_input = (/aspect_ratio, & 
+                    & courant_number, &
+                    & shockfront_courant_number, &
+                    & shockfront_number_ratio, &
+                    & average_total_mobility, &
+                    & average_Darcy_velocity, &
+                    & average_shockfront_mobratio, &
+                    & average_longitudinal_capillary, &
+                    & average_transverse_capillary, &
+                    & average_buoyancy_number, &
+                    & average_longitudinal_buoyancy, &
+                    & average_transverse_buoyancy, &
+                    & average_overrelaxation, &
+                    & res, &
+                    & resold, &
+                    & res/resold, &
+                    & 1.0 /) !1 inner nonlinear iteration  
+
+        call xgboost_predict(raw_input, out_result)
+        !write(*,*) 'XGB model prediction: ',out_result
+        backtrack_par_factor = out_result(1)           
+        nullify(out_result)
+
+        endblock  
+        
+        !***************************!
+        !! ***Write into file*** !!!
+        !***************************!
+    
+        ! !inquire(file="AI_backtracking_parameters.csv", exist=file_exist) 
+        ! if (.not. written_file) then
+        !     open(73, file="AI_backtracking_parameters.csv", status="replace")
+        !     !call date_and_time(VALUES=date_values)          
+        !     !write(73,'(8i5)') date_values
+        !     ! Write column names
+        !     write(73, '(6(A,",",X))', advance="NO") "gravity", "cap_pressure", "black_oil", "ov_relaxation", "one_phase", "wells"
+        !     write(73, '(5(A,",",X))', advance="NO") "n_phases", "n_components", "aspect_ratio", "courant_number", "shockfront_courant_number"
+        !     write(73, '(1(A,",",X))', advance="NO") "shockfront_number_ratio"
+        !     write(73, '(3(A,",",X))', advance="NO") "min_total_mobility", "max_total_mobility", "average_total_mobility"
+        !     write(73, '(3(A,",",X))', advance="NO") "min_Darcy_velocity", "max_Darcy_velocity", "average_Darcy_velocity"
+        !     write(73, '(3(A,",",X))', advance="NO") "min_shockfront_mobratio", "max_shockfront_mobratio", "average_shockfront_mobratio"
+        !     write(73, '(6(A,",",X))', advance="NO") "average_longitudinal_capillary", "average_transverse_capillary", "max_longitudinal_capillary", "max_transverse_capillary", "min_longitudinal_capillary", "min_transverse_capillary"
+        !     write(73, '(9(A,",",X))', advance="NO") "average_buoyancy_number", "average_longitudinal_buoyancy", "average_transverse_buoyancy", "max_buoyancy_number", "max_longitudinal_buoyancy", "max_transverse_buoyancy", "min_buoyancy_number", "min_longitudinal_buoyancy", "min_transverse_buoyancy"
+        !     write(73, '(3(A,",",X))', advance="NO") "average_overrelaxation", "max_overrelaxation", "min_overrelaxation"
+        !     write(73, '(3(A,",",X))', advance="NO") "average_invPeclet", "max_invPeclet", "min_invPeclet"
+        !     write(73, '(5(A,",",X))') "res", "resold", "res_resold", "backtrack_par_factor", "btpf"
+        !     close(73)
+        !     written_file = .true.
+        ! end if
+
+        ! ! Write values
+        ! open(73, file="AI_backtracking_parameters.csv", status="unknown", position="append")
+        ! write(73, '(6(L,",",X))',     advance="NO") gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
+        ! write(73, '(5(E15.8,",",X))', advance="NO") n_phases, n_components, aspect_ratio, courant_number, shockfront_courant_number
+        ! write(73, '(1(E15.8,",",X))', advance="NO") shockfront_number_ratio
+        ! write(73, '(3(E15.8,",",X))', advance="NO") min_total_mobility, max_total_mobility, average_total_mobility
+        ! write(73, '(3(E15.8,",",X))', advance="NO") min_Darcy_velocity, max_Darcy_velocity, average_Darcy_velocity
+        ! write(73, '(3(E15.8,",",X))', advance="NO") min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
+        ! write(73, '(6(E15.8,",",X))', advance="NO") average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
+        ! write(73, '(9(E15.8,",",X))', advance="NO") average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
+        ! write(73, '(3(E15.8,",",X))', advance="NO") average_overrelaxation, max_overrelaxation, min_overrelaxation
+        ! write(73, '(3(E15.8,",",X))', advance="NO") average_invPeclet, max_invPeclet, min_invPeclet
+        ! write(73, '(5(E15.8,",",X))') res, resold, res/resold, backtrack_par_factor, btpf
+        ! close(73)
 
         !*****************************!
         !!! ***Support functions*** !!!
