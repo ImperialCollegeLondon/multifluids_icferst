@@ -572,8 +572,8 @@ contains
                 !#=================================================================================================================
                 !# Vinicius: Exit simulation if it do not reach convergence
                 !#=================================================================================================================
-                call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
-                if (its == NonLinearIteration .and. SFPI_its >= max_sat_its) exit Loop_Time
+                ! call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
+                ! if (its == NonLinearIteration .and. SFPI_its >= max_sat_its) exit Loop_Time
                 !#=================================================================================================================
                 !# Vinicius-end: Exit simulation if it do not reach convergence
                 !#================================================================================================================= 
@@ -1034,7 +1034,7 @@ contains
         call xgboost_free_model()
 #endif
 !#=================================================================================================================
-!# Vinicius: Free XGB model
+!# Vinicius-end: Free XGB model
 !#=================================================================================================================
 
         if (has_references(metric_tensor)) call deallocate(metric_tensor)

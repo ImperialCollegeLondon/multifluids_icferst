@@ -1288,9 +1288,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          if (its==1) first_res = res!Variable to check total convergence of the SFPI method
                          
                          if (its == 1) then 
-                            if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
-                                call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
-                            end if   
+                            if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number (auto_backtracking) or a set of dimensionless numbers (AI_backtracking_parameters)                          
+#ifdef USING_XGBOOST
                             !#=================================================================================================================
                             !# Vinicius: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
                             !#=================================================================================================================
@@ -1300,7 +1299,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                             call AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number, backtrack_par_factor, OvRelax_param, res, resold, nonlinear_iteration)
                             !#=================================================================================================================
                             !# Vinicius-End: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
-                            !#=================================================================================================================       
+                            !#=================================================================================================================   
+#else       
+                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+#endif                    
+                         end if              
                         end if
                      end if
                  end if
@@ -1382,18 +1385,18 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !#=================================================================================================================
              !# Vinicius: Write the number of non-linear iterations into file
              !#=================================================================================================================
-             !inquire(file="Inner_non_linear_iterations.csv", exist=file_exist) 
-             if (.not. written_file) then
-                 open(75, file="non_linear_iterations.csv", status="replace")
-                 write(75, '(8(A,",",X))') "time_step", "outer_nonlinear_iteration", "Inner_non_linear_iterations"
-                 close(75)
-                 written_file = .true.
-             end if
-             ! Write values
-             open(75, file="non_linear_iterations.csv", status="unknown", position="append")
-             write(75, '(8(I8,",",X))') time_step, nonlinear_iteration, its 
-             close(75)
-             SFPI_its = its
+            !  !inquire(file="Inner_non_linear_iterations.csv", exist=file_exist) 
+            !  if (.not. written_file) then
+            !      open(75, file="non_linear_iterations.csv", status="replace")
+            !      write(75, '(8(A,",",X))') "time_step", "outer_nonlinear_iteration", "Inner_non_linear_iterations"
+            !      close(75)
+            !      written_file = .true.
+            !  end if
+            !  ! Write values
+            !  open(75, file="non_linear_iterations.csv", status="unknown", position="append")
+            !  write(75, '(8(I8,",",X))') time_step, nonlinear_iteration, its 
+            !  close(75)
+            !  SFPI_its = its
              !#=================================================================================================================
              !# Vinicius-End: Write the number of non-linear iterations into file
              !#=================================================================================================================
@@ -9012,6 +9015,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     !> The inputs of the Machine learning model are dimensionless numbers and configurations  
     !> of the system. This subroutine also generates several dimensionless numbers cv-wise.  
     !----------------------------------------------------------------------------------------
+#ifdef USING_XGBOOST      
     subroutine AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number_in, backtrack_par_factor, overrelaxation, &
                                          & res, resold, outer_nonlinear_iteration, for_transport)
         implicit none
@@ -9690,5 +9694,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             end function shock_front_in_ele
 
     end subroutine AI_backtracking_parameters
+#endif
 
  end module multiphase_1D_engine
