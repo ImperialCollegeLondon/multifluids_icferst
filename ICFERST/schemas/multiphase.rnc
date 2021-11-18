@@ -532,7 +532,6 @@ start =
             ## Inmobile fraction = 0.
             element multiphase_properties {
                ## Option for relperm
-               (
                   ## Corey relperm:
                   ##
                   ## relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent
@@ -563,40 +562,7 @@ start =
                   }
                         )
                      }
-                }|
-                ## Relative permeability curve for drainage. Useful for CO2 trapping modelling
-                ##
-                ## This model computes the immobile fractions. So do not introduce the immobile fractions.
-                ##
-                ## ## <b> YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES</b>
-                element Relperm_Land {
-                     ## Control the level of hysteresis. 
-                     ##
-                     ## High hysteresis ~ 0.2. Low hysteresis > 5
-                     ##
-                     ## Land_coefficient = 1/Immobile_Fraction - 1; Also known as "C".
-                    element scalar_field {
-                       attribute name { "Land_coefficient" },
-                       (
-                          element prescribed {
-                             material_mesh_choice,
-                             prescribed_scalar_field
-                          }
-                       )
-                    },
-                     ## Relative permeability exponent
-                     ##
-                     ## Typical value 2.0
-                     element scalar_field {
-                        attribute name { "relperm_exponent" },
-                        (
-                           element prescribed {
-                              material_mesh_choice,
-                              prescribed_scalar_field
-                  }
-                        )
-                     }
-                }),
+                },
                ## Options for capillary pressure
                ##
                ## <b>You should specify this ONLY for the wetting phase</b>
@@ -682,7 +648,7 @@ start =
                ## Immobile volume of fluid phase
                element immobile_fraction {
                ## Immobile fraction
-                    element scalar_field {
+                    (element scalar_field {
                        attribute name { "value" },
                        (
                           element prescribed {
@@ -690,8 +656,22 @@ start =
                              prescribed_scalar_field
                           }
                        )
+                    }|
+                     ## For drainage the immobile fraction is computed dynamically using the Land formula.
+                     ##
+                     ## High hysteresis ~ 0.2. Low hysteresis > 5
+                     ##
+                     ## Land_coefficient = 1/Maximum_Immobile_Fraction - 1; Also known as "C".
+                    element scalar_field {
+                       attribute name { "Land_coefficient" },
+                       (
+                          element prescribed {
+                             material_mesh_choice,
+                             prescribed_scalar_field
+                          }
+                       )
                     }
-               }?
+               )}?
             }?
          }+,
          mesh_adaptivity_options?,

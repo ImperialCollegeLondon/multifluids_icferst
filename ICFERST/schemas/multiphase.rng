@@ -660,73 +660,38 @@ Relperm: Brooks-Corey model with exponent = 2 and Krmax = 1.
 Capillary pressure disabled.
 
 Inmobile fraction = 0.</a:documentation>
-              <choice>
-                <a:documentation>Option for relperm</a:documentation>
-                <element name="Relperm_Corey">
-                  <a:documentation>Corey relperm:
+              <element name="Relperm_Corey">
+                <a:documentation>Option for relperm
+Corey relperm:
 
 relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent
 
 &lt;b&gt; YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES&lt;/b&gt;</a:documentation>
-                  <element name="scalar_field">
-                    <a:documentation>Relative permeability end point
+                <element name="scalar_field">
+                  <a:documentation>Relative permeability end point
 
 Value between 0 and 1.</a:documentation>
-                    <attribute name="name">
-                      <value>relperm_max</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                    </element>
-                  </element>
-                  <element name="scalar_field">
-                    <a:documentation>Relative permeability exponent
-
-Typical value 2.0</a:documentation>
-                    <attribute name="name">
-                      <value>relperm_exponent</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                    </element>
+                  <attribute name="name">
+                    <value>relperm_max</value>
+                  </attribute>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
                   </element>
                 </element>
-                <element name="Relperm_Land">
-                  <a:documentation>Relative permeability curve for drainage. Useful for CO2 trapping modelling
-
-This model computes the immobile fractions. So do not introduce the immobile fractions.
-
-## &lt;b&gt; YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES&lt;/b&gt;</a:documentation>
-                  <element name="scalar_field">
-                    <a:documentation>Control the level of hysteresis. 
-
-High hysteresis ~ 0.2. Low hysteresis &gt; 5
-
-Land_coefficient = 1/Immobile_Fraction - 1; Also known as "C".</a:documentation>
-                    <attribute name="name">
-                      <value>Land_coefficient</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                    </element>
-                  </element>
-                  <element name="scalar_field">
-                    <a:documentation>Relative permeability exponent
+                <element name="scalar_field">
+                  <a:documentation>Relative permeability exponent
 
 Typical value 2.0</a:documentation>
-                    <attribute name="name">
-                      <value>relperm_exponent</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                    </element>
+                  <attribute name="name">
+                    <value>relperm_exponent</value>
+                  </attribute>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
                   </element>
                 </element>
-              </choice>
+              </element>
               <optional>
                 <element name="capillary_pressure">
                   <a:documentation>Options for capillary pressure
@@ -831,16 +796,32 @@ ONLY specify for the wetting phase</a:documentation>
               <optional>
                 <element name="immobile_fraction">
                   <a:documentation>Immobile volume of fluid phase</a:documentation>
-                  <element name="scalar_field">
+                  <choice>
                     <a:documentation>Immobile fraction</a:documentation>
-                    <attribute name="name">
-                      <value>value</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
+                    <element name="scalar_field">
+                      <attribute name="name">
+                        <value>value</value>
+                      </attribute>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                      </element>
                     </element>
-                  </element>
+                    <element name="scalar_field">
+                      <a:documentation>For drainage the immobile fraction is computed dynamically using the Land formula.
+
+High hysteresis ~ 0.2. Low hysteresis &gt; 5
+
+Land_coefficient = 1/Maximum_Immobile_Fraction - 1; Also known as "C".</a:documentation>
+                      <attribute name="name">
+                        <value>Land_coefficient</value>
+                      </attribute>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                      </element>
+                    </element>
+                  </choice>
                 </element>
               </optional>
             </element>
