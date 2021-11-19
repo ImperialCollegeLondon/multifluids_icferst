@@ -1881,6 +1881,13 @@ The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc
                 </element>
               </optional>
               <optional>
+                <element name="ML_model_path">
+                  <a:documentation>Recommended method. XGBoost installed and compiled with ICFERST is a requirement.
+Specify here the path to the machine learning (XGBoost model)               </a:documentation>
+                  <data type="string" datatypeLibrary=""/>
+                </element>
+              </optional>
+              <optional>
                 <element name="Vanishing_relaxation">
                   <a:documentation>Introduce over-relaxation in the saturation equation.
 This severely HELPS to reduce the number of FPI.

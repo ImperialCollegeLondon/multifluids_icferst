@@ -24,12 +24,13 @@ module multi_machine_learning
 
   use iso_c_binding
   use xgb_interface
+  use spud
 
   implicit none
 
   ! Module private variables
   type(c_ptr), private, save   :: xgb_model ! XGBoost model 
-  character(len=255), parameter, private :: name_xgb_model = 'xgb_model.bin' ! Path for XGBoost model
+  character(len=255), private :: name_xgb_model ! Path for XGBoost model (xgb_model.bin if not defined in Diamond)
   integer(c_int64_t), parameter, private :: nrow = 1 ! Number of rows in the model input (usually 1)
   integer(c_int64_t), parameter, private :: ncol = 17 ! Number of colunms (features) in the model input
 
@@ -53,8 +54,9 @@ module multi_machine_learning
       real(c_float), parameter      :: missing = -999.0
       integer(c_int64_t), parameter :: dmatrix_len = 0
 
-      inquire( FILE=name_xgb_model, EXIST=there) 
-      if ( .not. there ) write(*,*) 'Machine learning model do not exist! filename:', name_xgb_model
+      call get_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path", name_xgb_model, default='xgb_model.bin')
+      inquire( FILE=name_xgb_model, EXIST=there)
+      if ( .not. there ) write(*,*) 'Machine learning model do not exist! filepath: ./', name_xgb_model
 
       !!! Load XGB model !!!
       ! Create  a dummy  XGDMatrix 

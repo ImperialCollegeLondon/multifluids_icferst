@@ -1290,18 +1290,18 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          if (its == 1) then 
                             if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number (auto_backtracking) or a set of dimensionless numbers (AI_backtracking_parameters)                          
 #ifdef USING_XGBOOST
-                            !#=================================================================================================================
-                            !# Vinicius: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
-                            !#=================================================================================================================
-                            ! Calculate Darcy velocity with the most up-to-date information (necessary for AI_backtracking_parameters)
-                            if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
-                            ! Generate all the dimensionless numbers 
-                            call AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number, backtrack_par_factor, OvRelax_param, res, resold, nonlinear_iteration)
-                            !#=================================================================================================================
-                            !# Vinicius-End: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
-                            !#=================================================================================================================   
+                                !#=================================================================================================================
+                                !# Vinicius: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
+                                !#=================================================================================================================
+                                ! Calculate Darcy velocity with the most up-to-date information (necessary for AI_backtracking_parameters)
+                                if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
+                                ! Generate all the dimensionless numbers 
+                                call AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number, backtrack_par_factor, OvRelax_param, res, resold, nonlinear_iteration)
+                                !#=================================================================================================================
+                                !# Vinicius-End: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
+                                !#=================================================================================================================   
 #else       
-                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                                call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
 #endif                    
                          end if              
                         end if
@@ -9528,34 +9528,38 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
         real(c_float), dimension(17)  :: raw_input 
         real(c_float), pointer        :: out_result(:)
-        
-        if (.not. loaded_file) then
-            call xgboost_load_model()
-            loaded_file = .true.
+
+        backtrack_par_factor = -1. ! Assign -1 to backtrack_par_factor in all cores
+        if (getprocno() == 1) then ! To let only 1 core to load and predict using the ML model
+            if (.not. loaded_file) then
+                call xgboost_load_model()
+                loaded_file = .true.
+            end if
+
+            raw_input = (/aspect_ratio, & 
+                        & courant_number, &
+                        & shockfront_courant_number, &
+                        & shockfront_number_ratio, &
+                        & average_total_mobility, &
+                        & average_Darcy_velocity, &
+                        & average_shockfront_mobratio, &
+                        & average_longitudinal_capillary, &
+                        & average_transverse_capillary, &
+                        & average_buoyancy_number, &
+                        & average_longitudinal_buoyancy, &
+                        & average_transverse_buoyancy, &
+                        & average_overrelaxation, &
+                        & res, &
+                        & resold, &
+                        & res/resold, &
+                        & 1.0 /) !1 inner nonlinear iteration  
+
+            call xgboost_predict(raw_input, out_result)
+            !write(*,*) 'XGB model prediction: ',out_result
+            backtrack_par_factor = out_result(1)           
+            nullify(out_result)
         end if
-
-        raw_input = (/aspect_ratio, & 
-                    & courant_number, &
-                    & shockfront_courant_number, &
-                    & shockfront_number_ratio, &
-                    & average_total_mobility, &
-                    & average_Darcy_velocity, &
-                    & average_shockfront_mobratio, &
-                    & average_longitudinal_capillary, &
-                    & average_transverse_capillary, &
-                    & average_buoyancy_number, &
-                    & average_longitudinal_buoyancy, &
-                    & average_transverse_buoyancy, &
-                    & average_overrelaxation, &
-                    & res, &
-                    & resold, &
-                    & res/resold, &
-                    & 1.0 /) !1 inner nonlinear iteration  
-
-        call xgboost_predict(raw_input, out_result)
-        !write(*,*) 'XGB model prediction: ',out_result
-        backtrack_par_factor = out_result(1)           
-        nullify(out_result)
+        if (IsParallel()) call allmax(backtrack_par_factor) ! Assign the calculated values of the backtrack_par_factor
 
         endblock  
         

@@ -1031,7 +1031,7 @@ contains
 !# Vinicius: Free XGB model
 !#=================================================================================================================        
 #ifdef USING_XGBOOST
-        call xgboost_free_model()
+        if (getprocno() == 1) call xgboost_free_model()
 #endif
 !#=================================================================================================================
 !# Vinicius-end: Free XGB model
