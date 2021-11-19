@@ -2091,6 +2091,8 @@ contains
                 t_field%val(1,iphase,:) = targ_Store%val
             else if (have_option("/material_phase["//int2str(iphase-1)//&
                       "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then 
+              path = "/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value"
               !Extract the land parameter 
               call initialise_field_over_regions(targ_Store, trim(path) , position)
               !We first extract the field containing the historical point of saturation
@@ -2098,15 +2100,22 @@ contains
               !Only for the first time ever, not for checkpointing, overwrite the saturation flipping value with the initial one
               if (present(current_time)) then 
                if( current_time < 1e-8) then 
-                saturation_flip%val(cv_nod) = max(Saturation%val(1,iphase,cv_nod), 1e-10)!limit because we need to store signs also
+                do cv_nod = 1, Mdims%cv_nonods
+                  saturation_flip%val(cv_nod) = max(Saturation%val(1,iphase,cv_nod), 1e-16)!limit because we need to store signs also
+                end do
                end if
               end if
-              !Then the immobile fraction depends on the Land coefficient as follows (this must occur outside the non-linear loop!)
-              do cv_nod = 1, Mdims%cv_nonods !Formula is: Immobile = S_flip/(1+C*S_flip). Where S_flip is the saturation 
-                !when changing from imbibition to drainage or the other way round
-                call Update_saturation_flipping(saturation_flip%val(cv_nod), Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
-                auxR = abs(saturation_flip%val(cv_nod))
-                t_field%val(1,iphase,cv_nod) = auxR/(1. + targ_Store%val(cv_nod) * auxR)
+              do ele = 1, Mdims%totele
+                t_field%val(1,iphase,ele) = 0.
+                do cv_iloc = 1, Mdims%cv_nloc
+                  cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+                  !Then the immobile fraction depends on the Land coefficient as follows (this must occur outside the non-linear loop!)
+                  !Formula is: Immobile = S_flip/(1+C*S_flip). Where S_flip is the saturation 
+                  !when changing from imbibition to drainage or the other way round
+                  call Update_saturation_flipping(saturation_flip%val(cv_nod), Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
+                  auxR = abs(saturation_flip%val(cv_nod))
+                  t_field%val(1,iphase,ele) = t_field%val(1,iphase,ele) + (auxR/(1. + targ_Store%val(ele) * auxR))/Mdims%cv_nloc
+                end do
               end do
             else !default value for immiscible values
                 t_field%val(1,iphase,:) = 0.0
@@ -2126,10 +2135,9 @@ contains
       real, INTENT(INOUT) :: sat_flip
       !Local variables
       real, parameter :: tol = 1e-10
-
       !Check if the situation is changing and if so, store the new value with the sign
-      if (sign(1., sat - old_sat ) - sign(1., sat_flip ) > tol ) then
-        sat_flip = sign(max(old_sat, tol), sat - old_sat )
+      if (abs(sign(1., sat - old_sat ) - sign(1., sat_flip )) < tol ) then
+        sat_flip = sign(old_sat, sat - old_sat )
       end if
 
     end subroutine
