@@ -383,37 +383,6 @@ contains
             FLAbort('PhaseVolumeFraction must be defined for all the phases, including single phase simulations.')
         end do
 
-
-        if (have_option('/physical_parameters/black-oil_PVT_table')) then
-
-        !Maybe no need for a field in state? and just calculate using required conditions????
-
-            !Create necessary memory to store the mass fraction of one of the pseudo-components (in a way that it is also adapted)
-            if (nphase /= 3)then
-                FLAbort('Black-Oil modelling requires three phases. Phase 1 Aqua, phase 2 liquid, phase 3 vapour')
-            end if
-            if (GetProcNo() == 1) then
-              print*, "WARNING: Currently for Black-Oil modelling it is recommended to disable Test_mass_consv by setting a high value. For example 1e10."
-            end if
-
-
-            option_path = "/material_phase["// int2str( nphase -1 )//"]/scalar_field::VapourMassFraction"
-            call copy_option("/material_phase["// int2str( nphase - 1 )//"]/scalar_field::PhaseVolumeFraction",&
-                 trim(option_path))
-            !Make sure the field is not shown
-            if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
-                !Don't know how to set exclude_from_vtu to true from the spud options, hence,
-                !since simulation_name HAS to exist I copy it to obtain the same effect
-                call copy_option("/simulation_name",&
-                 trim(option_path)//"/prognostic/output/exclude_from_vtu")
-            end if
-            !Make sure that this field is not the objective of adaptivity
-            if (have_option(trim(option_path)//"/prognostic/adaptivity_options")) then
-                call delete_option(trim(option_path)//"/prognostic/adaptivity_options")
-            end if
-        end if
-
-
         if (is_porous_media .and. have_option('/mesh_adaptivity/hr_adaptivity')) then
             ewrite(1, *) "Preserve regions MUST to be ON. Check multiphase_prototype_wrapper"
             !Ensure that preserve_mesh_regions is on, since otherwise it does not work
@@ -438,7 +407,6 @@ contains
                     call add_option(trim(option_path)//"/output",  stat=stat)
                     call add_option(trim(option_path)//"/stat",  stat=stat)
                     call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
-
                     call add_option(trim(option_path)//"/detectors",  stat=stat)
                     call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
                     call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
@@ -451,17 +419,27 @@ contains
                         "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu")
                 end if
 
-
-!                option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::"
-!                call copy_option(trim(option_path)//"Velocity", trim(option_path)//"DarcyVelocity")
-!                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/tensor_field::Viscosity")) &
-!                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/tensor_field::Viscosity")
-!
-!                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/vector_field::Absorption"))&
-!                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/vector_field::Absorption")
-!
-!                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/adaptivity_options"))&
-!                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/adaptivity_options")
+                !For hysteresis relperms we need to keep track of when the saturation flips from drainage to imbibition
+                !We generate the memory here because we need to be able to interpolate...
+                if (have_option("/material_phase["//int2str(i-1)//&
+                "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then 
+                  option_path = "/material_phase["// int2str( i -1 )//"]/scalar_field::Saturation_flipping"
+                  if (.not.have_option(option_path)) then
+                    call add_option(trim(option_path),  stat=stat)
+                    option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Saturation_flipping/prescribed"
+                    call add_option(trim(option_path)//"/mesh::PressureMesh",  stat=stat)
+                    call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
+                    call add_option(trim(option_path)//"/value::WholeMesh/no_initial_condition",  stat=stat)
+                    call add_option(trim(option_path)//"/output",  stat=stat)
+                    call add_option(trim(option_path)//"/stat",  stat=stat)
+                    call add_option(trim(option_path)//"/stat/exclude_from_stat",  stat=stat)
+                    call add_option(trim(option_path)//"/detectors",  stat=stat)
+                    call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
+                    call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
+                    call add_option(trim(option_path)//"/consistent_interpolation",  stat=stat)
+                    call copy_option("simulation_name", trim(option_path)//"/output/exclude_from_vtu")
+                  end if
+                end if
             end do
         end if
 
