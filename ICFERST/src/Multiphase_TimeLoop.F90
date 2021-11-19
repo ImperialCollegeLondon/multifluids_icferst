@@ -424,7 +424,7 @@ contains
             end do
 
             !Get into packed state relative permeability, immobile fractions, ...
-            call get_RockFluidProp(state, packed_state, Mdims, ndgln)
+            call get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time)
             !Allocate the memory to obtain the sigmas at the interface between elements
             call allocate_porous_adv_coefs(Mdims, upwnd)
             !Ensure that the initial condition for the saturation sum to 1.
@@ -560,9 +560,6 @@ contains
             ! evaluate prescribed fields at time = current_time+dt
             call set_prescribed_field_values( state, exclude_interpolated = .true., &
                 exclude_nonreprescribed = .true., time = acctim )
-
-            !Update immobile fractions values (based on Phasevolumefractions and inmobile fractions) do this OUTSIDE the non-linear loop
-            call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)
 
             !Initialise to zero the SFPI counter
             SFPI_taken = 0
@@ -837,6 +834,10 @@ contains
                 its = its + 1
                 first_nonlinear_time_step = .false.            
             end do Loop_NonLinearIteration
+
+            !Update immobile fractions values (for hysteresis relperm models, needs to be done after a succesful non-linear loop)
+            if (have_option_for_any_phase("/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient",&
+                     Mdims%n_in_pres)) call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)
 
             if (have_Passive_Tracers) then
               !We make sure to only enter here once if there are no passive tracers
