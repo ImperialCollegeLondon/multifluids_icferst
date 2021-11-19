@@ -2138,7 +2138,7 @@ contains
       !Check if the situation is changing and if so, store the new value with the sign
       if (abs(sat - old_sat)<1e-4) then
         return
-      if (abs(sign(1., sat - old_sat ) - sign(1., sat_flip )) > tol ) then
+      else if (abs(sign(1., sat - old_sat ) - sign(1., sat_flip )) > tol ) then
         sat_flip = sign(old_sat, sat - old_sat )
       end if
 
