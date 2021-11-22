@@ -1356,7 +1356,7 @@ contains
             ref_density(iphase) = retrieve_reference_density(state, packed_state, iphase, 0, Mdims%nphase)
           end do
         end if
-        
+
         call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
         have_gravity = ( stat == 0 )
 
@@ -1977,7 +1977,7 @@ contains
     !>them into packed state
     !>By index this is: 1) immobile fraction, 2) relperm max, 3)relperm exponent
     !> 4)Capillary entry pressure 5) Capillary exponent 6) Capillary imbition term
-    !> The effective inmobile fraction is the min(inmobile,saturation), 
+    !> The effective inmobile fraction is the min(inmobile,saturation),
     !> being the saturation the value after a succesful non-linear solver convergence!
     !> This NEEDS to be called after a succesful non-linear solver (with update_only)
     subroutine get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time, update_only)
@@ -2012,7 +2012,7 @@ contains
         call allocate (targ_Store, Auxmesh, "Temporary_get_RockFluidProp")
 
         !If only updating there is no need to update the other parameters
-        if (.not.present_and_true(update_only)) then 
+        if (.not.present_and_true(update_only)) then
           !Now obtain relpermMax
           do iphase = 1, nphase
             path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
@@ -2090,16 +2090,16 @@ contains
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
                 t_field%val(1,iphase,:) = targ_Store%val
             else if (have_option("/material_phase["//int2str(iphase-1)//&
-                      "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then 
+                      "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then
               path = "/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value"
-              !Extract the land parameter 
+              !Extract the land parameter
               call initialise_field_over_regions(targ_Store, trim(path) , position)
               !We first extract the field containing the historical point of saturation
-              saturation_flip => extract_scalar_field(state(iphase), "Saturation_flipping") 
+              saturation_flip => extract_scalar_field(state(iphase), "Saturation_flipping")
               !Only for the first time ever, not for checkpointing, overwrite the saturation flipping value with the initial one
-              if (present(current_time)) then 
-               if( current_time < 1e-8) then 
+              if (present(current_time)) then
+               if( current_time < 1e-8) then
                 do cv_nod = 1, Mdims%cv_nonods
                   saturation_flip%val(cv_nod) = max(Saturation%val(1,iphase,cv_nod), 1e-16)!limit because we need to store signs also
                 end do
@@ -2110,7 +2110,7 @@ contains
                 do cv_iloc = 1, Mdims%cv_nloc
                   cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
                   !Then the immobile fraction depends on the Land coefficient as follows (this must occur outside the non-linear loop!)
-                  !Formula is: Immobile = S_flip/(1+C*S_flip). Where S_flip is the saturation 
+                  !Formula is: Immobile = S_flip/(1+C*S_flip). Where S_flip is the saturation
                   !when changing from imbibition to drainage or the other way round
                   call Update_saturation_flipping(saturation_flip%val(cv_nod), Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
                   auxR = abs(saturation_flip%val(cv_nod))
@@ -2130,13 +2130,15 @@ contains
     !> Saturation_flipping stores both the value and the history, being positive if the phase is increasing and negative if the phase is decreasing.
     !> Therefore its minimum absolute value is non-zero
     subroutine Update_saturation_flipping(sat_flip, sat, old_Sat)
-      implicit none 
+      implicit none
       real, INTENT(IN) :: sat, old_Sat
       real, INTENT(INOUT) :: sat_flip
       !Local variables
       real, parameter :: tol = 1e-10
       !Check if the situation is changing and if so, store the new value with the sign
-      if (abs(sign(1., sat - old_sat ) - sign(1., sat_flip )) < tol ) then
+      if (abs(sat - old_sat)<1e-4) then
+        return
+      else if (abs(sign(1., sat - old_sat ) - sign(1., sat_flip )) > tol ) then
         sat_flip = sign(old_sat, sat - old_sat )
       end if
 

@@ -422,7 +422,7 @@ contains
                 !For hysteresis relperms we need to keep track of when the saturation flips from drainage to imbibition
                 !We generate the memory here because we need to be able to interpolate...
                 if (have_option("/material_phase["//int2str(i-1)//&
-                "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then 
+                "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then
                   option_path = "/material_phase["// int2str( i -1 )//"]/scalar_field::Saturation_flipping"
                   if (.not.have_option(option_path)) then
                     call add_option(trim(option_path),  stat=stat)
@@ -1103,7 +1103,7 @@ contains
         end if
 
         !Check if FEM_continuity_equation is being used for porous media and if so show a warning message
-        if (is_porous_media .and. have_option("/geometry/Advance_options/FE_Pressure/FEM_continuity_equation)")) then 
+        if (is_porous_media .and. have_option("/geometry/Advance_options/FE_Pressure/FEM_continuity_equation)")) then
           if (GetProcNo() == 1) then
             FLAbort( "ERROR: FEM_continuity_equation should not be used for porous media. For stability use DCVFEM. If you still want to use it disable this error.")
           end if
