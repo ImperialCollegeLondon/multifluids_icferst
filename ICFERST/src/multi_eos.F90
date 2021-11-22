@@ -2140,7 +2140,7 @@ contains
       ! Ensure that the immobile fraction does not decrease, i.e. sat_flip does not decrease
       ! this can only decrease once it has trapped a field with thermal effects, 
       ! but currently we are not considering these
-      if (old_sat > abs(sat_flip)) then
+      if (old_sat > abs(sat_flip) + tol ) then
          if (abs(sign(1., sat - old_sat ) - sign(1., sat_flip )) > tol ) &
           sat_flip = sign(old_sat, sat - old_sat )
       end if
