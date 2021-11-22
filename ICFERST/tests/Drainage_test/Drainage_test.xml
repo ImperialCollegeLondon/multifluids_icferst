@@ -7,14 +7,14 @@
     <command_line>../../../bin/icferst Drainage_test.mpml</command_line>
   </problem_definition>
   <variables>
-    <variable name="max_temp" language="python">from fluidity_tools import stat_parser as stat
+    <variable name="max_val" language="python">from fluidity_tools import stat_parser as stat
 max_val = stat("Drainage_test.stat")["CO2"]["PhaseVolumeFraction"]["max"][-1]</variable>
-    <variable name="min_temp" language="python">from fluidity_tools import stat_parser as stat
+    <variable name="min_val" language="python">from fluidity_tools import stat_parser as stat
 min_val = stat("Drainage_test.stat")["CO2"]["PhaseVolumeFraction"]["min"][-1]</variable>
   </variables>
   <pass_tests>
-    <test name="Assert final max temperature" language="python">assert(abs((max_val - 0.104822)/0.104822) &lt; 0.01)</test>
-    <test name="Assert final min temperature" language="python">assert(abs((min_val - 0.0954)/0.0954) &lt; 0.01)</test>
+    <test name="Assert final max sat" language="python">assert(abs((max_val - 0.104822)/0.104822) &lt; 0.01)</test>
+    <test name="Assert final min sar" language="python">assert(abs((min_val - 0.0954)/0.0954) &lt; 0.01)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
