@@ -2129,6 +2129,7 @@ contains
     !> and updates if required the value stored in Saturation_flipping
     !> Saturation_flipping stores both the value and the history, being positive if the phase is increasing and negative if the phase is decreasing.
     !> Therefore its minimum absolute value is non-zero
+    !> NOTE: Currently the trapping can only increase, i.e. no thermal effects have been considered
     subroutine Update_saturation_flipping(sat_flip, sat, old_Sat)
       implicit none
       real, INTENT(IN) :: sat, old_Sat
@@ -2136,10 +2137,12 @@ contains
       !Local variables
       real, parameter :: tol = 1e-10
       !Check if the situation is changing and if so, store the new value with the sign
-      if (abs(sat - old_sat)<1e-4) then
-        return
-      else if (abs(sign(1., sat - old_sat ) - sign(1., sat_flip )) > tol ) then
-        sat_flip = sign(old_sat, sat - old_sat )
+      ! Ensure that the immobile fraction does not decrease, i.e. sat_flip does not decrease
+      ! this can only decrease once it has trapped a field with thermal effects, 
+      ! but currently we are not considering these
+      if (old_sat > abs(sat_flip)) then
+         if (abs(sign(1., sat - old_sat ) - sign(1., sat_flip )) > tol ) &
+          sat_flip = sign(old_sat, sat - old_sat )
       end if
 
     end subroutine
