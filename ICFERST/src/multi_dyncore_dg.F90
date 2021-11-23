@@ -1268,7 +1268,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                      !If using ADAPTIVE FPI with backtracking
                      if (backtrack_par_factor < 0) then
-                
+#ifndef USING_XGBOOST                         
+                        if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                           call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                        end if
+#endif                          
                          !Calculate the actual residual using a previous backtrack_par
                          ! vtracer=as_vector(sat_field,dim=2)
                          call mult(residual, Mmat%petsc_ACV, solution)
@@ -1288,8 +1292,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          if (its==1) first_res = res!Variable to check total convergence of the SFPI method
                          
                          if (its == 1) then 
-                            if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number (auto_backtracking) or a set of dimensionless numbers (AI_backtracking_parameters)                          
 #ifdef USING_XGBOOST
+                            if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number (auto_backtracking) or a set of dimensionless numbers (AI_backtracking_parameters)                          
                                 !#=================================================================================================================
                                 !# Vinicius: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
                                 !#=================================================================================================================
@@ -1300,10 +1304,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                                 !#=================================================================================================================
                                 !# Vinicius-End: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
                                 !#=================================================================================================================   
+                            end if
 #else       
-                                call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
-#endif                    
-                         end if              
+                            first_res = res
+#endif               
                         end if
                      end if
                  end if

@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------------------
 !> @author Vinicius L S Silva
 !> @brief Interface to call XGBoost library C API from fortran
-!> This code is a inspired in https://github.com/christophkeller/fortran2xgb 
+!> This code is a inspired by https://github.com/christophkeller/fortran2xgb 
 !----------------------------------------------------------------------------------------
 
 module xgb_interface
@@ -76,5 +76,18 @@ module xgb_interface
          ! End parameters 
       end function
    end interface
+
+   interface
+   ! Set Booster parameters
+   ! Returns 0 when success, -1 when failure happens
+      integer(c_int) function fortran_XGBoosterSetParam(handle, name, value) bind(C, name="XGBoosterSetParam")
+         use iso_c_binding, only: c_int, c_char, c_ptr
+         ! Parameters
+         type(c_ptr), value                          :: handle ! Handle
+         character(len=1, kind=c_char), dimension(*) :: name   ! parameter name
+         character(len=1, kind=c_char), dimension(*) :: value  ! value of parameter
+         ! End parameters 
+      end function
+   end interface   
    
 end module

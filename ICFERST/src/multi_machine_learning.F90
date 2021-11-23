@@ -69,6 +69,8 @@ module multi_machine_learning
       write(*,*) 'Reading '//trim(name_xgb_model)
       ! Always use "trim(name)//c_null_char" to pass the file name 
       error = fortran_XGBoosterLoadModel(xgb_model, trim(name_xgb_model)//c_null_char)
+      ! Forces the XGBoost model to use only 1 thread for prediction (faster than using all of them)
+      error = fortran_XGBoosterSetParam(xgb_model, trim('nthread')//c_null_char, trim('1')//c_null_char)
 
       !--- Cleanup
       deallocate(xgb_input)
