@@ -1362,7 +1362,7 @@ and 'tensor_fields';
 'Pressure' is the pressure field
 
 All the phases can be accessed. state is the current phase and other phases can be accessed as 
-state1 (for phase 1), state2 for phase 2, etc. With the exception of the current phase which is accessed as state</a:documentation>
+state1 (for phase 1), state2 for phase 2, etc.</a:documentation>
       <attribute name="name">
         <value>scalar_python_diagnostic</value>
       </attribute>
