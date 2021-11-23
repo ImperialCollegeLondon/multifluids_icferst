@@ -553,6 +553,7 @@ contains
             !Store backup to be able to repeat a timestep
             if (nonLinearAdaptTs) call Adaptive_NonLinear(mdims, packed_state, reference_field, its, &
                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 1)
+             
             !! Update all fields from time-step 'N - 1'
             call copy_packed_new_to_old( packed_state )
             ExitNonLinearLoop = .false.
@@ -806,7 +807,10 @@ contains
                     exit Loop_NonLinearIteration
                 end if
 
-
+                !Update immobile fractions values (for hysteresis relperm models)
+                ! MUST BE BEFORE Adaptive_NonLinear
+                if (have_option_for_any_phase("/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient",&
+                Mdims%n_in_pres)) call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)   
 
                 !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
@@ -835,9 +839,6 @@ contains
                 first_nonlinear_time_step = .false.            
             end do Loop_NonLinearIteration
 
-            !Update immobile fractions values (for hysteresis relperm models, needs to be done after a succesful non-linear loop)
-            if (have_option_for_any_phase("/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient",&
-                     Mdims%n_in_pres)) call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)
 
             if (have_Passive_Tracers) then
               !We make sure to only enter here once if there are no passive tracers

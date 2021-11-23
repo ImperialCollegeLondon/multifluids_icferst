@@ -809,10 +809,11 @@ ONLY specify for the wetting phase</a:documentation>
                     </element>
                     <element name="scalar_field">
                       <a:documentation>For drainage the immobile fraction is computed dynamically using the Land formula.
+NOTE: No thermal effects considered to change the trapping, i.e. trapping is permanent
 
 High hysteresis ~ 0.2. Low hysteresis &gt; 5
 
-Land_coefficient = 1/Maximum_Immobile_Fraction - 1; Also known as "C".</a:documentation>
+Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".</a:documentation>
                       <attribute name="name">
                         <value>Land_coefficient</value>
                       </attribute>
