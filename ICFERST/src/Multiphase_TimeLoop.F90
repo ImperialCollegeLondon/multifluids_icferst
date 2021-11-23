@@ -25,6 +25,10 @@ module multiphase_time_loop
   use multi_phreeqc
 #endif
 
+#ifdef USING_XGBOOST
+    use multi_machine_learning
+#endif
+
     use field_options
     use write_state_module
     use diagnostic_variables
@@ -207,6 +211,9 @@ contains
         ! Andreas. Declare the parameters required for skipping pressure solve
         Integer:: rcp                 !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
         Logical:: EnterSolve =.true., after_adapt_itime =.false.  !Flag to either enter or not the pressure solve
+        
+        integer :: SFPI_its = 0
+        integer :: max_sat_its
 
         real,allocatable, dimension(:) :: c_phi_series
         integer :: c_phi_length
@@ -226,8 +233,6 @@ contains
       ierr = Zoltan_Initialize(ver)
       assert(ierr == ZOLTAN_OK)
 #endif
-
-
 
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
@@ -561,6 +566,16 @@ contains
             SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
+                
+                !#=================================================================================================================
+                !# Vinicius: Exit simulation if it do not reach convergence
+                !#=================================================================================================================
+                ! call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
+                ! if (its == NonLinearIteration .and. SFPI_its >= max_sat_its) exit Loop_Time
+                !#=================================================================================================================
+                !# Vinicius-end: Exit simulation if it do not reach convergence
+                !#================================================================================================================= 
+
               !for the diagnostic field, now it seems to be working fine...
                 ewrite(2,*) '  NEW ITS', its
                 !if adapt_mesh_in_FPI, relax the convergence criteria, since we only want the approx position of the flow
@@ -651,8 +666,8 @@ contains
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
-                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
-                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, Courant_number, &
+                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, & 
+                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
 
                 end if Conditional_PhaseVolumeFraction
@@ -803,7 +818,7 @@ contains
                         adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Courant_number(2), first_time_step)
 
                 !Flag the matrices as already calculated (only the storable ones
-                Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI
+                Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI   
 
                 if (ExitNonLinearLoop) then
                     if (adapt_mesh_in_FPI) then
@@ -821,8 +836,7 @@ contains
                 end if
                 after_adapt=.false.
                 its = its + 1
-                first_nonlinear_time_step = .false.
-
+                first_nonlinear_time_step = .false.            
             end do Loop_NonLinearIteration
 
 
@@ -1015,6 +1029,15 @@ contains
 
         end do Loop_Time
 
+!#=================================================================================================================
+!# Vinicius: Free XGB model
+!#=================================================================================================================        
+#ifdef USING_XGBOOST
+        if (getprocno() == 1) call xgboost_free_model()
+#endif
+!#=================================================================================================================
+!# Vinicius-end: Free XGB model
+!#=================================================================================================================
 
         if (has_references(metric_tensor)) call deallocate(metric_tensor)
         !!$ Now deallocating arrays:
