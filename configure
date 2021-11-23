@@ -660,6 +660,9 @@ MPIF90
 MPICC
 ENABLE_PSMILE
 FLPSMILE_PATH
+XGBOOST
+LIB_XGBOOST
+FLXGBOOST_PATH
 PHREEQC
 LIB_PHREEQC
 FLPHREEQC_PATH
@@ -771,6 +774,7 @@ enable_shared
 enable_verbose
 with_femdem
 with_phreeqc
+with_xgboost
 with_psmile
 with_netcdf
 enable_petscdebug
@@ -1484,6 +1488,8 @@ Optional Packages:
                           specify the femdem path
   --with-phreeqc[=phreeqc_library]
                           specify the phreeqc path
+  --with-xgboost[=xgboost]
+                          specify the xgboost path
   --with-psmile[=psmile_library]
                           specify the oasis4 path
   --with-netcdf[=netcdf_ROOT]
@@ -2976,6 +2982,7 @@ fi
 
 FLFEMDEM="femdem"
 FLPHREEQC="phreeqc"
+FLXGBOOST="xgboost"
 # Check system type
 ac_aux_dir=
 for ac_dir in "$srcdir" "$srcdir/.." "$srcdir/../.."; do
@@ -10017,6 +10024,7 @@ ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ex
 ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 
+
   OPENMP_CXXFLAGS=
   # Check whether --enable-openmp was given.
 if test "${enable_openmp+set}" = set; then :
@@ -10918,7 +10926,7 @@ fi
 
 if test -n "$with_phreeqc" ; then
   FLPHREEQC_PATH="${with_phreeqc}"
-  LIB_FEMDEM="${with_phreeqc}""/lib/libphreeqcrm.so"
+  LIB_PHREEQC="-Wl,-rpath,${with_phreeqc} ${with_phreeqc}""/libphreeqcrm.so"
   PHREEQC="yes"
   cat >> confdefs.h << EOF
 #define USING_PHREEQC 1
@@ -10929,6 +10937,31 @@ else
   PHREEQC=""
 fi
 
+
+
+
+
+##########################################
+# Are we using XGBOOST
+##########################################
+
+# Check whether --with-xgboost was given.
+if test "${with_xgboost+set}" = set; then :
+  withval=$with_xgboost;
+fi
+
+if test -n "$with_xgboost" ; then
+  FLXGBOOST_PATH="${with_xgboost}"
+  LIB_XGBOOST="-Wl,-rpath,${with_xgboost} ${with_xgboost}""/libxgboost.so"
+  XGBOOST="yes"
+  cat >> confdefs.h << EOF
+#define USING_XGBOOST 1
+EOF
+else
+  FLXGBOOST_PATH=""
+  LIB_XGBOOST=""
+  XGBOOST=""
+fi
 
 
 
@@ -17703,3 +17736,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
+

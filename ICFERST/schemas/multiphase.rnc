@@ -1536,6 +1536,11 @@ solver_options =
                 real
                 }?
               ),
+                ## Recommended method. XGBoost installed and compiled with ICFERST is a requirement.
+                ## Specify here the path to the machine learning (XGBoost model)               
+                element ML_model_path{
+                string
+                }?,
                 ## Introduce over-relaxation in the saturation equation.
                 ## This severely HELPS to reduce the number of FPI.
                 ##
