@@ -1,7 +1,6 @@
 !----------------------------------------------------------------------------------------
 !> @author Vinicius L S Silva
 !> @brief Interface to call XGBoost library C API from fortran
-!> This code is a inspired by https://github.com/christophkeller/fortran2xgb 
 !----------------------------------------------------------------------------------------
 
 module xgb_interface
