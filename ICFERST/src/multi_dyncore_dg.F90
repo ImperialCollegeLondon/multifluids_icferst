@@ -1272,6 +1272,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                         if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
                         end if
+#else 
+                        if (.not. have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path")) then 
+                            if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                                call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                             end if
+                        end if
 #endif                          
                          !Calculate the actual residual using a previous backtrack_par
                          ! vtracer=as_vector(sat_field,dim=2)
@@ -1293,6 +1299,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          
                          if (its == 1) then 
 #ifdef USING_XGBOOST
+                          if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path")) then 
                             if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number (auto_backtracking) or a set of dimensionless numbers (AI_backtracking_parameters)                          
                                 !#=================================================================================================================
                                 !# Vinicius: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
@@ -1305,6 +1312,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                                 !# Vinicius-End: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
                                 !#=================================================================================================================   
                             end if
+                        else
+                            first_res = res
+                        end if
 #else       
                             first_res = res
 #endif               
