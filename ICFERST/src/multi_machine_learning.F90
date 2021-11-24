@@ -100,6 +100,7 @@ module multi_machine_learning
       ! Constants
       integer(c_int), parameter  :: option_mask = 0
       integer(c_int), parameter  :: ntree_limit = 0
+      integer(c_int), parameter  :: training = 0
       real(c_float), parameter   :: missing = -999.0 
       
 
@@ -114,7 +115,7 @@ module multi_machine_learning
       xgb_input = norm_input
       error = fortran_XGDMatrixCreateFromMat(xgb_input, nrow, ncol, missing, dmatrix)
       ! Make prediction. The result will be stored in c pointer out_result_c 
-      error = fortran_XGBoosterPredict(xgb_model, dmatrix, option_mask, ntree_limit, out_len, out_result_c)
+      error = fortran_XGBoosterPredict(xgb_model, dmatrix, option_mask, ntree_limit, training, out_len, out_result_c)
       ! Link to fortran pointer out_result 
       call c_f_pointer(out_result_c, out_result, [out_len])
       !write(*,*) 'XGB model Prediction: ',out_result
