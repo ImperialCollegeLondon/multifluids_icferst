@@ -1010,6 +1010,35 @@ scalar_python_diagnostic_algorithm =
          }?
       }
    )
+scalar_python_diagnostic_algorithm_icferst = 
+   (
+      ## Algorithm for the diagnostic value coded in Python. 
+      ## The object 'state' has the attributes 'scalar_fields', 'vector_fields'
+      ## and 'tensor_fields';
+      ## 'field' is the diagnostic field to be set.
+      ## 'time' and 'dt' are the current time and timestep.
+      ## 'Pressure' is the pressure field
+      ## 
+      ## All the phases can be accessed. state is the current phase and other phases can be accessed as 
+      ## state1 (for phase 1), state2 for phase 2, etc.
+      element algorithm {
+         attribute name { "scalar_python_diagnostic" },
+         python_code,
+         ## Enable to specify dependencies manually. Any field specified here
+         ## will be calculated before this python diagnostic field.
+         ##
+         ## Fields should be a comma delimited list.
+         ## If fields from other material_phases are required, use the :: operator.
+         ## For example, if the other material_phase's name is Water, and the
+         ## field name is Velocity, then use:
+         ##
+         ## Water::Velocity
+         element depends {
+            anystring
+         }?
+      }
+   )   
+   
 vector_python_diagnostic_algorithm = 
    (
       ## Algorithm for the diagnostic value coded in Python. 

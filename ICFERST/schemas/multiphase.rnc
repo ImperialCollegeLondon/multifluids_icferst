@@ -1104,22 +1104,22 @@ start =
            ## Rock saturated conductivity term (sigma). If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Rock_sat_conductivity_code{
-             scalar_python_diagnostic_algorithm
+             scalar_python_diagnostic_algorithm_icferst
                }?,
            ## Electrokinetic (Cek) coupling term. If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_ElectroKinetic_code{
-             scalar_python_diagnostic_algorithm
+             scalar_python_diagnostic_algorithm_icferst
                }?,
            ## Electrodiffusive (Ced) coupling term. If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Electrodiffusive_code{
-             scalar_python_diagnostic_algorithm
+             scalar_python_diagnostic_algorithm_icferst
                }?,
            ## Thermoelectric (Cte) coupling term. If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Thermoelectric_code{
-             scalar_python_diagnostic_algorithm
+             scalar_python_diagnostic_algorithm_icferst
                }?
           )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
@@ -3911,7 +3911,7 @@ element Density{(
                         element Boussinesq_approximation { empty }?}|
                      ## The "Dummy" diagnotic field on the pressure mesh is required for this option
                      element python_state{(
-                       scalar_python_diagnostic_algorithm,
+                       scalar_python_diagnostic_algorithm_icferst,
                        ## Use the boussinesq approximation. Useful for small variations of density.
                         element Boussinesq_approximation { (
                         ## For porous media a reference density is necessary when using the Boussinesq approximation

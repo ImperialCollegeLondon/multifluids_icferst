@@ -918,9 +918,9 @@ END subroutine RotationMatrix
     !> the only difference with the normal approach is that here the Dummy field is used and the returned field is an array.
     !> IMPORTANT: state is used here, NOT packed_state
     !> It can be used for a given array, scalar_result, scalar fields, vector fields or tensor fields, but only one at a time
-    subroutine multi_compute_python_field(state, iphase, option_path_python, scalar_result, sfield, vfield, tfield)
+    subroutine multi_compute_python_field(states, iphase, option_path_python, scalar_result, sfield, vfield, tfield)
       implicit none
-      type( state_type ), dimension(:), intent( inout ) :: state
+      type( state_type ), dimension(:), intent( inout ) :: states
       integer, intent(in) :: iphase
       character( len = * ), intent(in) :: option_path_python
       real, dimension(:), intent(inout), optional :: scalar_result
@@ -932,6 +932,7 @@ END subroutine RotationMatrix
       character( len = python_func_len ) :: pycode
       character( len = option_path_len ) :: buffer
       real :: dt, current_time
+      integer :: i
 
 #ifdef HAVE_NUMPY
       ewrite(3,*) "Have both NumPy and a python eos..."
@@ -940,15 +941,26 @@ END subroutine RotationMatrix
 #endif
 
       call python_reset()
-      call python_add_state( state(iphase) )
-
+      
+      !Support for multiphase
+      call python_add_states(states)
+      call python_run_string("state = states['"//trim(states(iphase)%name)//"']")
+      if (iphase == 1) call python_run_string("Pressure = state.scalar_fields['Pressure']")
+      do i = 1, size(states)
+        if (iphase /= i) then 
+          call python_run_string("state"//int2str(i)//" = states['"//trim(states(i)%name)//"']")
+          !Provide Pressure always so it is available in all the phases
+          if (i == 1) call python_run_string("Pressure = state1.scalar_fields['Pressure']")
+        end if
+      end do
+      
       !Depending on the input field we define field in a different way
       if (present(scalar_result)) then 
         if (.not.have_option("/material_phase["// int2str( iphase - 1)//"]/scalar_field::Dummy")) then
             ewrite(0, *) "ERROR: Trying to compute a python scalar_field without enabling the Dummy field in the corresponding phase."
           stop 657483
         end if
-        s_field => extract_scalar_field(state(iphase), "Dummy");
+        s_field => extract_scalar_field(states(iphase), "Dummy");
         !Impose initially the given value
         s_field%val = scalar_result
         call python_run_string("field = state.scalar_fields['Dummy']")

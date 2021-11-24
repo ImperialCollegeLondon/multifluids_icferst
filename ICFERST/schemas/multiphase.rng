@@ -1351,28 +1351,28 @@ coordinates, the nearest vertex will be selected.</a:documentation>
                 <element name="python_Rock_sat_conductivity_code">
                   <a:documentation>Rock saturated conductivity term (sigma). If this option is on the coded result will be used instead of the internal formula.
 &lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
-                  <ref name="scalar_python_diagnostic_algorithm"/>
+                  <ref name="scalar_python_diagnostic_algorithm_icferst"/>
                 </element>
               </optional>
               <optional>
                 <element name="python_ElectroKinetic_code">
                   <a:documentation>Electrokinetic (Cek) coupling term. If this option is on the coded result will be used instead of the internal formula.
 &lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
-                  <ref name="scalar_python_diagnostic_algorithm"/>
+                  <ref name="scalar_python_diagnostic_algorithm_icferst"/>
                 </element>
               </optional>
               <optional>
                 <element name="python_Electrodiffusive_code">
                   <a:documentation>Electrodiffusive (Ced) coupling term. If this option is on the coded result will be used instead of the internal formula.
 &lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
-                  <ref name="scalar_python_diagnostic_algorithm"/>
+                  <ref name="scalar_python_diagnostic_algorithm_icferst"/>
                 </element>
               </optional>
               <optional>
                 <element name="python_Thermoelectric_code">
                   <a:documentation>Thermoelectric (Cte) coupling term. If this option is on the coded result will be used instead of the internal formula.
 &lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
-                  <ref name="scalar_python_diagnostic_algorithm"/>
+                  <ref name="scalar_python_diagnostic_algorithm_icferst"/>
                 </element>
               </optional>
             </element>
@@ -4765,7 +4765,7 @@ For porous media only the formulate, including linear pressure, with a reference
         </element>
         <element name="python_state">
           <a:documentation>The "Dummy" diagnotic field on the pressure mesh is required for this option</a:documentation>
-          <ref name="scalar_python_diagnostic_algorithm"/>
+          <ref name="scalar_python_diagnostic_algorithm_icferst"/>
           <optional>
             <element name="Boussinesq_approximation">
               <a:documentation>Use the boussinesq approximation. Useful for small variations of density.</a:documentation>
