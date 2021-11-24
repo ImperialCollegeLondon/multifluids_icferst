@@ -941,17 +941,19 @@ END subroutine RotationMatrix
 #endif
 
       call python_reset()
-      ! call python_add_state( state(iphase) )
-
+      
+      !Support for multiphase
       call python_add_states(states)
       call python_run_string("state = states['"//trim(states(iphase)%name)//"']")
-
-      !Support for multiphase
+      if (iphase == 1) call python_run_string("Pressure = state.scalar_fields['Pressure']")
       do i = 1, size(states)
-        if (iphase/=i)call python_run_string("state"//int2str(i)//" = states['"//trim(states(i)%name)//"']")
-        !Provide Pressure always so it is available in all the phases
-        if (i == 1) call python_run_string("Pressure = state1.scalar_fields['Pressure']")
+        if (iphase /= i) then 
+          call python_run_string("state"//int2str(i)//" = states['"//trim(states(i)%name)//"']")
+          !Provide Pressure always so it is available in all the phases
+          if (i == 1) call python_run_string("Pressure = state1.scalar_fields['Pressure']")
+        end if
       end do
+      
       !Depending on the input field we define field in a different way
       if (present(scalar_result)) then 
         if (.not.have_option("/material_phase["// int2str( iphase - 1)//"]/scalar_field::Dummy")) then
