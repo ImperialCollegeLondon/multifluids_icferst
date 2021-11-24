@@ -1135,6 +1135,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              logical :: satisfactory_convergence
              integer :: its, useful_sats
              logical, save :: Solve_all_phases
+             logical, save :: ML_method_activated
              !Variables to control the PETCs solver
              integer, save :: max_allowed_its = -1
              integer :: its_taken
@@ -1150,6 +1151,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  call get_option( trim(solver_option_path)//"max_iterations",&
                   max_allowed_its, default = 500)
                   Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
+                  ML_method_activated =  have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path")
              end if
 
              if (Solve_all_phases) then!For the number_of_normal_FPI FPIs we consider all the phases normally
@@ -1272,6 +1274,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                         if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
                         end if
+#else 
+                        if (.not. ML_method_activated) then 
+                            if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                                call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                             end if
+                        end if
 #endif                          
                          !Calculate the actual residual using a previous backtrack_par
                          ! vtracer=as_vector(sat_field,dim=2)
@@ -1293,6 +1301,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          
                          if (its == 1) then 
 #ifdef USING_XGBOOST
+                          if (ML_method_activated) then 
                             if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number (auto_backtracking) or a set of dimensionless numbers (AI_backtracking_parameters)                          
                                 !#=================================================================================================================
                                 !# Vinicius: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
@@ -1305,6 +1314,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                                 !# Vinicius-End: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
                                 !#=================================================================================================================   
                             end if
+                        else
+                            first_res = res
+                        end if
 #else       
                             first_res = res
 #endif               

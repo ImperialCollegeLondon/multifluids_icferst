@@ -52,13 +52,14 @@ module xgb_interface
    interface
    ! Make prediction based on dmatrix
    ! Returns 0 when success, -1 when failure happens
-      integer(c_int) function fortran_XGBoosterPredict(handle, dmat, option_mask, ntree_limit, out_len, out_result) bind(C, name="XGBoosterPredict")
+      integer(c_int) function fortran_XGBoosterPredict(handle, dmat, option_mask, ntree_limit, training, out_len, out_result) bind(C, name="XGBoosterPredict")
          use iso_c_binding, only: c_int, c_ptr, c_int64_t
          ! Parameters
          type(c_ptr), value        :: handle       ! Handle
          type(c_ptr), value        :: dmat         ! Data matrix
          integer(c_int), value     :: option_mask  ! Bit-mask of options taken in prediction, possible values 0:normal prediction 1:output margin instead of transformed value 2:output leaf index of trees instead of leaf value, note leaf index is unique per tree 4:output feature contributions to individual predictions
          integer(c_int), value     :: ntree_limit  ! Limit number of trees used for prediction, this is only valid for boosted trees when the parameter is set to 0, we will use all the trees
+         integer(c_int), value     :: training     ! Whether the prediction function is used as part of the training loop
          integer(c_int64_t)        :: out_len      ! Used to store length of returning result
          type(c_ptr)               :: out_result   ! Used to set a pointer to array
          ! End parameters 
