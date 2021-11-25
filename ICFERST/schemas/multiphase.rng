@@ -1900,8 +1900,27 @@ The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc
               <optional>
                 <element name="ML_model_path">
                   <a:documentation>Recommended method. XGBoost installed and compiled with ICFERST is a requirement.
-Specify here the path to the machine learning (XGBoost model)               </a:documentation>
+Specify here the path to the machine learning (XGBoost) model.               </a:documentation>
                   <data type="string" datatypeLibrary=""/>
+                  <group>
+                    <optional>
+                      <element name="save_model">
+                        <a:documentation>Use this to convert the XGBoost model to the version of XGBoost installed.
+It saves the model in the same folder of the old model using the name "name_old_model".saved.</a:documentation>
+                        <empty/>
+                      </element>
+                    </optional>
+                    <optional>
+                      <element name="target_num_nonlinear">
+                        <a:documentation>Target number of inner-nonlinear iterations per outer-nonlinear iteration. 
+
+&lt;b&gt;Recommended values: 1.0 to 5.0 &lt;/b&gt;     
+
+&lt;b&gt;Default value: 1.0 &lt;/b&gt;</a:documentation>
+                        <ref name="real"/>
+                      </element>
+                    </optional>
+                  </group>
                 </element>
               </optional>
               <optional>

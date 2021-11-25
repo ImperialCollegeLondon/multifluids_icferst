@@ -9544,13 +9544,16 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
         real(c_float), dimension(17)  :: raw_input 
         real(c_float), pointer        :: out_result(:)
+        real                          :: target_nli
 
         backtrack_par_factor = -1. ! Assign -1 to backtrack_par_factor in all cores
         if (getprocno() == 1) then ! To let only 1 core to load and predict using the ML model
             if (.not. loaded_file) then
-                call xgboost_load_model()
+                call xgboost_load_model()                
                 loaded_file = .true.
             end if
+
+            call get_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path/target_num_nonlinear", target_nli, default=1.0)
 
             raw_input = (/aspect_ratio, & 
                         & courant_number, &
@@ -9568,7 +9571,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                         & res, &
                         & resold, &
                         & res/resold, &
-                        & 1.0 /) !1 inner nonlinear iteration  
+                        & target_nli /) !Target number of inner-nonlinear iteration  
 
             call xgboost_predict(raw_input, out_result)
             !write(*,*) 'XGB model prediction: ',out_result
@@ -9583,7 +9586,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !! ***Write into file*** !!!
         !***************************!
     
-        ! !inquire(file="AI_backtracking_parameters.csv", exist=file_exist) 
+        !inquire(file="AI_backtracking_parameters.csv", exist=file_exist) 
         ! if (.not. written_file) then
         !     open(73, file="AI_backtracking_parameters.csv", status="replace")
         !     !call date_and_time(VALUES=date_values)          
