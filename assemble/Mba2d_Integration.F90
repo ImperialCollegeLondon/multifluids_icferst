@@ -114,6 +114,11 @@ module mba2d_integration
     type(scalar_field) :: sends_sfield, receives_sfield
 #endif
 
+    !We may want to lock the nodes within the solid region in the solid_implicit solver
+    integer, dimension(:), allocatable :: solid_nodes_to_lock
+    logical :: found_now
+    integer, parameter:: nloc=3
+
     ewrite(1, *) "In adapt_mesh_mba2d"
 
     assert(all(metric%dim == 2))
@@ -266,8 +271,24 @@ module mba2d_integration
       allocate(ife(nfe))
     end if
     
+    allocate(solid_nodes_to_lock(node_count(input_positions))); solid_nodes_to_lock = 0;
+    ! if (have_option('/solid_implicit')) then
+    !   ! We want to lock nodes within the solid region in the solid_implicit solver.
+    !   ! For now we assume only one solid region with id 2
+    !   do i = 1, size(input_positions%mesh%region_ids)
+    !     !Make non-zero the nodes that have a region id matching one of the wells
+    !     found_now = input_positions%mesh%region_ids(i) == 2
+    !     if (found_now) then 
+    !       do j = 1, nloc ! (=3)
+    !         solid_nodes_to_lock(input_positions%mesh%ndglno((i-1)*nloc + j)) = 1
+    !       enddo
+    !     endif
+    !   enddo
+    ! endif
+
     ! construct list of nodes to be locked
-    call get_locked_nodes(input_positions, locked_nodes)
+    call get_locked_nodes(input_positions, locked_nodes, nodes_to_lock=solid_nodes_to_lock)
+    if(allocated(solid_nodes_to_lock)) deallocate(solid_nodes_to_lock)
     npv = count(boundcount > 1) + size(locked_nodes)
     if (nhalos>0) then
       npv = npv + halo_all_sends_count(old_halo) + halo_all_receives_count(old_halo)

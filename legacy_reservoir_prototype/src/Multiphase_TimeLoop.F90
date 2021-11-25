@@ -642,12 +642,9 @@ contains
                X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
                XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
                if(its==1) XOLD_ALL%val=X_ALL%val
-  !             ewrite(3,*)"before all_diffusion",its,XOLD_ALL%val
- !              ewrite(3,*)"X_ALL",its,X_ALL%val
-  !             ewrite(3,*)"after all_diffusion",its,XOLD_ALL%val
-               END If
-               if(diffusion_solid_implicit) then
-                                      call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+                if(diffusion_solid_implicit) then
+                    call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+                END If
                END If
                ewrite(-1,*) 'timestep, acctim, its', timestep, acctim, its
                 !#=================================================================================================================
@@ -848,13 +845,17 @@ contains
 
             !JXiang change coordinate of pressure mesh            
             if(solid_implicit) then
-            X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
-            XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
-            x_coord=> extract_vector_field( state, "Coordinate" )
-            XOLD_ALL%val=X_ALL%val
-            x_coord%val=X_ALL%val
- !           ewrite(3,*)"X0 coordinate",X0_ALL%val
-           end if
+                ! if(diffusion_solid_implicit) then
+                !     call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+                ! END If
+                X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
+                XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
+                x_coord=> extract_vector_field( state, "Coordinate" )
+                XOLD_ALL%val=X_ALL%val
+                x_coord%val=X_ALL%val
+                ! call halo_update(x_coord) ! we should halo_update grid velocity in all_diffusion_ug_solve
+                ! ewrite(3,*)"X0 coordinate",X0_ALL%val
+            end if
  
             !Call to create the output vtu files, if required and also checkpoint
             call create_dump_vtu_and_checkpoints()
