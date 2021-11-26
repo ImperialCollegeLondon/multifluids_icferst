@@ -1537,9 +1537,24 @@ solver_options =
                 }?
               ),
                 ## Recommended method. XGBoost installed and compiled with ICFERST is a requirement.
-                ## Specify here the path to the machine learning (XGBoost model)               
+                ## Specify here the path to the machine learning (XGBoost) model.               
                 element ML_model_path{
-                string
+                string,
+                (
+                    ## Use this to convert the XGBoost model to the version of XGBoost installed.
+                    ## It saves the model in the same folder of the old model using the name "name_old_model".saved.
+                    element save_model{
+                    empty
+                    }?,
+                    ## Target number of inner-nonlinear iterations per outer-nonlinear iteration. 
+                    ##
+                    ## <b>Recommended values: 1.0 to 5.0 </b>     
+                    ##
+                    ## <b>Default value: 1.0 </b>
+                    element target_num_nonlinear{
+                    real
+                    }?              
+                )
                 }?,
                 ## Introduce over-relaxation in the saturation equation.
                 ## This severely HELPS to reduce the number of FPI.

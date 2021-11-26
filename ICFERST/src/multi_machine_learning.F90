@@ -73,7 +73,13 @@ module multi_machine_learning
       ! Forces the XGBoost model to use only 1 thread for prediction (faster than using all of them)
       error = fortran_XGBoosterSetParam(xgb_model, trim('nthread')//c_null_char, trim('1')//c_null_char)
 
-      !--- Cleanup
+      !!! Save XGB model !!!
+      ! Save the machine learning model for compatibility 
+      if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path/save_model")) then
+        error = fortran_XGBoosterSaveModel(xgb_model, trim(name_xgb_model)//trim('.saved')//c_null_char)
+      end if
+
+      ! Cleanup
       deallocate(xgb_input)
 
     end subroutine xgboost_load_model

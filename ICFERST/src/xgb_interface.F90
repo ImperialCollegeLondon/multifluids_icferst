@@ -48,6 +48,19 @@ module xgb_interface
          ! End parameters 
       end function
    end interface
+
+   
+   interface
+   ! Save model into existing file.
+   ! Returns 0 when success, -1 when failure happens
+      integer(c_int) function fortran_XGBoosterSaveModel(handle, fname) bind(C, name="XGBoosterSaveModel")
+         use iso_c_binding, only: c_int, c_ptr, c_char
+         ! Parameters
+         type(c_ptr), value                          :: handle ! BoosterHandle
+         character(len=1, kind=c_char), dimension(*) :: fname  ! File URI or file name (*needs to be in the right c format - use trim(name_in_fortran)//c_null_char)
+         ! End parameters
+      end function
+   end interface
    
    interface
    ! Make prediction based on dmatrix
