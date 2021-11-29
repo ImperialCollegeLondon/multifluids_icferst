@@ -1398,17 +1398,17 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !# Vinicius: Write the number of non-linear iterations into file
              !#=================================================================================================================
              !inquire(file="Inner_non_linear_iterations.csv", exist=file_exist) 
-             if (.not. written_file) then
-                 open(75, file="non_linear_iterations.csv", status="replace")
-                 write(75, '(8(A,",",X))') "time_step", "outer_nonlinear_iteration", "Inner_non_linear_iterations"
-                 close(75)
-                 written_file = .true.
-             end if
-             ! Write values
-             open(75, file="non_linear_iterations.csv", status="unknown", position="append")
-             write(75, '(8(I8,",",X))') time_step, nonlinear_iteration, its 
-             close(75)
-             SFPI_its = its
+            !  if (.not. written_file) then
+            !      open(75, file="non_linear_iterations.csv", status="replace")
+            !      write(75, '(8(A,",",X))') "time_step", "outer_nonlinear_iteration", "Inner_non_linear_iterations"
+            !      close(75)
+            !      written_file = .true.
+            !  end if
+            !  ! Write values
+            !  open(75, file="non_linear_iterations.csv", status="unknown", position="append")
+            !  write(75, '(8(I8,",",X))') time_step, nonlinear_iteration, its 
+            !  close(75)
+            !  SFPI_its = its
              !#=================================================================================================================
              !# Vinicius-End: Write the number of non-linear iterations into file
              !#=================================================================================================================
