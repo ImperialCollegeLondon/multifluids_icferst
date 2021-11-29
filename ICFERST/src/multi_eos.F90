@@ -2421,4 +2421,63 @@ contains
       retrieve_reference_density = ref_rho
     end function
 
+
+
+    !>@brief: subroutine to dissolv phase2 into phase1. Currently only for system for phase 1 = water, phase 2 = gas
+    !> Dissolve instantaneously the amount introduced in diamond in mol/m3 for CO2 a reference number is 38 mol/m3.
+    !> Requires the first phase to have a concentration field
+    subroutine flash_gas_dissolution(packed_state, Mdims, dt)
+      implicit none
+      type(state_type) :: packed_state
+      real, intent (in) :: dt
+      type(multi_dimensions) :: Mdims
+      !Local variables
+      real, save  :: dissolution_rate= -1
+      real, parameter ::molar_mass= 0.0441 !in kg/mol
+      type(tensor_field), pointer :: saturation_field, concentration_field, density
+      type(vector_field), pointer :: MeanPoreCV, cv_volume
+      real :: initial_co2, dissolution_rate_new
+      integer :: cv_nod, iphase, stat
+
+      !Retrieve value from diamond
+      if (dissolution_rate < 0.) call get_option("/porous_media/Gas_dissolution", dissolution_rate)
+
+      saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+      concentration_field=>extract_tensor_field(packed_state,"PackedConcentration", stat)
+      if (stat /= 0) then 
+        FLAbort("To compute flash dissolution from second phase to the first phase, a Concentration field in the first phase is required.")
+      end if
+      density => extract_tensor_field(packed_state,"PackedDensity")
+      MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+      cv_volume=> extract_vector_field(packed_state,"CVIntegral")
+
+      do cv_nod=1,Mdims%cv_nonods
+        !Check if it is topped up already
+        if ( concentration_field%val(1,1,cv_nod) > dissolution_rate ) cycle
+        dissolution_rate_new = dissolution_rate-concentration_field%val(1,1,cv_nod)
+        !Check if the is ny CO2 at all
+        if ( saturation_field%val(1,2,cv_nod) < 1e-5 ) cycle
+        initial_co2 = saturation_field%val(1,2,cv_nod)/max(saturation_field%val(1,1,cv_nod),1e-5)*&
+        &density%val(1,2,cv_nod)/molar_mass
+    !    co2_available =  saturation_field%val(1,2,cv_nod)
+        concentration_field%val(1,1,cv_nod) = concentration_field%val(1,1,cv_nod) + min(dissolution_rate_new,initial_co2)
+    !    saturation_field%val(1,2,cv_nod) = (saturation_field%val(1,2,cv_nod)*MeanPoreCV%val(1,cv_nod)-&
+    !    &dissolution_rate_new*molar_mass/density%val(1,2,cv_nod))/MeanPoreCV%val(1,cv_nod)
+  !      if (abs(min(dissolution_rate_new,initial_co2) - initial_co2)<1e-5) then
+!          saturation_field%val(1,2,cv_nod) = 0.
+!          saturation_field%val(1,1,cv_nod) = 1.
+!        else
+        saturation_field%val(1,2,cv_nod) = (saturation_field%val(1,2,cv_nod)-min(dissolution_rate_new,initial_co2)*molar_mass/density%val(1,2,cv_nod))/&
+        &(saturation_field%val(1,2,cv_nod)-min(dissolution_rate_new,initial_co2)*molar_mass/density%val(1,2,cv_nod)+saturation_field%val(1,1,cv_nod))
+        saturation_field%val(1,1,cv_nod) = 1 - saturation_field%val(1,2,cv_nod)
+    !    end if
+      !  if (abs(min(dissolution_rate_new,initial_co2) - initial_co2)<1e-5) then
+      !    print *, (cv_volume%val(1,cv_nod)*MeanPoreCV%val(1,cv_nod))
+      !    print *, "Calculated:", (cv_volume%val(1,cv_nod)*MeanPoreCV%val(1,cv_nod)*(saturation_field%val(1,2,cv_nod)-initial_co2*molar_mass/density%val(1,2,cv_nod)+saturation_field%val(1,1,cv_nod)))
+    !    end if
+      end do 
+
+
+    end subroutine flash_gas_dissolution
+
 end module multiphase_EOS
