@@ -2421,4 +2421,58 @@ contains
       retrieve_reference_density = ref_rho
     end function
 
+
+
+    !>@brief: subroutine to dissolv phase2 into phase1. Currently only for system for phase 1 = water, phase 2 = gas
+    !> Dissolve instantaneously the amount introduced in diamond in mol/m3 for CO2 a reference number is 38 mol/m3.
+    !> Requires the first phase to have a concentration field
+    subroutine flash_gas_dissolution(packed_state, Mdims, dt)
+      implicit none
+      type(state_type) :: packed_state
+      real, intent (in) :: dt
+      type(multi_dimensions) :: Mdims
+      !Local variables
+      real, save  :: dissolution_parameter= -1
+      real, save ::molar_mass= -1 
+      type(tensor_field), pointer :: saturation_field, concentration_field, density
+      type(vector_field), pointer :: MeanPoreCV, cv_volume
+      real :: n_co2_diss_max, delta_n, n_co2_gas
+      integer :: cv_nod, iphase, stat
+
+      !Retrieve values from diamond
+      if (dissolution_parameter < 0.) then 
+        call get_option("/porous_media/Gas_dissolution", dissolution_parameter)!in mol/kg
+        call get_option("/porous_media/Gas_dissolution/molar_mass", molar_mass)!in kg/mol
+      end if
+
+      saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+      concentration_field=>extract_tensor_field(packed_state,"PackedConcentration", stat)
+      if (stat /= 0) then
+        FLAbort("To compute flash dissolution from second phase to the first phase, a Concentration field in the first phase is required.")
+      end if
+      density => extract_tensor_field(packed_state,"PackedDensity")
+      MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+      cv_volume=> extract_vector_field(packed_state,"CVIntegral")
+
+      do cv_nod=1,Mdims%cv_nonods
+        ! Compute maximum dissolved CO2 the CV can accomodate (in mol)
+        n_co2_diss_max = MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*density%val(1,1,cv_nod)*dissolution_parameter*saturation_field%val(1,1,cv_nod)
+        ! Compute the difference between maximum dissolved CO2 the CV can accomodate and the actual dissolved CO2 present in the CV (in mol)
+        delta_n = n_co2_diss_max - concentration_field%val(1,1,cv_nod)*MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*saturation_field%val(1,1,cv_nod)
+        ! Compute the gas CO2 present in the CV (in mol)
+        n_co2_gas = saturation_field%val(1,2,cv_nod) * density%val(1,2,cv_nod)/molar_mass * MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)
+        ! Update dissolved CO2 (passive tracer, in mol/m3)
+        concentration_field%val(1,1,cv_nod) = concentration_field%val(1,1,cv_nod) + min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod))
+        ! Update gas CO2 (in mol)
+        n_co2_gas = n_co2_gas - min(delta_n, n_co2_gas)
+        ! Update gas CO2 (change in saturation)
+        saturation_field%val(1,2,cv_nod) = ( n_co2_gas*molar_mass/density%val(1,2,cv_nod) ) / (MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod))
+        ! Update water saturation (change in saturation)
+        saturation_field%val(1,1,cv_nod) = 1 - saturation_field%val(1,2,cv_nod)
+
+      end do
+
+
+    end subroutine flash_gas_dissolution
+
 end module multiphase_EOS

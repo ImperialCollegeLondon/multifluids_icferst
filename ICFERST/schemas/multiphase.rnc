@@ -1122,6 +1122,16 @@ start =
              scalar_python_diagnostic_algorithm_icferst
                }?
           )}?,
+          ## This parameter specifies the maximum dissolved gas (phase2) into the liquid phase (phase1).
+          ## 
+          ## The dissolution is considered instantaneous (flash). The units are mol/Kg.
+          ## It requires a Concentration field on the first phase.
+	         element Gas_dissolution {
+	         	real,
+	         	(
+	         	## Molar mass of the gas being dissolved. For example for CO2 it is: 0.0441 kg/mol
+	         	element molar_mass{real}
+		        )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 	        ##
 	        ## This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.

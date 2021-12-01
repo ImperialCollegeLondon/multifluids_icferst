@@ -867,7 +867,8 @@ contains
               end do
             end if
 
-
+            !If Phase2 can dissolve into phase1 the flash calculation happens here
+           if (have_option("/porous_media/Gas_dissolution"))call flash_gas_dissolution(packed_state, Mdims, dt)
 
 #ifdef USING_PHREEQC
             call run_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc)

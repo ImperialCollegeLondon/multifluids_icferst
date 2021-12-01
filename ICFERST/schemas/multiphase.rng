@@ -1378,6 +1378,19 @@ coordinates, the nearest vertex will be selected.</a:documentation>
             </element>
           </optional>
           <optional>
+            <element name="Gas_dissolution">
+              <a:documentation>This parameter specifies the maximum dissolved gas (phase2) into the liquid phase (phase1).
+
+The dissolution is considered instantaneous (flash). The units are mol/Kg.
+It requires a Concentration field on the first phase.</a:documentation>
+              <ref name="real"/>
+              <element name="molar_mass">
+                <a:documentation>Molar mass of the gas being dissolved. For example for CO2 it is: 0.0441 kg/mol</a:documentation>
+                <ref name="real"/>
+              </element>
+            </element>
+          </optional>
+          <optional>
             <element name="FWL">
               <a:documentation>Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 
