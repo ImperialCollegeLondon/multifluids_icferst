@@ -2433,16 +2433,17 @@ contains
       type(multi_dimensions) :: Mdims
       !Local variables
       real, save  :: dissolution_parameter= -1
-      real, parameter ::molar_mass= 0.0441 !in kg/mol
+      real, save ::molar_mass= -1 
       type(tensor_field), pointer :: saturation_field, concentration_field, density
       type(vector_field), pointer :: MeanPoreCV, cv_volume
       real :: n_co2_diss_max, delta_n, n_co2_gas
       integer :: cv_nod, iphase, stat
 
-
-
-      !Retrieve value from diamond
-      if (dissolution_parameter < 0.) call get_option("/porous_media/Gas_dissolution", dissolution_parameter)
+      !Retrieve values from diamond
+      if (dissolution_parameter < 0.) then 
+        call get_option("/porous_media/Gas_dissolution", dissolution_parameter)!in mol/kg
+        call get_option("/porous_media/Gas_dissolution/molar_mass", molar_mass)!in kg/mol
+      end if
 
       saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
       concentration_field=>extract_tensor_field(packed_state,"PackedConcentration", stat)
