@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <icferst_options>
   <simulation_name>
-    <string_value lines="1">Check_monotonicity</string_value>
+    <string_value lines="1">Drainage_test</string_value>
   </simulation_name>
   <porous_media_simulator/>
   <geometry>
@@ -9,7 +9,7 @@
       <integer_value rank="0">2</integer_value>
     </dimension>
     <mesh name="CoordinateMesh">
-      <from_file file_name="mesh_structured">
+      <from_file file_name="structured_mesh">
         <format name="gmsh"/>
         <stat>
           <include_in_stat/>
@@ -17,39 +17,17 @@
       </from_file>
     </mesh>
     <simulation_quality>
-      <string_value>fast</string_value>
+      <string_value>balanced</string_value>
     </simulation_quality>
   </geometry>
-  <solver_options>
-    <Non_Linear_Solver>
-      <integer_value rank="0">20</integer_value>
-      <Fixed_Point_Iteration>
-        <real_value rank="0">1e-2</real_value>
-        <Infinite_norm_tol>
-          <real_value rank="0">0.01</real_value>
-          <adaptive_non_linear_iterations>
-            <integer_value rank="0">4</integer_value>
-          </adaptive_non_linear_iterations>
-        </Infinite_norm_tol>
-        <Backtracking_factor>
-          <real_value rank="0">-10</real_value>
-        </Backtracking_factor>
-        <Vanishing_relaxation>
-          <real_value rank="0">-1e2</real_value>
-          <Vanishing_for_transport>
-            <real_value rank="0">-1e2</real_value>
-          </Vanishing_for_transport>
-        </Vanishing_relaxation>
-      </Fixed_Point_Iteration>
-    </Non_Linear_Solver>
-  </solver_options>
+  <solver_options/>
   <io>
     <dump_format>
       <string_value>vtk</string_value>
     </dump_format>
     <dump_period_in_timesteps>
       <constant>
-        <integer_value rank="0">1</integer_value>
+        <integer_value rank="0">10</integer_value>
       </constant>
     </dump_period_in_timesteps>
   </io>
@@ -58,13 +36,13 @@
       <real_value rank="0">0</real_value>
     </current_time>
     <timestep>
-      <real_value rank="0">10e-3</real_value>
+      <real_value rank="0">0.4</real_value>
     </timestep>
     <finish_time>
-      <real_value rank="0">0.2</real_value>
+      <real_value rank="0">20</real_value>
     </finish_time>
   </timestepping>
-  <material_phase name="phase1">
+  <material_phase name="water">
     <phase_properties>
       <Density>
         <incompressible>
@@ -100,7 +78,7 @@
         </initial_condition>
         <boundary_conditions name="outlet">
           <surface_ids>
-            <integer_value shape="1" rank="1">3</integer_value>
+            <integer_value shape="1" rank="1">8</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -124,29 +102,9 @@
             <real_value shape="2" dim1="dim" rank="1">0 0</real_value>
           </constant>
         </initial_condition>
-        <boundary_conditions name="up">
+        <boundary_conditions name="up_down">
           <surface_ids>
-            <integer_value shape="1" rank="1">2</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <align_bc_with_cartesian>
-              <x_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </x_component>
-              <y_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </y_component>
-            </align_bc_with_cartesian>
-          </type>
-        </boundary_conditions>
-        <boundary_conditions name="down">
-          <surface_ids>
-            <integer_value shape="1" rank="1">4</integer_value>
+            <integer_value shape="2" rank="1">9 10</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -166,7 +124,7 @@
         </boundary_conditions>
         <boundary_conditions name="inlet">
           <surface_ids>
-            <integer_value shape="1" rank="1">1</integer_value>
+            <integer_value shape="1" rank="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -215,51 +173,22 @@
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value rank="0">0.2</real_value>
-          </constant>
-        </initial_condition>
-        <boundary_conditions name="inlet">
-          <surface_ids>
-            <integer_value shape="1" rank="1">1</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <constant>
-              <real_value rank="0">1</real_value>
-            </constant>
-          </type>
-        </boundary_conditions>
-        <detectors>
-          <include_in_detectors/>
-        </detectors>
-        <consistent_interpolation/>
-      </prognostic>
-    </scalar_field>
-    <scalar_field name="Concentration" rank="0">
-      <prognostic>
-        <mesh name="PressureMesh"/>
-        <Impose_min_max>
-          <min_limit>
-            <real_value rank="0">0</real_value>
-          </min_limit>
-          <max_limit>
             <real_value rank="0">1</real_value>
-          </max_limit>
-        </Impose_min_max>
-        <initial_condition name="WholeMesh">
-          <constant>
-            <real_value rank="0">0</real_value>
           </constant>
         </initial_condition>
         <boundary_conditions name="inlet">
           <surface_ids>
-            <integer_value shape="1" rank="1">1</integer_value>
+            <integer_value shape="1" rank="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
-            <constant>
-              <real_value rank="0">1</real_value>
-            </constant>
+            <python>
+              <string_value lines="20" type="code" language="python">def val(X, t):
+ val = 0.
+ if (t &gt; 0.4):
+  val = 1.
+ return val</string_value>
+            </python>
           </type>
         </boundary_conditions>
         <detectors>
@@ -317,7 +246,7 @@
       </immobile_fraction>
     </multiphase_properties>
   </material_phase>
-  <material_phase name="phase2">
+  <material_phase name="CO2">
     <phase_properties>
       <Density>
         <incompressible>
@@ -344,7 +273,7 @@
       </Viscosity>
     </phase_properties>
     <scalar_field name="Pressure" rank="0">
-      <aliased material_phase_name="phase1" field_name="Pressure"/>
+      <aliased material_phase_name="water" field_name="Pressure"/>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
       <prognostic>
@@ -356,7 +285,7 @@
         </initial_condition>
         <boundary_conditions name="up_down">
           <surface_ids>
-            <integer_value shape="2" rank="1">2 4</integer_value>
+            <integer_value shape="2" rank="1">9 10</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -376,14 +305,14 @@
         </boundary_conditions>
         <boundary_conditions name="inlet">
           <surface_ids>
-            <integer_value shape="1" rank="1">1</integer_value>
+            <integer_value shape="1" rank="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
-                  <real_value rank="0">0</real_value>
+                  <real_value rank="0">0.2</real_value>
                 </constant>
               </x_component>
               <y_component>
@@ -425,18 +354,22 @@
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value rank="0">0.8</real_value>
+            <real_value rank="0">0</real_value>
           </constant>
         </initial_condition>
         <boundary_conditions name="inlet">
           <surface_ids>
-            <integer_value shape="1" rank="1">1</integer_value>
+            <integer_value shape="1" rank="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
-            <constant>
-              <real_value rank="0">0</real_value>
-            </constant>
+            <python>
+              <string_value lines="20" type="code" language="python">def val(X, t):
+ val = 0.
+ if (t &lt;= 0.4):
+  val = 1.
+ return val</string_value>
+            </python>
           </type>
         </boundary_conditions>
         <detectors>
@@ -477,12 +410,12 @@
         </scalar_field>
       </Relperm_Corey>
       <immobile_fraction>
-        <scalar_field name="value">
+        <scalar_field name="Land_coefficient">
           <prescribed>
             <mesh name="P0DG"/>
             <value name="WholeMesh">
               <constant>
-                <real_value rank="0">0.3</real_value>
+                <real_value rank="0">8</real_value>
               </constant>
             </value>
             <stat/>

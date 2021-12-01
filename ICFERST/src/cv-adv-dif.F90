@@ -693,7 +693,7 @@ contains
               END DO
           END DO
 
-          if (isparallel()) call allmax(NFIELD)!<=This should be unnecessary!
+        !   if (isparallel()) call allmax(NFIELD)!<=This should be unnecessary!
 
           ALLOCATE( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) ! To avoid the case of NFIELD=0
           ! This logical needs to be expanded...

@@ -561,98 +561,32 @@ contains
               deallocate( eos_coefs )
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 
-#ifdef HAVE_NUMPY
-         ewrite(3,*) "Have both NumPy and a python eos..."
-#else
-            FLAbort("Python eos requires NumPy, which cannot be located.")
-#endif
+            density => extract_scalar_field( state( iphase ), 'Density', stat )
+            rho = density % val
+            !Obtain density from the python code
+            call multi_compute_python_field(state, iphase, trim( option_path_python ), Rho)
+            ! Back up pressure before we start perturbing stuff...
+            density % val = Rho
+            if (has_boussinesq_aprox ) then
+              !If boussinesq or not pressure dependency the derivative is zero
+              dRhodP = 0.0
+            else
+              ! Calculating dRho / dP
+              allocate( pressure_back_up( node_count( pressure ) ))
+              pressure_back_up = pressure % val(1,1,:)
+              ! redefine p as p+pert and p-pert and then run python state again to get dRho / d P...
+              perturbation_pressure = 1.e-5
+              pressure % val(1,1,:) = pressure_back_up + perturbation_pressure; RhoPlus = Rho
+              call multi_compute_python_field(state, iphase, trim( option_path_python ), RhoPlus)
+              pressure % val(1,1,:) = pressure_back_up - perturbation_pressure; RhoMinus = Rho
+              call multi_compute_python_field(state, iphase, trim( option_path_python ), RhoMinus)
+              ! derivative
+              dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
 
-            density => extract_scalar_field( packed_state, 'Dummy' )
-            call zero( density )
-
-            call python_reset()
-            call python_add_state( packed_state )
-
-
-            call python_run_string("field = state.scalar_fields['Dummy']")
-            call get_option("/timestepping/current_time", current_time)
-            write(buffer,*) current_time
-            call python_run_string("time="//trim(buffer))
-            call get_option("/timestepping/timestep", dt)
-            write(buffer,*) dt
-            call python_run_string("dt="//trim(buffer))
-
-            ! Get the code
-            call get_option( trim( option_path_python ) // '/algorithm', pycode )
-
-            ! Run the code
-            call python_run_string( trim( pycode ) )
-
-            ! Copy result to protoype memory
-            Rho = density % val
-
-            ! Back up pressure and density before we start perturbing stuff...
-            allocate( pressure_back_up( node_count( pressure ) ), density_back_up( node_count( pressure ) ) )
-            pressure_back_up = 0. ; density_back_up = 0.
-            pressure_back_up = pressure % val(1,1,:)
-            density_back_up = density % val
-
-            call python_reset()
-
-            ! Calculating dRho / dP
-            ! redefine p as p+pert and p-pert and then run python state again to get dRho / d P...
-            perturbation_pressure = 1.e-5
-
-            pressure % val(1,1,:) = pressure % val(1,1,:) + perturbation_pressure
-            call zero( density )
-
-            call python_reset()
-            call python_add_state( packed_state )
-
-            call python_run_string("field = state.scalar_fields['Dummy']")
-
-            call get_option("/timestepping/current_time", current_time)
-            write(buffer,*) current_time
-            call python_run_string("time="//trim(buffer))
-            call get_option("/timestepping/timestep", dt)
-            write(buffer,*) dt
-            call python_run_string("dt="//trim(buffer))
-
-            call python_run_string(trim(pycode))
-            RhoPlus = density % val
-
-            call python_reset()
-
-            pressure % val(1,1,:) = pressure_back_up
-            pressure % val(1,1,:) = pressure % val(1,1,:) - perturbation_pressure
-            call zero( density )
-
-            call python_reset()
-            call python_add_state( packed_state )
-
-            call python_run_string("field = state.scalar_fields['Dummy']")
-
-            call get_option("/timestepping/current_time", current_time)
-            write(buffer,*) current_time
-            call python_run_string("time="//trim(buffer))
-            call get_option("/timestepping/timestep", dt)
-            write(buffer,*) dt
-            call python_run_string("dt="//trim(buffer))
-
-            call python_run_string(trim(pycode))
-            RhoMinus = density % val
-
-            call python_reset()
-
-            ! derivative
-            dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
-
-            ! Restore pressure and density values in state
-            pressure % val(1,1,:) = pressure_back_up
-            density % val = density_back_up
-
-            deallocate( pressure_back_up, density_back_up )
-
+              ! Restore pressure and density values in state
+              pressure % val(1,1,:) = pressure_back_up
+              deallocate( pressure_back_up )
+            end if
         else
             FLAbort( 'No option given for choice of EOS' )
         end if Conditional_EOS_Option
@@ -860,10 +794,11 @@ contains
        !Local variables
        type( tensor_field ), pointer :: perm, state_viscosity
        real, dimension(:,:), allocatable :: viscosities
-       integer :: i, j, ele, n_in_pres
+       integer :: i, j, ele, n_in_pres, iphase
        real :: Angle, bad_element_perm_mult, Max_aspect_ratio, height ! the height of an isosceles triangle for the top angle to be equal to the trigger angle
        real, dimension(Mdims%ndim,Mdims%ndim) :: trans_matrix, rot_trans_matrix ! for bad_element permeability transformation matrix
        real, parameter :: pi = acos(0.0) * 2.0 ! Define pi
+       character( len = option_path_len ) :: option_path_python
 
        perm => extract_tensor_field( packed_state, "Permeability" )
        !Define n_in_pres based on the local version of nphase
@@ -875,16 +810,21 @@ contains
            upwnd%inv_permeability( :, :, i)=inverse(perm%val( :, :, i))
        end do
 
-       if (have_option_for_any_phase("phase_properties/Viscosity/tensor_field::Viscosity/diagnostic", Mdims%nphase)) then
-           allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
-           do i = 1,  Mdims%nphase
-             state_viscosity => extract_tensor_field( state( i ), 'Viscosity' )
-             viscosities(i, :) = state_viscosity%val(1,1,:)!Take the first term only as for porous media we consider only scalar
-           end do
-       else
-            allocate(viscosities(Mdims%nphase, 1))
-            call set_viscosity(nphase, Mdims, state, viscosities(:,1))
-       end if
+       allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
+       DO IPHASE = 1, Mdims%nphase!Get viscosity for all the phases
+        option_path_python = "/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
+        "::Viscosity/diagnostic/algorithm::tensor_python_diagnostic"
+          if (have_option(trim(option_path_python)))then
+            state_viscosity => extract_tensor_field( state( iphase ), 'Viscosity' )
+            call multi_compute_python_field(state, iphase, trim( option_path_python ), tfield = state_viscosity)
+            !Copy into state
+            do i = 1, Mdims%cv_nonods
+              viscosities(iphase,i) = state_viscosity%val(1,1,i)
+            end do
+          else
+            call set_viscosity(nphase, Mdims, state, viscosities)
+          end if
+        end do
        call Calculate_PorousMedia_adv_terms( nphase, state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
               upwnd, viscosities)
 
@@ -934,7 +874,7 @@ contains
                allocate( satura2( nphase, size(SATURA,2) ) );satura2 = 0.
 
                CALL calculate_absorption2( nphase, packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA(1:Mdims%n_in_pres,:), &
-                   viscosities)
+                      viscosities)
 
                !Introduce perturbation, positive for the increasing and negative for decreasing phase
                !Make sure that the perturbation is between bounds
@@ -1030,7 +970,6 @@ contains
                n_in_pres = nphase/Mdims%npres
                !Prepapre index for viscosity
                one_or_zero = (size(viscosities,2)==Mdims%cv_nonods)
-
                !Get from packed_state
                volfrac=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                velocity=>extract_tensor_field(packed_state,"PackedVelocity")
@@ -1077,7 +1016,7 @@ contains
                                            cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * Mdims%stotel * Mdims%cv_snloc
                                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + cv_iloc  )
                                            call get_material_absorption(Mdims%n_in_pres, iphase, sigma_out,&
-                                               ! this is the boundary condition
+                                               ! this is the boundary condition (we pass as old sat the same BC)
                                                volfrac_BCs%val(1,:,cv_snodi), viscosities(:,visc_node),&
                                                Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                            ! Adjust suf_sig_diagten_bc based on the internal absorption
@@ -1102,7 +1041,7 @@ contains
             integer, intent(in) :: nphase
             type( multi_dimensions ), intent( in ) :: Mdims
             type( state_type ), dimension( : ), intent( in ) :: state
-            real, dimension(:), intent(inout) :: visc_phases
+            real, dimension(:,:), intent(inout) :: visc_phases
             !Local variables
             integer :: iphase, ipres, global_phase, compact_phase
             real :: mobility
@@ -1115,7 +1054,7 @@ contains
                   global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
                   compact_phase = iphase + (ipres - 1)*n_in_pres
                   viscosity_ph => extract_tensor_field( state( global_phase ), 'Viscosity' )
-                  visc_phases(compact_phase) = viscosity_ph%val( 1, 1, 1 )!So far we only consider scalar viscosity
+                  visc_phases(compact_phase,:) = viscosity_ph%val( 1, 1, 1 )!So far we only consider scalar viscosity
               end do
             end do
         end subroutine set_viscosity
@@ -1167,7 +1106,8 @@ contains
                 DO IPHASE = 1, n_in_pres
                     CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * Mdims%cv_nonods
                     call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(1, 1, iphase, mat_nod),&
-                        SATURA(:, CV_NOD), viscosities(:,visc_node),Immobile_fraction, Corey_exponent, Endpoint_relperm)
+                        SATURA(:, CV_NOD), viscosities(:,visc_node),Immobile_fraction, Corey_exponent,&
+                         Endpoint_relperm)
                 END DO
             END DO
         END DO
@@ -1405,10 +1345,17 @@ contains
         real, dimension(:,:,:), intent(inout) :: u_source_cv
 
         type(vector_field), pointer :: gravity_direction
-        real, dimension(Mdims%ndim) :: g
+        real, dimension(Mdims%ndim) :: g, ref_density
         logical :: have_gravity, high_order_Ph
         real :: gravity_magnitude
         integer :: idim, iphase, nod, stat, start_phase
+
+        ref_density = 0.
+        if (have_option("/physical_parameters/gravity/remove_hydrostatic_contribution")) then
+          do iphase = 1, Mdims%nphase
+            ref_density(iphase) = retrieve_reference_density(state, packed_state, iphase, 0, Mdims%nphase)
+          end do
+        end if
 
         call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
         have_gravity = ( stat == 0 )
@@ -1429,7 +1376,7 @@ contains
                 g = node_val( gravity_direction, nod ) * gravity_magnitude
                 do iphase = start_phase, Mdims%nphase
                     do idim = 1, Mdims%ndim
-                        u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim )
+                        u_source_cv( idim, iphase, nod ) = (den( iphase, nod ) - ref_density(iphase)) * g( idim )
                     end do
                 end do
             end do
@@ -1438,13 +1385,12 @@ contains
     end subroutine calculate_u_source_cv
 
     !>@brief: Here we compute component/solute/thermal diffusion coefficient
-    subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, TracerName, calculate_solute_diffusivity, divide_by_rho_CP)
+    subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, TracerName, divide_by_rho_CP)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
-      logical, optional, intent(in) :: calculate_solute_diffusivity !If present, calculates solute diffusivity instead of thermal diffusivity
       logical, optional, intent(in) :: divide_by_rho_CP !> If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp
       character(len=*), optional, intent(in) :: TracerName !> For PassiveTracer with diffusion we pass down the name of the tracer
       !Local variables
@@ -1495,14 +1441,10 @@ contains
           !expo used to switch between boussinesq (density ==1) or normal
           expo = 1.; if (has_boussinesq_aprox) expo = 0.
 
-          if (present_and_true(calculate_solute_diffusivity) .or. present(TracerName)) then
+          if (present(TracerName)) then
             do iphase = 1, Mdims%nphase
               !Check if the field is defined for that phase, if the property is defined but not the field then ignore the property
-              if (present_and_true(calculate_solute_diffusivity)) then
-                diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
-              else if (present(TracerName)) then
-                diffusivity => extract_tensor_field( state(iphase), trim(TracerName)//'Diffusivity', stat )
-              end if
+              diffusivity => extract_tensor_field( state(iphase), trim(TracerName)//'Diffusivity', stat )
               if (stat /= 0) cycle!If no field defined then cycle
 
               do ele = 1, Mdims%totele
@@ -1526,7 +1468,10 @@ contains
             ! NOTE: for porous media we consider thermal equilibrium and therefore unifiying lambda is a must
             ! Multiplied by the saturation so we use the same paradigm that for the phases,
             !but in the equations it isn't, but here because we iterate over phases and collapse this is required
-            ! therefore: lambda = SUM_of_phases saturation * [(1-porosity) * lambda_p + porosity * lambda_f)]
+            ! therefore: lambda = SUM_of_phases saturation * [(1-porosity) * lambda_p + porosity * lambda_f)] for classic
+            !weighted average of conductivities Wiener method).
+            !Default option is to use a more accurate Hashin and Shtrikman definition:
+            !lambda_p+3*lambda_p*(lambda_f-lambda_p)*porosity/(3*lambda_p+(lambda_f-lambda_p)(1-porosity))
             saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
             do iphase = 1, Mdims%nphase
               diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
@@ -1538,47 +1483,31 @@ contains
                 do iloc = 1, Mdims%mat_nloc
                   mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                   cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                  do idim = 1, Mdims%ndim
-                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
-                    (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                    +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod))
-                  enddo
+                  if (have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/Wiener_conductivity')) then
+                    do idim = 1, Mdims%ndim
+                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
+                      (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
+                      +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod)) ! for classic weighted approach (Wiener approach)
+                    end do
+                  else
+                    do idim = 1, Mdims%ndim
+                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
+                      (tfield%val(idim, idim, t_ele_nod)+3*tfield%val(idim, idim, t_ele_nod)* &
+                      (node_val( diffusivity, idim, idim, mat_inod ) - tfield%val(idim, idim, t_ele_nod))*sfield%val(ele_nod)/ &
+                      (3*tfield%val(idim, idim, t_ele_nod)+(node_val( diffusivity, idim, idim, mat_inod )-tfield%val(idim, idim, t_ele_nod))* &
+                      (1-sfield%val(ele_nod))))
+                    end do
+                  end if
                 end do
               end do
             end do
           endif
-          !####UP TO HERE DIFFUSIVITY FOR POROUS MEDIA ONLY####
-          ! else if (have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
-          !   sfield=> extract_scalar_field( state(1), "SolidConcentration" )
-          !   !tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
-          !   ScalarAdvectionField_Diffusion = 0.
-          !   do iphase = 1, Mdims%nphase
-          !     if (present_and_true(calculate_solute_diffusivity)) then
-          !       diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
-          !     else
-          !       diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-          !     endif
-          !     do ele = 1, Mdims%totele
-          !       ele_nod = min(size(sfield%val), ele)
-          !       !t_ele_nod = min(size(tfield%val, 3), ele)
-          !       do iloc = 1, Mdims%mat_nloc
-          !         mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-          !         cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-          !         do idim = 1, Mdims%ndim
-          !           ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-          !           ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-          !           ( 1.0 - sfield%val(ele_nod)) * node_val( diffusivity, idim, idim, mat_inod )
-          !         end do
-          !       end do
-          !     end do
-          !   end do
         else
           do iphase = 1, Mdims%nphase
 
-            if (present_and_true(calculate_solute_diffusivity)) then
-              diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
-            else if (present(TracerName)) then
+            if (present(TracerName)) then
               diffusivity => extract_tensor_field( state(iphase), trim(TracerName)//'Diffusivity', stat )
             else
               diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
@@ -1619,8 +1548,8 @@ contains
         end do
       end if
       do iphase = 1, Mdims%nphase
-        if (present_and_true(calculate_solute_diffusivity)) then
-          ewrite(3,*) 'Solute diffusivity min_max', iphase, &
+        if (present(TracerName)) then
+          ewrite(3,*) trim(TracerName), 'diffusivity min_max', iphase, &
           minval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) ), &
           maxval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) )
         else
@@ -1650,16 +1579,17 @@ contains
       return
     end subroutine calculate_diffusivity
 
-    !>@brief: Dispersion for isotropic porous media
-    subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, SoluteDispersion)
+    !>@brief: Dispersion for porous media
+    !> For thermal, the field density needs to be passed down, which ensures that even for boussinesq a reference density is still used
+    subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, density, SoluteDispersion)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
+      real, dimension(:,:), target, intent(in) :: density !>If present density means that we need to use a reference density to ensure consistency with the rest of the equation
       real, dimension(:, :, :, :), intent(inout) :: SoluteDispersion
       !Local variables
       type(scalar_field), pointer :: component, sfield, ldfield, tdfield
-      type(tensor_field), pointer :: den
       type (vector_field_pointer), dimension(Mdims%n_in_pres) ::darcy_velocity
       integer :: icomp, iphase, idim, stat, ele, idim1, idim2
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc, cv_loc, cv_iloc, ele_nod_disp
@@ -1673,7 +1603,6 @@ contains
       DispCoeffMat = 0.
       DispDiaComp = 0.
 
-      den => extract_tensor_field( packed_state,"PackedDensity" )
       sfield=>extract_scalar_field(state(1),"Porosity")
       ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
 
@@ -1687,7 +1616,8 @@ contains
 
 
       do iphase = 1, Mdims%n_in_pres
-        if ( .not. have_option( "/material_phase["// int2str( iphase - 1 )//"]/scalar_field::Concentration/prognostic/tensor_field::Diffusivity")) cycle
+        ! if ( .not. have_option( "/material_phase["// int2str( iphase - 1 )//"]/scalar_field::"//trim(TracerName)//"/prognostic/tensor_field::Diffusivity")) cycle
+
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
 
         do ele = 1, Mdims%totele
@@ -1742,16 +1672,9 @@ contains
                     SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
                     sfield%val(ele_nod)*DispDiaComp(idim1)
                   endif
-
-                  if (has_boussinesq_aprox) then
-                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
-                    SoluteDispersion( mat_inod, idim1, idim2, iphase )
-                  else
-                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
-                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) *&
-                    den%val(1, 1, cv_loc)
-                  endif
-
+                  SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
+                  SoluteDispersion( mat_inod, idim1, idim2, iphase ) *&
+                  density(iphase, cv_loc)
                 end do
               end do
             end do
@@ -2054,21 +1977,31 @@ contains
     !>them into packed state
     !>By index this is: 1) immobile fraction, 2) relperm max, 3)relperm exponent
     !> 4)Capillary entry pressure 5) Capillary exponent 6) Capillary imbition term
-    subroutine get_RockFluidProp(state, packed_state)
+    !> The effective inmobile fraction is the min(inmobile,saturation),
+    !> being the saturation the value after a succesful non-linear solver convergence!
+    !> This NEEDS to be called after a succesful non-linear solver (with update_only)
+    subroutine get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time, update_only)
         implicit none
+        type( multi_dimensions ), intent( in ) :: Mdims
         type(state_type), dimension(:), intent(inout) :: state
+        type( multi_ndgln ), intent( in ) :: ndgln
         type( state_type ), intent( inout ) :: packed_state
+        real, optional, intent(in) :: current_time
+        logical, optional, intent(in) :: update_only
         !Local variables
-        type (tensor_field), pointer :: t_field
+        type (tensor_field), pointer :: t_field, Saturation, SaturationOld
         type (scalar_field), target :: targ_Store
-        type (scalar_field), pointer :: s_field
+        type (scalar_field), pointer :: s_field, saturation_flip
         type (vector_field), pointer :: position
         type(mesh_type), pointer :: fl_mesh
         type(mesh_type) :: Auxmesh
-        integer :: iphase, nphase
+        real :: auxR
+        integer :: iphase, nphase, ele, cv_iloc, cv_nod
         character(len=500) :: path, path2, path3
 
         t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
+        Saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+        SaturationOld => extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
         nphase = size(t_field%val,2)
         !By default the pressure mesh (position 1)
         s_field => extract_scalar_field(state(1),1)
@@ -2078,91 +2011,142 @@ contains
         Auxmesh = fl_mesh
         call allocate (targ_Store, Auxmesh, "Temporary_get_RockFluidProp")
 
+        !If only updating there is no need to update the other parameters
+        if (.not.present_and_true(update_only)) then
+          !Now obtain relpermMax
+          do iphase = 1, nphase
+            path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
+            if (have_option(trim(path))) then
+              call initialise_field_over_regions(targ_Store, trim(path), position)
+              t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
+            else !default value
+              t_field%val(2,iphase,:) = 1.0
+            end if
+          end do
+
+          !Retrieve relperm exponent
+          do iphase = 1, nphase
+              path = "/material_phase["//int2str(iphase-1)//&
+                  "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_exponent/prescribed/value"
+              if (have_option(trim(path))) then
+                  call initialise_field_over_regions(targ_Store, trim(path) , position)
+                  t_field%val(3,iphase,:) = targ_Store%val
+              else !default value
+                  t_field%val(3,iphase,:) = 2.0
+              end if
+          end do
+          !Initialize capillary pressure
+          if (have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
+              !Get cap pressure constant, C
+              do iphase = 1, nphase
+                  path = "/material_phase["//int2str(iphase-1)//&
+                      "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
+                  path3 = "/material_phase["//int2str(iphase-1)//&
+                      "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::C/prescribed/value"
+                  if (have_option(trim(path))) then
+                      call initialise_field_over_regions(targ_Store, trim(path) , position)
+                      t_field%val(4,iphase,:) = targ_Store%val
+                  elseif (have_option(trim(path3))) then
+                      call initialise_field_over_regions(targ_Store, trim(path3) , position)
+                      t_field%val(4,iphase,:) = targ_Store%val
+                  else !default value
+                      t_field%val(4,iphase,:) = 0.0
+                  end if
+              end do
+
+              !Get cap exponent, a
+              do iphase = 1, nphase
+                  path = "/material_phase["//int2str(iphase-1)//&
+                      "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
+                  path3 = "/material_phase["//int2str(iphase-1)//&
+                      "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::a/prescribed/value"
+                  if (have_option(trim(path))) then
+                      call initialise_field_over_regions(targ_Store, trim(path) , position)
+                      t_field%val(5,iphase,:) = targ_Store%val
+                  elseif (have_option(trim(path3))) then
+                      call initialise_field_over_regions(targ_Store, trim(path3) , position)
+                      t_field%val(5,iphase,:) = targ_Store%val
+                  else !default value
+                      t_field%val(5,iphase,:) = 1.0
+                  end if
+              end do
+              !Get imbibition term
+              do iphase = 1, nphase
+                  path = "/material_phase["//int2str(iphase-1)//&
+                      "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::B/prescribed/value"
+                  if (have_option(trim(path))) then
+                      call initialise_field_over_regions(targ_Store, trim(path) , position)
+                      t_field%val(6,iphase,:) = targ_Store%val
+                  else !default value
+                      t_field%val(6,iphase,:) = 0.0
+                  end if
+              end do
+          end if
+        end if
         !Retrieve Immobile fractions
         do iphase = 1, nphase
-            path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/immobile_fraction/scalar_field::value/prescribed/value"
+          path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/immobile_fraction/scalar_field::value/prescribed/value"
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
-                t_field%val(1,iphase,:) = targ_Store%val(:)
-            else !default value
+                t_field%val(1,iphase,:) = targ_Store%val
+            else if (have_option("/material_phase["//int2str(iphase-1)//&
+                      "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then
+              path = "/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value"
+              !Extract the land parameter
+              call initialise_field_over_regions(targ_Store, trim(path) , position)
+              !We first extract the field containing the historical point of saturation
+              saturation_flip => extract_scalar_field(state(iphase), "Saturation_flipping")
+              !Only for the first time ever, not for checkpointing, overwrite the saturation flipping value with the initial one
+              if (present(current_time)) then
+               if( current_time < 1e-8) then
+                do cv_nod = 1, Mdims%cv_nonods
+                  saturation_flip%val(cv_nod) = max(Saturation%val(1,iphase,cv_nod), 1e-16)!limit because we need to store signs also
+                end do
+               end if
+              end if
+              do ele = 1, Mdims%totele
+                t_field%val(1,iphase,ele) = 0.
+                do cv_iloc = 1, Mdims%cv_nloc
+                  cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+                  !Then the immobile fraction depends on the Land coefficient as follows (this must occur outside the non-linear loop!)
+                  !Formula is: Immobile = S_flip/(1+C*S_flip). Where S_flip is the saturation
+                  !when changing from imbibition to drainage or the other way round
+                  call Update_saturation_flipping(saturation_flip%val(cv_nod), Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
+                  auxR = abs(saturation_flip%val(cv_nod))
+                  t_field%val(1,iphase,ele) = t_field%val(1,iphase,ele) + (auxR/(1. + targ_Store%val(ele) * auxR))/Mdims%cv_nloc
+                end do
+              end do
+            else !default value for immiscible values
                 t_field%val(1,iphase,:) = 0.0
             end if
         end do
-
-        !Retrieve relperm max
-        do iphase = 1, nphase
-            path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
-            if (have_option(trim(path))) then
-                call initialise_field_over_regions(targ_Store, trim(path) , position)
-                t_field%val(2,iphase,:) = max(min(targ_Store%val(:), 1.0), 0.0)
-            else !default value
-                t_field%val(2,iphase,:) = 1.0
-            end if
-        end do
-        !Retrieve relperm exponent
-        do iphase = 1, nphase
-            path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_exponent/prescribed/value"
-            if (have_option(trim(path))) then
-                call initialise_field_over_regions(targ_Store, trim(path) , position)
-                t_field%val(3,iphase,:) = targ_Store%val(:)
-            else !default value
-                t_field%val(3,iphase,:) = 2.0
-            end if
-        end do
-
-        !Initialize capillary pressure
-        if (have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
-            !Get cap pressure constant, C
-            do iphase = 1, nphase
-                path = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
-                path3 = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::C/prescribed/value"
-                if (have_option(trim(path))) then
-                    call initialise_field_over_regions(targ_Store, trim(path) , position)
-                    t_field%val(4,iphase,:) = targ_Store%val(:)
-                elseif (have_option(trim(path3))) then
-                    call initialise_field_over_regions(targ_Store, trim(path3) , position)
-                    t_field%val(4,iphase,:) = targ_Store%val(:)
-                else !default value
-                    t_field%val(4,iphase,:) = 0.0
-                end if
-            end do
-
-            !Get cap exponent, a
-            do iphase = 1, nphase
-                path = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-                path3 = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::a/prescribed/value"
-                if (have_option(trim(path))) then
-                    call initialise_field_over_regions(targ_Store, trim(path) , position)
-                    t_field%val(5,iphase,:) = targ_Store%val(:)
-                elseif (have_option(trim(path3))) then
-                    call initialise_field_over_regions(targ_Store, trim(path3) , position)
-                    t_field%val(5,iphase,:) = targ_Store%val(:)
-                else !default value
-                    t_field%val(5,iphase,:) = 1.0
-                end if
-            end do
-            !Get imbibition term
-            do iphase = 1, nphase
-                path = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::B/prescribed/value"
-                if (have_option(trim(path))) then
-                    call initialise_field_over_regions(targ_Store, trim(path) , position)
-                    t_field%val(6,iphase,:) = targ_Store%val(:)
-                else !default value
-                    t_field%val(6,iphase,:) = 0.0
-                end if
-            end do
-        end if
-
-
         call deallocate(targ_Store)
+
+    contains
+
+    !>@brief:  This internal subroutine checks the if we are flipping from drainage to imbibition, or the other way round,
+    !> and updates if required the value stored in Saturation_flipping
+    !> Saturation_flipping stores both the value and the history, being positive if the phase is increasing and negative if the phase is decreasing.
+    !> Therefore its minimum absolute value is non-zero
+    !> NOTE: Currently the trapping can only increase, i.e. no thermal effects have been considered
+    subroutine Update_saturation_flipping(sat_flip, sat, old_Sat)
+      implicit none
+      real, INTENT(IN) :: sat, old_Sat
+      real, INTENT(INOUT) :: sat_flip
+      !Local variables
+      real, parameter :: tol = 1e-10
+      !Check if the situation is changing and if so, store the new value with the sign
+      ! Ensure that the immobile fraction does not decrease, i.e. sat_flip does not decrease
+      ! this can only decrease once it has trapped a field with thermal effects, 
+      ! but currently we are not considering these
+      if (old_sat > abs(sat_flip) + tol ) then
+         if (abs(sign(1., sat - old_sat ) - sign(1., sat_flip )) > tol ) &
+          sat_flip = sign(old_sat, sat - old_sat )
+      end if
+
+    end subroutine
+
     end subroutine get_RockFluidProp
     !!JWL equation functions
 
@@ -2436,5 +2420,58 @@ contains
       !Copy value to send out of the function
       retrieve_reference_density = ref_rho
     end function
+
+
+
+    !>@brief: subroutine to dissolv phase2 into phase1. Currently only for system for phase 1 = water, phase 2 = gas
+    !> Dissolve instantaneously the amount introduced in diamond in mol/m3 for CO2 a reference number is 38 mol/m3.
+    !> Requires the first phase to have a concentration field
+    subroutine flash_gas_dissolution(packed_state, Mdims, dt)
+      implicit none
+      type(state_type) :: packed_state
+      real, intent (in) :: dt
+      type(multi_dimensions) :: Mdims
+      !Local variables
+      real, save  :: dissolution_parameter= -1
+      real, parameter ::molar_mass= 0.0441 !in kg/mol
+      type(tensor_field), pointer :: saturation_field, concentration_field, density
+      type(vector_field), pointer :: MeanPoreCV, cv_volume
+      real :: n_co2_diss_max, delta_n, n_co2_gas
+      integer :: cv_nod, iphase, stat
+
+
+
+      !Retrieve value from diamond
+      if (dissolution_parameter < 0.) call get_option("/porous_media/Gas_dissolution", dissolution_parameter)
+
+      saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+      concentration_field=>extract_tensor_field(packed_state,"PackedConcentration", stat)
+      if (stat /= 0) then
+        FLAbort("To compute flash dissolution from second phase to the first phase, a Concentration field in the first phase is required.")
+      end if
+      density => extract_tensor_field(packed_state,"PackedDensity")
+      MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+      cv_volume=> extract_vector_field(packed_state,"CVIntegral")
+
+      do cv_nod=1,Mdims%cv_nonods
+        ! Compute maximum dissolved CO2 the CV can accomodate (in mol)
+        n_co2_diss_max = MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*density%val(1,1,cv_nod)*dissolution_parameter*saturation_field%val(1,1,cv_nod)
+        ! Compute the difference between maximum dissolved CO2 the CV can accomodate and the actual dissolved CO2 present in the CV (in mol)
+        delta_n = n_co2_diss_max - concentration_field%val(1,1,cv_nod)*MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*saturation_field%val(1,1,cv_nod)
+        ! Compute the gas CO2 present in the CV (in mol)
+        n_co2_gas = saturation_field%val(1,2,cv_nod) * density%val(1,2,cv_nod)/molar_mass * MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)
+        ! Update dissolved CO2 (passive tracer, in mol/m3)
+        concentration_field%val(1,1,cv_nod) = concentration_field%val(1,1,cv_nod) + min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod))
+        ! Update gas CO2 (in mol)
+        n_co2_gas = n_co2_gas - min(delta_n, n_co2_gas)
+        ! Update gas CO2 (change in saturation)
+        saturation_field%val(1,2,cv_nod) = ( n_co2_gas*molar_mass/density%val(1,2,cv_nod) ) / (MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod))
+        ! Update water saturation (change in saturation)
+        saturation_field%val(1,1,cv_nod) = 1 - saturation_field%val(1,2,cv_nod)
+
+      end do
+
+
+    end subroutine flash_gas_dissolution
 
 end module multiphase_EOS

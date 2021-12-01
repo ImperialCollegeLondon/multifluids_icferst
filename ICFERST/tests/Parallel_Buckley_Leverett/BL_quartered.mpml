@@ -87,11 +87,15 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <galerkin_projection>
           <continuous>
             <solver/>
           </continuous>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -147,9 +151,13 @@
           </diagnostic>
           <default_absorption/>
         </vector_field>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <galerkin_projection>
           <discontinuous/>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -171,6 +179,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <galerkin_projection>
           <continuous>
             <bounded name="Diffuse">
@@ -209,6 +220,7 @@
         <steady_state>
           <include_in_steady_state/>
         </steady_state>
+        <output/>
       </diagnostic>
     </vector_field>
     <multiphase_properties>
@@ -336,9 +348,13 @@
           </diagnostic>
           <default_absorption/>
         </vector_field>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <galerkin_projection>
           <discontinuous/>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -360,6 +376,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <galerkin_projection>
           <continuous>
             <bounded name="Diffuse">
@@ -460,6 +479,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <scalar_field name="Permeability">
@@ -485,6 +505,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
   </porous_media>

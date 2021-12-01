@@ -156,7 +156,7 @@ module multi_SP
 
         !If using python code all the problem are the users
         if (have_option("/porous_media/SelfPotential/python_Rock_sat_conductivity_code")) then
-          call compute_python_scalar_field(state, "/porous_media/SelfPotential/python_Rock_sat_conductivity_code", rock_sat_conductivity)
+          call multi_compute_python_field(state, 1, "/porous_media/SelfPotential/python_Rock_sat_conductivity_code", rock_sat_conductivity)
         else
           !Retrieve fields from state/packed_state
           !Check the situation with the temperature field/value
@@ -251,7 +251,7 @@ module multi_SP
         !Electrokinetic coupling coefficient
         if (flag == 1) then
           if (have_option("/porous_media/SelfPotential/python_ElectroKinetic_code")) then
-            call compute_python_scalar_field(state, "/porous_media/SelfPotential/python_ElectroKinetic_code", coupling_coef)
+            call multi_compute_python_field(state, 1, "/porous_media/SelfPotential/python_ElectroKinetic_code", coupling_coef)
           else
             do  ele = 1, Mdims%totele
               do cv_iloc = 1, Mdims%cv_nloc
@@ -304,10 +304,10 @@ module multi_SP
         !#############Using python######################
         !Thermal coupling coefficient
         if (flag == 2 .and. have_option("/porous_media/SelfPotential/python_Electrodiffusive_code")) then
-          call compute_python_scalar_field(state, "/porous_media/SelfPotential/python_Electrodiffusive_code", coupling_coef)
+          call multi_compute_python_field(state, 1, "/porous_media/SelfPotential/python_Electrodiffusive_code", coupling_coef)
         end if
         if (flag == 3 .and. have_option("/porous_media/SelfPotential/python_Thermoelectric_code")) then
-          call compute_python_scalar_field(state, "/porous_media/SelfPotential/python_Thermoelectric_code", coupling_coef)
+          call multi_compute_python_field(state, 1, "/porous_media/SelfPotential/python_Thermoelectric_code", coupling_coef)
         end if
         !Finally obtain the coupling coefficient
         coupling_term = coupling_coef * rock_sat_conductivity

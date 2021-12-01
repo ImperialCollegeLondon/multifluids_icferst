@@ -52,6 +52,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -97,11 +98,15 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <galerkin_projection>
           <continuous>
             <solver/>
           </continuous>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -137,9 +142,13 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <galerkin_projection>
           <discontinuous/>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -161,6 +170,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <adaptivity_options>
           <absolute_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -244,6 +256,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -295,9 +308,13 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <galerkin_projection>
           <discontinuous/>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -319,6 +336,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <galerkin_projection>
           <continuous>
             <solver/>
@@ -428,6 +448,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <tensor_field name="Permeability">
@@ -453,6 +474,7 @@
             </constant>
           </diagonal>
         </value>
+        <output/>
       </prescribed>
     </tensor_field>
   </porous_media>

@@ -55,7 +55,6 @@
       </constant>
     </dump_period_in_timesteps>
     <PropertiesFromFile>substances_properties</PropertiesFromFile>
-    
   </io>
   <timestepping>
     <current_time>
@@ -141,6 +140,7 @@
           <exclude_from_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -214,6 +214,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -449,6 +450,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -584,6 +586,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <tensor_field name="Permeability">
@@ -594,6 +597,7 @@
             <csv_file/>
           </anisotropic_asymmetric>
         </value>
+        <output/>
       </prescribed>
     </tensor_field>
   </porous_media>

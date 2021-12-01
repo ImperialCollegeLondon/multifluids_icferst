@@ -28,6 +28,20 @@ NOTE: With this options, pressure boundary conditions must not be hydrostatic.</
           <empty/>
         </element>
       </optional>
+      <optional>
+        <element name="remove_hydrostatic_contribution">
+          <a:documentation>Instead of including rho * g, the hydrostatic contribution is removed
+by including instead (rho - rho_ref) * g. Being rho_ref the reference density
+introduced in the equation of state.
+
+&lt;b&gt; NOTE&lt;/b&gt; that &lt;b&gt;
+
+i)&lt;/b&gt; this option can only be used for single phase and substitute hydrostatic_boundaries or hydrostatic_pressure_solver.
+
+&lt;b&gt;ii)&lt;/b&gt; the EOS will use the non-hydrostatic pressure to compute the properties.</a:documentation>
+          <empty/>
+        </element>
+      </optional>
       <element name="vector_field">
         <a:documentation>The direction of the gravity vector.</a:documentation>
         <attribute name="name">

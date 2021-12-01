@@ -51,13 +51,17 @@ module multiphase_1D_engine
     use parallel_tools, only : allmax, allmin, isparallel
     use ieee_arithmetic
     use multi_magma
+#ifdef USING_XGBOOST
+    use multi_machine_learning
+    use iso_c_binding
+#endif
 
     implicit none
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
-    public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, Concentration_assem_solve, VolumeFraction_Assemble_Solve, &
-    FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system, Passive_Tracer_Assemble_Solve
+    public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
+    FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system, Tracer_Assemble_Solve
 
 contains
   !---------------------------------------------------------------------------
@@ -72,7 +76,7 @@ contains
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
+       icomp, saturation, Permeability_tensor_field, nonlinear_iteration )
            ! Solve for internal energy using a control volume method.
            implicit none
            type( state_type ), dimension( : ), intent( inout ) :: state
@@ -103,7 +107,6 @@ contains
            integer, optional :: icomp, nonlinear_iteration
            type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
            type (multi_pipe_package), intent(in) :: pipes_aux
-           real, optional, dimension(:), intent(inout) :: Courant_number
            ! Local variables
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
@@ -133,6 +136,7 @@ contains
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
            REAL, DIMENSION( : ), allocatable :: porous_heat_coef, porous_heat_coef_old
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+           REAL, DIMENSION( :,:,:,: ), allocatable :: CDISPERSION
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2) :: totally_min_max
            logical :: impose_min_max
@@ -149,15 +153,17 @@ contains
            logical :: repeat_assemb_solve, assemble_collapsed_to_one_phase
            type(vector_field) :: solution
 
-           if (present(Permeability_tensor_field)) then
-              perm => Permeability_tensor_field
-           else
-              perm=>extract_tensor_field(packed_state,"Permeability")
-           end if
-
+           !Initialise with an out of range value to be able to check it hasn't been
+           totally_min_max = 1e30
            lcomp = 0
            if ( present( icomp ) ) lcomp = icomp
 
+
+           if (present(Permeability_tensor_field)) then
+            perm => Permeability_tensor_field
+           else
+            perm=>extract_tensor_field(packed_state,"Permeability")
+           end if
 
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
@@ -166,25 +172,25 @@ contains
            IGOT_T2_loc = 0
 
            assemble_collapsed_to_one_phase = .false.
-            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
+           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
 
                p => extract_tensor_field( packed_state, "PackedCVPressure", stat )
                if (stat/=0) p => extract_tensor_field( packed_state, "PackedFEPressure", stat )
                if (is_porous_media) then
-                 !If it is thermal and porous media we need to consider thermal equilibirum between phases and porous medium
-                 !in this case we need to solve then only for one temperature per region(reservoir/wells)
-                 assemble_collapsed_to_one_phase = .true.
-                !Check that the extra parameters required for porous media thermal simulations are present
-                if (.not.have_option('/porous_media/porous_properties/scalar_field::porous_density') .or. &
-                    .not.have_option('/porous_media/porous_properties/scalar_field::porous_heat_capacity') .or. &
-                    .not.have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity')) then
-                    FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
-                end if
-                !need to perform average of the effective heat capacity times density for the diffusion and time terms
-                allocate(porous_heat_coef(Mdims%cv_nonods))
-                allocate(porous_heat_coef_old(Mdims%cv_nonods))
-                call effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
-                end if
+                  !If it is thermal and porous media we need to consider thermal equilibirum between phases and porous medium
+                  !in this case we need to solve then only for one temperature per region(reservoir/wells)
+                  assemble_collapsed_to_one_phase = .true.
+                  !Check that the extra parameters required for porous media thermal simulations are present
+                  if (.not.have_option('/porous_media/porous_properties/scalar_field::porous_density') .or. &
+                      .not.have_option('/porous_media/porous_properties/scalar_field::porous_heat_capacity') .or. &
+                      .not.have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity')) then
+                      FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
+                  end if
+                  !need to perform average of the effective heat capacity times density for the diffusion and time terms
+                  allocate(porous_heat_coef(Mdims%cv_nonods))
+                  allocate(porous_heat_coef_old(Mdims%cv_nonods))
+                  call effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
+               end if
                den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity", stat )
                if (stat /= 0) then
@@ -193,12 +199,12 @@ contains
                end if
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
-			   	if(have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
+	       if(have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
                    solid_concentration => extract_scalar_field( packed_state, "SolidConcentration" )
                    den_all( 1, : ) = den_all ( 1, : ) * (1.0 - solid_concentration % val)
                end if
                IGOT_T2_loc = 1
-            else if ( lcomp > 0 ) then
+           else if ( lcomp > 0 ) then
                p => extract_tensor_field( packed_state, "PackedFEPressure" )
                den_all2 => extract_tensor_field( packed_state, "PackedComponentDensity" )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
@@ -209,6 +215,7 @@ contains
                den_all=1.0
                denold_all=1.0
            end if
+
            !Need to change this to use a reference density/rho_cp so for porous media the rock/fluid ratio is kept
            if (has_boussinesq_aprox) then
              if (is_porous_media) then
@@ -226,8 +233,8 @@ contains
               !Copy to old to ensure no time variation
               denold_all = den_all
              else
-             !We do not consider variations of density nor CP in transport
-             den_all = 1.0; denold_all = 1.0
+              !We do not consider variations of density nor CP in transport
+              den_all = 1.0; denold_all = 1.0
             end if
            end if
            if( present( option_path ) ) then ! solving for Temperature or Internal Energy or k_epsilon model
@@ -272,6 +279,13 @@ contains
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
                 !For porous media thermal two fields are returned. Being one the diffusivity of the porous medium
                 call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION)
+                !Calculates dispersion with specific longitudinal and transverse dispersivity
+                if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
+                  allocate(CDISPERSION(Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase)); CDISPERSION = 0.
+                  call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, den_all, CDISPERSION)
+                  TDIFFUSION = TDIFFUSION + CDISPERSION
+                  deallocate(CDISPERSION)
+                 end if                
            end if
 
            ! get diffusivity for compositional
@@ -349,7 +363,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media .and. thermal) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, totally_min_max, .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel&
+                                      , totally_min_max = totally_min_max, for_transport = .true.)
                    if (assemble_collapsed_to_one_phase) OvRelax_param = OvRelax_param/ dble(mdims%n_in_pres)
                else
                 Phase_with_Ovrel = -1
@@ -380,12 +395,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    porous_heat_coef = porous_heat_coef,porous_heat_coef_old = porous_heat_coef_old,solving_compositional = lcomp > 0, &
-                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number, &
+                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, &
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
-
-               ! vtracer=as_vector(tracer,dim=2)
-               ! call zero(vtracer)
-               call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                   ! vtracer=as_vector(tracer,dim=2)
+                   ! call zero(vtracer)
+                   call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
 
                !Copy solution back to tracer(not ideal...)
                do ipres =1, mdims%npres
@@ -492,7 +506,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number, &
+       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, &
        magma_phase_coefficients)
            ! Solve for enthalpy energy using a control volume method.
            implicit none
@@ -524,7 +538,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer, optional :: icomp, nonlinear_iteration
            type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
            type (multi_pipe_package), intent(in) :: pipes_aux
-           real, optional, dimension(:), intent(inout) :: Courant_number
            ! Local variables
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
@@ -569,6 +582,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type(magma_phase_diagram) :: magma_phase_coefficients
            logical :: assemble_collapsed_to_one_phase
 
+           !Initialise with an out of range value to be able to check it hasn't been
+           totally_min_max = 1e30
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
            else
@@ -661,7 +676,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media .and. thermal) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel&
+                   , totally_min_max = totally_min_max, for_transport = .true.)
                else
                 Phase_with_Ovrel = -1
                end if
@@ -686,7 +702,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    solving_compositional = lcomp > 0, &
-                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number, &
+                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, &
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase, Latent_heat = magma_phase_coefficients%Lf)
 
                  call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
@@ -729,245 +745,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
   END SUBROUTINE ENTHALPY_ASSEM_SOLVE
 
 
-  !> @author Chris Pain, Pablo Salinas, Arash Hamzeloo
-  !> @brief Calls to generate and solve the transport equation for the concentration field.
-  !---------------------------------------------------------------------------
-  SUBROUTINE Concentration_assem_solve( state, packed_state, &
-       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
-       tracer, velocity, density, multi_absorp, DT, &
-       SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
-       IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
-       THETA_GDIFF, eles_with_pipe, pipes_aux, &
-       mass_ele_transp, &
-       THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
-
-           implicit none
-           type( state_type ), dimension( : ), intent( inout ) :: state
-           type( state_type ), intent( inout ) :: packed_state
-           type(multi_dimensions), intent(in) :: Mdims
-           type(multi_GI_dimensions), intent(in) :: CV_GIdims
-           type(multi_shape_funs), intent(inout) :: CV_funs
-           type (multi_sparsities), intent(in) :: Mspars
-           type(multi_ndgln), intent(in) :: ndgln
-           type (multi_discretization_opts) :: Mdisopt
-           type (multi_matrices), intent(inout) :: Mmat
-           type (porous_adv_coefs), intent(inout) :: upwnd
-           type(tensor_field), intent(inout) :: tracer
-           type(tensor_field), intent(in) :: velocity, density
-           type(multi_absorption), intent(inout) :: multi_absorp
-           INTEGER, intent( in ) :: IGOT_T2, igot_theta_flux
-           LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
-           REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
-           REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-           REAL, intent( in ) :: DT
-           REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-           REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
-           real, dimension( : ), intent( inout ), optional :: mass_ele_transp
-           type(tensor_field), intent(in), optional :: saturation
-           type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
-           integer, optional :: icomp, nonlinear_iteration
-           type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
-           type (multi_pipe_package), intent(in) :: pipes_aux
-           real, optional, dimension(:), intent(inout) :: Courant_number
-           ! Local variables
-           LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
-           integer :: nits_flux_lim, its_flux_lim, stat
-           REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
-           REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION, CDISPERSION
-           REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
-           real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
-           REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
-           REAL, DIMENSION( : , : ), target, allocatable :: den_all
-           REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
-           type( tensor_field ), pointer :: P, Q
-           INTEGER :: IPHASE, its_taken, ipres
-           LOGICAL :: RETRIEVE_SOLID_CTY
-           type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
-           type( vector_field ), pointer  :: MeanPoreCV, python_vfield
-           integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat
-           type(vector_field)  :: residual
-           type(csr_sparsity), pointer :: sparsity
-           real, dimension(:,:,:), allocatable :: Velocity_Absorption
-           real, dimension(:,:,:), pointer :: T_AbsorB=>null()
-           integer :: ncomp_diff_coef, comp_diffusion_opt
-           real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
-           type( tensor_field ), pointer :: perm, python_tfield
-           integer :: cv_disopt, cv_dg_vel_int_opt
-           real :: cv_theta, cv_beta
-           type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
-           character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
-           !Variables to stabilize the non-linear iteration solver
-           real, dimension(2) :: totally_min_max
-           logical :: impose_min_max
-           real :: aux
-           real, save :: inf_tolerance = -1
-           !Variables to control the PETCs solver
-           integer, save :: max_allowed_its = -1
-           !Variables for vanishing diffusion
-           real, dimension(Mdims%cv_nonods) :: OvRelax_param
-           integer :: Phase_with_Ovrel
-           !temperature backup for the petsc bug
-           logical :: repeat_assemb_solve
-           !Parameters for stabilisation and compact solving, i.e. solving only concentration for some phases
-           real, parameter :: min_concentration = 0.
-           integer, save :: nconc = -1 !> Number of phases with concentration, this works if the phases with concentration start from the first one and are consecutive
-           integer, save :: nconc_in_pres
-           type(vector_field) :: solution
-           !Retrieve the number of phases that have Concentration fraction, and then if they are concecutive and start from the first one
-           if (nconc < 0) then
-             nconc = option_count("/material_phase/scalar_field::Concentration")
-             nconc_in_pres = nconc
-             if (Mdims%npres > 1) nconc_in_pres = max(nconc_in_pres / 2, 1)
-             do iphase = 1, nconc_in_pres
-               if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::Concentration')) then
-                 FLAbort('Concentration must either be defined in all the phases or to start from the first one and consecutively from that one.')
-               end if
-             end do
-           end if
-
-           if (present(Permeability_tensor_field)) then
-              perm => Permeability_tensor_field
-           else
-              perm=>extract_tensor_field(packed_state,"Permeability")
-           end if
-
-           lcomp = 0
-           if ( present( icomp ) ) lcomp = icomp
-
-           call allocate(Mmat%CV_RHS,nconc,tracer%mesh,"RHS")
-           call allocate(solution,nconc,tracer%mesh,"sol_tracer")!; call zero(solution)
-           sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-           allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
-
-           allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0!SPRINT_TO_DO TURN THESE T_SOURCE INTO POINTERS OR DIRECTLY REMOVE THEM
-           IGOT_T2_loc = 0
-
-           p => extract_tensor_field( packed_state, "PackedFEPressure" )
-
-           if (has_boussinesq_aprox) then
-             !We do not consider variations of density in transport
-               den_all = 1
-               denold_all =1
-           else
-              den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
-              denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
-              den_all    = den_all2 % val ( 1, :, : )
-              denold_all = denold_all2 % val ( 1, :, : )
-           endif
-
-           IGOT_T2_loc = 1
-
-           call get_option( '/material_phase[0]/scalar_field::Concentration/prognostic/temporal_discretisation/' // &
-               'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
-           Field_selector = 1
-           do iphase = 1, Mdims%nphase
-             sfield => extract_scalar_field( state(iphase), "ConcentrationSource", stat )
-             if (stat == 0) call assign_val(T_source( iphase, : ),sfield%val)
-           end do
-
-           !sprint to do, just pass down the other values...
-           cv_disopt = Mdisopt%t_disopt
-           cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
-           cv_theta = Mdisopt%t_theta
-           cv_beta = Mdisopt%t_beta
-
-
-
-           RETRIEVE_SOLID_CTY = .false.
-
-           deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
-           TDIFFUSION=0.0
-           CDISPERSION=0.0
-
-           !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
-           call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, &
-           calculate_solute_diffusivity = .true.)
-
-           !Calculates solute dispersion with specific longitudinal and transverse dispersivity
-           if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
-             call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION)
-             TDIFFUSION = TDIFFUSION + CDISPERSION
-           end if
-           !Start with the process to apply the min max principle
-           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
-
-           MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-           NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
-
-           solver_option_path = "/solver_options/Linear_solver"
-           if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::Concentration')) then
-             solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::Concentration'
-           end if
-           if(max_allowed_its < 0)  then
-               call get_option( trim(solver_option_path)//"max_iterations",&
-                max_allowed_its, default = 500)
-           end if
-           Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
-
-                Phase_with_Ovrel = -1
-
-               !Solves a PETSC warning saying that we are storing information out of range
-               call allocate(Mmat%petsc_ACV,sparsity,[nconc,nconc],"ACV_INTENERGE")
-               call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
-
-               !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
-               call CV_ASSEMB( state, packed_state, &
-                   nconc_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-                   tracer, velocity, density, multi_absorp, &
-                   DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                   DEN_ALL, DENOLD_ALL, &
-                   cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
-                   SUF_SIG_DIAGTEN_BC, &
-                   DERIV%val(1,:,:), P%val, &
-                   T_SOURCE, T_ABSORB, VOLFRA_PORE, &
-                   GETCV_DISC, GETCT, &
-                   IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
-                   THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                   MeanPoreCV%val, &
-                   mass_Mn_pres, .false., RETRIEVE_SOLID_CTY, &
-                   .true.,  mass_Mn_pres, &
-                   mass_ele_transp, &
-                   TDIFFUSION = TDIFFUSION,&
-                   saturation=saturation, Permeability_tensor_field = perm,&
-                   eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   solving_compositional = lcomp > 0, &
-                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
-                   ! call zero_non_owned(Mmat%CV_RHS)
-                   call zero(solution)
-                   call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
-                   !Ensure that the solution is above zero always
-                  solution%val = max(solution%val,min_concentration)
-
-                   !Copy solution back to tracer(not ideal...)
-                   do ipres =1, mdims%npres
-                     do iphase = 1 , nconc_in_pres
-                      tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*nconc_in_pres,:)
-                    end do
-                   end do
-
-                   !Apply if required the min max principle
-                   call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
-                   !Just after the solvers
-                   call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
-                   !Update halo communications
-                   call halo_update(tracer)
-                   !Checking solver not fully implemented
-                   solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
-                   call allor(solver_not_converged)
-                   exit!good to go!
-
-           END DO Loop_NonLinearFlux
-
-           call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
-           if (allocated(den_all)) deallocate(den_all)
-           if (allocated(denold_all)) deallocate(denold_all)
-           if (allocated(T_SOURCE)) deallocate(T_SOURCE)
-           call deallocate(solution); nullify(solution%val)
-           ewrite(3,*) 'Leaving Concentration_assem_solve'
-
-  END SUBROUTINE Concentration_assem_solve
 
 
   !>@brief: To help the stability of the system,if there are no sources/sinks it is known that
@@ -1037,7 +814,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
   !> A boussinesq approximation is enforced on these tracers as the are totally INERT
   !> CURRENTLY NO DIFFUSION
   !---------------------------------------------------------------------------
-  SUBROUTINE Passive_Tracer_Assemble_Solve( Passive_Tracer_name, state, packed_state, &
+  SUBROUTINE Tracer_Assemble_Solve( Tracer_name, state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
@@ -1048,7 +825,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
        icomp, saturation, Permeability_tensor_field, nonlinear_iteration )
 
            implicit none
-           character(len=*), intent(in) :: Passive_Tracer_name
+           character(len=*), intent(in) :: Tracer_name
            type( state_type ), dimension( : ), intent( inout ) :: state
            type( state_type ), intent( inout ) :: packed_state
            type(multi_dimensions), intent(in) :: Mdims
@@ -1079,8 +856,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
+           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
            REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
+           REAL, DIMENSION( :,:,:,: ), allocatable :: CDISPERSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
            REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
@@ -1115,19 +893,20 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer :: Phase_with_Ovrel
            !temperature backup for the petsc bug
            logical :: repeat_assemb_solve
-           logical :: boussinesq = .true.
            !Parameters for stabilisation and compact solving, i.e. solving only concentration for some phases
            real, parameter :: min_val = 0.
            integer :: nconc !> Number of phases with tracer, this works if the phases with concentration start from the first one and are consecutive
            integer :: nconc_in_pres
            type(vector_field) :: solution
 
+           !Initialise with an out of range value to be able to check it hasn't been
+           totally_min_max = 1e30
            !Retrieve the number of phases that have this tracer, and then if they are concecutive and start from the first one
-           nconc = option_count("/material_phase/scalar_field::"//trim(Passive_Tracer_name))
+           nconc = option_count("/material_phase/scalar_field::"//trim(Tracer_name))
            nconc_in_pres = nconc
            if (Mdims%npres > 1) nconc_in_pres = max(nconc_in_pres / 2, 1)
            do iphase = 1, nconc_in_pres
-             if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::'//trim(Passive_Tracer_name))) then
+             if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::'//trim(Tracer_name))) then
                FLAbort('Concentration must either be defined in all the phases or to start from the first one and consecutively from that one.')
              end if
            end do
@@ -1151,9 +930,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            p => extract_tensor_field( packed_state, "PackedFEPressure" )
 
-           if (boussinesq) then
+          if (has_boussinesq_aprox) then
+            !We do not consider variations of density in transport
                den_all = 1
                denold_all =1
+          else
+             den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
+             denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
+             den_all    = den_all2 % val ( 1, :, : )
+             denold_all = denold_all2 % val ( 1, :, : )
            endif
 
            IGOT_T2_loc = 1
@@ -1163,20 +948,31 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
           !Retrieve source term; sprint_to_do something equivalent should be done for absoprtion
            do iphase = 1, Mdims%nphase !IF THIS WORKS DO THE SAME FOR THE OTHER SCALAR FIELDS
-             sfield => extract_scalar_field( state(iphase), trim(Passive_Tracer_name)//"Source", stat )
+             sfield => extract_scalar_field( state(iphase), trim(Tracer_name)//"Source", stat )
              if (stat == 0) call assign_val(T_source( iphase, : ),sfield%val)
            end do
 
            !sprint to do, just pass down the other values...
            cv_disopt = Mdisopt%t_disopt; cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
            cv_theta = Mdisopt%t_theta; cv_beta = Mdisopt%t_beta
-
+           !For passive tracers use low order, the idea is to re-use the matrix when possible
+           if (is_PassiveTracer_field(Tracer_name)) then 
+            cv_disopt = 0!Force upwind
+            cv_theta = 1!For implicit euler
+           end if
            RETRIEVE_SOLID_CTY = .false.
 
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
-           TDIFFUSION=0.0
+           TDIFFUSION=0.0;
+           call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, TracerName= trim(Tracer_name))
 
-           call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, TracerName= trim(Passive_Tracer_name))
+           !Calculates solute dispersion with specific longitudinal and transverse dispersivity
+           if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
+            allocate(CDISPERSION(Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase)); CDISPERSION = 0.
+            call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, den_all, CDISPERSION)
+            TDIFFUSION = TDIFFUSION + CDISPERSION
+            deallocate(CDISPERSION)
+           end if
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
@@ -1198,7 +994,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel,&
+                                                          totally_min_max = totally_min_max, for_transport = .true.)
                else
                 Phase_with_Ovrel = -1
                end if
@@ -1258,9 +1055,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            if (allocated(denold_all)) deallocate(denold_all)
            if (allocated(T_SOURCE)) deallocate(T_SOURCE)
            call deallocate(solution); nullify(solution%val)
-           ewrite(3,*) 'Leaving Concentration_assem_solve'
+           ewrite(3,*) 'Leaving' //trim(Tracer_name)//'_assem_solve'
 
-  END SUBROUTINE Passive_Tracer_Assemble_Solve
+  END SUBROUTINE Tracer_Assemble_Solve
 
 
     !---------------------------------------------------------------------------
@@ -1270,7 +1067,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
-         nonlinear_iteration, SFPI_taken, Courant_number,&
+         nonlinear_iteration, time_step, SFPI_taken, SFPI_its, Courant_number,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state, multicomponent_state
@@ -1294,7 +1091,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
              real, dimension( : ), intent( inout ) :: mass_ele_transp
              integer, intent(in) :: nonlinear_iteration
+             integer, intent(in) :: time_step
              integer, intent(inout) :: SFPI_taken
+             integer, intent(inout) :: SFPI_its
              real, dimension(:), intent(inout) :: Courant_number
              REAL, DIMENSION( :, :), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
 
@@ -1336,9 +1135,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              logical :: satisfactory_convergence
              integer :: its, useful_sats
              logical, save :: Solve_all_phases
+             logical, save :: ML_method_activated
              !Variables to control the PETCs solver
              integer, save :: max_allowed_its = -1
              integer :: its_taken
+             logical, save :: written_file = .false.
              !We check this with the global number of phases per domain
              if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
 
@@ -1350,6 +1151,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  call get_option( trim(solver_option_path)//"max_iterations",&
                   max_allowed_its, default = 500)
                   Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
+                  ML_method_activated =  have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path")
              end if
 
              if (Solve_all_phases) then!For the number_of_normal_FPI FPIs we consider all the phases normally
@@ -1437,7 +1239,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      solution%val(iphase+(ipres-1)*n_in_pres,:) = sat_field%val(1,iphase+(ipres-1)*n_in_pres,:)
                    end do
                  end do
-
+                
                  !Assemble the matrix and the RHS
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                  call CV_ASSEMB( state, packed_state, &
@@ -1457,13 +1259,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      .false.,  mass_Mn_pres, &
                      mass_ele_transp, &          !Capillary variables
                      VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                     eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
                      nonlinear_iteration = nonlinear_iteration)
-
-                 !Make the inf norm of the Courant number across cpus
-                 if (IsParallel()) then
-                    call allmax(Courant_number(1)); call allmax(Courant_number(2))
-                 end if
 
                  !Time to solve the system
                  !If using FPI with backtracking
@@ -1473,27 +1270,53 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                      !If using ADAPTIVE FPI with backtracking
                      if (backtrack_par_factor < 0) then
-                         if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
-                           call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
-                         end if
-
-                         !Calculate the actual residual using a previous backtrack_par
-                         ! vtracer=as_vector(sat_field,dim=2)
-                         call mult(residual, Mmat%petsc_ACV, solution)
-                         !Now residual is calculated as Residual = RHS - A*X0
-                         residual%val = Mmat%CV_RHS%val - residual%val
-                         if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
-                         resold = res; res = 0
-                         do iphase = 1, nphase
-                            !L2 norm of the residual; needs to be done in steps to ensure cosistency in parallel
-                             aux = dot_product(residual%val(iphase,:),residual%val(iphase,:))
-                             call allsum(aux)
-                             aux = sqrt(aux)/ dble(total_cv_nodes)
-                             if (aux > res) res = aux
-                         end do
-                         !We use the highest residual across the domain
-                         if (IsParallel()) call allmax(res)
-                         if (its==1) first_res = res!Variable to check total convergence of the SFPI method
+#ifdef USING_XGBOOST           
+                        if (.not. ML_method_activated) then 
+                            if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                                call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                            end if
+                        end if              
+#else 
+                        if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                        end if
+#endif                          
+                        !Calculate the actual residual using a previous backtrack_par
+                        ! vtracer=as_vector(sat_field,dim=2)
+                        call mult(residual, Mmat%petsc_ACV, solution)
+                        !Now residual is calculated as Residual = RHS - A*X0
+                        residual%val = Mmat%CV_RHS%val - residual%val
+                        if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
+                        resold = res; res = 0
+                        do iphase = 1, nphase
+                        !L2 norm of the residual; needs to be done in steps to ensure cosistency in parallel
+                            aux = dot_product(residual%val(iphase,:),residual%val(iphase,:))
+                            call allsum(aux)
+                            aux = sqrt(aux)/ dble(total_cv_nodes)
+                            if (aux > res) res = aux
+                        end do
+                        !We use the highest residual across the domain
+                        if (IsParallel()) call allmax(res)
+                         
+                        if (its == 1) then 
+                            first_res = res !Variable to check total convergence of the SFPI method
+#ifdef USING_XGBOOST
+                            if (ML_method_activated) then 
+                                if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number (auto_backtracking) or a set of dimensionless numbers (AI_backtracking_parameters)                          
+                                    !#=================================================================================================================
+                                    !# Vinicius: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
+                                    !#=================================================================================================================
+                                    ! Calculate Darcy velocity with the most up-to-date information (necessary for AI_backtracking_parameters)                                    
+                                    if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )                                    
+                                    ! Generate all the dimensionless numbers 
+                                    call AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number, backtrack_par_factor, OvRelax_param, res, resold, nonlinear_iteration)
+                                    !#=================================================================================================================
+                                    !# Vinicius-End: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
+                                    !#=================================================================================================================   
+                                end if
+                            end if
+#endif               
+                        end if
                      end if
                  end if
 
@@ -1570,6 +1393,26 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  useful_sats = useful_sats + 1
 
              END DO Loop_NonLinearFlux
+
+             !#=================================================================================================================
+             !# Vinicius: Write the number of non-linear iterations into file
+             !#=================================================================================================================
+             !inquire(file="Inner_non_linear_iterations.csv", exist=file_exist) 
+            !  if (.not. written_file) then
+            !      open(75, file="non_linear_iterations.csv", status="replace")
+            !      write(75, '(8(A,",",X))') "time_step", "outer_nonlinear_iteration", "Inner_non_linear_iterations"
+            !      close(75)
+            !      written_file = .true.
+            !  end if
+            !  ! Write values
+            !  open(75, file="non_linear_iterations.csv", status="unknown", position="append")
+            !  write(75, '(8(I8,",",X))') time_step, nonlinear_iteration, its 
+            !  close(75)
+            !  SFPI_its = its
+             !#=================================================================================================================
+             !# Vinicius-End: Write the number of non-linear iterations into file
+             !#=================================================================================================================
+
              !Store the number of Saturation Fixed_Point iterations
              SFPI_taken = SFPI_taken + its
              !Store the final accumulated backtrack_par_factor to properly calculate the convergence functional
@@ -1872,7 +1715,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
         DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, &
         IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J,&
-        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its)
+        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, Courant_number)
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -1900,6 +1743,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type (multi_outfluxes), intent(inout) :: outfluxes
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
         integer, intent(inout) :: pres_its_taken
+        real, dimension(:), intent(inout) :: Courant_number
         ! Local Variables
         character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
         character(len=option_path_len) :: solver_option_velocity = "/solver_options/Linear_solver"
@@ -2192,7 +2036,7 @@ end if
         end if
 
         if ( Mdims%npres > 1 ) then
-           call get_entire_boundary_condition( pressure, ['weakdirichlet','freesurface  '],&
+           call get_entire_boundary_condition( pressure, ['weakdirichlet'],&
                 pressure_BCs, WIC_P_BC_ALL )
            !Array defined to check where to apply pressure or velocity BCs (for wells)
            if (.not. associated(Mmat%WIC_FLIP_P_VEL_BCS)) then
@@ -2210,7 +2054,7 @@ end if
             CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
             DT, MASS_MN_PRES, MASS_ELE,& ! pressure matrix for projection method
             got_free_surf,  MASS_SUF, SUF_SIG_DIAGTEN_BC, &
-            V_SOURCE, VOLFRA_PORE, &
+            V_SOURCE, VOLFRA_PORE, Courant_number, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
@@ -2228,7 +2072,7 @@ end if
            !Introduce well modelling
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe,&
                 associated(Mmat%PIVIT_MAT) .and. .not.Mmat%Stored, WIC_P_BC_ALL, pressure_BCs%val, SIGMA,&
-                velocity%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL )
+                velocity%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL, pipes_aux )
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
@@ -2329,6 +2173,10 @@ end if
         call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
         rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
         call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+        !Call impose strong BCs must be here before the rescaling and after include wells and
+        !compressibility - only done if using P0DG and gamma is zero at the BC see 
+        !subroutine initialize_pipes_package_and_gamma for more information
+        if (is_P0DGP1 .and. Mdims%npres > 1) call impose_strong_bcs_wells(state, pipes_aux, Mdims, Mmat, ndgln, CMC_petsc,pressure,rhs_p%val) 
         !Re-scale system so we can deal with SI units of permeability
         if (is_porous_media) then
           call scale(cmc_petsc, 1.0/rescaleVal)
@@ -2423,7 +2271,7 @@ end if
           logical :: restart_now
           type(tensor_field) :: aux_velocity
           type( vector_field ) :: packed_vel, packed_CDP_tensor, packed_aux_velocity
-          real, dimension(2) :: totally_min_max
+          real, dimension(2) :: totally_min_max = 1e30!Initialise with an out of range value to be able to check it hasn't been
 
           !Retrieve settings from diamond
           if (solver_tolerance<0) then
@@ -2985,7 +2833,7 @@ end if
         MASS_MN_PRES, MASS_ELE,&
         got_free_surf,  MASS_SUF, &
         SUF_SIG_DIAGTEN_BC, &
-        V_SOURCE, VOLFRA_PORE, &
+        V_SOURCE, VOLFRA_PORE, Courant_number, &
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, &
@@ -3038,7 +2886,7 @@ end if
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
         REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  DIAG_BIGM_CON
         REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  BIGM_CON
-
+        real, dimension(:), intent(inout) :: Courant_number
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
@@ -3112,7 +2960,13 @@ end if
             got_free_surf,  MASS_SUF, &
             dummy_transp, &
             eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, &
-            calculate_mass_delta = calculate_mass_delta, outfluxes = outfluxes)
+            calculate_mass_delta = calculate_mass_delta, outfluxes = outfluxes,&
+            Courant_number = Courant_number)
+
+            !Make the inf norm of the Courant number across cpus
+            if (IsParallel()) then
+              call allmax(Courant_number(1)); call allmax(Courant_number(2))
+           end if
 
         ewrite(3,*)'Back from cv_assemb'
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
@@ -7817,6 +7671,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      real, dimension(:,:,:), pointer :: p
      real, dimension(:,:), pointer :: satura, immobile_fraction, Cap_entry_pressure, Cap_exponent, X_ALL
      type( tensor_field ), pointer :: Velocity
+     type( vector_field ), pointer :: DarcyVelocity
      type( scalar_field ), pointer :: PIPE_Diameter
 
 
@@ -7877,7 +7732,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              if (present_and_true(for_transport)) then
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
                 !This method was designed for fields between 0 and 1, so for transport fields, we need to adjust Pe_aux to ensure consistency
-                if (present(totally_min_max)) Pe_aux = Pe_aux*abs(totally_min_max(2) - totally_min_max(1)) !THIS means making it HIGHER
+                if (present(totally_min_max)) then 
+                  !Means that min_max is defined
+                  if (abs(totally_min_max(2)) < 1e20) Pe_aux = Pe_aux*max(abs(totally_min_max(2) - totally_min_max(1)),1.0) !THIS means making it HIGHER
+                end if
              else
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
              end if
@@ -7899,9 +7757,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              if (Pe_aux<0) then!Automatic set up for Pe
                  !Method based on calculating an entry pressure for a given Peclet number;
                  !Peclet = V * L / Diffusivity; We consider only the entry pressure for the diffusivity
-                 !Pe = Vel * L/ Peclet. At present we are using the velocity that includes the sigma. Maybe might be worth it using the Darcy velocity?
+                 !Pe = Vel * L/ Peclet. At present we are using the Darcy Velocity 
                  Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
-
+                ! DarcyVelocity => extract_vector_field( state(Phase_with_Pc), "DarcyVelocity" )
+              
                  !Since it is an approximation, the domain length is the maximum distance, we only calculate it once
                  if (domain_length < 0) then
                    do idim = 1, Mdims%ndim
@@ -7923,7 +7782,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                          u_inod = ndgln%u(( ELE - 1 ) * Mdims%u_nloc +u_iloc )
                          do cv_iloc = 1, Mdims%cv_nloc
                              cv_nodi = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                             Pe(cv_nodi) = Pe(cv_nodi) + (1./Pe_aux) * (sum(abs(Velocity%val(:,Phase_with_Pc,u_inod)))/real(Mdims%ndim) * domain_length)/real(Mdims%u_nloc)
+                             Pe(cv_nodi) = Pe(cv_nodi) + (1./Pe_aux) * (sum(abs(Velocity%val(:,Phase_with_Pc, u_inod)))/real(Mdims%ndim) * domain_length)/real(Mdims%u_nloc)
                          end do
                      end do
                  end do
@@ -7951,6 +7810,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
          end if
 
+         !For transport we don't use the pseudo capillary pressure function
+         if (present_and_true(for_transport)) then
+          Overrelaxation = - Pe
+          return
+         end if
          !Calculate the overrrelaxation parameter, the numbering might be different for Pe and real capillary
          !values, hence we calculate it differently
          if (Artificial_Pe) then
@@ -8018,7 +7882,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       ! local variables...
 
       integer :: ph_ngi, ph_nloc, ph_snloc, &
-                stat, max_allowed_its,ele, &
+                stat, ele, &
                 ph_ele_type, iloop, &
                 cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, &
                 ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod, tmp_cv_nloc, other_nloc
@@ -8033,15 +7897,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       real, dimension(:,:,:), pointer :: phfenx_all, ufenx_all
 
-      real, dimension( :, :, : ), allocatable :: u_ph_source_vel, u_ph_source_cv
-      real, dimension( :, : ), allocatable :: alpha_cv, coef_alpha_cv
+      real, dimension( :, :, : ), allocatable :: u_ph_source_cv
 
-      real, dimension( :, :, : ), allocatable :: u_ph_source_ph, dx_ph_gi
-      real, dimension( :, : ), allocatable :: alpha_ph, coef_alpha_ph, HydrostaticPressure
+      real, dimension( :, :, : ), allocatable :: dx_ph_gi
 
-      real, dimension( :, :, : ), allocatable :: u_s_gi, dx_alpha_gi
-      real, dimension( :, : ), allocatable :: coef_alpha_gi, den_gi, inv_den_gi
-      real, dimension( :, : ), allocatable :: sigma_gi, volfra_gi
+      real, dimension( :, :, : ), allocatable :: u_s_gi
+      real, dimension( :, : ), allocatable :: den_gi, inv_den_gi
+      real, dimension( :, : ), allocatable :: volfra_gi
 
       real, dimension( : ), pointer :: tmp_cv_weight
       real, dimension( :, : ), pointer :: tmp_cvfen
@@ -8052,7 +7914,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       real :: nxnx, gravity_magnitude, dt, zmax
       type( scalar_field ), pointer  :: ph_pressure
-      type( scalar_field ) :: rhs, ph_sol
+      type( scalar_field ) :: rhs
       type( petsc_csr_matrix ) :: matrix
       type( csr_sparsity ), pointer :: sparsity
 
@@ -8074,10 +7936,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       solver_option_path = "/solver_options/Linear_solver"
       if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure')) then
         solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure'
-      end if
-      if(max_allowed_its < 0)  then
-          call get_option( trim(solver_option_path)//"max_iterations",&
-           max_allowed_its, default = 500)
       end if
 
 
@@ -8113,6 +7971,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       call allocate_multi_shape_funs( ph_funs, phdims, phGIdims )
       call cv_fem_shape_funs( ph_funs, phdims, phGIdims, ph_ele_type, quad_over_whole_ele = .true. )
+
+      !This is to present the results in paraview; sprint_to_do mix this results with pressure before creating a vtu file and then remove them
+      ph_pressure => extract_scalar_field( state( 1 ), "HydrostaticPressure", stat )
 
       ph_ngi = phGIdims%cv_ngi
       x => extract_vector_field( packed_state, "PressureCoordinate" )
@@ -8151,36 +8012,21 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       allocate(detwei(ph_ngi))
       allocate(ra(ph_ngi))
 
-      allocate( u_ph_source_vel( Mdims%ndim, nphase, Mdims%u_nonods ), &
-           &    u_ph_source_cv( Mdims%ndim, nphase, Mdims%cv_nonods ), &
-           &    alpha_cv( nphase, Mdims%cv_nonods ), &
-           &    coef_alpha_cv( nphase, Mdims%cv_nonods ) )
-
-      allocate( u_ph_source_ph( Mdims%ndim, nphase, ph_nonods ), &
-           &    alpha_ph( nphase, ph_nonods ), &
-           &    HydrostaticPressure( nphase, ph_nonods ), &
-           &    coef_alpha_ph( nphase, ph_nonods ) )
+      allocate( u_ph_source_cv( Mdims%ndim, nphase, Mdims%cv_nonods ))
 
       allocate( dx_ph_gi( ph_ngi, Mdims%ndim, nphase ) )
 
-      allocate( u_s_gi( ph_ngi, Mdims%ndim, nphase ), &
-           &    dx_alpha_gi( ph_ngi, Mdims%ndim, nphase ), &
-           &    coef_alpha_gi( ph_ngi, nphase ) )
+      allocate( u_s_gi( ph_ngi, Mdims%ndim, nphase ))
 
       allocate( den_gi( ph_ngi, nphase ), inv_den_gi( ph_ngi, nphase ), &
-                sigma_gi( ph_ngi, nphase ), volfra_gi( ph_ngi, nphase ) )
-
-      ! initialise memory
-      u_ph_source_vel = 0.0 ; alpha_cv = 0.0 ; coef_alpha_cv = 0.0
-      u_ph_source_ph = 0.0 ; alpha_ph = 0.0 ; coef_alpha_ph = 0.0
-      u_ph_source_cv = 0.0
+                volfra_gi( ph_ngi, nphase ) )
 
       ! set the gravity term
       rho => extract_tensor_field( packed_state, "PackedDensity" )
       volfra => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
       call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude )
       gravity_direction => extract_vector_field( state( 1 ), "GravityDirection" )
-
+      !Initialise rhs
       do iphase = 1, nphase
          do idim = 1, Mdims%ndim
             u_ph_source_cv( idim, iphase, : ) = rho % val( 1, iphase, : ) * &
@@ -8191,7 +8037,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix )
       call allocate( rhs, phmesh, "rhs" ); call zero ( rhs )
-      call allocate( ph_sol, phmesh, "ph_sol" ); call zero( ph_sol )
 
       do iloop = 1, 2
 
@@ -8207,30 +8052,15 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                  other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
                  other_fenx_all)
 
-            if ( Mdims%u_nloc == tmp_cv_nloc ) then
-                ufenx_all => tmp_cvfenx_all
-            else
-                ufenx_all => other_fenx_all
-            end if
-            if ( ph_nloc == tmp_cv_nloc ) then
-                phfenx_all => tmp_cvfenx_all
-            else
-                phfenx_all => other_fenx_all
-            end if
+            !Select shape functions to use
+            ufenx_all => other_fenx_all
+            if ( Mdims%u_nloc == tmp_cv_nloc ) ufenx_all => tmp_cvfenx_all
 
-            u_s_gi = 0.0 ; dx_alpha_gi = 0.0 ; coef_alpha_gi = 0.0
-            dx_ph_gi = 0.0 ; den_gi = 0.0 ; sigma_gi = 0.0 ; volfra_gi = 0.0
+            phfenx_all => other_fenx_all
+            if ( ph_nloc == tmp_cv_nloc ) phfenx_all => tmp_cvfenx_all
 
-            do u_iloc = 1, Mdims%u_nloc
-               u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + u_iloc )
-               do iphase = 1, nphase
-                  do idim = 1, Mdims%ndim
-                     u_s_gi( :, idim, iphase ) = u_s_gi( :, idim, iphase ) + &
-                          ph_funs%ufen( u_iloc, : ) * u_ph_source_vel( idim, iphase, u_inod )
-                  end do
-               end do
-            end do
-
+            u_s_gi = 0.0 ; dx_ph_gi = 0.0 ; den_gi = 0.0 ;
+            volfra_gi = 0.0
 
             do cv_iloc = 1, Mdims%cv_nloc
                cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
@@ -8238,13 +8068,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
                do iphase = 1, nphase
                   do idim = 1, Mdims%ndim
-                     dx_alpha_gi( :, idim, iphase ) = dx_alpha_gi( :, idim, iphase ) + &
-                          tmp_cvfenx_all( idim, cv_iloc, : ) * alpha_cv( iphase, cv_inod )
                      u_s_gi( :, idim, iphase ) = u_s_gi( :, idim, iphase ) + &
                           tmp_cvfen( cv_iloc, : ) * u_ph_source_cv( idim, iphase, cv_inod )
                   end do
-                  coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
-                       tmp_cvfen( cv_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
 
                   if ( has_boussinesq_aprox ) then
                      den_gi( :, iphase ) = 1.0
@@ -8252,9 +8078,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                      den_gi( :, iphase ) = den_gi( :, iphase ) + &
                           tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
                   end if
-
-                  sigma_gi( :, iphase ) = sigma_gi( :, iphase ) + &
-                        tmp_cvfen( cv_iloc, : ) * u_absorbin(  1, iphase, mat_inod )
 
                   volfra_gi( :, iphase ) = volfra_gi( :, iphase ) + &
                         tmp_cvfen( cv_iloc, : ) * volfra % val( 1, iphase, cv_inod )
@@ -8268,13 +8091,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
                do iphase = 1, nphase
                   do idim = 1, Mdims%ndim
-                     dx_alpha_gi( :, idim, iphase ) = dx_alpha_gi( :, idim, iphase ) + &
-                          phfenx_all( idim, ph_iloc, : ) * alpha_ph( iphase, ph_inod )
                      dx_ph_gi( :, idim, iphase ) = dx_ph_gi( :, idim, iphase ) + &
-                          phfenx_all( idim, ph_iloc, : ) * HydrostaticPressure( iphase, ph_inod )
+                          phfenx_all( idim, ph_iloc, : ) * ph_pressure%val( ph_inod )
                   end do
-                  coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
-                       ph_funs%cvfen( ph_iloc, : ) * coef_alpha_ph( iphase, ph_inod )
                end do
             end do
 
@@ -8299,23 +8118,20 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                      do idim = 1, Mdims%ndim
                         call addto( rhs, ph_inod, &
                              sum( phfenx_all( idim, ph_iloc, : ) * inv_den_gi( :, iphase ) * ( &
-                             u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
-                             dx_alpha_gi( :, idim, iphase ) ) * detwei ) )
+                             u_s_gi( :, idim, iphase ) ) * detwei ) )
                      end do
                   end do
                end do
 
-            else
-
-               ! form rhs of the momentum eqn...
+              else if (iloop == 2 ) then
+                ! form rhs of the momentum eqn...
                do u_iloc = 1, Mdims%u_nloc
                   u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + u_iloc )
                   do iphase = 1, nphase
                      do idim = 1, Mdims%ndim
                         u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + &
                              sum( ph_funs%ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
-                             + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
-                             dx_alpha_gi( :, idim, iphase ) ) * detwei )
+                             + u_s_gi( :, idim, iphase ) ) * detwei )
                      end do
                   end do
                end do
@@ -8324,8 +8140,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
          end do ! ele loop
 
+        
          if ( iloop == 1 ) then
-
+          !This part is very badly writen apart from being unnecessary since it is better to use remove_null_space
             got_free_surf = .false. ; same_mesh = (Mdims%cv_nloc==ph_nloc)
             pfield => extract_tensor_field( packed_state, "PackedFEPressure" )
             do i = 1, get_boundary_condition_count( pfield )
@@ -8340,96 +8157,84 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             ! else don't forget to remove the null space
             matrix%is_assembled =.false.
             call assemble( matrix )
-
-            if ( got_free_surf .and. same_mesh ) then
-               findph => sparsity % findrm
-               colph => sparsity % colm
-               do inod = 1, size( surface_node_list )
-                  ph_inod = surface_node_list( inod )
-                  rhs % val( ph_inod ) = 0.0
-                  do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
-                     ph_jnod = colph( count )
-                     if ( ph_jnod /= ph_inod ) then
-                        i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
-                        j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
-                        call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                        do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
-                           ph_jnod2 = colph( count2 )
-                           if ( ph_jnod2 == ph_inod ) then
-                              i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
-                              j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
-                              call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                           end if
-                        end do
-                     end if
-                  end do
-               end do
+            if ( got_free_surf) then 
+              if ( same_mesh ) then
+                findph => sparsity % findrm
+                colph => sparsity % colm
+                do inod = 1, size( surface_node_list )
+                    ph_inod = surface_node_list( inod )
+                    rhs % val( ph_inod ) = 0.0
+                    do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
+                      ph_jnod = colph( count )
+                      if ( ph_jnod /= ph_inod ) then
+                          i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
+                          j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
+                          call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                          do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
+                            ph_jnod2 = colph( count2 )
+                            if ( ph_jnod2 == ph_inod ) then
+                                i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
+                                j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
+                                call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                            end if
+                          end do
+                      end if
+                    end do
+                end do
+              else
+                findph => sparsity % findrm
+                colph => sparsity % colm
+                x2 => extract_vector_field( state( 1 ), "DiagnosticCoordinate" )
+                zmax = maxval( x2%val(Mdims%ndim,:) )
+                do inod = 1, ph_nonods
+                    if ( abs( x2%val(Mdims%ndim,inod)-zmax )<1.0e-6 ) then
+                      ph_inod = inod
+                      rhs % val( ph_inod ) = 0.0
+                      do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
+                          ph_jnod = colph( count )
+                          if ( ph_jnod /= ph_inod ) then
+                            i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
+                            j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
+                            call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                            do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
+                                ph_jnod2 = colph( count2 )
+                                if ( ph_jnod2 == ph_inod ) then
+                                  i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
+                                  j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
+                                  call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                                end if
+                            end do
+                          end if
+                      end do
+                    end if
+                end do
+              end if
             end if
-
-            if ( got_free_surf .and. .not.same_mesh ) then
-               findph => sparsity % findrm
-               colph => sparsity % colm
-               x2 => extract_vector_field( state( 1 ), "DiagnosticCoordinate" )
-               zmax = maxval( x2%val(Mdims%ndim,:) )
-               do inod = 1, ph_nonods
-                  if ( abs( x2%val(Mdims%ndim,inod)-zmax )<1.0e-6 ) then
-                     ph_inod = inod
-                     rhs % val( ph_inod ) = 0.0
-                     do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
-                        ph_jnod = colph( count )
-                        if ( ph_jnod /= ph_inod ) then
-                           i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
-                           j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
-                           call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                           do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
-                              ph_jnod2 = colph( count2 )
-                              if ( ph_jnod2 == ph_inod ) then
-                                 i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
-                                 j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
-                                 call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                              end if
-                           end do
-                        end if
-                     end do
-                  end if
-               end do
-            end if
-
             matrix%is_assembled =.false.
-
-            ! call assemble( matrix )
-
+          end if
+          !Now it is time to solve the system
+          if ( iloop == 1 ) then
+            call assemble( matrix )
             !Add remove null_space if not bcs specified for the field
             if ( .not.got_free_surf ) call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
-            call zero(ph_sol) !; call zero_non_owned(rhs)
-            call petsc_solve( ph_sol, matrix, rhs, option_path = trim(solver_option_path) )
+            call zero(ph_pressure) !; call zero_non_owned(rhs)
+            call petsc_solve( ph_pressure, matrix, rhs, option_path = trim(solver_option_path) )
 
 ! call MatView(matrix%M,   PETSC_VIEWER_STDOUT_SELF, iphase)
 ! read*
             !Remove remove_null_space
             if ( .not.got_free_surf ) call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
-            if (IsParallel()) call halo_update(ph_sol)
-
-            do iphase = 1, nphase
-               HydrostaticPressure( iphase, : ) = ph_sol % val ! assume 1 phase for the time being
-            end do
-            !This is to present the results in paraview; sprint_to_do mix this results with pressure before creating a vtu file and then remove them
-            ph_pressure => extract_scalar_field( state( 1 ), "HydrostaticPressure", stat )
-            if ( stat == 0 ) ph_pressure%val = ph_sol%val
-         end if
+            if (IsParallel()) call halo_update(ph_pressure)
+          end if
 
       end do
 
       ! deallocate
       call deallocate_multi_shape_funs( ph_funs )
       call deallocate( rhs )
-      call deallocate( ph_sol )
       call deallocate( matrix )
-      deallocate( u_ph_source_vel, u_ph_source_cv, alpha_cv, &
-                  coef_alpha_cv, u_ph_source_ph, alpha_ph, &
-                  HydrostaticPressure, coef_alpha_ph, dx_ph_gi, u_s_gi, &
-                  dx_alpha_gi, coef_alpha_gi, den_gi, inv_den_gi, &
-                  sigma_gi, volfra_gi, &
+      deallocate( u_ph_source_cv, dx_ph_gi, u_s_gi, &
+                  den_gi, inv_den_gi, volfra_gi, &
                   tmp_cvfenx_all, other_fenx_all, detwei, ra )
       ewrite(3,*) "leaving high_order_pressure_solve"
 
@@ -9145,5 +8950,768 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       call deallocate(v_solution)
       call deallocate( Mmat%CV_RHS ); call deallocate( Mmat%petsc_ACV )
     end subroutine generate_and_solve_Laplacian_system
+
+    !> @author Pablo Salinas, Geraldine Regnier
+    !>@brief: In this subroutine, we modify the CMC matrix and the RHS for the pressure to strongly impose the
+    !> pressure boundary conditions for wells ONLY. This is required only when using P0DG-P1
+    !> If not imposing strong pressure BCs and using P0DG-P1, the formulation for weak pressure BCs
+    !> leads to a 0 in the diagonal of the CMC matrix, therefore strong BCs are required.
+    subroutine impose_strong_bcs_wells(state,pipes_aux,Mdims,Mmat, ndgln, CMC_petsc,pressure,rhs_p)
+
+        ! form pressure matrix CMC using a colouring approach
+        type(multi_dimensions), intent(in) :: Mdims
+        type (multi_matrices), intent(in) :: Mmat
+        type( state_type ), dimension(:), intent( in ) :: state
+        type(multi_ndgln), intent(in) :: ndgln
+        type(petsc_csr_matrix), intent(inout)::  CMC_petsc
+        real, dimension (:,:), intent(inout) :: rhs_p
+        type( tensor_field ), intent(in) :: pressure
+        type (multi_pipe_package), intent(in) :: pipes_aux
+        INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
+        INTEGER, PARAMETER :: WIC_P_BC_DIRICHLET = 1
+        ! Local variables
+        INTEGER :: SELE, IPRES, CV_SILOC, CV_NOD, i, ierr, k
+        integer, dimension(Mdims%stotel) :: Impose_strong
+        type(tensor_field) :: pressure_BCs
+        type(scalar_field), pointer :: pipe_diameter
+  
+        call get_entire_boundary_condition(pressure,&
+            ['weakdirichlet'],&
+            pressure_BCs,WIC_P_BC_ALL)
+        PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
+        !Initialise array to store universal numbering of strong BC positions
+        Impose_strong = -1; k = 1
+        !Only for wells
+        CMC_petsc%is_assembled=.false.
+        call assemble( CMC_petsc )
+        DO SELE = 1, Mdims%stotel
+          DO IPRES = 2, Mdims%npres
+            !Find element where we have a pressure BC defined
+            if (WIC_P_BC_ALL(1, IPRES, SELE ) == WIC_P_BC_DIRICHLET) then
+              !If no flip required or positive pressure
+              IF (Mmat%WIC_FLIP_P_VEL_BCS(1,IPRES,SELE) == 0 .or. Mmat%WIC_FLIP_P_VEL_BCS(1,IPRES,SELE) == 10) THEN
+                DO CV_SILOC = 1, Mdims%cv_snloc
+                  CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
+                  !Check if we are in an element that may need strongly imposed BCs
+                  if (.not. pipes_aux%impose_strongBCs(CV_NOD)) cycle
+                  !Store the universal numbering, required by PETSc
+                  Impose_strong(k) = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+                  k = k + 1
+                  !Impose P_BC in the right hand side
+                  rhs_p(ipres,cv_nod) = pressure_BCs%val(1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC ) - &
+                  pressure%val(1,IPRES, CV_NOD)
+                  end do
+                end if
+            end if
+          END DO
+        end do
+
+        !Now ensure that all the processors call MatZeroRows consistently
+        i = 0
+        do k = 1, Mdims%stotel
+          if (isparallel()) call allmax(Impose_strong(k))
+          if (Impose_strong(k) < 0) exit
+          i = i + 1
+        end do
+        call MatZeroRows(CMC_petsc%M, i, Impose_strong(1:i), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
+
+        !Re-assemble just in case
+        CMC_petsc%is_assembled=.false.
+        call assemble( CMC_petsc )
+        call deallocate( pressure_BCs )
+      end subroutine
+
+    !----------------------------------------------------------------------------------------
+    !> @author Vinicius L S Silva
+    !> @brief Subroutine that calculates the backtrack_par_factor based on Machine Learning. 
+    !> The inputs of the Machine learning model are dimensionless numbers and configurations  
+    !> of the system. This subroutine also generates several dimensionless numbers cv-wise.  
+    !----------------------------------------------------------------------------------------
+#ifdef USING_XGBOOST      
+    subroutine AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number_in, backtrack_par_factor, overrelaxation, &
+                                         & res, resold, outer_nonlinear_iteration, for_transport)
+        implicit none
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_ndgln), intent(in) :: ndgln
+        type( state_type ), intent(inout) :: packed_state
+        type( state_type ), dimension( : ), intent( inout ) :: state
+        real, dimension(:), intent(inout) :: courant_number_in
+        real, intent(inout) :: backtrack_par_factor
+        real, dimension(:), intent(in) :: overrelaxation
+        real, intent(in) :: res
+        real, intent(in) :: resold   
+        integer, intent(in) :: outer_nonlinear_iteration
+        logical, optional, intent(in) :: for_transport
+        
+        !Local variables
+        real, save :: backup_shockfront_Courant = 0.
+        logical, save :: readed_options = .false.
+        logical, save :: readed_perm = .false.
+        !logical, save :: readed_por = .false.
+        logical, save :: readed_sizes = .false.
+        logical, save  :: written_file = .false. 
+        logical, save  :: loaded_file = .false. 
+        real, dimension(:,:), pointer :: X_ALL, saturation, Imble_frac, cap_entry_pres, end_point_relperm, exponent_relperm
+        type(tensor_field), pointer :: permeability, state_viscosity, density, velocity
+        type(vector_field), pointer :: porosity, gravity_direction 
+        type (vector_field_pointer), dimension(Mdims%nphase) :: Darcy_velocity
+        real, dimension(Mdims%cv_nonods) :: total_mobility, counter_subcv, nDarcy_velocity_cvwise
+        real, dimension(Mdims%ndim, Mdims%cv_nonods) :: Darcy_velocity_cvwise
+        real, dimension(Mdims%n_in_pres, Mdims%cv_nonods) :: relperm, viscosity
+        real, save :: average_perm_length, average_perm_thickness, average_por, domain_length, domain_thickness 
+        real :: l1_max, l1_min, l2_max, l2_min, h_max, h_min, aux_shockfront_mobratio, delta_density, diffusivity, gravity_magnitude, sin_alpha
+        integer :: iphase, cv_nodi, cv_iloc, ele, total_ele, u_iloc, u_inod, total_cv, Phase_with_Pc, shockfront_counter
+        !integer, dimension(8) :: date_values
+        !logical :: file_exist         
+
+        !Parameters 
+        real, dimension(:), allocatable :: longitudinal_capillary, transverse_capillary, buoyancy_number, longitudinal_buoyancy, transverse_buoyancy, invPeclet
+        logical, save :: gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
+        real, save :: n_phases, n_components, aspect_ratio
+        real :: courant_number, shockfront_courant_number
+        real :: min_total_mobility, max_total_mobility, average_total_mobility
+        real :: min_Darcy_velocity, max_Darcy_velocity, average_Darcy_velocity
+        real :: min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
+        real :: average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
+        real :: average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
+        real :: average_overrelaxation, max_overrelaxation, min_overrelaxation
+        real :: average_invPeclet, max_invPeclet, min_invPeclet
+        real :: shockfront_number_ratio, btpf        
+
+        !*************************************!
+        !!! ***Getting support variables*** !!!
+        !*************************************!
+
+        !Permeability averages 
+        if (.not.readed_perm) then 
+            !Retrieve permeability field - element wise
+            permeability => extract_tensor_field(packed_state,"Permeability")  
+            !Average permeability along Mdims%ndim-1 first dimensions
+            average_perm_length = 0.
+            if (Mdims%ndim < 3) then
+                do ele = 1, Mdims%totele
+                    average_perm_length = average_perm_length + permeability%val(1,1,ele) 
+                end do 
+                total_ele = Mdims%totele
+                if (IsParallel()) then
+                    call allsum(average_perm_length)
+                    call allsum(total_ele)
+                end if
+                average_perm_length = average_perm_length/total_ele 
+            else 
+                do ele = 1, Mdims%totele
+                    average_perm_length = average_perm_length + permeability%val(1,1,ele)  + permeability%val(2,2,ele) 
+                end do 
+                total_ele = Mdims%totele
+                if (IsParallel()) then
+                    call allsum(average_perm_length)
+                    call allsum(total_ele)
+                end if
+                average_perm_length = average_perm_length/(total_ele*2) 
+            end if  
+            !Average permeability along the last dimensions
+            average_perm_thickness = 0.
+            do ele = 1, Mdims%totele
+                average_perm_thickness = average_perm_thickness + permeability%val(Mdims%ndim,Mdims%ndim,ele) 
+            end do 
+            total_ele = Mdims%totele
+            if (IsParallel()) then
+                call allsum(average_perm_thickness)
+                call allsum(total_ele)
+            end if
+            average_perm_thickness = average_perm_thickness/total_ele     
+            readed_perm = .true.
+        end if    
+
+        !Porosity average - not using
+        !if (.not.readed_por) then 
+        !    !Retrieve porosity field
+        !    porosity => extract_vector_field(packed_state,"Porosity")
+        !    average_por = 0
+        !    do ele = 1, Mdims%totele    
+        !        average_por = average_por + porosity%val(1, ele) 
+        !        total_ele = Mdims%totele
+        !    if (IsParallel()) then
+        !       call allsum(average_por)
+        !       call allsum(total_ele)
+        !    average_por = average_por/real(total_ele)    
+        !    readed_por = .true.    
+        !end if
+            
+        !Domain lemgth, domain thickness 
+        if (.not.readed_sizes) then
+            !Extract variables from packed_state, X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
+            call get_var_from_packed_state(packed_state, PressureCoordinate = X_ALL)    
+            !Domain length as the maximum distance in the (Mdims%ndim-1) dimensions, we only calculate it once
+            if (Mdims%ndim < 3) then 
+                l1_max = maxval(X_ALL(1,:)) 
+                l1_min = minval(X_ALL(1,:))   
+                if (IsParallel()) then
+                    call allmax(l1_max)
+                    call allmin(l1_min)
+                end if
+                domain_length = abs(l1_max-l1_min)
+            else 
+                l1_max = maxval(X_ALL(1,:)) 
+                l1_min = minval(X_ALL(1,:))
+                l2_max = maxval(X_ALL(2,:)) 
+                l2_min = minval(X_ALL(2,:))
+                if (IsParallel()) then
+                    call allmax(l1_max)
+                    call allmin(l1_min)
+                    call allmax(l2_max)
+                    call allmin(l2_min)
+                end if
+                domain_length = max(l1_max-l1_min, l2_max-l2_min)
+            end if
+            !Domain thickness as the maximum distance in the last dimension
+            h_max = maxval(X_ALL(Mdims%ndim,:)) 
+            h_min = minval(X_ALL(Mdims%ndim,:))
+            if (IsParallel()) then
+                call allmax(h_max)
+                call allmin(h_min)
+            end if
+            domain_thickness = abs(h_max-h_min)  
+            readed_sizes = .true.    
+        end if
+
+        !Retrieve viscosity field - control-volume wise
+        do iphase = 1,  Mdims%n_in_pres
+          state_viscosity => extract_tensor_field( state( iphase ), 'Viscosity' )
+          viscosity(iphase, :) = state_viscosity%val(1,1,1) !Take the first term only as for porous media we consider only scalar
+        end do
+        !viscosity => extract_tensor_field(state(Mdims%n_in_pres),"Viscosity" )
+        !Retrieve phase density - control-volume wise
+        density  => extract_tensor_field( packed_state, "PackedDensity" )
+        !Retrieve velocity - control-volume wise
+        velocity => extract_tensor_field( packed_state, "PackedVelocity" )
+        !Retrieve Immobile fraction - element wise 
+        call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
+        !Retrive saturation - control-volume wise
+        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = saturation) 
+        !Retrive Capillary entry pressure - control-volume wise
+        call get_var_from_packed_state(packed_state, Cap_entry_pressure = cap_entry_pres) 
+        !Retrive relative permeability end points- control-volume wise
+        call get_var_from_packed_state(packed_state, EndPointRelperm = end_point_relperm) 
+        !Retrive relative permeability exponents - control-volume wise
+        call get_var_from_packed_state(packed_state, RelpermExponent = exponent_relperm) 
+        !Retrieve relative permeabilty field - control-volume wise 
+        call get_relative_permeability(Mdims, saturation, Imble_frac, end_point_relperm, exponent_relperm, relperm) 
+        !Calculate the total number of control volumes  
+        total_cv = Mdims%cv_nonods 
+        if (IsParallel()) then
+            call allsum(total_cv)                
+        end if
+
+        !Total mobility - control-volume wise
+        do cv_nodi = 1, Mdims%cv_nonods
+            total_mobility(cv_nodi) = sum( relperm(:, cv_nodi) / viscosity( :, cv_nodi) )
+        end do
+
+        !P0 Darcy velocity - control-volume wise
+        do iphase = 1, Mdims%n_in_pres
+            Darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
+        end do    
+        Darcy_velocity_cvwise = 0.
+        counter_subcv = 0
+        do ele = 1, Mdims%totele
+            do u_iloc = 1, Mdims%u_nloc
+                u_inod = ndgln%u(( ele - 1 ) * Mdims%u_nloc + u_iloc)
+                do cv_iloc = 1, Mdims%cv_nloc
+                    cv_nodi = ndgln%cv(( ele - 1) * Mdims%cv_nloc + cv_iloc )
+                    do iphase = 1, Mdims%n_in_pres
+                        Darcy_velocity_cvwise(:,cv_nodi) = Darcy_velocity_cvwise(:,cv_nodi) + Darcy_velocity(iphase)%ptr%val(:,u_inod)
+                    end do
+                    counter_subcv(cv_nodi) = counter_subcv(cv_nodi) + 1
+                end do
+            end do
+        end do
+        do cv_nodi = 1, Mdims%cv_nonods
+            Darcy_velocity_cvwise(:,cv_nodi) = Darcy_velocity_cvwise(:,cv_nodi)/counter_subcv(cv_nodi)
+            nDarcy_velocity_cvwise(cv_nodi) = norm2(Darcy_velocity_cvwise(:,cv_nodi))
+        end do 
+
+        !**************************************!
+        !!! ***Calculating all parameters*** !!!
+        !**************************************!
+
+        if (.not.readed_options) then
+            !We read the options just once
+            
+            !!! Number of phases !!!
+            n_phases = Mdims%n_in_pres 
+            !!! have wells !!! 
+            wells = (Mdims%npres > 1)
+            !!! Number of components !!!
+            n_components = Mdims%ncomp        
+            !!! gravity !!!
+            gravity = have_option("/physical_parameters/gravity")        
+            !!! Capillary pressure !!!
+            cap_pressure = have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)
+            !!! Single-phase flow !!!
+            one_phase = (Mdims%n_in_pres == 1) 
+            !!! Black Oil
+            black_oil = have_option( "/physical_parameters/black-oil_PVT_table")
+            !!! Over relaxation !!!
+            ov_relaxation = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation')
+            
+            !!! Aspect ratio !!!
+            ! R_L = sqrt(permz/permx)*L/H 
+            aspect_ratio = domain_length*SQRT(average_perm_thickness/average_perm_length)/domain_thickness   
+            
+            readed_options = .true.
+        end if
+
+        !!! Courant number and Shockfront courant number !!!
+        ! CFL = u*delta_t/delta_x
+        !Sometimes the shock-front courant number is not well calculated, then use previous value
+        !if (abs(courant_number_in(2)) < 1d-8 ) courant_number_in(2) = backup_shockfront_Courant
+        !Courant number
+        courant_number = courant_number_in(1) 
+        !shockfront courant number
+        shockfront_courant_number = courant_number_in(2)
+        backup_shockfront_Courant = shockfront_courant_number
+        
+        !!! Total mobility  !!!
+        ! calculate average, max and min values
+        average_total_mobility = sum(total_mobility)
+        max_total_mobility = maxval(total_mobility)
+        min_total_mobility = minval(total_mobility)
+        if (IsParallel()) then
+            call allsum(average_total_mobility)
+            call allmax(max_total_mobility)  
+            call allmin(min_total_mobility)               
+        end if
+        average_total_mobility = average_total_mobility/total_cv 
+        
+        !!! Darcy velocity !!!
+        ! calculate average, max and min values
+        average_Darcy_velocity = sum(nDarcy_velocity_cvwise)
+        max_Darcy_velocity = maxval(nDarcy_velocity_cvwise)
+        min_Darcy_velocity = minval(nDarcy_velocity_cvwise)
+        if (IsParallel()) then
+            call allsum(average_Darcy_velocity)
+            call allmax(max_Darcy_velocity)  
+            call allmin(min_Darcy_velocity)               
+        end if
+        average_Darcy_velocity = average_Darcy_velocity/total_cv 
+
+
+        !!! shockfront mobility ratio !!! 
+        ! M_f = lambda_T(at the front)/lambda_T(ahead of the front)
+        min_shockfront_mobratio = 999.
+        max_shockfront_mobratio = 0.
+        average_shockfront_mobratio = 0.
+        shockfront_counter = 0
+        if (Mdims%n_in_pres > 1) then
+            do ele = 1, Mdims%totele
+                if (shock_front_in_ele(ele, Mdims, saturation, ndgln, Imble_frac)) then 
+                    aux_shockfront_mobratio = shock_front_mobility_ratio(ele, Mdims, saturation, ndgln, Imble_frac, total_mobility)
+                    min_shockfront_mobratio = min(min_shockfront_mobratio, aux_shockfront_mobratio)
+                    max_shockfront_mobratio = max(max_shockfront_mobratio, aux_shockfront_mobratio)
+                    average_shockfront_mobratio = average_shockfront_mobratio + aux_shockfront_mobratio
+                    shockfront_counter = shockfront_counter + 1
+                end if
+            end do  
+            total_ele = Mdims%totele
+            if (IsParallel()) then
+                call allmax(max_shockfront_mobratio)
+                call allmin(min_shockfront_mobratio)
+                call allsum(average_shockfront_mobratio)
+                call allsum(shockfront_counter)      
+                call allsum(total_ele)           
+            end if
+            average_shockfront_mobratio = average_shockfront_mobratio/shockfront_counter
+            shockfront_number_ratio = real(shockfront_counter)/total_ele
+        end if
+        !Verify whether there is a shockfront or not 
+        if (shockfront_counter == 0) then 
+            min_shockfront_mobratio = 1.
+            max_shockfront_mobratio = 1.
+            average_shockfront_mobratio = 1.   
+            shockfront_number_ratio = 0.0   
+        end if    
+        
+        !!! Capillary numbers !!!
+        ! N_cv,L = (permx*k^e_rd*P^e_c)/(u*mu_d*L)
+        ! N_cv,T = (permz*k^e_rd*P^e_c*L)/(u*mu_d*H**2)
+        if (cap_pressure) then
+            allocate( longitudinal_capillary(Mdims%cv_nonods) )
+            allocate( transverse_capillary(Mdims%cv_nonods) )
+            do cv_nodi = 1, Mdims%cv_nonods
+                longitudinal_capillary(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi)) / &
+                                                & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_length) 
+                transverse_capillary(cv_nodi) = average_perm_thickness*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi))*domain_length / &
+                                                & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_thickness**2)               
+            end do 
+            ! calculate average, max and min values
+            average_longitudinal_capillary = sum(longitudinal_capillary)
+            average_transverse_capillary = sum(transverse_capillary)
+            max_longitudinal_capillary = maxval(longitudinal_capillary)
+            max_transverse_capillary = maxval(transverse_capillary)
+            min_longitudinal_capillary = minval(longitudinal_capillary)
+            min_transverse_capillary = minval(transverse_capillary)
+            if (IsParallel()) then
+                call allsum(average_longitudinal_capillary)
+                call allsum(average_transverse_capillary)
+                call allmax(max_longitudinal_capillary)
+                call allmax(max_transverse_capillary)  
+                call allmin(min_longitudinal_capillary)
+                call allmin(min_transverse_capillary)               
+            end if
+            average_longitudinal_capillary = average_longitudinal_capillary/total_cv
+            average_transverse_capillary = average_transverse_capillary/total_cv 
+            deallocate(longitudinal_capillary)
+            deallocate(transverse_capillary)
+        else 
+            average_longitudinal_capillary = 0.
+            average_transverse_capillary = 0.
+            max_longitudinal_capillary = 0.
+            max_transverse_capillary = 0.
+            min_longitudinal_capillary = 0.
+            min_transverse_capillary = 0.
+        end if
+
+        !!! gravity numbers !!!
+        ! N_bv  = (permx*k^e_rd*delta_rho*g*cos(alpha))/(u*mu_d*L)
+        ! N_bv,L = (permx*k^e_rd*delta_rho*g*sin(alpha))/(u*mu_d)
+        ! N_bv,T = (permz*k^e_rd*delta_rho*g*cos(alpha)*L)/(u*mu_d*H)
+        if (gravity) then
+            allocate( buoyancy_number(Mdims%cv_nonods) )
+            allocate( longitudinal_buoyancy(Mdims%cv_nonods) )
+            allocate( transverse_buoyancy(Mdims%cv_nonods) )
+            call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude)
+            gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )          
+            do cv_nodi = 1, Mdims%cv_nonods
+                delta_density = (maxval(density%val(1,:,cv_nodi)) - minval(density%val(1,:,cv_nodi)))
+                sin_alpha =  dot_product(Darcy_velocity_cvwise(:,cv_nodi), gravity_direction%val(:,1))/(norm2(Darcy_velocity_cvwise(:,cv_nodi))*norm2(gravity_direction%val(:,1)))  
+                buoyancy_number(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*delta_density*gravity_magnitude*sqrt(1-sin_alpha**2)*domain_thickness / &
+                                            & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_length) 
+                longitudinal_buoyancy(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*delta_density*gravity_magnitude*sin_alpha / &
+                                               & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)) 
+                transverse_buoyancy(cv_nodi) = average_perm_thickness*end_point_relperm(Mdims%n_in_pres,cv_nodi)*delta_density*gravity_magnitude*sqrt(1-sin_alpha**2)*domain_length / &
+                                                & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_thickness)               
+            end do 
+            ! calculate average, max and min values
+            average_buoyancy_number = sum(buoyancy_number)
+            average_longitudinal_buoyancy = sum(longitudinal_buoyancy)
+            average_transverse_buoyancy = sum(transverse_buoyancy)
+            max_buoyancy_number = maxval(buoyancy_number)
+            max_longitudinal_buoyancy = maxval(longitudinal_buoyancy)
+            max_transverse_buoyancy = maxval(transverse_buoyancy)
+            min_buoyancy_number = minval(buoyancy_number)
+            min_longitudinal_buoyancy = minval(longitudinal_buoyancy)
+            min_transverse_buoyancy = minval(transverse_buoyancy)
+            if (IsParallel()) then
+                call allsum(average_buoyancy_number)
+                call allsum(average_longitudinal_buoyancy)
+                call allsum(average_transverse_buoyancy)
+                call allmax(max_buoyancy_number)
+                call allmax(max_longitudinal_buoyancy)  
+                call allmax(max_transverse_buoyancy) 
+                call allmin(min_buoyancy_number)
+                call allmin(min_longitudinal_buoyancy)  
+                call allmin(min_transverse_buoyancy)  
+            end if
+            average_buoyancy_number = average_buoyancy_number/total_cv
+            average_longitudinal_buoyancy = average_longitudinal_buoyancy/total_cv 
+            average_transverse_buoyancy = average_transverse_buoyancy/total_cv 
+            deallocate(buoyancy_number)
+            deallocate(longitudinal_buoyancy)
+            deallocate(transverse_buoyancy)
+        else 
+            average_buoyancy_number = 0.
+            average_longitudinal_buoyancy = 0.
+            average_transverse_buoyancy = 0.
+            max_buoyancy_number = 0.
+            max_longitudinal_buoyancy = 0.
+            max_transverse_buoyancy = 0.
+            min_buoyancy_number = 0.
+            min_longitudinal_buoyancy = 0.
+            min_transverse_buoyancy = 0.
+        end if
+
+        !!! overrelaxation parameter !!!
+        if (ov_relaxation) then
+            !allocate( overrelaxation(Mdims%cv_nonods) ) 
+            !call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, overrelaxation, Phase_with_Pc) 
+            max_overrelaxation = maxval(overrelaxation)
+            min_overrelaxation = minval(overrelaxation)
+            average_overrelaxation = sum(overrelaxation)
+            if (IsParallel()) then
+                call allmax(max_overrelaxation)
+                call allmin(min_overrelaxation)
+                call allsum(average_overrelaxation)              
+            end if
+            average_overrelaxation = average_overrelaxation/total_cv
+            !deallocate(overrelaxation)
+        else 
+            max_overrelaxation = 0.
+            min_overrelaxation = 0.
+            average_overrelaxation = 0.
+        end if
+
+        !!! Peclet number !!!
+        ! Peclet = u * L / Diffusivity; 
+        ! invPeclet = 1/Peclet
+        if (ov_relaxation) then 
+            allocate( invPeclet(Mdims%cv_nonods) )
+            if (present_and_true(for_transport)) then
+                call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', diffusivity)
+            else
+                call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', diffusivity)
+            end if
+            diffusivity = abs(diffusivity)
+            invPeclet = 0.
+            do cv_nodi = 1, Mdims%cv_nonods
+                invPeclet(cv_nodi) = diffusivity/(nDarcy_velocity_cvwise(cv_nodi)*domain_length)
+            end do
+            max_invPeclet = maxval(invPeclet)
+            min_invPeclet = minval(invPeclet)
+            average_invPeclet = sum(invPeclet)
+            if (IsParallel()) then
+                call allmax(max_invPeclet)
+                call allmin(min_invPeclet)
+                call allsum(average_invPeclet)
+            end if
+            average_invPeclet = average_invPeclet/total_cv
+            deallocate(invPeclet)
+        else
+            max_invPeclet = 0.   
+            min_invPeclet = 0.
+            average_invPeclet = 0.
+        end if
+        
+        !***************************!
+        !!! **Call the ML model** !!!
+        !***************************!
+
+        block
+        !     character(len=16) :: c_aspect_ratio, c_courant_number, c_shockfront_courant_number, c_shockfront_number_ratio, c_min_total_mobility, c_max_total_mobility, c_average_total_mobility, c_min_Darcy_velocity, c_max_Darcy_velocity, c_average_Darcy_velocity, c_min_shockfront_mobratio, c_max_shockfront_mobratio, c_average_shockfront_mobratio, c_average_longitudinal_capillary, c_average_transverse_capillary, c_max_longitudinal_capillary, c_max_transverse_capillary, c_min_longitudinal_capillary, c_min_transverse_capillary, c_average_buoyancy_number, c_average_longitudinal_buoyancy, c_average_transverse_buoyancy, c_max_buoyancy_number, c_max_longitudinal_buoyancy, c_max_transverse_buoyancy, c_min_buoyancy_number, c_min_longitudinal_buoyancy, c_min_transverse_buoyancy, c_average_overrelaxation, c_max_overrelaxation, c_min_overrelaxation, c_average_invPeclet, c_max_invPeclet, c_min_invPeclet, c_res, c_resold, c_res_resold, c_backtrack_par_factor, c_outer_nonlinear_iteration
+            
+        !     write(c_aspect_ratio,'(E16.8)')   aspect_ratio
+        !     write(c_courant_number,'(E16.8)')   courant_number
+        !     write(c_shockfront_courant_number,'(E16.8)')   shockfront_courant_number
+        !     write(c_shockfront_number_ratio,'(E16.8)')   shockfront_number_ratio
+        !     write(c_min_total_mobility,'(E16.8)')   min_total_mobility
+        !     write(c_max_total_mobility,'(E16.8)')   max_total_mobility
+        !     write(c_average_total_mobility,'(E16.8)')   average_total_mobility
+        !     write(c_min_Darcy_velocity,'(E16.8)')   min_Darcy_velocity
+        !     write(c_max_Darcy_velocity,'(E16.8)')   max_Darcy_velocity
+        !     write(c_average_Darcy_velocity,'(E16.8)')   average_Darcy_velocity
+        !     write(c_min_shockfront_mobratio,'(E16.8)')   min_shockfront_mobratio
+        !     write(c_max_shockfront_mobratio,'(E16.8)')   max_shockfront_mobratio
+        !     write(c_average_shockfront_mobratio,'(E16.8)')   average_shockfront_mobratio
+        !     write(c_average_longitudinal_capillary,'(E16.8)')   average_longitudinal_capillary
+        !     write(c_average_transverse_capillary,'(E16.8)')   average_transverse_capillary
+        !     write(c_max_longitudinal_capillary,'(E16.8)')   max_longitudinal_capillary
+        !     write(c_max_transverse_capillary,'(E16.8)')   max_transverse_capillary
+        !     write(c_min_longitudinal_capillary,'(E16.8)')   min_longitudinal_capillary
+        !     write(c_min_transverse_capillary,'(E16.8)')   min_transverse_capillary
+        !     write(c_average_buoyancy_number,'(E16.8)')   average_buoyancy_number
+        !     write(c_average_longitudinal_buoyancy,'(E16.8)')   average_longitudinal_buoyancy
+        !     write(c_average_transverse_buoyancy,'(E16.8)')   average_transverse_buoyancy
+        !     write(c_max_buoyancy_number,'(E16.8)')   max_buoyancy_number
+        !     write(c_max_longitudinal_buoyancy,'(E16.8)')   max_longitudinal_buoyancy
+        !     write(c_max_transverse_buoyancy,'(E16.8)')   max_transverse_buoyancy
+        !     write(c_min_buoyancy_number,'(E16.8)')   min_buoyancy_number
+        !     write(c_min_longitudinal_buoyancy,'(E16.8)')   min_longitudinal_buoyancy
+        !     write(c_min_transverse_buoyancy,'(E16.8)')   min_transverse_buoyancy
+        !     write(c_average_overrelaxation,'(E16.8)')   average_overrelaxation
+        !     write(c_max_overrelaxation,'(E16.8)')   max_overrelaxation
+        !     write(c_min_overrelaxation,'(E16.8)')   min_overrelaxation
+        !     write(c_average_invPeclet,'(E16.8)')   average_invPeclet
+        !     write(c_max_invPeclet,'(E16.8)')   max_invPeclet
+        !     write(c_min_invPeclet,'(E16.8)')   min_invPeclet
+        !     write(c_res,'(E16.8)')   res
+        !     write(c_resold,'(E16.8)')   resold
+        !     write(c_res_resold,'(E16.8)')   res/resold
+        !     write(c_backtrack_par_factor,'(E16.8)')   backtrack_par_factor
+        !     write(c_outer_nonlinear_iteration,'(I16)')   outer_nonlinear_iteration
+          
+        !     !call the machine learning model
+        !     call execute_command_line("~/anaconda3/envs/py3ml/bin/python MLmodel.py " // c_aspect_ratio // c_courant_number // c_shockfront_courant_number // c_shockfront_number_ratio // c_min_total_mobility // c_max_total_mobility // c_average_total_mobility // c_min_Darcy_velocity // c_max_Darcy_velocity // c_average_Darcy_velocity // c_min_shockfront_mobratio // c_max_shockfront_mobratio // c_average_shockfront_mobratio // c_average_longitudinal_capillary // c_average_transverse_capillary // c_max_longitudinal_capillary // c_max_transverse_capillary // c_min_longitudinal_capillary // c_min_transverse_capillary // c_average_buoyancy_number // c_average_longitudinal_buoyancy // c_average_transverse_buoyancy // c_max_buoyancy_number // c_max_longitudinal_buoyancy // c_max_transverse_buoyancy // c_min_buoyancy_number // c_min_longitudinal_buoyancy // c_min_transverse_buoyancy // c_average_overrelaxation // c_max_overrelaxation // c_min_overrelaxation // c_average_invPeclet // c_max_invPeclet // c_min_invPeclet // c_res // c_resold // c_res_resold // c_backtrack_par_factor // c_outer_nonlinear_iteration //  " > btpf")
+            
+        !     !read result from output file
+        !     open(74,file='btpf',action='read')
+        !     read(74,*) btpf
+        !     close(74)
+        !     backtrack_par_factor = btpf
+
+        real(c_float), dimension(17)  :: raw_input 
+        real(c_float), pointer        :: out_result(:)
+        real, save                    :: target_nli
+
+        backtrack_par_factor = -1. ! Assign -1 to backtrack_par_factor in all cores
+        if (getprocno() == 1) then ! To let only 1 core to load and predict using the ML model
+            if (.not. loaded_file) then
+                call xgboost_load_model()  
+                call get_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path/target_num_nonlinear", target_nli, default=1.0)              
+                loaded_file = .true.
+            end if
+
+            raw_input = (/aspect_ratio, & 
+                        & courant_number, &
+                        & shockfront_courant_number, &
+                        & shockfront_number_ratio, &
+                        & average_total_mobility, &
+                        & average_Darcy_velocity, &
+                        & average_shockfront_mobratio, &
+                        & average_longitudinal_capillary, &
+                        & average_transverse_capillary, &
+                        & average_buoyancy_number, &
+                        & average_longitudinal_buoyancy, &
+                        & average_transverse_buoyancy, &
+                        & average_overrelaxation, &
+                        & res, &
+                        & resold, &
+                        & res/resold, &
+                        & target_nli /) !Target number of inner-nonlinear iteration  
+
+            call xgboost_predict(raw_input, out_result)
+            !write(*,*) 'XGB model prediction: ',out_result
+            backtrack_par_factor = out_result(1)           
+            nullify(out_result)
+        end if
+        if (IsParallel()) call allmax(backtrack_par_factor) ! Assign the calculated values of the backtrack_par_factor
+
+        endblock  
+        
+        !***************************!
+        !! ***Write into file*** !!!
+        !***************************!
+    
+        !inquire(file="AI_backtracking_parameters.csv", exist=file_exist) 
+        ! if (.not. written_file) then
+        !     open(73, file="AI_backtracking_parameters.csv", status="replace")
+        !     !call date_and_time(VALUES=date_values)          
+        !     !write(73,'(8i5)') date_values
+        !     ! Write column names
+        !     write(73, '(6(A,",",X))', advance="NO") "gravity", "cap_pressure", "black_oil", "ov_relaxation", "one_phase", "wells"
+        !     write(73, '(5(A,",",X))', advance="NO") "n_phases", "n_components", "aspect_ratio", "courant_number", "shockfront_courant_number"
+        !     write(73, '(1(A,",",X))', advance="NO") "shockfront_number_ratio"
+        !     write(73, '(3(A,",",X))', advance="NO") "min_total_mobility", "max_total_mobility", "average_total_mobility"
+        !     write(73, '(3(A,",",X))', advance="NO") "min_Darcy_velocity", "max_Darcy_velocity", "average_Darcy_velocity"
+        !     write(73, '(3(A,",",X))', advance="NO") "min_shockfront_mobratio", "max_shockfront_mobratio", "average_shockfront_mobratio"
+        !     write(73, '(6(A,",",X))', advance="NO") "average_longitudinal_capillary", "average_transverse_capillary", "max_longitudinal_capillary", "max_transverse_capillary", "min_longitudinal_capillary", "min_transverse_capillary"
+        !     write(73, '(9(A,",",X))', advance="NO") "average_buoyancy_number", "average_longitudinal_buoyancy", "average_transverse_buoyancy", "max_buoyancy_number", "max_longitudinal_buoyancy", "max_transverse_buoyancy", "min_buoyancy_number", "min_longitudinal_buoyancy", "min_transverse_buoyancy"
+        !     write(73, '(3(A,",",X))', advance="NO") "average_overrelaxation", "max_overrelaxation", "min_overrelaxation"
+        !     write(73, '(3(A,",",X))', advance="NO") "average_invPeclet", "max_invPeclet", "min_invPeclet"
+        !     write(73, '(5(A,",",X))') "res", "resold", "res_resold", "backtrack_par_factor", "btpf"
+        !     close(73)
+        !     written_file = .true.
+        ! end if
+
+        ! ! Write values
+        ! open(73, file="AI_backtracking_parameters.csv", status="unknown", position="append")
+        ! write(73, '(6(L,",",X))',     advance="NO") gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
+        ! write(73, '(5(E15.8,",",X))', advance="NO") n_phases, n_components, aspect_ratio, courant_number, shockfront_courant_number
+        ! write(73, '(1(E15.8,",",X))', advance="NO") shockfront_number_ratio
+        ! write(73, '(3(E15.8,",",X))', advance="NO") min_total_mobility, max_total_mobility, average_total_mobility
+        ! write(73, '(3(E15.8,",",X))', advance="NO") min_Darcy_velocity, max_Darcy_velocity, average_Darcy_velocity
+        ! write(73, '(3(E15.8,",",X))', advance="NO") min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
+        ! write(73, '(6(E15.8,",",X))', advance="NO") average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
+        ! write(73, '(9(E15.8,",",X))', advance="NO") average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
+        ! write(73, '(3(E15.8,",",X))', advance="NO") average_overrelaxation, max_overrelaxation, min_overrelaxation
+        ! write(73, '(3(E15.8,",",X))', advance="NO") average_invPeclet, max_invPeclet, min_invPeclet
+        ! write(73, '(5(E15.8,",",X))') res, resold, res/resold, backtrack_par_factor, btpf
+        ! close(73)
+
+        !*****************************!
+        !!! ***Support functions*** !!!
+        !*****************************!
+
+        contains 
+
+            subroutine get_relative_permeability(Mdims, saturation, Imble_frac, end_point_relperm, exponent_relperm, relperm) 
+                !Calculate the relative permeabilities based on Corey correlation
+                implicit none
+                type(multi_dimensions), intent(in) :: Mdims
+                real, dimension(:,:), intent(in) :: saturation
+                real, dimension(:,:), intent(in) :: Imble_frac
+                real, dimension(:,:), intent(in) :: end_point_relperm
+                real, dimension(:,:), intent(in) :: exponent_relperm
+                real, dimension(:,:), intent(OUT) :: relperm
+                integer :: cv_nodi, iphase
+
+                do cv_nodi = 1, Mdims%cv_nonods
+                    do iphase = 1, Mdims%n_in_pres
+                        relperm(iphase,cv_nodi) = end_point_relperm(iphase,cv_nodi)*((saturation(iphase,cv_nodi) - Imble_frac(iphase,cv_nodi))/ &
+                                                & (1-sum(Imble_frac(:Mdims%n_in_pres,cv_nodi))))**exponent_relperm(iphase,cv_nodi)   
+                    end do     
+                end do            
+            end subroutine 
+
+            real function shock_front_mobility_ratio(ele, Mdims, sat, ndgln, Imble_frac, total_mobility)
+                !Detects whether the element has a shockfront or not and calculates the shockfront mobility ratio
+                !if there is not a shock front within the lement the fuction returns -1
+                implicit none
+                integer, intent(in) :: ele 
+                type(multi_dimensions), intent(in) :: Mdims
+                real, dimension(:,:), intent(in) :: sat 
+                type(multi_ndgln), intent(in) :: ndgln
+                real, dimension(:,:), intent(in) :: Imble_frac  
+                real, dimension(:), intent(in) :: total_mobility           
+                !Local variables
+                integer :: iphase, cv_iloc, cv_nodi
+                real :: minival, maxival, aux_sat, tmob_aheadfront, tmob_atfront
+                real, parameter :: tol = 0.05 !Shock fronts smaller than this are unlikely to require extra handling
+                
+                !Starts the value                
+                shock_front_mobility_ratio = -1.0
+
+                minival = 999.; maxival = 0.
+                do iphase = 1, mdims%n_in_pres - 1 
+                    do cv_iloc = 1, Mdims%cv_nloc
+                        cv_nodi = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+                        aux_sat = sat(iphase, cv_nodi) - Imble_frac(iphase, ele)    
+                        if (aux_sat < minival) then 
+                            minival = aux_sat
+                            tmob_aheadfront = total_mobility(cv_nodi)    
+                        end if
+                        if (aux_sat > maxival) then 
+                            maxival = aux_sat
+                            tmob_atfront = total_mobility(cv_nodi)    
+                        end if
+                    end do
+                    if  (minival < tol .and. (maxival-minival) > tol) then
+                        shock_front_mobility_ratio = tmob_atfront/tmob_aheadfront
+                        exit
+                    end if
+                end do
+            end function shock_front_mobility_ratio
+
+            logical function shock_front_in_ele(ele, Mdims, sat, ndgln, Imble_frac)
+                !Detects whether the element has a shockfront or not
+                implicit none
+                integer, intent(in) :: ele !***
+                type(multi_dimensions), intent(in) :: Mdims
+                real, dimension(:,:), intent(in) :: sat 
+                type(multi_ndgln), intent(in) :: ndgln
+                real, dimension(:,:), intent(in) :: Imble_frac             
+                !Local variables
+                integer :: iphase, cv_iloc
+                real :: minival, maxival, aux
+                real, parameter :: tol = 0.05 !Shock fronts smaller than this are unlikely to require extra handling
+
+                !Starts the value   
+                shock_front_in_ele = .false.
+
+                minival = 999.; maxival = 0.
+                do iphase = 1, mdims%n_in_pres - 1  
+                    do cv_iloc = 1, Mdims%cv_nloc
+                        aux = sat(iphase, ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)) - Imble_frac(iphase,ele)
+                        minival = min(aux, minival)
+                        maxival = max(aux, maxival)
+                    end do
+                    if  (minival < tol .and. (maxival-minival) > tol) then
+                        shock_front_in_ele = .true.
+                        exit
+                    end if
+                end do
+            end function shock_front_in_ele
+
+    end subroutine AI_backtracking_parameters
+#endif
 
  end module multiphase_1D_engine

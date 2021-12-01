@@ -917,38 +917,72 @@ END subroutine RotationMatrix
     !> @brief: This subroutine uses python run string to run the python_scalar_diagnostic to read a field
     !> the only difference with the normal approach is that here the Dummy field is used and the returned field is an array.
     !> IMPORTANT: state is used here, NOT packed_state
-    subroutine compute_python_scalar_field(state, option_path_python, scalar_result)
+    !> It can be used for a given array, scalar_result, scalar fields, vector fields or tensor fields, but only one at a time
+    subroutine multi_compute_python_field(states, iphase, option_path_python, scalar_result, sfield, vfield, tfield)
       implicit none
-      type( state_type ), dimension(:), intent( inout ) :: state
+      type( state_type ), dimension(:), intent( inout ) :: states
+      integer, intent(in) :: iphase
       character( len = * ), intent(in) :: option_path_python
-      real, dimension(:), intent(inout) :: scalar_result
+      real, dimension(:), intent(inout), optional :: scalar_result
+      type (scalar_field), intent(inout), optional :: sfield
+      type (vector_field), intent(inout), optional :: vfield
+      type (tensor_field), intent(inout), optional :: tfield
       !Local variables
-      type (scalar_field), pointer :: sfield
+      type (scalar_field), pointer :: s_field
       character( len = python_func_len ) :: pycode
+      character( len = option_path_len ) :: buffer
+      real :: dt, current_time
+      integer :: i
 
-      if (.not.have_option("/material_phase[0]/scalar_field::Dummy")) then
-          ewrite(0, *) "ERROR: Trying to compute a python scalar_field without enabling the Dummy field in the first phase."
-        stop 657483
-      end if
-
+#ifdef HAVE_NUMPY
+      ewrite(3,*) "Have both NumPy and a python eos..."
+#else
+         FLAbort("Python eos requires NumPy, which cannot be located.")
+#endif
 
       call python_reset()
-      call python_add_state( state(1) )
-      sfield => extract_scalar_field(state(1), "Dummy")
-      sfield%val = 0.
-      call python_run_string("field = state.scalar_fields['Dummy']")
-      ! call get_option("/timestepping/current_time", current_time)
-      ! write(buffer,*) current_time
-      ! call python_run_string("time="//trim(buffer))
-      ! call get_option("/timestepping/timestep", dt)
-      ! write(buffer,*) dt
-      ! call python_run_string("dt="//trim(buffer))
+      
+      !Support for multiphase
+      call python_add_states(states)
+      call python_run_string("state = states['"//trim(states(iphase)%name)//"']")
+      if (iphase == 1) call python_run_string("Pressure = state.scalar_fields['Pressure']")
+      do i = 1, size(states)
+        if (iphase /= i) then 
+          call python_run_string("state"//int2str(i)//" = states['"//trim(states(i)%name)//"']")
+          !Provide Pressure always so it is available in all the phases
+          if (i == 1) call python_run_string("Pressure = state1.scalar_fields['Pressure']")
+        end if
+      end do
+      
+      !Depending on the input field we define field in a different way
+      if (present(scalar_result)) then 
+        if (.not.have_option("/material_phase["// int2str( iphase - 1)//"]/scalar_field::Dummy")) then
+            ewrite(0, *) "ERROR: Trying to compute a python scalar_field without enabling the Dummy field in the corresponding phase."
+          stop 657483
+        end if
+        s_field => extract_scalar_field(states(iphase), "Dummy");
+        !Impose initially the given value
+        s_field%val = scalar_result
+        call python_run_string("field = state.scalar_fields['Dummy']")
+      end if     
+      if (present(sfield)) call python_run_string("field = state.scalar_fields['"//trim(sfield%name)//"']")
+      if (present(vfield)) call python_run_string("field = state.vector_fields['"//trim(vfield%name)//"']")
+      if (present(tfield)) call python_run_string("field = state.tensor_fields['"//trim(tfield%name)//"']")
+
+      call get_option("/timestepping/current_time", current_time)
+      write(buffer,*) current_time
+      call python_run_string("time="//trim(buffer))
+      call get_option("/timestepping/timestep", dt)
+      write(buffer,*) dt
+      call python_run_string("dt="//trim(buffer))
       ! Get the code
       call get_option( trim( option_path_python ) // '/algorithm', pycode )
       ! Run the code
       call python_run_string( trim( pycode ) )
-      scalar_result = sfield%val
-    end subroutine
+
+      if (present(scalar_result)) scalar_result = s_field%val
+      call python_reset()
+    end subroutine multi_compute_python_field
 
 
     !---------------------------------------------------------------------------
@@ -1053,5 +1087,40 @@ version and using & profiling, please configure WITHOUT 'petscdebug'"
       end subroutine petsc_log_pop
 
     end subroutine petsc_logging
+
+      !> @brief: Returns true if the input name is a Tracer type:PassiveTracer, Tracer, Species, Concentration or any other reserved word
+      !> This function is used to easily identify Tracers that may have diffusion, sources/sinks, dispersion, etc.
+    logical function is_Tracer_field(input_name) 
+        implicit none 
+        character( len = * ), intent( in ) :: input_name
+        
+        is_Tracer_field = input_name(1:min(len(input_name), 13))=="PassiveTracer"&
+                 .or. input_name(1:min(len(input_name), 6))=="Tracer" .or.&
+                input_name(1:min(len(input_name), 7)) =="Species".or. trim(input_name)=="Concentration"
+    end function is_Tracer_field
+    
+    !> @brief: Returns true if the input name is an Active Tracer type, Tracer, Species, Concentration or any other reserved word 
+    !> This function is used to easily identify Tracers that may have diffusion, sources/sinks, dispersion, etc.
+    logical function is_Active_Tracer_field(input_name, ignore_concentration) 
+        implicit none 
+        character( len = * ), intent( in ) :: input_name
+        logical, optional, INTENT(IN) :: ignore_concentration
+
+        is_Active_Tracer_field = input_name(1:min(len(input_name), 7)) =="Species" &
+                            .or. input_name(1:min(len(input_name), 6))=="Tracer"
+        !For checking convergence, concentration is a special field so we may want to diferenciate it
+        if (present_and_true(ignore_concentration)) return
+
+        is_Active_Tracer_field = is_Active_Tracer_field .or. trim(input_name)=="Concentration"
+    end function is_Active_Tracer_field
+
+    !> @brief: Returns true if the input name is a PassievTracer type.
+    logical function is_PassiveTracer_field(input_name) 
+        implicit none 
+        character( len = * ), intent( in ) :: input_name
+        
+        is_PassiveTracer_field = input_name(1:min(len(input_name), 13))=="PassiveTracer"
+
+    end function is_PassiveTracer_field
 
 end module multi_tools

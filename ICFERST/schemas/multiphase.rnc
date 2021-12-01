@@ -531,14 +531,16 @@ start =
             ##
             ## Inmobile fraction = 0.
             element multiphase_properties {
-               ## Option for relperm type in prototype code
+               ## Option for relperm
                   ## Corey relperm:
                   ##
                   ## relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent
+                  ##
+                  ## <b> YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES</b>
                element Relperm_Corey {
                      ## Relative permeability end point
                      ##
-                     ## Value between 0 and 1. Default value 1.0
+                     ## Value between 0 and 1.
                     element scalar_field {
                        attribute name { "relperm_max" },
                        (
@@ -550,7 +552,7 @@ start =
                     },
                      ## Relative permeability exponent
                      ##
-                     ## Default value 2.0
+                     ## Typical value 2.0
                      element scalar_field {
                         attribute name { "relperm_exponent" },
                         (
@@ -560,12 +562,12 @@ start =
                   }
                         )
                      }
-                }?,
+                },
                ## Options for capillary pressure
                ##
                ## <b>You should specify this ONLY for the wetting phase</b>
                element capillary_pressure {
-                  ## Brooks-Corey equation
+                  (## Brooks-Corey equation
                   ##
                   ## Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a; here c is the entry pressure
                   ##
@@ -603,19 +605,19 @@ start =
                              generic_aliased_field
                           }
                        )
-                    }}?,
+                    }}|
 	          ## Power Law equation
                   ##
                   ## Pc = c*(1-s_eff)**a
-		  ##
-		  ## where s_eff = (S_w-Swir)/(1-Swir-Sor)
-		  ##
-		  ## c = maximum pc pressure; a = pc exponent
-		  ##
-		  ## (no entry pressure)
+		              ##
+		              ## where s_eff = (S_w-Swir)/(1-Swir-Sor)
+		              ##
+		              ## c = maximum pc pressure; a = pc exponent
+		              ##
+		              ## (no entry pressure)
                   ##
                   ## ONLY specify for the wetting phase
-		  element type_Power_Law {
+		              element type_Power_Law {
                     ## Maximum pressure
                     element scalar_field {
                        attribute name { "C" },
@@ -641,12 +643,12 @@ start =
                              generic_aliased_field
                           }
                        )
-                    }}?
+                    }})?
                }?,
                ## Immobile volume of fluid phase
                element immobile_fraction {
                ## Immobile fraction
-                    element scalar_field {
+                    (element scalar_field {
                        attribute name { "value" },
                        (
                           element prescribed {
@@ -654,8 +656,23 @@ start =
                              prescribed_scalar_field
                           }
                        )
+                    }|
+                     ## For drainage the immobile fraction is computed dynamically using the Land formula.
+                     ## NOTE: No thermal effects considered to change the trapping, i.e. trapping is permanent
+                     ##
+                     ## High hysteresis ~ 0.2. Low hysteresis > 5
+                     ##
+                     ## Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".
+                    element scalar_field {
+                       attribute name { "Land_coefficient" },
+                       (
+                          element prescribed {
+                             material_mesh_choice,
+                             prescribed_scalar_field
+                          }
+                       )
                     }
-               }?
+               )}?
             }?
          }+,
          mesh_adaptivity_options?,
@@ -762,6 +779,10 @@ start =
             ## For <b>GEOTHERMAL</b> simulations, density, heat capacity and conductivity are <b>MANDATORY</b>
             element porous_properties{
                 ## Specify scalar field density of the porous media
+                ##
+                ## The value to specify here is the value of the minerals or grains that make up the rock.
+                ## This is the bulk value divided by (1-porosity).
+                ## Note: Bulk density is the one normally obtained in lab experiments.
                 element scalar_field {
                    attribute name { "porous_density" },
                    (
@@ -777,6 +798,10 @@ start =
                    )
                 },
                 ## Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
+                ##
+                ## The value to specify here is the value of the minerals or grains that make up the rock.
+                ## This is the bulk value divided by (1-porosity).
+                ## Note: Bulk density is the one normally obtained in lab experiments.
                 element scalar_field {
                    attribute name { "porous_heat_capacity" },
                    (
@@ -795,20 +820,29 @@ start =
 
 
                 ## Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin => W/(m·K) )
+                ##
+                ## The value to specify here is the value of the minerals or grains that make up the rock.
+                ## This is the bulk value divided by (1-porosity).
+                ## Note: Bulk density is the one normally obtained in lab experiments.
                element tensor_field {
                   attribute name { "porous_thermal_conductivity" },
                   element prescribed {
                      material_mesh_choice,
                      prescribed_tensor_field,
                      output_options
-                  }
+                  },
+                  ## Apply Wiener method for calculating effective thermal conductivity k = phi*k_f+(1-phi)*k_s
+                  ## This method will overestimate the effective thermal conductivity. Default is to use Hashin & Shtrikman
+                  ## method which provides a better estimate of the effective thermal conductivity. Only select this option
+                  ## if you want to use the Wiener method.
+                  element Wiener_conductivity {empty}?
                }?,
 
                ## Specify scalar field compressibility of the porous media
                ## ( in Pa-1 den = den_surface*exp(Coef*(P_res-P_surface))
                ## with P_surf = 10^5 Pa )
                ##
-               ## Here the term <b>Coef<\b> is specified.
+               ## Here the term <b>Coef</b> is specified.
                ##
                ## Temporarily P_surface can be defined from /numerical_methods/Surface_pressure
                element scalar_field {
@@ -831,27 +865,6 @@ start =
 
              ## Options to specify the wells/pipes
              element wells_and_pipes {
-                ## Option to define laterals from diamond
-                ## if in doubt set it to 1.
-                element scalar_field {
-                   attribute name { "Pipe" },
-                   (
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field,
-                     output_options
-                      }|
-                    element diagnostic {
-                      vector_python_diagnostic_algorithm,
-                      diagnostic_scalar_field_no_adapt,
-                     output_options
-                    }|
-                      element aliased {
-                         generic_aliased_field,
-                     output_options
-                      }
-                   )
-                },
                 ## Specify where and how much the well/pipes are opened
                 ## It goes from 0 to 1. If completely opened, set it to 1.
                 element scalar_field {
@@ -1036,6 +1049,21 @@ start =
                       )
                  }*
              }?,
+           ## Activates phreeqc coupling
+           element Phreeqc_coupling{(
+           ## Name of Phreeqc input file. Must be in same folder as where
+           ## simulation is run or absolute path.
+           element simulation_name {
+              anystring
+           },
+           ## Name of Phreeqc database file. Default is considering, in the folder
+           ## where simulation is run: phreeqc.dat.in
+           element database_name {
+               anystring
+           }?,
+           ## Place holder for 2 way coupling between phreeqc and IC-FERST.
+           element two_way_coupling {empty}?
+           )}?,
           ## Activates the SelfPotential solver. (S.I. Volts)
           ##
           ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase,
@@ -1076,22 +1104,22 @@ start =
            ## Rock saturated conductivity term (sigma). If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Rock_sat_conductivity_code{
-             scalar_python_diagnostic_algorithm
+             scalar_python_diagnostic_algorithm_icferst
                }?,
            ## Electrokinetic (Cek) coupling term. If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_ElectroKinetic_code{
-             scalar_python_diagnostic_algorithm
+             scalar_python_diagnostic_algorithm_icferst
                }?,
            ## Electrodiffusive (Ced) coupling term. If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Electrodiffusive_code{
-             scalar_python_diagnostic_algorithm
+             scalar_python_diagnostic_algorithm_icferst
                }?,
            ## Thermoelectric (Cte) coupling term. If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Thermoelectric_code{
-             scalar_python_diagnostic_algorithm
+             scalar_python_diagnostic_algorithm_icferst
                }?
           )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
@@ -1207,6 +1235,11 @@ start =
             ##
             ## This option is useful if your field is suddenly changing after adapting the mesh.
             element do_not_bound_after_adapt {
+               empty
+            }?,
+            ## Impose strong BCs for wells, only on the pressure BCs. Also imposes gamma to be zero at those nodes.
+            ## Note that this is already imposed for wells when using P0DGP1 and gamma = 0. at one pressure BC.
+            element Strong_BCs_for_P0DG_wells {
                empty
             }?,
             ## Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods
@@ -1477,7 +1510,7 @@ solver_options =
                     ## Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
                     ##
                     ## A Variable to check has to be chosen:
-                    ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
+                    ## 1 = All fields but velocity (default); 2 = Velocity;
                     ##
                     ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for Concentration and/or Temperature</b>
                     ##
@@ -1503,6 +1536,26 @@ solver_options =
                 real
                 }?
               ),
+                ## Recommended method. XGBoost installed and compiled with ICFERST is a requirement.
+                ## Specify here the path to the machine learning (XGBoost) model.               
+                element ML_model_path{
+                string,
+                (
+                    ## Use this to convert the XGBoost model to the version of XGBoost installed.
+                    ## It saves the model in the same folder of the old model using the name "name_old_model".saved.
+                    element save_model{
+                    empty
+                    }?,
+                    ## Target number of inner-nonlinear iterations per outer-nonlinear iteration. 
+                    ##
+                    ## <b>Recommended values: 1.0 to 5.0 </b>     
+                    ##
+                    ## <b>Default value: 1.0 </b>
+                    element target_num_nonlinear{
+                    real
+                    }?              
+                )
+                }?,
                 ## Introduce over-relaxation in the saturation equation.
                 ## This severely HELPS to reduce the number of FPI.
                 ##
@@ -1539,7 +1592,7 @@ solver_options =
                 ## Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
                 ##
                 ## A Variable to check has to be chosen:
-                ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
+                ## 1 = All fields but velocity (default); 2 = Velocity;
                 ##
                 ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for Concentration and/or Temperature</b>
 
@@ -1558,6 +1611,7 @@ solver_options =
                       empty,
                         ## Time-step size is controlled to try to always perform the specified number of FPI introduced here.
                         ## By default this is the 20% of the maximum number of non-linear iterations.
+                        ## Please double-check that the number of 'Non_Linear_Solver' iterations is greater than 'Aim_num_FPI'
                         element Aim_num_FPI {
                           integer
                         }?
@@ -2333,7 +2387,7 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## The non-linear solver can be accelerated by imposing physical constraints.
+                    (## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
                     ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
                     ##
@@ -2341,15 +2395,17 @@ scalar_field_choice =
                     ##
 	                  ## This imposes the tracer to be between bounds.
                     element Impose_min_max{(
+                    (##Automatically choses the limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_min_limit{empty}|
                     ##Impose min limit. Only the first phase is read
-                    (element min_limit{real}|
-                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
-                    element automatic_min_limit{empty}),
+                    element min_limit{real}),
+                    (##Automatically choses the limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_max_limit{empty}|
                     ##Impose max limit. Only the first phase is read
-                    (element max_limit{real}|
-                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
-                    element automatic_max_limit{empty})
-                  )}?,
+                    element max_limit{real})
+                  )}|
+                  ## Do not impose physical constraints to the.
+                  element Dot_not_impose_min_max{empty}),
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
                      attribute name { "Diffusivity" },
@@ -2407,7 +2463,7 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## The non-linear solver can be accelerated by imposing physical constraints.
+                    (## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
                     ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
                     ##
@@ -2415,15 +2471,17 @@ scalar_field_choice =
                     ##
 	                  ## This imposes the tracer to be between bounds.
                     element Impose_min_max{(
+                    (##Automatically choses the limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_min_limit{empty}|
                     ##Impose min limit. Only the first phase is read
-                    (element min_limit{real}|
-                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
-                    element automatic_min_limit{empty}),
+                    element min_limit{real}),
+                    (##Automatically choses the limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_max_limit{empty}|
                     ##Impose max limit. Only the first phase is read
-                    (element max_limit{real}|
-                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
-                    element automatic_max_limit{empty})
-                  )}?,
+                    element max_limit{real})
+                  )}|
+                  ## Do not impose physical constraints to the.
+                  element Dot_not_impose_min_max{empty}),
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2461,7 +2519,7 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## The non-linear solver can be accelerated by imposing physical constraints.
+                    (## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
                     ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
                     ##
@@ -2469,15 +2527,17 @@ scalar_field_choice =
                     ##
 	                  ## This imposes the tracer to be between bounds.
                     element Impose_min_max{(
+                    (##Automatically choses the limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_min_limit{empty}|
                     ##Impose min limit. Only the first phase is read
-                    (element min_limit{real}|
-                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
-                    element automatic_min_limit{empty}),
+                    element min_limit{real}),
+                    (##Automatically choses the limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_max_limit{empty}|
                     ##Impose max limit. Only the first phase is read
-                    (element max_limit{real}|
-                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
-                    element automatic_max_limit{empty})
-                  )}?,
+                    element max_limit{real})
+                  )}|
+                  ## Do not impose physical constraints to the.
+                  element Dot_not_impose_min_max{empty}),
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
                      attribute name { "Diffusivity" },
@@ -2666,14 +2726,16 @@ scalar_field_choice =
             )
          }|
          ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
-         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
+         ##
+         ## PassiveTracers are not part of the convergence criteria and are computed outside the non-linear loop. 
+         ## Also, to reduce their cost, low order methods are used for their computation.
          element scalar_field {
             attribute rank { "0" },
             attribute name { "PassiveTracer" },
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## The non-linear solver can be accelerated by imposing physical constraints.
+                    (## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
                     ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
                     ##
@@ -2681,15 +2743,17 @@ scalar_field_choice =
                     ##
 	                  ## This imposes the tracer to be between bounds.
                     element Impose_min_max{(
+                    (##Automatically choses the limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_min_limit{empty}|
                     ##Impose min limit. Only the first phase is read
-                    (element min_limit{real}|
-                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
-                    element automatic_min_limit{empty}),
+                    element min_limit{real}),
+                    (##Automatically choses the limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_max_limit{empty}|
                     ##Impose max limit. Only the first phase is read
-                    (element max_limit{real}|
-                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
-                    element automatic_max_limit{empty})
-                  )}?,
+                    element max_limit{real})
+                  )}|
+                  ## Do not impose physical constraints to the.
+                  element Dot_not_impose_min_max{empty}),
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
                      attribute name { "Diffusivity" },
@@ -2721,17 +2785,14 @@ scalar_field_choice =
                }
             )
          }|
-         ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
-         ## Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
-         ##
-         ## This is just an example of how it works.
+         ## Tracer. <b>You can add as many Tracers as you want as long as the name starts with Tracer</b>
          element scalar_field {
             attribute rank { "0" },
-            attribute name { "PassiveTracer_Example2" },
+            attribute name { "Tracer" },
             (
                element prognostic {
                   pressure_mesh_choice,
-                    ## The non-linear solver can be accelerated by imposing physical constraints.
+                    (## The non-linear solver can be accelerated by imposing physical constraints.
                     ##
                     ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
                     ##
@@ -2739,15 +2800,80 @@ scalar_field_choice =
                     ##
 	                  ## This imposes the tracer to be between bounds.
                     element Impose_min_max{(
+                    (##Automatically choses the limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_min_limit{empty}|
                     ##Impose min limit. Only the first phase is read
-                    (element min_limit{real}|
-                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
-                    element automatic_min_limit{empty}),
+                    element min_limit{real}),
+                    (##Automatically choses the limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_max_limit{empty}|
                     ##Impose max limit. Only the first phase is read
-                    (element max_limit{real}|
-                    ##Automatically choses the min limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
-                    element automatic_max_limit{empty})
-                  )}?,
+                    element max_limit{real})
+                  )}|
+                  ## Do not impose physical constraints to the.
+                  element Dot_not_impose_min_max{empty}),
+                  ## Diffusivity for field (in S.I. m^2/s ).
+                  element tensor_field {
+                     attribute name { "Diffusivity" },
+                     attribute rank { "2" },
+                     (
+                        element prescribed {
+                            mesh_choice?,
+                            prescribed_tensor_field_no_adapt,
+                            output_options
+                        }|
+                      element diagnostic {
+                         (
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
+                     )
+                  }?,
+                  prognostic_scalar_field
+               }|
+               element prescribed {
+                  pressure_mesh_choice,
+                  prescribed_scalar_field
+               }|
+               element aliased {
+                  generic_aliased_field
+               }
+            )
+         }|
+         ## Species. This scalar field is devoted for the PHREEQC coupling. Components being used in
+         ## Phreeqc need to be defined using this naming convention in ICFERST. For example if you have Oxygen and Nitrogen your components
+         ## in ICFERST should be named: Species_O and Species_N. <b>You MUST use _ to separate Species and O, for example.</b>
+         ##
+         ## <b>You can add as many Species as you want as long as the name starts with Species</b>
+         ##
+         ## This is just an example of how it works.
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "Species" },
+            (
+               element prognostic {
+                  pressure_mesh_choice,
+                    (## The non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>Make sure that the bounds won't affect the results if there are Robin BCs, sources or sinks.</b>
+                    ##
+                    ## EXTREMELY RECOMMENDED!
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                    element Impose_min_max{(
+                    (##Automatically choses the limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_min_limit{empty}|
+                    ##Impose min limit. Only the first phase is read
+                    element min_limit{real}),
+                    (##Automatically choses the limit. <b>Be aware of the implications when having Robin BCs, Neumann BCs, Sources or Sinks</b>
+                    element automatic_max_limit{empty}|
+                    ##Impose max limit. Only the first phase is read
+                    element max_limit{real})
+                  )}|
+                  ## Do not impose physical constraints to the.
+                  element Dot_not_impose_min_max{empty}),
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
                      attribute name { "Diffusivity" },
@@ -3744,13 +3870,11 @@ element Density{(
                               real
                            }
                         }|
-                        ## Boussinesq EOS
-                        ##
-			                  ## <b>This EOS imposes the boussinesq approximation.</b>
+                        ## Linear EOS
                         ##
                         ## DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))
                         ##
-                        ## NOTE: This equation is only valid when density varies less than 5%.
+                        ## NOTE: This equation is only valid for small changes in density.
                         ## Internally it is bounded to not vary more than 10%
                         element Linear_eos {
                            ## This is the density value at reference properties
@@ -3785,7 +3909,7 @@ element Density{(
                            ##
                            ## DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0) + field_Coef (field - field_reference) + ...)
                            ##
-                           ## Introduce the same name as the scalar field being used. For example: PassiveTracer_CO2
+                           ## Introduce the same name as the scalar field being used. For example: Tracer_CO2
                            element scalar_field{(
                            attribute name { string },
                            ## Reference value
@@ -3802,7 +3926,8 @@ element Density{(
                         element Boussinesq_approximation { empty }?}|
                      ## The "Dummy" diagnotic field on the pressure mesh is required for this option
                      element python_state{(
-                       scalar_python_diagnostic_algorithm,
+                       scalar_python_diagnostic_algorithm_icferst,
+                       ## Use the boussinesq approximation. Useful for small variations of density.
                         element Boussinesq_approximation { (
                         ## For porous media a reference density is necessary when using the Boussinesq approximation
                         element reference_density{real}?) }?)

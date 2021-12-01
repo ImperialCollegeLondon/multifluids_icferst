@@ -61,6 +61,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -223,6 +224,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -341,6 +343,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -536,6 +539,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -701,21 +705,6 @@
       </prescribed>
     </scalar_field>
     <wells_and_pipes>
-      <scalar_field name="Pipe">
-        <prescribed>
-          <mesh name="P0DG"/>
-          <value name="WholeMesh">
-            <constant>
-              <real_value rank="0">1.0</real_value>
-            </constant>
-          </value>
-          <stat/>
-          <detectors>
-            <exclude_from_detectors/>
-          </detectors>
-          <output/>
-        </prescribed>
-      </scalar_field>
       <scalar_field name="Gamma">
         <prescribed>
           <mesh name="PressureMesh"/>
@@ -773,4 +762,7 @@
       <well_from_file name="well02" file_path="well02"/>
     </wells_and_pipes>
   </porous_media>
+  <numerical_methods>
+    <Strong_BCs_for_P0DG_wells/>
+  </numerical_methods>
 </icferst_options>

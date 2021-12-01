@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <testproblem>
-  <name>Passive_tracers</name>
+  <name>Active_tracers</name>
   <owner userid="pablo.salinas"/>
   <tags>porous mpml tracers</tags>
   <problem_definition length="short" nprocs="1">
@@ -8,17 +8,17 @@
   </problem_definition>
   <variables>
     <variable name="max_tracer1" language="python">from fluidity_tools import stat_parser as stat
-max_tracer1 = stat("QuickTest_DG.stat")["phase1"]["PassiveTracer"]["max"][-1]</variable>
+max_tracer1 = stat("QuickTest_DG.stat")["phase1"]["Tracer"]["max"][-1]</variable>
     <variable name="max_tracer2" language="python">from fluidity_tools import stat_parser as stat
-max_tracer2 = stat("QuickTest_DG.stat")["phase1"]["PassiveTracerVapour"]["max"][-1]</variable>
+max_tracer2 = stat("QuickTest_DG.stat")["phase1"]["TracerVapour"]["max"][-1]</variable>
     <variable name="int_tracer1" language="python">from fluidity_tools import stat_parser as stat
-int_tracer1 = stat("QuickTest_DG.stat")["phase1"]["PassiveTracer"]["integral"][-1]</variable>
+int_tracer1 = stat("QuickTest_DG.stat")["phase1"]["Tracer"]["integral"][-1]</variable>
 
   </variables>
   <pass_tests>
     <test name="Assert final max tracer 1" language="python">assert(abs(max_tracer1 - 1) &lt; 0.01)</test>
     <test name="Assert final max tracer 2" language="python">assert(abs(max_tracer2 - 1) &lt; 0.01)</test>
-    <test name="Assert final integral tracer 1" language="python">assert(abs(int_tracer1 - 0.044)/0.044 &lt; 0.01)</test>
+    <test name="Assert final integral tracer 1" language="python">assert(abs(int_tracer1 - 0.0446)/0.0446 &lt; 0.01)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

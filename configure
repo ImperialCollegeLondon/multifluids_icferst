@@ -660,6 +660,12 @@ MPIF90
 MPICC
 ENABLE_PSMILE
 FLPSMILE_PATH
+XGBOOST
+LIB_XGBOOST
+FLXGBOOST_PATH
+PHREEQC
+LIB_PHREEQC
+FLPHREEQC_PATH
 FEMDEM
 LIB_FEMDEM
 FLFEMDEM_PATH
@@ -767,6 +773,8 @@ enable_openmp
 enable_shared
 enable_verbose
 with_femdem
+with_phreeqc
+with_xgboost
 with_psmile
 with_netcdf
 enable_petscdebug
@@ -1478,6 +1486,10 @@ Optional Packages:
   --with-lapack-dir=<dir> look for LAPACK library in <dir>
   --with-femdem[=femdem_library]
                           specify the femdem path
+  --with-phreeqc[=phreeqc_library]
+                          specify the phreeqc path
+  --with-xgboost[=xgboost]
+                          specify the xgboost path
   --with-psmile[=psmile_library]
                           specify the oasis4 path
   --with-netcdf[=netcdf_ROOT]
@@ -2969,7 +2981,8 @@ fi
 
 
 FLFEMDEM="femdem"
-
+FLPHREEQC="phreeqc"
+FLXGBOOST="xgboost"
 # Check system type
 ac_aux_dir=
 for ac_dir in "$srcdir" "$srcdir/.." "$srcdir/../.."; do
@@ -10011,6 +10024,7 @@ ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ex
 ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 
+
   OPENMP_CXXFLAGS=
   # Check whether --enable-openmp was given.
 if test "${enable_openmp+set}" = set; then :
@@ -10895,6 +10909,58 @@ else
   FLFEMDEM_PATH=""
   LIB_FEMDEM=""
   FEMDEM=""
+fi
+
+
+
+
+
+##########################################
+# Are we using phreeqc
+##########################################
+
+# Check whether --with-phreeqc was given.
+if test "${with_phreeqc+set}" = set; then :
+  withval=$with_phreeqc;
+fi
+
+if test -n "$with_phreeqc" ; then
+  FLPHREEQC_PATH="${with_phreeqc}"
+  LIB_PHREEQC="-Wl,-rpath,${with_phreeqc} ${with_phreeqc}""/libphreeqcrm.so"
+  PHREEQC="yes"
+  cat >> confdefs.h << EOF
+#define USING_PHREEQC 1
+EOF
+else
+  FLPHREEQC_PATH=""
+  LIB_PHREEQC=""
+  PHREEQC=""
+fi
+
+
+
+
+
+##########################################
+# Are we using XGBOOST
+##########################################
+
+# Check whether --with-xgboost was given.
+if test "${with_xgboost+set}" = set; then :
+  withval=$with_xgboost;
+fi
+
+if test -n "$with_xgboost" ; then
+  FLXGBOOST_PATH="${with_xgboost}"
+  LIB_XGBOOST="-Wl,-rpath,${with_xgboost} ${with_xgboost}""/libxgboost.so"
+  XGBOOST="yes"
+  cat >> confdefs.h << EOF
+#define USING_XGBOOST 1
+EOF
+else
+  FLXGBOOST_PATH=""
+  LIB_XGBOOST=""
+  XGBOOST=""
 fi
 
 
