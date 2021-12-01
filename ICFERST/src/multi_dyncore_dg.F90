@@ -1270,55 +1270,51 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                      !If using ADAPTIVE FPI with backtracking
                      if (backtrack_par_factor < 0) then
-#ifndef USING_XGBOOST                         
-                        if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
-                           call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
-                        end if
-#else 
+#ifdef USING_XGBOOST           
                         if (.not. ML_method_activated) then 
                             if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
                                 call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
-                             end if
+                            end if
+                        end if              
+#else 
+                        if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
                         end if
 #endif                          
-                         !Calculate the actual residual using a previous backtrack_par
-                         ! vtracer=as_vector(sat_field,dim=2)
-                         call mult(residual, Mmat%petsc_ACV, solution)
-                         !Now residual is calculated as Residual = RHS - A*X0
-                         residual%val = Mmat%CV_RHS%val - residual%val
-                         if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
-                         resold = res; res = 0
-                         do iphase = 1, nphase
-                            !L2 norm of the residual; needs to be done in steps to ensure cosistency in parallel
-                             aux = dot_product(residual%val(iphase,:),residual%val(iphase,:))
-                             call allsum(aux)
-                             aux = sqrt(aux)/ dble(total_cv_nodes)
-                             if (aux > res) res = aux
-                         end do
-                         !We use the highest residual across the domain
-                         if (IsParallel()) call allmax(res)
-                         if (its==1) first_res = res!Variable to check total convergence of the SFPI method
+                        !Calculate the actual residual using a previous backtrack_par
+                        ! vtracer=as_vector(sat_field,dim=2)
+                        call mult(residual, Mmat%petsc_ACV, solution)
+                        !Now residual is calculated as Residual = RHS - A*X0
+                        residual%val = Mmat%CV_RHS%val - residual%val
+                        if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
+                        resold = res; res = 0
+                        do iphase = 1, nphase
+                        !L2 norm of the residual; needs to be done in steps to ensure cosistency in parallel
+                            aux = dot_product(residual%val(iphase,:),residual%val(iphase,:))
+                            call allsum(aux)
+                            aux = sqrt(aux)/ dble(total_cv_nodes)
+                            if (aux > res) res = aux
+                        end do
+                        !We use the highest residual across the domain
+                        if (IsParallel()) call allmax(res)
                          
-                         if (its == 1) then 
+                        if (its == 1) then 
+                            first_res = res !Variable to check total convergence of the SFPI method
 #ifdef USING_XGBOOST
-                          if (ML_method_activated) then 
-                            if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number (auto_backtracking) or a set of dimensionless numbers (AI_backtracking_parameters)                          
-                                !#=================================================================================================================
-                                !# Vinicius: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
-                                !#=================================================================================================================
-                                ! Calculate Darcy velocity with the most up-to-date information (necessary for AI_backtracking_parameters)
-                                if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
-                                ! Generate all the dimensionless numbers 
-                                call AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number, backtrack_par_factor, OvRelax_param, res, resold, nonlinear_iteration)
-                                !#=================================================================================================================
-                                !# Vinicius-End: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
-                                !#=================================================================================================================   
+                            if (ML_method_activated) then 
+                                if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number (auto_backtracking) or a set of dimensionless numbers (AI_backtracking_parameters)                          
+                                    !#=================================================================================================================
+                                    !# Vinicius: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
+                                    !#=================================================================================================================
+                                    ! Calculate Darcy velocity with the most up-to-date information (necessary for AI_backtracking_parameters)                                    
+                                    if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )                                    
+                                    ! Generate all the dimensionless numbers 
+                                    call AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number, backtrack_par_factor, OvRelax_param, res, resold, nonlinear_iteration)
+                                    !#=================================================================================================================
+                                    !# Vinicius-End: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
+                                    !#=================================================================================================================   
+                                end if
                             end if
-                        else
-                            first_res = res
-                        end if
-#else       
-                            first_res = res
 #endif               
                         end if
                      end if
@@ -1401,7 +1397,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !#=================================================================================================================
              !# Vinicius: Write the number of non-linear iterations into file
              !#=================================================================================================================
-            !  !inquire(file="Inner_non_linear_iterations.csv", exist=file_exist) 
+             !inquire(file="Inner_non_linear_iterations.csv", exist=file_exist) 
             !  if (.not. written_file) then
             !      open(75, file="non_linear_iterations.csv", status="replace")
             !      write(75, '(8(A,",",X))') "time_step", "outer_nonlinear_iteration", "Inner_non_linear_iterations"
@@ -9544,11 +9540,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
         real(c_float), dimension(17)  :: raw_input 
         real(c_float), pointer        :: out_result(:)
+        real, save                    :: target_nli
 
         backtrack_par_factor = -1. ! Assign -1 to backtrack_par_factor in all cores
         if (getprocno() == 1) then ! To let only 1 core to load and predict using the ML model
             if (.not. loaded_file) then
-                call xgboost_load_model()
+                call xgboost_load_model()  
+                call get_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path/target_num_nonlinear", target_nli, default=1.0)              
                 loaded_file = .true.
             end if
 
@@ -9568,7 +9566,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                         & res, &
                         & resold, &
                         & res/resold, &
-                        & 1.0 /) !1 inner nonlinear iteration  
+                        & target_nli /) !Target number of inner-nonlinear iteration  
 
             call xgboost_predict(raw_input, out_result)
             !write(*,*) 'XGB model prediction: ',out_result
@@ -9583,7 +9581,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !! ***Write into file*** !!!
         !***************************!
     
-        ! !inquire(file="AI_backtracking_parameters.csv", exist=file_exist) 
+        !inquire(file="AI_backtracking_parameters.csv", exist=file_exist) 
         ! if (.not. written_file) then
         !     open(73, file="AI_backtracking_parameters.csv", status="replace")
         !     !call date_and_time(VALUES=date_values)          
