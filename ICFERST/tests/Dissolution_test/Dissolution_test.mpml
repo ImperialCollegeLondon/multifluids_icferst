@@ -496,6 +496,8 @@
       <molar_mass>
         <real_value rank="0">0.0441</real_value>
       </molar_mass>
+      <from_phase>CO2</from_phase>
+      <to_phase>water<tracer_name>Concentration</tracer_name></to_phase>
     </Gas_dissolution>
   </porous_media>
 </icferst_options>

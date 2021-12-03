@@ -1384,10 +1384,24 @@ coordinates, the nearest vertex will be selected.</a:documentation>
 The dissolution is considered instantaneous (flash). The units are mol/Kg.
 It requires a Concentration field on the first phase.</a:documentation>
               <ref name="real"/>
-              <element name="molar_mass">
-                <a:documentation>Molar mass of the gas being dissolved. For example for CO2 it is: 0.0441 kg/mol</a:documentation>
-                <ref name="real"/>
-              </element>
+              <group>
+                <element name="molar_mass">
+                  <a:documentation>Molar mass of the gas being dissolved. For example for CO2 it is: 0.0441 kg/mol</a:documentation>
+                  <ref name="real"/>
+                </element>
+                <element name="from_phase">
+                  <a:documentation>Name of the phase that dissolves</a:documentation>
+                  <data type="string" datatypeLibrary=""/>
+                </element>
+                <element name="to_phase">
+                  <a:documentation>Name of the phase in which from_phase dissolves into</a:documentation>
+                  <data type="string" datatypeLibrary=""/>
+                  <element name="tracer_name">
+                    <a:documentation>Name of the tracer that contains the dissolution</a:documentation>
+                    <data type="string" datatypeLibrary=""/>
+                  </element>
+                </element>
+              </group>
             </element>
           </optional>
           <optional>
