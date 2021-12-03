@@ -2438,15 +2438,30 @@ contains
       type(vector_field), pointer :: MeanPoreCV, cv_volume
       real :: n_co2_diss_max, delta_n, n_co2_gas
       integer :: cv_nod, iphase, stat
+      character( len = option_path_len ) :: donor_phase, receiving_phase, option_name
+      integer, save :: donor_phase_pos, receiving_phase_pos
+      character( len = option_path_len ), save :: tracer_name
 
       !Retrieve values from diamond
       if (dissolution_parameter < 0.) then 
         call get_option("/porous_media/Gas_dissolution", dissolution_parameter)!in mol/kg
         call get_option("/porous_media/Gas_dissolution/molar_mass", molar_mass)!in kg/mol
+        call get_option("/porous_media/Gas_dissolution/from_phase", donor_phase)
+        call get_option("/porous_media/Gas_dissolution/to_phase", receiving_phase)
+        receiving_phase_pos = -1; receiving_phase_pos =-1
+        do iphase = 1, Mdims%n_in_pres
+          call get_option("/material_phase["// int2str( iphase - 1 )//"]/name", option_name)
+          if (trim(option_name) == trim(donor_phase)) donor_phase_pos = iphase
+          if (trim(option_name) == trim(receiving_phase)) receiving_phase_pos = iphase
+        end do
+        if (receiving_phase_pos < 0 .or. receiving_phase_pos<0) then 
+          FLAbort("Missing options, or mistyped, for Gas_dissolution. Please revise.")
+        end if
+        call get_option("/porous_media/Gas_dissolution/to_phase/tracer_name", tracer_name)
       end if
 
       saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-      concentration_field=>extract_tensor_field(packed_state,"PackedConcentration", stat)
+      concentration_field=>extract_tensor_field(packed_state,"Packed"//trim(tracer_name), stat)
       if (stat /= 0) then
         FLAbort("To compute flash dissolution from second phase to the first phase, a Concentration field in the first phase is required.")
       end if
@@ -2456,19 +2471,24 @@ contains
 
       do cv_nod=1,Mdims%cv_nonods
         ! Compute maximum dissolved CO2 the CV can accomodate (in mol)
-        n_co2_diss_max = MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*density%val(1,1,cv_nod)*dissolution_parameter*saturation_field%val(1,1,cv_nod)
+        n_co2_diss_max = MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*density%val(1,receiving_phase_pos,cv_nod)*&
+                          dissolution_parameter*saturation_field%val(1,receiving_phase_pos,cv_nod)
         ! Compute the difference between maximum dissolved CO2 the CV can accomodate and the actual dissolved CO2 present in the CV (in mol)
-        delta_n = n_co2_diss_max - concentration_field%val(1,1,cv_nod)*MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*saturation_field%val(1,1,cv_nod)
+        delta_n = n_co2_diss_max - concentration_field%val(1,receiving_phase_pos,cv_nod)*MeanPoreCV%val(1,cv_nod)*&
+                  cv_volume%val(1,cv_nod)*saturation_field%val(1,receiving_phase_pos,cv_nod)
         ! Compute the gas CO2 present in the CV (in mol)
-        n_co2_gas = saturation_field%val(1,2,cv_nod) * density%val(1,2,cv_nod)/molar_mass * MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)
+        n_co2_gas = saturation_field%val(1,donor_phase_pos,cv_nod) * density%val(1,donor_phase_pos,cv_nod)/molar_mass * &
+                  MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)
         ! Update dissolved CO2 (passive tracer, in mol/m3)
-        concentration_field%val(1,1,cv_nod) = concentration_field%val(1,1,cv_nod) + min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod))
+        concentration_field%val(1,receiving_phase_pos,cv_nod) = concentration_field%val(1,receiving_phase_pos,cv_nod) + &
+                          min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod))
         ! Update gas CO2 (in mol)
         n_co2_gas = n_co2_gas - min(delta_n, n_co2_gas)
         ! Update gas CO2 (change in saturation)
-        saturation_field%val(1,2,cv_nod) = ( n_co2_gas*molar_mass/density%val(1,2,cv_nod) ) / (MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod))
+        saturation_field%val(1,donor_phase_pos,cv_nod) = ( n_co2_gas*molar_mass/density%val(1,donor_phase_pos,cv_nod) ) / &
+                                                            (MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod))
         ! Update water saturation (change in saturation)
-        saturation_field%val(1,1,cv_nod) = 1 - saturation_field%val(1,2,cv_nod)
+        saturation_field%val(1,receiving_phase_pos,cv_nod) = 1 - saturation_field%val(1,donor_phase_pos,cv_nod)
 
       end do
 
