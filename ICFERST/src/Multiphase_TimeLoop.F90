@@ -839,6 +839,13 @@ contains
                 first_nonlinear_time_step = .false.            
             end do Loop_NonLinearIteration
 
+            !Flash dissolution happens here
+           if (have_option("/porous_media/Gas_dissolution"))call flash_gas_dissolution(packed_state, Mdims, dt)
+
+#ifdef USING_PHREEQC
+            call run_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc)
+#endif
+           
 
             if (have_Passive_Tracers) then
               !We make sure to only enter here once if there are no passive tracers
@@ -867,12 +874,6 @@ contains
               end do
             end if
 
-            !If Phase2 can dissolve into phase1 the flash calculation happens here
-           if (have_option("/porous_media/Gas_dissolution"))call flash_gas_dissolution(packed_state, Mdims, dt)
-
-#ifdef USING_PHREEQC
-            call run_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc)
-#endif
 
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
               ewrite(1,*) "Iterations taken by the pressure linear solver:", pres_its_taken
@@ -1035,6 +1036,10 @@ contains
 !#=================================================================================================================        
 #ifdef USING_XGBOOST
         if (getprocno() == 1) call xgboost_free_model()
+#else 
+    if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path")) then 
+        ewrite(0,*) "WARNING: ML path specified for a model but ICFERST hasn't been compiled with XGboost. Classical method used instead."
+    end if
 #endif
 !#=================================================================================================================
 !# Vinicius-end: Free XGB model
