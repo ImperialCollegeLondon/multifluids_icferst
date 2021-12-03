@@ -1130,7 +1130,9 @@ start =
 	         	real,
 	         	(
 	         	## Molar mass of the gas being dissolved. For example for CO2 it is: 0.0441 kg/mol
-	         	element molar_mass{real}
+	         	element molar_mass{real},
+		        ## TO BE REMOVED, ONLY TEMPORARY
+	         	element exclude_concentration_from_convergence{empty}?         	
 		        )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 	        ##

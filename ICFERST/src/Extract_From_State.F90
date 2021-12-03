@@ -2416,7 +2416,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                           reference_field(1:size(temperature%val,2),:,auxI), 1.0, totally_min_max)
                 end if
                 !#################CONCENTRATION############################
-                if (stat2==0) then
+                if (stat2==0.and..not. have_option("/porous_media/Gas_dissolution/exclude_concentration_from_convergence")) then
                     totally_min_max(1)=minval(reference_field(:,:,2))
                     totally_min_max(2)=maxval(reference_field(:,:,2))
                     !For parallel
