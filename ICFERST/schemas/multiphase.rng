@@ -696,7 +696,9 @@ Typical value 2.0</a:documentation>
                 <element name="capillary_pressure">
                   <a:documentation>Options for capillary pressure
 
-&lt;b&gt;You should specify this ONLY for the wetting phase&lt;/b&gt;</a:documentation>
+&lt;b&gt;VAD is always ON for Capillary pressure and the VAD used is the same as the capillary pressure values.&lt;/b&gt;
+
+You should specify this ONLY for the wetting phase</a:documentation>
                   <optional>
                     <choice>
                       <element name="type_Brooks_Corey">
@@ -790,6 +792,13 @@ ONLY specify for the wetting phase</a:documentation>
                         </element>
                       </element>
                     </choice>
+                  </optional>
+                  <optional>
+                    <element name="fake_capillary_pressure">
+                      <a:documentation>This options introduces the effects of the capillary pressure but "not exactly".
+It should be valid for limited capillary numbers and the convergence of the non-linear solver should be much better</a:documentation>
+                      <empty/>
+                    </element>
                   </optional>
                 </element>
               </optional>

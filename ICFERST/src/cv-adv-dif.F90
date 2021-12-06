@@ -425,7 +425,7 @@ contains
           type( tensor_field ), pointer :: perm
           real, dimension( : , : ), pointer ::Imble_frac
           !Variables for Vanishing artificial diffusion (VAD)
-          logical :: VAD_activated, between_elements, on_domain_boundary
+          logical :: VAD_activated, between_elements, on_domain_boundary, VAD_and_not_fake_Cap
           !Variable to decide if we are introducing the sum of phases = 1 in Ct or elsewhere
           logical :: Solve_all_phases
           !Variables for get_int_vel_porous_vel
@@ -470,6 +470,8 @@ contains
           if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
               VAD_activated = Phase_with_Pc >0
           end if
+          VAD_and_not_fake_Cap =  VAD_activated .and. .not. have_option_for_any_phase(&
+                    "multiphase_properties/capillary_pressure/fake_capillary_pressure",mdims%nphase)
           !this is true if the user is asking for high order advection scheme
           use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
           !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
@@ -1741,7 +1743,7 @@ contains
                                       if (GOT_DIFFUS) LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           + ONE_M_FTHETA_T2OLD * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
                                           * ( LOC_TOLD_J - LOC_TOLD_I )
-                                      if (VAD_activated) LOC_CV_RHS_I =  LOC_CV_RHS_I &
+                                      if (VAD_and_not_fake_Cap) LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           - LIMT2* SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
                                           * ( LOC_T_J - LOC_T_I )
                                       if (.not.conservative_advection) LOC_CV_RHS_I =  LOC_CV_RHS_I &
@@ -1778,7 +1780,7 @@ contains
                                       if (GOT_DIFFUS) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
                                           + ONE_M_FTHETA_T2OLD_J * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
                                           * ( LOC_TOLD_I - LOC_TOLD_J )
-                                      if (VAD_activated) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
+                                      if (VAD_and_not_fake_Cap) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
                                           - LIMT2 * SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
                                           * ( LOC_T_I - LOC_T_J )
                                       if (.not.conservative_advection) LOC_CV_RHS_J =  LOC_CV_RHS_J  &

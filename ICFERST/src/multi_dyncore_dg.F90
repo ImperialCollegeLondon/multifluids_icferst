@@ -7667,7 +7667,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc, idim
      real :: Pe_aux, parl_max, parl_min, Pe_max, Pe_min
      real, dimension(:), pointer ::Pe, Cap_exp
-     logical :: Artificial_Pe
+     logical :: Artificial_Pe, has_capillary
      real, dimension(:,:,:), pointer :: p
      real, dimension(:,:), pointer :: satura, immobile_fraction, Cap_entry_pressure, Cap_exponent, X_ALL
      type( tensor_field ), pointer :: Velocity
@@ -7714,7 +7714,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              Phase_with_Pc = iphase
          end if
      end do
-     Artificial_Pe = .false.
+     Artificial_Pe = .false.; has_capillary = .false.
      Cap_exponent => null(); Cap_entry_pressure => null()!Initialize
      if (Phase_with_Pc>0) then
          !Get information for capillary pressure to be used
@@ -7723,10 +7723,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              "]/multiphase_properties/capillary_pressure/type_Power_Law") ) )then
              call get_var_from_packed_state(packed_state, Cap_entry_pressure = Cap_entry_pressure,&
                  Cap_exponent = Cap_exponent)!no need for the imbibition because we need the derivative which will be zero as it is a constant
+            has_capillary = .true.  
          end if
          !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
          !Unless we are using the non-consistent form of the capillary pressure
-         if ( have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation') ) then
+         if ( have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation') .and. .not. has_capillary) then
              allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
              Artificial_Pe = .true.
              if (present_and_true(for_transport)) then
