@@ -470,6 +470,7 @@ contains
           if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
               VAD_activated = Phase_with_Pc >0
           end if
+        !   VAD_activated = .false. !ACTIVATE THIS FOR ONLY CAPILLARY BARRIERS WITH FAKE CAPILLARY PRESSURE
           VAD_and_not_fake_Cap =  VAD_activated .and. .not. have_option_for_any_phase(&
                     "multiphase_properties/capillary_pressure/fake_capillary_pressure",mdims%nphase)
           !this is true if the user is asking for high order advection scheme
@@ -1461,12 +1462,7 @@ contains
                                     !Distribute the capillary coefficient over the phases to ensure mass conservation
                                     !This is very important as it allows to use the over-relaxation parameter safely
                                     !and reduce the cost of using capillary pressure in several orders of magnitude
-                                    auxR = CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
-                                    do iphase = 1, final_phase
-                                        do jphase = 1, final_phase
-                                            if (iphase /= jphase) CAP_DIFF_COEF_DIVDX(iphase) =  auxR/density%val(1,jphase, cv_nodi)
-                                        end do
-                                    end do
+                                    CAP_DIFF_COEF_DIVDX(:) = CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
                                 end if
                               ELSE
                                   CAP_DIFF_COEF_DIVDX = 0.0

@@ -1241,20 +1241,20 @@ contains
             real, dimension(:), allocatable :: Cont_correction
             !Get from packed_state
 
+            nphase =size(Satura,1)
             !Do not compute capillary field if we are using fake capillary pressure
             if (have_option_for_any_phase(&
-            "multiphase_properties/capillary_pressure/fake_capillary_pressure",mdims%nphase)) then 
-              CapPressure%val = 0.
+            "multiphase_properties/capillary_pressure/fake_capillary_pressure",nphase)) then 
+              CapPressure = 0.
               return
             end if
-            
+
             call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
 
             call get_var_from_packed_state(packed_state,CapPressure = CapPressure, &
                 Immobile_fraction = Immobile_fraction, Cap_entry_pressure = Cap_entry_pressure, &
                     Cap_exponent = Cap_exponent, Imbibition_term = Imbibition_term, PressureCoordinate = X_ALL)
 
-            nphase =size(Satura,1)
             allocate(Cont_correction(size(satura,2)))
 
             CapPressure = 0.
