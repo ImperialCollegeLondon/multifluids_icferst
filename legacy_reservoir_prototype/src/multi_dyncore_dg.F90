@@ -5370,21 +5370,8 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                     force_solids( :, IPHASE, : )=0.0
                                     CALL CALC_FORCE_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE( :, :),  Mdims%ndim, &
                                         Mdims%x_nloc,LOC_X_ALL(:,:),force_solids(:,IPHASE,:), Mdims, ndgln, ele)
-!                                           DO IDIM=1,Mdims%ndim
-!                                              force_solids(IDIM,IPHASE,U_ILOC) = force_solids(IDIM,IPHASE,U_ILOC) &
-!                                               - SUM( STRESS_IJ_solid_ELE( IDIM, :, IPHASE, U_ILOC, U_JLOC ) * UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ))* DevFuns%DETWEI( GI )
- !                                          END DO
- !                                          STRESS_IJ_SOLID_ELE( :, :, IPHASE, :, : )=STRESS_IJ_ELE( :, :, IPHASE, :, : )
- !                                          STRESS_IJ_ELE( :, :, IPHASE, :, : )=0.0
-                                    !    END DO
-           !                         force_solids=0.0
-   !             ewrite(3,*)"rhs_diff_u",rhs_diff_u( :, IPHASE, : )
-    !                ewrite(3,*)"loc_u_rhs",loc_u_rhs( :, IPHASE, :)
-    !                      ewrite(3,*)"force_solids",force_solids(:,iphase, :)
-    !                                    rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) + 0.01*force_solids(:,iphase, :)
-     !                                   loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) - 0.01*force_solids(:,iphase, :)
-                                        rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) - 1.0*force_solids(:,iphase, :)
-                                        loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
+                                    ! rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) - 1.0e8*force_solids(:,iphase, :)
+                                    loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
                                 END DO ! iphase
                         !  END DO GI
           !            END DO
