@@ -961,7 +961,7 @@ contains
 
           if ( compute_outfluxes) then
               !Initialise mass conservation check; calculation of porevolume
-              call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 1)
+              call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, DEN_ALL, 1)
           endif
 
 
@@ -2014,7 +2014,7 @@ contains
 
           if ( compute_outfluxes) then
               !Calculate final outfluxes and mass balance in the domain
-              call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 2)
+              call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, DEN_ALL, 2)
           endif
           ! Deallocating temporary working arrays
           IF(GETCT) THEN
@@ -3341,7 +3341,7 @@ end if
             ENDIF ! ENDOF IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
         end subroutine get_neigbouring_lists
 
-        subroutine mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, flag)
+        subroutine mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, DEN_ALL, flag)
             ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids given that the massflux has been already stored elsewhere
             !also used to calculate mass conservation
 
@@ -3356,6 +3356,7 @@ end if
             integer, intent(in) :: flag
             type (multi_outfluxes), intent(inout) :: outfluxes
             real, dimension(:,:), intent(inout) :: calculate_mass_delta
+            REAL, DIMENSION( :, : ), intent( in) :: DEN_ALL!Density including the boussinesq aprox.
             !Local variables
             integer :: iphase, k
             real :: tmp1, tmp2, tmp3, maxflux
@@ -3369,7 +3370,7 @@ end if
                     if (first_nonlinear_time_step ) then
                         calculate_mass_delta(:,1) = 0.0 ! reinitialise
                         call calculate_internal_volume( packed_state, Mdims, Mass_ELE, &
-                            calculate_mass_delta(1:Mdims%n_in_pres,1) , ndgln%cv)
+                            calculate_mass_delta(1:Mdims%n_in_pres,1) , ndgln%cv, DEN_ALL)
                         !DISABLED AS IT DOES NOT WORK WELL AND IT DOES ACCOUNT FOR A VERY TINY FRACTION OF THE OVERALL MASS
                        ! if (Mdims%npres >1)then!consider as well the pipes
                        !     call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
@@ -3395,7 +3396,7 @@ end if
                     !Calculate internal volumes of each phase
                     calculate_mass_internal = 0.
                     call calculate_internal_volume( packed_state, Mdims, Mass_ELE, &
-                        calculate_mass_internal(1:Mdims%n_in_pres) , ndgln%cv)
+                        calculate_mass_internal(1:Mdims%n_in_pres) , ndgln%cv, DEN_ALL)
                     !DISABLED AS IT DOES NOT WORK WELL AND IT DOES ACCOUNT FOR A VERY TINY FRACTION OF THE OVERALL MASS
                    ! if (Mdims%npres >1) then!consider as well the pipes
                    !     call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
