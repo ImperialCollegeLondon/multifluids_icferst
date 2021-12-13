@@ -1455,12 +1455,10 @@ contains
                                   ELSE
                                       CAP_DIFF_COEF_DIVDX = 0.0
                                   ENDIF
-                                  if (VAD_and_not_fake_Cap) then
-                                    !Distribute the capillary coefficient over the phases to ensure mass conservation
-                                    !This is very important as it allows to use the over-relaxation parameter safely
-                                    !and reduce the cost of using capillary pressure in several orders of magnitude
-                                    CAP_DIFF_COEF_DIVDX(:) = CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
-                                end if
+                                  !Distribute the capillary coefficient over the phases to ensure mass conservation
+                                  !This is very important as it allows to use the over-relaxation parameter safely
+                                  !and reduce the cost of using capillary pressure in several orders of magnitude
+                                  CAP_DIFF_COEF_DIVDX(:) = CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
                               ELSE
                                   CAP_DIFF_COEF_DIVDX = 0.0
                               END IF If_GOT_CAPDIFFUS
