@@ -834,17 +834,12 @@ contains
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
 
-            !Update immobile fractions values (for hysteresis relperm models)
-            if (have_option_for_any_phase("/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient",&
-            Mdims%n_in_pres)) call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)
-
             !Flash dissolution happens here
            if (have_option("/porous_media/Gas_dissolution"))call flash_gas_dissolution(packed_state, Mdims, dt)
 
 #ifdef USING_PHREEQC
             call run_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc)
 #endif
-
 
             if (have_Passive_Tracers) then
               !We make sure to only enter here once if there are no passive tracers
@@ -873,6 +868,10 @@ contains
               end do
             end if
 
+            !Update immobile fractions values (for hysteresis relperm models)
+            !HAS TO BE the last step of the time-loop
+            if (have_option_for_any_phase("/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient",&
+            Mdims%n_in_pres)) call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)
 
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
               ewrite(1,*) "Iterations taken by the pressure linear solver:", pres_its_taken
