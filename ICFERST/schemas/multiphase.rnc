@@ -565,9 +565,7 @@ start =
                 },
                ## Options for capillary pressure
                ##
-               ## <b>VAD is always ON for Capillary pressure and the VAD used is the same as the capillary pressure values.</b>
-               ##
-               ## You should specify this ONLY for the wetting phase
+               ## <b>You should specify this ONLY for the wetting phase</b>
                element capillary_pressure {
                   (## Brooks-Corey equation
                   ##
@@ -645,10 +643,7 @@ start =
                              generic_aliased_field
                           }
                        )
-                    }})?,
-                    ## This options introduces the effects of the capillary pressure but "not exactly".
-                    ## It should be valid for limited capillary numbers and the convergence of the non-linear solver should be much better
-                    element fake_capillary_pressure{empty}?
+                    }})?
                }?,
                ## Immobile volume of fluid phase
                element immobile_fraction {

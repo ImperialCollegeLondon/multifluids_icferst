@@ -7714,7 +7714,13 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              Phase_with_Pc = iphase
          end if
      end do
+<<<<<<< HEAD
      Artificial_Pe = .false.;
+||||||| 219cf0a61... Second part of the fake capillary pressure implementation. Non-consistent diffusion and bugfix for the entry pressure.
+     Artificial_Pe = .false.; has_capillary = .false.
+=======
+     Artificial_Pe = .false.
+>>>>>>> parent of 219cf0a61... Second part of the fake capillary pressure implementation. Non-consistent diffusion and bugfix for the entry pressure.
      Cap_exponent => null(); Cap_entry_pressure => null()!Initialize
      if (Phase_with_Pc>0) then
          !Get information for capillary pressure to be used
@@ -7726,7 +7732,13 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
          end if
          !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
          !Unless we are using the non-consistent form of the capillary pressure
+<<<<<<< HEAD
          if ( have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation')) then
+||||||| 219cf0a61... Second part of the fake capillary pressure implementation. Non-consistent diffusion and bugfix for the entry pressure.
+         if ( have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation') .and. .not. has_capillary) then
+=======
+         if ( have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation') ) then
+>>>>>>> parent of 219cf0a61... Second part of the fake capillary pressure implementation. Non-consistent diffusion and bugfix for the entry pressure.
              allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
              Artificial_Pe = .true.
              if (present_and_true(for_transport)) then

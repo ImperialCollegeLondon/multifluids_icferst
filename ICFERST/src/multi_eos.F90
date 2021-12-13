@@ -869,8 +869,7 @@ contains
                upwnd%adv_coef_grad=0.0;upwnd%inv_adv_coef=0.0
                !if Fake capillary pressure compute here the barrier effects
                fake_relperm = 1.0
-               if (have_option_for_any_phase("multiphase_properties/capillary_pressure/fake_capillary_pressure",&
-                            mdims%nphase))call impose_fake_capillary_barriers(Mdims, ndgln, packed_state, fake_relperm)
+               call impose_fake_capillary_barriers(Mdims, ndgln, packed_state, fake_relperm)
 
 
                !Get from packed_state
@@ -2526,21 +2525,32 @@ contains
       ! Local variables
       real, parameter :: adjustment = 1e-5
       type(tensor_field), pointer :: pressure
-      real :: auxR, R_cv_nloc, Pe_ele, Pe_ele2
+      real :: auxR, R_cv_nloc
       integer, save :: Phase_with_Pc = -1
       integer :: cv_iloc, ele, ele2,iphase, cv_nod, other_phase, neig
       logical :: capillary_barrier
       real, dimension(Mdims%totele) :: P0DGPressure
-      real, dimension(:,:), pointer :: Cap_entry_pressure, Imbibition_term
+      real, dimension(:,:), pointer :: Cap_entry_pressure
 
+      ! Initialisation
+      fake_relperm = 1.
       !If there is nothing to do, from previous check, then just leave
       if (Phase_with_Pc < -10) return
 
       !Need the mesh to get neighbouring elements
       pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
+<<<<<<< HEAD
       call get_var_from_packed_state(packed_state,&
           Cap_entry_pressure = Cap_entry_pressure, Imbibition_term = Imbibition_term)
       if (Phase_with_Pc < 0) then
+||||||| 219cf0a61... Second part of the fake capillary pressure implementation. Non-consistent diffusion and bugfix for the entry pressure.
+      call get_var_from_packed_state(packed_state,&
+          Cap_entry_pressure = Cap_entry_pressure, Imbibition_term = Imbibition_term)   
+      if (Phase_with_Pc < 0) then  
+=======
+      call get_var_from_packed_state(packed_state,Cap_entry_pressure = Cap_entry_pressure)   
+      if (Phase_with_Pc < 0) then  
+>>>>>>> parent of 219cf0a61... Second part of the fake capillary pressure implementation. Non-consistent diffusion and bugfix for the entry pressure.
         Phase_with_Pc = -100
         !Check capillary pressure options
         do iphase = Mdims%nphase, 1, -1!Going backwards since the wetting phase should be phase 1
@@ -2565,12 +2575,26 @@ contains
       do ele = 1, Mdims%totele
         do neig = 1, Mdims%ndim + 1!A tet/triangle element can have one neighbour more than dimensions it has
           ele2 = max(ele_neigh(pressure%mesh, ele, neig),0)!This is the cv mesh; test next neighbour
+<<<<<<< HEAD
           Pe_ele = Cap_entry_pressure(Phase_with_Pc, ele) - Imbibition_term(Phase_with_Pc, ele)
           Pe_ele2 = Cap_entry_pressure(Phase_with_Pc, ele2) - Imbibition_term(Phase_with_Pc, ele2)
           !Now check pressures
           if (Pe_ele > Pe_ele2) then
             !If the prssure difference is below the Entry pressure difference then we impose the perm barrier
             if (P0DGPressure(ele2) - P0DGPressure(ele) < Pe_ele - Pe_ele2) fake_relperm(other_phase, ele) = adjustment
+||||||| 219cf0a61... Second part of the fake capillary pressure implementation. Non-consistent diffusion and bugfix for the entry pressure.
+          Pe_ele = Cap_entry_pressure(Phase_with_Pc, ele) - Imbibition_term(Phase_with_Pc, ele)
+          Pe_ele2 = Cap_entry_pressure(Phase_with_Pc, ele2) - Imbibition_term(Phase_with_Pc, ele2)
+          !Now check pressures
+          if (Pe_ele > Pe_ele2) then 
+            !If the prssure difference is below the Entry pressure difference then we impose the perm barrier
+            if (P0DGPressure(ele2) - P0DGPressure(ele) < Pe_ele - Pe_ele2) fake_relperm(other_phase, ele) = adjustment
+=======
+          if (Cap_entry_pressure(Phase_with_Pc, ele) > Cap_entry_pressure(Phase_with_Pc, ele2)) then 
+            !Now check pressures
+            if (P0DGPressure(ele2) - P0DGPressure(ele) < &
+                Cap_entry_pressure(Phase_with_Pc, ele) - Cap_entry_pressure(Phase_with_Pc, ele2)) fake_relperm(other_phase, ele) = adjustment
+>>>>>>> parent of 219cf0a61... Second part of the fake capillary pressure implementation. Non-consistent diffusion and bugfix for the entry pressure.
           end if
         end do
       end do
