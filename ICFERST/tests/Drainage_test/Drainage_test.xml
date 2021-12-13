@@ -14,7 +14,7 @@ min_val = stat("Drainage_test.stat")["CO2"]["PhaseVolumeFraction"]["min"][-1]</v
   </variables>
   <pass_tests>
     <test name="Assert final max sat" language="python">assert(abs((max_val - 0.104822)/0.104822) &lt; 0.01)</test>
-    <test name="Assert final min sar" language="python">assert(abs((min_val - 0.0954)/0.0954) &lt; 0.01)</test>
+    <test name="Assert final min sar" language="python">assert(abs((min_val - 0.09740)/0.09740) &lt; 0.01)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

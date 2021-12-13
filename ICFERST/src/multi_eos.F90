@@ -1115,7 +1115,7 @@ contains
                     call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(1, 1, iphase, mat_nod),&
                         SATURA(:, CV_NOD), viscosities(:,visc_node),Immobile_fraction, Corey_exponent,&
                          Endpoint_relperm)
-                    !Introduce fake relperm 
+                    !Introduce fake relperm
                     PorousMedia_absorp%val(1, 1, iphase, mat_nod)  = PorousMedia_absorp%val(1, 1, iphase, mat_nod)/ fake_relperm(iphase, ele)
                 END DO
             END DO
@@ -1244,7 +1244,7 @@ contains
             nphase =size(Satura,1)
             !Do not compute capillary field if we are using fake capillary pressure
             if (have_option_for_any_phase(&
-            "multiphase_properties/capillary_pressure/fake_capillary_pressure",nphase)) then 
+            "multiphase_properties/capillary_pressure/fake_capillary_pressure",nphase)) then
               CapPressure = 0.
               return
             end if
@@ -1994,7 +1994,7 @@ contains
     !>them into packed state
     !>By index this is: 1) immobile fraction, 2) relperm max, 3)relperm exponent
     !> 4)Capillary entry pressure 5) Capillary exponent 6) Capillary imbition term
-    !> The effective inmobile fraction is the min(inmobile,saturation),
+    !> The effective inmobile fraction is the min(inmobile,saturation_flipping formula),
     !> being the saturation the value after a succesful non-linear solver convergence!
     !> This NEEDS to be called after a succesful non-linear solver (with update_only)
     subroutine get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time, update_only)
@@ -2155,7 +2155,7 @@ contains
       real, parameter :: tol = 1e-10
       !Check if the situation is changing and if so, store the new value with the sign
       ! Ensure that the immobile fraction does not decrease, i.e. sat_flip does not decrease
-      ! this can only decrease once it has trapped a field with thermal effects, 
+      ! this can only decrease once it has trapped a field with thermal effects,
       ! but currently we are not considering these
       if (old_sat > abs(sat_flip) + tol ) then
          if (abs(sign(1., sat - old_sat ) - sign(1., sat_flip )) > tol ) &
@@ -2450,7 +2450,7 @@ contains
       type(multi_dimensions) :: Mdims
       !Local variables
       real, save  :: dissolution_parameter= -1
-      real, save ::molar_mass= -1 
+      real, save ::molar_mass= -1
       type(tensor_field), pointer :: saturation_field, concentration_field, density
       type(vector_field), pointer :: MeanPoreCV, cv_volume
       real :: n_co2_diss_max, delta_n, n_co2_gas
@@ -2460,7 +2460,7 @@ contains
       character( len = option_path_len ), save :: tracer_name
 
       !Retrieve values from diamond
-      if (dissolution_parameter < 0.) then 
+      if (dissolution_parameter < 0.) then
         call get_option("/porous_media/Gas_dissolution", dissolution_parameter)!in mol/kg
         call get_option("/porous_media/Gas_dissolution/molar_mass", molar_mass)!in kg/mol
         call get_option("/porous_media/Gas_dissolution/from_phase", donor_phase)
@@ -2471,7 +2471,7 @@ contains
           if (trim(option_name) == trim(donor_phase)) donor_phase_pos = iphase
           if (trim(option_name) == trim(receiving_phase)) receiving_phase_pos = iphase
         end do
-        if (receiving_phase_pos < 0 .or. receiving_phase_pos<0) then 
+        if (receiving_phase_pos < 0 .or. receiving_phase_pos<0) then
           FLAbort("Missing options, or mistyped, for Gas_dissolution. Please revise.")
         end if
         call get_option("/porous_media/Gas_dissolution/to_phase/tracer_name", tracer_name)
@@ -2522,7 +2522,7 @@ contains
       type(multi_ndgln), intent(in) :: ndgln
       type(multi_dimensions), intent(in) :: Mdims
       type(state_type), intent(inout) :: packed_state
-  
+
       ! Local variables
       real, parameter :: adjustment = 1e-5
       type(tensor_field), pointer :: pressure
@@ -2539,8 +2539,8 @@ contains
       !Need the mesh to get neighbouring elements
       pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
       call get_var_from_packed_state(packed_state,&
-          Cap_entry_pressure = Cap_entry_pressure, Imbibition_term = Imbibition_term)   
-      if (Phase_with_Pc < 0) then  
+          Cap_entry_pressure = Cap_entry_pressure, Imbibition_term = Imbibition_term)
+      if (Phase_with_Pc < 0) then
         Phase_with_Pc = -100
         !Check capillary pressure options
         do iphase = Mdims%nphase, 1, -1!Going backwards since the wetting phase should be phase 1
@@ -2554,12 +2554,12 @@ contains
       !Only for two phases
       other_phase = (Mdims%n_in_pres + 1 - Phase_with_Pc)
       !Create P0DG pressure from the CV mesh (bounded and conservative)
-      P0DGPressure = 0.; R_cv_nloc = dble(mdims%cv_nloc); 
+      P0DGPressure = 0.; R_cv_nloc = dble(mdims%cv_nloc);
       do ele = 1, Mdims%totele
         do cv_iloc = 1, Mdims%cv_nloc
           cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
           P0DGPressure(ele) = P0DGPressure(ele) + pressure%val(1,1,cv_nod)/R_cv_nloc
-        end do 
+        end do
       end do
       ! Indentify material boundaries and if the pressure is higher than the entry pressure impose adjustment
       do ele = 1, Mdims%totele
@@ -2568,7 +2568,7 @@ contains
           Pe_ele = Cap_entry_pressure(Phase_with_Pc, ele) - Imbibition_term(Phase_with_Pc, ele)
           Pe_ele2 = Cap_entry_pressure(Phase_with_Pc, ele2) - Imbibition_term(Phase_with_Pc, ele2)
           !Now check pressures
-          if (Pe_ele > Pe_ele2) then 
+          if (Pe_ele > Pe_ele2) then
             !If the prssure difference is below the Entry pressure difference then we impose the perm barrier
             if (P0DGPressure(ele2) - P0DGPressure(ele) < Pe_ele - Pe_ele2) fake_relperm(other_phase, ele) = adjustment
           end if
