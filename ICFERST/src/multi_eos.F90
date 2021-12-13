@@ -803,6 +803,7 @@ contains
        perm => extract_tensor_field( packed_state, "Permeability" )
        !Define n_in_pres based on the local version of nphase
        n_in_pres = nphase/Mdims%npres
+
        !Obtain inverse of permeability and store it
        !SPRINT_TO_DO THIS COULD BE DONE FASTER IF WE KNOW IF IT HAS OFF DIAGONALS OR NOT
        do i = 1, size(perm%val,3)
@@ -824,7 +825,6 @@ contains
             call set_viscosity(nphase, Mdims, state, viscosities)
           end if
         end do
-
        call Calculate_PorousMedia_adv_terms( nphase, state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
               upwnd, viscosities)
 
@@ -856,7 +856,6 @@ contains
                real, dimension(:), allocatable :: Max_sat
                real, dimension( :, : ), allocatable :: satura2
                type (multi_field) :: PorousMedia_absorp2
-               real, dimension(Mdims%n_in_pres, Mdims%totele) :: fake_relperm
                !Working pointers
                real, dimension(:,:), pointer :: Satura, OldSatura, Immobile_fraction
                type( tensor_field ), pointer :: perm
@@ -867,11 +866,6 @@ contains
 
                !Initialize variables
                upwnd%adv_coef_grad=0.0;upwnd%inv_adv_coef=0.0
-               !if Fake capillary pressure compute here the barrier effects
-               fake_relperm = 1.0
-               call impose_fake_capillary_barriers(Mdims, ndgln, packed_state, fake_relperm)
-
-
                !Get from packed_state
                call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,&
                    OldPhaseVolumeFraction = OldSatura, Immobile_fraction = Immobile_fraction)
@@ -880,7 +874,7 @@ contains
                allocate( satura2( nphase, size(SATURA,2) ) );satura2 = 0.
 
                CALL calculate_absorption2( nphase, packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA(1:Mdims%n_in_pres,:), &
-                      viscosities, fake_relperm)
+                      viscosities)
 
                !Introduce perturbation, positive for the increasing and negative for decreasing phase
                !Make sure that the perturbation is between bounds
@@ -902,7 +896,7 @@ contains
 
 
                call allocate_multi_field( Mdims, PorousMedia_absorp2, size(PorousMedia_absorp%val,4), field_name="PorousMedia_AbsorptionTerm")
-               CALL calculate_absorption2( nphase, packed_state, PorousMedia_absorp2, Mdims, ndgln, SATURA2, viscosities, fake_relperm)
+               CALL calculate_absorption2( nphase, packed_state, PorousMedia_absorp2, Mdims, ndgln, SATURA2, viscosities)
 
                do ipres = 2, Mdims%npres
                    Spipe => extract_scalar_field( state(1), "Sigma" )
@@ -1073,7 +1067,7 @@ contains
 
     !>@brief: Subroutine where the absorption for the porous media is actually computed
     SUBROUTINE calculate_absorption2( nphase, packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA, &
-        viscosities, fake_relperm, inv_PorousMedia_absorp)
+        viscosities, inv_PorousMedia_absorp)
         ! Calculate absorption for momentum eqns
         implicit none
         integer, intent(in) :: nphase
@@ -1081,7 +1075,7 @@ contains
         type (multi_field) :: PorousMedia_absorp
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
-        REAL, DIMENSION( :, : ), intent( in ) :: SATURA, fake_relperm
+        REAL, DIMENSION( :, : ), intent( in ) :: SATURA
         real, intent(in), dimension(:,:) :: viscosities
         real, dimension(:,:,:), INTENT(INOUT), optional :: inv_PorousMedia_absorp
         ! Local variable
@@ -1114,8 +1108,6 @@ contains
                     call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(1, 1, iphase, mat_nod),&
                         SATURA(:, CV_NOD), viscosities(:,visc_node),Immobile_fraction, Corey_exponent,&
                          Endpoint_relperm)
-                    !Introduce fake relperm
-                    PorousMedia_absorp%val(1, 1, iphase, mat_nod)  = PorousMedia_absorp%val(1, 1, iphase, mat_nod)/ fake_relperm(iphase, ele)
                 END DO
             END DO
         END DO
@@ -2510,94 +2502,5 @@ contains
 
 
     end subroutine flash_gas_dissolution
-
-
-
-!>@brief: This subroutine calculates the actual Darcy velocity, but with P0DG precision
-    subroutine impose_fake_capillary_barriers(Mdims, ndgln, packed_state, fake_relperm)
-
-      implicit none
-      real, dimension(:,:) :: fake_relperm
-      type(multi_ndgln), intent(in) :: ndgln
-      type(multi_dimensions), intent(in) :: Mdims
-      type(state_type), intent(inout) :: packed_state
-
-      ! Local variables
-      real, parameter :: adjustment = 1e-5
-      type(tensor_field), pointer :: pressure
-      real :: auxR, R_cv_nloc
-      integer, save :: Phase_with_Pc = -1
-      integer :: cv_iloc, ele, ele2,iphase, cv_nod, other_phase, neig
-      logical :: capillary_barrier
-      real, dimension(Mdims%totele) :: P0DGPressure
-      real, dimension(:,:), pointer :: Cap_entry_pressure
-
-      ! Initialisation
-      fake_relperm = 1.
-      !If there is nothing to do, from previous check, then just leave
-      if (Phase_with_Pc < -10) return
-
-      !Need the mesh to get neighbouring elements
-      pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
-<<<<<<< HEAD
-      call get_var_from_packed_state(packed_state,&
-          Cap_entry_pressure = Cap_entry_pressure, Imbibition_term = Imbibition_term)
-      if (Phase_with_Pc < 0) then
-||||||| 219cf0a61... Second part of the fake capillary pressure implementation. Non-consistent diffusion and bugfix for the entry pressure.
-      call get_var_from_packed_state(packed_state,&
-          Cap_entry_pressure = Cap_entry_pressure, Imbibition_term = Imbibition_term)   
-      if (Phase_with_Pc < 0) then  
-=======
-      call get_var_from_packed_state(packed_state,Cap_entry_pressure = Cap_entry_pressure)   
-      if (Phase_with_Pc < 0) then  
->>>>>>> parent of 219cf0a61... Second part of the fake capillary pressure implementation. Non-consistent diffusion and bugfix for the entry pressure.
-        Phase_with_Pc = -100
-        !Check capillary pressure options
-        do iphase = Mdims%nphase, 1, -1!Going backwards since the wetting phase should be phase 1
-            if (have_option( "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure" )) then
-                Phase_with_Pc = iphase
-            end if
-        end do
-      end if
-      !Nothing to do here!
-      if (Phase_with_Pc < 0) return
-      !Only for two phases
-      other_phase = (Mdims%n_in_pres + 1 - Phase_with_Pc)
-      !Create P0DG pressure from the CV mesh (bounded and conservative)
-      P0DGPressure = 0.; R_cv_nloc = dble(mdims%cv_nloc);
-      do ele = 1, Mdims%totele
-        do cv_iloc = 1, Mdims%cv_nloc
-          cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-          P0DGPressure(ele) = P0DGPressure(ele) + pressure%val(1,1,cv_nod)/R_cv_nloc
-        end do
-      end do
-      ! Indentify material boundaries and if the pressure is higher than the entry pressure impose adjustment
-      do ele = 1, Mdims%totele
-        do neig = 1, Mdims%ndim + 1!A tet/triangle element can have one neighbour more than dimensions it has
-          ele2 = max(ele_neigh(pressure%mesh, ele, neig),0)!This is the cv mesh; test next neighbour
-<<<<<<< HEAD
-          Pe_ele = Cap_entry_pressure(Phase_with_Pc, ele) - Imbibition_term(Phase_with_Pc, ele)
-          Pe_ele2 = Cap_entry_pressure(Phase_with_Pc, ele2) - Imbibition_term(Phase_with_Pc, ele2)
-          !Now check pressures
-          if (Pe_ele > Pe_ele2) then
-            !If the prssure difference is below the Entry pressure difference then we impose the perm barrier
-            if (P0DGPressure(ele2) - P0DGPressure(ele) < Pe_ele - Pe_ele2) fake_relperm(other_phase, ele) = adjustment
-||||||| 219cf0a61... Second part of the fake capillary pressure implementation. Non-consistent diffusion and bugfix for the entry pressure.
-          Pe_ele = Cap_entry_pressure(Phase_with_Pc, ele) - Imbibition_term(Phase_with_Pc, ele)
-          Pe_ele2 = Cap_entry_pressure(Phase_with_Pc, ele2) - Imbibition_term(Phase_with_Pc, ele2)
-          !Now check pressures
-          if (Pe_ele > Pe_ele2) then 
-            !If the prssure difference is below the Entry pressure difference then we impose the perm barrier
-            if (P0DGPressure(ele2) - P0DGPressure(ele) < Pe_ele - Pe_ele2) fake_relperm(other_phase, ele) = adjustment
-=======
-          if (Cap_entry_pressure(Phase_with_Pc, ele) > Cap_entry_pressure(Phase_with_Pc, ele2)) then 
-            !Now check pressures
-            if (P0DGPressure(ele2) - P0DGPressure(ele) < &
-                Cap_entry_pressure(Phase_with_Pc, ele) - Cap_entry_pressure(Phase_with_Pc, ele2)) fake_relperm(other_phase, ele) = adjustment
->>>>>>> parent of 219cf0a61... Second part of the fake capillary pressure implementation. Non-consistent diffusion and bugfix for the entry pressure.
-          end if
-        end do
-      end do
-  end subroutine impose_fake_capillary_barriers
 
 end module multiphase_EOS
