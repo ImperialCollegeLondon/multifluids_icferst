@@ -3345,7 +3345,7 @@ end function GetFEMName
 
 !>@brief: Subroutine to calculate the integrated mass inside the domain
 subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_mass, &
-    cv_ndgln, eles_with_pipe)
+    cv_ndgln, DEN_ALL, eles_with_pipe)
 
     implicit none
 
@@ -3356,9 +3356,10 @@ subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_ma
     real, dimension( : ), intent(in) :: mass_ele !> volume of the element, split into cv_nloc equally sized pieces (barycenter)
     real, dimension(:), intent(inout) :: calculate_mass!> Output field containing all the mass within the domain
     integer, dimension(:), intent( in ) ::  cv_ndgln
+    REAL, DIMENSION( :, : ), intent( in) :: DEN_ALL
     type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe!> Elements with pipes
     ! Local variables
-    type (tensor_field), pointer :: saturation, density
+    type (tensor_field), pointer :: saturation
     type (vector_field), pointer :: porosity
     integer  :: cv_knod
     integer :: cv_iloc
@@ -3369,7 +3370,7 @@ subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_ma
     ! Extract the Porosity
     porosity => extract_vector_field( packed_state, "Porosity" )
     !Extract density
-    density => extract_tensor_field( packed_state, "PackedDensity" )
+    ! density => extract_tensor_field( packed_state, "PackedDensity" )
     ! Having extracted the saturation field (phase volume fraction) in cv_adv_diff at control volume nodes, need to calculate it at quadrature points gi.
     ! (Note saturation is defined on a control volume basis and so the field is stored at control volume nodes).
     ! Since the CV shape functions are 1 or 0, the value at Gauss point gi, is given by the value at the nearest CV_node. So
@@ -3385,7 +3386,7 @@ subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_ma
                     cv_knod=cv_ndgln((ele-1)*mdims%cv_nloc+cv_iloc)
                     !     Porosity constant element-wise so simply extract that value associated to a given element ele
                     do i = Mdims%n_in_pres + 1, Mdims%nphase
-                        calculate_mass(i) = calculate_mass(i) + (Mass_ELE(cv_knod)) *saturation%val(1, i,cv_knod)*density%val(1, i,cv_knod)
+                        calculate_mass(i) = calculate_mass(i) + (Mass_ELE(cv_knod)) *saturation%val(1, i,cv_knod)*DEN_ALL(i,cv_knod)
                     enddo
                 ENDDO
             end if
@@ -3399,7 +3400,7 @@ subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_ma
                     !     Porosity constant element-wise so simply extract that value associated to a given element ele
                     do i = 1, Mdims%n_in_pres!size(calculate_mass)
                         calculate_mass(i) = calculate_mass(i) + (Mass_ELE(ele)/mdims%cv_nloc)*&
-                            porosity%val(1, ele)*saturation%val(1, i,cv_knod) * density%val(1, i,cv_knod)
+                            porosity%val(1, ele)*saturation%val(1, i,cv_knod) * DEN_ALL(i,cv_knod)
                     enddo
                 ENDDO
             end if
@@ -3632,10 +3633,17 @@ end subroutine get_DarcyVelocity
 
       if (surface_element_owned(tracer, sele)) then
         !Store total outflux; !velocity * area * density * saturation
-        do iphase = start_phase, end_phase
-          bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + &
-          Mass_flux(iphase)!For the mass conservation check we need to consider mass!
-        end do
+        if (has_boussinesq_aprox) then 
+            do iphase = start_phase, end_phase
+                bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + &
+                Vol_flux(iphase)!If boussinesq then we use the volume flux
+            end do
+        else
+            do iphase = start_phase, end_phase
+                bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + &
+                Mass_flux(iphase)!For the mass conservation check we need to consider mass!
+            end do
+        end if
         if (outfluxes%calculate_flux)  then
           do iofluxes = 1, size(outfluxes%outlet_id)!here below we just need a saturation
             if (integrate_over_surface_element(tracer, sele, (/outfluxes%outlet_id(iofluxes)/))) then

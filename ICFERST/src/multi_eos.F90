@@ -1977,7 +1977,7 @@ contains
     !>them into packed state
     !>By index this is: 1) immobile fraction, 2) relperm max, 3)relperm exponent
     !> 4)Capillary entry pressure 5) Capillary exponent 6) Capillary imbition term
-    !> The effective inmobile fraction is the min(inmobile,saturation),
+    !> The effective inmobile fraction is the min(inmobile,saturation_flipping formula),
     !> being the saturation the value after a succesful non-linear solver convergence!
     !> This NEEDS to be called after a succesful non-linear solver (with update_only)
     subroutine get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time, update_only)
@@ -2138,7 +2138,7 @@ contains
       real, parameter :: tol = 1e-10
       !Check if the situation is changing and if so, store the new value with the sign
       ! Ensure that the immobile fraction does not decrease, i.e. sat_flip does not decrease
-      ! this can only decrease once it has trapped a field with thermal effects, 
+      ! this can only decrease once it has trapped a field with thermal effects,
       ! but currently we are not considering these
       if (old_sat > abs(sat_flip) + tol ) then
          if (abs(sign(1., sat - old_sat ) - sign(1., sat_flip )) > tol ) &
@@ -2433,7 +2433,7 @@ contains
       type(multi_dimensions) :: Mdims
       !Local variables
       real, save  :: dissolution_parameter= -1
-      real, save ::molar_mass= -1 
+      real, save ::molar_mass= -1
       type(tensor_field), pointer :: saturation_field, concentration_field, density
       type(vector_field), pointer :: MeanPoreCV, cv_volume
       real :: n_co2_diss_max, delta_n, n_co2_gas
@@ -2443,7 +2443,7 @@ contains
       character( len = option_path_len ), save :: tracer_name
 
       !Retrieve values from diamond
-      if (dissolution_parameter < 0.) then 
+      if (dissolution_parameter < 0.) then
         call get_option("/porous_media/Gas_dissolution", dissolution_parameter)!in mol/kg
         call get_option("/porous_media/Gas_dissolution/molar_mass", molar_mass)!in kg/mol
         call get_option("/porous_media/Gas_dissolution/from_phase", donor_phase)
@@ -2454,7 +2454,7 @@ contains
           if (trim(option_name) == trim(donor_phase)) donor_phase_pos = iphase
           if (trim(option_name) == trim(receiving_phase)) receiving_phase_pos = iphase
         end do
-        if (receiving_phase_pos < 0 .or. receiving_phase_pos<0) then 
+        if (receiving_phase_pos < 0 .or. receiving_phase_pos<0) then
           FLAbort("Missing options, or mistyped, for Gas_dissolution. Please revise.")
         end if
         call get_option("/porous_media/Gas_dissolution/to_phase/tracer_name", tracer_name)

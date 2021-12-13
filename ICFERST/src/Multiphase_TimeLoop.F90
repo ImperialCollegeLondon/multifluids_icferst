@@ -211,7 +211,7 @@ contains
         ! Andreas. Declare the parameters required for skipping pressure solve
         Integer:: rcp                 !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
         Logical:: EnterSolve =.true., after_adapt_itime =.false.  !Flag to either enter or not the pressure solve
-        
+
         integer :: SFPI_its = 0
         integer :: max_sat_its
 
@@ -553,7 +553,7 @@ contains
             !Store backup to be able to repeat a timestep
             if (nonLinearAdaptTs) call Adaptive_NonLinear(mdims, packed_state, reference_field, its, &
                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 1)
-             
+
             !! Update all fields from time-step 'N - 1'
             call copy_packed_new_to_old( packed_state )
             ExitNonLinearLoop = .false.
@@ -566,7 +566,7 @@ contains
             SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
-                
+
                 !#=================================================================================================================
                 !# Vinicius: Exit simulation if it do not reach convergence
                 !#=================================================================================================================
@@ -574,7 +574,7 @@ contains
                 ! if (its == NonLinearIteration .and. SFPI_its >= max_sat_its) exit Loop_Time
                 !#=================================================================================================================
                 !# Vinicius-end: Exit simulation if it do not reach convergence
-                !#================================================================================================================= 
+                !#=================================================================================================================
 
               !for the diagnostic field, now it seems to be working fine...
                 ewrite(2,*) '  NEW ITS', its
@@ -666,7 +666,7 @@ contains
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
-                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, & 
+                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
 
@@ -807,18 +807,13 @@ contains
                     exit Loop_NonLinearIteration
                 end if
 
-                !Update immobile fractions values (for hysteresis relperm models)
-                ! MUST BE BEFORE Adaptive_NonLinear
-                if (have_option_for_any_phase("/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient",&
-                Mdims%n_in_pres)) call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)   
-
                 !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 3, calculate_mass_delta, &
                         adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Courant_number(2), first_time_step)
 
                 !Flag the matrices as already calculated (only the storable ones
-                Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI   
+                Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI
 
                 if (ExitNonLinearLoop) then
                     if (adapt_mesh_in_FPI) then
@@ -836,7 +831,7 @@ contains
                 end if
                 after_adapt=.false.
                 its = its + 1
-                first_nonlinear_time_step = .false.            
+                first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
 
             !Flash dissolution happens here
@@ -845,7 +840,6 @@ contains
 #ifdef USING_PHREEQC
             call run_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc)
 #endif
-           
 
             if (have_Passive_Tracers) then
               !We make sure to only enter here once if there are no passive tracers
@@ -874,6 +868,10 @@ contains
               end do
             end if
 
+            !Update immobile fractions values (for hysteresis relperm models)
+            !HAS TO BE the last step of the time-loop
+            if (have_option_for_any_phase("/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient",&
+            Mdims%n_in_pres)) call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)
 
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
               ewrite(1,*) "Iterations taken by the pressure linear solver:", pres_its_taken
@@ -1006,7 +1004,7 @@ contains
                 ! dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc ) Original
                 !Make sure we finish at required time and we don't get dt = 0
                 dt = max(min(dt, finish_time - current_time), 1d-8); call allmin(dt)
-                if (current_time+dt>=finish_time) exit Loop_Time           
+                if (current_time+dt>=finish_time) exit Loop_Time
                 call set_option( '/timestepping/timestep', dt )
             end if
             ! ####UP TO HERE####
@@ -1033,11 +1031,11 @@ contains
 
 !#=================================================================================================================
 !# Vinicius: Free XGB model
-!#=================================================================================================================        
+!#=================================================================================================================
 #ifdef USING_XGBOOST
         if (getprocno() == 1) call xgboost_free_model()
-#else 
-    if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path")) then 
+#else
+    if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path")) then
         ewrite(0,*) "WARNING: ML path specified for a model but ICFERST hasn't been compiled with XGboost. Classical method used instead."
     end if
 #endif

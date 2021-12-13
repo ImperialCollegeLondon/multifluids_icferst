@@ -285,7 +285,7 @@ contains
                   call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, den_all, CDISPERSION)
                   TDIFFUSION = TDIFFUSION + CDISPERSION
                   deallocate(CDISPERSION)
-                 end if                
+                 end if
            end if
 
            ! get diffusivity for compositional
@@ -776,8 +776,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/max_limit", totally_min_max(2))
         has_auto_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/automatic_min_limit")
         has_auto_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max/automatic_max_limit")
-        if (.not. WarningMsgShown) then 
-            if (has_auto_min_limit .or. has_auto_max_limit ) then 
+        if (.not. WarningMsgShown) then
+            if (has_auto_min_limit .or. has_auto_max_limit ) then
                 if (getprocno() == 1) then
                     ewrite(0,*) 'MESSAGE: Automatic MinMax activated: This should ONLY be used if there are not sources or sinks, and the BCs are Dirichtlet.'
                 end if
@@ -956,7 +956,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            cv_disopt = Mdisopt%t_disopt; cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
            cv_theta = Mdisopt%t_theta; cv_beta = Mdisopt%t_beta
            !For passive tracers use low order, the idea is to re-use the matrix when possible
-           if (is_PassiveTracer_field(Tracer_name)) then 
+           if (is_PassiveTracer_field(Tracer_name)) then
             cv_disopt = 0!Force upwind
             cv_theta = 1!For implicit euler
            end if
@@ -1239,7 +1239,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      solution%val(iphase+(ipres-1)*n_in_pres,:) = sat_field%val(1,iphase+(ipres-1)*n_in_pres,:)
                    end do
                  end do
-                
+
                  !Assemble the matrix and the RHS
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                  call CV_ASSEMB( state, packed_state, &
@@ -1270,17 +1270,17 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                      !If using ADAPTIVE FPI with backtracking
                      if (backtrack_par_factor < 0) then
-#ifdef USING_XGBOOST           
-                        if (.not. ML_method_activated) then 
+#ifdef USING_XGBOOST
+                        if (.not. ML_method_activated) then
                             if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
                                 call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
                             end if
-                        end if              
-#else 
+                        end if
+#else
                         if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
                             call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
                         end if
-#endif                          
+#endif
                         !Calculate the actual residual using a previous backtrack_par
                         ! vtracer=as_vector(sat_field,dim=2)
                         call mult(residual, Mmat%petsc_ACV, solution)
@@ -1297,25 +1297,25 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                         end do
                         !We use the highest residual across the domain
                         if (IsParallel()) call allmax(res)
-                         
-                        if (its == 1) then 
+
+                        if (its == 1) then
                             first_res = res !Variable to check total convergence of the SFPI method
 #ifdef USING_XGBOOST
-                            if (ML_method_activated) then 
-                                if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number (auto_backtracking) or a set of dimensionless numbers (AI_backtracking_parameters)                          
+                            if (ML_method_activated) then
+                                if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number (auto_backtracking) or a set of dimensionless numbers (AI_backtracking_parameters)
                                     !#=================================================================================================================
                                     !# Vinicius: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
                                     !#=================================================================================================================
-                                    ! Calculate Darcy velocity with the most up-to-date information (necessary for AI_backtracking_parameters)                                    
-                                    if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )                                    
-                                    ! Generate all the dimensionless numbers 
+                                    ! Calculate Darcy velocity with the most up-to-date information (necessary for AI_backtracking_parameters)
+                                    if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
+                                    ! Generate all the dimensionless numbers
                                     call AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number, backtrack_par_factor, OvRelax_param, res, resold, nonlinear_iteration)
                                     !#=================================================================================================================
                                     !# Vinicius-End: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
-                                    !#=================================================================================================================   
+                                    !#=================================================================================================================
                                 end if
                             end if
-#endif               
+#endif
                         end if
                      end if
                  end if
@@ -1397,7 +1397,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !#=================================================================================================================
              !# Vinicius: Write the number of non-linear iterations into file
              !#=================================================================================================================
-             !inquire(file="Inner_non_linear_iterations.csv", exist=file_exist) 
+             !inquire(file="Inner_non_linear_iterations.csv", exist=file_exist)
             !  if (.not. written_file) then
             !      open(75, file="non_linear_iterations.csv", status="replace")
             !      write(75, '(8(A,",",X))') "time_step", "outer_nonlinear_iteration", "Inner_non_linear_iterations"
@@ -1406,7 +1406,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             !  end if
             !  ! Write values
             !  open(75, file="non_linear_iterations.csv", status="unknown", position="append")
-            !  write(75, '(8(I8,",",X))') time_step, nonlinear_iteration, its 
+            !  write(75, '(8(I8,",",X))') time_step, nonlinear_iteration, its
             !  close(75)
             !  SFPI_its = its
              !#=================================================================================================================
@@ -2174,9 +2174,9 @@ end if
         rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
         call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
         !Call impose strong BCs must be here before the rescaling and after include wells and
-        !compressibility - only done if using P0DG and gamma is zero at the BC see 
+        !compressibility - only done if using P0DG and gamma is zero at the BC see
         !subroutine initialize_pipes_package_and_gamma for more information
-        if (is_P0DGP1 .and. Mdims%npres > 1) call impose_strong_bcs_wells(state, pipes_aux, Mdims, Mmat, ndgln, CMC_petsc,pressure,rhs_p%val) 
+        if (is_P0DGP1 .and. Mdims%npres > 1) call impose_strong_bcs_wells(state, pipes_aux, Mdims, Mmat, ndgln, CMC_petsc,pressure,rhs_p%val)
         !Re-scale system so we can deal with SI units of permeability
         if (is_porous_media) then
           call scale(cmc_petsc, 1.0/rescaleVal)
@@ -7732,7 +7732,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              if (present_and_true(for_transport)) then
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
                 !This method was designed for fields between 0 and 1, so for transport fields, we need to adjust Pe_aux to ensure consistency
-                if (present(totally_min_max)) then 
+                if (present(totally_min_max)) then
                   !Means that min_max is defined
                   if (abs(totally_min_max(2)) < 1e20) Pe_aux = Pe_aux*max(abs(totally_min_max(2) - totally_min_max(1)),1.0) !THIS means making it HIGHER
                 end if
@@ -7757,10 +7757,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              if (Pe_aux<0) then!Automatic set up for Pe
                  !Method based on calculating an entry pressure for a given Peclet number;
                  !Peclet = V * L / Diffusivity; We consider only the entry pressure for the diffusivity
-                 !Pe = Vel * L/ Peclet. At present we are using the Darcy Velocity 
+                 !Pe = Vel * L/ Peclet. At present we are using the Darcy Velocity
                  Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
                 ! DarcyVelocity => extract_vector_field( state(Phase_with_Pc), "DarcyVelocity" )
-              
+
                  !Since it is an approximation, the domain length is the maximum distance, we only calculate it once
                  if (domain_length < 0) then
                    do idim = 1, Mdims%ndim
@@ -8140,7 +8140,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
          end do ! ele loop
 
-        
+
          if ( iloop == 1 ) then
           !This part is very badly writen apart from being unnecessary since it is better to use remove_null_space
             got_free_surf = .false. ; same_mesh = (Mdims%cv_nloc==ph_nloc)
@@ -8157,7 +8157,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             ! else don't forget to remove the null space
             matrix%is_assembled =.false.
             call assemble( matrix )
-            if ( got_free_surf) then 
+            if ( got_free_surf) then
               if ( same_mesh ) then
                 findph => sparsity % findrm
                 colph => sparsity % colm
@@ -8974,7 +8974,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         integer, dimension(Mdims%stotel) :: Impose_strong
         type(tensor_field) :: pressure_BCs
         type(scalar_field), pointer :: pipe_diameter
-  
+
         call get_entire_boundary_condition(pressure,&
             ['weakdirichlet'],&
             pressure_BCs,WIC_P_BC_ALL)
@@ -9023,11 +9023,11 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
     !----------------------------------------------------------------------------------------
     !> @author Vinicius L S Silva
-    !> @brief Subroutine that calculates the backtrack_par_factor based on Machine Learning. 
-    !> The inputs of the Machine learning model are dimensionless numbers and configurations  
-    !> of the system. This subroutine also generates several dimensionless numbers cv-wise.  
+    !> @brief Subroutine that calculates the backtrack_par_factor based on Machine Learning.
+    !> The inputs of the Machine learning model are dimensionless numbers and configurations
+    !> of the system. This subroutine also generates several dimensionless numbers cv-wise.
     !----------------------------------------------------------------------------------------
-#ifdef USING_XGBOOST      
+#ifdef USING_XGBOOST
     subroutine AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number_in, backtrack_par_factor, overrelaxation, &
                                          & res, resold, outer_nonlinear_iteration, for_transport)
         implicit none
@@ -9039,32 +9039,32 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         real, intent(inout) :: backtrack_par_factor
         real, dimension(:), intent(in) :: overrelaxation
         real, intent(in) :: res
-        real, intent(in) :: resold   
+        real, intent(in) :: resold
         integer, intent(in) :: outer_nonlinear_iteration
         logical, optional, intent(in) :: for_transport
-        
+
         !Local variables
         real, save :: backup_shockfront_Courant = 0.
         logical, save :: readed_options = .false.
         logical, save :: readed_perm = .false.
         !logical, save :: readed_por = .false.
         logical, save :: readed_sizes = .false.
-        logical, save  :: written_file = .false. 
-        logical, save  :: loaded_file = .false. 
+        logical, save  :: written_file = .false.
+        logical, save  :: loaded_file = .false.
         real, dimension(:,:), pointer :: X_ALL, saturation, Imble_frac, cap_entry_pres, end_point_relperm, exponent_relperm
         type(tensor_field), pointer :: permeability, state_viscosity, density, velocity
-        type(vector_field), pointer :: porosity, gravity_direction 
+        type(vector_field), pointer :: porosity, gravity_direction
         type (vector_field_pointer), dimension(Mdims%nphase) :: Darcy_velocity
         real, dimension(Mdims%cv_nonods) :: total_mobility, counter_subcv, nDarcy_velocity_cvwise
         real, dimension(Mdims%ndim, Mdims%cv_nonods) :: Darcy_velocity_cvwise
         real, dimension(Mdims%n_in_pres, Mdims%cv_nonods) :: relperm, viscosity
-        real, save :: average_perm_length, average_perm_thickness, average_por, domain_length, domain_thickness 
+        real, save :: average_perm_length, average_perm_thickness, average_por, domain_length, domain_thickness
         real :: l1_max, l1_min, l2_max, l2_min, h_max, h_min, aux_shockfront_mobratio, delta_density, diffusivity, gravity_magnitude, sin_alpha
         integer :: iphase, cv_nodi, cv_iloc, ele, total_ele, u_iloc, u_inod, total_cv, Phase_with_Pc, shockfront_counter
         !integer, dimension(8) :: date_values
-        !logical :: file_exist         
+        !logical :: file_exist
 
-        !Parameters 
+        !Parameters
         real, dimension(:), allocatable :: longitudinal_capillary, transverse_capillary, buoyancy_number, longitudinal_buoyancy, transverse_buoyancy, invPeclet
         logical, save :: gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
         real, save :: n_phases, n_components, aspect_ratio
@@ -9073,88 +9073,88 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         real :: min_Darcy_velocity, max_Darcy_velocity, average_Darcy_velocity
         real :: min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
         real :: average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
-        real :: average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
+        real :: average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy
         real :: average_overrelaxation, max_overrelaxation, min_overrelaxation
         real :: average_invPeclet, max_invPeclet, min_invPeclet
-        real :: shockfront_number_ratio, btpf        
+        real :: shockfront_number_ratio, btpf
 
         !*************************************!
         !!! ***Getting support variables*** !!!
         !*************************************!
 
-        !Permeability averages 
-        if (.not.readed_perm) then 
+        !Permeability averages
+        if (.not.readed_perm) then
             !Retrieve permeability field - element wise
-            permeability => extract_tensor_field(packed_state,"Permeability")  
+            permeability => extract_tensor_field(packed_state,"Permeability")
             !Average permeability along Mdims%ndim-1 first dimensions
             average_perm_length = 0.
             if (Mdims%ndim < 3) then
                 do ele = 1, Mdims%totele
-                    average_perm_length = average_perm_length + permeability%val(1,1,ele) 
-                end do 
+                    average_perm_length = average_perm_length + permeability%val(1,1,ele)
+                end do
                 total_ele = Mdims%totele
                 if (IsParallel()) then
                     call allsum(average_perm_length)
                     call allsum(total_ele)
                 end if
-                average_perm_length = average_perm_length/total_ele 
-            else 
+                average_perm_length = average_perm_length/total_ele
+            else
                 do ele = 1, Mdims%totele
-                    average_perm_length = average_perm_length + permeability%val(1,1,ele)  + permeability%val(2,2,ele) 
-                end do 
+                    average_perm_length = average_perm_length + permeability%val(1,1,ele)  + permeability%val(2,2,ele)
+                end do
                 total_ele = Mdims%totele
                 if (IsParallel()) then
                     call allsum(average_perm_length)
                     call allsum(total_ele)
                 end if
-                average_perm_length = average_perm_length/(total_ele*2) 
-            end if  
+                average_perm_length = average_perm_length/(total_ele*2)
+            end if
             !Average permeability along the last dimensions
             average_perm_thickness = 0.
             do ele = 1, Mdims%totele
-                average_perm_thickness = average_perm_thickness + permeability%val(Mdims%ndim,Mdims%ndim,ele) 
-            end do 
+                average_perm_thickness = average_perm_thickness + permeability%val(Mdims%ndim,Mdims%ndim,ele)
+            end do
             total_ele = Mdims%totele
             if (IsParallel()) then
                 call allsum(average_perm_thickness)
                 call allsum(total_ele)
             end if
-            average_perm_thickness = average_perm_thickness/total_ele     
+            average_perm_thickness = average_perm_thickness/total_ele
             readed_perm = .true.
-        end if    
+        end if
 
         !Porosity average - not using
-        !if (.not.readed_por) then 
+        !if (.not.readed_por) then
         !    !Retrieve porosity field
         !    porosity => extract_vector_field(packed_state,"Porosity")
         !    average_por = 0
-        !    do ele = 1, Mdims%totele    
-        !        average_por = average_por + porosity%val(1, ele) 
+        !    do ele = 1, Mdims%totele
+        !        average_por = average_por + porosity%val(1, ele)
         !        total_ele = Mdims%totele
         !    if (IsParallel()) then
         !       call allsum(average_por)
         !       call allsum(total_ele)
-        !    average_por = average_por/real(total_ele)    
-        !    readed_por = .true.    
+        !    average_por = average_por/real(total_ele)
+        !    readed_por = .true.
         !end if
-            
-        !Domain lemgth, domain thickness 
+
+        !Domain lemgth, domain thickness
         if (.not.readed_sizes) then
             !Extract variables from packed_state, X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
-            call get_var_from_packed_state(packed_state, PressureCoordinate = X_ALL)    
+            call get_var_from_packed_state(packed_state, PressureCoordinate = X_ALL)
             !Domain length as the maximum distance in the (Mdims%ndim-1) dimensions, we only calculate it once
-            if (Mdims%ndim < 3) then 
-                l1_max = maxval(X_ALL(1,:)) 
-                l1_min = minval(X_ALL(1,:))   
+            if (Mdims%ndim < 3) then
+                l1_max = maxval(X_ALL(1,:))
+                l1_min = minval(X_ALL(1,:))
                 if (IsParallel()) then
                     call allmax(l1_max)
                     call allmin(l1_min)
                 end if
                 domain_length = abs(l1_max-l1_min)
-            else 
-                l1_max = maxval(X_ALL(1,:)) 
+            else
+                l1_max = maxval(X_ALL(1,:))
                 l1_min = minval(X_ALL(1,:))
-                l2_max = maxval(X_ALL(2,:)) 
+                l2_max = maxval(X_ALL(2,:))
                 l2_min = minval(X_ALL(2,:))
                 if (IsParallel()) then
                     call allmax(l1_max)
@@ -9165,14 +9165,14 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 domain_length = max(l1_max-l1_min, l2_max-l2_min)
             end if
             !Domain thickness as the maximum distance in the last dimension
-            h_max = maxval(X_ALL(Mdims%ndim,:)) 
+            h_max = maxval(X_ALL(Mdims%ndim,:))
             h_min = minval(X_ALL(Mdims%ndim,:))
             if (IsParallel()) then
                 call allmax(h_max)
                 call allmin(h_min)
             end if
-            domain_thickness = abs(h_max-h_min)  
-            readed_sizes = .true.    
+            domain_thickness = abs(h_max-h_min)
+            readed_sizes = .true.
         end if
 
         !Retrieve viscosity field - control-volume wise
@@ -9185,22 +9185,22 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         density  => extract_tensor_field( packed_state, "PackedDensity" )
         !Retrieve velocity - control-volume wise
         velocity => extract_tensor_field( packed_state, "PackedVelocity" )
-        !Retrieve Immobile fraction - element wise 
+        !Retrieve Immobile fraction - element wise
         call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
         !Retrive saturation - control-volume wise
-        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = saturation) 
+        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = saturation)
         !Retrive Capillary entry pressure - control-volume wise
-        call get_var_from_packed_state(packed_state, Cap_entry_pressure = cap_entry_pres) 
+        call get_var_from_packed_state(packed_state, Cap_entry_pressure = cap_entry_pres)
         !Retrive relative permeability end points- control-volume wise
-        call get_var_from_packed_state(packed_state, EndPointRelperm = end_point_relperm) 
+        call get_var_from_packed_state(packed_state, EndPointRelperm = end_point_relperm)
         !Retrive relative permeability exponents - control-volume wise
-        call get_var_from_packed_state(packed_state, RelpermExponent = exponent_relperm) 
-        !Retrieve relative permeabilty field - control-volume wise 
-        call get_relative_permeability(Mdims, saturation, Imble_frac, end_point_relperm, exponent_relperm, relperm) 
-        !Calculate the total number of control volumes  
-        total_cv = Mdims%cv_nonods 
+        call get_var_from_packed_state(packed_state, RelpermExponent = exponent_relperm)
+        !Retrieve relative permeabilty field - control-volume wise
+        call get_relative_permeability(Mdims, saturation, Imble_frac, end_point_relperm, exponent_relperm, relperm)
+        !Calculate the total number of control volumes
+        total_cv = Mdims%cv_nonods
         if (IsParallel()) then
-            call allsum(total_cv)                
+            call allsum(total_cv)
         end if
 
         !Total mobility - control-volume wise
@@ -9211,7 +9211,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !P0 Darcy velocity - control-volume wise
         do iphase = 1, Mdims%n_in_pres
             Darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
-        end do    
+        end do
         Darcy_velocity_cvwise = 0.
         counter_subcv = 0
         do ele = 1, Mdims%totele
@@ -9229,7 +9229,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         do cv_nodi = 1, Mdims%cv_nonods
             Darcy_velocity_cvwise(:,cv_nodi) = Darcy_velocity_cvwise(:,cv_nodi)/counter_subcv(cv_nodi)
             nDarcy_velocity_cvwise(cv_nodi) = norm2(Darcy_velocity_cvwise(:,cv_nodi))
-        end do 
+        end do
 
         !**************************************!
         !!! ***Calculating all parameters*** !!!
@@ -9237,28 +9237,28 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
         if (.not.readed_options) then
             !We read the options just once
-            
+
             !!! Number of phases !!!
-            n_phases = Mdims%n_in_pres 
-            !!! have wells !!! 
+            n_phases = Mdims%n_in_pres
+            !!! have wells !!!
             wells = (Mdims%npres > 1)
             !!! Number of components !!!
-            n_components = Mdims%ncomp        
+            n_components = Mdims%ncomp
             !!! gravity !!!
-            gravity = have_option("/physical_parameters/gravity")        
+            gravity = have_option("/physical_parameters/gravity")
             !!! Capillary pressure !!!
             cap_pressure = have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)
             !!! Single-phase flow !!!
-            one_phase = (Mdims%n_in_pres == 1) 
+            one_phase = (Mdims%n_in_pres == 1)
             !!! Black Oil
             black_oil = have_option( "/physical_parameters/black-oil_PVT_table")
             !!! Over relaxation !!!
             ov_relaxation = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation')
-            
+
             !!! Aspect ratio !!!
-            ! R_L = sqrt(permz/permx)*L/H 
-            aspect_ratio = domain_length*SQRT(average_perm_thickness/average_perm_length)/domain_thickness   
-            
+            ! R_L = sqrt(permz/permx)*L/H
+            aspect_ratio = domain_length*SQRT(average_perm_thickness/average_perm_length)/domain_thickness
+
             readed_options = .true.
         end if
 
@@ -9267,11 +9267,11 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !Sometimes the shock-front courant number is not well calculated, then use previous value
         !if (abs(courant_number_in(2)) < 1d-8 ) courant_number_in(2) = backup_shockfront_Courant
         !Courant number
-        courant_number = courant_number_in(1) 
+        courant_number = courant_number_in(1)
         !shockfront courant number
         shockfront_courant_number = courant_number_in(2)
         backup_shockfront_Courant = shockfront_courant_number
-        
+
         !!! Total mobility  !!!
         ! calculate average, max and min values
         average_total_mobility = sum(total_mobility)
@@ -9279,11 +9279,11 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         min_total_mobility = minval(total_mobility)
         if (IsParallel()) then
             call allsum(average_total_mobility)
-            call allmax(max_total_mobility)  
-            call allmin(min_total_mobility)               
+            call allmax(max_total_mobility)
+            call allmin(min_total_mobility)
         end if
-        average_total_mobility = average_total_mobility/total_cv 
-        
+        average_total_mobility = average_total_mobility/total_cv
+
         !!! Darcy velocity !!!
         ! calculate average, max and min values
         average_Darcy_velocity = sum(nDarcy_velocity_cvwise)
@@ -9291,13 +9291,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         min_Darcy_velocity = minval(nDarcy_velocity_cvwise)
         if (IsParallel()) then
             call allsum(average_Darcy_velocity)
-            call allmax(max_Darcy_velocity)  
-            call allmin(min_Darcy_velocity)               
+            call allmax(max_Darcy_velocity)
+            call allmin(min_Darcy_velocity)
         end if
-        average_Darcy_velocity = average_Darcy_velocity/total_cv 
+        average_Darcy_velocity = average_Darcy_velocity/total_cv
 
 
-        !!! shockfront mobility ratio !!! 
+        !!! shockfront mobility ratio !!!
         ! M_f = lambda_T(at the front)/lambda_T(ahead of the front)
         min_shockfront_mobratio = 999.
         max_shockfront_mobratio = 0.
@@ -9305,33 +9305,33 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         shockfront_counter = 0
         if (Mdims%n_in_pres > 1) then
             do ele = 1, Mdims%totele
-                if (shock_front_in_ele(ele, Mdims, saturation, ndgln, Imble_frac)) then 
+                if (shock_front_in_ele(ele, Mdims, saturation, ndgln, Imble_frac)) then
                     aux_shockfront_mobratio = shock_front_mobility_ratio(ele, Mdims, saturation, ndgln, Imble_frac, total_mobility)
                     min_shockfront_mobratio = min(min_shockfront_mobratio, aux_shockfront_mobratio)
                     max_shockfront_mobratio = max(max_shockfront_mobratio, aux_shockfront_mobratio)
                     average_shockfront_mobratio = average_shockfront_mobratio + aux_shockfront_mobratio
                     shockfront_counter = shockfront_counter + 1
                 end if
-            end do  
+            end do
             total_ele = Mdims%totele
             if (IsParallel()) then
                 call allmax(max_shockfront_mobratio)
                 call allmin(min_shockfront_mobratio)
                 call allsum(average_shockfront_mobratio)
-                call allsum(shockfront_counter)      
-                call allsum(total_ele)           
+                call allsum(shockfront_counter)
+                call allsum(total_ele)
             end if
             average_shockfront_mobratio = average_shockfront_mobratio/shockfront_counter
             shockfront_number_ratio = real(shockfront_counter)/total_ele
         end if
-        !Verify whether there is a shockfront or not 
-        if (shockfront_counter == 0) then 
+        !Verify whether there is a shockfront or not
+        if (shockfront_counter == 0) then
             min_shockfront_mobratio = 1.
             max_shockfront_mobratio = 1.
-            average_shockfront_mobratio = 1.   
-            shockfront_number_ratio = 0.0   
-        end if    
-        
+            average_shockfront_mobratio = 1.
+            shockfront_number_ratio = 0.0
+        end if
+
         !!! Capillary numbers !!!
         ! N_cv,L = (permx*k^e_rd*P^e_c)/(u*mu_d*L)
         ! N_cv,T = (permz*k^e_rd*P^e_c*L)/(u*mu_d*H**2)
@@ -9340,10 +9340,10 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             allocate( transverse_capillary(Mdims%cv_nonods) )
             do cv_nodi = 1, Mdims%cv_nonods
                 longitudinal_capillary(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi)) / &
-                                                & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_length) 
+                                                & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_length)
                 transverse_capillary(cv_nodi) = average_perm_thickness*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi))*domain_length / &
-                                                & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_thickness**2)               
-            end do 
+                                                & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_thickness**2)
+            end do
             ! calculate average, max and min values
             average_longitudinal_capillary = sum(longitudinal_capillary)
             average_transverse_capillary = sum(transverse_capillary)
@@ -9355,15 +9355,15 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 call allsum(average_longitudinal_capillary)
                 call allsum(average_transverse_capillary)
                 call allmax(max_longitudinal_capillary)
-                call allmax(max_transverse_capillary)  
+                call allmax(max_transverse_capillary)
                 call allmin(min_longitudinal_capillary)
-                call allmin(min_transverse_capillary)               
+                call allmin(min_transverse_capillary)
             end if
             average_longitudinal_capillary = average_longitudinal_capillary/total_cv
-            average_transverse_capillary = average_transverse_capillary/total_cv 
+            average_transverse_capillary = average_transverse_capillary/total_cv
             deallocate(longitudinal_capillary)
             deallocate(transverse_capillary)
-        else 
+        else
             average_longitudinal_capillary = 0.
             average_transverse_capillary = 0.
             max_longitudinal_capillary = 0.
@@ -9381,17 +9381,17 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             allocate( longitudinal_buoyancy(Mdims%cv_nonods) )
             allocate( transverse_buoyancy(Mdims%cv_nonods) )
             call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude)
-            gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )          
+            gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
             do cv_nodi = 1, Mdims%cv_nonods
                 delta_density = (maxval(density%val(1,:,cv_nodi)) - minval(density%val(1,:,cv_nodi)))
-                sin_alpha =  dot_product(Darcy_velocity_cvwise(:,cv_nodi), gravity_direction%val(:,1))/(norm2(Darcy_velocity_cvwise(:,cv_nodi))*norm2(gravity_direction%val(:,1)))  
+                sin_alpha =  dot_product(Darcy_velocity_cvwise(:,cv_nodi), gravity_direction%val(:,1))/(norm2(Darcy_velocity_cvwise(:,cv_nodi))*norm2(gravity_direction%val(:,1)))
                 buoyancy_number(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*delta_density*gravity_magnitude*sqrt(1-sin_alpha**2)*domain_thickness / &
-                                            & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_length) 
+                                            & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_length)
                 longitudinal_buoyancy(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*delta_density*gravity_magnitude*sin_alpha / &
-                                               & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)) 
+                                               & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi))
                 transverse_buoyancy(cv_nodi) = average_perm_thickness*end_point_relperm(Mdims%n_in_pres,cv_nodi)*delta_density*gravity_magnitude*sqrt(1-sin_alpha**2)*domain_length / &
-                                                & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_thickness)               
-            end do 
+                                                & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_thickness)
+            end do
             ! calculate average, max and min values
             average_buoyancy_number = sum(buoyancy_number)
             average_longitudinal_buoyancy = sum(longitudinal_buoyancy)
@@ -9407,19 +9407,19 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 call allsum(average_longitudinal_buoyancy)
                 call allsum(average_transverse_buoyancy)
                 call allmax(max_buoyancy_number)
-                call allmax(max_longitudinal_buoyancy)  
-                call allmax(max_transverse_buoyancy) 
+                call allmax(max_longitudinal_buoyancy)
+                call allmax(max_transverse_buoyancy)
                 call allmin(min_buoyancy_number)
-                call allmin(min_longitudinal_buoyancy)  
-                call allmin(min_transverse_buoyancy)  
+                call allmin(min_longitudinal_buoyancy)
+                call allmin(min_transverse_buoyancy)
             end if
             average_buoyancy_number = average_buoyancy_number/total_cv
-            average_longitudinal_buoyancy = average_longitudinal_buoyancy/total_cv 
-            average_transverse_buoyancy = average_transverse_buoyancy/total_cv 
+            average_longitudinal_buoyancy = average_longitudinal_buoyancy/total_cv
+            average_transverse_buoyancy = average_transverse_buoyancy/total_cv
             deallocate(buoyancy_number)
             deallocate(longitudinal_buoyancy)
             deallocate(transverse_buoyancy)
-        else 
+        else
             average_buoyancy_number = 0.
             average_longitudinal_buoyancy = 0.
             average_transverse_buoyancy = 0.
@@ -9433,28 +9433,28 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
         !!! overrelaxation parameter !!!
         if (ov_relaxation) then
-            !allocate( overrelaxation(Mdims%cv_nonods) ) 
-            !call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, overrelaxation, Phase_with_Pc) 
+            !allocate( overrelaxation(Mdims%cv_nonods) )
+            !call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, overrelaxation, Phase_with_Pc)
             max_overrelaxation = maxval(overrelaxation)
             min_overrelaxation = minval(overrelaxation)
             average_overrelaxation = sum(overrelaxation)
             if (IsParallel()) then
                 call allmax(max_overrelaxation)
                 call allmin(min_overrelaxation)
-                call allsum(average_overrelaxation)              
+                call allsum(average_overrelaxation)
             end if
             average_overrelaxation = average_overrelaxation/total_cv
             !deallocate(overrelaxation)
-        else 
+        else
             max_overrelaxation = 0.
             min_overrelaxation = 0.
             average_overrelaxation = 0.
         end if
 
         !!! Peclet number !!!
-        ! Peclet = u * L / Diffusivity; 
+        ! Peclet = u * L / Diffusivity;
         ! invPeclet = 1/Peclet
-        if (ov_relaxation) then 
+        if (ov_relaxation) then
             allocate( invPeclet(Mdims%cv_nonods) )
             if (present_and_true(for_transport)) then
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', diffusivity)
@@ -9477,18 +9477,18 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             average_invPeclet = average_invPeclet/total_cv
             deallocate(invPeclet)
         else
-            max_invPeclet = 0.   
+            max_invPeclet = 0.
             min_invPeclet = 0.
             average_invPeclet = 0.
         end if
-        
+
         !***************************!
         !!! **Call the ML model** !!!
         !***************************!
 
         block
         !     character(len=16) :: c_aspect_ratio, c_courant_number, c_shockfront_courant_number, c_shockfront_number_ratio, c_min_total_mobility, c_max_total_mobility, c_average_total_mobility, c_min_Darcy_velocity, c_max_Darcy_velocity, c_average_Darcy_velocity, c_min_shockfront_mobratio, c_max_shockfront_mobratio, c_average_shockfront_mobratio, c_average_longitudinal_capillary, c_average_transverse_capillary, c_max_longitudinal_capillary, c_max_transverse_capillary, c_min_longitudinal_capillary, c_min_transverse_capillary, c_average_buoyancy_number, c_average_longitudinal_buoyancy, c_average_transverse_buoyancy, c_max_buoyancy_number, c_max_longitudinal_buoyancy, c_max_transverse_buoyancy, c_min_buoyancy_number, c_min_longitudinal_buoyancy, c_min_transverse_buoyancy, c_average_overrelaxation, c_max_overrelaxation, c_min_overrelaxation, c_average_invPeclet, c_max_invPeclet, c_min_invPeclet, c_res, c_resold, c_res_resold, c_backtrack_par_factor, c_outer_nonlinear_iteration
-            
+
         !     write(c_aspect_ratio,'(E16.8)')   aspect_ratio
         !     write(c_courant_number,'(E16.8)')   courant_number
         !     write(c_shockfront_courant_number,'(E16.8)')   shockfront_courant_number
@@ -9528,29 +9528,29 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !     write(c_res_resold,'(E16.8)')   res/resold
         !     write(c_backtrack_par_factor,'(E16.8)')   backtrack_par_factor
         !     write(c_outer_nonlinear_iteration,'(I16)')   outer_nonlinear_iteration
-          
+
         !     !call the machine learning model
         !     call execute_command_line("~/anaconda3/envs/py3ml/bin/python MLmodel.py " // c_aspect_ratio // c_courant_number // c_shockfront_courant_number // c_shockfront_number_ratio // c_min_total_mobility // c_max_total_mobility // c_average_total_mobility // c_min_Darcy_velocity // c_max_Darcy_velocity // c_average_Darcy_velocity // c_min_shockfront_mobratio // c_max_shockfront_mobratio // c_average_shockfront_mobratio // c_average_longitudinal_capillary // c_average_transverse_capillary // c_max_longitudinal_capillary // c_max_transverse_capillary // c_min_longitudinal_capillary // c_min_transverse_capillary // c_average_buoyancy_number // c_average_longitudinal_buoyancy // c_average_transverse_buoyancy // c_max_buoyancy_number // c_max_longitudinal_buoyancy // c_max_transverse_buoyancy // c_min_buoyancy_number // c_min_longitudinal_buoyancy // c_min_transverse_buoyancy // c_average_overrelaxation // c_max_overrelaxation // c_min_overrelaxation // c_average_invPeclet // c_max_invPeclet // c_min_invPeclet // c_res // c_resold // c_res_resold // c_backtrack_par_factor // c_outer_nonlinear_iteration //  " > btpf")
-            
+
         !     !read result from output file
         !     open(74,file='btpf',action='read')
         !     read(74,*) btpf
         !     close(74)
         !     backtrack_par_factor = btpf
 
-        real(c_float), dimension(17)  :: raw_input 
+        real(c_float), dimension(17)  :: raw_input
         real(c_float), pointer        :: out_result(:)
         real, save                    :: target_nli
 
         backtrack_par_factor = -1. ! Assign -1 to backtrack_par_factor in all cores
         if (getprocno() == 1) then ! To let only 1 core to load and predict using the ML model
             if (.not. loaded_file) then
-                call xgboost_load_model()  
-                call get_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path/target_num_nonlinear", target_nli, default=1.0)              
+                call xgboost_load_model()
+                call get_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path/target_num_nonlinear", target_nli, default=1.0)
                 loaded_file = .true.
             end if
 
-            raw_input = (/aspect_ratio, & 
+            raw_input = (/aspect_ratio, &
                         & courant_number, &
                         & shockfront_courant_number, &
                         & shockfront_number_ratio, &
@@ -9566,25 +9566,25 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                         & res, &
                         & resold, &
                         & res/resold, &
-                        & target_nli /) !Target number of inner-nonlinear iteration  
+                        & target_nli /) !Target number of inner-nonlinear iteration
 
             call xgboost_predict(raw_input, out_result)
             !write(*,*) 'XGB model prediction: ',out_result
-            backtrack_par_factor = out_result(1)           
+            backtrack_par_factor = out_result(1)
             nullify(out_result)
         end if
         if (IsParallel()) call allmax(backtrack_par_factor) ! Assign the calculated values of the backtrack_par_factor
 
-        endblock  
-        
+        endblock
+
         !***************************!
         !! ***Write into file*** !!!
         !***************************!
-    
-        !inquire(file="AI_backtracking_parameters.csv", exist=file_exist) 
+
+        !inquire(file="AI_backtracking_parameters.csv", exist=file_exist)
         ! if (.not. written_file) then
         !     open(73, file="AI_backtracking_parameters.csv", status="replace")
-        !     !call date_and_time(VALUES=date_values)          
+        !     !call date_and_time(VALUES=date_values)
         !     !write(73,'(8i5)') date_values
         !     ! Write column names
         !     write(73, '(6(A,",",X))', advance="NO") "gravity", "cap_pressure", "black_oil", "ov_relaxation", "one_phase", "wells"
@@ -9611,7 +9611,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         ! write(73, '(3(E15.8,",",X))', advance="NO") min_Darcy_velocity, max_Darcy_velocity, average_Darcy_velocity
         ! write(73, '(3(E15.8,",",X))', advance="NO") min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
         ! write(73, '(6(E15.8,",",X))', advance="NO") average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
-        ! write(73, '(9(E15.8,",",X))', advance="NO") average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
+        ! write(73, '(9(E15.8,",",X))', advance="NO") average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy
         ! write(73, '(3(E15.8,",",X))', advance="NO") average_overrelaxation, max_overrelaxation, min_overrelaxation
         ! write(73, '(3(E15.8,",",X))', advance="NO") average_invPeclet, max_invPeclet, min_invPeclet
         ! write(73, '(5(E15.8,",",X))') res, resold, res/resold, backtrack_par_factor, btpf
@@ -9621,9 +9621,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !!! ***Support functions*** !!!
         !*****************************!
 
-        contains 
+        contains
 
-            subroutine get_relative_permeability(Mdims, saturation, Imble_frac, end_point_relperm, exponent_relperm, relperm) 
+            subroutine get_relative_permeability(Mdims, saturation, Imble_frac, end_point_relperm, exponent_relperm, relperm)
                 !Calculate the relative permeabilities based on Corey correlation
                 implicit none
                 type(multi_dimensions), intent(in) :: Mdims
@@ -9637,41 +9637,41 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 do cv_nodi = 1, Mdims%cv_nonods
                     do iphase = 1, Mdims%n_in_pres
                         relperm(iphase,cv_nodi) = end_point_relperm(iphase,cv_nodi)*((saturation(iphase,cv_nodi) - Imble_frac(iphase,cv_nodi))/ &
-                                                & (1-sum(Imble_frac(:Mdims%n_in_pres,cv_nodi))))**exponent_relperm(iphase,cv_nodi)   
-                    end do     
-                end do            
-            end subroutine 
+                                                & (1-sum(Imble_frac(:Mdims%n_in_pres,cv_nodi))))**exponent_relperm(iphase,cv_nodi)
+                    end do
+                end do
+            end subroutine
 
             real function shock_front_mobility_ratio(ele, Mdims, sat, ndgln, Imble_frac, total_mobility)
                 !Detects whether the element has a shockfront or not and calculates the shockfront mobility ratio
                 !if there is not a shock front within the lement the fuction returns -1
                 implicit none
-                integer, intent(in) :: ele 
+                integer, intent(in) :: ele
                 type(multi_dimensions), intent(in) :: Mdims
-                real, dimension(:,:), intent(in) :: sat 
+                real, dimension(:,:), intent(in) :: sat
                 type(multi_ndgln), intent(in) :: ndgln
-                real, dimension(:,:), intent(in) :: Imble_frac  
-                real, dimension(:), intent(in) :: total_mobility           
+                real, dimension(:,:), intent(in) :: Imble_frac
+                real, dimension(:), intent(in) :: total_mobility
                 !Local variables
                 integer :: iphase, cv_iloc, cv_nodi
                 real :: minival, maxival, aux_sat, tmob_aheadfront, tmob_atfront
                 real, parameter :: tol = 0.05 !Shock fronts smaller than this are unlikely to require extra handling
-                
-                !Starts the value                
+
+                !Starts the value
                 shock_front_mobility_ratio = -1.0
 
                 minival = 999.; maxival = 0.
-                do iphase = 1, mdims%n_in_pres - 1 
+                do iphase = 1, mdims%n_in_pres - 1
                     do cv_iloc = 1, Mdims%cv_nloc
                         cv_nodi = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                        aux_sat = sat(iphase, cv_nodi) - Imble_frac(iphase, ele)    
-                        if (aux_sat < minival) then 
+                        aux_sat = sat(iphase, cv_nodi) - Imble_frac(iphase, ele)
+                        if (aux_sat < minival) then
                             minival = aux_sat
-                            tmob_aheadfront = total_mobility(cv_nodi)    
+                            tmob_aheadfront = total_mobility(cv_nodi)
                         end if
-                        if (aux_sat > maxival) then 
+                        if (aux_sat > maxival) then
                             maxival = aux_sat
-                            tmob_atfront = total_mobility(cv_nodi)    
+                            tmob_atfront = total_mobility(cv_nodi)
                         end if
                     end do
                     if  (minival < tol .and. (maxival-minival) > tol) then
@@ -9686,19 +9686,19 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 implicit none
                 integer, intent(in) :: ele !***
                 type(multi_dimensions), intent(in) :: Mdims
-                real, dimension(:,:), intent(in) :: sat 
+                real, dimension(:,:), intent(in) :: sat
                 type(multi_ndgln), intent(in) :: ndgln
-                real, dimension(:,:), intent(in) :: Imble_frac             
+                real, dimension(:,:), intent(in) :: Imble_frac
                 !Local variables
                 integer :: iphase, cv_iloc
                 real :: minival, maxival, aux
                 real, parameter :: tol = 0.05 !Shock fronts smaller than this are unlikely to require extra handling
 
-                !Starts the value   
+                !Starts the value
                 shock_front_in_ele = .false.
 
                 minival = 999.; maxival = 0.
-                do iphase = 1, mdims%n_in_pres - 1  
+                do iphase = 1, mdims%n_in_pres - 1
                     do cv_iloc = 1, Mdims%cv_nloc
                         aux = sat(iphase, ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)) - Imble_frac(iphase,ele)
                         minival = min(aux, minival)
