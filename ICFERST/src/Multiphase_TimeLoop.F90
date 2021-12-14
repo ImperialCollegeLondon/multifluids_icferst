@@ -661,7 +661,6 @@ contains
 #endif
                   end if
                 end if
-
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma) ) then
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
@@ -671,7 +670,6 @@ contains
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
 
                 end if Conditional_PhaseVolumeFraction
-
               call petsc_logging(3,stages,ierrr,default=.true.)
               call petsc_logging(2,stages,ierrr,default=.true., push_no=4)
                 !#=================================================================================================================
@@ -680,7 +678,6 @@ contains
 
                 !!$ Calculate Darcy velocity with the most up-to-date information
                 if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
-
                 !#=================================================================================================================
                 !# End Velocity Update -> Move to ->the rest
                 !#=================================================================================================================
