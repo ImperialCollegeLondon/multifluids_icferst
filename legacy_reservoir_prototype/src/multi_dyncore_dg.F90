@@ -4295,6 +4295,9 @@ end if
 
         REAL, DIMENSION ( :, :, :, : ), allocatable :: SLOC_UDIFFUSION_SOLID, SLOC2_UDIFFUSION_SOLID    !JXiang
         REAL, DIMENSION ( :, : ), allocatable :: SLOC_UDIFFUSION_VOL_SOLID, SLOC2_UDIFFUSION_VOL_SOLID   !JXiang
+! NEW CODE FOR INTERFACE BETWEEN SOLID AND FLUID...
+        REAL, DIMENSION ( :, :, :, : ), allocatable :: SLOC_UDIFFUSION_INTERFACE, SLOC2_UDIFFUSION_INTERFACE ! CP
+        REAL, DIMENSION ( :, : ), allocatable :: SLOC_UDIFFUSION_VOL_INTERFACE, SLOC2_UDIFFUSION_VOL_INTERFACE ! CP
 
         REAL, DIMENSION ( :, :, : ), allocatable :: SLOC_DIFF_FOR_BETWEEN_U, SLOC2_DIFF_FOR_BETWEEN_U
         REAL, DIMENSION ( :, :, : ), allocatable :: U_NODI_SGI_IPHASE_ALL, U_NODJ_SGI_IPHASE_ALL, UOLD_NODI_SGI_IPHASE_ALL, UOLD_NODJ_SGI_IPHASE_ALL
@@ -4784,15 +4787,19 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
 
         ALLOCATE( STRESS_IJ_SOLID_ELE_EXT( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_snloc, 2*Mdims%u_nloc ) )
         STRESS_IJ_SOLID_ELE_EXT=0.0
-        !JXiang end
-        IF(solid_implicit) THEN
-        ALLOCATE( SLOC_UDIFFUSION_SOLID(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
-        ALLOCATE( SLOC2_UDIFFUSION_SOLID(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
-        ALLOCATE( SLOC_UDIFFUSION_VOL_SOLID( Mdims%nphase, Mdims%cv_snloc) ) ; SLOC_UDIFFUSION_VOL_SOLID=0.0
-        ALLOCATE( SLOC2_UDIFFUSION_VOL_SOLID( Mdims%nphase, Mdims%cv_snloc) ) ; SLOC2_UDIFFUSION_VOL_SOLID=0.0
-        call allocate_multi_dev_shape_funs(FE_funs, Devfuns0)  !JXiang CP
-        ALLOCATE( LOC_D(Mdims%ndim, Mdims%nphase, Mdims%u_nloc))
-        LOC_D=0.0
+        !JXiang end ****new code for interface between solid and fluid
+        ALLOCATE( SLOC_UDIFFUSION_INTERFACE(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
+        ALLOCATE( SLOC2_UDIFFUSION_INTERFACE(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
+        ALLOCATE( SLOC_UDIFFUSION_VOL_INTERFACE( Mdims%nphase, Mdims%cv_snloc) ) ; SLOC_UDIFFUSION_VOL_INTERFACE=0.0
+        ALLOCATE( SLOC2_UDIFFUSION_VOL_INTERFACE( Mdims%nphase, Mdims%cv_snloc) ) ; SLOC2_UDIFFUSION_VOL_INTERFACE=0.0
+        IF(solid_implicit) THEN ! NOT USED...
+            ALLOCATE( SLOC_UDIFFUSION_SOLID(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
+            ALLOCATE( SLOC2_UDIFFUSION_SOLID(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
+            ALLOCATE( SLOC_UDIFFUSION_VOL_SOLID( Mdims%nphase, Mdims%cv_snloc) ) ; SLOC_UDIFFUSION_VOL_SOLID=0.0
+            ALLOCATE( SLOC2_UDIFFUSION_VOL_SOLID( Mdims%nphase, Mdims%cv_snloc) ) ; SLOC2_UDIFFUSION_VOL_SOLID=0.0
+            call allocate_multi_dev_shape_funs(FE_funs, Devfuns0)  !JXiang CP
+            ALLOCATE( LOC_D(Mdims%ndim, Mdims%nphase, Mdims%u_nloc))
+            LOC_D=0.0
         END IF
         ALLOCATE( NMX_ALL(Mdims%ndim) )
         ALLOCATE( VNMX_ALL(Mdims%ndim) )
@@ -6827,10 +6834,35 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         !                    If_GOT_DIFFUS2: IF(GOT_DIFFUS.and.LINEAR_HIGHORDER_DIFFUSION.and.(ele2.ne.0)) THEN
                         ! only used between elements of the domain so no modification of b.Mmat%C's nec.
                         !                        STRESS_IJ_ELE_EXT=0.0
+                        ! *********************LOOK AT THIS SO CAREFULLY******************
+                        ! make sure SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL =  SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL at the interface...
+                        SLOC_UDIFFUSION_INTERFACE =  SLOC_UDIFFUSION
+                        SLOC_UDIFFUSION_VOL_INTERFACE =  SLOC_UDIFFUSION_VOL
+                        SLOC2_UDIFFUSION_INTERFACE =  SLOC2_UDIFFUSION
+                        SLOC2_UDIFFUSION_VOL_INTERFACE =  SLOC2_UDIFFUSION_VOL
+                        IF(ELE2>0) THEN
+                        IF(SOLID_IMPLICIT) THEN
+                            if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid ONLY
+                            else
+                                if( (sigma%val(ele).GT.0.5) ) then ! is solid element ELE but ELE2 is a fluid
+                                    SLOC_UDIFFUSION_INTERFACE =  SLOC2_UDIFFUSION
+                                    SLOC_UDIFFUSION_VOL_INTERFACE =  SLOC2_UDIFFUSION_VOL
+                                    SLOC2_UDIFFUSION_INTERFACE =  SLOC2_UDIFFUSION
+                                    SLOC2_UDIFFUSION_VOL_INTERFACE =  SLOC2_UDIFFUSION_VOL
+                                else ! is fluid element ELE but ELE2 is a solid. 
+                                    SLOC_UDIFFUSION_INTERFACE =  SLOC_UDIFFUSION
+                                    SLOC_UDIFFUSION_VOL_INTERFACE =  SLOC_UDIFFUSION_VOL
+                                    SLOC2_UDIFFUSION_INTERFACE =  SLOC_UDIFFUSION
+                                    SLOC2_UDIFFUSION_VOL_INTERFACE =  SLOC_UDIFFUSION_VOL
+                                endif
+                                
+                            endif
+                        ENDIF
+                        ENDIF
                         CALL LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_ELE_EXT, S_INV_NNX_MAT12,  &
                             STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
                             Mdims%u_snloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%nphase, &
-                            SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, UDIFF_SUF_STAB, &
+                            SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION_INTERFACE, SLOC_UDIFFUSION_VOL_INTERFACE, SLOC2_UDIFFUSION_INTERFACE, SLOC2_UDIFFUSION_VOL_INTERFACE, UDIFF_SUF_STAB, &
                             (ELE2.LE.0), SNORMXN_ALL  )
                      STRESS_IJ_SOLID_ELE_EXT=0.0
              ! added by JXiang 
