@@ -6835,11 +6835,13 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                      STRESS_IJ_SOLID_ELE_EXT=0.0
              ! added by JXiang 
              IF(SOLID_IMPLICIT) THEN
-                if(solid_visc_sufele_imp) then  ! option3
+                !if(solid_visc_sufele_imp) then  ! option3
+                if (.true.) then
                     IF(ELE2>0) THEN
                        if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid
                           STRESS_IJ_SOLID_ELE_EXT = STRESS_IJ_ELE_EXT
                           STRESS_IJ_ELE_EXT=0.0
+                          STRESS_IJ_SOLID_ELE_EXT = 0.0
                        endif
                     ENDIF 
 ! here
