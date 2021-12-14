@@ -1259,8 +1259,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      .false.,  mass_Mn_pres, &
                      mass_ele_transp, &          !Capillary variables
                      VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                     eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
                      nonlinear_iteration = nonlinear_iteration)
+
+                 !Make the inf norm of the Courant number across cpus
+                 !Normally computed when dealing with the continuity equation but
+                 !if solving for saturation it is useful to have up to date information
+                 if (IsParallel()) then
+                    call allmax(Courant_number(1)); call allmax(Courant_number(2))
+                 end if
 
                  !Time to solve the system
                  !If using FPI with backtracking
@@ -9301,7 +9308,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             call allmin(min_Darcy_velocity)
         end if
         average_Darcy_velocity = average_Darcy_velocity/total_cv
-        
+
         !!! shockfront mobility ratio !!!
         ! M_f = lambda_T(at the front)/lambda_T(ahead of the front)
         min_shockfront_mobratio = 999.
