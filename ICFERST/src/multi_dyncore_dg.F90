@@ -1259,8 +1259,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      .false.,  mass_Mn_pres, &
                      mass_ele_transp, &          !Capillary variables
                      VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                     eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
                      nonlinear_iteration = nonlinear_iteration)
+
+                 !Make the inf norm of the Courant number across cpus
+                 !Normally computed when dealing with the continuity equation but
+                 !if solving for saturation it is useful to have up to date information
+                 if (IsParallel()) then
+                    call allmax(Courant_number(1)); call allmax(Courant_number(2))
+                 end if
 
                  !Time to solve the system
                  !If using FPI with backtracking
@@ -3062,6 +3069,7 @@ end if
                                     exit
                                 end if
                             end do
+                            ! if (skip) cycle
                         end if
                     end if
                     ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
@@ -9045,25 +9053,24 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
         !Local variables
         real, save :: backup_shockfront_Courant = 0.
-        logical, save :: readed_options = .false.
-        logical, save :: readed_perm = .false.
-        !logical, save :: readed_por = .false.
-        logical, save :: readed_sizes = .false.
+        logical, save :: read_options = .false.
+        logical, save :: read_perm = .false.
+        !logical, save :: read_por = .false.
+        logical, save :: read_sizes = .false.
         logical, save  :: written_file = .false.
         logical, save  :: loaded_file = .false.
         real, dimension(:,:), pointer :: X_ALL, saturation, Imble_frac, cap_entry_pres, end_point_relperm, exponent_relperm
-        type(tensor_field), pointer :: permeability, state_viscosity, density, velocity
+        type(tensor_field), pointer :: permeability, state_viscosity, density, velocity, pressure
         type(vector_field), pointer :: porosity, gravity_direction
         type (vector_field_pointer), dimension(Mdims%nphase) :: Darcy_velocity
-        real, dimension(Mdims%cv_nonods) :: total_mobility, counter_subcv, nDarcy_velocity_cvwise
-        real, dimension(Mdims%ndim, Mdims%cv_nonods) :: Darcy_velocity_cvwise
+        real, dimension(:), allocatable :: total_mobility, counter_subcv, nDarcy_velocity_cvwise
+        real, dimension(:,:), allocatable :: Darcy_velocity_cvwise
         real, dimension(Mdims%n_in_pres, Mdims%cv_nonods) :: relperm, viscosity
         real, save :: average_perm_length, average_perm_thickness, average_por, domain_length, domain_thickness
         real :: l1_max, l1_min, l2_max, l2_min, h_max, h_min, aux_shockfront_mobratio, delta_density, diffusivity, gravity_magnitude, sin_alpha
         integer :: iphase, cv_nodi, cv_iloc, ele, total_ele, u_iloc, u_inod, total_cv, Phase_with_Pc, shockfront_counter
         !integer, dimension(8) :: date_values
         !logical :: file_exist
-
         !Parameters
         real, dimension(:), allocatable :: longitudinal_capillary, transverse_capillary, buoyancy_number, longitudinal_buoyancy, transverse_buoyancy, invPeclet
         logical, save :: gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
@@ -9081,50 +9088,61 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !*************************************!
         !!! ***Getting support variables*** !!!
         !*************************************!
-
+        allocate(Darcy_velocity_cvwise(Mdims%ndim, Mdims%cv_nonods))
+        allocate(total_mobility(Mdims%cv_nonods), counter_subcv(Mdims%cv_nonods), nDarcy_velocity_cvwise(Mdims%cv_nonods))
+        !Retrieve Pressure, as representative of a CV field (lives on the CV mesh although it is FE)
+        pressure => extract_tensor_field(packed_state,"PackedFEPressure")
+        !Retrieve permeability field - element wise
+        permeability => extract_tensor_field(packed_state,"Permeability")
+        !Calculate the total number of control volumes
+        total_cv = 0
+        do cv_nodi = 1, Mdims%cv_nonods
+          if (.not. node_owned(pressure, cv_nodi)) cycle
+          total_cv = total_cv + 1
+        end do
+        if (IsParallel()) call allsum(total_cv)
+        !Calculate the total number of elements
+        total_ele = 0
+        do ele = 1, Mdims%totele
+          if (IsParallel()) then
+            if (.not. element_owned(permeability, ele)) cycle
+          end if
+          total_ele = total_ele + 1
+        end do
+        if (IsParallel()) call allsum(total_ele)
         !Permeability averages
-        if (.not.readed_perm) then
-            !Retrieve permeability field - element wise
-            permeability => extract_tensor_field(packed_state,"Permeability")
+        if (.not.read_perm) then
             !Average permeability along Mdims%ndim-1 first dimensions
             average_perm_length = 0.
             if (Mdims%ndim < 3) then
                 do ele = 1, Mdims%totele
-                    average_perm_length = average_perm_length + permeability%val(1,1,ele)
+                  if (IsParallel()) then
+                    if (.not. element_owned(permeability, ele)) cycle
+                  end if
+                  average_perm_length = average_perm_length + permeability%val(1,1,ele)
                 end do
-                total_ele = Mdims%totele
-                if (IsParallel()) then
-                    call allsum(average_perm_length)
-                    call allsum(total_ele)
-                end if
+                if (IsParallel()) call allsum(average_perm_length)
                 average_perm_length = average_perm_length/total_ele
             else
                 do ele = 1, Mdims%totele
-                    average_perm_length = average_perm_length + permeability%val(1,1,ele)  + permeability%val(2,2,ele)
+                  if (.not. element_owned(permeability, ele)) cycle
+                  average_perm_length = average_perm_length + permeability%val(1,1,ele)  + permeability%val(2,2,ele)
                 end do
-                total_ele = Mdims%totele
-                if (IsParallel()) then
-                    call allsum(average_perm_length)
-                    call allsum(total_ele)
-                end if
+                if (IsParallel()) call allsum(average_perm_length)
                 average_perm_length = average_perm_length/(total_ele*2)
             end if
             !Average permeability along the last dimensions
             average_perm_thickness = 0.
             do ele = 1, Mdims%totele
+              if (.not. element_owned(permeability, ele)) cycle
                 average_perm_thickness = average_perm_thickness + permeability%val(Mdims%ndim,Mdims%ndim,ele)
             end do
-            total_ele = Mdims%totele
-            if (IsParallel()) then
-                call allsum(average_perm_thickness)
-                call allsum(total_ele)
-            end if
+            if (IsParallel())call allsum(average_perm_thickness)
             average_perm_thickness = average_perm_thickness/total_ele
-            readed_perm = .true.
+            read_perm = .true.
         end if
-
-        !Porosity average - not using
-        !if (.not.readed_por) then
+        !Domain length, domain thickness
+        !if (.not.read_por) then
         !    !Retrieve porosity field
         !    porosity => extract_vector_field(packed_state,"Porosity")
         !    average_por = 0
@@ -9135,11 +9153,11 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !       call allsum(average_por)
         !       call allsum(total_ele)
         !    average_por = average_por/real(total_ele)
-        !    readed_por = .true.
+        !    read_por = .true.
         !end if
 
         !Domain lemgth, domain thickness
-        if (.not.readed_sizes) then
+        if (.not.read_sizes) then
             !Extract variables from packed_state, X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
             call get_var_from_packed_state(packed_state, PressureCoordinate = X_ALL)
             !Domain length as the maximum distance in the (Mdims%ndim-1) dimensions, we only calculate it once
@@ -9172,9 +9190,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 call allmin(h_min)
             end if
             domain_thickness = abs(h_max-h_min)
-            readed_sizes = .true.
+            read_sizes = .true.
         end if
-
         !Retrieve viscosity field - control-volume wise
         do iphase = 1,  Mdims%n_in_pres
           state_viscosity => extract_tensor_field( state( iphase ), 'Viscosity' )
@@ -9197,17 +9214,12 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         call get_var_from_packed_state(packed_state, RelpermExponent = exponent_relperm)
         !Retrieve relative permeabilty field - control-volume wise
         call get_relative_permeability(Mdims, saturation, Imble_frac, end_point_relperm, exponent_relperm, relperm)
-        !Calculate the total number of control volumes
-        total_cv = Mdims%cv_nonods
-        if (IsParallel()) then
-            call allsum(total_cv)
-        end if
-
         !Total mobility - control-volume wise
+        total_mobility = 0.
         do cv_nodi = 1, Mdims%cv_nonods
+            if (.not. node_owned(pressure, cv_nodi)) cycle
             total_mobility(cv_nodi) = sum( relperm(:, cv_nodi) / viscosity( :, cv_nodi) )
         end do
-
         !P0 Darcy velocity - control-volume wise
         do iphase = 1, Mdims%n_in_pres
             Darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
@@ -9219,6 +9231,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 u_inod = ndgln%u(( ele - 1 ) * Mdims%u_nloc + u_iloc)
                 do cv_iloc = 1, Mdims%cv_nloc
                     cv_nodi = ndgln%cv(( ele - 1) * Mdims%cv_nloc + cv_iloc )
+                    if (.not. node_owned(pressure, cv_nodi)) cycle
                     do iphase = 1, Mdims%n_in_pres
                         Darcy_velocity_cvwise(:,cv_nodi) = Darcy_velocity_cvwise(:,cv_nodi) + Darcy_velocity(iphase)%ptr%val(:,u_inod)
                     end do
@@ -9226,16 +9239,17 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 end do
             end do
         end do
+        nDarcy_velocity_cvwise = 0.
         do cv_nodi = 1, Mdims%cv_nonods
-            Darcy_velocity_cvwise(:,cv_nodi) = Darcy_velocity_cvwise(:,cv_nodi)/counter_subcv(cv_nodi)
-            nDarcy_velocity_cvwise(cv_nodi) = norm2(Darcy_velocity_cvwise(:,cv_nodi))
+          if (.not. node_owned(pressure, cv_nodi)) cycle
+          Darcy_velocity_cvwise(:,cv_nodi) = Darcy_velocity_cvwise(:,cv_nodi)/counter_subcv(cv_nodi)
+          nDarcy_velocity_cvwise(cv_nodi) = norm2(Darcy_velocity_cvwise(:,cv_nodi))
         end do
-
         !**************************************!
         !!! ***Calculating all parameters*** !!!
         !**************************************!
 
-        if (.not.readed_options) then
+        if (.not.read_options) then
             !We read the options just once
 
             !!! Number of phases !!!
@@ -9259,7 +9273,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             ! R_L = sqrt(permz/permx)*L/H
             aspect_ratio = domain_length*SQRT(average_perm_thickness/average_perm_length)/domain_thickness
 
-            readed_options = .true.
+            read_options = .true.
         end if
 
         !!! Courant number and Shockfront courant number !!!
@@ -9283,7 +9297,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             call allmin(min_total_mobility)
         end if
         average_total_mobility = average_total_mobility/total_cv
-
         !!! Darcy velocity !!!
         ! calculate average, max and min values
         average_Darcy_velocity = sum(nDarcy_velocity_cvwise)
@@ -9296,7 +9309,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         end if
         average_Darcy_velocity = average_Darcy_velocity/total_cv
 
-
         !!! shockfront mobility ratio !!!
         ! M_f = lambda_T(at the front)/lambda_T(ahead of the front)
         min_shockfront_mobratio = 999.
@@ -9305,6 +9317,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         shockfront_counter = 0
         if (Mdims%n_in_pres > 1) then
             do ele = 1, Mdims%totele
+              !Here we have to go over the halos to avoid problems...
+              ! if (.not. element_owned(permeability, ele)) cycle
                 if (shock_front_in_ele(ele, Mdims, saturation, ndgln, Imble_frac)) then
                     aux_shockfront_mobratio = shock_front_mobility_ratio(ele, Mdims, saturation, ndgln, Imble_frac, total_mobility)
                     min_shockfront_mobratio = min(min_shockfront_mobratio, aux_shockfront_mobratio)
@@ -9313,15 +9327,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                     shockfront_counter = shockfront_counter + 1
                 end if
             end do
-            total_ele = Mdims%totele
             if (IsParallel()) then
                 call allmax(max_shockfront_mobratio)
                 call allmin(min_shockfront_mobratio)
                 call allsum(average_shockfront_mobratio)
                 call allsum(shockfront_counter)
-                call allsum(total_ele)
             end if
-            average_shockfront_mobratio = average_shockfront_mobratio/shockfront_counter
+            average_shockfront_mobratio = average_shockfront_mobratio/max(shockfront_counter,1)
             shockfront_number_ratio = real(shockfront_counter)/total_ele
         end if
         !Verify whether there is a shockfront or not
@@ -9331,14 +9343,15 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             average_shockfront_mobratio = 1.
             shockfront_number_ratio = 0.0
         end if
-
         !!! Capillary numbers !!!
         ! N_cv,L = (permx*k^e_rd*P^e_c)/(u*mu_d*L)
         ! N_cv,T = (permz*k^e_rd*P^e_c*L)/(u*mu_d*H**2)
         if (cap_pressure) then
             allocate( longitudinal_capillary(Mdims%cv_nonods) )
             allocate( transverse_capillary(Mdims%cv_nonods) )
+            longitudinal_capillary =0;transverse_capillary=0.
             do cv_nodi = 1, Mdims%cv_nonods
+              if (.not. node_owned(pressure, cv_nodi)) cycle
                 longitudinal_capillary(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi)) / &
                                                 & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_length)
                 transverse_capillary(cv_nodi) = average_perm_thickness*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi))*domain_length / &
@@ -9371,7 +9384,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             min_longitudinal_capillary = 0.
             min_transverse_capillary = 0.
         end if
-
         !!! gravity numbers !!!
         ! N_bv  = (permx*k^e_rd*delta_rho*g*cos(alpha))/(u*mu_d*L)
         ! N_bv,L = (permx*k^e_rd*delta_rho*g*sin(alpha))/(u*mu_d)
@@ -9382,7 +9394,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             allocate( transverse_buoyancy(Mdims%cv_nonods) )
             call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude)
             gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
+            buoyancy_number = 0.; longitudinal_buoyancy =0.; transverse_buoyancy=0.
             do cv_nodi = 1, Mdims%cv_nonods
+                if (.not. node_owned(pressure, cv_nodi)) cycle
                 delta_density = (maxval(density%val(1,:,cv_nodi)) - minval(density%val(1,:,cv_nodi)))
                 sin_alpha =  dot_product(Darcy_velocity_cvwise(:,cv_nodi), gravity_direction%val(:,1))/(norm2(Darcy_velocity_cvwise(:,cv_nodi))*norm2(gravity_direction%val(:,1)))
                 buoyancy_number(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*delta_density*gravity_magnitude*sqrt(1-sin_alpha**2)*domain_thickness / &
@@ -9430,21 +9444,23 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             min_longitudinal_buoyancy = 0.
             min_transverse_buoyancy = 0.
         end if
-
         !!! overrelaxation parameter !!!
         if (ov_relaxation) then
             !allocate( overrelaxation(Mdims%cv_nonods) )
             !call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, overrelaxation, Phase_with_Pc)
             max_overrelaxation = maxval(overrelaxation)
             min_overrelaxation = minval(overrelaxation)
-            average_overrelaxation = sum(overrelaxation)
+            average_overrelaxation = 0.
+            do cv_nodi = 1, Mdims%cv_nonods
+                if (.not. node_owned(pressure, cv_nodi)) cycle
+                average_overrelaxation = average_overrelaxation +  overrelaxation(cv_nodi)
+            end do
             if (IsParallel()) then
                 call allmax(max_overrelaxation)
                 call allmin(min_overrelaxation)
                 call allsum(average_overrelaxation)
             end if
             average_overrelaxation = average_overrelaxation/total_cv
-            !deallocate(overrelaxation)
         else
             max_overrelaxation = 0.
             min_overrelaxation = 0.
@@ -9456,14 +9472,15 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         ! invPeclet = 1/Peclet
         if (ov_relaxation) then
             allocate( invPeclet(Mdims%cv_nonods) )
+            invPeclet = 0.
             if (present_and_true(for_transport)) then
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', diffusivity)
             else
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', diffusivity)
             end if
             diffusivity = abs(diffusivity)
-            invPeclet = 0.
             do cv_nodi = 1, Mdims%cv_nonods
+                if (.not. node_owned(pressure, cv_nodi)) cycle
                 invPeclet(cv_nodi) = diffusivity/(nDarcy_velocity_cvwise(cv_nodi)*domain_length)
             end do
             max_invPeclet = maxval(invPeclet)
@@ -9481,67 +9498,15 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             min_invPeclet = 0.
             average_invPeclet = 0.
         end if
-
+        deallocate(Darcy_velocity_cvwise, total_mobility, counter_subcv, nDarcy_velocity_cvwise)
         !***************************!
         !!! **Call the ML model** !!!
         !***************************!
-
         block
-        !     character(len=16) :: c_aspect_ratio, c_courant_number, c_shockfront_courant_number, c_shockfront_number_ratio, c_min_total_mobility, c_max_total_mobility, c_average_total_mobility, c_min_Darcy_velocity, c_max_Darcy_velocity, c_average_Darcy_velocity, c_min_shockfront_mobratio, c_max_shockfront_mobratio, c_average_shockfront_mobratio, c_average_longitudinal_capillary, c_average_transverse_capillary, c_max_longitudinal_capillary, c_max_transverse_capillary, c_min_longitudinal_capillary, c_min_transverse_capillary, c_average_buoyancy_number, c_average_longitudinal_buoyancy, c_average_transverse_buoyancy, c_max_buoyancy_number, c_max_longitudinal_buoyancy, c_max_transverse_buoyancy, c_min_buoyancy_number, c_min_longitudinal_buoyancy, c_min_transverse_buoyancy, c_average_overrelaxation, c_max_overrelaxation, c_min_overrelaxation, c_average_invPeclet, c_max_invPeclet, c_min_invPeclet, c_res, c_resold, c_res_resold, c_backtrack_par_factor, c_outer_nonlinear_iteration
-
-        !     write(c_aspect_ratio,'(E16.8)')   aspect_ratio
-        !     write(c_courant_number,'(E16.8)')   courant_number
-        !     write(c_shockfront_courant_number,'(E16.8)')   shockfront_courant_number
-        !     write(c_shockfront_number_ratio,'(E16.8)')   shockfront_number_ratio
-        !     write(c_min_total_mobility,'(E16.8)')   min_total_mobility
-        !     write(c_max_total_mobility,'(E16.8)')   max_total_mobility
-        !     write(c_average_total_mobility,'(E16.8)')   average_total_mobility
-        !     write(c_min_Darcy_velocity,'(E16.8)')   min_Darcy_velocity
-        !     write(c_max_Darcy_velocity,'(E16.8)')   max_Darcy_velocity
-        !     write(c_average_Darcy_velocity,'(E16.8)')   average_Darcy_velocity
-        !     write(c_min_shockfront_mobratio,'(E16.8)')   min_shockfront_mobratio
-        !     write(c_max_shockfront_mobratio,'(E16.8)')   max_shockfront_mobratio
-        !     write(c_average_shockfront_mobratio,'(E16.8)')   average_shockfront_mobratio
-        !     write(c_average_longitudinal_capillary,'(E16.8)')   average_longitudinal_capillary
-        !     write(c_average_transverse_capillary,'(E16.8)')   average_transverse_capillary
-        !     write(c_max_longitudinal_capillary,'(E16.8)')   max_longitudinal_capillary
-        !     write(c_max_transverse_capillary,'(E16.8)')   max_transverse_capillary
-        !     write(c_min_longitudinal_capillary,'(E16.8)')   min_longitudinal_capillary
-        !     write(c_min_transverse_capillary,'(E16.8)')   min_transverse_capillary
-        !     write(c_average_buoyancy_number,'(E16.8)')   average_buoyancy_number
-        !     write(c_average_longitudinal_buoyancy,'(E16.8)')   average_longitudinal_buoyancy
-        !     write(c_average_transverse_buoyancy,'(E16.8)')   average_transverse_buoyancy
-        !     write(c_max_buoyancy_number,'(E16.8)')   max_buoyancy_number
-        !     write(c_max_longitudinal_buoyancy,'(E16.8)')   max_longitudinal_buoyancy
-        !     write(c_max_transverse_buoyancy,'(E16.8)')   max_transverse_buoyancy
-        !     write(c_min_buoyancy_number,'(E16.8)')   min_buoyancy_number
-        !     write(c_min_longitudinal_buoyancy,'(E16.8)')   min_longitudinal_buoyancy
-        !     write(c_min_transverse_buoyancy,'(E16.8)')   min_transverse_buoyancy
-        !     write(c_average_overrelaxation,'(E16.8)')   average_overrelaxation
-        !     write(c_max_overrelaxation,'(E16.8)')   max_overrelaxation
-        !     write(c_min_overrelaxation,'(E16.8)')   min_overrelaxation
-        !     write(c_average_invPeclet,'(E16.8)')   average_invPeclet
-        !     write(c_max_invPeclet,'(E16.8)')   max_invPeclet
-        !     write(c_min_invPeclet,'(E16.8)')   min_invPeclet
-        !     write(c_res,'(E16.8)')   res
-        !     write(c_resold,'(E16.8)')   resold
-        !     write(c_res_resold,'(E16.8)')   res/resold
-        !     write(c_backtrack_par_factor,'(E16.8)')   backtrack_par_factor
-        !     write(c_outer_nonlinear_iteration,'(I16)')   outer_nonlinear_iteration
-
-        !     !call the machine learning model
-        !     call execute_command_line("~/anaconda3/envs/py3ml/bin/python MLmodel.py " // c_aspect_ratio // c_courant_number // c_shockfront_courant_number // c_shockfront_number_ratio // c_min_total_mobility // c_max_total_mobility // c_average_total_mobility // c_min_Darcy_velocity // c_max_Darcy_velocity // c_average_Darcy_velocity // c_min_shockfront_mobratio // c_max_shockfront_mobratio // c_average_shockfront_mobratio // c_average_longitudinal_capillary // c_average_transverse_capillary // c_max_longitudinal_capillary // c_max_transverse_capillary // c_min_longitudinal_capillary // c_min_transverse_capillary // c_average_buoyancy_number // c_average_longitudinal_buoyancy // c_average_transverse_buoyancy // c_max_buoyancy_number // c_max_longitudinal_buoyancy // c_max_transverse_buoyancy // c_min_buoyancy_number // c_min_longitudinal_buoyancy // c_min_transverse_buoyancy // c_average_overrelaxation // c_max_overrelaxation // c_min_overrelaxation // c_average_invPeclet // c_max_invPeclet // c_min_invPeclet // c_res // c_resold // c_res_resold // c_backtrack_par_factor // c_outer_nonlinear_iteration //  " > btpf")
-
-        !     !read result from output file
-        !     open(74,file='btpf',action='read')
-        !     read(74,*) btpf
-        !     close(74)
-        !     backtrack_par_factor = btpf
 
         real(c_float), dimension(17)  :: raw_input
         real(c_float), pointer        :: out_result(:)
         real, save                    :: target_nli
-
         backtrack_par_factor = -1. ! Assign -1 to backtrack_par_factor in all cores
         if (getprocno() == 1) then ! To let only 1 core to load and predict using the ML model
             if (.not. loaded_file) then
@@ -9549,7 +9514,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 call get_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path/target_num_nonlinear", target_nli, default=1.0)
                 loaded_file = .true.
             end if
-
             raw_input = (/aspect_ratio, &
                         & courant_number, &
                         & shockfront_courant_number, &
@@ -9567,55 +9531,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                         & resold, &
                         & res/resold, &
                         & target_nli /) !Target number of inner-nonlinear iteration
-
             call xgboost_predict(raw_input, out_result)
             !write(*,*) 'XGB model prediction: ',out_result
             backtrack_par_factor = out_result(1)
             nullify(out_result)
         end if
         if (IsParallel()) call allmax(backtrack_par_factor) ! Assign the calculated values of the backtrack_par_factor
-
         endblock
-
-        !***************************!
-        !! ***Write into file*** !!!
-        !***************************!
-
-        !inquire(file="AI_backtracking_parameters.csv", exist=file_exist)
-        ! if (.not. written_file) then
-        !     open(73, file="AI_backtracking_parameters.csv", status="replace")
-        !     !call date_and_time(VALUES=date_values)
-        !     !write(73,'(8i5)') date_values
-        !     ! Write column names
-        !     write(73, '(6(A,",",X))', advance="NO") "gravity", "cap_pressure", "black_oil", "ov_relaxation", "one_phase", "wells"
-        !     write(73, '(5(A,",",X))', advance="NO") "n_phases", "n_components", "aspect_ratio", "courant_number", "shockfront_courant_number"
-        !     write(73, '(1(A,",",X))', advance="NO") "shockfront_number_ratio"
-        !     write(73, '(3(A,",",X))', advance="NO") "min_total_mobility", "max_total_mobility", "average_total_mobility"
-        !     write(73, '(3(A,",",X))', advance="NO") "min_Darcy_velocity", "max_Darcy_velocity", "average_Darcy_velocity"
-        !     write(73, '(3(A,",",X))', advance="NO") "min_shockfront_mobratio", "max_shockfront_mobratio", "average_shockfront_mobratio"
-        !     write(73, '(6(A,",",X))', advance="NO") "average_longitudinal_capillary", "average_transverse_capillary", "max_longitudinal_capillary", "max_transverse_capillary", "min_longitudinal_capillary", "min_transverse_capillary"
-        !     write(73, '(9(A,",",X))', advance="NO") "average_buoyancy_number", "average_longitudinal_buoyancy", "average_transverse_buoyancy", "max_buoyancy_number", "max_longitudinal_buoyancy", "max_transverse_buoyancy", "min_buoyancy_number", "min_longitudinal_buoyancy", "min_transverse_buoyancy"
-        !     write(73, '(3(A,",",X))', advance="NO") "average_overrelaxation", "max_overrelaxation", "min_overrelaxation"
-        !     write(73, '(3(A,",",X))', advance="NO") "average_invPeclet", "max_invPeclet", "min_invPeclet"
-        !     write(73, '(5(A,",",X))') "res", "resold", "res_resold", "backtrack_par_factor", "btpf"
-        !     close(73)
-        !     written_file = .true.
-        ! end if
-
-        ! ! Write values
-        ! open(73, file="AI_backtracking_parameters.csv", status="unknown", position="append")
-        ! write(73, '(6(L,",",X))',     advance="NO") gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
-        ! write(73, '(5(E15.8,",",X))', advance="NO") n_phases, n_components, aspect_ratio, courant_number, shockfront_courant_number
-        ! write(73, '(1(E15.8,",",X))', advance="NO") shockfront_number_ratio
-        ! write(73, '(3(E15.8,",",X))', advance="NO") min_total_mobility, max_total_mobility, average_total_mobility
-        ! write(73, '(3(E15.8,",",X))', advance="NO") min_Darcy_velocity, max_Darcy_velocity, average_Darcy_velocity
-        ! write(73, '(3(E15.8,",",X))', advance="NO") min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
-        ! write(73, '(6(E15.8,",",X))', advance="NO") average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
-        ! write(73, '(9(E15.8,",",X))', advance="NO") average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy
-        ! write(73, '(3(E15.8,",",X))', advance="NO") average_overrelaxation, max_overrelaxation, min_overrelaxation
-        ! write(73, '(3(E15.8,",",X))', advance="NO") average_invPeclet, max_invPeclet, min_invPeclet
-        ! write(73, '(5(E15.8,",",X))') res, resold, res/resold, backtrack_par_factor, btpf
-        ! close(73)
 
         !*****************************!
         !!! ***Support functions*** !!!

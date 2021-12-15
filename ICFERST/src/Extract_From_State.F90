@@ -2302,7 +2302,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     end if
                     reference_field= velocity
                 case default
-                  
+
                   temperature => extract_tensor_field(packed_state, "PackedTemperature", stat1)
                   Concentration => extract_tensor_field(packed_state, "PackedConcentration", stat2)
                   nfields = option_count("/material_phase[0]/scalar_field")
@@ -2312,7 +2312,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                       if (is_Active_Tracer_field(option_name, ignore_concentration = .true.)) then
                           have_Active_Tracers = .true.
                           Ntracers = Ntracers + 1
-                      end if 
+                      end if
                   end do
                   auxJ = 0
                   if (have_Active_Tracers) auxJ = -1
@@ -2338,7 +2338,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                   !Special position for temperature, why not!
                   if (stat1==0) reference_field(1:size(temperature%val,2),:,auxI) = temperature%val(1,1:size(temperature%val,2),:)
                   !Special position for the average of all the passiveTracers/Species in -1
-                  if (have_Active_Tracers) then 
+                  if (have_Active_Tracers) then
                       reference_field(:,:,-1) = 0.
                       nfields = option_count("/material_phase[0]/scalar_field")
                       do k = 1, nfields
@@ -2348,7 +2348,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                           reference_field(1:size(tracer_field%val,2),:,-1) = reference_field(1:size(tracer_field%val,2),:,-1) +&
                                   abs(tracer_field%val(1,1:size(tracer_field%val,2),:))/real(Ntracers)
                         end if
-                      end do 
+                      end do
                   end if
             end select
 
@@ -2384,7 +2384,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             end if
             !#################SATURATION############################
             !For single phase there is no backtracking and therefore no backtracking correction
-            if (Mdims%n_in_pres == 1) then 
+            if (Mdims%n_in_pres == 1) then
               backtrack_or_convergence = 1.0
               inf_norm_val = 0.; ts_ref_val = 0.
             else
@@ -2425,7 +2425,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     inf_norm_conc = inf_norm_scalar_normalised(Concentration%val(1,1:size(Concentration%val,2),:),&
                                      reference_field(1:size(Concentration%val,2),:,2), 1.0, totally_min_max)
                 end if
-                if (have_Active_Tracers) then 
+                if (have_Active_Tracers) then
                     allocate(Tracers_avg(Mdims%nphase, Mdims%cv_nonods)); Tracers_avg = 0.
                     totally_min_max(1)=minval(reference_field(:,:,-1))
                     totally_min_max(2)=maxval(reference_field(:,:,-1))
@@ -2437,7 +2437,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                             Tracers_avg(1:size(tracer_field%val,2),:) = Tracers_avg(1:size(tracer_field%val,2),:) +&
                             abs(tracer_field%val(1,1:size(tracer_field%val,2),:))/real(Ntracers)
                       end if
-                    end do 
+                    end do
                     !Perform the check with the averaged tracers values
                     Tracers_ref_val = inf_norm_scalar_normalised(Tracers_avg(1:Mdims%n_in_pres,:), reference_field(1:size(Concentration%val,2),:,-1), 1.0, totally_min_max)
                     deallocate(Tracers_avg)
@@ -2471,33 +2471,33 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 case (2)
                     write(temp_string, '(a, E10.3,a,i0)' ) "| L_inf:", inf_norm_val
                 case default
-                    if (abs(inf_norm_val) > 1e-30) then 
+                    if (abs(inf_norm_val) > 1e-30) then
                         write(temp_string, '(a, E10.3)' ) "| Saturation:", inf_norm_val
                         output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
                     end if
-                    if (abs(ts_ref_val) > 1e-30) then 
+                    if (abs(ts_ref_val) > 1e-30) then
                         write(temp_string, '(a, E10.3)' ) "| Saturation(Rel L2)::", ts_ref_val
                         output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
                     end if
-                    if (abs(inf_norm_temp) > 1e-30) then 
+                    if (abs(inf_norm_temp) > 1e-30) then
                         write(temp_string, '(a, E10.3)' ) "| Temperature: ",inf_norm_temp
                         output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
                     end if
-                    if (abs(inf_norm_conc) > 1e-30) then 
+                    if (abs(inf_norm_conc) > 1e-30) then
                         write(temp_string, '(a, E10.3)' ) "| Tracer: ", inf_norm_conc
                         output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
                     end if
-                    if (abs(Tracers_ref_val) > 1e-30) then 
+                    if (abs(Tracers_ref_val) > 1e-30) then
                         write(temp_string, '(a, E10.3)' ) "| PassiveTracers/Species:",Tracers_ref_val
                         output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
                     end if
                 end select
             else
-                write(temp_string, '(a, E10.3,a,i0)' ) "| L_inf:", inf_norm_val 
+                write(temp_string, '(a, E10.3,a,i0)' ) "| L_inf:", inf_norm_val
             end if
-            
+
             !Asssemble finally the output message
-            output_message = trim(output_message) // " "// trim(temp_string) 
+            output_message = trim(output_message) // " "// trim(temp_string)
 
             !Automatic non-linear iteration checking
             if (is_porous_media) then
@@ -2512,7 +2512,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             ExitNonLinearLoop =  ExitNonLinearLoop .and. its >= 2
 
             !(Maybe unnecessary) If it is parallel then we want to be consistent between cpus
-            if (IsParallel()) call alland(ExitNonLinearLoop)
+            if (IsParallel()) call allor(ExitNonLinearLoop)
 
             adapting_within_happening_now = .false.
             if (ExitNonLinearLoop .and. adapt_mesh_in_FPI) then
@@ -3633,7 +3633,7 @@ end subroutine get_DarcyVelocity
 
       if (surface_element_owned(tracer, sele)) then
         !Store total outflux; !velocity * area * density * saturation
-        if (has_boussinesq_aprox) then 
+        if (has_boussinesq_aprox) then
             do iphase = start_phase, end_phase
                 bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + &
                 Vol_flux(iphase)!If boussinesq then we use the volume flux
