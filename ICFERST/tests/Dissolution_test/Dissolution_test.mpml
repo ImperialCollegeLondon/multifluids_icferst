@@ -39,7 +39,7 @@
       <real_value rank="0">0.4</real_value>
     </timestep>
     <finish_time>
-      <real_value rank="0">200</real_value>
+      <real_value rank="0">0.8</real_value>
     </finish_time>
   </timestepping>
   <material_phase name="water">
