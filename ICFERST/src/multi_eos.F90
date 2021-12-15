@@ -2501,21 +2501,21 @@ contains
       end do
 
       !#####Now proceed to check if we need to update the immobile fraction####
-      call get_var_from_packed_state(packed_state,Immobile_fraction = Immobile_fraction)
-      saturation_flip => extract_scalar_field(state(donor_phase_pos), "Saturation_flipping")
-      do ele = 1, Mdims%totele
-        do cv_iloc = 1, Mdims%cv_nloc
-          cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
-          !If the saturation drops below the immobile fraction we update the
-          !flipping saturation so the immobile fraction is updated in get_RockFluidProp
-          if (saturation_field%val(1,donor_phase_pos,cv_nod) < Immobile_fraction(donor_phase_pos, ele)) then
-            !Positive sign because we want to ensure that if the saturation start to increase
-            !and drop again a new immobile fraction is computed, this requires however to also update Oldsaturation_field
-            saturation_flip%val(cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
-            Oldsaturation_field%val(1,donor_phase_pos,cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
-            end if
-        end do
-      end do
+      ! call get_var_from_packed_state(packed_state,Immobile_fraction = Immobile_fraction)
+      ! saturation_flip => extract_scalar_field(state(donor_phase_pos), "Saturation_flipping")
+      ! do ele = 1, Mdims%totele
+      !   do cv_iloc = 1, Mdims%cv_nloc
+      !     cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+      !     !If the saturation drops below the immobile fraction we update the
+      !     !flipping saturation so the immobile fraction is updated in get_RockFluidProp
+      !     if (saturation_field%val(1,donor_phase_pos,cv_nod) < Immobile_fraction(donor_phase_pos, ele)) then
+      !       !Positive sign because we want to ensure that if the saturation start to increase
+      !       !and drop again a new immobile fraction is computed, this requires however to also update Oldsaturation_field
+      !       saturation_flip%val(cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
+      !       Oldsaturation_field%val(1,donor_phase_pos,cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
+      !       end if
+      !   end do
+      ! end do
 
     end subroutine flash_gas_dissolution
 
