@@ -1996,6 +1996,7 @@ contains
         type(mesh_type), pointer :: fl_mesh
         type(mesh_type) :: Auxmesh
         real :: auxR
+        real, dimension(Mdims%cv_nloc) :: CVs_immobile
         integer :: iphase, nphase, ele, cv_iloc, cv_nod
         character(len=500) :: path, path2, path3
 
@@ -2103,12 +2104,12 @@ contains
               if (present(current_time)) then
                if( current_time < 1e-8) then
                 do cv_nod = 1, Mdims%cv_nonods
-                  saturation_flip%val(cv_nod) = max(Saturation%val(1,iphase,cv_nod), 1e-16)!limit because we need to store signs also
+                  saturation_flip%val(cv_nod) = max(Saturation%val(1,iphase,cv_nod), 1e-5)!limit because we need to store signs also
                 end do
                end if
               end if
               do ele = 1, Mdims%totele
-                t_field%val(1,iphase,ele) = 0.
+                CVs_immobile = 0.
                 do cv_iloc = 1, Mdims%cv_nloc
                   cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
                   !Then the immobile fraction depends on the Land coefficient as follows (this must occur outside the non-linear loop!)
@@ -2116,8 +2117,10 @@ contains
                   !when changing from imbibition to drainage or the other way round
                   call Update_saturation_flipping(saturation_flip%val(cv_nod), Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
                   auxR = abs(saturation_flip%val(cv_nod))
-                  t_field%val(1,iphase,ele) = t_field%val(1,iphase,ele) + (auxR/(1. + targ_Store%val(ele) * auxR))/Mdims%cv_nloc
+                  CVs_immobile(cv_iloc) = auxR/(1. + targ_Store%val(ele) * auxR)
                 end do
+                !To avoid generation of mass we always use the minimum value of CVs forming an element
+                t_field%val(1,iphase,ele) = minval(CVs_immobile)
               end do
             else !default value for immiscible values
                 t_field%val(1,iphase,:) = 0.0
@@ -2137,7 +2140,7 @@ contains
       real, INTENT(IN) :: sat, old_Sat
       real, INTENT(INOUT) :: sat_flip
       !Local variables
-      real, parameter :: tol = 1e-10
+      real, parameter :: tol = 1e-3
       !Check if the situation is changing and if so, store the new value with the sign
       ! Ensure that the immobile fraction does not decrease, i.e. sat_flip does not decrease
       ! this can only decrease once it has trapped a field with thermal effects,
