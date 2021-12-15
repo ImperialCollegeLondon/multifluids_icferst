@@ -831,8 +831,6 @@ contains
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
 
-            !Flash dissolution happens here
-           if (have_option("/porous_media/Gas_dissolution"))call flash_gas_dissolution(packed_state, Mdims, dt)
 
 #ifdef USING_PHREEQC
             call run_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc)
@@ -865,8 +863,10 @@ contains
               end do
             end if
 
+            !Flash dissolution happens here JUST BEFORE get_RockFluidProp
+            if (have_option("/porous_media/Gas_dissolution"))call flash_gas_dissolution(state, packed_state, Mdims, ndgln)
             !Update immobile fractions values (for hysteresis relperm models)
-            !HAS TO BE the last step of the time-loop
+            !######HAS TO BE the last step of the time-loop
             if (have_option_for_any_phase("/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient",&
             Mdims%n_in_pres)) call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)
 

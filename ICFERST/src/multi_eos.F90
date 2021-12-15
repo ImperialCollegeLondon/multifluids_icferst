@@ -1996,6 +1996,7 @@ contains
         type(mesh_type), pointer :: fl_mesh
         type(mesh_type) :: Auxmesh
         real :: auxR
+        real, dimension(Mdims%cv_nloc) :: CVs_immobile
         integer :: iphase, nphase, ele, cv_iloc, cv_nod
         character(len=500) :: path, path2, path3
 
@@ -2096,17 +2097,19 @@ contains
               !Extract the land parameter
               call initialise_field_over_regions(targ_Store, trim(path) , position)
               !We first extract the field containing the historical point of saturation
+              !saturation_flip stores both the slope of increase/decrease of saturation (with the sign)
+              !and the saturation value at the flipping point
               saturation_flip => extract_scalar_field(state(iphase), "Saturation_flipping")
               !Only for the first time ever, not for checkpointing, overwrite the saturation flipping value with the initial one
               if (present(current_time)) then
                if( current_time < 1e-8) then
                 do cv_nod = 1, Mdims%cv_nonods
-                  saturation_flip%val(cv_nod) = max(Saturation%val(1,iphase,cv_nod), 1e-16)!limit because we need to store signs also
+                  saturation_flip%val(cv_nod) = max(Saturation%val(1,iphase,cv_nod), 1e-5)!limit because we need to store signs also
                 end do
                end if
               end if
               do ele = 1, Mdims%totele
-                t_field%val(1,iphase,ele) = 0.
+                CVs_immobile = 0.
                 do cv_iloc = 1, Mdims%cv_nloc
                   cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
                   !Then the immobile fraction depends on the Land coefficient as follows (this must occur outside the non-linear loop!)
@@ -2114,8 +2117,10 @@ contains
                   !when changing from imbibition to drainage or the other way round
                   call Update_saturation_flipping(saturation_flip%val(cv_nod), Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
                   auxR = abs(saturation_flip%val(cv_nod))
-                  t_field%val(1,iphase,ele) = t_field%val(1,iphase,ele) + (auxR/(1. + targ_Store%val(ele) * auxR))/Mdims%cv_nloc
+                  CVs_immobile(cv_iloc) = auxR/(1. + targ_Store%val(ele) * auxR)
                 end do
+                !To avoid generation of mass we always use the minimum value of CVs forming an element
+                t_field%val(1,iphase,ele) = minval(CVs_immobile)
               end do
             else !default value for immiscible values
                 t_field%val(1,iphase,:) = 0.0
@@ -2135,7 +2140,7 @@ contains
       real, INTENT(IN) :: sat, old_Sat
       real, INTENT(INOUT) :: sat_flip
       !Local variables
-      real, parameter :: tol = 1e-10
+      real, parameter :: tol = 1e-3
       !Check if the situation is changing and if so, store the new value with the sign
       ! Ensure that the immobile fraction does not decrease, i.e. sat_flip does not decrease
       ! this can only decrease once it has trapped a field with thermal effects,
@@ -2426,22 +2431,24 @@ contains
     !>@brief: subroutine to dissolv phase2 into phase1. Currently only for system for phase 1 = water, phase 2 = gas
     !> Dissolve instantaneously the amount introduced in diamond in mol/m3 for CO2 a reference number is 38 mol/m3.
     !> Requires the first phase to have a concentration field
-    subroutine flash_gas_dissolution(packed_state, Mdims, dt)
+    subroutine flash_gas_dissolution(state, packed_state, Mdims, ndgln)
       implicit none
-      type(state_type) :: packed_state
-      real, intent (in) :: dt
-      type(multi_dimensions) :: Mdims
+      type(state_type), dimension(:), intent (inout) :: state
+      type(state_type), intent (inout) :: packed_state
+      type(multi_dimensions), intent (in) :: Mdims
+      type(multi_ndgln), intent (in) :: ndgln
       !Local variables
       real, save  :: dissolution_parameter= -1
       real, save ::molar_mass= -1
-      type(tensor_field), pointer :: saturation_field, concentration_field, density
+      type (scalar_field), pointer :: saturation_flip
+      type(tensor_field), pointer :: saturation_field, concentration_field, density, Oldsaturation_field
       type(vector_field), pointer :: MeanPoreCV, cv_volume
       real :: n_co2_diss_max, delta_n, n_co2_gas
-      integer :: cv_nod, iphase, stat
+      integer :: cv_nod, iphase, stat, ele, cv_iloc
       character( len = option_path_len ) :: donor_phase, receiving_phase, option_name
       integer, save :: donor_phase_pos, receiving_phase_pos
       character( len = option_path_len ), save :: tracer_name
-
+      real, dimension(:,:), pointer :: Immobile_fraction
       !Retrieve values from diamond
       if (dissolution_parameter < 0.) then
         call get_option("/porous_media/Gas_dissolution", dissolution_parameter)!in mol/kg
@@ -2461,6 +2468,7 @@ contains
       end if
 
       saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+      Oldsaturation_field=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
       concentration_field=>extract_tensor_field(packed_state,"Packed"//trim(tracer_name), stat)
       if (stat /= 0) then
         FLAbort("To compute flash dissolution from second phase to the first phase, a Concentration field in the first phase is required.")
@@ -2492,6 +2500,22 @@ contains
 
       end do
 
+      !#####Now proceed to check if we need to update the immobile fraction####
+      ! call get_var_from_packed_state(packed_state,Immobile_fraction = Immobile_fraction)
+      ! saturation_flip => extract_scalar_field(state(donor_phase_pos), "Saturation_flipping")
+      ! do ele = 1, Mdims%totele
+      !   do cv_iloc = 1, Mdims%cv_nloc
+      !     cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+      !     !If the saturation drops below the immobile fraction we update the
+      !     !flipping saturation so the immobile fraction is updated in get_RockFluidProp
+      !     if (saturation_field%val(1,donor_phase_pos,cv_nod) < Immobile_fraction(donor_phase_pos, ele)) then
+      !       !Positive sign because we want to ensure that if the saturation start to increase
+      !       !and drop again a new immobile fraction is computed, this requires however to also update Oldsaturation_field
+      !       saturation_flip%val(cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
+      !       Oldsaturation_field%val(1,donor_phase_pos,cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
+      !       end if
+      !   end do
+      ! end do
 
     end subroutine flash_gas_dissolution
 
