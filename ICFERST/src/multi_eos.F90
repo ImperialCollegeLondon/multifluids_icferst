@@ -2525,4 +2525,34 @@ contains
 
     end subroutine flash_gas_dissolution
 
+    subroutine get_CV_immobile_fraction(packed_state, Mdims, ndgln, CV_immobile_fraction)
+      implicit none
+      type(multi_dimensions), intent (in) :: Mdims
+      type(multi_ndgln), intent (in) :: ndgln
+      type(state_type), intent (inout) :: packed_state
+      real, dimension (:, :), pointer :: Immobile_fraction
+      real, dimension (:, :), allocatable,  INTENT(INOUT) :: CV_Immobile_fraction
+      !Local variables
+      integer :: cv_nod, cv_iloc, ele, iphase
+
+      call get_var_from_packed_state(packed_state,Immobile_fraction = Immobile_fraction)
+      !Reallocate to ensure consistency between fields
+      if (allocated(CV_Immobile_fraction)) deallocate(CV_Immobile_fraction)
+      allocate(CV_Immobile_fraction(Mdims%nphase, Mdims%cv_nonods))
+
+      !Generate CV immobile fraction using the minimum shared immobile fraction.
+      !This is important to not generate mass with the Land model
+      CV_Immobile_fraction(1: Mdims%n_in_pres,:) = 1e10
+
+      do ele = 1, Mdims%totele
+        do cv_iloc = 1, Mdims%cv_nloc
+          cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+          do iphase = 1, Mdims%nphase
+            CV_Immobile_fraction(iphase, cv_nod) = min(CV_Immobile_fraction(iphase, cv_nod), Immobile_fraction(iphase, ele))
+          end do
+        end do
+      end do
+
+    end subroutine get_CV_immobile_fraction
+
 end module multiphase_EOS

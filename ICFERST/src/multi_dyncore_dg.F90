@@ -1064,7 +1064,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !> @author Chris Pain, Pablo Salinas
     !> @brief Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method is uncluded
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, multicomponent_state, &
-         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
+         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, CV_immobile_fraction, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, time_step, SFPI_taken, SFPI_its, Courant_number,&
@@ -1086,7 +1086,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              INTEGER, intent( in ) :: igot_theta_flux
              REAL, intent( in ) :: DT
              REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
-             REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
+             REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE, CV_immobile_fraction
              !REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
              real, dimension( : ), intent( inout ) :: mass_ele_transp
@@ -1363,7 +1363,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      if (.not. satisfactory_convergence) then
 
                          !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
-                         call FPI_backtracking(nphase, Mdims, ndgln, state,packed_state, sat_bak(1:nphase, :), backtrack_sat(1:nphase, :), backtrack_par_factor,&
+                         call FPI_backtracking(CV_immobile_fraction, nphase, Mdims, ndgln, state,packed_state, sat_bak(1:nphase, :), backtrack_sat(1:nphase, :), backtrack_par_factor,&
                              Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
                              useful_sats,res, res/resold, first_res) !halos are updated within this subroutine
 
@@ -1462,13 +1462,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
           real, dimension(Mdims%nphase, Mdims%cv_nonods) :: comp_theta_gdiff
 
           !First, impose physical constrains to the saturation (important to update halos here)
-          call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .false. )
+          call Set_Saturation_to_sum_one(mdims, packed_state, state, CV_immobile_fraction, do_not_update_halos = .false. )
           !Next, update compoents
           !Deallocate memory re-used for the compositional assembly solve; SPRINT_TO_DO: this can be done better!
           call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val); call deallocate(Mmat%petsc_ACV)
           call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
-               multi_absorp, DT, &
+               multi_absorp, CV_immobile_fraction, DT, &
                SUF_SIG_DIAGTEN_BC, &
                Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux,  &
                comp_theta_gdiff, eles_with_pipe, pipes_aux, mass_ele_transp, &
@@ -1479,7 +1479,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
 
            !First, impose physical constrains to the saturation (important to update halos here)
-           call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .false. )
+           call Set_Saturation_to_sum_one(mdims, packed_state, state, CV_immobile_fraction, do_not_update_halos = .false. )
 
         end subroutine update_components
 
@@ -1491,7 +1491,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !>Systems for each component are assembled and solved by calling INTENERGE_ASSEM_SOLVE
     subroutine Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
-         multi_absorp, DT, &
+         multi_absorp, CV_immobile_fraction, DT, &
          SUF_SIG_DIAGTEN_BC, &
          GET_THETA_FLUX, USE_THETA_FLUX,  &
          THETA_GDIFF, eles_with_pipe, pipes_aux, mass_ele, &
@@ -1513,7 +1513,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
          REAL, DIMENSION( :,: ), intent( inout ) :: sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
          REAL, intent( in ) :: DT
-         REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
+         REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC, CV_immobile_fraction
          type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
          type (multi_pipe_package), intent(in) :: pipes_aux
          !Local variables
@@ -1667,7 +1667,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
 
         !First, impose physical constrains to the saturation (important to update halos here)
-        if (is_porous_media .and. Mdims%n_in_pres > 1) call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .false. )
+        if (is_porous_media .and. Mdims%n_in_pres > 1) call Set_Saturation_to_sum_one(mdims, packed_state, state, &
+                                                              CV_immobile_fraction, do_not_update_halos = .false. )
 
       contains
 
