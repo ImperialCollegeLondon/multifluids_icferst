@@ -851,7 +851,7 @@ contains
                real, dimension(:,:), intent(in) :: viscosities
                !!$ Local variables:
                integer :: ele, imat, icv, iphase, cv_iloc, idim, jdim, ipres, loc, n_in_pres, &
-                global_phase, compact_phase
+                global_phase, compact_phase, MAT_NODI
                real :: Mobility, pert
                real, dimension(:), allocatable :: Max_sat
                real, dimension( :, : ), allocatable :: satura2
@@ -882,12 +882,13 @@ contains
                do ele = 1, Mdims%totele
                    do cv_iloc = 1, Mdims%cv_nloc
                        icv = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                       Max_sat(:) = 1. - sum(Immobile_fraction(:, ele)) + Immobile_fraction(:, ele)
+                       IMAT = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                       Max_sat(:) = 1. - sum(Immobile_fraction(:, IMAT)) + Immobile_fraction(:, IMAT)
                        DO IPHASE = 1, n_in_pres!Not for wells
                          SATURA2(IPHASE, icv) = SATURA(IPHASE, icv) + sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
                          !If out of bounds then we perturbate in the opposite direction
                          if (satura2(IPHASE, icv) > Max_sat(iphase) .or. &
-                             satura2(IPHASE, icv) < Immobile_fraction(iphase, ele)) then
+                             satura2(IPHASE, icv) < Immobile_fraction(iphase, IMAT)) then
                              SATURA2(IPHASE, icv) = SATURA2(IPHASE, icv) - 2. * sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
                          end if
                        end do
@@ -953,8 +954,8 @@ contains
                real, dimension(:, :, :), target, intent(in):: inv_perm
                real, dimension(:,:), intent(in) :: viscosities
                ! local variables
-               type(tensor_field), pointer :: RockFluidProp
-               real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
+               type(tensor_field), pointer :: RockFluidProp, Immobile_fraction
+               real, dimension(:), pointer :: Corey_exponent, Endpoint_relperm
                integer :: iphase, ele, sele, cv_siloc, cv_snodi, cv_snodi_ipha, iface, s, e, &
                    ele2, sele2, cv_iloc, idim, jdim, i, mat_nod, cv_nodi
                real :: sigma_out!, mat, mat_inv
@@ -975,6 +976,7 @@ contains
                velocity=>extract_tensor_field(packed_state,"PackedVelocity")
                perm=>extract_tensor_field(packed_state,"Permeability")
                RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
+               Immobile_fraction => extract_tensor_field(packed_state,"PackedImmobile_fraction")
 
                allocate(wic_u_bc(velocity%dim(1),velocity%dim(2),&
                    surface_element_count(velocity)))
@@ -994,7 +996,6 @@ contains
 
                    do ele = 1, Mdims%totele
                        !Get properties from packed state
-                       Immobile_fraction => RockFluidProp%val(1, :, ELE)
                        Endpoint_relperm => RockFluidProp%val(2, :, ELE)
                        Corey_exponent => RockFluidProp%val(3, :, ELE)
                        do iface = 1, CV_GIdims%nface
@@ -1018,7 +1019,7 @@ contains
                                            call get_material_absorption(Mdims%n_in_pres, iphase, sigma_out,&
                                                ! this is the boundary condition (we pass as old sat the same BC)
                                                volfrac_BCs%val(1,:,cv_snodi), viscosities(:,visc_node),&
-                                               Immobile_fraction, Corey_exponent, Endpoint_relperm)
+                                               Immobile_fraction%val(1,:, mat_nod), Corey_exponent, Endpoint_relperm)
                                            ! Adjust suf_sig_diagten_bc based on the internal absorption
                                             suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) =  &
                                                   (sigma_out  +  PorousMedia_absorp%val(1,1,iphase, mat_nod)**2./sigma_out )&
@@ -1079,8 +1080,8 @@ contains
         real, intent(in), dimension(:,:) :: viscosities
         real, dimension(:,:,:), INTENT(INOUT), optional :: inv_PorousMedia_absorp
         ! Local variable
-        type (tensor_field), pointer :: RockFluidProp
-        real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
+        type (tensor_field), pointer :: RockFluidProp, Immobile_fraction
+        real, dimension(:), pointer :: Corey_exponent, Endpoint_relperm
         REAL, PARAMETER :: TOLER = 1.E-10
         INTEGER :: ELE, CV_ILOC, CV_NOD, CV_PHA_NOD, MAT_NOD, JPHA_JDIM, &
             IPHA_IDIM, IDIM, JDIM, IPHASE, id_reg, n_in_pres
@@ -1092,11 +1093,11 @@ contains
         n_in_pres = nphase/Mdims%npres
 
         RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
+        Immobile_fraction => extract_tensor_field(packed_state,"PackedImmobile_fraction")
         ewrite(3,*) 'In calculate_absorption2'
 
         DO ELE = 1, Mdims%totele
             !Get properties from packed state
-            Immobile_fraction => RockFluidProp%val(1, :, ELE)
             Endpoint_relperm => RockFluidProp%val(2, :, ELE)
             Corey_exponent => RockFluidProp%val(3, :, ELE)
             DO CV_ILOC = 1, Mdims%cv_nloc
@@ -1106,7 +1107,7 @@ contains
                 DO IPHASE = 1, n_in_pres
                     CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * Mdims%cv_nonods
                     call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(1, 1, iphase, mat_nod),&
-                        SATURA(:, CV_NOD), viscosities(:,visc_node),Immobile_fraction, Corey_exponent,&
+                        SATURA(:, CV_NOD), viscosities(:,visc_node),Immobile_fraction%val(1,:,MAT_NOD), Corey_exponent,&
                          Endpoint_relperm)
                 END DO
             END DO
@@ -1224,7 +1225,7 @@ contains
             type(multi_ndgln), intent(in) :: ndgln
             ! Local Variables
             type(multi_dev_shape_funs) :: DevFuns ! derivative of the shape functions of the reference control volumes
-            INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
+            INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod, imat
             logical, save :: Cap_Brooks = .true., Cap_Power = .false.
             logical, save :: first_time = .true.
             !Working pointers
@@ -1266,9 +1267,10 @@ contains
 
                                 do cv_iloc = 1, cv_nloc
                                     cv_nod = ndgln%cv((ele-1)*cv_nloc + cv_iloc)
+                                    IMAT = ndgln%mat( ( ELE - 1 ) * cv_nloc + CV_ILOC )
                                     CapPressure( jphase, cv_nod ) = CapPressure( jphase, cv_nod ) + &
                                         Get_capPressure(satura(iphase,cv_nod), Cap_entry_pressure(iphase, ele), &
-                                        Cap_exponent(iphase, ele),Immobile_fraction(:,ele), &
+                                        Cap_exponent(iphase, ele),Immobile_fraction(:,IMAT), &
                                         Imbibition_term(iphase, ele), iphase) * DevFuns%volume   ! volume weighted average of capillary pressure
                                     Cont_correction(cv_nod) = Cont_correction(cv_nod) + DevFuns%volume
                                 end do
@@ -1990,7 +1992,7 @@ contains
         real, optional, intent(in) :: current_time
         logical, optional, intent(in) :: update_only
         !Local variables
-        type (tensor_field), pointer :: t_field, Saturation, SaturationOld
+        type (tensor_field), pointer :: t_field, Saturation, SaturationOld, immobile_fraction
         type (scalar_field), target :: targ_Store
         type (scalar_field), pointer :: s_field, saturation_flip
         type (vector_field), pointer :: position
@@ -1998,12 +2000,13 @@ contains
         type(mesh_type) :: Auxmesh
         real :: auxR
         real, dimension(Mdims%cv_nloc) :: CVs_immobile
-        integer :: iphase, nphase, ele, cv_iloc, cv_nod
+        integer :: iphase, nphase, ele, cv_iloc, cv_nod, imat
         character(len=500) :: path, path2, path3
 
         t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
         Saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         SaturationOld => extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
+        immobile_fraction=>extract_tensor_field(packed_state,"PackedImmobile_fraction")
         nphase = size(t_field%val,2)
         !By default the pressure mesh (position 1)
         s_field => extract_scalar_field(state(1),1)
@@ -2090,14 +2093,25 @@ contains
           path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/immobile_fraction/scalar_field::value/prescribed/value"
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
-                t_field%val(1,iphase,:) = targ_Store%val
+                ! t_field%val(1,iphase,:) = targ_Store%val
+                !FOR THE TIME BEING TO KEEP BACKWARDS COMPATIBILITY WE CONVERT FROM P0DG TO PRESSUREMESH_DISCONTINUOUS
+                if (size(targ_Store%val,1) == size(immobile_fraction%val,3)) then
+                  immobile_fraction%val(1,iphase,:) = targ_Store%val
+                else !Convert from P0DG
+                  do ele = 1, Mdims%totele
+                    do cv_iloc = 1, Mdims%cv_nloc
+                      IMAT = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
+                      immobile_fraction%val(1,iphase, IMAT) = targ_Store%val(ele)
+                    end do
+                  end do
+                end if
             else if (have_option("/material_phase["//int2str(iphase-1)//&
                       "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then
               path = "/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value"
                 !Only for reservoir phases
                 if (iphase > Mdims%n_in_pres) then
-                  t_field%val(1,iphase,:) = 0.0
+                  immobile_fraction%val(1,iphase,:) = 0.0
                   cycle
                 end if
               !Extract the land parameter
@@ -2110,26 +2124,27 @@ contains
               if (present(current_time)) then
                if( current_time < 1e-8) then
                 do cv_nod = 1, Mdims%cv_nonods
-                  saturation_flip%val(cv_nod) = max(Saturation%val(1,iphase,cv_nod), 1e-8)!limit because we need to store signs also
+                  saturation_flip%val(cv_nod) = max(Saturation%val(1,iphase,cv_nod), 1e-50)!limit because we need to store signs also
                 end do
                end if
               end if
               do ele = 1, Mdims%totele
-                CVs_immobile = 0.
                 do cv_iloc = 1, Mdims%cv_nloc
                   cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+                  IMAT = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
                   !Then the immobile fraction depends on the Land coefficient as follows (this must occur outside the non-linear loop!)
                   !Formula is: Immobile = S_flip/(1+C*S_flip). Where S_flip is the saturation
                   !when changing from imbibition to drainage or the other way round
                   call Update_saturation_flipping(saturation_flip%val(cv_nod), Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
                   auxR = abs(saturation_flip%val(cv_nod))
-                  CVs_immobile(cv_iloc) = auxR/(1. + targ_Store%val(ele) * auxR)
+                  ! CVs_immobile(cv_iloc) = auxR/(1. + targ_Store%val(ele) * auxR)
+                  immobile_fraction%val(1,iphase, IMAT) = auxR/(1. + targ_Store%val(ele) * auxR)
                 end do
                 !To avoid generation of mass we always use the minimum value of CVs forming an element
-                t_field%val(1,iphase,ele) = minval(CVs_immobile)
+                ! t_field%val(1,iphase,ele) = minval(CVs_immobile)
               end do
             else !default value for immiscible values
-                t_field%val(1,iphase,:) = 0.0
+                immobile_fraction%val(1,iphase,:) = 0.0
             end if
         end do
         call deallocate(targ_Store)
@@ -2261,7 +2276,7 @@ contains
         integer, save                   :: grav_direc = 99, grav_sign=99, heavier_phase, lighter_phase ! down depends on gravity direction
         logical, save                   :: message = .true. ! user messages
         real, dimension(:,:), pointer   :: x_all, immobile_fraction, saturation_field, old_saturation_field, density
-        integer                         :: cv_iloc, iphase, ele, xnod, cv_nod, i
+        integer                         :: cv_iloc, iphase, ele, xnod, cv_nod, i, imat
         real                            :: inf_norm ! check saturation inf norm, dump checkpoint exit
 
         if (is_porous_initialisation) then
@@ -2327,9 +2342,10 @@ contains
                     do cv_iloc = 1, Mdims%cv_nloc
                         cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
                         xnod = ndgln%x((ele-1)*Mdims%x_nloc + cv_iloc)
+                        IMAT = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
                         if (grav_sign*x_all(grav_direc, xnod) > grav_sign*FWL) then
-                        saturation_field(heavier_phase, cv_nod) = 1 -  immobile_fraction(lighter_phase,ele) ! below FWL saturation at max water saturation
-                        saturation_field(lighter_phase, cv_nod) = immobile_fraction(lighter_phase,ele) ! below FWL saturation at min oil saturation
+                        saturation_field(heavier_phase, cv_nod) = 1 -  immobile_fraction(lighter_phase,imat) ! below FWL saturation at max water saturation
+                        saturation_field(lighter_phase, cv_nod) = immobile_fraction(lighter_phase,imat) ! below FWL saturation at min oil saturation
                         end if
                     end do
 
@@ -2450,7 +2466,7 @@ contains
       type(tensor_field), pointer :: saturation_field, concentration_field, density, Oldsaturation_field
       type(vector_field), pointer :: MeanPoreCV, cv_volume
       real :: n_co2_diss_max, delta_n, n_co2_gas
-      integer :: cv_nod, iphase, stat, ele, cv_iloc
+      integer :: cv_nod, iphase, stat, ele, cv_iloc, imat
       character( len = option_path_len ) :: donor_phase, receiving_phase, option_name
       integer, save :: donor_phase_pos, receiving_phase_pos
       character( len = option_path_len ), save :: tracer_name
@@ -2512,9 +2528,10 @@ contains
       do ele = 1, Mdims%totele
         do cv_iloc = 1, Mdims%cv_nloc
           cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+          IMAT = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
           !If the saturation drops below the immobile fraction we update the
           !flipping saturation so the immobile fraction is updated in get_RockFluidProp
-          if (saturation_field%val(1,donor_phase_pos,cv_nod) < Immobile_fraction(donor_phase_pos, ele)) then
+          if (saturation_field%val(1,donor_phase_pos,cv_nod) < Immobile_fraction(donor_phase_pos, imat)) then
             !Positive sign because we want to ensure that if the saturation start to increase
             !and drop again a new immobile fraction is computed, this requires however to also update Oldsaturation_field
             saturation_flip%val(cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
@@ -2533,7 +2550,7 @@ contains
       real, dimension (:, :), pointer :: Immobile_fraction
       real, dimension (:, :), allocatable,  INTENT(INOUT) :: CV_Immobile_fraction
       !Local variables
-      integer :: cv_nod, cv_iloc, ele, iphase
+      integer :: cv_nod, cv_iloc, ele, iphase, imat
 
       call get_var_from_packed_state(packed_state,Immobile_fraction = Immobile_fraction)
       !Reallocate to ensure consistency between fields
@@ -2547,8 +2564,9 @@ contains
       do ele = 1, Mdims%totele
         do cv_iloc = 1, Mdims%cv_nloc
           cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+          IMAT = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
           do iphase = 1, Mdims%nphase
-            CV_Immobile_fraction(iphase, cv_nod) = min(CV_Immobile_fraction(iphase, cv_nod), Immobile_fraction(iphase, ele))
+            CV_Immobile_fraction(iphase, cv_nod) = min(CV_Immobile_fraction(iphase, cv_nod), Immobile_fraction(iphase, imat))
           end do
         end do
       end do

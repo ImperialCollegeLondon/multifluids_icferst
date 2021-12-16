@@ -1428,7 +1428,7 @@ contains
                                   !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
                                   Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                   !and the shock-front Courant number
-                                  if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, ELE))) then
+                                  if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, MAT_NODI))) then
                                       !ndotq = velocity * normal
                                       Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                   end if
@@ -1458,10 +1458,11 @@ contains
                                   ENDIF
                                   !Used normalised flux to disable/enable VAD for certain directions
                                   if (flux_limited_vad) CAP_DIFF_COEF_DIVDX(phase_with_pc) = &
-                                    CAP_DIFF_COEF_DIVDX(phase_with_pc) * abs(NDOTQNEW(phase_with_pc)/sqrt(sum(NUGI_ALL(:,phase_with_pc)**2.)))
+                                    CAP_DIFF_COEF_DIVDX(phase_with_pc) * abs(dot_product(NUGI_ALL(:,phase_with_pc),&
+                                      CVNORMX_ALL(:, GI))/sqrt(sum(NUGI_ALL(:,phase_with_pc)**2.) + 1e-16))
+
                                   !Distribute the capillary coefficient over the phases to ensure mass conservation
                                   !This is very important as it allows to use the over-relaxation parameter safely
-                                  !and reduce the cost of using capillary pressure in several orders of magnitude
                                   CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
 
                               ELSE
