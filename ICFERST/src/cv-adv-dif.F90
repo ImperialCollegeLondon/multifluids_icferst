@@ -1459,7 +1459,7 @@ contains
                                   !Used normalised flux to disable/enable VAD for certain directions
                                   if (flux_limited_vad) CAP_DIFF_COEF_DIVDX(phase_with_pc) = &
                                     CAP_DIFF_COEF_DIVDX(phase_with_pc) * abs(dot_product(NUGI_ALL(:,phase_with_pc),&
-                                    CVNORMX_ALL(:, GI))/sqrt(sum(NUGI_ALL(:,phase_with_pc)**2.)))
+                                      CVNORMX_ALL(:, GI))/sqrt(sum(NUGI_ALL(:,phase_with_pc)**2.) + 1e-16))
 
                                   !Distribute the capillary coefficient over the phases to ensure mass conservation
                                   !This is very important as it allows to use the over-relaxation parameter safely
