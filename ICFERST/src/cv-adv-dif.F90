@@ -425,7 +425,7 @@ contains
           type( tensor_field ), pointer :: perm
           real, dimension( : , : ), pointer ::Imble_frac
           !Variables for Vanishing artificial diffusion (VAD)
-          logical :: VAD_activated, between_elements, on_domain_boundary
+          logical :: VAD_activated, between_elements, on_domain_boundary, flux_limited_vad
           !Variable to decide if we are introducing the sum of phases = 1 in Ct or elsewhere
           logical :: Solve_all_phases
           !Variables for get_int_vel_porous_vel
@@ -470,6 +470,7 @@ contains
           if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
               VAD_activated = Phase_with_Pc >0
           end if
+          flux_limited_vad = have_option("/numerical_methods/flux_limited_vad")
           !this is true if the user is asking for high order advection scheme
           use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
           !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
@@ -1455,6 +1456,9 @@ contains
                                   ELSE
                                       CAP_DIFF_COEF_DIVDX = 0.0
                                   ENDIF
+                                  !Used normalised flux to disable/enable VAD for certain directions
+                                  if (flux_limited_vad) CAP_DIFF_COEF_DIVDX(phase_with_pc) = &
+                                    CAP_DIFF_COEF_DIVDX(phase_with_pc) * abs(NDOTQNEW(phase_with_pc)/sqrt(sum(NUGI_ALL(:,phase_with_pc)**2.)))
                                   !Distribute the capillary coefficient over the phases to ensure mass conservation
                                   !This is very important as it allows to use the over-relaxation parameter safely
                                   !and reduce the cost of using capillary pressure in several orders of magnitude

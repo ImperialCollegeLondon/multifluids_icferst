@@ -1255,6 +1255,10 @@ start =
             element do_not_bound_after_adapt {
                empty
             }?,
+            ## VAD is multiplied by the normalised flux. This should help focusing the VAD towards moving directions instead of acting as pure diffusion
+            element flux_limited_vad {
+               empty
+            }?, 
             ## Impose strong BCs for wells, only on the pressure BCs. Also imposes gamma to be zero at those nodes.
             ## Note that this is already imposed for wells when using P0DGP1 and gamma = 0. at one pressure BC.
             element Strong_BCs_for_P0DG_wells {
