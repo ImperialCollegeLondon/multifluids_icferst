@@ -126,6 +126,8 @@ contains
       implicit none
       logical, parameter :: interpolation_error = .false. ! use interpolation theory and a Hessian to form variational principle
       logical, parameter :: curve_squared = .false. ! use interpolation theory but with a Hessian squared in variational principle
+      logical, parameter :: weighted_ave = .true.  ! use (mass-)weighted average DG velocity to get CG velocity ? 
+      real :: LOC_X_ALL(Mdims%ndim, Mdims%X_NLOC)   ! if weighted_ave , we need to calculate loc_x_all to calculate volume
       type(multi_dimensions), intent( in ) :: Mdims
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state
@@ -321,12 +323,24 @@ contains
       u_all_cvmesh=0.0
       u_all_solid=0.0
       do ele=1,Mdims%totele
+        if (weighted_ave) then 
+          do cv_iloc = 1, Mdims%cv_nloc 
+            x_nodi = NDGLN%X((ELE-1)*Mdims%X_NLOC+cv_iloc)
+            LOC_X_ALL(:,cv_iloc) = X_ALL(:,cv_iloc)
+          enddo
+          calc_volume(LOC_X_ALL, Mdims%ndim, volume)
+        endif
          do cv_iloc=1,Mdims%cv_nloc
             cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
             u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
             sigma_plus_bc(cv_inod) = sigma_plus_bc(cv_inod) + sigma(ele)
+            if (.not. weighted_ave) then
             vel_count(cv_inod)=vel_count(cv_inod)+1.0
             vel_count_solid(cv_inod)=vel_count_solid(cv_inod)+1.0*sigma(ele)
+            else 
+              vel_count(cv_inod)=vel_count(cv_inod)+1.0*volume 
+              vel_count_solid(cv_inod)=vel_count_solid(cv_inod)+1.0*sigma(ele)*volume
+            endif
             ic=0
             do iphase=1,Mdims%nphase
                do idim=1,Mdims%ndim
@@ -334,10 +348,16 @@ contains
                      ic=ic+1     
                      cc(ic,cv_inod) = cc(ic,cv_inod) + u_all%val(idim,iphase,u_inod)
                   endif
+                  if (.not. weighted_ave) then
                   u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
                           + u_all%val(idim,iphase,u_inod)
                   u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
                           + u_all%val(idim,iphase,u_inod) * sigma(ele)
+                  else                 
+                    u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
+                          + u_all%val(idim,iphase,u_inod)*volume
+                    u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
+                          + u_all%val(idim,iphase,u_inod) * sigma(ele)*volume
                end do
             end do
          end do
@@ -617,6 +637,37 @@ end if
 
       return
   
+      contains 
+      subroutine calc_volume(x_all_, dims, volume)
+        integer, intent(in):: dims 
+        real, dimension(:,:), intent(in):: x_all_
+        real, intent(out):: volume 
+        real, dimension(4):: x,y,z
+
+        x = x_all_(1,:)
+        y = x_all_(2,:)
+        z = x_all_(3,:)
+
+        if (dims.eq.2) then 
+          ! triangle
+          volume = 1./2. * (x(1)*y(2) - x(2)*y(1) &
+                          + x(3)*y(1) - x(1)*y(3) &
+                          + x(2)*y(3) - x(3)*y(2) )
+        else
+          ! tetrahedron
+          x(:) = x(:) - x(4)
+          y(:) = y(:) - y(4)
+          z(:) = z(:) - z(4)
+          volume = 1./6. * (x(1) * (y(2)*z(3) - z(2)*y(3)) & 
+                          - x(2) * (y(1)*z(3) - z(1)*y(3)) &
+                          + x(3) * (y(1)*z(2) - z(1)*y(2)) )
+          volume = abs(volume)
+        endif
+
+        return
+      end subroutine
+
+
   END SUBROUTINE diffusion_ug_solve
 
 
