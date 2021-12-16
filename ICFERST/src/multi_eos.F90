@@ -1345,7 +1345,8 @@ contains
         real, dimension(:,:,:), intent(inout) :: u_source_cv
 
         type(vector_field), pointer :: gravity_direction
-        real, dimension(Mdims%ndim) :: g, ref_density
+        real, dimension(Mdims%ndim) :: g
+        real, dimension(Mdims%nphase) :: ref_density
         logical :: have_gravity, high_order_Ph
         real :: gravity_magnitude
         integer :: idim, iphase, nod, stat, start_phase
@@ -2094,6 +2095,11 @@ contains
                       "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then
               path = "/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value"
+                !Only for reservoir phases
+                if (iphase > Mdims%n_in_pres) then
+                  t_field%val(1,iphase,:) = 0.0
+                  cycle
+                end if
               !Extract the land parameter
               call initialise_field_over_regions(targ_Store, trim(path) , position)
               !We first extract the field containing the historical point of saturation
