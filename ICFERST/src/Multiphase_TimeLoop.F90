@@ -234,6 +234,13 @@ contains
       assert(ierr == ZOLTAN_OK)
 #endif
 
+#ifdef USING_XGBOOST
+#else
+    if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path")) then
+        ewrite(0,*) "WARNING: ML path specified for a model but ICFERST hasn't been compiled with XGboost. Classical method used instead."
+    end if
+#endif
+
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
 
@@ -1032,10 +1039,6 @@ contains
 !#=================================================================================================================
 #ifdef USING_XGBOOST
         if (getprocno() == 1) call xgboost_free_model()
-#else
-    if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path")) then
-        ewrite(0,*) "WARNING: ML path specified for a model but ICFERST hasn't been compiled with XGboost. Classical method used instead."
-    end if
 #endif
 !#=================================================================================================================
 !# Vinicius-end: Free XGB model

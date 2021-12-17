@@ -9616,7 +9616,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 type(multi_ndgln), intent(in) :: ndgln
                 real, dimension(:,:), intent(in) :: Imble_frac
                 !Local variables
-                integer :: iphase, cv_iloc
+                integer :: iphase, cv_iloc, cv_inod
                 real :: minival, maxival, aux
                 real, parameter :: tol = 0.05 !Shock fronts smaller than this are unlikely to require extra handling
 
@@ -9626,7 +9626,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 minival = 999.; maxival = 0.
                 do iphase = 1, mdims%n_in_pres - 1
                     do cv_iloc = 1, Mdims%cv_nloc
-                        aux = sat(iphase, ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)) - Imble_frac(iphase,ele)
+                        cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+                        aux = sat(iphase, ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)) - Imble_frac(iphase,cv_inod)
                         minival = min(aux, minival)
                         maxival = max(aux, maxival)
                     end do
