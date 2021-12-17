@@ -901,6 +901,12 @@ contains
         end do
         call deallocate(vec_field)
 
+        !Insert CV version of immobile fraction
+        call allocate(vec_field,nphase,pressure%mesh,"CV_Immobile_Fraction")
+        call zero(vec_field)
+        call insert(packed_state,vec_field,"CV_Immobile_Fraction")
+        call deallocate(vec_field)
+
         call insert_sfield(packed_state,"FEPressure",1,npres)
         tfield=>extract_tensor_field(packed_state,"PackedFEPressure")
         tfield%option_path=pressure%option_path
@@ -2902,7 +2908,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     Temperature,OldTemperature, IteratedTemperature,FETemperature, OldFETemperature, IteratedFETemperature,&
     IteratedComponentMassFraction, FEComponentDensity, OldFEComponentDensity, IteratedFEComponentDensity,&
     FEComponentMassFraction, OldFEComponentMassFraction, IteratedFEComponentMassFraction,&
-    Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
+    Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,CV_Immobile_Fraction, &
     Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, CapPressure, Immobile_fraction,&
     EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term, Concentration,&
     OldConcentration, IteratedConcentration,FEConcentration, OldFEConcentration, IteratedFEConcentration,&
@@ -2931,7 +2937,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature,&
         Enthalpy, OldEnthalpy, IteratedEnthalpy, FEEnthalpy, OldFEEnthalpy, IteratedFEEnthalpy,&
         Concentration, OldConcentration, IteratedConcentration, FEConcentration, OldFEConcentration, IteratedFEConcentration,&
-        Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate,&
+        Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate,CV_Immobile_Fraction,&
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
         Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term
     real, optional, dimension(:,:,:), pointer ::Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure
@@ -3182,6 +3188,10 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     if (present(IteratedFEComponentMassFraction)) then
         tfield => extract_tensor_field( packed_state, "PackedIteratedFEComponentMassFraction" )
         IteratedFEComponentMassFraction => tfield%val(:,:,:)
+    end if
+    if (present(CV_Immobile_Fraction))then
+        vfield => extract_vector_field( packed_state, "CV_Immobile_Fraction" )
+        CV_Immobile_Fraction => vfield%val(:,:)
     end if
     if (present(Immobile_fraction))then
         tfield => extract_tensor_field( packed_state, "PackedRockFluidProp" )

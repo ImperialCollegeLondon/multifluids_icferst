@@ -205,7 +205,6 @@ contains
 
         !! Variables to initialise porous media models
         logical :: exit_initialise_porous_media = .false.
-        real, dimension(:,:), allocatable :: CV_immobile_fraction
         !Generic variables
         integer :: i, k
         real :: auxR
@@ -428,10 +427,8 @@ contains
             call get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time)
             !Allocate the memory to obtain the sigmas at the interface between elements
             call allocate_porous_adv_coefs(Mdims, upwnd)
-            !Obtain CV_wise immobile fractions for sum to 1 condition
-            call get_CV_immobile_fraction(packed_state, Mdims, ndgln, CV_immobile_fraction)
             !Ensure that the initial condition for the saturation sum to 1.
-            call Initialise_Saturation_sums_one(Mdims, packed_state, CV_immobile_fraction, .true.)
+            call Initialise_Saturation_sums_one(Mdims, packed_state, .true.)
         end if
 
         !!$ Starting Time Loop
@@ -507,9 +504,6 @@ contains
             if (is_porous_media) then
               call initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
               if (exit_initialise_porous_media) exit Loop_Time
-              !Convert Immobile fraction to a CV_wise format for the imposition of saturation between bounds
-              !The first time is done elsehwere
-              if (itime /= 1) call get_CV_immobile_fraction(packed_state, Mdims, ndgln, CV_immobile_fraction)
             end if
             !Check first time step
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
@@ -672,7 +666,7 @@ contains
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
-                        Mmat, multi_absorp, CV_immobile_fraction, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
+                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
 
@@ -754,7 +748,7 @@ contains
                      sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
                      call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
                      Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
-                     multi_absorp, CV_immobile_fraction, DT, SUF_SIG_DIAGTEN_BC, &
+                     multi_absorp, DT, SUF_SIG_DIAGTEN_BC, &
                      Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux,  &
                      theta_gdiff, eles_with_pipe, pipes_aux, mass_ele, &
                      sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
@@ -1474,8 +1468,7 @@ contains
                       !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
                       call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,"PackedPhaseVolumeFraction", for_sat=.true.)
                     end if
-                    call get_CV_immobile_fraction(packed_state, Mdims, ndgln, CV_immobile_fraction)
-                    call Set_Saturation_to_sum_one(mdims, packed_state, state, CV_immobile_fraction)!<= just in case, cap unphysical values if there are still some
+                    call Set_Saturation_to_sum_one(mdims, packed_state, state)!<= just in case, cap unphysical values if there are still some
                 end if
                 if (.not. have_option("/numerical_methods/do_not_bound_after_adapt")) then
                   if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
