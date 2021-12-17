@@ -9076,7 +9076,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         real, dimension(:), allocatable :: longitudinal_capillary, transverse_capillary, buoyancy_number, longitudinal_buoyancy, transverse_buoyancy, invPeclet
         logical, save :: gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
         real, save :: n_phases, n_components, aspect_ratio
-        real :: courant_number, shockfront_courant_number
+        real :: courant_number, shockfront_courant_number, auxR
         real :: min_total_mobility, max_total_mobility, average_total_mobility
         real :: min_Darcy_velocity, max_Darcy_velocity, average_Darcy_velocity
         real :: min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
@@ -9351,12 +9351,16 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             allocate( longitudinal_capillary(Mdims%cv_nonods) )
             allocate( transverse_capillary(Mdims%cv_nonods) )
             longitudinal_capillary =0;transverse_capillary=0.
-            do cv_nodi = 1, Mdims%cv_nonods
-              if (.not. node_owned(pressure, cv_nodi)) cycle
-                longitudinal_capillary(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi)) / &
+            do ele = 1, Mdims%totele
+              auxR = end_point_relperm(Mdims%n_in_pres,ele)*sum(cap_entry_pres(:,ele))
+              do cv_iloc = 1, Mdims%cv_nloc
+                cv_nodi = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+                if (.not. node_owned(pressure, cv_nodi)) cycle
+                longitudinal_capillary(cv_nodi) = average_perm_length*auxR/ &
                                                 & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_length)
-                transverse_capillary(cv_nodi) = average_perm_thickness*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi))*domain_length / &
+                transverse_capillary(cv_nodi) = average_perm_thickness*auxR*domain_length / &
                                                 & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_thickness**2)
+              end do
             end do
             ! calculate average, max and min values
             average_longitudinal_capillary = sum(longitudinal_capillary)
@@ -9533,7 +9537,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                         & res/resold, &
                         & target_nli /) !Target number of inner-nonlinear iteration
             call xgboost_predict(raw_input, out_result)
-            !write(*,*) 'XGB model prediction: ',out_result
+            ! write(*,*) 'XGB model prediction: ',out_result
             backtrack_par_factor = out_result(1)
             nullify(out_result)
         end if
@@ -9590,7 +9594,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 do iphase = 1, mdims%n_in_pres - 1
                     do cv_iloc = 1, Mdims%cv_nloc
                         cv_nodi = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                        aux_sat = sat(iphase, cv_nodi) - Imble_frac(iphase, ele)
+                        aux_sat = sat(iphase, cv_nodi) - Imble_frac(iphase, cv_nodi)
                         if (aux_sat < minival) then
                             minival = aux_sat
                             tmob_aheadfront = total_mobility(cv_nodi)
