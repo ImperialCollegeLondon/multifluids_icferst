@@ -2144,7 +2144,6 @@ contains
             end if
         end do
         call deallocate(targ_Store)
-
     contains
 
     !>@brief:  This internal subroutine checks the if we are flipping from drainage to imbibition, or the other way round,
