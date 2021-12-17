@@ -861,6 +861,7 @@ contains
             element_mesh=>tdfield%mesh
             call insert(packed_state,element_mesh,'P0DG')
         end if
+
         ! pack rock-fluid properties
         ! if there is capillary pressure, we store 5 entries, otherwise just 3:
         ! (Immobile fraction, Krmax, relperm exponent, [capillary entry pressure, capillary exponent])
@@ -898,6 +899,12 @@ contains
         do icomp = 1, ncomp
             call insert(multicomponent_state(icomp),vec_field,"MeanPoreCV")
         end do
+        call deallocate(vec_field)
+
+        !Insert CV version of immobile fraction
+        call allocate(vec_field,nphase,pressure%mesh,"CV_Immobile_Fraction")
+        call zero(vec_field)
+        call insert(packed_state,vec_field,"CV_Immobile_Fraction")
         call deallocate(vec_field)
 
         call insert_sfield(packed_state,"FEPressure",1,npres)
@@ -1086,10 +1093,6 @@ contains
                     call deallocate(ten_field)
                 end do
             end if
-            !Immobile fraction has to be sub-cvwise to ensure mass conservation
-            call allocate(ten_field,ovmesh,"PackedImmobile_fraction",dim=[1,nphase])
-            call insert(packed_state,ten_field,"PackedImmobile_fraction")
-            call deallocate(ten_field)
         end if
 
 
@@ -2905,7 +2908,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     Temperature,OldTemperature, IteratedTemperature,FETemperature, OldFETemperature, IteratedFETemperature,&
     IteratedComponentMassFraction, FEComponentDensity, OldFEComponentDensity, IteratedFEComponentDensity,&
     FEComponentMassFraction, OldFEComponentMassFraction, IteratedFEComponentMassFraction,&
-    Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
+    Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,CV_Immobile_Fraction, &
     Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, CapPressure, Immobile_fraction,&
     EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term, Concentration,&
     OldConcentration, IteratedConcentration,FEConcentration, OldFEConcentration, IteratedFEConcentration,&
@@ -2934,7 +2937,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature,&
         Enthalpy, OldEnthalpy, IteratedEnthalpy, FEEnthalpy, OldFEEnthalpy, IteratedFEEnthalpy,&
         Concentration, OldConcentration, IteratedConcentration, FEConcentration, OldFEConcentration, IteratedFEConcentration,&
-        Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate,&
+        Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate,CV_Immobile_Fraction,&
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
         Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term
     real, optional, dimension(:,:,:), pointer ::Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure
@@ -3186,8 +3189,12 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         tfield => extract_tensor_field( packed_state, "PackedIteratedFEComponentMassFraction" )
         IteratedFEComponentMassFraction => tfield%val(:,:,:)
     end if
+    if (present(CV_Immobile_Fraction))then
+        vfield => extract_vector_field( packed_state, "CV_Immobile_Fraction" )
+        CV_Immobile_Fraction => vfield%val(:,:)
+    end if
     if (present(Immobile_fraction))then
-        tfield => extract_tensor_field( packed_state, "PackedImmobile_fraction" )
+        tfield => extract_tensor_field( packed_state, "PackedRockFluidProp" )
         Immobile_fraction => tfield%val(1,:,:)
     end if
     if (present(EndPointRelperm))then

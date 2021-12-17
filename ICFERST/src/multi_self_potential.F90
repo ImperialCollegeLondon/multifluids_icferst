@@ -232,8 +232,8 @@ module multi_SP
         integer, intent(in) :: flag !>1 => Electrokinetic; 2=> Thermal; 3=> Exclusion diffusion
         !Local variables
         real :: norm_water_sat, Cf, Tna, AuxR, temp
-        integer :: cv_inod, ele, cv_iloc, stat, imat
-        real, dimension(:, :), pointer :: Immobile_fraction
+        integer :: cv_inod, ele, cv_iloc, stat
+        real, dimension(:, :), pointer :: CV_Immobile_Fraction
         real, dimension(Mdims%cv_nonods) :: cv_counter, coupling_coef, coupling_coef_ee, coupling_coef_ed
         real, parameter :: EK_exp = 0.6 !From Jackson et al 2012
         real, parameter :: Tol = 1e-8
@@ -244,7 +244,7 @@ module multi_SP
           call get_option( '/porous_media/SelfPotential/Reservoir_temperature', temp )
         end if
 
-        call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
+        call get_var_from_packed_state(packed_state, CV_Immobile_Fraction = CV_Immobile_Fraction)
         post_process = .false.
         coupling_coef = 0.
         cv_counter = 0.
@@ -256,9 +256,8 @@ module multi_SP
             do  ele = 1, Mdims%totele
               do cv_iloc = 1, Mdims%cv_nloc
                 cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-                IMAT = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
                 !Obtain normalised saturation
-                norm_water_sat = (Saturation(cv_inod) - Immobile_fraction(1, imat)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, imat)))
+                norm_water_sat = (Saturation(cv_inod) - CV_Immobile_Fraction(1, cv_inod)) / (1.0 - sum(CV_Immobile_Fraction(1:Mdims%n_in_pres, cv_inod)))
                 coupling_coef(cv_inod) = coupling_coef(cv_inod) + (-1.36 * (Concentration(cv_inod)+tol)**-0.9123 * 1e-9 ) * norm_water_sat ** EK_exp!Not sure if exponent or times...
                 ! coupling_coef(cv_inod) = coupling_coef(cv_inod) + 2.5e-9!<=I think this was used for Mutlaq et al 2019
                 cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
@@ -293,7 +292,7 @@ module multi_SP
           do ele = 1, Mdims%totele
             do cv_iloc = 1, Mdims%cv_nloc
               cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-              norm_water_sat = (Saturation(cv_inod) - Immobile_fraction(1, ele)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, ele)))
+              norm_water_sat = (Saturation(cv_inod) - CV_Immobile_Fraction(1, cv_inod)) / (1.0 - sum(CV_Immobile_Fraction(1:Mdims%n_in_pres, cv_inod)))
               coupling_coef(cv_inod) = coupling_coef(cv_inod) + (1 - norm_water_sat)**3. * (coupling_coef_ee(cv_inod) - coupling_coef_ed(cv_inod)) + coupling_coef_ed(cv_inod)
               cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
             end do

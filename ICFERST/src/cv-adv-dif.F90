@@ -509,7 +509,7 @@ contains
           call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
              OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL)
           if (.not. present_and_true(solving_compositional)) then
-            if (is_porous_media)  call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
+            if (is_porous_media)  call get_var_from_packed_state(packed_state, CV_Immobile_Fraction = Imble_frac)
           end if
           !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
           U_ALL => NU_ALL
@@ -1428,7 +1428,7 @@ contains
                                   !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
                                   Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                   !and the shock-front Courant number
-                                  if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, MAT_NODI))) then
+                                  if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, CV_INOD))) then
                                       !ndotq = velocity * normal
                                       Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                   end if
@@ -1460,9 +1460,9 @@ contains
                                   if (flux_limited_vad) CAP_DIFF_COEF_DIVDX(phase_with_pc) = &
                                     CAP_DIFF_COEF_DIVDX(phase_with_pc) * abs(dot_product(NUGI_ALL(:,phase_with_pc),&
                                       CVNORMX_ALL(:, GI))/sqrt(sum(NUGI_ALL(:,phase_with_pc)**2.) + 1e-16))
-
                                   !Distribute the capillary coefficient over the phases to ensure mass conservation
                                   !This is very important as it allows to use the over-relaxation parameter safely
+                                  !and reduce the cost of using capillary pressure in several orders of magnitude
                                   CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
 
                               ELSE
@@ -1541,10 +1541,10 @@ contains
                               ENDIF
 
                               ! constraint needed for porous media stable flow solution
-                              if (BETWEEN_ELEMENTS) then
-                                  call sum_saturation_to_unity(mdims%nphase, Imble_frac, LIMT)
-                                  call sum_saturation_to_unity(mdims%nphase, Imble_frac, LIMTOLD)
-                              endif
+                              ! if (BETWEEN_ELEMENTS) then!SPRINT_TO_DO REMOVEME
+                              !     call sum_saturation_to_unity(mdims%nphase, Imble_frac, LIMT)
+                              !     call sum_saturation_to_unity(mdims%nphase, Imble_frac, LIMTOLD)
+                              ! endif
 
                               LIMDT=LIMD*LIMT
                               LIMDTOLD=LIMDOLD*LIMTOLD
@@ -7427,37 +7427,38 @@ end if
 
     end subroutine generate_Laplacian_system
 
-    subroutine sum_saturation_to_unity(nphase, Imble_frac, saturation)
-
-        integer :: nphase
-        real, dimension(:), intent ( inout ) :: saturation
-        real, dimension(:,:), intent ( in ) :: Imble_frac
-        ! local
-        real, dimension(nphase) :: Normalized_sat
-        real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
-        integer :: iphase
-
-        ! assume immobile fraction in the model is the same, use ele = 1
-        moveable_sat = 1.0 - sum(Imble_frac(:,1))
-
-        !Work in normalized saturation here
-        Normalized_sat = (saturation - Imble_frac(:, 1))/moveable_sat
-        sum_of_phases = sum(Normalized_sat)
-        correction = (1.0 - sum_of_phases)
-
-        !Spread the error to all the phases weighted by their moveable presence in that CV
-        !Increase the range to look for solutions by allowing oscillations below 0.01 percent
-        if (abs(correction) > 1d-8) saturation = (Normalized_sat * &
-            (1.0 + correction/sum_of_phases))* moveable_sat + Imble_frac(:, 1)
-
-        !Make sure saturation is between bounds after the modification
-        do iphase = 1, nphase
-            minsat = Imble_frac(iphase, 1)
-            maxsat = moveable_sat + minsat
-            saturation(iphase) =  min(max(minsat, saturation(iphase)),maxsat)
-        end do
-
-        return
-    end subroutine sum_saturation_to_unity
+!SPRINT_TO_DO REMOVEME
+    ! subroutine sum_saturation_to_unity(nphase, Imble_frac, saturation)
+    !
+    !     integer :: nphase
+    !     real, dimension(:), intent ( inout ) :: saturation
+    !     real, dimension(:,:), intent ( in ) :: Imble_frac
+    !     ! local
+    !     real, dimension(nphase) :: Normalized_sat
+    !     real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
+    !     integer :: iphase
+    !
+    !     ! assume immobile fraction in the model is the same, use ele = 1
+    !     moveable_sat = 1.0 - sum(Imble_frac(:,1))
+    !
+    !     !Work in normalized saturation here
+    !     Normalized_sat = (saturation - Imble_frac(:, 1))/moveable_sat
+    !     sum_of_phases = sum(Normalized_sat)
+    !     correction = (1.0 - sum_of_phases)
+    !
+    !     !Spread the error to all the phases weighted by their moveable presence in that CV
+    !     !Increase the range to look for solutions by allowing oscillations below 0.01 percent
+    !     if (abs(correction) > 1d-8) saturation = (Normalized_sat * &
+    !         (1.0 + correction/sum_of_phases))* moveable_sat + Imble_frac(:, 1)
+    !
+    !     !Make sure saturation is between bounds after the modification
+    !     do iphase = 1, nphase
+    !         minsat = Imble_frac(iphase, 1)
+    !         maxsat = moveable_sat + minsat
+    !         saturation(iphase) =  min(max(minsat, saturation(iphase)),maxsat)
+    !     end do
+    !
+    !     return
+    ! end subroutine sum_saturation_to_unity
 
 end module cv_advection

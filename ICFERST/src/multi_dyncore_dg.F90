@@ -1064,7 +1064,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !> @author Chris Pain, Pablo Salinas
     !> @brief Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method is uncluded
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, multicomponent_state, &
-         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, CV_immobile_fraction, upwnd, &
+         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, time_step, SFPI_taken, SFPI_its, Courant_number,&
@@ -1086,7 +1086,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              INTEGER, intent( in ) :: igot_theta_flux
              REAL, intent( in ) :: DT
              REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
-             REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE, CV_immobile_fraction
+             REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
              !REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
              real, dimension( : ), intent( inout ) :: mass_ele_transp
@@ -1363,7 +1363,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      if (.not. satisfactory_convergence) then
 
                          !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
-                         call FPI_backtracking(CV_immobile_fraction, nphase, Mdims, ndgln, state,packed_state, sat_bak(1:nphase, :), backtrack_sat(1:nphase, :), backtrack_par_factor,&
+                         call FPI_backtracking(nphase, Mdims, ndgln, state,packed_state, sat_bak(1:nphase, :), backtrack_sat(1:nphase, :), backtrack_par_factor,&
                              Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
                              useful_sats,res, res/resold, first_res) !halos are updated within this subroutine
 
@@ -1462,13 +1462,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
           real, dimension(Mdims%nphase, Mdims%cv_nonods) :: comp_theta_gdiff
 
           !First, impose physical constrains to the saturation (important to update halos here)
-          call Set_Saturation_to_sum_one(mdims, packed_state, state, CV_immobile_fraction, do_not_update_halos = .false. )
+          call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .false. )
           !Next, update compoents
           !Deallocate memory re-used for the compositional assembly solve; SPRINT_TO_DO: this can be done better!
           call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val); call deallocate(Mmat%petsc_ACV)
           call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
-               multi_absorp, CV_immobile_fraction, DT, &
+               multi_absorp, DT, &
                SUF_SIG_DIAGTEN_BC, &
                Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux,  &
                comp_theta_gdiff, eles_with_pipe, pipes_aux, mass_ele_transp, &
@@ -1479,7 +1479,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
 
            !First, impose physical constrains to the saturation (important to update halos here)
-           call Set_Saturation_to_sum_one(mdims, packed_state, state, CV_immobile_fraction, do_not_update_halos = .false. )
+           call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .false. )
 
         end subroutine update_components
 
@@ -1491,7 +1491,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !>Systems for each component are assembled and solved by calling INTENERGE_ASSEM_SOLVE
     subroutine Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
-         multi_absorp, CV_immobile_fraction, DT, &
+         multi_absorp, DT, &
          SUF_SIG_DIAGTEN_BC, &
          GET_THETA_FLUX, USE_THETA_FLUX,  &
          THETA_GDIFF, eles_with_pipe, pipes_aux, mass_ele, &
@@ -1513,7 +1513,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
          REAL, DIMENSION( :,: ), intent( inout ) :: sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
          REAL, intent( in ) :: DT
-         REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC, CV_immobile_fraction
+         REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
          type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
          type (multi_pipe_package), intent(in) :: pipes_aux
          !Local variables
@@ -1668,7 +1668,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         !First, impose physical constrains to the saturation (important to update halos here)
         if (is_porous_media .and. Mdims%n_in_pres > 1) call Set_Saturation_to_sum_one(mdims, packed_state, state, &
-                                                              CV_immobile_fraction, do_not_update_halos = .false. )
+                                                              do_not_update_halos = .false. )
 
       contains
 
@@ -7673,12 +7673,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      !Local variables
      real, save :: domain_length = -1
      integer, save :: Cap_pressure_relevant = -1
-     integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc, idim, MAT_NODI
+     integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc, idim
      real :: Pe_aux, parl_max, parl_min, Pe_max, Pe_min
      real, dimension(:), pointer ::Pe, Cap_exp
      logical :: Artificial_Pe
      real, dimension(:,:,:), pointer :: p
-     real, dimension(:,:), pointer :: satura, immobile_fraction, Cap_entry_pressure, Cap_exponent, X_ALL
+     real, dimension(:,:), pointer :: satura, CV_Immobile_Fraction, Cap_entry_pressure, Cap_exponent, X_ALL
      type( tensor_field ), pointer :: Velocity
      type( vector_field ), pointer :: DarcyVelocity
      type( scalar_field ), pointer :: PIPE_Diameter
@@ -7689,11 +7689,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
          PhaseVolumeFraction = satura, PressureCoordinate = X_ALL)
 
      if (is_porous_media) then
-       call get_var_from_packed_state(packed_state, immobile_fraction = immobile_fraction)
+       call get_var_from_packed_state(packed_state, CV_Immobile_Fraction = CV_Immobile_Fraction)
      else
        !For non_porous we populate a field with values of zero. (not proud of this, needs to be updated)
-       allocate(immobile_fraction(Mdims%nphase,Mdims%totele*Mdims%cv_nloc))
-       immobile_fraction = 0.0
+       allocate(CV_Immobile_Fraction(Mdims%nphase,Mdims%cv_nonods))
+       CV_Immobile_Fraction = 0.0
      end if
      !Initiate local variables
      nphase = size(satura,1)
@@ -7831,9 +7831,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              do ele = 1, Mdims%totele
                  do cv_iloc = 1, Mdims%cv_nloc
                      cv_nodi = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                     MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                      Overrelaxation(CV_NODI) =  Get_DevCapPressure(satura(Phase_with_Pc, CV_NODI),&
-                         Pe(CV_NODI), Cap_Exp(CV_NODI), immobile_fraction(:,MAT_NODI), Phase_with_Pc, nphase)
+                         Pe(CV_NODI), Cap_Exp(CV_NODI), CV_Immobile_Fraction(:,CV_NODI), Phase_with_Pc, nphase)
                  end do
              end do
          else
@@ -7841,11 +7840,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              do ele = 1, Mdims%totele
                  do cv_iloc = 1, Mdims%cv_nloc
                      cv_nodi = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                     MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                      Overrelaxation(CV_NODI) =  Get_DevCapPressure(satura(Phase_with_Pc, CV_NODI),&
                          Cap_entry_pressure(Phase_with_Pc, ele), &
                          Cap_exponent(Phase_with_Pc, ele),&
-                         immobile_fraction(:,mat_nodi), Phase_with_Pc, nphase)
+                         CV_Immobile_Fraction(:,CV_NODI), Phase_with_Pc, nphase)
                  end do
              end do
          end if
@@ -7864,7 +7862,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      ! end if
 
 
-     if (.not. is_porous_media) deallocate(immobile_fraction)
+     if (.not. is_porous_media) deallocate(CV_Immobile_Fraction)
 
      !Deallocate
      if (Artificial_Pe) then
@@ -9205,17 +9203,17 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         density  => extract_tensor_field( packed_state, "PackedDensity" )
         !Retrieve velocity - control-volume wise
         velocity => extract_tensor_field( packed_state, "PackedVelocity" )
-        !Retrieve Immobile fraction - element wise
-        call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
+        !Retrieve Immobile fraction - control-volume wise
+        call get_var_from_packed_state(packed_state, CV_Immobile_Fraction = Imble_frac)
         !Retrive saturation - control-volume wise
         call get_var_from_packed_state(packed_state, PhaseVolumeFraction = saturation)
-        !Retrive Capillary entry pressure - control-volume wise
+        !Retrive Capillary entry pressure - element wise
         call get_var_from_packed_state(packed_state, Cap_entry_pressure = cap_entry_pres)
-        !Retrive relative permeability end points- control-volume wise
+        !Retrive relative permeability end points- element wise
         call get_var_from_packed_state(packed_state, EndPointRelperm = end_point_relperm)
-        !Retrive relative permeability exponents - control-volume wise
+        !Retrive relative permeability exponents - element wise
         call get_var_from_packed_state(packed_state, RelpermExponent = exponent_relperm)
-        !Retrieve relative permeabilty field - control-volume wise
+        !Retrieve relative permeabilty field - element wise
         call get_relative_permeability(Mdims, saturation, Imble_frac, end_point_relperm, exponent_relperm, relperm)
         !Total mobility - control-volume wise
         total_mobility = 0.
@@ -9557,13 +9555,16 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 real, dimension(:,:), intent(in) :: end_point_relperm
                 real, dimension(:,:), intent(in) :: exponent_relperm
                 real, dimension(:,:), intent(OUT) :: relperm
-                integer :: cv_nodi, iphase
+                integer :: cv_nodi, iphase, ele, cv_iloc
 
-                do cv_nodi = 1, Mdims%cv_nonods
-                    do iphase = 1, Mdims%n_in_pres
-                        relperm(iphase,cv_nodi) = end_point_relperm(iphase,cv_nodi)*((saturation(iphase,cv_nodi) - Imble_frac(iphase,cv_nodi))/ &
-                                                & (1-sum(Imble_frac(:Mdims%n_in_pres,cv_nodi))))**exponent_relperm(iphase,cv_nodi)
-                    end do
+                do ele = 1, Mdims%totele
+                  do cv_iloc = 1, Mdims%cv_nloc
+                    cv_nodi = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+                      do iphase = 1, Mdims%n_in_pres
+                          relperm(iphase,cv_nodi) = end_point_relperm(iphase,ele)*((saturation(iphase,cv_nodi) - Imble_frac(iphase,cv_nodi))/ &
+                                                  & (1-sum(Imble_frac(:Mdims%n_in_pres,cv_nodi))))**exponent_relperm(iphase,ele)
+                      end do
+                  end do
                 end do
             end subroutine
 
