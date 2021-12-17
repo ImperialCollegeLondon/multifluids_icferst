@@ -544,6 +544,7 @@ contains
               else !Compute pressure derivatives
                 ! Back up pressure and density before we start perturbing stuff...
                 allocate( pressure_back_up( node_count( pressure ) ), density_back_up( node_count( pressure ) ) )
+                density => extract_scalar_field( state( iphase ), 'Density', stat )
                 pressure_back_up = pressure % val(1,1,:); density_back_up = density % val
                 ! redefine p as p+pert and p-pert and then run python state again to get dRho / d P...
                 perturbation_pressure = 1.e-5

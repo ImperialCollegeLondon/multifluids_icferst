@@ -9519,6 +9519,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 call get_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path/target_num_nonlinear", target_nli, default=1.0)
                 loaded_file = .true.
             end if
+
             raw_input = (/aspect_ratio, &
                         & courant_number, &
                         & shockfront_courant_number, &
@@ -9538,7 +9539,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                         & target_nli /) !Target number of inner-nonlinear iteration
             call xgboost_predict(raw_input, out_result)
             ! write(*,*) 'XGB model prediction: ',out_result
-            backtrack_par_factor = out_result(1)
+              backtrack_par_factor = out_result(1)
             nullify(out_result)
         end if
         if (IsParallel()) call allmax(backtrack_par_factor) ! Assign the calculated values of the backtrack_par_factor
