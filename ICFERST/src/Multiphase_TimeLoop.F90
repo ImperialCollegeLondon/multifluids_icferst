@@ -428,7 +428,7 @@ contains
             call get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time)
             !Allocate the memory to obtain the sigmas at the interface between elements
             call allocate_porous_adv_coefs(Mdims, upwnd)
-            !Ensure that the initial condition for the saturation sum to 1.
+            !Obtain CV_wise immobile fractions for sum to 1 condition
             call get_CV_immobile_fraction(packed_state, Mdims, ndgln, CV_immobile_fraction)
             !Ensure that the initial condition for the saturation sum to 1.
             call Initialise_Saturation_sums_one(Mdims, packed_state, CV_immobile_fraction, .true.)
@@ -505,10 +505,10 @@ contains
             !Prepapre the pipes
             if (Mdims%npres > 1) call initialize_pipes_package_and_gamma(state, packed_state, pipes_aux, Mdims, Mspars, ndgln)!Re-read pipe properties such as gamma
             if (is_porous_media) then
-            call initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
-            if (exit_initialise_porous_media) exit Loop_Time
-
-            !Check first time step
+              call initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
+              if (exit_initialise_porous_media) exit Loop_Time
+              !Convert Immobile fraction to a CV_wise format for the imposition of saturation between bounds
+              !The first time is done elsehwere
               if (itime /= 1) call get_CV_immobile_fraction(packed_state, Mdims, ndgln, CV_immobile_fraction)
             end if
             !Check first time step

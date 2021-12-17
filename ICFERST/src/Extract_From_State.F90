@@ -861,6 +861,7 @@ contains
             element_mesh=>tdfield%mesh
             call insert(packed_state,element_mesh,'P0DG')
         end if
+
         ! pack rock-fluid properties
         ! if there is capillary pressure, we store 5 entries, otherwise just 3:
         ! (Immobile fraction, Krmax, relperm exponent, [capillary entry pressure, capillary exponent])
@@ -1086,10 +1087,6 @@ contains
                     call deallocate(ten_field)
                 end do
             end if
-            !Immobile fraction has to be sub-cvwise to ensure mass conservation
-            call allocate(ten_field,ovmesh,"PackedImmobile_fraction",dim=[1,nphase])
-            call insert(packed_state,ten_field,"PackedImmobile_fraction")
-            call deallocate(ten_field)
         end if
 
 
@@ -3187,7 +3184,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         IteratedFEComponentMassFraction => tfield%val(:,:,:)
     end if
     if (present(Immobile_fraction))then
-        tfield => extract_tensor_field( packed_state, "PackedImmobile_fraction" )
+        tfield => extract_tensor_field( packed_state, "PackedRockFluidProp" )
         Immobile_fraction => tfield%val(1,:,:)
     end if
     if (present(EndPointRelperm))then

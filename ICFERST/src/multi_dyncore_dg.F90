@@ -7673,7 +7673,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      !Local variables
      real, save :: domain_length = -1
      integer, save :: Cap_pressure_relevant = -1
-     integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc, idim, MAT_NODI
+     integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc, idim
      real :: Pe_aux, parl_max, parl_min, Pe_max, Pe_min
      real, dimension(:), pointer ::Pe, Cap_exp
      logical :: Artificial_Pe
@@ -7692,7 +7692,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
        call get_var_from_packed_state(packed_state, immobile_fraction = immobile_fraction)
      else
        !For non_porous we populate a field with values of zero. (not proud of this, needs to be updated)
-       allocate(immobile_fraction(Mdims%nphase,Mdims%totele*Mdims%cv_nloc))
+       allocate(immobile_fraction(Mdims%nphase,Mdims%totele))
        immobile_fraction = 0.0
      end if
      !Initiate local variables
@@ -7831,9 +7831,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              do ele = 1, Mdims%totele
                  do cv_iloc = 1, Mdims%cv_nloc
                      cv_nodi = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                     MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                      Overrelaxation(CV_NODI) =  Get_DevCapPressure(satura(Phase_with_Pc, CV_NODI),&
-                         Pe(CV_NODI), Cap_Exp(CV_NODI), immobile_fraction(:,MAT_NODI), Phase_with_Pc, nphase)
+                         Pe(CV_NODI), Cap_Exp(CV_NODI), immobile_fraction(:,ele), Phase_with_Pc, nphase)
                  end do
              end do
          else
@@ -7841,11 +7840,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              do ele = 1, Mdims%totele
                  do cv_iloc = 1, Mdims%cv_nloc
                      cv_nodi = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                     MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                      Overrelaxation(CV_NODI) =  Get_DevCapPressure(satura(Phase_with_Pc, CV_NODI),&
                          Cap_entry_pressure(Phase_with_Pc, ele), &
                          Cap_exponent(Phase_with_Pc, ele),&
-                         immobile_fraction(:,mat_nodi), Phase_with_Pc, nphase)
+                         immobile_fraction(:,ele), Phase_with_Pc, nphase)
                  end do
              end do
          end if
