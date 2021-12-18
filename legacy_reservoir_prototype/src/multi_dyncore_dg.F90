@@ -127,7 +127,9 @@ contains
       logical, parameter :: interpolation_error = .false. ! use interpolation theory and a Hessian to form variational principle
       logical, parameter :: curve_squared = .false. ! use interpolation theory but with a Hessian squared in variational principle
       logical, parameter :: weighted_ave = .true.  ! use (mass-)weighted average DG velocity to get CG velocity ? 
-      real :: LOC_X_ALL(Mdims%ndim, Mdims%X_NLOC)   ! if weighted_ave , we need to calculate loc_x_all to calculate volume
+      real, dimension(:,:), allocatable :: LOC_X_ALL   ! if weighted_ave , we need to calculate loc_x_all to calculate volume
+      real :: volume    !element volume (area in 2D)
+
       type(multi_dimensions), intent( in ) :: Mdims
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state
@@ -188,6 +190,7 @@ contains
       ! JXiang matrix_diag(Mdims%cv_nonods)
       allocate( vel_count(Mdims%cv_nonods), vel_count_solid(Mdims%cv_nonods) )
       allocate( ident_cv(Mdims%cv_nloc,Mdims%cv_nloc) )
+      allocate( LOC_X_ALL(Mdims%ndim, Mdims%X_NLOC) )
 !JXiang c_lambda has allocated twice
 
 !      call allocate( u_lambda(Mdims%ndim), c_lambda(Mdims%ndim) )
@@ -326,9 +329,9 @@ contains
         if (weighted_ave) then 
           do cv_iloc = 1, Mdims%cv_nloc 
             x_nodi = NDGLN%X((ELE-1)*Mdims%X_NLOC+cv_iloc)
-            LOC_X_ALL(:,cv_iloc) = X_ALL(:,cv_iloc)
+            LOC_X_ALL(:,cv_iloc) = X_ALL%val(:,x_nodi)
           enddo
-          calc_volume(LOC_X_ALL, Mdims%ndim, volume)
+          call calc_volume(LOC_X_ALL, Mdims%ndim, volume)
         endif
          do cv_iloc=1,Mdims%cv_nloc
             cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
@@ -358,6 +361,7 @@ contains
                           + u_all%val(idim,iphase,u_inod)*volume
                     u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
                           + u_all%val(idim,iphase,u_inod) * sigma(ele)*volume
+                  endif
                end do
             end do
          end do
@@ -366,7 +370,7 @@ contains
       do cv_inod=1,Mdims%cv_nonods
          if(ndim_nphase>0) cc(1:ndim_nphase, cv_inod) = cc(1:ndim_nphase, cv_inod)/vel_count(cv_inod)
          u_all_cvmesh(:,:,cv_inod) = u_all_cvmesh(:,:,cv_inod)/vel_count(cv_inod)
-         u_all_solid(:,:,cv_inod) = u_all_solid(:,:,cv_inod)/max(0.01, vel_count_solid(cv_inod) )
+         u_all_solid(:,:,cv_inod) = u_all_solid(:,:,cv_inod)/max(1e-15, vel_count_solid(cv_inod) )
       end do
 
       ! assign "nodal averaged" velocity (CG) to DG velocity
@@ -653,6 +657,7 @@ end if
           volume = 1./2. * (x(1)*y(2) - x(2)*y(1) &
                           + x(3)*y(1) - x(1)*y(3) &
                           + x(2)*y(3) - x(3)*y(2) )
+          volume = abs(volume)
         else
           ! tetrahedron
           x(:) = x(:) - x(4)
