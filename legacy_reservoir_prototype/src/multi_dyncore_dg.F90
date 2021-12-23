@@ -74,7 +74,7 @@ contains
 
 
 
-     SUBROUTINE all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+     SUBROUTINE all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs, move_mesh )
 ! *************************************************************************************************
 ! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
 ! *************************************************************************************************
@@ -92,16 +92,17 @@ contains
       type( state_type ), intent( inout ) :: packed_state
       type(multi_ndgln), intent(in) :: ndgln
       type(multi_shape_funs), intent(in) :: CV_funs                    ! control volume shape function data
-
+      logical, intent(in) :: move_mesh  ! a flag, true: change mesh coordinate at the end of this subroutine;
+                                        ! false: doesn't change coordinate but only calculate mesh velocity
       ! local variables...
         Logical:: diffusion_solid_implicit
 
         diffusion_solid_implicit= have_option( '/solid_implicit')
         diffusion_solid_implicit=.true.
         if(diffusion_solid_implicit) then ! the 3 diffusion eqns for the grid velocities...
-           call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+           call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh)
         else
-           call one_eqn_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+           call one_eqn_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh)
         endif
 
 
@@ -111,7 +112,7 @@ contains
 
 
 
-     SUBROUTINE diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+     SUBROUTINE diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh)
 ! *************************************************************************************************
 ! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
 ! *************************************************************************************************
@@ -135,7 +136,8 @@ contains
       type( state_type ), intent( inout ) :: packed_state
       type(multi_ndgln), intent(in) :: ndgln
       type(multi_shape_funs), intent(in) :: CV_funs                    ! control volume shape function data
-
+      logical, intent(in) :: move_mesh  ! a flag, true: change mesh coordinate at the end of this subroutine;
+                                        ! false: doesn't change coordinate but only calculate mesh velocity
       ! local variables...
 
       integer :: ic, nconc, number_fields,number_fields2, ndim_nphase
@@ -610,8 +612,10 @@ end if
           !                                                      end do ! do ele = 1, Mdims%totele
 
 !       ewrite(3,*) "cv_ug_all", cv_ug_all
+      if (move_mesh) then
       x_all%val = xold_all%val + dt * cv_ug_all! get new grid positions
       call halo_update(x_all)
+      endif
       do ele=1,Mdims%totele
          do u_iloc=1,Mdims%u_nloc
                   u_nodi=ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
@@ -678,7 +682,7 @@ end if
 
 
 
-    SUBROUTINE one_eqn_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+    SUBROUTINE one_eqn_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh )
     ! *************************************************************************************************
     ! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
     ! *************************************************************************************************
@@ -696,7 +700,8 @@ end if
       type( state_type ), intent( inout ) :: packed_state
       type(multi_ndgln), intent(in) :: ndgln
       type(multi_shape_funs), intent(in) :: CV_funs                    ! control volume shape function data
-
+      logical, intent(in) :: move_mesh  ! a flag, true: change mesh coordinate at the end of this subroutine;
+                                        ! false: doesn't change coordinate but only calculate mesh velocity
       ! local variables...
 
       integer :: u_jnod
@@ -971,8 +976,10 @@ end if
        END DO
       END DO
 
+      if (move_mesh) then
       x_all%val = xold_all%val + dt * cv_ug_all! get new grid positions
       call halo_update(x_all)
+      endif
     !  xv_all%val=x_all%val
       do cv_inod=1,Mdims%cv_nonods
     !  ewrite(3,*) "X_ALL, coordinate are ",x_all%val(1,cv_inod),x_all%val(2,cv_inod), x_all%val(3,cv_inod)
