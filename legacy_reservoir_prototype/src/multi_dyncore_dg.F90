@@ -195,7 +195,7 @@ contains
 
 !      call allocate( u_lambda(Mdims%ndim), c_lambda(Mdims%ndim) )
       allocate( u_lambda(Mdims%ndim))
-
+      ewrite(3, *) "weighted average? " , weighted_ave
 ! JXiang add below line
 
       call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
