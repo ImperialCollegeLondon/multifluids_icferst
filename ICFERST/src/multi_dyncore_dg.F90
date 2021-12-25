@@ -9270,429 +9270,432 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 !>@brief: Instead of including the gravity in the RHS normally, here a system based on a Laplacian is created and solved
 !> that accounts for the gravity effect in the system. Next, this is introduced as a RHS in the momemtum equation
 !> This allows for higher precision for the gravity effect.
-subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state, nphase, u_absorbin )
+ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state, nphase, u_absorbin )
 
-      implicit none
+    implicit none
 
-      type(multi_dimensions), intent( in ) :: Mdims
-      real, dimension( :, :, : ), intent( inout ) :: u_rhs
-      type( state_type ), dimension( : ), intent( inout ) :: state
-      type( state_type ), intent( inout ) :: packed_state
-      type(multi_ndgln), intent(in) :: ndgln
-      integer, intent( in ) :: nphase
+    type(multi_dimensions), intent( in ) :: Mdims
+    real, dimension( :, :, : ), intent( inout ) :: u_rhs
+    type( state_type ), dimension( : ), intent( inout ) :: state
+    type( state_type ), intent( inout ) :: packed_state
+    type(multi_ndgln), intent(in) :: ndgln
+    integer, intent( in ) :: nphase
 
-      real, dimension( :, :, : ), intent( in ) :: u_absorbin
+    real, dimension( :, :, : ), intent( in ) :: u_absorbin
 
-      ! local variables...
+    ! local variables...
 
-      integer :: ph_ngi, ph_nloc, ph_snloc, &
-                stat, ele, &
-                ph_ele_type, iloop, &
-                cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, &
-                ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod, tmp_cv_nloc, other_nloc
-      integer, dimension( : ), pointer :: ph_ndgln, surface_node_list
-      type( vector_field ), pointer :: x, x2
-      type( mesh_type ), pointer :: phmesh
+    integer :: ph_ngi, ph_nloc, ph_snloc, &
+              stat, ele, &
+              ph_ele_type, iloop, &
+              cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, &
+              ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod, tmp_cv_nloc, other_nloc
+    integer, dimension( : ), pointer :: ph_ndgln, surface_node_list
+    type( vector_field ), pointer :: x, x2
+    type( mesh_type ), pointer :: phmesh
 
-      real, dimension( :, :, : ), allocatable, target :: tmp_cvfenx_all
-      real, dimension( :, :, : ), allocatable, target :: other_fenx_all
-      real, dimension( : ), allocatable, target :: detwei, ra
-      real :: volume
+    real, dimension( :, :, : ), allocatable, target :: tmp_cvfenx_all
+    real, dimension( :, :, : ), allocatable, target :: other_fenx_all
+    real, dimension( : ), allocatable, target :: detwei, ra
+    real :: volume
 
-      real, dimension(:,:,:), pointer :: phfenx_all, ufenx_all
+    real, dimension(:,:,:), pointer :: phfenx_all, ufenx_all
 
-      real, dimension( :, :, : ), allocatable :: u_ph_source_cv
+    real, dimension( :, :, : ), allocatable :: u_ph_source_cv
 
-      real, dimension( :, :, : ), allocatable :: dx_ph_gi
+    real, dimension( :, :, : ), allocatable :: dx_ph_gi
 
-      real, dimension( :, :, : ), allocatable :: u_s_gi
-      real, dimension( :, : ), allocatable :: den_gi, inv_den_gi
-      real, dimension( :, : ), allocatable :: volfra_gi
+    real, dimension( :, :, : ), allocatable :: u_s_gi
+    real, dimension( :, : ), allocatable :: den_gi, inv_den_gi
+    real, dimension( :, : ), allocatable :: volfra_gi
 
-      real, dimension( : ), pointer :: tmp_cv_weight
-      real, dimension( :, : ), pointer :: tmp_cvfen
-      real, dimension( :, :, : ), pointer :: tmp_cvfenlx_all
+    real, dimension( : ), pointer :: tmp_cv_weight
+    real, dimension( :, : ), pointer :: tmp_cvfen
+    real, dimension( :, :, : ), pointer :: tmp_cvfenlx_all
 
-      real, dimension( :, : ), pointer :: other_fen
-      real, dimension( :, :, : ), pointer :: other_fenlx_all
+    real, dimension( :, : ), pointer :: other_fen
+    real, dimension( :, :, : ), pointer :: other_fenlx_all
 
-      real :: nxnx, gravity_magnitude, dt, zmax
-      type( scalar_field ), pointer  :: ph_pressure
-      type( scalar_field ) :: rhs
-      type( petsc_csr_matrix ) :: matrix
-      type( csr_sparsity ), pointer :: sparsity
+    real :: nxnx, gravity_magnitude, dt, zmax
+    type( scalar_field ), pointer  :: ph_pressure
+    type( scalar_field ) :: rhs
+    type( petsc_csr_matrix ) :: matrix
+    type( csr_sparsity ), pointer :: sparsity
 
-      character( len = OPTION_PATH_LEN ) :: path = "/tmp", bc_type
+    character( len = OPTION_PATH_LEN ) :: path = "/tmp", bc_type
 
-      type( tensor_field ), pointer :: rho, volfra, pfield
-      type( vector_field ), pointer :: gravity_direction
+    type( tensor_field ), pointer :: rho, volfra, pfield
+    type( vector_field ), pointer :: gravity_direction
 
-      logical :: got_free_surf, same_mesh
-      integer :: inod, ph_jnod2, ierr, count, count2, i, j, mat_inod
-      integer, dimension( : ), pointer :: findph, colph
+    logical :: got_free_surf, same_mesh
+    integer :: inod, ph_jnod2, ierr, count, count2, i, j, mat_inod
+    integer, dimension( : ), pointer :: findph, colph
 
-      type( multi_GI_dimensions ) :: phGIdims
-      type( multi_dimensions ) :: phdims
-      type( multi_shape_funs ) :: ph_funs
-      character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
-!! JXiang
-      real, dimension(:,:,:), allocatable :: u_ph_source_vel
-      real, dimension( :,: ), allocatable :: rho_temp
-      LOGICAL:: solid_implicit
-      real, dimension( : ), allocatable :: ml,vol
-      integer :: n0,n1,n2,n3,cv_nodi,u_nodi
-      real :: x0, x1,x2_1,x3,y0,y1,y2,y3,z0, z1,z2,z3,cv_mass
-      type( scalar_field ), pointer  :: density_solid, sigma
-      
-      solid_implicit = have_option( '/solid_implicit')
-      if(solid_implicit) then
-      density_solid=>extract_scalar_field( state(1), "Density_Solid" )
-      sigma=>extract_scalar_field( state(1), "Sigma_Solid" )
-      end if
-!! Jxiang end
-      solver_option_path = "/solver_options/Linear_solver"
-      if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure')) then
-        solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure'
-      end if
+    type( multi_GI_dimensions ) :: phGIdims
+    type( multi_dimensions ) :: phdims
+    type( multi_shape_funs ) :: ph_funs
+    character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+
+    ! solid_implicit
+    real, dimension(:,:,:), allocatable :: u_ph_source_vel
+    real, dimension(:,:), allocatable :: rho_temp
+    real, dimension(:), allocatable :: ml, vol 
+    logical :: solid_implicit 
+    integer :: cv_nodi, u_nodi 
+    type(scalar_field), pointer :: density_solid, sigma
+
+    solid_implicit = have_option('/solid_implicit')
+    if (solid_implicit) then 
+        density_solid => extract_scalar_field(state(1), "Density_Solid")
+        sigma => extract_scalar_field( state(1), "Sigma_Solid")
+    endif
+    ! end solid_implicit
+
+    solver_option_path = "/solver_options/Linear_solver"
+    if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure')) then
+      solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure'
+    end if
 
 
-      ewrite(3,*) "inside high_order_pressure_solve"
+    ewrite(3,*) "inside high_order_pressure_solve"
 
-      call get_option( '/timestepping/timestep', dt )
+    call get_option( '/timestepping/timestep', dt )
 
+    ! HydrostaticPressure elements
+    if ( Mdims%ndim == 2 ) then
+      ph_ele_type = 4
+      ph_nloc = 6 ; ph_snloc = 3
+    else
+      ph_ele_type = 8
+      ph_nloc = 10 ; ph_snloc = 6
+    end if
+    call get_option("/geometry/mesh::HydrostaticPressure/from_mesh/mesh_shape/polynomial_degree", i)
+    if ( i == 1) then
       ! HydrostaticPressure elements
       if ( Mdims%ndim == 2 ) then
-        ph_ele_type = 4
-        ph_nloc = 6 ; ph_snloc = 3
+         ph_ele_type = 3
+         ph_nloc = 3 ; ph_snloc = 3
       else
-        ph_ele_type = 8
-        ph_nloc = 10 ; ph_snloc = 6
+         ph_ele_type = 7
+         ph_nloc = 4 ; ph_snloc = 4
       end if
-      call get_option("/geometry/mesh::HydrostaticPressure/from_mesh/mesh_shape/polynomial_degree", i)
-      if ( i == 1) then
-        ! HydrostaticPressure elements
-        if ( Mdims%ndim == 2 ) then
-           ph_ele_type = 3
-           ph_nloc = 3 ; ph_snloc = 3
-        else
-           ph_ele_type = 7
-           ph_nloc = 4 ; ph_snloc = 4
-        end if
-      end if
+    end if
 
-      phdims%ndim = Mdims%ndim
-      phdims%u_nloc = Mdims%u_nloc ; phdims%u_snloc = Mdims%u_snloc
-      phdims%cv_nloc = ph_nloc ; phdims%cv_snloc = ph_snloc
+    phdims%ndim = Mdims%ndim
+    phdims%u_nloc = Mdims%u_nloc ; phdims%u_snloc = Mdims%u_snloc
+    phdims%cv_nloc = ph_nloc ; phdims%cv_snloc = ph_snloc
 
-      call retrieve_ngi( phGIdims, phdims, ph_ele_type, quad_over_whole_ele = .true. )
+    call retrieve_ngi( phGIdims, phdims, ph_ele_type, quad_over_whole_ele = .true. )
 
-      call allocate_multi_shape_funs( ph_funs, phdims, phGIdims )
-      call cv_fem_shape_funs( ph_funs, phdims, phGIdims, ph_ele_type, quad_over_whole_ele = .true. )
+    call allocate_multi_shape_funs( ph_funs, phdims, phGIdims )
+    call cv_fem_shape_funs( ph_funs, phdims, phGIdims, ph_ele_type, quad_over_whole_ele = .true. )
 
-      !This is to present the results in paraview; sprint_to_do mix this results with pressure before creating a vtu file and then remove them
-      ph_pressure => extract_scalar_field( state( 1 ), "HydrostaticPressure", stat )
+    !This is to present the results in paraview; sprint_to_do mix this results with pressure before creating a vtu file and then remove them
+    ph_pressure => extract_scalar_field( state( 1 ), "HydrostaticPressure", stat )
 
-      ph_ngi = phGIdims%cv_ngi
-      x => extract_vector_field( packed_state, "PressureCoordinate" )
-      phmesh => extract_mesh( state( 1 ), "HydrostaticPressure" )
-      ph_ndgln => get_ndglno( phmesh )
-      ph_nonods = node_count( phmesh )
+    ph_ngi = phGIdims%cv_ngi
+    x => extract_vector_field( packed_state, "PressureCoordinate" )
+    phmesh => extract_mesh( state( 1 ), "HydrostaticPressure" )
+    ph_ndgln => get_ndglno( phmesh )
+    ph_nonods = node_count( phmesh )
 
-      if ( Mdims%cv_nloc == Mdims%u_nloc  ) then
+    if ( Mdims%cv_nloc == Mdims%u_nloc  ) then
 
-         tmp_cv_nloc = Mdims%u_nloc
-         tmp_cvfen => ph_funs%ufen
-         tmp_cvfenlx_all => ph_funs%ufenlx_all
-         tmp_cv_weight => ph_funs%cvweight
+       tmp_cv_nloc = Mdims%u_nloc
+       tmp_cvfen => ph_funs%ufen
+       tmp_cvfenlx_all => ph_funs%ufenlx_all
+       tmp_cv_weight => ph_funs%cvweight
 
-         other_nloc = ph_nloc
-         other_fen => ph_funs%cvfen
-         other_fenlx_all => ph_funs%cvfenlx_all
+       other_nloc = ph_nloc
+       other_fen => ph_funs%cvfen
+       other_fenlx_all => ph_funs%cvfenlx_all
 
-      else if ( Mdims%cv_nloc == ph_nloc) then
+    else if ( Mdims%cv_nloc == ph_nloc) then
 
-         tmp_cv_nloc = ph_nloc
-         tmp_cvfen => ph_funs%cvfen
-         tmp_cvfenlx_all => ph_funs%cvfenlx_all
-         tmp_cv_weight => ph_funs%cvweight
+       tmp_cv_nloc = ph_nloc
+       tmp_cvfen => ph_funs%cvfen
+       tmp_cvfenlx_all => ph_funs%cvfenlx_all
+       tmp_cv_weight => ph_funs%cvweight
 
-         other_nloc = Mdims%u_nloc
-         other_fen => ph_funs%ufen
-         other_fenlx_all => ph_funs%ufenlx_all
+       other_nloc = Mdims%u_nloc
+       other_fen => ph_funs%ufen
+       other_fenlx_all => ph_funs%ufenlx_all
 
-      else
-         stop 7555
-      end if
+    else
+       stop 7555
+    end if
 
-      allocate(tmp_cvfenx_all(Mdims%ndim, size(tmp_cvfenlx_all,2), ph_ngi))
-      allocate(other_fenx_all(Mdims%ndim, size(other_fenlx_all,2) ,ph_ngi))
-      allocate(detwei(ph_ngi))
-      allocate(ra(ph_ngi))
+    allocate(tmp_cvfenx_all(Mdims%ndim, size(tmp_cvfenlx_all,2), ph_ngi))
+    allocate(other_fenx_all(Mdims%ndim, size(other_fenlx_all,2) ,ph_ngi))
+    allocate(detwei(ph_ngi))
+    allocate(ra(ph_ngi))
 
-      allocate( u_ph_source_cv( Mdims%ndim, nphase, Mdims%cv_nonods ))
+    allocate( u_ph_source_cv( Mdims%ndim, nphase, Mdims%cv_nonods ))
 
-      allocate( dx_ph_gi( ph_ngi, Mdims%ndim, nphase ) )
+    allocate( dx_ph_gi( ph_ngi, Mdims%ndim, nphase ) )
 
-      allocate( u_s_gi( ph_ngi, Mdims%ndim, nphase ))
+    allocate( u_s_gi( ph_ngi, Mdims%ndim, nphase ))
 
-      allocate( den_gi( ph_ngi, nphase ), inv_den_gi( ph_ngi, nphase ), &
-                volfra_gi( ph_ngi, nphase ) )
+    allocate( den_gi( ph_ngi, nphase ), inv_den_gi( ph_ngi, nphase ), &
+              volfra_gi( ph_ngi, nphase ) )
 
-      ! set the gravity term
-      rho => extract_tensor_field( packed_state, "PackedDensity" )
-      volfra => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-      call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude )
-      gravity_direction => extract_vector_field( state( 1 ), "GravityDirection" )
-! Jxiang
-      if(solid_implicit) then
-              allocate(rho_temp(Mdims%nphase,Mdims%u_nonods))
-              allocate(u_ph_source_vel( Mdims%ndim, nphase, Mdims%u_nonods ))
-              do ele=1,Mdims%totele
-                 do cv_iloc=1,Mdims%cv_nloc
-                    cv_nodi=ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
-                    u_nodi=ndgln%u((ele-1)*Mdims%cv_nloc + cv_iloc)
-                    rho_temp(:,u_nodi) = rho % val(1,:,cv_nodi)*(1.-sigma%val(ele))  + &
-!                   rho_temp(:,u_nodi) = density_solid%val(ele)*(1.-sigma%val(ele))  + &
-                           density_solid%val(ele)*sigma%val(ele) 
-!                 ewrite(3,*) "rho, sigma, density_solid, rho_temp", rho % val(1,:,cv_nodi), sigma%val(ele),&
-!                            density_solid%val(ele), rho_temp(:,u_nodi)
-                 end do
-              end do
-      endif
-! Jxiang end
+    ! set the gravity term
+    rho => extract_tensor_field( packed_state, "PackedDensity" )
+    volfra => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+    call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude )
+    gravity_direction => extract_vector_field( state( 1 ), "GravityDirection" )
 
-      !Initialise rhs
-      do iphase = 1, nphase
-         do idim = 1, Mdims%ndim
-! JXiang modified 
-            if(solid_implicit) then
-               u_ph_source_vel( idim, iphase, : ) = rho_temp( iphase, : ) * &
-                 gravity_magnitude * gravity_direction % val( idim, 1 )
-            else
-               u_ph_source_cv( idim, iphase, : ) = rho % val( 1, iphase, : ) * &
-                 gravity_magnitude * gravity_direction % val( idim, 1 )
-            end if
-! Jxiang end
-         end do
-      end do
-      sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
+    ! solid implicit
+    if(solid_implicit) then
+        allocate(rho_temp(Mdims%nphase,Mdims%u_nonods))
+        do ele=1,Mdims%totele
+           do cv_iloc=1,Mdims%cv_nloc
+              cv_nodi=ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+              u_nodi=ndgln%u((ele-1)*Mdims%cv_nloc + cv_iloc)
+              rho_temp(:,u_nodi) = rho % val(1,:,cv_nodi)*(1.-sigma%val(ele))  + &
+                     density_solid%val(ele)*sigma%val(ele)
+           end do
+        end do
+    endif
 
-      call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix )
-      call allocate( rhs, phmesh, "rhs" ); call zero ( rhs )
+    !Initialise rhs
+    if (solid_implicit) allocate(u_ph_source_vel( Mdims%ndim, nphase , Mdims%u_nonods)) 
+    do iphase = 1, nphase
+       do idim = 1, Mdims%ndim
+         if (.not. solid_implicit) then
+          u_ph_source_cv( idim, iphase, : ) = rho % val( 1, iphase, : ) * &
+               gravity_magnitude * gravity_direction % val( idim, 1 )
+         else 
+          u_ph_source_cv = 0.
+          u_ph_source_vel( idim, iphase, : ) = rho_temp(iphase, :) * &
+               gravity_magnitude * gravity_direction%val(idim,1)
+         endif
+       end do
+    end do
+    sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
 
-      do iloop = 1, 2
+    call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix )
+    call allocate( rhs, phmesh, "rhs" ); call zero ( rhs )
 
-         ! iloop=1 form the rhs of the pressure matrix and pressure matrix and solve it.
-         ! iloop=2 put the residual into the rhs of the momentum eqn.
+    do iloop = 1, 2
 
-         do  ele = 1, Mdims%totele
-            ! calculate detwei,ra,nx,ny,nz for element ele
-            call detnlxr_plus_u( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
-                 ndgln%x, Mdims%totele, Mdims%x_nonods, Mdims%x_nloc, tmp_cv_nloc, ph_ngi, &
-                 tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), &
-                 tmp_cv_weight, detwei, ra, volume, Mdims%ndim == 1, Mdims%ndim == 3, .false., tmp_cvfenx_all, &
-                 other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
-                 other_fenx_all)
+       ! iloop=1 form the rhs of the pressure matrix and pressure matrix and solve it.
+       ! iloop=2 put the residual into the rhs of the momentum eqn.
 
-            !Select shape functions to use
-            ufenx_all => other_fenx_all
-            if ( Mdims%u_nloc == tmp_cv_nloc ) ufenx_all => tmp_cvfenx_all
+       do  ele = 1, Mdims%totele
+          ! calculate detwei,ra,nx,ny,nz for element ele
+          call detnlxr_plus_u( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
+               ndgln%x, Mdims%totele, Mdims%x_nonods, Mdims%x_nloc, tmp_cv_nloc, ph_ngi, &
+               tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), &
+               tmp_cv_weight, detwei, ra, volume, Mdims%ndim == 1, Mdims%ndim == 3, .false., tmp_cvfenx_all, &
+               other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
+               other_fenx_all)
 
-            phfenx_all => other_fenx_all
-            if ( ph_nloc == tmp_cv_nloc ) phfenx_all => tmp_cvfenx_all
+          !Select shape functions to use
+          ufenx_all => other_fenx_all
+          if ( Mdims%u_nloc == tmp_cv_nloc ) ufenx_all => tmp_cvfenx_all
 
-            u_s_gi = 0.0 ; dx_ph_gi = 0.0 ; den_gi = 0.0 ;
-            volfra_gi = 0.0
+          phfenx_all => other_fenx_all
+          if ( ph_nloc == tmp_cv_nloc ) phfenx_all => tmp_cvfenx_all
 
-            do cv_iloc = 1, Mdims%cv_nloc
-               cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-               mat_inod = ndgln%mat( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+          u_s_gi = 0.0 ; dx_ph_gi = 0.0 ; den_gi = 0.0 ;
+          volfra_gi = 0.0
 
-               do iphase = 1, nphase
-                  do idim = 1, Mdims%ndim
-                     u_s_gi( :, idim, iphase ) = u_s_gi( :, idim, iphase ) + &
-                          tmp_cvfen( cv_iloc, : ) * u_ph_source_cv( idim, iphase, cv_inod )
-                  end do
-
-                  if ( has_boussinesq_aprox ) then
-                     den_gi( :, iphase ) = 1.0
-                  else
-                 ! JXiang modified
-                     if(solid_implicit) then     
-                          u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-                          den_gi( :, iphase ) = den_gi( :, iphase ) + &
-                              tmp_cvfen( cv_iloc, : ) * rho_temp( iphase, u_inod )
-                     else
-                          den_gi( :, iphase ) = den_gi( :, iphase ) + &
-                              tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
-                     end if
-                 ! JXiang end
-
-                  end if
-
-                  volfra_gi( :, iphase ) = volfra_gi( :, iphase ) + &
-                        tmp_cvfen( cv_iloc, : ) * volfra % val( 1, iphase, cv_inod )
+          do u_iloc = 1, Mdims%u_nloc
+            u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + u_iloc )
+            do iphase = 1, nphase
+               do idim = 1, Mdims%ndim
+                  u_s_gi( :, idim, iphase ) = u_s_gi( :, idim, iphase ) + &
+                       ph_funs%ufen( u_iloc, : ) * u_ph_source_vel( idim, iphase, u_inod )
                end do
             end do
+          end do
 
-            !inv_den_gi = volfra_gi / ( den_gi + dt * sigma_gi )
-            inv_den_gi = volfra_gi / den_gi
+          do cv_iloc = 1, Mdims%cv_nloc
+             cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+             mat_inod = ndgln%mat( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
 
-            do ph_iloc = 1, ph_nloc
-               ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
-               do iphase = 1, nphase
-                  do idim = 1, Mdims%ndim
-                     dx_ph_gi( :, idim, iphase ) = dx_ph_gi( :, idim, iphase ) + &
-                          phfenx_all( idim, ph_iloc, : ) * ph_pressure%val( ph_inod )
-                  end do
-               end do
-            end do
+             do iphase = 1, nphase
+                do idim = 1, Mdims%ndim
+                   u_s_gi( :, idim, iphase ) = u_s_gi( :, idim, iphase ) + &
+                        tmp_cvfen( cv_iloc, : ) * u_ph_source_cv( idim, iphase, cv_inod )
+                end do
+
+                if ( has_boussinesq_aprox ) then
+                   den_gi( :, iphase ) = 1.0
+                else
+                  if (.not. solid_implicit) then
+                   den_gi( :, iphase ) = den_gi( :, iphase ) + &
+                        tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
+                  else 
+                   u_inod = ndgln%u( (ele-1)*Mdims%cv_nloc + cv_iloc)
+                   den_gi( :, iphase ) = den_gi( :, iphase ) + & 
+                        tmp_cvfen( cv_iloc, : ) * rho_temp( iphase, u_inod )
+                  endif
+                end if
+
+                volfra_gi( :, iphase ) = volfra_gi( :, iphase ) + &
+                      tmp_cvfen( cv_iloc, : ) * volfra % val( 1, iphase, cv_inod )
+             end do
+          end do
+
+          !inv_den_gi = volfra_gi / ( den_gi + dt * sigma_gi )
+          inv_den_gi = volfra_gi / den_gi
+
+          do ph_iloc = 1, ph_nloc
+             ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
+             do iphase = 1, nphase
+                do idim = 1, Mdims%ndim
+                   dx_ph_gi( :, idim, iphase ) = dx_ph_gi( :, idim, iphase ) + &
+                        phfenx_all( idim, ph_iloc, : ) * ph_pressure%val( ph_inod )
+                end do
+             end do
+          end do
 
 
-            if ( iloop == 1 ) then
+          if ( iloop == 1 ) then
 
-               ! form the hydrostatic pressure eqn...
-               do ph_iloc = 1, ph_nloc
-                  ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
-                  do ph_jloc = 1, ph_nloc
-                     ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
-                     nxnx = 0.0
-                     do iphase = 1, nphase
-                        do idim = 1, Mdims%ndim
-                           nxnx = nxnx + sum( phfenx_all( idim, ph_iloc, : ) * &
-                                phfenx_all( idim, ph_jloc, : ) * detwei * inv_den_gi( :, iphase ) )
+             ! form the hydrostatic pressure eqn...
+             do ph_iloc = 1, ph_nloc
+                ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
+                do ph_jloc = 1, ph_nloc
+                   ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
+                   nxnx = 0.0
+                   do iphase = 1, nphase
+                      do idim = 1, Mdims%ndim
+                         nxnx = nxnx + sum( phfenx_all( idim, ph_iloc, : ) * &
+                              phfenx_all( idim, ph_jloc, : ) * detwei * inv_den_gi( :, iphase ) )
+                      end do
+                   end do
+                   call addto( matrix, 1, 1, ph_inod, ph_jnod, nxnx )
+                end do
+                do iphase = 1, nphase
+                   do idim = 1, Mdims%ndim
+                      call addto( rhs, ph_inod, &
+                           sum( phfenx_all( idim, ph_iloc, : ) * inv_den_gi( :, iphase ) * ( &
+                           u_s_gi( :, idim, iphase ) ) * detwei ) )
+                   end do
+                end do
+             end do
+
+            else if (iloop == 2 ) then
+              ! form rhs of the momentum eqn...
+             do u_iloc = 1, Mdims%u_nloc
+                u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + u_iloc )
+                do iphase = 1, nphase
+                   do idim = 1, Mdims%ndim
+                      u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + &
+                           sum( ph_funs%ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
+                           + u_s_gi( :, idim, iphase ) ) * detwei )
+                   end do
+                end do
+             end do
+
+          end if
+
+       end do ! ele loop
+
+
+       if ( iloop == 1 ) then
+        !This part is very badly writen apart from being unnecessary since it is better to use remove_null_space
+          got_free_surf = .false. ; same_mesh = (Mdims%cv_nloc==ph_nloc)
+          pfield => extract_tensor_field( packed_state, "PackedFEPressure" )
+          do i = 1, get_boundary_condition_count( pfield )
+             call get_boundary_condition( pfield, i, type=bc_type, surface_node_list=surface_node_list )
+             if ( trim( bc_type ) == "freesurface" .or.  trim( bc_type ) == "top" ) then
+                got_free_surf = .true.
+                exit
+             end if
+          end do
+
+          ! if free surface apply a boundary condition
+          ! else don't forget to remove the null space
+          matrix%is_assembled =.false.
+          call assemble( matrix )
+          if ( got_free_surf) then
+            if ( same_mesh ) then
+              findph => sparsity % findrm
+              colph => sparsity % colm
+              do inod = 1, size( surface_node_list )
+                  ph_inod = surface_node_list( inod )
+                  rhs % val( ph_inod ) = 0.0
+                  do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
+                    ph_jnod = colph( count )
+                    if ( ph_jnod /= ph_inod ) then
+                        i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
+                        j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
+                        call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                        do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
+                          ph_jnod2 = colph( count2 )
+                          if ( ph_jnod2 == ph_inod ) then
+                              i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
+                              j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
+                              call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                          end if
                         end do
-                     end do
-                     call addto( matrix, 1, 1, ph_inod, ph_jnod, nxnx )
+                    end if
                   end do
-                  do iphase = 1, nphase
-                     do idim = 1, Mdims%ndim
-                        call addto( rhs, ph_inod, &
-                             sum( phfenx_all( idim, ph_iloc, : ) * inv_den_gi( :, iphase ) * ( &
-                             u_s_gi( :, idim, iphase ) ) * detwei ) )
-                     end do
-                  end do
-               end do
-
-              else if (iloop == 2 ) then
-                ! form rhs of the momentum eqn...
-               do u_iloc = 1, Mdims%u_nloc
-                  u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + u_iloc )
-                  do iphase = 1, nphase
-                     do idim = 1, Mdims%ndim
-                        u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + &
-                             sum( ph_funs%ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
-                             + u_s_gi( :, idim, iphase ) ) * detwei )
-                     end do
-                  end do
-               end do
-
-            end if
-
-         end do ! ele loop
-
-
-         if ( iloop == 1 ) then
-          !This part is very badly writen apart from being unnecessary since it is better to use remove_null_space
-            got_free_surf = .false. ; same_mesh = (Mdims%cv_nloc==ph_nloc)
-            pfield => extract_tensor_field( packed_state, "PackedFEPressure" )
-            do i = 1, get_boundary_condition_count( pfield )
-               call get_boundary_condition( pfield, i, type=bc_type, surface_node_list=surface_node_list )
-               if ( trim( bc_type ) == "freesurface" .or.  trim( bc_type ) == "top" ) then
-                  got_free_surf = .true.
-                  exit
-               end if
-            end do
-
-            ! if free surface apply a boundary condition
-            ! else don't forget to remove the null space
-            matrix%is_assembled =.false.
-            call assemble( matrix )
-            if ( got_free_surf) then
-              if ( same_mesh ) then
-                findph => sparsity % findrm
-                colph => sparsity % colm
-                do inod = 1, size( surface_node_list )
-                    ph_inod = surface_node_list( inod )
+              end do
+            else
+              findph => sparsity % findrm
+              colph => sparsity % colm
+              x2 => extract_vector_field( state( 1 ), "DiagnosticCoordinate" )
+              zmax = maxval( x2%val(Mdims%ndim,:) )
+              do inod = 1, ph_nonods
+                  if ( abs( x2%val(Mdims%ndim,inod)-zmax )<1.0e-6 ) then
+                    ph_inod = inod
                     rhs % val( ph_inod ) = 0.0
                     do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
-                      ph_jnod = colph( count )
-                      if ( ph_jnod /= ph_inod ) then
+                        ph_jnod = colph( count )
+                        if ( ph_jnod /= ph_inod ) then
                           i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
                           j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
                           call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
                           do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
-                            ph_jnod2 = colph( count2 )
-                            if ( ph_jnod2 == ph_inod ) then
+                              ph_jnod2 = colph( count2 )
+                              if ( ph_jnod2 == ph_inod ) then
                                 i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
                                 j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
                                 call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                            end if
+                              end if
                           end do
-                      end if
+                        end if
                     end do
-                end do
-              else
-                findph => sparsity % findrm
-                colph => sparsity % colm
-                x2 => extract_vector_field( state( 1 ), "DiagnosticCoordinate" )
-                zmax = maxval( x2%val(Mdims%ndim,:) )
-                do inod = 1, ph_nonods
-                    if ( abs( x2%val(Mdims%ndim,inod)-zmax )<1.0e-6 ) then
-                      ph_inod = inod
-                      rhs % val( ph_inod ) = 0.0
-                      do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
-                          ph_jnod = colph( count )
-                          if ( ph_jnod /= ph_inod ) then
-                            i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
-                            j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
-                            call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                            do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
-                                ph_jnod2 = colph( count2 )
-                                if ( ph_jnod2 == ph_inod ) then
-                                  i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
-                                  j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
-                                  call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                                end if
-                            end do
-                          end if
-                      end do
-                    end if
-                end do
-              end if
+                  end if
+              end do
             end if
-            matrix%is_assembled =.false.
           end if
-          !Now it is time to solve the system
-          if ( iloop == 1 ) then
-            call assemble( matrix )
-            !Add remove null_space if not bcs specified for the field
-            if ( .not.got_free_surf ) call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
-            call zero(ph_pressure) !; call zero_non_owned(rhs)
-            call petsc_solve( ph_pressure, matrix, rhs, option_path = trim(solver_option_path) )
+          matrix%is_assembled =.false.
+        end if
+        !Now it is time to solve the system
+        if ( iloop == 1 ) then
+          call assemble( matrix )
+          !Add remove null_space if not bcs specified for the field
+          if ( .not.got_free_surf ) call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
+          call zero(ph_pressure) !; call zero_non_owned(rhs)
+          call petsc_solve( ph_pressure, matrix, rhs, option_path = trim(solver_option_path) )
 
 ! call MatView(matrix%M,   PETSC_VIEWER_STDOUT_SELF, iphase)
 ! read*
-            !Remove remove_null_space
-            if ( .not.got_free_surf ) call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
-            if (IsParallel()) call halo_update(ph_pressure)
-          end if
+          !Remove remove_null_space
+          if ( .not.got_free_surf ) call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
+          if (IsParallel()) call halo_update(ph_pressure)
+        end if
 
-      end do
+    end do
 
-      ! deallocate
-      call deallocate_multi_shape_funs( ph_funs )
-      call deallocate( rhs )
-      call deallocate( matrix )
-      deallocate( u_ph_source_cv, dx_ph_gi, u_s_gi, &
-                  den_gi, inv_den_gi, volfra_gi, &
-                  tmp_cvfenx_all, other_fenx_all, detwei, ra )
-      if(solid_implicit) deallocate(rho_temp, u_ph_source_vel)   ! JXiang
+    ! deallocate
+    call deallocate_multi_shape_funs( ph_funs )
+    call deallocate( rhs )
+    call deallocate( matrix )
+    deallocate( u_ph_source_cv, dx_ph_gi, u_s_gi, &
+                den_gi, inv_den_gi, volfra_gi, &
+                tmp_cvfenx_all, other_fenx_all, detwei, ra )
+    if(solid_implicit) deallocate(rho_temp, u_ph_source_vel)
+    ewrite(3,*) "leaving high_order_pressure_solve"
 
-      ewrite(3,*) "leaving high_order_pressure_solve"
-
-      return
-    end subroutine high_order_pressure_solve
+    return
+  end subroutine high_order_pressure_solve
 
 
     !>@brief: Determine if we have an oscillation in the normal direction...
