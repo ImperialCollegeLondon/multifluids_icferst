@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>porous_density_compressible</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml P0DG</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst porous_density_compressible.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="max_rho" language="python">from fluidity_tools import stat_parser as stat
+max_rho = stat("porous_density_compressible.stat")["phase1"]["porous_density"]["max"][-1]</variable>
+    <variable name="min_rho" language="python">from fluidity_tools import stat_parser as stat
+min_rho = stat("porous_density_compressible.stat")["phase1"]["porous_density"]["min"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="Assert final max porous_density" language="python">assert(abs((max_rho - 1758)/1758) &lt; 0.05)</test>
+    <test name="Assert final min porous_density" language="python">assert(abs((min_rho - 1610)/1610) &lt; 0.05)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

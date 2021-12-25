@@ -76,7 +76,8 @@ AC_ARG_ENABLE(debugging,
 	    [turns on debugging flags])])
 
 FLFEMDEM="femdem"
-
+FLPHREEQC="phreeqc"
+FLXGBOOST="xgboost"
 # Check system type
 AC_CANONICAL_HOST
 
@@ -122,14 +123,6 @@ fi
 if $FC -v 2>&1 | grep 'gcc version'; then
   USING_GFORTRAN="yes"
   GFORTRAN_VERSION=$($FC -v 2>&1 | grep 'gcc version' | awk '{print $3}')
-  # test really is so retarded that it can't lexicographically compare strings
-  if test "$(python -c "print \"$GFORTRAN_VERSION\" >= \"4.5\"")" = "True"; then
-    GFORTRAN_4_5_OR_NEWER="yes"
-    AC_SUBST(GFORTRAN_4_5_OR_NEWER)
-  fi
-  if test "$(python -c "print \"$GFORTRAN_VERSION\" >= \"4.8\"")" = "True"; then
-    GFORTRAN_4_8_OR_NEWER="yes"
-  fi
 else
   USING_GFORTRAN="no"
 fi
@@ -160,8 +153,8 @@ if test "$fcompiler" = "ifort" ; then
     if ifort -v 2>&1 |grep 11.1; then
       AC_MSG_WARN(Early versions of intel 11.1 are bugged and cannot be used to compile Fluidity. Make sure you have at least version 11.1.073.)
     fi
-    FFLAGS="$FFLAGS -vec-report0"
-    FCFLAGS="$FCFLAGS -vec-report0"
+    FFLAGS="$FFLAGS -vec-report=0"
+    FCFLAGS="$FCFLAGS -vec-report=0"
 fi
 
 AC_PROG_CC(icc ecc suncc pgcc gcc cc clang)
@@ -189,29 +182,23 @@ AC_ARG_ENABLE(python,
 
 if test "x$enable_python" != "xno"
 then
-    AC_MSG_NOTICE([Checking for Python automagic.])
-    AC_LANG_PUSH([C++])
-    AC_LINK_IFELSE(
-        [AC_LANG_PROGRAM([[
-     #include <Python.h>
-                        ]],[[
-                        Py_Initialize();
-                        PyRun_SimpleString("from time import time,ctime\n"
-                            "print 'Today is',ctime(time())\n");
-                        Py_Finalize();
-		        ]])],
-        [
-	    AC_MSG_NOTICE([Python automagic works.])
-	    CPPFLAGS="$CPPFLAGS -DHAVE_PYTHON"],
-        [
-            AC_MSG_NOTICE([No Python automagic.])
-	    search_for_python=yes
-        ])
-    AC_LANG_POP([C++])
-
-    if test "x$search_for_python" == "xyes" ; then
+    if test -z "$PYTHON_VERSION"; then
+      # if PYTHON_VERSION is set we use python$PYTHON_VERSION as the python interpreter
+      # if not, if there is no `python` in the path, or there is a `python` but its version is <3
+      # then use `python3` (by setting PETSC_VERSION=3).
+      # If there *is* a `python` of version 3, we use that
+      AC_CHECK_PROG(have_bare_python, python, "yes")
+      if test "x$have_bare_python" = "xyes"; then
+        bare_python_is_two=`python -c "import sys; print(sys.version_info.major < 3)"`
+        if test "x$bare_python_is_two=xTrue"; then
+          PYTHON_VERSION=3
+        fi
+      else
+        PYTHON_VERSION=3
+      fi
+    fi
         mycppflag=$CPPFLAGS
-        AC_PYTHON_DEVEL
+    AC_PYTHON_DEVEL([>= '3.6'])
         CPPFLAGS=$mycppflag
     # Save variables...
         if test "x$pythonexists" = "xyes";
@@ -223,17 +210,14 @@ then
       if test "x$enable_debugging" = "xyes"; then
         export PYTHON_EXTRA_LDFLAGS=$(echo $PYTHON_EXTRA_LDFLAGS | sed -e 's/-O1/-O0/g' -e 's/-O2/-O0/g' -e 's/-O3/-O0/g')
       fi
-	    LIBS="$LIBS $PYTHON_LDFLAGS $PYTHON_EXTRA_LDFLAGS $PYTHON_EXTRA_LIBS"
+        LIBS="$LIBS $PYTHON_LIBS $PYTHON_EXTRA_LDFLAGS $PYTHON_EXTRA_LIBS"
 	    CXXFLAGS="$CXXFLAGS $PYTHON_CPPFLAGS"
 	    CPPFLAGS="$CPPFLAGS $PYTHON_CPPFLAGS"
             CFLAGS="$CFLAGS $PYTHON_CPPFLAGS"
-        fi
-    else
-       AC_PATH_PROG([PYTHON],[python[$PYTHON_VERSION]])
     fi
 
     # Additionally check for numpy
-    NUMPY=$($PYTHON -c 'import numpy; print numpy.get_include()' 2>/dev/null)
+    NUMPY=$($PYTHON -c 'import numpy; print(numpy.get_include())' 2>/dev/null)
     if ! test -z "$NUMPY"; then
 	echo "Numpy is " $NUMPY
 	CXXFLAGS="$CXXFLAGS -DHAVE_NUMPY -I$NUMPY"
@@ -244,6 +228,18 @@ then
     else
 	echo "Failed to locate Numpy"
     fi
+    # check for the assess python package used in some tests
+    # (see https://github.com/stephankramer/assess/)
+    $PYTHON -c "import assess" 2>/dev/null
+    if test $? -eq 0;
+    then
+      HAVE_ASSESS=yes
+      AC_MSG_NOTICE([Successfully imported assess python module])
+    else
+      HAVE_ASSESS=no
+      AC_MSG_NOTICE([Failed to import (optional) python module assess])
+    fi
+    AC_SUBST(HAVE_ASSESS)
 fi
 AC_SUBST(HAVE_PYTHON)
 
@@ -657,6 +653,52 @@ fi
 AC_SUBST(FLFEMDEM_PATH)
 AC_SUBST(LIB_FEMDEM)
 AC_SUBST(FEMDEM)
+
+
+##########################################
+# Are we using phreeqc
+##########################################
+AC_ARG_WITH(phreeqc,
+    [AC_HELP_STRING([--with-phreeqc@<:@=phreeqc_library@:>@],
+        [specify the phreeqc path])])
+if test -n "$with_phreeqc" ; then
+  FLPHREEQC_PATH="${with_phreeqc}"
+  LIB_PHREEQC="${with_phreeqc}""/lib/libphreeqcrm.so"
+  PHREEQC="yes"
+  cat >> confdefs.h << EOF
+#define USING_PHREEQC 1
+EOF
+else
+  FLPHREEQC_PATH=""
+  LIB_PHREEQC=""
+  PHREEQC=""
+fi
+AC_SUBST(FLPHREEQC_PATH)
+AC_SUBST(LIB_PHREEQC)
+AC_SUBST(PHREEQC)
+
+
+##########################################
+# Are we using XGBOOST
+##########################################
+AC_ARG_WITH(xgboost,
+    [AC_HELP_STRING([--with-xgboost@<:@=xgboost@:>@],
+        [specify the xgboost path])])
+if test -n "$with_xgboost" ; then
+  FLXGBOOST_PATH="${with_xgboost}"
+  LIB_XGBOOST="${with_xgboost}""/lib/libxgboost.so"
+  XGBOOST="yes"
+  cat >> confdefs.h << EOF
+#define USING_XGBOOST 1
+EOF
+else
+  FLXGBOOST_PATH=""
+  LIB_XGBOOST=""
+  XGBOOST=""
+fi
+AC_SUBST(FLXGBOOST_PATH)
+AC_SUBST(LIB_XGBOOST)
+AC_SUBST(XGBOOST)
 
 ##########################################
 # Are we using OASIS
@@ -1362,7 +1404,7 @@ elif test -d libjudy ; then
     fi
     # this is a workaround for https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=755099
     if echo "$CFLAGS" | grep -q -- "-O[[2-3]]"; then
-      if test "x$USING_GFORTRAN" = "xyes" -a "x$GFORTRAN_4_8_OR_NEWER" = "xyes" -a "x$USING_CLANG" = "xno"; then
+      if test "x$USING_GFORTRAN" = "xyes" -a "x$USING_CLANG" = "xno"; then
         JUDY_CFLAGS="$JUDY_CFLAGS -fno-aggressive-loop-optimizations"
       fi
     fi
@@ -1837,6 +1879,6 @@ AC_OUTPUT(Makefile
           libwm/Makefile
           libvtkfortran/Makefile
 	  tests/tools.mk
-   	  legacy_reservoir_prototype/Makefile
-          legacy_reservoir_prototype/src/Makefile
-          legacy_reservoir_prototype/unittest/Makefile)
+   	  ICFERST/Makefile
+          ICFERST/src/Makefile
+          ICFERST/unittest/Makefile)

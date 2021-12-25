@@ -579,13 +579,22 @@ contains
                                        & applies=(/ .true., .true., .true. /),suppress_warnings=suppress_warnings )
           deallocate(surface_ids)
 
+      case ("log_law_of_wall")
+          ! these are marked as applying in the 2nd (and 3d if present) only
+          ! so they could potentially be combined with a no_normal_flow
+          ! or a rotatted bc applying in the normal direction only
+          call add_boundary_condition(field, trim(bc_name), trim(bc_type), &
+          & surface_ids, option_path=bc_path_i, &
+          & applies=(/ .false., .true., .true. /) )
+          deallocate(surface_ids)
+
        case default
           FLAbort("Incorrect boundary condition type for field")
        end select
 
        ! now check for user-specified normal/tangent vectors (rotation matrix)
        select case (bc_type)
-       case ("dirichlet", "neumann", "robin", "weakdirichlet", "flux")
+       case ("dirichlet", "neumann", "robin", "weakdirichlet", "flux", "log_law_of_wall")
           ! this is the same for all 3 b.c. types
 
           bc_type_path=trim(bc_path_i)//"/type[0]/align_bc_with_surface"
@@ -595,7 +604,7 @@ contains
                surface_element_list=surface_element_list)
           bc_position = get_coordinates_remapped_to_surface(position, surface_mesh, surface_element_list)
 
-          if (have_option(bc_type_path)) then
+          if (have_option(bc_type_path) .or. bc_type=="log_law_of_wall" ) then
 
              prescribed = .false.
 
@@ -1113,29 +1122,27 @@ contains
              aligned_components=surface_aligned_components
              bc_type_path=trim(bc_path_i)//"/align_bc_with_surface"
           end if
-
           do j=1,3
              bc_component_path=trim(bc_type_path)//"/"//aligned_components(j)
              applies(j)=have_option(trim(bc_component_path))
           end do
-
           call get_boundary_condition(field, i+1, surface_mesh=surface_mesh, &
                surface_element_list=surface_element_list)
           ! map the coordinate field onto this mesh
           bc_position = get_coordinates_remapped_to_surface(position, surface_mesh, surface_element_list)
-
-          surface_field => extract_surface_field(field, bc_name, name="order_zero_coeffcient")
-          surface_field2 => extract_surface_field(field, bc_name, name="order_one_coeffcient")
+          surface_field => extract_surface_field(field, bc_name, name="order_zero_coefficient")
+          surface_field2 => extract_surface_field(field, bc_name, name="order_one_coefficient")
           do j=1,3
              if (j>surface_field%dim) then
-                FLAbort("Too many dimensions in boundary condition")
+               !If more values than dimensons just leave. No need for drama!!
+               exit
+                ! FLAbort("Too many dimensions in boundary condition")
              end if
-             bc_component_path=trim(bc_type_path)//"/"//aligned_components(j)//"/order_zero_coefficient"
+             bc_component_path=trim(bc_type_path)//"/"//trim(aligned_components(j))//"/order_zero_coefficient"
              surface_field_component=extract_scalar_field(surface_field, j)
              call initialise_vector_field_component(surface_field_component, state,  &
                 bc_component_path, bc_position, surface_element_list, j, time)
-
-             bc_component_path=trim(bc_type_path)//"/"//aligned_components(j)//"/order_one_coefficient"
+             bc_component_path=trim(bc_type_path)//"/"//trim(aligned_components(j))//"/order_one_coefficient"
              surface_field_component=extract_scalar_field(surface_field2, j)
              call initialise_vector_field_component(surface_field_component, state,  &
                 bc_component_path, bc_position, surface_element_list, j, time)
@@ -1251,7 +1258,6 @@ contains
     type(vector_field), pointer :: foamvel
     character(len=FIELD_NAME_LEN) parent_field_name
     integer:: stat
-
     ! first check for options that require state
     if (have_option(trim(bc_component_path)//"/foam_flow")) then
 
@@ -2555,8 +2561,8 @@ contains
           allocate(ele_local_vertices(ele_vertices(mesh,ele)))
           ! List vertices of element incorporating desired coordinates:
           ele_local_vertices = local_vertices(ele_shape(mesh,ele))
-          ! Find nearest vertex:
-          local_vertex = maxloc(local_coord,dim=1)
+          ! Find nearest vertex:                !Mask included as it may return values bigger than the number of nodes
+          local_vertex = maxloc(local_coord,dim=1, MASK=local_coord <= size(ele_local_vertices))
           ! List of nodes in element:
           nodes => ele_nodes(mesh,ele)
           ! Reference node:

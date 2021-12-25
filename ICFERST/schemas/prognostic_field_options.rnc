@@ -1,0 +1,1100 @@
+scalar_boundary_conditions =
+  (
+      ## Boundary conditions
+      element boundary_conditions {
+         attribute name { string },
+         ## Surface id:
+         element surface_ids {
+            integer_vector
+         },
+         ## Type
+         (
+            element type {
+               attribute name { "dirichlet" },
+               ## Apply the dirichlet bc weakly.  Available
+               ## automatically with discontinuous_galerkin and
+               ## control_volume
+               ## spatial_discretisations.
+               ## If not selected boundary conditions are applied strongly.
+               element apply_weakly {
+                  ## If the initial condition and boundary conditions
+                  ## differ, setting this option will cause the initial
+                  ## condition on the boundary to be overwritten with
+                  ## the boundary condition. Since you are applying the
+                  ## boundary condition weakly, you probably do *not*
+                  ## want this.
+                  element boundary_overwrites_initial_condition {
+                     empty
+                  }?
+               },
+               ## For multimaterial simulations.
+               element component_density {
+                  empty
+               }?,
+               input_choice_real
+            }|
+            robin_bc_scalar
+            |
+            ## Prevent the field from fluxing out of the boundary.
+            ## Only applicable to control volume spatial discretisations.
+            element type {
+              attribute name { "zero_flux" },
+              empty
+            }
+         )
+      }
+)
+
+
+robin_bc_scalar =
+   (
+      ##  A robin boundary condition of the form
+      ##  C1*(T-T0) + n.(k*grad(T)) = 0 which can be also written as
+      ##  C1*T + n.(k*grad(T)) = T0 * C1 = C0
+      ##  where k is the conductivity tensor,
+      ##  n the outward normal vector to the surface,
+      ##  T the scalar field value on the surface,
+      ##  C0 is the input order zero coefficient and
+      ##  C1 is the input order one coefficient.
+      ##
+      ## <b> USE C1 = 0 TO IMPOSE NEUMANN BCs. Being in this case C0 the desired flux.</b>
+      ##
+      ##  THIS WILL ONLY WORK FOR CONTINUOUS GALERKIN SPATIAL DISCRETISATION
+      ##
+      ## <b> NOTE: Example of units for temperature</b>
+      ## C1 is the convective coefficient W/(m^2 K)
+      ## and C0 is the temperature outside the domain times C1 => W/(m^2).
+      element type {
+         attribute name { "robin" },
+         ##  The far field value represented as C0 in
+         ##  C1*(T-T0) + n.(k*grad(T)) = C1*T0 = C0
+         element order_zero_coefficient {
+            input_choice_real
+         },
+         ##  The order one coefficient represented as C1 in
+         ##  C1*(T-T0) + n.(k*grad(T)) = 0
+         element order_one_coefficient {
+            input_choice_real
+         }
+      }
+   )
+
+
+prognostic_scalar_field =
+   (
+#      scalar_equation_choice,
+#      spatial_discretisation_options,
+#      temporal_discretisation_options,
+      (
+         ## Initial condition for WholeMesh
+         ##
+         ## Only specify one condition if not using mesh regions.
+         ## Otherwise select other initial_condition option, specify region_ids
+         ## and distinct names.  Then add extra intial conditions for other regions.
+         element initial_condition {
+            attribute name { "WholeMesh" },
+            input_choice_initial_condition_real
+         }|
+         ## Multiple initial_conditions are allowed if specifying
+         ## different values in different
+         ## regions of the mesh (defined by region_ids).  In this case
+         ## each initial_condition
+         ## requires a distinct name for the options dictionary.
+         element initial_condition {
+            attribute name { string },
+            region_ids?,
+            input_choice_initial_condition_real
+         }
+      )+,
+      scalar_boundary_conditions*,
+
+        ## Source term
+      element scalar_field {
+         attribute name { "Source" },
+         attribute rank { "0" },
+         (
+            element prescribed {
+               prescribed_scalar_field_no_adapt
+            }|
+            ## This only works for traffic modelling
+            element diagnostic {
+               (
+                  scalar_python_diagnostic_algorithm |
+                  internal_algorithm
+               ),
+               diagnostic_scalar_field_no_adapt
+            }
+         )
+      }?,
+
+      ## Absorption term
+      element scalar_field {
+         attribute name { "Absorption" },
+         attribute rank { "0" },
+         (
+            element prescribed {
+               prescribed_scalar_field_no_adapt
+            }|
+            element diagnostic {
+               (
+                  scalar_python_diagnostic_algorithm |
+                  internal_algorithm
+               ),
+               diagnostic_scalar_field_no_adapt
+            }
+         )
+      }?,
+      ## Absorption term
+      element tensor_field {
+         attribute name { "Absorption" },
+         attribute rank { "0" },
+         (
+            element diagnostic {
+               (
+                  tensor_python_diagnostic_algorithm
+               ),
+               diagnostic_tensor_field_no_adapt
+            }
+         )
+      }?,
+
+
+
+
+
+#      prognostic_scalar_stat_options,
+#      scalar_convergence_options,
+      prognostic_detector_options,
+#      scalar_steady_state_options,
+      adaptivity_options_prognostic_scalar_field,
+      interpolation_algorithm_scalar
+#      discrete_properties_algorithm_scalar?
+#      ## Set the priority of this field
+#      ## This determines the order in which scalar_fields are solved for:
+#      ##  - higher numbers have the highest priority
+#      ##  - lower numbers (including negative) have the lowest priority
+#      ##  - default if not set is 0
+#      element priority {
+#         integer
+#      }?
+   )
+
+prognostic_velocity_field =
+   (
+
+#      ## Reference node (Node at which all components of velocity = 0.)
+#      ##
+#      ## Must be less than the total number of nodes.
+#      ## If parallel must be less than the total number of nodes of the first processor.
+#      ##
+#      ## This is used to impose a pressure level when there are no pressure boundary conditions
+#      element reference_node {
+#         integer
+#      }?,
+      (
+         ## Initial condition for WholeMesh
+         ##
+         ## Only specify one condition if not using mesh regions.
+         ## Otherwise select other initial_condition option, specify region_ids
+         ## and distinct names.  Then add extra intial conditions for other regions.
+         element initial_condition {
+            attribute name { "WholeMesh" },
+            input_choice_initial_condition_vector
+         }|
+         ## Multiple initial_conditions are allowed if specifying
+         ## different values in different
+         ## regions of the mesh (defined by region_ids).  In this case
+         ## each initial_condition
+         ## requires a distinct name for the options dictionary.
+         element initial_condition {
+            attribute name { string },
+            region_ids?,
+            input_choice_initial_condition_vector
+         }
+      )+,
+      ## Boundary conditions
+      element boundary_conditions {
+         attribute name { string },
+         ## Surface id:
+         element surface_ids {
+            integer_vector
+         },
+         velocity_boundary_conditions
+      }*,
+
+
+
+      ## Source
+      element vector_field {
+         attribute name { "Source" },
+         attribute rank { "1" },
+         (
+            element prescribed {
+               mesh_choice?,
+               prescribed_vector_field_no_adapt
+            }|
+            element diagnostic {
+               mesh_choice?,
+               (
+                  vector_python_diagnostic_algorithm |
+                  imposed_material_velocity_source_algorithm |
+                  internal_velocity_source_algorithm
+               ),
+               diagnostic_vector_field
+            }
+         ),
+         element lump_source {
+            empty
+         }?
+      }?,
+      ## Absorption
+      ##
+      ## Note: When in spherical geometry the absorption is now automatically rotated.
+      ## The input values below correspond to setting the diagonal of the absorption matrix
+      ## in the rotated frame of reference. The columns correspond to phi, theta and r
+      ## respectively.
+      element vector_field {
+         attribute name { "Absorption" },
+         attribute rank { "1" },
+         (
+            element prescribed {
+               mesh_choice?,
+               prescribed_vector_field_no_adapt
+            }|
+            element diagnostic {
+               mesh_choice?,
+               (
+                  vector_python_diagnostic_algorithm |
+                  imposed_material_velocity_absorption_algorithm |
+                  internal_velocity_absorption_algorithm
+               ),
+               diagnostic_vector_field
+            }
+         ),
+         (
+           ## Default absorption: no lumping, is fully evaluated before the
+           ## the pressure correction.
+           element default_absorption {
+              empty
+           }|
+           ## Lump the inclusion of absorbtion terms.
+           element lump_absorption {
+              ## Lump on the submesh.
+              ## This only works for simplex meshes and is only
+              ## strictly valid on 2d meshes.
+              element use_submesh {
+                empty
+              }?
+           }|
+           ## Includes the pressure correction to the velocity in the
+           ## absorption term (for theta>0). This makes the absorption
+           ## term more implicit. The absorption term is lumped if and
+           ## only if the mass matrix is lumped (lump_mass_matrix).
+           element include_pressure_correction {
+              empty
+           }
+         )
+      }?,
+
+      prognostic_detector_options,
+      adaptivity_options_prognostic_vector_field,
+      interpolation_algorithm_vector
+   )
+
+prognostic_pressure_field =
+   (
+     (
+         ## Reference node (Node at which pressure = 0.) Note that the node number must be less than the total number of nodes.
+         ## If running in parallel, the node number must be less than the total number of nodes of the first processor.
+         ## ** Note - it is also an option to remove the null-space of the residual vector. This
+         ## option is available under solvers
+         element reference_node {
+            integer
+         }|
+         ## Input coordinates of desired reference node. If a node does not exist at these
+         ## coordinates, the nearest vertex will be selected.
+         element reference_coordinates {
+            real_dim_vector
+         }
+      )?,
+    (
+         ## It calculates the pressure based on p = rho * g * ( -1.0 * y ) + p0  in 2D and p = rho * g * (-1.0 * z ) + p0 in 3D.
+         ## where "y" and "z" are the vertical coordinates in 2D and 3D, respectively; "p0" is the pressure in
+         ## [pa] at the highest point of the boundary (normally at y=0 or z=0). With this hydrostatic option "p0" should be assinged
+         ## under 'dirichlet/constant' for each boundary (however, it typically has a value of 0.0).
+         ## p0 can also be used to adjust the pressure at the highest point of a pressure boundary if it is located below 0.0.
+         ##
+         ## The gravitational acceleration is considered to be in negative y (or negative z in 3D) direction.
+         ##
+         ## <b>NOTE: Density boundary conditions must be specified.</b>
+         element hydrostatic_boundaries {
+            empty
+         }
+      )?,
+      (
+         ## Initial condition for WholeMesh
+         ##asc
+         ## Only specify one condition if not using mesh regions.
+         ## Otherwise select other initial_condition option, specify region_ids
+         ## and distinct names.  Then add extra intial conditions for other regions.
+         element initial_condition {
+            attribute name { "WholeMesh" },
+            input_choice_initial_condition_pressure
+         }|
+         ## Multiple initial_conditions are allowed if specifying
+         ## different values in different
+         ## regions of the mesh (defined by region_ids).  In this case
+         ## each initial_condition
+         ## requires a distinct name for the options dictionary.
+         element initial_condition {
+            attribute name { string },
+            region_ids?,
+            input_choice_initial_condition_pressure
+         }
+      )+,
+      ## Boundary conditions.
+      ## For well phase, for ATES applications:
+      ## If flip of BCs required, specify pressure BCs as python
+      ## function, with value being a function of time for BOTH wells.
+      ## Specify positive pressure when it should be applied
+      ## and negative pressure when it should ignored.
+      ## Specify constant velocity BCs for both wells.
+      element boundary_conditions {
+         attribute name { string },
+         ## Surface id:
+         element surface_ids {
+            integer_vector
+         },
+         ## Type
+         (
+            element type {
+               attribute name { "dirichlet" },
+               element apply_weakly {
+                  ## If the initial condition and boundary conditions
+                  ## differ, setting this option will cause the initial
+                  ## condition on the boundary to be overwritten with
+                  ## the boundary condition. Since you are applying the
+                  ## boundary condition weakly, you probably do *not*
+                  ## want this.
+                  element boundary_overwrites_initial_condition {
+                     empty
+                  }?
+               },
+               input_choice_real
+            }|
+            element type {
+               attribute name { "freesurface" },
+               input_choice_real
+            }|
+            element type {
+               attribute name { "top" },
+               input_choice_real
+            }
+         )
+      }*,
+      #pressure_output_options,
+      #prognostic_scalar_stat_options,
+      #scalar_convergence_options,
+      detector_options_disabled_default,
+      #scalar_steady_state_options,
+      adaptivity_options_prognostic_scalar_field,
+      interpolation_algorithm_scalar_full
+      #discrete_properties_algorithm_scalar?
+   )
+
+prognostic_geostrophic_pressure_field =
+   (
+      element spatial_discretisation {
+         ## Enables / disables RHS terms in the geopressure solver:
+         ##
+         ##   include_buoyancy - Include both the buoyancy and Coriolis terms on the RHS
+         ##   exclude_buoyancy - Include only the Coriolis term on the RHS
+         ##   exclude_coriolis - Include only the buoyancy term on the RHS
+         element geostrophic_pressure_option {
+            element string_value {
+               "include_buoyancy" | "exclude_buoyancy" | "exclude_coriolis"
+            }
+         }
+      },
+      (
+         ## Sets node 1 in the mesh as a reference node
+         element reference_node {
+            attribute name { "node_1" },
+            element integer_value {
+              attribute rank { "0" },
+              attribute shape { "1" },
+              "1"
+            },
+            comment
+         }|
+         ## Sets a custom node in the mesh as a reference node
+         element reference_node {
+            attribute name { "custom"},
+            integer
+         }|
+         ## Sets the value of the field to zero at a supplied coordinate.
+         ## This is a post-processing step after the solve, and hence should
+         ## be used with the solver/remove_null_space option.
+         element zero_coord {
+           real_dim_vector
+         }
+      )?,
+      (
+         ## Solver
+         element solver {
+            linear_solver_options_sym
+         }
+      ),
+      (
+         ## Initial condition for WholeMesh
+         ##
+         ## Only specify one condition if not using mesh regions.
+         ## Otherwise select other initial_condition option, specify region_ids
+         ## and distinct names.  Then add extra intial conditions for other regions.
+         element initial_condition {
+            attribute name { "WholeMesh" },
+            input_choice_initial_condition_real
+         }|
+         ## Multiple initial_conditions are allowed if specifying
+         ## different values in different
+         ## regions of the mesh (defined by region_ids).  In this case
+         ## each initial_condition
+         ## requires a distinct name for the options dictionary.
+         element initial_condition {
+            attribute name { string },
+            region_ids?,
+            input_choice_initial_condition_real
+         }
+      )*,
+      ## Apply a strong dirichlet boundary condition to GeostrophicPressure.
+      ## If applied, this would normally be a homogeneous bc on the top but
+      ## this only makes sense when excluding coriolis.
+      element boundary_conditions {
+         attribute name { string },
+         ## Surface id:
+         element surface_ids {
+            integer_vector
+         },
+         ## Type
+         element type {
+            attribute name { "dirichlet" },
+            input_choice_real_plus_boundary_forcing
+         }
+      }*,
+
+      prognostic_scalar_stat_options,
+      scalar_convergence_options,
+      prognostic_detector_options,
+      scalar_steady_state_options,
+      adaptivity_options_prognostic_scalar_field,
+      interpolation_algorithm_scalar_full,
+      discrete_properties_algorithm_scalar?
+   )
+
+# Vertical balance pressure field, this is a copy of prognostic_scalar_field above
+# removing all options that don't apply (mainly advection related)
+prognostic_vertical_balance_pressure_field =
+   (
+      ## Solver
+      element solver {
+         linear_solver_options_sym
+      },
+      ## Apply a strong dirichlet boundary condition to VerticalBalancePressure.
+      ## This is normally be a homogeneous bc on the top surface.
+      element boundary_conditions {
+         attribute name { string },
+         ## Surface id:
+         element surface_ids {
+            integer_vector
+         },
+         ## Type
+         element type {
+            attribute name { "dirichlet" },
+            input_choice_real_plus_boundary_forcing
+         }
+      }+,
+      ## Disables checkpointing of this field
+      element exclude_from_checkpointing {
+        comment
+      },
+
+      prognostic_scalar_stat_options,
+      scalar_convergence_options,
+      prognostic_detector_options,
+      scalar_steady_state_options,
+      adaptivity_options_prognostic_scalar_field,
+      interpolation_algorithm_scalar_full,
+      discrete_properties_algorithm_scalar?
+   )
+
+# Hydrostatic pressure field, this is a copy of prognostic_scalar_field above
+# removing all options that don't apply (mainly advection related)
+prognostic_hydrostatic_pressure_field =
+   (
+      ## Spatial discretisation options
+      element spatial_discretisation {
+        (
+          ## Uses an advancing front technique to integrate
+          ## downwards through the mesh.
+          ##
+          ## Requires a discontinuous mesh!
+          element discontinuous_galerkin {
+            empty
+          }|
+          ## Solves a continuous steady state equation.
+          ##
+          ## Requires a continuous mesh and solver options below.
+          element continuous_galerkin {
+            advection_stabilisation_options,
+            ## By default when the gradient of the HydrostaticPressure is
+            ## subtracted from the rhs of the momentum equation, it is
+            ## integrated by parts.  This is the most general case as the
+            ## HydrostaticPressure can be discontinuous.
+            ## Use this option to turn off this behaviour, which will
+            ## be valid for a continuous HydrostaticPressure.
+            element do_not_integrate_gradient_by_parts {
+              empty
+            }?
+          }
+        )
+      },
+      ## Solver
+      ## Only required for continuous_galerkin spatial_discretisations!
+      element solver {
+         linear_solver_options_asym
+      }?,
+      ## Disables checkpointing of this field
+      element exclude_from_checkpointing {
+        comment
+      },
+
+      prognostic_scalar_stat_options,
+      scalar_convergence_options,
+      prognostic_detector_options,
+      scalar_steady_state_options,
+      adaptivity_options_prognostic_scalar_field,
+      interpolation_algorithm_scalar_full,
+      discrete_properties_algorithm_scalar?
+   )
+# Hydrostatic pressure gradient field
+prognostic_hydrostatic_pressure_gradient_field =
+   (
+      ## Disables checkpointing of this field
+      element exclude_from_checkpointing {
+        comment
+      },
+
+      prognostic_velocity_stat_options,
+      vector_convergence_options,
+      prognostic_detector_options,
+      vector_steady_state_options,
+      adaptivity_options_prognostic_vector_field,
+      interpolation_algorithm_vector_full
+   )
+
+# Foam Velocity Potential field.
+# Used to calculate the velocity of flowing foams.
+prognostic_foam_velocity_potential_field =
+   (
+      ## Spatial discretisation options
+      element spatial_discretisation {
+         element foam_velocity_option {
+            empty
+         }
+      },
+     (
+         ## Solver
+         element solver {
+            linear_solver_options_sym
+         }
+      ),
+      (
+         ## Initial condition for WholeMesh
+         ##
+         ## Only specify one condition if not using mesh regions.
+         ## Otherwise select other initial_condition option, specify region_ids
+         ## and distinct names.  Then add extra intial conditions for other regions.
+         element initial_condition {
+            attribute name { "WholeMesh" },
+            input_choice_initial_condition_real
+         }|
+         ## Multiple initial_conditions are allowed if specifying
+         ## different values in different
+         ## regions of the mesh (defined by region_ids).  In this case
+         ## each initial_condition
+         ## requires a distinct name for the options dictionary.
+         element initial_condition {
+            attribute name { string },
+            region_ids,
+            input_choice_initial_condition_real
+         }
+      )+,
+      ## Boundary conditions
+      element boundary_conditions {
+         attribute replaces { "boundary, TTPER1 TTPER2 TTPERI" },
+         attribute name { string },
+         ## Surface id:
+         element surface_ids {
+            integer_vector
+         },
+         ## Type
+         (
+            element type {
+               attribute name { "dirichlet" },
+               ## Apply the dirichlet bc weakly.  Available
+               ## automatically with discontinuous_galerkin,
+               ## control_volume, and mixed_cv_cg
+               ## spatial_discretisations.
+               ## If not selected boundary conditions are applied strongly.
+               element apply_weakly {
+                  ## If the initial condition and boundary conditions
+                  ## differ, setting this option will cause the initial
+                  ## condition on the boundary to be overwritten with
+                  ## the boundary condition. Since you are applying the
+                  ## boundary condition weakly, you probably do *not*
+                  ## want this.
+                  element boundary_overwrites_initial_condition {
+                     empty
+                  }?
+               }?,
+               input_choice_real
+            }|
+            element type {
+               attribute name { "neumann" },
+               input_choice_real
+            }|
+            robin_bc_scalar|
+            ## Prevent the field from fluxing out of the boundary.
+            ## Only applicable to control volume spatial discretisations.
+            element type {
+              attribute name { "zero_flux" },
+              empty
+            }
+         )
+      }*,
+
+      prognostic_scalar_stat_options,
+      prognostic_detector_options,
+      scalar_steady_state_options,
+      adaptivity_options_prognostic_scalar_field,
+      interpolation_algorithm_scalar_full,
+      discrete_properties_algorithm_scalar?
+   )
+
+# free surface field, this is a copy of prognostic_scalar_field above
+# removing all options that don't apply (mainly advection related)
+prognostic_free_surface_field =
+   (
+      (
+         ## Spatial discretisation options
+         element spatial_discretisation {
+            ## Form a full 3D system for the free surface
+            element free_surface_3D {
+               empty
+            }?,
+            element fourth_order_dissipation {
+               empty
+            }?,
+            ## low order (linear) free surface
+            element low_order_free_surface {
+               empty
+            }?,
+            (
+               ## Select free surface filter
+               ##
+               ## With PN-PN we need some filter to supress spurious modes.
+               element default_free_surface_filter {
+                  empty
+               }|
+               ## Select free surface filter
+               ##
+               ## With PN-PN we need some filter to supress spurious modes.
+               element user_specified_free_surface_filter {
+                  ## Default is to apply 0.01 and for wetting and drying cases 1.0
+                  element non_linear_filter_coefficient {
+                     real
+                  }
+               }|
+               ## Switch off free surface filter, this is more efficient than setting the coefficient to 0.
+               element switch_off_free_surface_filter {
+                  empty
+               }
+            ),
+            ## Apply wetting and drying routines
+            element wetting_drying {
+               empty
+            }?,
+            ## Tidal forcing options
+            element tidal_forcing {
+               ## M2
+               element M2 {
+                 empty
+               }?,
+               ## S2
+               element S2 {
+                  empty
+               }?,
+               ## N2
+               element N2 {
+                  empty
+               }?,
+               ## K2
+               element K2 {
+                  empty
+               }?,
+               ## K1
+               element K1 {
+                  empty
+               }?,
+               ## O1
+               element O1 {
+                  empty
+               }?,
+               ## P1
+               element P1 {
+                  empty
+               }?,
+               ## Q1
+               element Q1 {
+                  empty
+               }?,
+               ## Switch on all tidal components
+               element all_tidal_components {
+                  empty
+               }?,
+               ## Switches on a Love number of 0.3
+               element love_number {
+                  empty
+               }?,
+               ## Use static tidal force for testing
+               element static_tidal_force {
+                  empty
+               }?
+            }?
+         }
+      ),
+      # atheta, ctheta and fstheta (absorption, coriolis and free surface)
+      # need to go in temporal discretisation
+      # they are currently hard-coded however
+      element temporal_discretisation {
+         ## Implicit/explicitness for the free surface.
+         ##
+         ## Suggested value 1.0 (should be at least bigger than 0.5).
+         ##  =0.  -- explicit
+         ##  =0.5 -- Crank-Nicolson
+         ##  =1.  -- implicit
+         element theta {
+            real
+         },
+         # Maybe this should go under a proper absorption field under free surface?
+         ## Implicit/explicitness for absorption
+         ## =0.  -- explicit (default)
+         ## =0.5 -- Crank-Nicolson
+         ## =1.  -- implicit
+         element absorption_theta {
+            real
+         }?
+      },
+      ## Solver
+      element solver {
+         linear_solver_options_sym
+      },
+      (
+         ## Initial condition for WholeMesh
+         ##
+         ## Only specify one condition if not using mesh regions.
+         ## Otherwise select other initial_condition option, specify region_ids
+         ## and distinct names.  Then add extra intial conditions for other regions.
+         element initial_condition {
+            attribute name { "WholeMesh" },
+            input_choice_initial_condition_real
+         }|
+         ## Multiple initial_conditions are allowed if specifying
+         ## different values in different
+         ## regions of the mesh (defined by region_ids).  In this case
+         ## each initial_condition
+         ## requires a distinct name for the options dictionary.
+         element initial_condition {
+            attribute name { string },
+            region_ids?,
+            input_choice_initial_condition_real
+         }
+      )+,
+      ## Boundary conditions
+      element boundary_conditions {
+         attribute name { string },
+         ## Surface id:
+         element surface_ids {
+            integer_vector
+         },
+         ## Type
+         (
+            element type {
+               attribute name { "dirichlet" },
+               (
+                  input_choice_real_contents|
+                  element from_file {
+                     element tidal {
+                        attribute file_name { string },
+                        attribute variable_name_amplitude { string },
+                        attribute variable_name_phase { string },
+                        ## See E.W. Schwiderski - Rev. Geophys. Space
+                        ## Phys. Vol. 18 No. 1 pp. 243--268, 1980
+                        ## for details of these constituent.
+                        attribute name {"M2"|"S2"|"N2"|"K2"|"K1"|"O1"|"P1"|"Q1"|"Mf"|"Mm"|"Ssa"}
+                     }+
+                  }|
+                  ## Set the boundary free-surface height from NEMO data.
+                  ## A prescribed NEMO pressure scalar field must be set to use this option.
+                  ## Set the name of the prescribed NEMO pressure scalar field below.
+                  element NEMO_data {
+                     attribute field_name { string }
+                  }
+               )
+            }|
+            element type {
+               attribute name { "neumann" },
+               input_choice_real
+            }|
+            robin_bc_scalar
+         )
+      }*,
+      # no Diffusivity for field
+      # no source term
+      # no Absorption term
+      # no Adaptive timestepping option
+      prognostic_scalar_stat_options,
+      scalar_convergence_options,
+      prognostic_detector_options,
+      scalar_steady_state_options,
+      adaptivity_options_prognostic_scalar_field,
+      interpolation_algorithm_scalar,
+      discrete_properties_algorithm_scalar?
+   )
+
+# stream function, this is a copy of prognostic_scalar_field above
+# removing all options that don't apply (mainly advection related)
+prognostic_stream_function_field =
+   (
+      ## Solver
+      element solver {
+         linear_solver_options_asym
+      },
+      ## Disables checkpointing of this field
+      element exclude_from_checkpointing {
+        comment
+      },
+      # no Diffusivity for field
+      # no source term
+      # no Absorption term
+      # no Adaptive timestepping option
+      prognostic_scalar_stat_options,
+      prognostic_detector_options,
+      adaptivity_options_prognostic_scalar_field,
+      interpolation_algorithm_scalar_full,
+      discrete_properties_algorithm_scalar?
+   )
+
+
+# stream function, this is a copy of prognostic_scalar_field above
+# removing all options that don't apply (mainly advection related)
+prognostic_multipath_stream_function_field =
+   (
+      ## Solver
+      element solver {
+         linear_solver_options_asym
+      },
+      ## Boundary conditions
+      element boundary_conditions {
+         attribute name { string },
+         ## Surface id:
+         element surface_ids {
+            integer_vector
+         },
+         ## The streamfunction will be zero on the primary boundary. There must be exactly one primary boundary.
+          element primary_boundary{
+            empty
+         },
+         ## Type
+         (
+            element type {
+               attribute name { "dirichlet" },
+               element internally_calculated {
+                  empty
+               }
+            }
+         )
+      },
+      ## Boundary conditions
+      element boundary_conditions {
+         attribute name { string },
+         ## Surface id:
+         element surface_ids {
+            integer_vector
+         },
+         ## Secondary boundaries have a value given by the flux between this boundary and the primary boundary.
+         element secondary_boundary{
+            ## A point on or behind the primary boundary *from* which the flux line should extend.
+            ## Note: Path should not go through periodic boundary
+            element primary_point {
+               real_dim_vector
+            },
+            ## A point on or behind the secondary boundary *to* which the flux line should extend.
+            ## Note: Path should not go through periodic boundary
+            element secondary_point {
+               real_dim_vector
+            }
+         },
+         ## Type
+         (
+            element type {
+               attribute name { "dirichlet" },
+               element internally_calculated {
+                  empty
+               }
+            }
+         )
+      }*,
+      ## Disables checkpointing of this field
+      element exclude_from_checkpointing {
+        comment
+      },
+      # no Diffusivity for field
+      # no source term
+      # no Absorption term
+      # no Adaptive timestepping option
+      prognostic_scalar_stat_options,
+      prognostic_detector_options,
+      scalar_steady_state_options,
+      adaptivity_options_prognostic_scalar_field,
+      interpolation_algorithm_scalar_full,
+      discrete_properties_algorithm_scalar?
+   )
+
+scalar_equation_choice =
+   (
+      (
+         ## Select the equation used to solve for this field.
+         ## Advection Diffusion is the norm for scalar fields.
+         ## Works for all discretisation types.
+         element equation {
+            attribute name { "AdvectionDiffusion" },
+            empty
+         }|
+         ## ***UNDER TESTING***
+         ##
+         ## Select the equation used to solve for this field.
+         ## Heat Transfer equation - requires the selection of a Density field.
+         ##
+         ## ONLY WORKS FOR CONTROL VOLUME DISCRETISATIONS.
+         ##
+         ## This equation is very similar to a standard advection of temperature equation
+         ## except that a coefficient density field may be spatially and/or temporally
+         ## varying.
+         element equation {
+            attribute name { "HeatTransfer" },
+            equation_coefficients
+         }|
+         ## ***UNDER TESTING***
+         ##
+         ## Select the equation used to solve for this field.
+         ## Conservation of Mass equation - requires the selection of a Density field.
+         ## ONLY WORKS FOR CONTROL VOLUME DISCRETISATIONS
+         element equation {
+            attribute name { "ConservationOfMass" },
+            equation_coefficients
+         }|
+         ## ***UNDER TESTING***
+         ##
+         ## Select the equation used to solve for this field.
+         ## Reduced Conservation of Mass equation - requires the selection of a Density field.
+         ##
+         ## ONLY WORKS FOR CONTROL VOLUME DISCRETISATIONS
+         ##
+         ## This equation is very similar to a standard conservation of mass equation
+         ## except that the time discretisation uses only a single time level of density.
+         ## This enables consistency between the
+         ## MaterialVolumeFraction (ReducedConservationOfMass) and
+         ## MaterialDensity (Advection) equations in compressible multimaterial simulations.
+         element equation {
+            attribute name { "ReducedConservationOfMass" },
+            equation_coefficients
+         }|
+         ## ***UNDER TESTING***
+         ##
+         ## Select the equation used to solve for this field.
+         ## Internal Energy equation - requires the selection of a Density field.
+         ## ONLY WORKS FOR CONTROL VOLUME DISCRETISATIONS
+         ## Solve the internal energy equation for this field.
+         ## Requires pressure and velocity fields to be present.
+         ## Uses a nonconservative time discretisation.
+         element equation {
+            attribute name { "InternalEnergy" },
+            equation_coefficients
+         }|
+         ## Option to solve for electrical potential from
+         ## electrokinetic, electrochemical or electrothermal sources
+         element equation {
+            attribute name { "ElectricalPotential" }
+         }
+      )
+   )
+
+equation_coefficients =
+   (
+      ## Select density to use in the equation
+      ## Use the MaterialDensity - useful for multimaterial simulations
+      ## Clearly this requires a MaterialDensity field to be present
+      ## Whatever field is selected must be present.
+      element density {
+        attribute name { "MaterialDensity" },
+        coefficient_discretisation_options?
+      }|
+      ## Select density to use in the equation
+      ## Use the bulk Density
+      ## Clearly this requires a Density field to be present
+      ## Whatever field is selected must be present.
+      element density {
+        attribute name { "Density" },
+        coefficient_discretisation_options?
+      }|
+      ## Select density to use in the equation
+      ## Whatever field is selected must be present.
+      element density {
+        attribute name { string },
+        coefficient_discretisation_options?
+      }
+   )
+
+coefficient_discretisation_options =
+  (
+    ## Provide discretisation options for the coefficient density field.
+    ##
+    ## If not provided then the discretisation options will default to those
+    ## under the field that is named (hence it will generally have to be a prognostic
+    ## field itself).
+    element discretisation_options {
+      element spatial_discretisation {
+        element control_volumes {
+          spatial_control_volume_options_excluding_none
+        }
+      },
+      element temporal_discretisation {
+        ## Implicit/explicit control (TTHETA)
+        ##  =0.  -- explicit
+        ##  =0.5 -- Crank-Nicolson
+        ##  =1.  -- implicit
+        element theta {
+          real
+        },
+        element control_volumes {
+          ## Only works if a control volume or coupled_cv spatial discretisation is selected.
+          ## If not active then the theta specified above will be used.
+          ## Otherwise use variable limited theta on individual faces.
+          element limit_theta {
+              empty
+          }?
+        }
+      }
+    }
+  )

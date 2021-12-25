@@ -114,8 +114,10 @@ void write_part_main_mesh( bool verbose, string filename, int part,
   
   // Construct mesh file name from base name.
   ostringstream basename;
+  if (filename.substr(filename.length()-4,4) == ".msh") 
+    filename = filename.substr(0,filename.length()-4);
   basename << filename << "_" << part;
-  string lfilename = basename.str() + ".msh";
+  string lfilename = basename.str()+ ".msh";
   
   if(verbose)
     cout<<"Writing out GMSH mesh for partition "<<part
@@ -930,8 +932,9 @@ int decomp_gmsh( map<char, string> flArgs, bool verbose,
   int errorCode=1;
 
   // base name + file extension
-  string lfilename = filename+".msh";
-
+  string lfilename = filename;
+  if (lfilename.substr(lfilename.length()-4,4) != ".msh") 
+    lfilename = lfilename + ".msh";
   fstream gmshfile;
 
   // Open the GMSH file.

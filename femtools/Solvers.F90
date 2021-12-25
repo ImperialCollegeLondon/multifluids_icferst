@@ -1823,10 +1823,8 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
          FLAbort("Need petsc_numbering for monitor")
        end if
        call petsc_monitor_setup(petsc_numbering, max_its)
-       ! NOTE: there doesn't seem to be a clean way to provide NULL to the void *mctx
-       ! argument in for fortran interface to PETSc v3.8 - PETSC_NULL_KSP does get translated to NULL
-       call KSPMonitorSet(ksp, MyKSPMonitor, PETSC_NULL_KSP, &
-            &                     PETSC_NULL_FUNCTION,ierr)
+       call KSPMonitorSet(ksp, MyKSPMonitor, vf, &
+            &                     PETSC_NULL_FUNCTION, ierr)
     end if
 
 #if PETSC_VERSION_MINOR<6
@@ -1970,6 +1968,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
   ! if present and true, don't setup sor and eisenstat as subpc (again)
   logical, optional, intent(in) :: is_subpc
   character( len = option_path_len ) :: opt
+  integer :: n_local, first_local
 
     KSP:: subksp
     PC:: subpc
@@ -2058,12 +2057,19 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
       ! need to call this before the subpc can be retrieved:
       call PCSetup(pc, ierr)
 
+#if PETSC_VERSION_MINOR>=14
       if (pctype==PCBJACOBI) then
-        call PCBJACOBIGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
+        call PCBJacobiGetSubKSP(pc,n_local,first_local,subksp,ierr)
+      else
+        call PCASMGetSubKSP(pc,n_local,first_local,subksp,ierr)
+      end if
+#else
+      if (pctype==PCBJACOBI) then
+        call PCBJacobiGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
       else
         call PCASMGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
       end if
-
+#endif
       call KSPGetPC(subksp, subpc, ierr)
       ! recursively call to setup the subpc
       ewrite(2,*) "Going into setup_pc_from_options for the subpc within the local domain."
@@ -2084,7 +2090,12 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        call PCSetType(pc, PCBJACOBI, ierr)
        ! need to call this before the subpc can be retrieved:
        call PCSetup(pc, ierr)
-       call PCBJACOBIGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
+#if PETSC_VERSION_MINOR>=14
+! Extract the array of KSP contexts for the local blocks
+        call PCBJacobiGetSubKSP(pc,n_local,first_local,subksp,ierr)
+#else
+       call PCBJacobiGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
+#endif
        call KSPGetPC(subksp, subpc, ierr)
        call PCSetType(subpc, pctype, ierr)
 
@@ -2568,7 +2579,8 @@ end subroutine petsc_monitor_destroy
 subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
 !! The monitor function that gets called each iteration of petsc_solve
 !! (if petsc_solve_callback_setup is called)
-  PetscInt, intent(in) :: n,dummy
+  PetscInt, intent(in) :: n
+  PetscObject, intent(in):: dummy
   KSP, intent(in) :: ksp
   PetscErrorCode, intent(out) :: ierr
 

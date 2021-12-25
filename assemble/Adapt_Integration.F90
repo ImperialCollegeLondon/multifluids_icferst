@@ -215,7 +215,7 @@ contains
     real, dimension(:), allocatable :: rlarr
     integer :: rlsiz
     ! Input variables
-    logical :: geom3d, srfgmy, useq
+    logical :: geom3d, srfgmy, useq, global_adapt_error
     integer :: absolutemxnods
     integer, dimension(:), allocatable, target :: enlbas
     integer, dimension(:), pointer :: enlist
@@ -596,14 +596,15 @@ contains
         use_conservative_settings = adapt_error
         !however we need to ensure consistenty between processors
         !for the rest of the options
-        call allor(adapt_error)
-        if (adapt_error) return
+        ! global_adapt_error = adapt_error
+        ! call allor(global_adapt_error)
+        ! if (global_adapt_error) return
     else
-		if(nwnnod < 0) then
-		  FLAbort("Mesh adaptivity exited with an error")
-		end if
-		assert(nwnnod <= absolutemxnods)
-		assert(nwnelm >= 0)
+      if(nwnnod < 0) then
+        FLAbort("Mesh adaptivity exited with an error")
+      end if
+      assert(nwnnod <= absolutemxnods)
+      assert(nwnelm >= 0)
     end if
 #else
 		FLExit("Fluidity compiled without libadaptivity support")
@@ -622,58 +623,72 @@ contains
     deallocate(nfree)
 
     ewrite(2, *) "Constructing output positions"
+  if (.not. adapt_error) then 
+      allocate(output_mesh)
+      call allocate(output_mesh, nwnnod, nwnelm, input_positions%mesh%shape, name = input_positions%mesh%name)
+      output_mesh%shape%refcount%tagged = .false.
+      output_mesh%shape%quadrature%refcount%tagged = .false.
 
-    allocate(output_mesh)
-    call allocate(output_mesh, nwnnod, nwnelm, input_positions%mesh%shape, name = input_positions%mesh%name)
-    output_mesh%shape%refcount%tagged = .false.
-    output_mesh%shape%quadrature%refcount%tagged = .false.
+      output_mesh%ndglno = intarr(nwenls:nwenls + nwszen - 1)
+      output_mesh%option_path = input_positions%mesh%option_path
 
-    output_mesh%ndglno = intarr(nwenls:nwenls + nwszen - 1)
-    output_mesh%option_path = input_positions%mesh%option_path
+      ! Construct the new positions
+      call allocate(output_positions, dim, output_mesh, name = input_positions%name)
+      call deallocate(output_mesh)
+      deallocate(output_mesh)
+      output_mesh => output_positions%mesh
 
-    ! Construct the new positions
-    call allocate(output_positions, dim, output_mesh, name = input_positions%name)
-    call deallocate(output_mesh)
-    deallocate(output_mesh)
-    output_mesh => output_positions%mesh
+      call set_all(output_positions, 1, rlarr(nwnodx:nwnodx + nwnnod - 1))
+      call set_all(output_positions, 2, rlarr(nwnody:nwnody + nwnnod - 1))
+      call set_all(output_positions, 3, rlarr(nwnodz:nwnodz + nwnnod - 1))
+      output_positions%option_path = input_positions%option_path
+      ! put the region id info in now so we can reorder it if we're parallel
+      if(have_option(base_path // "/preserve_mesh_regions")&
+                .or.present_and_true(force_preserve_regions)) then
+        allocate(output_mesh%region_ids(nwnelm))
+        output_mesh%region_ids = intarr(nwelrg:nwelrg + nwnelm - 1)
+      end if
 
-    call set_all(output_positions, 1, rlarr(nwnodx:nwnodx + nwnnod - 1))
-    call set_all(output_positions, 2, rlarr(nwnody:nwnody + nwnnod - 1))
-    call set_all(output_positions, 3, rlarr(nwnodz:nwnodz + nwnnod - 1))
-    output_positions%option_path = input_positions%option_path
 
-    ! put the region id info in now so we can reorder it if we're parallel
-    if(have_option(base_path // "/preserve_mesh_regions")&
-              .or.present_and_true(force_preserve_regions)) then
-      allocate(output_mesh%region_ids(nwnelm))
-      output_mesh%region_ids = intarr(nwelrg:nwelrg + nwnelm - 1)
+    else !If it has failed re-use the old mesh parameters
+      ! ! HOWEVER we need to fake that is has worked so for parallel we can follow the same procedure
+      if (associated(output_positions%refcount)) call deallocate(output_positions)
+      call allocate(output_positions,input_positions%dim,input_positions%mesh,name=trim(input_positions%name))
+      call set(output_positions,input_positions)
+      !Deallocate stuff
+      if (allocated(orgmtx)) deallocate(orgmtx);if (allocated(enlbas)) deallocate(enlbas);
+      if (allocated(elmreg)) deallocate(elmreg);if (allocated(snlbas)) deallocate(snlbas)
+      if (allocated(snlist)) deallocate(snlist);if (allocated(surfid)) deallocate(surfid);
+      if (allocated(prdnds)) deallocate(prdnds);if (allocated(oldfld)) deallocate(oldfld)
+      if (allocated(nfree)) deallocate(nfree)
+      !We need to provide all the integers for consistency
+      nwnnod = output_positions%mesh%nodes 
+      nwnelm = output_positions%mesh%elements 
+      ! nwnsel = size(output_mesh%faces%coplanar_ids)
+      output_mesh => output_positions%mesh
+      call deallocate(output_mesh%halos)
     end if
-
     if(nhalos > 0) then
       ewrite(2, *) "Constructing output halos"
 
       allocate(renumber_permutation(nwnelm))
-
       allocate(output_mesh%halos(nhalos))
       call form_halo_from_raw_data(output_mesh%halos(nhalos), nproc, gather, atosen, scater, atorec,&
            & nowned_nodes = nwnnod - nhalo, create_caches = .true.)
-
       if(nhalos == 2) then
         ! Derive remaining halos
         call derive_l1_from_l2_halo(output_mesh, &
           & ordering_scheme = HALO_ORDER_TRAILING_RECEIVES, create_caches = .true.)
-
-        allocate(output_mesh%element_halos(2))
-        call derive_element_halo_from_node_halo(output_mesh, &
+          allocate(output_mesh%element_halos(2))
+          call derive_element_halo_from_node_halo(output_mesh, &
           & ordering_scheme = HALO_ORDER_GENERAL, create_caches = .false.)
-        call renumber_positions_elements_trailing_receives(output_positions, permutation=renumber_permutation)
+          call renumber_positions_elements_trailing_receives(output_positions, permutation=renumber_permutation)
       else
-        allocate(output_mesh%element_halos(1))
-        call derive_element_halo_from_node_halo(output_mesh, &
+          allocate(output_mesh%element_halos(1))
+          call derive_element_halo_from_node_halo(output_mesh, &
           & ordering_scheme = HALO_ORDER_GENERAL, create_caches = .false.)
-        call renumber_positions_elements_trailing_receives(output_positions, permutation=renumber_permutation)
+          call renumber_positions_elements_trailing_receives(output_positions, permutation=renumber_permutation)
       end if
-
       if(have_option(base_path // "/preserve_mesh_regions")&
                 .or.present_and_true(force_preserve_regions)) then
         ! reorder the region_ids since all out elements have been jiggled about
@@ -707,21 +722,20 @@ contains
     deallocate(scater)
     deallocate(atorec)
 
-    ewrite(2, *) "Constructing output surface data"
-
-    allocate(boundary_ids(nwnsel))
-    allocate(coplanar_ids(nwnsel))
-    call deinterleave_surface_ids(intarr(nwsfid:nwsfid + nwnsel - 1), max_coplanar_id, boundary_ids, coplanar_ids)
-    call add_faces(output_mesh, sndgln = intarr(nwsnls:nwsnls + nwszsn - 1), boundary_ids = boundary_ids)
-    deallocate(boundary_ids)
-    if(associated(input_positions%mesh%faces%coplanar_ids)) then
-      allocate(output_mesh%faces%coplanar_ids(nwnsel))
-      output_mesh%faces%coplanar_ids = coplanar_ids
+    if (.not. adapt_error) then
+      ewrite(2, *) "Constructing output surface data"
+      allocate(boundary_ids(nwnsel))
+      allocate(coplanar_ids(nwnsel))
+      call deinterleave_surface_ids(intarr(nwsfid:nwsfid + nwnsel - 1), max_coplanar_id, boundary_ids, coplanar_ids)
+      call add_faces(output_mesh, sndgln = intarr(nwsnls:nwsnls + nwszsn - 1), boundary_ids = boundary_ids)
+      deallocate(boundary_ids)
+      if(associated(input_positions%mesh%faces%coplanar_ids)) then
+        allocate(output_mesh%faces%coplanar_ids(nwnsel))
+        output_mesh%faces%coplanar_ids = coplanar_ids
+      end if
+      deallocate(coplanar_ids)
+      ewrite(2, *) "Finished constructing output surface data"
     end if
-    deallocate(coplanar_ids)
-
-    ewrite(2, *) "Finished constructing output surface data"
-
 #ifdef DDEBUG
     call verify_positions(output_positions)
 #endif
@@ -755,7 +769,6 @@ contains
 
     deallocate(intarr)
     deallocate(rlarr)
-
     ewrite(1, *) "Exiting adapt_mesh"
 
   end subroutine adapt_mesh

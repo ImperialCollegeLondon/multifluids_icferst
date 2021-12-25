@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>BL_fast</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml 3D</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python3 ./*.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="BL_3D" language="python">BL_3D = False
+with open("log", "r") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
+
+if 'OK' in last: BL_3D = True
+
+assert(BL_3D)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
