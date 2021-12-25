@@ -7,7 +7,7 @@ keeps their original license.
 The executable is named
 Executable: icferst
 The schema for the ICFERST diamond interface is in
-legacy_reservoir_prototype/schemas/multiphase.rmg
+ICFERST/schemas/multiphase.rmg
 
 For compilation run the command:
 make mp

@@ -175,8 +175,6 @@ module global_parameters
   logical :: is_porous_initialisation = .false.
   !! Multiphase prototype, magma simulator
   logical :: is_magma = .false.
-  !! Multiphase prototype, poro-elasticity simulator
-  logical :: is_poroelasticity = .false.
   !! Checking multifracture
   logical :: is_multifracture = .false.
     !! Checking to see if fracturing is occuring in FEMDEM
@@ -185,16 +183,15 @@ module global_parameters
   logical :: has_temperature = .false.
   !! Mutliphase prototype, solve Stokes equations for momentum
   logical :: solve_stokes
-  !! Arash
-  !! Multiphase prototype, models salt concentration
-  logical :: has_salt = .false.
+  !! Multiphase prototype, models concentration
+  logical :: has_concentration = .false.
   !! Checking if using the P0DG for velocity,
   !! special because we need to avoid the use of PressureMesh_Continuous
-  logical :: is_P0DGP1CV = .false.
+  logical :: is_P0DGP1 = .false.
   !! Multiphase prototype, blasting simulator
   logical :: is_blasting = .false.
-
-
+  !! Has boussinesq option on
+  logical :: has_boussinesq_aprox = .false.
   !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
   real :: backtrack_or_convergence
   logical :: FPI_have_converged = .false.

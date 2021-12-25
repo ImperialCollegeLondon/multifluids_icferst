@@ -1,5 +1,5 @@
 #    Copyright (C) 2006 Imperial College London and others.
-#    
+#
 #    Please see the AUTHORS file in the main source directory for a full list
 #    of copyright holders.
 #
@@ -9,7 +9,7 @@
 #    Imperial College London
 #
 #    amcgsoftware@imperial.ac.uk
-#    
+#
 #    This library is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
 #    License as published by the Free Software Foundation,
@@ -66,7 +66,7 @@ FLLINKER = @FLLINKER@ @LDFLAGS@ $(FCFLAGS)
 
 LIBS    = -L./lib -l$(FLUIDITY) @LIB_FEMDEM@ ./lib/libadaptivity.a \
            ./lib/libvtkfortran.a @LIBSPATIALINDEX@  @SPUDLIB@ @FLIBJUDY@ \
-           @LIBS@ @BLAS_LIBS@
+           @LIBS@ @BLAS_LIBS@ @LIB_XGBOOST@ @LIB_PHREEQC@
 
 OBJS = $(shell find . -mindepth 2 -maxdepth 2 -name '*.c' -o -name '*.cpp' -o -name '*.[fF]' -o -name '*.F90' | grep -v ^./lib | xargs)
 MAKE = @MAKE@ -s
@@ -143,7 +143,7 @@ lib/libvtkfortran.a:
 ifeq (@SPUD_ONLY@,yes)
 	echo '    MAKE libspud'; $(MAKE) -C libspud && $(MAKE) -C libspud install-libspud
 else
-	echo '    MAKE libspud'; $(MAKE) -C libspud &&  $(MAKE) -C libspud install-libspud && cd libspud/python && python setup.py build && cd ../.. && cp libspud/python/build/lib*/libspud.so python/
+	echo '    MAKE libspud'; $(MAKE) -C libspud &&  $(MAKE) -C libspud install-libspud && cd libspud/python && python3 setup.py build && cd ../.. && cp libspud/python/build/lib*/libspud*.so python/
 endif
 
 libfemtools: sub_system
@@ -182,14 +182,13 @@ mp: bin/icferst
 
 bin/icferst: fluidity_library
 	@echo "    MAKE icferst"
-	@cd legacy_reservoir_prototype; $(MAKE)
+	@cd ICFERST; $(MAKE)
 	@echo "BUILD icferst"
-	@echo "    MKDIR legacy_reservoir_prototype"
+	@echo "    MKDIR ICFERST"
 	@mkdir -p bin
 	@echo "    LD icferst"
-	@$(EVAL) $(FLLINKER) -o bin/icferst legacy_reservoir_prototype/main.o ./legacy_reservoir_prototype/lib/libmphase.a $(FCFLAGS) $(LIBS)
+	@$(EVAL) $(LINKER) -o bin/icferst ICFERST/main.o ./ICFERST/lib/libmphase.a $(CXXFLAGS) $(LIBS)
 	@cd ../
-	@cp ./bin/icferst ./bin/multiphase_prototype
 
 bin/form_pod_basis: fluidity_library reduced_modelling/Form_Pod_Basis_Main.F90
 	@cd reduced_modelling; $(MAKE) Form_Pod_Basis_Main.o
@@ -211,7 +210,7 @@ lib/shared/$(SLIB_FLUIDITY).1: fluidity_library
 	@cp $(LIB_FLUIDITY) tmp
 	@cd tmp; ar x lib$(FLUIDITY).a; rm lib$(FLUIDITY).a; cd ..
 	@echo "    LD lib$(FLUIDITY).so"
-	@$(EVAL) $(LINKER) -shared -Wl,-soname,$(SLIB_FLUIDITY).1 -o lib/shared/$(SLIB_FLUIDITY).1 tmp/* -L./lib -lvtkfortran 
+	@$(EVAL) $(LINKER) -shared -Wl,-soname,$(SLIB_FLUIDITY).1 -o lib/shared/$(SLIB_FLUIDITY).1 tmp/* -L./lib -lvtkfortran
 	@rm -rf tmp
 	@cd lib/shared; ln -sf $(SLIB_FLUIDITY).1 $(SLIB_FLUIDITY); cd ../..
 
@@ -239,7 +238,7 @@ manual:
 python_build:
 ifeq (@HAVE_PYTHON@,yes)
 	@echo "    MAKE python"
-	@cd python; python setup.py build > build.log 2>&1
+	@cd python; python3 setup.py build > build.log 2>&1
 	@cd python/fluidity; find ../build/lib* -name '*.so' -exec ln -sf {} . \;
 endif
 
@@ -322,7 +321,7 @@ endif
 
 
 
-fldecomp: fluidity_library 
+fldecomp: fluidity_library
 	@echo "BUILD fldecomp"
 	@echo "    MKDIR bin"
 	@mkdir -p bin
@@ -384,8 +383,8 @@ endif
 	@cd climatology;  $(MAKE) clean
 	@echo "    CLEAN main"
 	@cd main; $(MAKE) clean
-	@echo "    CLEAN legacy_reservoir_prototype"
-	@cd legacy_reservoir_prototype; $(MAKE) clean
+	@echo "    CLEAN ICFERST"
+	@cd ICFERST; $(MAKE) clean
 	@rm -fr bin lib
 
 clean: clean-light clean-test python_clean clean-debian
@@ -414,14 +413,14 @@ endif
 
 clean-debian:
 	@echo "    CLEAN debian"
-	@cd debian; rm -rf files tmp fluidity python-fluidity *.substvars *.debhelper* 
+	@cd debian; rm -rf files tmp fluidity python-fluidity *.substvars *.debhelper*
 
-clean-test:      
+clean-test:
 	@echo "    CLEAN tests"
 	@cd tests; PYTHONPATH=../python ../tools/testharness.py --clean >/dev/null
 	@cd tests/data; $(MAKE) clean
 
-clean-all-tests: clean-test     
+clean-all-tests: clean-test
 	@echo "    CLEAN parallel/special/long tests"
 	@PYTHONPATH=python tools/testharness.py --parallelism=parallel --clean >/dev/null
 	@PYTHONPATH=python tools/testharness.py --length=special --clean >/dev/null
@@ -469,7 +468,7 @@ distclean: clean
 
 test: serialtest
 
-serialtest: fltools bin/$(FLUIDITY) 
+serialtest: fltools bin/$(FLUIDITY)
 	@cd tests; ../bin/testharness -x test_results.xml -l short $(EXCLUDE_TAGS) -n $(THREADS)
 
 mediumtest: fltools bin/$(FLUIDITY) manual spudtools
@@ -477,21 +476,21 @@ mediumtest: fltools bin/$(FLUIDITY) manual spudtools
 
 .PHONY: spudtools
 
-test-mp: fltools bin/multiphase_prototype serialtest-mp
+test-mp: fltools bin/icferst serialtest-mp
 
 serialtest-mp:
-	@cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -l short $(EXCLUDE_TAGS) -n $(THREADS)
+	@cd ICFERST/tests; ../tools/testharness_ICFERST.py -l short $(EXCLUDE_TAGS) -n $(THREADS)
 
-test-mp-xml: fltools bin/multiphase_prototype serialtest-mp-xml
+test-mp-xml: fltools bin/icferst serialtest-mp-xml
 
 serialtest-mp-xml:
-	@cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -x multiphase_test_results.xml -l short $(EXCLUDE_TAGS) -n $(THREADS)
+	@cd ICFERST/tests; ../tools/testharness_ICFERST.py -x multiphase_test_results.xml -l short $(EXCLUDE_TAGS) -n $(THREADS)
 
 spudtools:
 	@cd libspud ; $(MAKE) install-spudtools
 	@echo "    INSTALL spudtools"
 
-setuputs: 
+setuputs:
 	@echo "SETUP tests"
 	@echo "    RMDIR bin/tests"
 	@rm -rf bin/tests
@@ -502,7 +501,7 @@ setuputs:
 build_unittest: fluidity_library libfemtools setuputs
 ifeq (@SPUDLIB@,./lib/libspud.a)
 	@echo "    UNITTEST libspud"
-	@cd libspud/src/tests; $(MAKE) test-binaries; find bin/* -maxdepth 1 -type f -exec ln -sf ../../libspud/src/tests/{} ../../../bin/tests \; 
+	@cd libspud/src/tests; $(MAKE) test-binaries; find bin/* -maxdepth 1 -type f -exec ln -sf ../../libspud/src/tests/{} ../../../bin/tests \;
 endif
 	@echo "    UNITTEST error_measures"
 	@cd error_measures/tests; $(MAKE) unittest
@@ -516,8 +515,8 @@ endif
 	@cd assemble/tests; $(MAKE) unittest
 	@echo "    UNITTEST ocean_forcing"
 	@cd ocean_forcing/tests; $(MAKE) unittest
-	@echo "    UNITTEST legacy_reservoir_prototype"
-	@cd legacy_reservoir_prototype; $(MAKE) build_unittest
+	@echo "    UNITTEST ICFERST"
+	@cd ICFERST; $(MAKE) build_unittest
 
 
 unittest: build_unittest
@@ -525,8 +524,8 @@ unittest: build_unittest
 	@bin/unittestharness bin/tests
 
 unittest-mp: build_unittest
-	@echo "RUN legacy_reservoir_prototype/bin/tests"
-	@bin/unittestharness legacy_reservoir_prototype/bin/tests
+	@echo "RUN ICFERST/bin/tests"
+	@bin/unittestharness ICFERST/bin/tests
 
 
 bin/spud-preprocess:
@@ -580,9 +579,9 @@ endif
 	@cd diagnostics;   	../bin/create_makefile --exclude \
 	"Diagnostic_Fields_Interfaces.F90 Diagnostic_Fields_New.F90" $(TESTOPTS)
 	@cd diagnostics;   	$(MAKE) Diagnostic_Fields_Interfaces.o \
-	Diagnostic_Fields_New.o 
+	Diagnostic_Fields_New.o
 	@echo "    Generating multiphase dependencies"
-	@cd legacy_reservoir_prototype/src;  ../../bin/create_makefile $(TESTOPTS)
+	@cd ICFERST/src;  ../../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating main dependencies"
 	@cd main; ../bin/create_makefile --exclude test_coupler.F90 $(TESTOPTS)
 	@echo "    Cleaning up the mess"
@@ -598,14 +597,14 @@ install: default fltools mp
 	cp -R schemas $(DESTDIR)$(datadir)/fluidity/
 	mkdir -p $(DESTDIR)$(datadir)/diamond/schemata
 	$(SED) 's/$${datadir}/$(subst /,\/,$(datadir))/g' schemas/flml.in > $(DESTDIR)$(datadir)/diamond/schemata/flml
-	cd python ; python setup.py install --root=$(shell echo ${DESTDIR} | sed 's/^$$/\//') --prefix="$(prefix)" $$FLUIDITY_PYTHON_INSTALL_ARGS
+	cd python ; python3 setup.py install --root=$(shell echo ${DESTDIR} | sed 's/^$$/\//') --prefix="$(prefix)" $$FLUIDITY_PYTHON_INSTALL_ARGS
 	cp -R examples $(DESTDIR)$(docdir)/fluidity
 	find $(DESTDIR)$(docdir)/fluidity/examples -type f -exec $(SED) -i "s/\.\.\/\.\.\/\.\.\/bin\///" '{}' \;
 	find $(DESTDIR)$(docdir)/fluidity/examples -type f -exec $(SED) -i "s/\.\.\/\.\.\/bin\///" '{}' \;
 	cd $(DESTDIR)$(docdir)/fluidity ; tar -czvf $(DESTDIR)$(docdir)/fluidity/examples.tar.gz examples/
 	rm -rf $(DESTDIR)$(docdir)/fluidity/examples/
 
-install-diamond: 
+install-diamond:
 	cd libspud; ./configure --prefix=@prefix@; cd ../..
 	cd libspud; $(MAKE) clean; cd ../..
 	cd libspud; $(MAKE) install-diamond; cd ../..

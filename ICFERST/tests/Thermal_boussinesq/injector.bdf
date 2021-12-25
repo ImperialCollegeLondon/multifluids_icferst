@@ -1,0 +1,104 @@
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$                         CUBIT version 16.5.4 NX Nastran Translator
+$
+$            File: uniform_ates_well01_50m_sep.bdf
+$      Time Stamp: 16-Oct-20 at 11:34:41
+$
+$
+$                        PLEASE CHECK YOUR MODEL FOR UNITS CONSISTENCY.
+$
+$       It should be noted that load ID's from CUBIT may NOT correspond to Nastran SID's
+$ The SID's for the load and restraint sets start at one and increment by one:i.e.,1,2,3,4...
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+$
+$
+$ -------------------------
+$ Executive Control Section
+$ -------------------------
+$
+SOL 101
+CEND
+
+$
+$ --------------------
+$ Case Control Section
+$ --------------------
+$
+ECHO = SORT
+$
+$
+$ Name: Initial
+$
+$
+$ Name: Default Set
+$
+SUBCASE = 1
+$
+LABEL = Default Set
+
+$
+$ -----------------
+$ Bulk Data Section
+$ -----------------
+$
+BEGIN BULK
+$
+$ Params
+$
+$
+$ Node cards
+$
+GRID    40      0       50.     50.     0.      
+GRID    851     0       50.     50.     -10.9575
+GRID    852     0       50.     50.     -24.9999
+GRID    853     0       50.     50.     -39.0398
+GRID    39      0       50.     50.     -50.    
+GRID    854     0       50.     50.     -62.3097
+GRID    855     0       50.     50.     -78.6063
+GRID    856     0       50.     50.     -99.9999
+GRID    857     0       50.     50.     -121.382
+GRID    858     0       50.     50.     -137.679
+GRID    14      0       50.     50.     -150.   
+$
+$ Element cards
+$
+$
+$ Name: well01_trajectory
+$
+CROD    1       1007    40      851     
+CROD    2       1007    851     852     
+CROD    3       1007    852     853     
+CROD    4       1007    853     39      
+CROD    5       1007    39      854     
+CROD    6       1007    854     855     
+CROD    7       1007    855     856     
+CROD    8       1007    856     857     
+CROD    9       1007    857     858     
+CROD    10      1007    858     14      
+$
+$ Property cards
+$
+$
+$ Name: well01_trajectory
+$
+PROD    1007    100     0       0       0       0       
+$
+$ Material cards
+$
+$
+$ Name: Default-Steel
+$
+MAT1*   100             206800          80155.039       0.29            
+*       7e-06           1.2e-05         
+$
+$ Restraint cards
+$
+$
+$ Load cards
+$
+$
+$
+ENDDATA

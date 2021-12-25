@@ -1,0 +1,77 @@
+name: icferst 
+base: core18 
+version: '20.06' 
+summary: Flow simulator with unstructured dynamic mesh optimisation technology 
+description: |
+  Flow simulator with unstructured dynamic mesh optimisation technology, focused on multiphase flows such as porous media, navier-stokes, stokes, magma, ...
+
+grade: devel # must be 'stable' to release into candidate/stable channels
+confinement: devmode # use 'strict' once you have the right plugs and slots
+
+parts:
+  icferst-part:
+    source: .
+    source-type: local
+    plugin: autotools
+    configflags: ['--enable-2d-adaptivity']
+    build-packages:
+      - gcc
+      - g++ 
+      - gfortran
+      - libblas-dev
+      - liblapack-dev 
+      - fluidity-dev
+      - python-dev
+      - python2.7
+    stage-packages:
+      - libaec0
+      - libasn1-8-heimdal
+      - libcurl3-gnutls
+      - libexodusii5
+      - libgfortran4
+      - libgssapi3-heimdal
+      - libhcrypto4-heimdal
+      - libhdf5-100
+      - libhdf5-openmpi-100
+      - libheimbase1-heimdal
+      - libheimntlm0-heimdal
+      - libhwloc5
+      - libhx509-5-heimdal
+      - libkrb5-26-heimdal
+      - libldap-2.4-2
+      - libltdl7
+      - libnetcdf13
+      - libnghttp2-14
+      - libnuma1
+      - libopenmpi2
+      - libpetsc3.8.3-dev
+      - libpsl5
+      - libpython2.7
+      - libquadmath0
+      - libroken18-heimdal
+      - librtmp1
+      - libsasl2-2
+      - libsz2
+      - libudunits2-0
+      - libvtk7.1
+      - libwind0-heimdal
+      - libx11-6
+      - libxau6
+      - libxcb1
+      - libxdmcp6
+      - libvtk7-dev
+      - libvtk6.3
+      - libpsm-infinipath1
+apps:
+    icferst:
+        command: bin/icferst
+
+plugs:
+  icferst-home:
+    interface: home
+    write:
+    - $HOME
+    
+package-repositories:
+  - type: apt
+    ppa: fluidity-core/ppa

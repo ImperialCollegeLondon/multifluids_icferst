@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Boussinesq_eos_with_tracers</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous boussinesq mpml </tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst Boussinesq_eos_with_tracers.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="max_den" language="python">from fluidity_tools import stat_parser as stat
+max_den = stat("Boussinesq_eos_with_tracers.stat")["phase1"]["Density"]["max"][-1]</variable>
+    <variable name="min_den" language="python">from fluidity_tools import stat_parser as stat
+min_den = stat("Boussinesq_eos_with_tracers.stat")["phase1"]["Density"]["min"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="Assert final max density" language="python">assert(abs(max_den - 1.036)/1.036 &lt; 0.01)</test>
+    <test name="Assert final min density" language="python">assert(abs(min_den - 1.036)/1.036 &lt; 0.01)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
