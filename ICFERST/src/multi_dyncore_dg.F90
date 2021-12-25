@@ -7014,12 +7014,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         !                        STRESS_IJ_ELE_EXT=0.0
                         ! *********************LOOK AT THIS SO CAREFULLY******************
                         ! make sure SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL =  SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL at the interface...
-                        IF(SOLID_IMPLICIT) THEN
                         SLOC_UDIFFUSION_INTERFACE =  SLOC_UDIFFUSION
                         SLOC_UDIFFUSION_VOL_INTERFACE =  SLOC_UDIFFUSION_VOL
                         SLOC2_UDIFFUSION_INTERFACE =  SLOC2_UDIFFUSION
                         SLOC2_UDIFFUSION_VOL_INTERFACE =  SLOC2_UDIFFUSION_VOL
                         IF(ELE2>0) THEN
+                        IF(SOLID_IMPLICIT) THEN
                             if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid ONLY
                             else
                                 if( (sigma%val(ele).GT.0.5) ) then ! is solid element ELE but ELE2 is a fluid
@@ -7036,18 +7036,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                 
                             endif
                         ENDIF
+                        ENDIF
                         CALL LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_ELE_EXT, S_INV_NNX_MAT12,  &
                             STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
                             Mdims%u_snloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%nphase, &
                             SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION_INTERFACE, SLOC_UDIFFUSION_VOL_INTERFACE, SLOC2_UDIFFUSION_INTERFACE, SLOC2_UDIFFUSION_VOL_INTERFACE, UDIFF_SUF_STAB, &
                             (ELE2.LE.0), SNORMXN_ALL  )
-                        ELSE
-                        CALL LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_ELE_EXT, S_INV_NNX_MAT12,  &
-                            STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
-                            Mdims%u_snloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%nphase, &
-                            SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, UDIFF_SUF_STAB, &
-                            (ELE2.LE.0), SNORMXN_ALL  )
-                        ENDIF
                      STRESS_IJ_SOLID_ELE_EXT=0.0
              ! added by JXiang 
              IF(SOLID_IMPLICIT) THEN
@@ -8470,6 +8464,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 RETURN
             END SUBROUTINE ONEELETENS_ALL
 
+        END SUBROUTINE VISCOCITY_TENSOR_LES_CALC
+        ! solid_implicit developers want to use JACDIA in their subroutine, so they moved 
+        ! this "END SUBROUTINE VISCOCITY_TENSOR_LES_CALC " above to make JACDIA visible 
+        ! to other subroutines in module multiphase_1D_engine
+        ! if this poses conflicts with other developers, we can sort it out in other ways.
+
             !
             !!>@brief:This sub performs Jacobi rotations of a symmetric matrix in order to
             !> find the eigen-vectors V and the eigen values A so
@@ -8632,7 +8632,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
             RETURN
         END SUBROUTINE JACPOS
 
-    END SUBROUTINE VISCOCITY_TENSOR_LES_CALC
+
 
 
 
