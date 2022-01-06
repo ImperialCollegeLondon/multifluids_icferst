@@ -4395,7 +4395,7 @@ end if
         !###Shape function calculation###
         type(multi_dev_shape_funs) :: Devfuns, Devfuns0    ! Devfuns0 added by JXiang 
         type(vector_field), pointer :: X0_ALL   ! added by JXiang
-
+        type( tensor_field ), pointer :: temp_stress    ! solid implicit -- solid stress
 
 ! Local variables...
 !            INTEGER, PARAMETER :: LES_DISOPT=0
@@ -6627,7 +6627,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         END DO
                     END DO
                 END DO
-! volume velocities (for solid_implicit)
+                ! volume velocities (for solid_implicit)
                 if (solid_implicit) then
                     DO U_ILOC = 1, Mdims%u_nloc
                         U_INOD = ndgln%u( (ELE-1)*Mdims%u_nloc + U_ILOC )
@@ -7019,7 +7019,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         SLOC2_UDIFFUSION_INTERFACE =  SLOC2_UDIFFUSION
                         SLOC2_UDIFFUSION_VOL_INTERFACE =  SLOC2_UDIFFUSION_VOL
                         IF(ELE2>0) THEN
-                        IF(SOLID_IMPLICIT) THEN
+                          IF(SOLID_IMPLICIT) THEN
                             if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid ONLY
                             else
                                 if( (sigma%val(ele).GT.0.5) ) then ! is solid element ELE but ELE2 is a fluid
@@ -7035,35 +7035,35 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                 endif
                                 
                             endif
-                        ENDIF
+                          ENDIF
                         ENDIF
                         CALL LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_ELE_EXT, S_INV_NNX_MAT12,  &
                             STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
                             Mdims%u_snloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%nphase, &
                             SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION_INTERFACE, SLOC_UDIFFUSION_VOL_INTERFACE, SLOC2_UDIFFUSION_INTERFACE, SLOC2_UDIFFUSION_VOL_INTERFACE, UDIFF_SUF_STAB, &
                             (ELE2.LE.0), SNORMXN_ALL  )
-                     STRESS_IJ_SOLID_ELE_EXT=0.0
-             ! added by JXiang 
-             IF(SOLID_IMPLICIT) THEN
-                !if(solid_visc_sufele_imp) then  ! option3
-                if (.true.) then
-                    IF(ELE2>0) THEN
-                       if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid
-                          STRESS_IJ_SOLID_ELE_EXT = STRESS_IJ_ELE_EXT
-                          STRESS_IJ_ELE_EXT=0.0
-                          STRESS_IJ_SOLID_ELE_EXT = 0.0
-                       endif
-                    ENDIF 
-! here
-!                        CALL LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_SOLID_ELE_EXT, S_INV_NNX_MAT12,  &
-!                            STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
-!                            Mdims%u_snloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%nphase, &
-!                            SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION_SOLID, SLOC_UDIFFUSION_VOL_SOLID, SLOC2_UDIFFUSION_SOLID, SLOC2_UDIFFUSION_VOL_SOLID, UDIFF_SUF_STAB, &
-!                            (ELE2.LE.0), SNORMXN_ALL  )
-! why (because continuous)...
-                endif ! if(solid_visc_sufele_imp) then ! option3
-            ENDIF
-            ! JXiang end
+                        STRESS_IJ_SOLID_ELE_EXT=0.0
+                        ! added by JXiang 
+                        IF(SOLID_IMPLICIT) THEN
+                            !if(solid_visc_sufele_imp) then  ! option3
+                            if (.true.) then
+                                IF(ELE2>0) THEN
+                                if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid
+                                    STRESS_IJ_SOLID_ELE_EXT = STRESS_IJ_ELE_EXT
+                                    STRESS_IJ_ELE_EXT=0.0
+                                    STRESS_IJ_SOLID_ELE_EXT = 0.0
+                                endif
+                                ENDIF 
+                            ! here
+                            !                        CALL LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_SOLID_ELE_EXT, S_INV_NNX_MAT12,  &
+                            !                            STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
+                            !                            Mdims%u_snloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%nphase, &
+                            !                            SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION_SOLID, SLOC_UDIFFUSION_VOL_SOLID, SLOC2_UDIFFUSION_SOLID, SLOC2_UDIFFUSION_VOL_SOLID, UDIFF_SUF_STAB, &
+                            !                            (ELE2.LE.0), SNORMXN_ALL  )
+                            ! why (because continuous)...
+                            endif ! if(solid_visc_sufele_imp) then ! option3
+                        ENDIF
+                            ! JXiang end
                         !                        STRESS_IJ_ELE_EXT=0.0
                         DIFF_COEF_DIVDX   =0.0
                         DIFF_COEFOLD_DIVDX=0.0
@@ -7636,6 +7636,33 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                             END DO
                         END DO
                     END DO
+                    ! solid traction bc (due to solid stress weak formulation)
+                    ! if (.false.) then
+                    if (solid_implicit) then 
+                        if (sigma%val(ele)>0.5) then    ! solid subdomain
+                            if(ele2.gt.0) then 
+                                ! do nothing
+                            else ! on boundary of domain
+                                temp_stress => extract_tensor_field(state(1), "StressTenSolid")
+                                CAUCHY_STRESS_IJ_SOLID_ELE = temp_stress%val(:,:,ele)
+                                do IDIM = 1, Mdims%ndim
+                                    iphase = 1
+                                    do U_SILOC=1,Mdims%u_snloc
+                                        U_ILOC = U_SLOC2LOC( U_SILOC )
+                                        do SGI=1,FE_GIdims%sbcvngi
+                                            ! do the multiplication (Ni sigma \dot n) * (det wei)
+                                            ! and add to loc_u_rhs
+                                            LOC_U_RHS(idim, iphase, U_ILOC) = LOC_U_RHS(idim, iphase, U_ILOC) &
+                                            + SBUFEN_REVERSED(sgi, U_SILOC) * SDETWE(sgi) * &
+                                            sum( CAUCHY_STRESS_IJ_SOLID_ELE(idim,:) * SNORMXN_ALL( : , sgi) )
+                                            ! ewrite(3,*), "s traction bc: idim, u_siloc, sgi, ..", idim, u_siloc, sgi,  SBUFEN_REVERSED(sgi, U_SILOC) * SDETWE(sgi) * &
+                                            ! sum( CAUCHY_STRESS_IJ_SOLID_ELE(idim,:) * SNORMXN_ALL( : , sgi) )
+                                        enddo
+                                    enddo
+                                enddo
+                            endif ! ele2.gt.0
+                        endif ! sigma%val(ele)>0.5
+                    endif
                 ENDIF If_diffusion_or_momentum3
             END DO Between_Elements_And_Boundary
             !      END DO Loop_Elements2
