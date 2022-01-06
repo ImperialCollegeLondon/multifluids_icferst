@@ -3897,7 +3897,7 @@ element Density{(
                         ## DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))
                         ##
                         ## NOTE: This equation is only valid for small changes in density.
-                        ## Internally it is bounded to not vary more than 10%
+                        ## <b> Internally it is bounded to not vary more than 100% </b>
                         element Linear_eos {
                            ## This is the density value at reference properties
                            element reference_density {

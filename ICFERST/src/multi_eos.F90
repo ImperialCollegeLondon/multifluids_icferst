@@ -631,7 +631,7 @@ contains
         !Finally multiply by the reference density
         rho_internal = rho_internal * eos_coefs( 1 )
         !Ensure that the density does not vary more than 10%, in theory it should never pass 5%
-        rho_internal = min(max(rho_internal, eos_coefs( 1 )/1.1), eos_coefs( 1 )*1.1)
+        rho_internal = min(max(rho_internal, eos_coefs( 1 )/2.0), eos_coefs( 1 )*2.0)
 
       end subroutine
     end subroutine Calculate_Rho_dRhodP

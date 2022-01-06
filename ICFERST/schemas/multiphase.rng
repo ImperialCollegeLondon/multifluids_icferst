@@ -4744,7 +4744,7 @@ DEN = A * P ^ B
 DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))
 
 NOTE: This equation is only valid for small changes in density.
-Internally it is bounded to not vary more than 10%</a:documentation>
+&lt;b&gt;Internally it is bounded to not vary more than 100%&lt;/b&gt;</a:documentation>
               <element name="reference_density">
                 <a:documentation>This is the density value at reference properties</a:documentation>
                 <ref name="real"/>
