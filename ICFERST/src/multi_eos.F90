@@ -2026,8 +2026,12 @@ contains
             if (have_option(trim(path))) then
               call initialise_field_over_regions(targ_Store, trim(path), position)
               t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
-            else !default value
-              t_field%val(2,iphase,:) = 1.0
+            else 
+              if (mdims%n_in_pres>1) then 
+                FLAbort("For multiphase porous media flow, relperm max needs to be defined for all the regions of the model.")
+              else
+                t_field%val(2,iphase,:) = 1.0 
+              end if
             end if
           end do
 
@@ -2039,7 +2043,11 @@ contains
                   call initialise_field_over_regions(targ_Store, trim(path) , position)
                   t_field%val(3,iphase,:) = targ_Store%val
               else !default value
-                  t_field%val(3,iphase,:) = 2.0
+                if (mdims%n_in_pres>1) then 
+                  FLAbort("For multiphase porous media flow, relperm exponent needs to be defined for all the regions of the model.")
+                else
+                  t_field%val(3,iphase,:) = 1.0 
+                end if
               end if
           end do
           !Initialize capillary pressure
@@ -2140,8 +2148,12 @@ contains
                 end do
               end do
             else !default value for immiscible values
+              if (mdims%n_in_pres>1) then 
+                FLAbort("For multiphase porous media flow, relperm exponent needs to be defined for all the regions of the model.")
+              else
                 t_field%val(1,iphase,:) = 0.0!<=to be removed and only use a CV-wise version of this
                 CV_immobile_fraction(iphase, :) = 0.0
+              end if
             end if
         end do
         call deallocate(targ_Store)

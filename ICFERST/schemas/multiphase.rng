@@ -793,38 +793,36 @@ ONLY specify for the wetting phase</a:documentation>
                   </optional>
                 </element>
               </optional>
-              <optional>
-                <element name="immobile_fraction">
-                  <a:documentation>Immobile volume of fluid phase</a:documentation>
-                  <choice>
-                    <a:documentation>Immobile fraction</a:documentation>
-                    <element name="scalar_field">
-                      <attribute name="name">
-                        <value>value</value>
-                      </attribute>
-                      <element name="prescribed">
-                        <ref name="material_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
-                      </element>
+              <element name="immobile_fraction">
+                <a:documentation>Immobile volume of fluid phase</a:documentation>
+                <choice>
+                  <a:documentation>Immobile fraction</a:documentation>
+                  <element name="scalar_field">
+                    <attribute name="name">
+                      <value>value</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
                     </element>
-                    <element name="scalar_field">
-                      <a:documentation>For drainage the immobile fraction is computed dynamically using the Land formula.
+                  </element>
+                  <element name="scalar_field">
+                    <a:documentation>For drainage the immobile fraction is computed dynamically using the Land formula.
 NOTE: No thermal effects considered to change the trapping, i.e. trapping is permanent
 
 High hysteresis ~ 0.2. Low hysteresis &gt; 5
 
 Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".</a:documentation>
-                      <attribute name="name">
-                        <value>Land_coefficient</value>
-                      </attribute>
-                      <element name="prescribed">
-                        <ref name="material_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
-                      </element>
+                    <attribute name="name">
+                      <value>Land_coefficient</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
                     </element>
-                  </choice>
-                </element>
-              </optional>
+                  </element>
+                </choice>
+              </element>
             </element>
           </optional>
         </element>
