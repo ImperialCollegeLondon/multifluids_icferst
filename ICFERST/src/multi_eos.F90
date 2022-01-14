@@ -630,8 +630,8 @@ contains
         end do
         !Finally multiply by the reference density
         rho_internal = rho_internal * eos_coefs( 1 )
-        !Ensure that the density does not vary more than 10%, in theory it should never pass 5%
-        rho_internal = min(max(rho_internal, eos_coefs( 1 )/1.1), eos_coefs( 1 )*1.1)
+        !Ensure that the density stays between [DEN0/2, DEN0*2], in theory it should never pass 5%
+        rho_internal = min(max(rho_internal, eos_coefs( 1 )/2.0), eos_coefs( 1 )*2.0)
 
       end subroutine
     end subroutine Calculate_Rho_dRhodP
@@ -2530,21 +2530,24 @@ contains
       end do
 
       !#####Now proceed to check if we need to update the immobile fraction####
-      call get_var_from_packed_state(packed_state,CV_Immobile_Fraction = CV_Immobile_Fraction)
-      saturation_flip => extract_scalar_field(state(donor_phase_pos), "Saturation_flipping")
-      do ele = 1, Mdims%totele
-        do cv_iloc = 1, Mdims%cv_nloc
-          cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
-          !If the saturation drops below the immobile fraction we update the
-          !flipping saturation so the immobile fraction is updated in get_RockFluidProp
-          if (saturation_field%val(1,donor_phase_pos,cv_nod) < CV_Immobile_Fraction(donor_phase_pos, cv_nod)) then
-            !Positive sign because we want to ensure that if the saturation start to increase
-            !and drop again a new immobile fraction is computed, this requires however to also update Oldsaturation_field
-            saturation_flip%val(cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
-            Oldsaturation_field%val(1,donor_phase_pos,cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
+      if (have_option("/material_phase["//int2str(iphase-1)//&
+      "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then
+        call get_var_from_packed_state(packed_state,CV_Immobile_Fraction = CV_Immobile_Fraction)
+        saturation_flip => extract_scalar_field(state(donor_phase_pos), "Saturation_flipping")
+        do ele = 1, Mdims%totele
+          do cv_iloc = 1, Mdims%cv_nloc
+            cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+            !If the saturation drops below the immobile fraction we update the
+            !flipping saturation so the immobile fraction is updated in get_RockFluidProp
+            if (saturation_field%val(1,donor_phase_pos,cv_nod) < CV_Immobile_Fraction(donor_phase_pos, cv_nod)) then
+              !Positive sign because we want to ensure that if the saturation start to increase
+              !and drop again a new immobile fraction is computed, this requires however to also update Oldsaturation_field
+              saturation_flip%val(cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
+              Oldsaturation_field%val(1,donor_phase_pos,cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
             end if
+          end do
         end do
-      end do
+      end if
 
     end subroutine flash_gas_dissolution
 
