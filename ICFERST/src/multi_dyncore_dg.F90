@@ -618,8 +618,11 @@ end if
                    ug_all%val(:,u_nodi)= cv_ug_all(:,x_nodi)
  !                  ewrite(3,*) "velocity, coordinate are ", u_nodi, x_nodi, cv_ug_all(2,x_nodi)
          end do
-       end do
-       call halo_update(ug_all)
+      end do
+      if (isparallel()) then 
+        call halo_update(ug_all)
+        call halo_update(u_all)
+      endif
       ewrite(3,*) "leaving diffusion grid velocity solvefffffffvvvvvvv"
 
 ! jxiang add deallocate
