@@ -9531,6 +9531,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
           u_s_gi = 0.0 ; dx_ph_gi = 0.0 ; den_gi = 0.0 ;
           volfra_gi = 0.0
 
+          if (solid_impliict) then
           do u_iloc = 1, Mdims%u_nloc
             u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + u_iloc )
             do iphase = 1, nphase
@@ -9540,6 +9541,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                end do
             end do
           end do
+          endif
 
           do cv_iloc = 1, Mdims%cv_nloc
              cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
