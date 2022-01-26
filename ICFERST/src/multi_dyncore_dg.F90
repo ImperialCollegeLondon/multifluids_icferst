@@ -370,20 +370,6 @@ contains
          u_all_solid(:,:,cv_inod) = u_all_solid(:,:,cv_inod)/max(1e-15, vel_count_solid(cv_inod) )
       end do
       
-      !JXiang comment the below line temporarily
-      if(nconc/=0) cc(ndim_nphase+1:ndim_nphase+number_fields, :) = c_field(1:nconc,:)   
-      
-      sigma_plus_bc(:) = min(1.0, 1000.0 * sigma_plus_bc(:)) ! if we have a non-zero value then def assume is a solid.
-      ! Set the boundary condtions on all surface elements around the domain to zero.
-      !     IPHASE=1
-      DO SELE=1,Mdims%stotel
-        DO CV_SILOC=1,Mdims%cv_snloc
-            CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
-            SIGMA_PLUS_BC(CV_INOD) = 1.0
-            u_all_solid(:,:,cv_inod) = 0.0
-        END DO
-      END DO  
-
       ! assign "nodal averaged" velocity (CG) to DG velocity
       do ele = 1, Mdims%totele
         if (sigma(ele).lt. 0.5) cycle ! do nothing in fluid region
@@ -398,6 +384,20 @@ contains
       enddo
       enddo
       
+      !JXiang comment the below line temporarily
+      if(nconc/=0) cc(ndim_nphase+1:ndim_nphase+number_fields, :) = c_field(1:nconc,:)   
+      
+      sigma_plus_bc(:) = min(1.0, 1000.0 * sigma_plus_bc(:)) ! if we have a non-zero value then def assume is a solid.
+      ! Set the boundary condtions on all surface elements around the domain to zero.
+      !     IPHASE=1
+      DO SELE=1,Mdims%stotel
+        DO CV_SILOC=1,Mdims%cv_snloc
+            CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
+            SIGMA_PLUS_BC(CV_INOD) = 1.0
+            u_all_solid(:,:,cv_inod) = 0.0
+        END DO
+      END DO  
+
       ml=0.0
       if(number_fields>0) cc_x=0.0
       matrix_diag=0.0
@@ -7640,7 +7640,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                             END DO
                         END DO
                     END DO
-                    ! solid traction bc (due to solid stress weak formulation)
+                    ! this block does two things:
+                    ! 1. solid traction bc (due to solid stress weak formulation)
+                    ! 2. adding (s -s) pattern to nodes on fluid-solid interface
+                    !           (-s s) so that we have equal velocity across solid interface
+                    !    where s = density / dt
                     ! if (.false.) then
                     if (solid_implicit) then 
                         if (sigma%val(ele)>0.5) then    ! solid subdomain
@@ -7664,6 +7668,44 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                 enddo
                             endif ! ele2.gt.0
                         endif ! sigma%val(ele)>0.5
+                        if (ele2.gt.0) then ! make sure we are not on the boundary!
+                          if ((sigma%val(ele)>0.5 .and. sigma%val(ele2)<0.5) .or. (sigma%val(ele)<0.5 .and. sigma%val(ele2)>0.5)) then 
+                            ! this IFACE of ELE is on the interface!
+                            do u_siloc = 1, Mdims%u_snloc
+                                u_iloc = u_sloc2loc( u_siloc)
+                                U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
+                                u_jloc2 = u_other_loc(u_iloc)
+                                U_iNOD2 = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_jLOC2 )
+                                
+
+                                ! if (ele.eq.6 .or. ele.eq.1899) then 
+                                !     X_NODI = NDGLN%X((ELE-1)*Mdims%X_NLOC+U_ILOC)
+                                !     ewrite(3, *), 'node coor: ', X_ALL(:,X_NODI), 'ele, ele2, and sigmas', ele, ele2, sigma%val(ele), sigma%val(ele2), 'uden uden_ele2', UDEN_temp(U_INOD) , UDEN_temp(U_iNOD2), max(UDEN_temp(U_INOD) , UDEN_temp(U_iNOD2))
+                                ! endif
+                                do idim = 1, Mdims%ndim 
+                                    do iphase = 1, Mdims%nphase
+                                        ! if (ele.eq.6 .or. ele.eq.1899) then 
+                                        !     ewrite(3, *) 'idim, iphase, u_iloc, u_jloc2, ele, count_ele', idim, iphase, u_iloc, u_jloc2, ele, count_ele
+                                        !     ewrite(3, *) 'before', DIAG_BIGM_CON(idim, idim, iphase, iphase, u_iloc, u_iloc, ele), &
+                                        !     bigm_con(idim, idim, iphase, iphase, u_iloc, u_jloc2, COUNT_ELE)
+                                        ! endif
+
+                                        DIAG_BIGM_CON(idim, idim, iphase, iphase, u_iloc, u_iloc, ele) = &
+                                            DIAG_BIGM_CON(idim, idim, iphase, iphase, u_iloc, u_iloc, ele) &
+                                            + max(UDEN_temp(U_INOD) , UDEN_temp(U_iNOD2)) / DT
+                                        bigm_con(idim, idim, iphase, iphase, u_iloc, u_jloc2, COUNT_ELE) = &
+                                            bigm_con(idim, idim, iphase, iphase, u_iloc, u_jloc2, COUNT_ELE) &
+                                            - max(UDEN_temp(U_INOD) , UDEN_temp(U_iNOD2)) / DT
+
+                                        ! if (ele.eq.6 .or. ele.eq.1899) then 
+                                        !     ewrite(3, *) 'after ', DIAG_BIGM_CON(idim, idim, iphase, iphase, u_iloc, u_iloc, ele), &
+                                        !     bigm_con(idim, idim, iphase, iphase, u_iloc, u_jloc2, COUNT_ELE)
+                                        ! endif
+                                    enddo !iphase
+                                enddo !idim
+                            enddo !u_siloc
+                          endif
+                        endif
                     endif
                 ENDIF If_diffusion_or_momentum3
             END DO Between_Elements_And_Boundary
