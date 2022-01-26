@@ -369,34 +369,35 @@ contains
          u_all_cvmesh(:,:,cv_inod) = u_all_cvmesh(:,:,cv_inod)/vel_count(cv_inod)
          u_all_solid(:,:,cv_inod) = u_all_solid(:,:,cv_inod)/max(1e-15, vel_count_solid(cv_inod) )
       end do
+      
+      !JXiang comment the below line temporarily
+      if(nconc/=0) cc(ndim_nphase+1:ndim_nphase+number_fields, :) = c_field(1:nconc,:)   
+      
+      sigma_plus_bc(:) = min(1.0, 1000.0 * sigma_plus_bc(:)) ! if we have a non-zero value then def assume is a solid.
+      ! Set the boundary condtions on all surface elements around the domain to zero.
+      !     IPHASE=1
+      DO SELE=1,Mdims%stotel
+        DO CV_SILOC=1,Mdims%cv_snloc
+            CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
+            SIGMA_PLUS_BC(CV_INOD) = 1.0
+            u_all_solid(:,:,cv_inod) = 0.0
+        END DO
+      END DO  
 
       ! assign "nodal averaged" velocity (CG) to DG velocity
       do ele = 1, Mdims%totele
         if (sigma(ele).lt. 0.5) cycle ! do nothing in fluid region
         do cv_iloc = 1,Mdims%cv_nloc 
-          cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-          u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-          do iphase = 1, Mdims%nphase
+            cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+            u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+        do iphase = 1, Mdims%nphase
             do idim=1,Mdims%ndim 
-              u_all%val(idim, iphase, u_inod) = u_all_solid(idim, iphase, cv_inod)
+                u_all%val(idim, iphase, u_inod) = u_all_solid(idim, iphase, cv_inod)
             enddo
-          enddo
         enddo
       enddo
-
-!JXiang comment the below line temporarily
-      if(nconc/=0) cc(ndim_nphase+1:ndim_nphase+number_fields, :) = c_field(1:nconc,:)   
-
-      sigma_plus_bc(:) = min(1.0, 1000.0 * sigma_plus_bc(:)) ! if we have a non-zero value then def assume is a solid.
-! Set the boundary condtions on all surface elements around the domain to zero.
- !     IPHASE=1
-        DO SELE=1,Mdims%stotel
-            DO CV_SILOC=1,Mdims%cv_snloc
-            CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
-            SIGMA_PLUS_BC(CV_INOD) = 1.0
-            u_all_solid(:,:,cv_inod) = 0.0
-            END DO
-        END DO  
+      enddo
+      
       ml=0.0
       if(number_fields>0) cc_x=0.0
       matrix_diag=0.0
@@ -7658,8 +7659,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                             LOC_U_RHS(idim, iphase, U_ILOC) = LOC_U_RHS(idim, iphase, U_ILOC) &
                                             + SBUFEN_REVERSED(sgi, U_SILOC) * SDETWE(sgi) * &
                                             sum( CAUCHY_STRESS_IJ_SOLID_ELE(idim,:) * SNORMXN_ALL( : , sgi) )
-                                            ! ewrite(3,*), "s traction bc: idim, u_siloc, sgi, ..", idim, u_siloc, sgi,  SBUFEN_REVERSED(sgi, U_SILOC) * SDETWE(sgi) * &
-                                            ! sum( CAUCHY_STRESS_IJ_SOLID_ELE(idim,:) * SNORMXN_ALL( : , sgi) )
                                         enddo
                                     enddo
                                 enddo
@@ -9531,7 +9530,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
           u_s_gi = 0.0 ; dx_ph_gi = 0.0 ; den_gi = 0.0 ;
           volfra_gi = 0.0
 
-          if (solid_impliict) then
+          if (solid_implicit) then
           do u_iloc = 1, Mdims%u_nloc
             u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + u_iloc )
             do iphase = 1, nphase
