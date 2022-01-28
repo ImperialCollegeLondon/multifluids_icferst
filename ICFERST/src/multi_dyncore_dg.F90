@@ -2246,6 +2246,8 @@ end if
           deallocate( bigm_con)
         end if
 
+
+
         ! form pres eqn.
         if (.not.Mmat%Stored .or. .not.is_porous_media) then
             !Retrieve the diagonal of the momentum matrix only once if required
@@ -2256,6 +2258,8 @@ end if
                 call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
             end if
             if (solve_stokes .or. solve_mom_iteratively) then
+! !Convertion of C, Ct and Mass matrix into PETSC format to solve the system using PETSc
+! call Convert_C_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase)
                 if (compute_compaction) then
                     call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 2) !generate matrix D
                 else
@@ -7779,7 +7783,54 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 
 
+    !>@brief: This subroutine converts the C (gradient) matrix to PETSc format
+ SUBROUTINE Convert_C_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, &
+    Mspars, NPHASE)  ! Element connectivity.
+    IMPLICIT NONE
+    type( state_type ), intent( inout ) :: packed_state
+    type(multi_dimensions), intent(in) :: Mdims
+    type(multi_matrices), intent(inout) :: Mmat
+    type(multi_ndgln), intent(in) :: ndgln
+    type(multi_sparsities), intent(in) :: Mspars
+    INTEGER, intent( in ) :: NPHASE
+    !Local variables
+    type( csr_sparsity ), pointer :: sparsity
+    type( tensor_field ), pointer :: velocity, pressure
+    INTEGER :: IU_NOD, count, IPHASE, IDIM, P_JNOD
+    integer, dimension(:,:,:), allocatable :: POSINMAT_C_STORE
+    integer, dimension(:), pointer :: neighbours
+    integer :: nb
+    logical :: skip
 
+    !Extract a vector and a scalar fields for parallel checks
+    Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
+    Pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
+
+    !TEMPORARY, Mmat%C_PETSC DOES NOT NEED TO BE REDONE UNLESS THE MESH CHANGES
+    if (associated(Mmat%C_PETSC%refcount)) call deallocate(Mmat%C_PETSC)
+    sparsity=>extract_csr_sparsity(packed_state,"CMatrixSparsity")
+    call allocate(Mmat%C_PETSC,sparsity,[Mdims%ndim,NPHASE],"C_PETSC"); call zero(Mmat%C_PETSC)
+
+
+    !Inert field required by USE_POSINMAT_C_STORE
+    allocate(POSINMAT_C_STORE(0,0,0))
+
+    DO IU_NOD = 1, Mdims%U_NONODS
+        DO COUNT = mspars%C%fin( IU_NOD ), mspars%C%fin( IU_NOD + 1 ) - 1
+            P_JNOD = mspars%C%col( COUNT )
+            do idim =1, Mdims%ndim
+                do iphase = 1, Nphase
+!WE SHOULD USE NPRES IN ANY CASE, NOT PHASES HERE...
+                  call addto(Mmat%C_PETSC, idim, iphase, IU_NOD, P_JNOD, Mmat%C( idim, iphase, COUNT ))
+                end do 
+            end do
+        end do
+    end do
+    call assemble( Mmat%C_PETSC )
+    call MatView(Mmat%C_PETSC%M, PETSC_VIEWER_STDOUT_SELF, idim)
+    deallocate(POSINMAT_C_STORE)
+
+END SUBROUTINE Convert_C_mat_to_PETSc_format
 
 
 
