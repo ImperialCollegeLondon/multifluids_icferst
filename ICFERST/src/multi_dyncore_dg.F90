@@ -370,6 +370,20 @@ contains
          u_all_solid(:,:,cv_inod) = u_all_solid(:,:,cv_inod)/max(1e-15, vel_count_solid(cv_inod) )
       end do
       
+      ! assign "nodal averaged" velocity (CG) to DG velocity
+      do ele = 1, Mdims%totele
+        if (sigma(ele).lt. 0.5) cycle ! do nothing in fluid region
+        do cv_iloc = 1,Mdims%cv_nloc 
+            cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+            u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+            do iphase = 1, Mdims%nphase
+                do idim=1,Mdims%ndim 
+                    u_all%val(idim, iphase, u_inod) = u_all_solid(idim, iphase, cv_inod)
+                enddo
+            enddo
+        enddo
+      enddo
+    
       !JXiang comment the below line temporarily
       if(nconc/=0) cc(ndim_nphase+1:ndim_nphase+number_fields, :) = c_field(1:nconc,:)   
       
@@ -383,20 +397,6 @@ contains
             u_all_solid(:,:,cv_inod) = 0.0
         END DO
       END DO  
-
-      ! assign "nodal averaged" velocity (CG) to DG velocity
-      do ele = 1, Mdims%totele
-        if (sigma(ele).lt. 0.5) cycle ! do nothing in fluid region
-        do cv_iloc = 1,Mdims%cv_nloc 
-            cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-            u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-        do iphase = 1, Mdims%nphase
-            do idim=1,Mdims%ndim 
-                u_all%val(idim, iphase, u_inod) = u_all_solid(idim, iphase, cv_inod)
-            enddo
-        enddo
-      enddo
-      enddo
       
       ml=0.0
       if(number_fields>0) cc_x=0.0
