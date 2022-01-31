@@ -909,6 +909,8 @@ contains
             !dT may have changed for the next time level, however for diagnostics we need it as it has been done for this time level
             !therefore we compute it based on the actual difference of time
             call set_option( '/timestepping/timestep', acctim-old_acctim)
+            !Time to compute the self-potential if required
+            if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
             !Now compute diagnostics
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             !calculate_diagnostic_variables_new <= computes other diagnostics such as python-based fields
@@ -916,6 +918,7 @@ contains
             !Now we ensure that the time-step is the correct one
             call set_option( '/timestepping/timestep', dt)
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
+            
             !Now we ensure that the time-step is the correct one
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
@@ -1282,8 +1285,6 @@ contains
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
                     if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
-                    !Time to compute the self-potential if required
-                    if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
             else if (have_option('/io/dump_period')) then
