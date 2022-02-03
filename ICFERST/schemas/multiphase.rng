@@ -953,9 +953,9 @@ For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conduc
               <element name="scalar_field">
                 <a:documentation>Specify scalar field density of the porous media
 
-The value to specify here is the value of the minerals or grains that make up the rock.
-This is the bulk value divided by (1-porosity).
-Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
+&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix). 
+Double check and convert your input values so they only represent the matrix property 
+(e.g. bulk measurement divided by porosity)</a:documentation>
                 <attribute name="name">
                   <value>porous_density</value>
                 </attribute>
@@ -975,9 +975,9 @@ Note: Bulk density is the one normally obtained in lab experiments.</a:documenta
                 <element name="scalar_field">
                   <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
 
-The value to specify here is the value of the minerals or grains that make up the rock.
-This is the bulk value divided by (1-porosity).
-Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
+&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix). 
+Double check and convert your input values so they only represent the matrix property 
+(e.g. bulk measurement divided by porosity)</a:documentation>
                   <attribute name="name">
                     <value>porous_heat_capacity</value>
                   </attribute>
@@ -998,9 +998,9 @@ Note: Bulk density is the one normally obtained in lab experiments.</a:documenta
                 <element name="tensor_field">
                   <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )
 
-The value to specify here is the value of the minerals or grains that make up the rock.
-This is the bulk value divided by (1-porosity).
-Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
+&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix). 
+Double check and convert your input values so they only represent the matrix property 
+(e.g. bulk measurement divided by porosity)</a:documentation>
                   <attribute name="name">
                     <value>porous_thermal_conductivity</value>
                   </attribute>
@@ -4742,7 +4742,7 @@ DEN = A * P ^ B
 DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))
 
 NOTE: This equation is only valid for small changes in density.
-&lt;b&gt;Internally it is bounded to stay between [DEN0/2,DEN0*2]&lt;/b&gt;</a:documentation>
+&lt;b&gt; Internally it is bounded to stay between [DEN0/2,DEN0*2] &lt;/b&gt;</a:documentation>
               <element name="reference_density">
                 <a:documentation>This is the density value at reference properties</a:documentation>
                 <ref name="real"/>

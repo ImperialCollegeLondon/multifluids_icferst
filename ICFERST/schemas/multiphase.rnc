@@ -780,9 +780,9 @@ start =
             element porous_properties{
                 ## Specify scalar field density of the porous media
                 ##
-                ## The value to specify here is the value of the minerals or grains that make up the rock.
-                ## This is the bulk value divided by (1-porosity).
-                ## Note: Bulk density is the one normally obtained in lab experiments.
+                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix). 
+                ## Double check and convert your input values so they only represent the matrix property 
+                ## (e.g. bulk measurement divided by porosity)
                 element scalar_field {
                    attribute name { "porous_density" },
                    (
@@ -799,9 +799,9 @@ start =
                 },
                 ## Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
                 ##
-                ## The value to specify here is the value of the minerals or grains that make up the rock.
-                ## This is the bulk value divided by (1-porosity).
-                ## Note: Bulk density is the one normally obtained in lab experiments.
+                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix). 
+                ## Double check and convert your input values so they only represent the matrix property 
+                ## (e.g. bulk measurement divided by porosity)
                 element scalar_field {
                    attribute name { "porous_heat_capacity" },
                    (
@@ -821,9 +821,9 @@ start =
 
                 ## Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin => W/(m·K) )
                 ##
-                ## The value to specify here is the value of the minerals or grains that make up the rock.
-                ## This is the bulk value divided by (1-porosity).
-                ## Note: Bulk density is the one normally obtained in lab experiments.
+                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix). 
+                ## Double check and convert your input values so they only represent the matrix property 
+                ## (e.g. bulk measurement divided by porosity)
                element tensor_field {
                   attribute name { "porous_thermal_conductivity" },
                   element prescribed {
