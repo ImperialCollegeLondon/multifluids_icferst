@@ -7644,29 +7644,30 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     END DO
                     ! solid traction bc (due to solid stress weak formulation)
                     ! if (.false.) then
-                    if (solid_implicit) then 
-                        if (sigma%val(ele)>0.5) then    ! solid subdomain
-                            if(ele2.gt.0) then 
-                                ! do nothing
-                            else ! on boundary of domain
-                                temp_stress => extract_tensor_field(state(1), "StressTenSolid")
-                                CAUCHY_STRESS_IJ_SOLID_ELE = temp_stress%val(:,:,ele)
-                                do IDIM = 1, Mdims%ndim
-                                    iphase = 1
-                                    do U_SILOC=1,Mdims%u_snloc
-                                        U_ILOC = U_SLOC2LOC( U_SILOC )
-                                        do SGI=1,FE_GIdims%sbcvngi
-                                            ! do the multiplication (Ni sigma \dot n) * (det wei)
-                                            ! and add to loc_u_rhs
-                                            LOC_U_RHS(idim, iphase, U_ILOC) = LOC_U_RHS(idim, iphase, U_ILOC) &
-                                            + SBUFEN_REVERSED(sgi, U_SILOC) * SDETWE(sgi) * &
-                                            sum( CAUCHY_STRESS_IJ_SOLID_ELE(idim,:) * SNORMXN_ALL( : , sgi) )
-                                        enddo
-                                    enddo
-                                enddo
-                            endif ! ele2.gt.0
-                        endif ! sigma%val(ele)>0.5
-                    endif
+                    ! WE DON"T NEED THIS since we are using Dirichlet bc for solid.
+                    ! if (solid_implicit) then 
+                    !     if (sigma%val(ele)>0.5) then    ! solid subdomain
+                    !         if(ele2.gt.0) then 
+                    !             ! do nothing
+                    !         else ! on boundary of domain
+                    !             temp_stress => extract_tensor_field(state(1), "StressTenSolid")
+                    !             CAUCHY_STRESS_IJ_SOLID_ELE = temp_stress%val(:,:,ele)
+                    !             do IDIM = 1, Mdims%ndim
+                    !                 iphase = 1
+                    !                 do U_SILOC=1,Mdims%u_snloc
+                    !                     U_ILOC = U_SLOC2LOC( U_SILOC )
+                    !                     do SGI=1,FE_GIdims%sbcvngi
+                    !                         ! do the multiplication (Ni sigma \dot n) * (det wei)
+                    !                         ! and add to loc_u_rhs
+                    !                         LOC_U_RHS(idim, iphase, U_ILOC) = LOC_U_RHS(idim, iphase, U_ILOC) &
+                    !                         + SBUFEN_REVERSED(sgi, U_SILOC) * SDETWE(sgi) * &
+                    !                         sum( CAUCHY_STRESS_IJ_SOLID_ELE(idim,:) * SNORMXN_ALL( : , sgi) )
+                    !                     enddo
+                    !                 enddo
+                    !             enddo
+                    !         endif ! ele2.gt.0
+                    !     endif ! sigma%val(ele)>0.5
+                    ! endif
                 ENDIF If_diffusion_or_momentum3
             END DO Between_Elements_And_Boundary
             !      END DO Loop_Elements2
