@@ -2258,14 +2258,12 @@ end if
                 call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
             end if
             if (solve_stokes .or. solve_mom_iteratively) then
-! !Convertion of C, Ct and Mass matrix into PETSC format to solve the system using PETSc
-! call Convert_C_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase)
                 if (compute_compaction) then
                     call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 2) !generate matrix D
                 else
                     call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 1) 
                 end if
-            end if      
+            end if  
           !Now invert the Mass matrix
           CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
@@ -2295,6 +2293,7 @@ end if
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
         else
             if ( .not. ( after_adapt .and. cty_proj_after_adapt )) then
+
               if (rescale_mom_matrices) call scale_PETSc_matrix(Mmat%DGM_PETSC)
               !For a velocity field the diagonal of A needs to be extracted using a vector field
               call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
@@ -2302,6 +2301,7 @@ end if
 ! call MatView(Mmat%DGM_PETSC%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
             if ( .not. (solve_stokes .or. solve_mom_iteratively) )  call deallocate(Mmat%DGM_PETSC)
         END IF
+
         !"########################UPDATE PRESSURE STEP####################################"
         !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver, for inertia this is a huge save as for that momemt DGM_petsc is deallocated!)
         sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
@@ -2311,6 +2311,7 @@ end if
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
         pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
+
 ! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 
         !This section is to impose a pressure of zero at some node (when solving for only a gradient of pressure)
@@ -2326,7 +2327,6 @@ end if
         if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
         rhs_p%val = - rhs_p%val! + Mmat%CT_RHS%val
         call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-
         !Re-scale system so we can deal with SI units of permeability
         if (is_porous_media) then
           call scale(cmc_petsc, 1.0/rescaleVal)
@@ -2342,10 +2342,15 @@ end if
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
-
         !"########################UPDATE PRESSURE STEP####################################"
         !We may apply the Anderson acceleration method
           if ((solve_stokes .or. solve_mom_iteratively)) then
+            ! ! !Convertion of C, Ct and Mass matrix into PETSC format to solve the system using PETSc
+            ! call Convert_C_and_CT_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase) 
+            ! !Solve Schur complement using PETSc             
+            ! call petsc_Stokes_solver(packed_state, Mdims, Mmat, CMC_petsc, P_all, deltaP, rhs_p)
+
+            !Solve Schur complement using our own method
             call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
                                           MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
         end if
@@ -2389,67 +2394,6 @@ end if
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
       contains
-
-        subroutine smooth_CDP_or_velocity(Mmat, Tensor, Iphase, method)
-
-          implicit none
-          type (multi_matrices), intent(in) :: Mmat
-          !real, dimension(Mdims%ndim * final_phase, Mdims%u_nonods), intent(in) :: U_RHS!Conversion to two entries
-          type(tensor_field), intent(inout) ::  Tensor  ! CDP tensor or velocity fields
-          integer, intent(in) :: Iphase ! the phase to be averaged
-          integer, intent(in) :: method ! 1: average within the element. 2: average the nodal value among the shared elements
-
-          !Local variables
-          integer, dimension(Mdims%u_nloc) :: unlocs, uilocs
-          real, dimension(Mdims%ndim, Mdims%xu_nonods) :: Tensor_on_xu
-          real, dimension(Mdims%xu_nonods) :: num_Tensor_on_xu
-          real :: average
-          integer :: j, cv_iloc, cv_loc, imat, u_iloc, u_inod, xu_inod, JDIM, JPHASE
-
-
-          if (method==1) then
-            do u_iloc = 1, Mdims%u_nloc
-                uilocs(u_iloc)=u_iloc
-            end do
-            do ele = 1, Mdims%totele
-                unlocs=ndgln%u((ele-1)*Mdims%u_nloc+uilocs)
-                      do JPHASE = Iphase, Iphase
-                        DO JDIM = 1, Mdims%ndim
-                          average=sum(Tensor%val(JDIM, JPHASE,unlocs))/Mdims%u_nloc
-                            do u_iloc = 1, Mdims%u_nloc
-                              Tensor%val(JDIM, JPHASE,unlocs(u_iloc))=average
-                            end do
-                        end DO
-                      end do
-            end do
-
-          elseif (method==2) then
-            Tensor_on_xu = 0.0
-            num_Tensor_on_xu = 0
-
-            do ele = 1, Mdims%totele
-              do u_iloc = 1, Mdims%u_nloc
-                xu_inod = ndgln%xu ( (ele - 1 ) * Mdims%u_nloc + u_iloc )
-                u_inod  = ndgln%u  ( (ele - 1 ) * Mdims%u_nloc + u_iloc )
-                Tensor_on_xu(:, xu_inod) = Tensor_on_xu(:, xu_inod) + Tensor%val(:, Iphase, u_inod)
-                num_Tensor_on_xu(xu_inod) = num_Tensor_on_xu(xu_inod) + 1
-              end do
-            end do
-
-            do xu_inod = 1, Mdims%xu_nonods
-              Tensor_on_xu(:, xu_inod) = Tensor_on_xu(:, xu_inod)/num_Tensor_on_xu(xu_inod)
-            end do
-
-            do ele = 1, Mdims%totele
-              do u_iloc = 1, Mdims%u_nloc
-                xu_inod = ndgln%xu ( (ele - 1 ) * Mdims%u_nloc + u_iloc )
-                u_inod  = ndgln%u  ( (ele - 1 ) * Mdims%u_nloc + u_iloc )
-                Tensor%val(:, Iphase, u_inod) = Tensor_on_xu (:, xu_inod)
-              end do
-            end do
-          end if
-
-        end subroutine smooth_CDP_or_velocity
 
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas
@@ -2686,11 +2630,10 @@ end if
           real, parameter :: tol = 1e-16
           !Matrix already initialised !
           Mmat%PIVIT_MAT = 0.
-
           if (Pivit_type==1) then  !Pivit contains only the mass matrix
             do ele = 1, Mdims%totele
               auxR = MASS_ELE(ele)/dble(Mdims%u_nloc)
-              DO U_JLOC = 1, Mdims%u_nloc * Mdims%ndim * final_phase
+              DO J = 1, Mdims%u_nloc * Mdims%ndim * final_phase
                 Mmat%PIVIT_MAT(J, J, ELE) = auxR
               end do
             end do
@@ -2867,7 +2810,6 @@ end if
                     end do
                 end do
             else 
-                ! saturation => extract_scalar_field(state(2), "PhaseVolumeFraction")
                 ! do ele = 1, Mdims%totele
                 !     do u_iloc = 1, Mdims%u_nloc
                 !         u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
@@ -7784,7 +7726,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 
     !>@brief: This subroutine converts the C (gradient) matrix to PETSc format
- SUBROUTINE Convert_C_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, &
+ SUBROUTINE Convert_C_and_CT_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, &
     Mspars, NPHASE)  ! Element connectivity.
     IMPLICIT NONE
     type( state_type ), intent( inout ) :: packed_state
@@ -7796,8 +7738,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
     !Local variables
     type( csr_sparsity ), pointer :: sparsity
     type( tensor_field ), pointer :: velocity, pressure
-    INTEGER :: IU_NOD, count, IPHASE, IDIM, P_JNOD
-    integer, dimension(:,:,:), allocatable :: POSINMAT_C_STORE
+    INTEGER :: IU_NOD, count, IPHASE, IDIM, P_JNOD, j, ele
     integer, dimension(:), pointer :: neighbours
     integer :: nb
     logical :: skip
@@ -7809,11 +7750,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
     !TEMPORARY, Mmat%C_PETSC DOES NOT NEED TO BE REDONE UNLESS THE MESH CHANGES
     if (associated(Mmat%C_PETSC%refcount)) call deallocate(Mmat%C_PETSC)
     sparsity=>extract_csr_sparsity(packed_state,"CMatrixSparsity")
-    call allocate(Mmat%C_PETSC,sparsity,[Mdims%ndim,NPHASE],"C_PETSC"); call zero(Mmat%C_PETSC)
-
-
-    !Inert field required by USE_POSINMAT_C_STORE
-    allocate(POSINMAT_C_STORE(0,0,0))
+    call allocate(Mmat%C_PETSC,sparsity,[Mdims%ndim,NPHASE],name="C_PETSC"); call zero(Mmat%C_PETSC)
 
     DO IU_NOD = 1, Mdims%U_NONODS
         DO COUNT = mspars%C%fin( IU_NOD ), mspars%C%fin( IU_NOD + 1 ) - 1
@@ -7827,10 +7764,45 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         end do
     end do
     call assemble( Mmat%C_PETSC )
-    call MatView(Mmat%C_PETSC%M, PETSC_VIEWER_STDOUT_SELF, idim)
-    deallocate(POSINMAT_C_STORE)
+    
+    !Now CT matrix
+    if (associated(Mmat%CT_PETSC%refcount)) call deallocate(Mmat%CT_PETSC)
+    sparsity=>extract_csr_sparsity(packed_state,"CTMatrixSparsity")
+    call allocate(Mmat%CT_PETSC,sparsity,[NPHASE,Mdims%ndim],name="CT_PETSC"); call zero(Mmat%CT_PETSC)
+    
+    DO P_JNOD = 1, Mdims%CV_NONODS
+        DO COUNT = mspars%CT%fin( P_JNOD ), mspars%CT%fin( P_JNOD + 1 ) - 1
+            IU_NOD = mspars%CT%col( COUNT )
+            do idim =1, Mdims%ndim
+                !WE SHOULD USE NPRES IN ANY CASE, NOT PHASES HERE...
+                do iphase = 1, Nphase
+                    call addto(Mmat%CT_PETSC, iphase, idim, P_JNOD, IU_NOD, Mmat%CT( idim, iphase, COUNT ))
+                end do
+            end do
+        END DO
+    END DO
+    call assemble( Mmat%CT_PETSC )
 
-END SUBROUTINE Convert_C_mat_to_PETSc_format
+    !Now Mass matrix
+    ! if (associated(Mmat%PIVIT_PETSC%refcount)) call deallocate(Mmat%PIVIT_PETSC)
+    ! sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
+    ! Mmat%PIVIT_PETSC = allocate_momentum_matrix(sparsity, velocity, nphase)
+    ! !Try to make it diagonal...
+    ! call allocate(Mmat%PIVIT_PETSC,sparsity,[Mdims%u_nloc*Mdims%ndim*NPHASE,1],"PIVIT_PETSC"); call zero(Mmat%PIVIT_PETSC)
+    
+    ! DO ELE = 1, Mdims%totele
+    !     do j = 1, Mdims%u_nloc * nphase *Mdims%ndim
+    !         call addto(Mmat%PIVIT_PETSC, j, 1, ELE, ELE,  Mmat%PIVIT_MAT( 1, 1, ele ))
+    !     end do
+    ! END DO
+    ! call assemble( Mmat%PIVIT_PETSC )
+
+
+
+    ! call MatView(Mmat%C_PETSC%M, PETSC_VIEWER_STDOUT_SELF, idim)
+    ! call MatView(Mmat%CT_PETSC%M, PETSC_VIEWER_STDOUT_SELF, idim)
+    ! call MatView(Mmat%PIVIT_PETSC%M, PETSC_VIEWER_STDOUT_SELF, idim)
+END SUBROUTINE Convert_C_and_CT_mat_to_PETSc_format
 
 
 

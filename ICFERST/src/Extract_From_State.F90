@@ -2142,6 +2142,25 @@ function as_packed_vector(tfield) result(vfield)
 
 end function as_packed_vector
 
+!> @brief: This function points a vector field as a scalar field type
+!> This is necessary when solving for vector fields that are actually scalar fields.
+function as_packed_scalar(vfield, vfieldVal, totalDim) result(sfield)
+
+    type(vector_field), intent(inout) :: vfield
+    integer, intent(in) :: totalDim
+    real, dimension(1:totalDim), target, intent(inout) :: vfieldVal!> Required to make the conversion from vector memory to 1d array
+    type(scalar_field) :: sfield
+    ! type(c_ptr) :: c_aux
+
+    sfield%name=vfield%name
+    sfield%mesh=vfield%mesh
+    sfield%option_path=vfield%option_path
+
+    sfield%val(1:totalDim) => vfieldVal(1:totalDim)
+
+end function as_packed_scalar
+
+
 !> @brief: Destrys packed_state and the passed down states
 subroutine finalise_multistate(packed_state,multiphase_state,&
     multicomponent_state)
