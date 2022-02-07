@@ -2345,20 +2345,24 @@ end if
         !"########################UPDATE PRESSURE STEP####################################"
         !We may apply the Anderson acceleration method
           if ((solve_stokes .or. solve_mom_iteratively)) then
-            ! ! !Convertion of C, Ct and Mass matrix into PETSC format to solve the system using PETSc
-            ! call Convert_C_and_CT_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase) 
-            ! !Solve Schur complement using PETSc             
-            ! call petsc_Stokes_solver(packed_state, Mdims, Mmat, CMC_petsc, P_all, deltaP, rhs_p)
-
-            !Solve Schur complement using our own method
-            call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
-                                          MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
+            if (solve_mom_iteratively) then 
+                !Solve Schur complement using our own method
+                call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
+                                              MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
+            else !Solve Schur complement using PETSc   
+                call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, CMC_petsc, P_all, deltaP, rhs_p, solver_option_pressure)
+                !Now recompute velocity
+                call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
+                call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
+            end if
         end if
                 !######################## CORRECTION VELOCITY STEP####################################
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases        
         if (compute_compaction) call get_Darcy_phases_velocity()
-
-        if (.not. compute_compaction)call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, Pressure, deltap, cdp_tensor, rhs_p, upwnd)
+        !Project only for inertia or when using the IC-FERST stokes solver
+        if (.not. solve_stokes .or. solve_mom_iteratively ) then 
+            call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, Pressure, deltap, cdp_tensor, rhs_p, upwnd)
+        end if
         call deallocate(deltaP)
 
 
@@ -2804,8 +2808,8 @@ end if
             if (.not. compute_compaction) then
                 do u_inod = 1, Mdims%u_nonods
                     do iphase = 1, final_phase
-                        do idim = 1, Mdims%ndim
-                        velocity%val(idim, iphase, u_inod) = velocity%val(idim, iphase, u_inod)+ DU_VEL(idim, iphase, u_inod)!
+                        do idim = 1, Mdims%ndim                         
+                            velocity%val(idim, iphase, u_inod) = velocity%val(idim, iphase, u_inod)+ DU_VEL(idim, iphase, u_inod)!
                         end do
                     end do
                 end do
@@ -7722,90 +7726,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      deallocate(LOC_DGM_PHA)
      RETURN
  END SUBROUTINE comb_VEL_MATRIX_DIAG_DIST_lump
-
-
-
-    !>@brief: This subroutine converts the C (gradient) matrix to PETSc format
- SUBROUTINE Convert_C_and_CT_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, &
-    Mspars, NPHASE)  ! Element connectivity.
-    IMPLICIT NONE
-    type( state_type ), intent( inout ) :: packed_state
-    type(multi_dimensions), intent(in) :: Mdims
-    type(multi_matrices), intent(inout) :: Mmat
-    type(multi_ndgln), intent(in) :: ndgln
-    type(multi_sparsities), intent(in) :: Mspars
-    INTEGER, intent( in ) :: NPHASE
-    !Local variables
-    type( csr_sparsity ), pointer :: sparsity
-    type( tensor_field ), pointer :: velocity, pressure
-    INTEGER :: IU_NOD, count, IPHASE, IDIM, P_JNOD, j, ele
-    integer, dimension(:), pointer :: neighbours
-    integer :: nb
-    logical :: skip
-
-    !Extract a vector and a scalar fields for parallel checks
-    Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
-    Pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
-
-    !TEMPORARY, Mmat%C_PETSC DOES NOT NEED TO BE REDONE UNLESS THE MESH CHANGES
-    if (associated(Mmat%C_PETSC%refcount)) call deallocate(Mmat%C_PETSC)
-    sparsity=>extract_csr_sparsity(packed_state,"CMatrixSparsity")
-    call allocate(Mmat%C_PETSC,sparsity,[Mdims%ndim,NPHASE],name="C_PETSC"); call zero(Mmat%C_PETSC)
-
-    DO IU_NOD = 1, Mdims%U_NONODS
-        DO COUNT = mspars%C%fin( IU_NOD ), mspars%C%fin( IU_NOD + 1 ) - 1
-            P_JNOD = mspars%C%col( COUNT )
-            do idim =1, Mdims%ndim
-                do iphase = 1, Nphase
-!WE SHOULD USE NPRES IN ANY CASE, NOT PHASES HERE...
-                  call addto(Mmat%C_PETSC, idim, iphase, IU_NOD, P_JNOD, Mmat%C( idim, iphase, COUNT ))
-                end do 
-            end do
-        end do
-    end do
-    call assemble( Mmat%C_PETSC )
-    
-    !Now CT matrix
-    if (associated(Mmat%CT_PETSC%refcount)) call deallocate(Mmat%CT_PETSC)
-    sparsity=>extract_csr_sparsity(packed_state,"CTMatrixSparsity")
-    call allocate(Mmat%CT_PETSC,sparsity,[NPHASE,Mdims%ndim],name="CT_PETSC"); call zero(Mmat%CT_PETSC)
-    
-    DO P_JNOD = 1, Mdims%CV_NONODS
-        DO COUNT = mspars%CT%fin( P_JNOD ), mspars%CT%fin( P_JNOD + 1 ) - 1
-            IU_NOD = mspars%CT%col( COUNT )
-            do idim =1, Mdims%ndim
-                !WE SHOULD USE NPRES IN ANY CASE, NOT PHASES HERE...
-                do iphase = 1, Nphase
-                    call addto(Mmat%CT_PETSC, iphase, idim, P_JNOD, IU_NOD, Mmat%CT( idim, iphase, COUNT ))
-                end do
-            end do
-        END DO
-    END DO
-    call assemble( Mmat%CT_PETSC )
-
-    !Now Mass matrix
-    ! if (associated(Mmat%PIVIT_PETSC%refcount)) call deallocate(Mmat%PIVIT_PETSC)
-    ! sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
-    ! Mmat%PIVIT_PETSC = allocate_momentum_matrix(sparsity, velocity, nphase)
-    ! !Try to make it diagonal...
-    ! call allocate(Mmat%PIVIT_PETSC,sparsity,[Mdims%u_nloc*Mdims%ndim*NPHASE,1],"PIVIT_PETSC"); call zero(Mmat%PIVIT_PETSC)
-    
-    ! DO ELE = 1, Mdims%totele
-    !     do j = 1, Mdims%u_nloc * nphase *Mdims%ndim
-    !         call addto(Mmat%PIVIT_PETSC, j, 1, ELE, ELE,  Mmat%PIVIT_MAT( 1, 1, ele ))
-    !     end do
-    ! END DO
-    ! call assemble( Mmat%PIVIT_PETSC )
-
-
-
-    ! call MatView(Mmat%C_PETSC%M, PETSC_VIEWER_STDOUT_SELF, idim)
-    ! call MatView(Mmat%CT_PETSC%M, PETSC_VIEWER_STDOUT_SELF, idim)
-    ! call MatView(Mmat%PIVIT_PETSC%M, PETSC_VIEWER_STDOUT_SELF, idim)
-END SUBROUTINE Convert_C_and_CT_mat_to_PETSc_format
-
-
-
 
  SUBROUTINE USE_POSINMAT_C_STORE(COUNT, U_INOD, P_JNOD,  &
      U_NONODS, FINDC, COLC, NCOLC, &

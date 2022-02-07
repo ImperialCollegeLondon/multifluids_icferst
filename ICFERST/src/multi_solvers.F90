@@ -1117,7 +1117,7 @@ contains
     !> @brief In this subroutine the Schur complement is generated and solved using PETSc to update the pressure field
     !> Matrices need to be in petsc format and pmat is the preconditioned matrix, i.e. pmat = A11- A10(AproxA00^-1)A01
     !---------------------------------------------------------------------------
-    subroutine petsc_Stokes_solver(packed_state, Mdims, Mmat, pmat, P_all, deltaP, rhs_p)
+    subroutine petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, pmat, P_all, deltaP, rhs_p, solver_option_path)
         use Full_Projection
         use petsc_tools
         use solvers
@@ -1130,6 +1130,10 @@ contains
         type( vector_field ), intent(in) :: rhs_p
         type( vector_field ), INTENT(INOUT) :: deltap
         type( tensor_field ), INTENT(INOUT) :: P_all
+        character(len=option_path_len), intent(in) :: solver_option_path
+        type(multi_ndgln), intent(in) :: ndgln
+        type(multi_sparsities), intent(in) :: Mspars
+        INTEGER, intent( in ) :: final_phase
         !Local variables
         type(petsc_numbering_type) :: petsc_numbering, petsc_numbering_vel
         integer :: ierr, literations
@@ -1137,15 +1141,21 @@ contains
         type( csr_sparsity ), pointer :: sparsity
         logical :: has_diffusion_operator
         ! type(petsc_csr_matrix)::Schur_mat
-        character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
         Vec y, b
         Mat S, Schur_mat
         KSP ksp_schur
+
+        !Convert the matrices from ICFERST to PETSC format (not ideal...)
+        call Convert_C_and_CT_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase) 
 
         !generate sparsity so we can communicate with PETSc
         sparsity=>extract_csr_sparsity(packed_state,"CMatrixSparsity")
         call allocate(petsc_numbering, node_count(deltaP), deltaP%dim, &
                             halo=sparsity%row_halo)
+
+        !Scale Mmat%CT_PETSC%M to follow the sign convention of PETSc
+        !SPRINT_TO_DO, IF EVERYTHING WORKS, THEN PROBABLY BETTER FLIP THE SIGN OF THE UPDATE ONLY??
+        call MatScale(Mmat%CT_PETSC%M,real(-1.0, kind = PetscScalar_kind),ierr)
 
         !For the time being only for magma we consider we have the matrix A11 or D
         has_diffusion_operator = is_magma
@@ -1179,17 +1189,98 @@ contains
         ! Solve Schur complement system
         call petsc_solve_core(y, Schur_mat, b, ksp_schur, petsc_numbering, solver_option_path, .true., &
             literations, nomatrixdump=.true., vector_x0 = deltaP, vfield = deltaP)
-        print *, "Iterations taken", literations
+! print *, "Iterations taken", literations
         !Copy value back
         call petsc2field(y, petsc_numbering, deltap)
         ! Destroy all PETSc related variables
         call petsc_solve_destroy(y, Schur_mat, b, ksp_schur, petsc_numbering, solver_option_path)
-        
+
+        !Flip sign here if we haven't flipped the sign of the Ct matrix before
+        ! deltaP%val = -1.* deltaP%val
         !Update pressure now
         P_all%val(1,:,:) = P_all%val(1,:,:) + deltaP%val
         if (isParallel()) call halo_update(P_all)
 
     end subroutine
 
+    !>@brief: This subroutine converts the C (gradient) and CT (Divergence) matrices into PETSc format
+    !> Mainly devoted to be used by the PETSc stokes schur solver
+    SUBROUTINE Convert_C_and_CT_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, &
+        Mspars, NPHASE)  ! Element connectivity.
+        IMPLICIT NONE
+        type( state_type ), intent( inout ) :: packed_state
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_matrices), intent(inout) :: Mmat
+        type(multi_ndgln), intent(in) :: ndgln
+        type(multi_sparsities), intent(in) :: Mspars
+        INTEGER, intent( in ) :: NPHASE
+        !Local variables
+        type( csr_sparsity ), pointer :: sparsity
+        type( tensor_field ), pointer :: velocity, pressure
+        INTEGER :: IU_NOD, count, IPHASE, IDIM, P_JNOD, j, ele
+        integer, dimension(:), pointer :: neighbours
+        integer :: nb
+        logical :: skip
+
+        !Extract a vector and a scalar fields for parallel checks
+        Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
+        Pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
+
+        !TEMPORARY, Mmat%C_PETSC DOES NOT NEED TO BE REDONE UNLESS THE MESH CHANGES
+        if (associated(Mmat%C_PETSC%refcount)) call deallocate(Mmat%C_PETSC)
+        sparsity=>extract_csr_sparsity(packed_state,"CMatrixSparsity")
+        call allocate(Mmat%C_PETSC,sparsity,[Mdims%ndim,NPHASE],name="C_PETSC"); call zero(Mmat%C_PETSC)
+
+        DO IU_NOD = 1, Mdims%U_NONODS
+            DO COUNT = mspars%C%fin( IU_NOD ), mspars%C%fin( IU_NOD + 1 ) - 1
+                P_JNOD = mspars%C%col( COUNT )
+                do idim =1, Mdims%ndim
+                    do iphase = 1, Nphase
+    !WE SHOULD USE NPRES IN ANY CASE, NOT PHASES HERE...
+                    call addto(Mmat%C_PETSC, idim, iphase, IU_NOD, P_JNOD, Mmat%C( idim, iphase, COUNT ))
+                    end do 
+                end do
+            end do
+        end do
+        call assemble( Mmat%C_PETSC )
+        
+        !Now CT matrix
+        if (associated(Mmat%CT_PETSC%refcount)) call deallocate(Mmat%CT_PETSC)
+        sparsity=>extract_csr_sparsity(packed_state,"CTMatrixSparsity")
+        call allocate(Mmat%CT_PETSC,sparsity,[NPHASE,Mdims%ndim],name="CT_PETSC"); call zero(Mmat%CT_PETSC)
+        
+        DO P_JNOD = 1, Mdims%CV_NONODS
+            DO COUNT = mspars%CT%fin( P_JNOD ), mspars%CT%fin( P_JNOD + 1 ) - 1
+                IU_NOD = mspars%CT%col( COUNT )
+                do idim =1, Mdims%ndim
+                    !WE SHOULD USE NPRES IN ANY CASE, NOT PHASES HERE...
+                    do iphase = 1, Nphase
+                        call addto(Mmat%CT_PETSC, iphase, idim, P_JNOD, IU_NOD, Mmat%CT( idim, iphase, COUNT ))
+                    end do
+                end do
+            END DO
+        END DO
+        call assemble( Mmat%CT_PETSC )
+
+        !Now Mass matrix
+        ! if (associated(Mmat%PIVIT_PETSC%refcount)) call deallocate(Mmat%PIVIT_PETSC)
+        ! sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
+        ! Mmat%PIVIT_PETSC = allocate_momentum_matrix(sparsity, velocity, nphase)
+        ! !Try to make it diagonal...
+        ! call allocate(Mmat%PIVIT_PETSC,sparsity,[Mdims%u_nloc*Mdims%ndim*NPHASE,1],"PIVIT_PETSC"); call zero(Mmat%PIVIT_PETSC)
+        
+        ! DO ELE = 1, Mdims%totele
+        !     do j = 1, Mdims%u_nloc * nphase *Mdims%ndim
+        !         call addto(Mmat%PIVIT_PETSC, j, 1, ELE, ELE,  Mmat%PIVIT_MAT( 1, 1, ele ))
+        !     end do
+        ! END DO
+        ! call assemble( Mmat%PIVIT_PETSC )
+
+
+
+        ! call MatView(Mmat%C_PETSC%M, PETSC_VIEWER_STDOUT_SELF, idim)
+        ! call MatView(Mmat%CT_PETSC%M, PETSC_VIEWER_STDOUT_SELF, idim)
+        ! call MatView(Mmat%PIVIT_PETSC%M, PETSC_VIEWER_STDOUT_SELF, idim)
+    END SUBROUTINE Convert_C_and_CT_mat_to_PETSc_format
 
 end module solvers_module
