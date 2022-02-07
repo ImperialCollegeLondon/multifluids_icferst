@@ -364,6 +364,16 @@ contains
          end do
       end do
 
+      ! Set the boundary condtions on all surface elements around the domain to zero.
+      !     IPHASE=1
+      DO SELE=1,Mdims%stotel
+        DO CV_SILOC=1,Mdims%cv_snloc
+            CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
+            SIGMA_PLUS_BC(CV_INOD) = 1.0
+            u_all_solid(:,:,cv_inod) = 0.0
+        END DO
+      END DO  
+
       do cv_inod=1,Mdims%cv_nonods
          if(ndim_nphase>0) cc(1:ndim_nphase, cv_inod) = cc(1:ndim_nphase, cv_inod)/vel_count(cv_inod)
          u_all_cvmesh(:,:,cv_inod) = u_all_cvmesh(:,:,cv_inod)/vel_count(cv_inod)
@@ -376,28 +386,19 @@ contains
         do cv_iloc = 1,Mdims%cv_nloc 
             cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
             u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-        do iphase = 1, Mdims%nphase
-            do idim=1,Mdims%ndim 
-                u_all%val(idim, iphase, u_inod) = u_all_solid(idim, iphase, cv_inod)
+            do iphase = 1, Mdims%nphase
+                do idim=1,Mdims%ndim 
+                    u_all%val(idim, iphase, u_inod) = u_all_solid(idim, iphase, cv_inod)
+                enddo
             enddo
         enddo
       enddo
-      enddo
-      
+    
       !JXiang comment the below line temporarily
       if(nconc/=0) cc(ndim_nphase+1:ndim_nphase+number_fields, :) = c_field(1:nconc,:)   
       
       sigma_plus_bc(:) = min(1.0, 1000.0 * sigma_plus_bc(:)) ! if we have a non-zero value then def assume is a solid.
-      ! Set the boundary condtions on all surface elements around the domain to zero.
-      !     IPHASE=1
-      DO SELE=1,Mdims%stotel
-        DO CV_SILOC=1,Mdims%cv_snloc
-            CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
-            SIGMA_PLUS_BC(CV_INOD) = 1.0
-            u_all_solid(:,:,cv_inod) = 0.0
-        END DO
-      END DO  
-
+      
       ml=0.0
       if(number_fields>0) cc_x=0.0
       matrix_diag=0.0
