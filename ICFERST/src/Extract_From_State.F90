@@ -2212,7 +2212,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',&
         Infinite_norm_tol, default = 0.01 )
     !For the time being the pressure is 10% or based on the saturation
-    Infinite_norm_tol_pres = max(Infinite_norm_tol * 5., 0.1)
+    ! linfeng: changed pressure inf norm tol to actual user setting
+    Infinite_norm_tol_pres = Infinite_norm_tol! max(Infinite_norm_tol * 5., 0.1)
     !retrieve number of Fixed Point Iterations
     call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
     !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
