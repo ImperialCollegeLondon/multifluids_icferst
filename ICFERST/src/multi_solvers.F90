@@ -1226,24 +1226,26 @@ contains
         Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
         Pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
 
-        !TEMPORARY, Mmat%C_PETSC DOES NOT NEED TO BE REDONE UNLESS THE MESH CHANGES
-        if (associated(Mmat%C_PETSC%refcount)) call deallocate(Mmat%C_PETSC)
-        sparsity=>extract_csr_sparsity(packed_state,"CMatrixSparsity")
-        call allocate(Mmat%C_PETSC,sparsity,[Mdims%ndim,NPHASE],name="C_PETSC"); call zero(Mmat%C_PETSC)
+        !C does not need to be recomputed every time-level
+        if (.not. Mmat%stored) then 
+            !TEMPORARY, Mmat%C_PETSC DOES NOT NEED TO BE REDONE UNLESS THE MESH CHANGES
+            if (associated(Mmat%C_PETSC%refcount)) call deallocate(Mmat%C_PETSC)
+            sparsity=>extract_csr_sparsity(packed_state,"CMatrixSparsity")
+            call allocate(Mmat%C_PETSC,sparsity,[Mdims%ndim,NPHASE],name="C_PETSC"); call zero(Mmat%C_PETSC)
 
-        DO IU_NOD = 1, Mdims%U_NONODS
-            DO COUNT = mspars%C%fin( IU_NOD ), mspars%C%fin( IU_NOD + 1 ) - 1
-                P_JNOD = mspars%C%col( COUNT )
-                do idim =1, Mdims%ndim
-                    do iphase = 1, Nphase
-    !WE SHOULD USE NPRES IN ANY CASE, NOT PHASES HERE...
-                    call addto(Mmat%C_PETSC, idim, iphase, IU_NOD, P_JNOD, Mmat%C( idim, iphase, COUNT ))
-                    end do 
+            DO IU_NOD = 1, Mdims%U_NONODS
+                DO COUNT = mspars%C%fin( IU_NOD ), mspars%C%fin( IU_NOD + 1 ) - 1
+                    P_JNOD = mspars%C%col( COUNT )
+                    do idim =1, Mdims%ndim
+                        do iphase = 1, Nphase
+        !WE SHOULD USE NPRES IN ANY CASE, NOT PHASES HERE...
+                        call addto(Mmat%C_PETSC, idim, iphase, IU_NOD, P_JNOD, Mmat%C( idim, iphase, COUNT ))
+                        end do 
+                    end do
                 end do
             end do
-        end do
-        call assemble( Mmat%C_PETSC )
-        
+            call assemble( Mmat%C_PETSC )
+        end if
         !Now CT matrix
         if (associated(Mmat%CT_PETSC%refcount)) call deallocate(Mmat%CT_PETSC)
         sparsity=>extract_csr_sparsity(packed_state,"CTMatrixSparsity")
