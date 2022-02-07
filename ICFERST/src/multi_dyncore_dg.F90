@@ -398,7 +398,7 @@ contains
       if(nconc/=0) cc(ndim_nphase+1:ndim_nphase+number_fields, :) = c_field(1:nconc,:)   
       
       sigma_plus_bc(:) = min(1.0, 1000.0 * sigma_plus_bc(:)) ! if we have a non-zero value then def assume is a solid.
-      
+
       ml=0.0
       if(number_fields>0) cc_x=0.0
       matrix_diag=0.0
@@ -7648,27 +7648,27 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     !    where s = density / dt
                     ! if (.false.) then
                     if (solid_implicit) then 
-                        if (sigma%val(ele)>0.5) then    ! solid subdomain
-                            if(ele2.gt.0) then 
-                                ! do nothing
-                            else ! on boundary of domain
-                                temp_stress => extract_tensor_field(state(1), "StressTenSolid")
-                                CAUCHY_STRESS_IJ_SOLID_ELE = temp_stress%val(:,:,ele)
-                                do IDIM = 1, Mdims%ndim
-                                    iphase = 1
-                                    do U_SILOC=1,Mdims%u_snloc
-                                        U_ILOC = U_SLOC2LOC( U_SILOC )
-                                        do SGI=1,FE_GIdims%sbcvngi
-                                            ! do the multiplication (Ni sigma \dot n) * (det wei)
-                                            ! and add to loc_u_rhs
-                                            LOC_U_RHS(idim, iphase, U_ILOC) = LOC_U_RHS(idim, iphase, U_ILOC) &
-                                            + SBUFEN_REVERSED(sgi, U_SILOC) * SDETWE(sgi) * &
-                                            sum( CAUCHY_STRESS_IJ_SOLID_ELE(idim,:) * SNORMXN_ALL( : , sgi) )
-                                        enddo
-                                    enddo
-                                enddo
-                            endif ! ele2.gt.0
-                        endif ! sigma%val(ele)>0.5
+                        ! if (sigma%val(ele)>0.5) then    ! solid subdomain
+                        !     if(ele2.gt.0) then 
+                        !         ! do nothing
+                        !     else ! on boundary of domain
+                        !         temp_stress => extract_tensor_field(state(1), "StressTenSolid")
+                        !         CAUCHY_STRESS_IJ_SOLID_ELE = temp_stress%val(:,:,ele)
+                        !         do IDIM = 1, Mdims%ndim
+                        !             iphase = 1
+                        !             do U_SILOC=1,Mdims%u_snloc
+                        !                 U_ILOC = U_SLOC2LOC( U_SILOC )
+                        !                 do SGI=1,FE_GIdims%sbcvngi
+                        !                     ! do the multiplication (Ni sigma \dot n) * (det wei)
+                        !                     ! and add to loc_u_rhs
+                        !                     LOC_U_RHS(idim, iphase, U_ILOC) = LOC_U_RHS(idim, iphase, U_ILOC) &
+                        !                     + SBUFEN_REVERSED(sgi, U_SILOC) * SDETWE(sgi) * &
+                        !                     sum( CAUCHY_STRESS_IJ_SOLID_ELE(idim,:) * SNORMXN_ALL( : , sgi) )
+                        !                 enddo
+                        !             enddo
+                        !         enddo
+                        !     endif ! ele2.gt.0
+                        ! endif ! sigma%val(ele)>0.5
                         if (ele2.gt.0) then ! make sure we are not on the boundary!
                           if ((sigma%val(ele)>0.5 .and. sigma%val(ele2)<0.5) .or. (sigma%val(ele)<0.5 .and. sigma%val(ele2)>0.5)) then 
                             ! this IFACE of ELE is on the interface!
