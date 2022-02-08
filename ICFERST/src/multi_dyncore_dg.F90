@@ -4365,7 +4365,7 @@ end if
         LOGICAL, PARAMETER :: STORED_AC_SPAR_PT=.FALSE.
         INTEGER, PARAMETER :: IDO_STORE_AC_SPAR_PT=0
         ! options for implicit solids using one eqn approach...
-        LOGICAL, PARAMETER :: solid_visc_ele_imp=.true. ! treat implicitly inside an element.
+        LOGICAL, PARAMETER :: solid_visc_ele_imp=.false. ! treat implicitly inside an element.
         LOGICAL, PARAMETER :: solid_visc_ele_imp_stab=.false. ! treat implicitly inside an element for the projection method (suggest =.false., but may be more atable=.true.).
         LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false. ! treat implicitly between elements.
         ! re-calculate Mmat%C matrix...
@@ -7051,12 +7051,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         STRESS_IJ_SOLID_ELE_EXT=0.0
                         ! added by JXiang 
                         IF(SOLID_IMPLICIT) THEN
-                            !if(solid_visc_sufele_imp) then  ! option3
-                            if (.true.) then
+                            if(solid_visc_sufele_imp) then  ! option3
+                            ! if (.true.) then
                                 IF(ELE2>0) THEN
                                 if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid
                                     STRESS_IJ_SOLID_ELE_EXT = STRESS_IJ_ELE_EXT
-                                    STRESS_IJ_ELE_EXT=0.0
+                                    ! STRESS_IJ_ELE_EXT=0.0
                                     STRESS_IJ_SOLID_ELE_EXT = 0.0
                                 endif
                                 ENDIF 
