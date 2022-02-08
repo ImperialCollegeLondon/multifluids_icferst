@@ -1,0 +1,4 @@
+ MESSAGE: Using default options for the linear solver: GMRES(30) + HYPRE
+ MESSAGE: Using default options for the linear solver for velocity: GMRES(30) + Jacobi(rowmax)
+Running the model
+BL works OK

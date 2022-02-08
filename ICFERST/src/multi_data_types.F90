@@ -183,6 +183,9 @@ module multi_data_types
         integer, dimension(:), pointer :: ICOLOR => null()!>Array used to accelerate the creation of CMC in COLOR_GET_CMC_PHA_FAST
         integer :: NCOLOR !>Number of colors in ICOLOR
         type(petsc_csr_matrix):: DGM_PETSC!>Matrix contatining the momemtum terms for Navier-Stokes/Stokes equation
+        type(petsc_csr_matrix):: C_PETSC!>PETSc version of the gradient matrix (storable)
+        type(petsc_csr_matrix):: CT_PETSC!>PETSc version of the divergence matrix
+        type(petsc_csr_matrix):: PIVIT_PETSC!>PETSc version of the divergence matrix
         logical :: NO_MATRIX_STORE !>Flag to whether calculate and use DGM_PETSC or C
         logical :: CV_pressure     !>Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)
         logical :: stored = .false.!>Flag to be true when the storable matrices have been stored
@@ -1199,6 +1202,9 @@ contains
 !        if (associated(Mmat%CV_RHS%val)) call deallocate(Mmat%CV_RHS)!<=Should not need to deallocate anyway as it is done somewhere else
 !        if (associated(Mmat%petsc_ACV%refcount)) call deallocate(Mmat%petsc_ACV)!<=Should not need to deallocate anyway as it is done somewhere else
         if (associated(Mmat%DGM_PETSC%refcount)) call deallocate(Mmat%DGM_PETSC)
+        if (associated(Mmat%C_PETSC%refcount)) call deallocate(Mmat%C_PETSC)
+        if (associated(Mmat%CT_PETSC%refcount)) call deallocate(Mmat%CT_PETSC)
+        if (associated(Mmat%PIVIT_PETSC%refcount)) call deallocate(Mmat%PIVIT_PETSC)
         if (associated(Mmat%limiters_ELEMATPSI)) then
            deallocate (Mmat%limiters_ELEMATPSI); nullify(Mmat%limiters_ELEMATPSI)
         end if
