@@ -2349,8 +2349,14 @@ end if
                 !Solve Schur complement using our own method
                 call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
                                               MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
-            else !Solve Schur complement using PETSc   
-                call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, CMC_petsc, P_all, deltaP, rhs_p, solver_option_pressure)
+            else !Solve Schur complement using PETSc 
+                if (is_magma)  then
+                    call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, CMC_petsc, P_all, &
+                                            deltaP, rhs_p, solver_option_pressure, Dmat = CMC_petsc)
+                else
+                    call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, CMC_petsc, P_all, &
+                                            deltaP, rhs_p, solver_option_pressure)
+                end if
                 !Now recompute velocity
                 call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
                 call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)

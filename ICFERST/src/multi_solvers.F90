@@ -1117,7 +1117,7 @@ contains
     !> @brief In this subroutine the Schur complement is generated and solved using PETSc to update the pressure field
     !> Matrices need to be in petsc format and pmat is the preconditioned matrix, i.e. pmat = A11- A10(AproxA00^-1)A01
     !---------------------------------------------------------------------------
-    subroutine petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, pmat, P_all, deltaP, rhs_p, solver_option_path)
+    subroutine petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, pmat, P_all, deltaP, rhs_p, solver_option_path, Dmat)
         use Full_Projection
         use petsc_tools
         use solvers
@@ -1134,6 +1134,7 @@ contains
         type(multi_ndgln), intent(in) :: ndgln
         type(multi_sparsities), intent(in) :: Mspars
         INTEGER, intent( in ) :: final_phase
+        type(petsc_csr_matrix), optional, intent( inout )::  Dmat
         !Local variables
         type(petsc_numbering_type) :: petsc_numbering, petsc_numbering_vel
         integer :: ierr, literations
@@ -1157,10 +1158,8 @@ contains
         !SPRINT_TO_DO, IF EVERYTHING WORKS, THEN PROBABLY BETTER FLIP THE SIGN OF THE UPDATE ONLY??
         call MatScale(Mmat%CT_PETSC%M,real(-1.0, kind = PetscScalar_kind),ierr)
 
-        !For the time being only for magma we consider we have the matrix A11 or D
-        has_diffusion_operator = is_magma
-        if(has_diffusion_operator) then
-            call MatCreateSchurComplement(Mmat%DGM_PETSC%M, Mmat%DGM_PETSC%M, Mmat%C_PETSC%M, Mmat%CT_PETSC%M, pmat%M, Schur_mat, ierr)
+        if(present(Dmat)) then
+            call MatCreateSchurComplement(Mmat%DGM_PETSC%M, Mmat%DGM_PETSC%M, Mmat%C_PETSC%M, Mmat%CT_PETSC%M, Dmat%M, Schur_mat, ierr)
         else
     ! workaround bug in petsc 3.8: missing CHKFORTRANNULLOBJECT, so PETSC_NULL_MAT isn't translated to C null
     ! this however seems to do the trick:
