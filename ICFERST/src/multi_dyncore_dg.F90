@@ -1862,7 +1862,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
         DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, &
         IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J,&
-        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its)
+        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, magma_coupling)
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -1891,6 +1891,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
         integer, intent(inout) :: pres_its_taken
 
+        type(coupling_term_coef), intent( in ) :: magma_coupling
         ! Local Variables
         character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
         character(len=option_path_len) :: solver_option_velocity = "/solver_options/Linear_solver"
@@ -1959,14 +1960,16 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: DIAG_BIGM_CON
         REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: BIGM_CON
+        real, DIMENSION (:), allocatable :: Compaction_Length
         logical :: LUMP_DIAG_MOM, lump_mass
 
         integer :: final_phase
 
+
         if (is_magma) compute_compaction= .true.  ! For magma only the first phase is assembled for the momentum equation.
 
         if (compute_compaction) then
-          final_phase=1
+          final_phase=1          
         else
           final_phase=Mdims%nphase
         end if
@@ -1977,7 +1980,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         solve_mom_iteratively = have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively")
         !Retrieve the maximum allowed number of its
         call get_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/restart_its", stokes_max_its, default = 15)
-
+        ! if (nonlinear_its==1) stokes_max_its=stokes_max_its+20
         if (is_porous_media) then !Find parameter to re-scale the pressure matrix
           !Since we save the parameter rescaleVal, we only do this one time
           if (rescaleVal < 0.) then
@@ -2069,7 +2072,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               UDENOLD_ALL = DENOLD_ALL2%VAL( 1, :, : )
            end if
            if ( .not. have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) )&
-                call calculate_u_source_cv( Mdims, state, packed_state, uden_all, U_SOURCE_CV_ALL, compute_compaction )
+                call calculate_u_source_cv( Mdims, state, packed_state, uden_all, U_SOURCE_CV_ALL, compute_compaction, ndgln )
            if ( has_boussinesq_aprox ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
@@ -2097,13 +2100,16 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               END DO
            ENDIF
         ENDIF
-        allocate(UDIFFUSION_ALL(Mdims%ndim, Mdims%ndim, final_phase, Mdims%mat_nonods))
+        allocate(UDIFFUSION_ALL(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods))
         if (is_magma) then !We need to allocate for the bulk viscosity
           call allocate_multi_field( Mdims, UDIFFUSION_VOL_ALL, Mdims%mat_nonods, mem_type = 1)
         end if
         ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
         call calculate_viscosity( state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL )
-
+        if (compute_compaction) then
+            allocate(Compaction_Length (Mdims%mat_nonods))
+            call calculate_compaction_length ( state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, Compaction_Length, magma_coupling)
+        end if
         allocate(velocity_absorption(Mdims%ndim * final_phase, Mdims%ndim * final_phase, Mdims%mat_nonods))
         ! define velocity_absorption here...
         velocity_absorption=0.0
@@ -2257,7 +2263,7 @@ end if
             end if
             if (solve_stokes .or. solve_mom_iteratively) then
                 if (compute_compaction) then
-                    call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 3) !generate modified D matrix                   
+                    call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 3, Compaction_length) !generate modified D matrix                   
                 else
                     call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 1) 
                 end if
@@ -2355,12 +2361,12 @@ end if
                                           MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
         end if
                 !######################## CORRECTION VELOCITY STEP####################################
-        call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, Pressure, deltap, cdp_tensor, rhs_p, upwnd)
+        if (.not. compute_compaction) call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, Pressure, deltap, cdp_tensor, rhs_p, upwnd)
         call deallocate(deltaP)
 
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases, must put after the corection velocity step for magma        
         if (compute_compaction) call get_Darcy_phases_velocity()
-
+        ! call force_zero_boundary_value(Mdims, velocity) 
 
         if (isParallel()) call halo_update(velocity)
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
@@ -2394,6 +2400,64 @@ end if
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
       contains
+        !---------------------------------------------------------------------------
+        !> @author Haiyang Hu
+        !> @Compute compaction length (squared) of a magma system which is used to estimate the coefficient alpha in the magma velocity solver
+        !---------------------------------------------------------------------------  
+        subroutine calculate_compaction_length ( state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, Compaction_Length, magma_coupling)  
+            implicit none
+            type(state_type ), dimension( : ), intent( inout ) :: state
+            type(multi_ndgln), intent(in) :: ndgln
+            type(multi_dimensions), intent(in) :: Mdims
+            real, dimension( :, :, :, : ), intent( in ) :: UDIFFUSION_ALL
+            type( multi_field ), intent( in ) :: UDIFFUSION_VOL_ALL
+            real, DIMENSION (:), intent( inout ):: Compaction_Length
+            type(coupling_term_coef), intent( in ) :: magma_coupling
+
+            
+            !local variable
+            type( scalar_field ), pointer ::  saturation
+            integer ELE, CV_ILOC, mat_nod,cv_inod,iphase
+
+            saturation => extract_scalar_field(state(2), "PhaseVolumeFraction") 
+
+            DO ELE = 1, Mdims%totele
+                DO CV_ILOC = 1, Mdims%cv_nloc
+                  mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
+                  cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+
+                  do iphase =1, 1
+                    Compaction_Length (mat_nod) = (UDIFFUSION_ALL(1, 1, iphase, mat_nod)/ UDIFFUSION_ALL(1, 1, 2, mat_nod)* &
+                    magma_coupling%grain_size**2/magma_coupling%a*saturation%val(cv_inod)**(magma_coupling%b))**0.5
+                  end do
+                end DO
+              end DO
+
+        end subroutine 
+
+
+        subroutine force_zero_boundary_value(Mdims, field)
+            implicit none
+            type(multi_dimensions), intent(in) :: Mdims
+            type(tensor_field), intent(in) ::  field 
+
+            !Local variables
+            integer:: ele, u_iloc, xu_inod, u_inod
+            !type(mesh_type), pointer :: u_position
+            type( vector_field ), pointer :: u_position
+
+            !u_position=> extract_mesh(state, "VelocityMesh")
+            u_position=>extract_vector_field(packed_state,"VelocityCoordinate")
+            do ele = 1, Mdims%totele
+                do u_iloc = 1, Mdims%u_nloc
+                xu_inod = ndgln%xu ( (ele - 1 ) * Mdims%u_nloc + u_iloc )
+                u_inod  = ndgln%u  ( (ele - 1 ) * Mdims%u_nloc + u_iloc )
+                    if (abs(u_position%val(1,xu_inod))<1e-5 .or. abs(u_position%val(1,xu_inod)-300)<1e-5 .or. abs(u_position%val(2,xu_inod)-0)<1e-5 .or. abs(u_position%val(2,xu_inod)-600)<1e-5) then
+                        field%val(:, :, u_inod) = 0.
+                    end if
+                end do
+            end do
+        end subroutine force_zero_boundary_value
 
         subroutine smooth_CDP_or_velocity(Mmat, Tensor, Iphase, method)
 
@@ -2489,9 +2553,17 @@ end if
           real :: conv_test, total_max, total_min, Omega
           logical :: restart_now
           type(tensor_field) :: aux_velocity, ref_CDP_tensor
+          real,dimension(:,:), allocatable :: optimal_velocity
           type( vector_field ) :: packed_CDP_tensor, packed_aux_velocity
           real, dimension(2) :: totally_min_max
-          integer :: TEST
+          integer :: TEST, EXTRA
+          real :: min_residue
+          real, dimension(:), allocatable :: P_optimal
+
+          EXTRA=0
+          
+          allocate(P_optimal(Mdims%cv_nonods))
+          allocate(optimal_velocity(Mdims%ndim ,Mdims%u_nonods))
 
           !Retrieve settings from diamond
           if (solver_tolerance<0) then
@@ -2528,12 +2600,14 @@ end if
 
           i = 1
           allocate(stored_field(Mdims%cv_nonods, stokes_max_its))
+          
           allocate(field_residuals(Mdims%cv_nonods, stokes_max_its))
           !Pointers to convert from tensor data to vector data
           packed_CDP_tensor = as_packed_vector(CDP_tensor)
           !Update stored values
           stored_field(:, i) = P_all%val(1,1,:)
           restart_now = .false.
+          min_residue=1
           stokesloop: do k = 1, stokes_max_its*Max_restarts
 
             !Proceed to restart the AA method, by throwing away everything!
@@ -2557,14 +2631,28 @@ end if
             call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
             ! conv_test = inf_norm_vector_normalised(CDP_tensor%val, ref_CDP_tensor%val, totally_min_max)
             conv_test = maxval(abs(rhs_p%val(1,:)))
+            
+            if (min_residue>conv_test) then
+                min_residue=min(conv_test, min_residue)
+                P_optimal=P_all%val(1,1,:)
+                optimal_velocity=velocity%val(:,1,:)
+            end if
+
             ref_CDP_tensor%val = CDP_tensor%val
             !We use deltaP as residual check for convergence
-            if ( conv_test < solver_tolerance .or.  k == stokes_max_its*Max_restarts) then
+                min_residue=min(conv_test, min_residue)
+            if ( k>5 .and. (conv_test < solver_tolerance .or. EXTRA==5 .or. conv_test>400*min_residue)) then
               if (getprocno() == 1) then
                 ewrite(show_FPI_conv,*)"Iterations taken in the AA method for Stokes: ", k
               end if
               exit stokesloop
             end if
+            
+            if (k == stokes_max_its*Max_restarts .and. conv_test>1e-8) then
+                Max_restarts=Max_restarts+1
+                EXTRA=EXTRA+1
+            end if
+
             M = i - 2; if (M <= 0) M = stokes_max_its + M
             TEST=0
             call get_option("/numerical_methods/max_sat_its", TEST)
@@ -2578,6 +2666,7 @@ end if
             call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
 
             call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
+            ! call force_zero_boundary_value(Mdims, velocity) 
             if (isParallel()) call halo_update(velocity)
             !Perform Div * U for the RHS of the pressure equation
             !If we end up using the residual, this call just below is unnecessary
@@ -2624,7 +2713,7 @@ end if
             !Update residual with the variation from the guessed value and the actual value obtained after appliying the function
             field_residuals(:, i) = rhs_p%val(1,:)!P_all%val(1,1,:) - stored_field(:, i) !deltap%val(1,:)
             !##########################Now solve the equations##########################
-            i = i + 1;
+            i = i + 1
             if (i == stokes_max_its + 1 ) then
               i = 1
               restart_now = .true.
@@ -2633,6 +2722,9 @@ end if
             stored_field(:, i) = P_all%val(1,1,:)
 
           end do stokesloop
+        !   print *, 'Use optimal value, residue:', min_residue
+          P_all%val(1,1,:)= P_optimal
+          velocity%val(:,1,:)=optimal_velocity
           if (Special_precond) then
             call deallocate(aux_velocity)
           end if
@@ -2675,7 +2767,7 @@ end if
         !> @brief Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not.
         !> For magma only the first phase is imposed here as for Darcy the Mass matrix is generated in ASSEM_FORCE_CTY
         !---------------------------------------------------------------------------
-        subroutine generate_Pivit_matrix_Stokes(state, ndgln,  Mdims, final_phase,  Mmat, MASS_ELE, diagonal_A, upwnd, Pivit_type)
+        subroutine generate_Pivit_matrix_Stokes(state, ndgln,  Mdims, final_phase,  Mmat, MASS_ELE, diagonal_A, upwnd, Pivit_type, Compaction_length)
           implicit none
           type( state_type ), dimension( : ), intent( inout ) :: state
           type(multi_ndgln), intent(in) :: ndgln
@@ -2691,8 +2783,9 @@ end if
           type( tensor_field ), pointer :: viscosity
           type( scalar_field ), pointer :: saturation
           real, dimension( :, :, : ), allocatable :: mu_tmp
-          real :: auxR, TEST
+          real :: auxR, auxR2, TEST
           real, parameter :: tol = 1e-16
+          real, optional, DIMENSION (:), intent( in ):: Compaction_Length
           !Matrix already initialised !
           Mmat%PIVIT_MAT = 0.
 
@@ -2721,37 +2814,20 @@ end if
                   Mmat%PIVIT_MAT(J, J, ELE) = auxR 
                 end do
             end do
-          else !Not used for now
-            !   viscosity => extract_tensor_field(state(1), "Viscosity")
-            !   allocate(mu_tmp( viscosity%dim(1), viscosity%dim(2), Mdims%cv_nloc ) )
-
+         else if(Pivit_type==3 ) then !Pivit contains -c/phi^2+alpha* diag(A)^-1 * mass
               saturation => extract_scalar_field(state(1), "PhaseVolumeFraction")
-               ! do ele = 1, Mdims%totele
-                !     do u_iloc = 1, Mdims%u_nloc
-                !         u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
-                !         do cv_iloc = 1, Mdims%cv_nloc
-                !             imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
-                !             cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                !             do iphase = 1, final_phase
-                !                 DO idim = 1, Mdims%ndim
-                !                     ! D=Ct* phi^2/c *C,  thus we need this extra coeffecient phi^2/c here, 
-                !                     velocity%val(idim, iphase, u_inod) = velocity%val(idim, iphase, u_inod)+DU_VEL(idim, iphase, u_inod)*upwnd%inv_adv_coef(1,1,2,imat)*saturation%val(cv_loc)  
-                !                 END DO
-                !             end do
-                !         end do
-                !     end do
-                ! end do 
-
              call get_option("/magma_parameters/Phase_diagram_coefficients/ae", TEST)
              do ele = 1, Mdims%totele
             !    mu_tmp = ele_val( viscosity, ele )
                 auxR = 0.
+                auxR2= 0.
                     do cv_iloc = 1, Mdims%cv_nloc
                         imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
                         cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)   
                         ! the second phase of upwnd%adv_coef containts c/phi
                         ! auxR = auxR + (upwnd%adv_coef(1,1,2,imat)/((1.0 + tol  - saturation%val(cv_loc))))/dble(Mdims%cv_nloc)
                         auxR = auxR + (1.0 + tol  - saturation%val(cv_loc))/upwnd%adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
+                        auxR2= auxR2+ Compaction_length(imat)**2/dble(Mdims%cv_nloc)
                     end do
             !    auxR = (MASS_ELE(ele)/dble(Mdims%u_nloc)) * auxR 
                  auxR = dble(Mdims%u_nloc)/MASS_ELE(ele)*auxR 
@@ -2763,32 +2839,13 @@ end if
                     u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
                     do i = 1, final_phase*Mdims%ndim
                         j = i + (u_iloc-1)*final_phase*Mdims%ndim
-                        Mmat%PIVIT_MAT(J, J, ELE) = auxR+TEST*1./diagonal_A%val(i,u_inod)
+                        Mmat%PIVIT_MAT(J, J, ELE) = auxR*1413*30/auxR2!+10000/MASS_ELE(ele)*1./diagonal_A%val(i,u_inod)
                     end do
-                end do    
-                ! do j = 1, Mdims%u_nloc * final_phase * Mdims%ndim
-                !     Mmat%PIVIT_MAT(J, J, ELE) = auxR 
-                !   end do                
+                end do                   
              end do 
-             
-            !  do ele = 1, Mdims%totele
-            !     !Perform a CV to P0DG projection. We just take a quarter(P1 3D) of each CV per element
-            !     auxR = 0.
-            !     do cv_iloc = 1, Mdims%cv_nloc
-            !         imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
-            !         cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)   
-            !         ! the second phase of upwnd%adv_coef containts c/phi
-            !         auxR = auxR + (upwnd%adv_coef(1,1,2,imat)/((1.0 + tol  - saturation%val(cv_loc))))/dble(Mdims%cv_nloc)
-            !     end do
-            !     !Include now the corresponding element mass
-            !     auxR = (MASS_ELE(ele)/dble(Mdims%u_nloc)) * auxR 
-            !     !Introduce into the pivit matrix
-            !     do j = 1, Mdims%u_nloc * final_phase * Mdims%ndim
-            !       Mmat%PIVIT_MAT(J, J, ELE) = auxR 
-            !     end do
-            ! end do
          end if
-        end subroutine
+        end subroutine       
+
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas
         !> @brief Update velocity by solving the momentum equation for a given pressure, the RHS is formed here
@@ -2823,6 +2880,7 @@ end if
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
+          if (its_taken==0) FLAbort('Velocity solver failure')
           !If the system is re-scaled then now it is time to recover the correct solution
           if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
@@ -2856,6 +2914,7 @@ end if
           !Rescale RHS (it is given the the matrix has been already re-scaled)
           if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC)!Recover original X; X = D^-0.5 * X'
           call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
+          if (its_taken==0) FLAbort('Pressure solver failure')
           pres_its_taken = its_taken
 
           if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
@@ -3048,10 +3107,10 @@ end if
           Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL2%val, U_SOURCE_CV_ALL)
         deallocate(U_SOURCE_CV_ALL)
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
-        ! call deallocate(CDP_tensor);
-        ! call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), darcy_phases/)); call zero(cdp_tensor)
-        !call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, darcy_phases, &
-        !    Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )       
+        call deallocate(CDP_tensor);
+        call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), darcy_phases/)); call zero(cdp_tensor)
+        call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, darcy_phases, &
+           Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )       
 
         ! Here we use the updated pressure gradient CDP_tensor which is passed down from velocity correction to calculated the darcy velocity of the liquid phase
         !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
@@ -4446,7 +4505,7 @@ end if
         ENDIF
         ! LES VISCOCITY CALC.
         IF ( GOT_DIFFUS ) THEN
-            ALLOCATE(UDIFFUSION_ALL(Mdims%ndim,Mdims%ndim,final_phase,Mdims%mat_nonods)) ; UDIFFUSION_ALL=0.
+            ALLOCATE(UDIFFUSION_ALL(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods)) ; UDIFFUSION_ALL=0.
             ALLOCATE(UDIFFUSION_VOL_ALL(final_phase,Mdims%mat_nonods)) ; UDIFFUSION_VOL_ALL=0.
             IF ( LES_DISOPT /= 0 ) THEN
                 ALLOCATE(LES_UDIFFUSION(Mdims%ndim,Mdims%ndim,final_phase,Mdims%mat_nonods)) ; LES_UDIFFUSION=0.
@@ -4642,7 +4701,7 @@ end if
                     END DO
                 ENDIF
                 IF ( GOT_DIFFUS ) THEN
-                    LOC_UDIFFUSION( :, :, :, MAT_ILOC ) = UDIFFUSION_ALL( :, :, :, MAT_INOD )
+                    LOC_UDIFFUSION( :, :, :, MAT_ILOC ) = UDIFFUSION_ALL( :, :, 1:final_phase, MAT_INOD )
                     LOC_UDIFFUSION_VOL( :, MAT_ILOC ) = UDIFFUSION_VOL_ALL( :, MAT_INOD )
                 ELSE
                     LOC_UDIFFUSION( :, :, :, MAT_ILOC ) = 0.0

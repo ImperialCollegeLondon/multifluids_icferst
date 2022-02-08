@@ -595,7 +595,7 @@ contains
                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                   call update_magma_coupling_coefficients(Mdims, state, saturation_field%val, ndgln, multi_absorp%Magma%val,  magma_c_phi_series)
                   call Calculate_Magma_AbsorptionTerms( state, packed_state, multi_absorp%Magma, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
-                                                                    upwnd, suf_sig_diagten_bc, magma_c_phi_series )
+                                                                    upwnd, suf_sig_diagten_bc, magma_c_phi_series )                  
                 end if
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
@@ -631,6 +631,7 @@ contains
                 velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                 pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
 
+                !if (is_magma) call add_nelist(velocity_field)
                 !#=================================================================================================================
                 !# Andreas. I added a flag in the Conditional_ForceBalanceEquation to eiher enter or not.
                 !#    TODO. This has to be updated with adaptivity as well.
@@ -643,7 +644,7 @@ contains
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
                         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        calculate_mass_delta, outfluxes, pres_its_taken, its)
+                        calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling)
                 end if Conditional_ForceBalanceEquation
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
@@ -767,7 +768,7 @@ contains
                   ! ! Update the composition
                   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
                   ! Calulate the composition source term
-                  call compute_composition_change_source(Mdims, state, packed_state, melt_temp, Compostion_temp, dt)
+                  !call compute_composition_change_source(Mdims, state, packed_state, melt_temp, Compostion_temp, dt)
                   deallocate(Compostion_temp, melt_temp)
                 end if
                 !#=================================================================================================================

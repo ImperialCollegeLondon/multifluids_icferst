@@ -116,7 +116,7 @@ contains
     type( tensor_field ), pointer :: t_field !liquid viscosity
     type(coupling_term_coef), intent(in) :: coupling
     integer :: N  !number of items in the series
-    real :: verylow, tol
+    real,  PARAMETER :: phi_min=1e-6
     real :: scaling ! a temporal fix for the scaling difference between the viscosity in ICFERST and the models
     scaling=1.0    ! the viscosity difference between ICFERST and the model
     N = size(series)
@@ -130,9 +130,6 @@ contains
     low=coupling%cut_low
     high=coupling%cut_high
 
-    verylow=0.001
-    tol=1e-3
-    ! print *, 'check:', 0.02**2/(a*mu/d**2*verylow**(2-b)+(2-b)*a*mu/d**2*verylow**(1-b)*(0.02-verylow))
     do i=1, N
       phi(i) = real(i - 1) / (N - 1)
     end do
@@ -142,8 +139,8 @@ contains
       end do
     else
       do i=2, N
-        if (phi(i)<=verylow) then
-          series(i)= phi(i)**2/(a*mu/d**2*verylow**(2-b)+(2-b)*a*mu/d**2*verylow**(1-b)*(phi(i)-verylow))
+        if (phi(i)<=phi_min) then
+          series(i)= phi(i)**2/(a*mu/d**2*phi_min**(2-b)+(2-b)*a*mu/d**2*phi_min**(1-b)*(phi(i)-phi_min))
         else if (phi(i)<=low) then
           series(i)= d**2/a/mu*phi(i)**b  !coupling%a/d**2*mu*phi(i)**(1-coupling%b)*scaling
         else if (phi(i)>=high) then
@@ -330,7 +327,6 @@ contains
   type( tensor_field ), pointer :: enthalpy, temperature,  saturation, rhoCp, Den
   ! type( scalar_field ), pointer :: Cp
   real, dimension(Mdims%cv_nonods) :: enthalpy_dim
-  !real, parameter :: tol = 1e-5
   rhoCp =>extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
   Den =>extract_tensor_field( packed_state, 'PackedDensity')
   enthalpy => extract_tensor_field( packed_state,"PackedEnthalpy" )
@@ -374,7 +370,7 @@ contains
   !real, dimension(Mdims%cv_nonods) :: enthalpy_dim
   real :: fx, fdashx, Loc_Cp, rho
   !Parameters for the non_linear solvers (Maybe a newton solver here makes sense?)
-  real, parameter :: tol = 1e-6 !Need to be at least 1e-5 to obtain a relative stable result
+  real, parameter :: phi_min = 1e-6 !Need to be at least 1e-5 to obtain a relative stable result
   integer, parameter :: max_its = 25
   !!
   integer :: CV_ILOC, cv_nodi
@@ -408,7 +404,7 @@ contains
             k=1
             test_poro = 1.0
             test_poro_prev=0
-            do while (k<Max_its .and. abs(test_poro - test_poro_prev) > tol)
+            do while (k<Max_its .and. abs(test_poro - test_poro_prev) > phi_min)
               fx = (phase_coef%Lf/Loc_Cp)*test_poro**3 + (phase_coef%C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro**2 + phase_coef%B1*BulkComposition(cv_nodi)*test_poro + phase_coef%A1*BulkComposition(cv_nodi)**2
               fdashx=3*phase_coef%Lf/Loc_Cp*test_poro**2+2*(phase_coef%C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro+phase_coef%B1*BulkComposition(cv_nodi)
               test_poro_prev = test_poro
@@ -424,7 +420,7 @@ contains
             k=1
             test_poro = 1.0
             test_poro_prev=0
-            do while (k<Max_its .and. abs(test_poro - test_poro_prev) > tol .and. test_poro<=1)
+            do while (k<Max_its .and. abs(test_poro - test_poro_prev) > phi_min .and. test_poro<=1)
               fx= (phase_coef%Lf/Loc_Cp)**test_poro**3+(phase_coef%C2-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp+phase_coef%A2+phase_coef%B2)*test_poro**2+(2*phase_coef%A2*BulkComposition(cv_nodi)-2*phase_coef%A2+&
               phase_coef%B2*BulkComposition(cv_nodi)-phase_coef%B2)*test_poro+phase_coef%A2*(BulkComposition(cv_nodi)-1)**2
 
@@ -437,8 +433,8 @@ contains
             end do
           end if
         end if
-        saturation%val(1,2, cv_nodi)=test_poro
-        saturation%val(1,1, cv_nodi)=1-test_poro
+        saturation%val(1,2, cv_nodi)=max(test_poro, phi_min)
+        saturation%val(1,1, cv_nodi)=min(1-test_poro, 1-phi_min)
       END IF
     end do
   end subroutine
@@ -464,7 +460,8 @@ contains
       DO CV_ILOC = 1, Mdims%cv_nloc
         mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
         cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-        phi = max((1.0-saturation(1,1, cv_inod)),1e-5)
+        ! phi = max((1.0-saturation(1,1, cv_inod)),1e-5)
+        phi =saturation(1,2, cv_inod)
         do iphase =2, Mdims%nphase!Absorption is defined as a term mutiplying the velocity term, not the pressure
           Magma_absorp(1, 1, iphase, mat_nod) = phi/phi2_over_c(saturation(1,iphase, cv_inod))
         end Do
@@ -509,7 +506,7 @@ contains
 
     do cv_inod = 1, Mdims%cv_nonods
       ! The gain of the first phase  is the loss of the second phase
-      Composition_source%val(cv_inod) = -(Solute_new%val(1,2,cv_inod)*saturation_new%val(1,2,cv_inod) - Compostion_temp(cv_inod)*melt_temp(cv_inod))/DT  ! need to check the sign!
+      Composition_source%val(cv_inod) =0! -(Solute_new%val(1,2,cv_inod)*saturation_new%val(1,2,cv_inod) - Compostion_temp(cv_inod)*melt_temp(cv_inod))/DT  ! need to check the sign!
     end do
     ! Composition_source(1, :)=-Composition_source(2, :)
 
@@ -571,7 +568,6 @@ contains
              real, dimension(:), allocatable :: max_sat
              real :: pert
              !Local parameters
-             real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
 
              !retrieve saturation
              satura=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
@@ -653,7 +649,6 @@ contains
              type(tensor_field), pointer :: velocity, satura, perm
              type(tensor_field) :: velocity_BCs, satura_BCs
              !Local parameters
-             real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
 
 
              !Get from packed_state
@@ -693,7 +688,7 @@ contains
                                          cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * Mdims%stotel * Mdims%cv_snloc
                                          mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + cv_iloc  )
                                          !For the time being use the interior absorption, this will need to be changed when multiphase like the porous media one
-                                        suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = adv_coef(1,1,iphase, mat_nod)! * max(eps, satura%val(1,iphase,cv_nodi))
+                                        suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = adv_coef(1,1,iphase, mat_nod)
                                      end do
                                  end if
                              end do
