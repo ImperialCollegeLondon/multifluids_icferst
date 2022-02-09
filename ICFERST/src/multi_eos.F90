@@ -1431,13 +1431,9 @@ contains
                     X_NODI = ndgln%x( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                     CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                     g = node_val( gravity_direction, CV_NODI ) * gravity_magnitude
-                    if (abs(p_position%val(1,X_NODI))<0 .or. abs(p_position%val(1,X_NODI)-300)<0 .or. abs(p_position%val(2,X_NODI)-0)<0 .or. abs(p_position%val(2,X_NODI)-400)<0) then
-                      u_source_cv( :, 1, CV_NODI ) = 0.
-                    else
-                      do idim = 1, Mdims%ndim
-                        u_source_cv( idim, 1, CV_NODI ) = (den( 1, CV_NODI )- den( 2, CV_NODI ) )* sat_field%val(1, 1, CV_NODI) * g( idim ) 
-                      end do 
-                    end if
+                    do idim = 1, Mdims%ndim
+                      u_source_cv( idim, 1, CV_NODI ) = (den( 1, CV_NODI )- den( 2, CV_NODI ) )* sat_field%val(1, 1, CV_NODI) * g( idim ) 
+                    end do 
                 end do
               end do              !
            else

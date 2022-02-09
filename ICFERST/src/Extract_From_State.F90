@@ -2554,8 +2554,13 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                         ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
                 end select
-            else
-                ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres) .or. its >= NonLinearIteration
+            else                
+                if (is_magma) then 
+                    print *, 'inf_norm_val:', inf_norm_val
+                    ExitNonLinearLoop = inf_norm_val < Infinite_norm_tol .or. its >= NonLinearIteration
+                else
+                    ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres) .or. its >= NonLinearIteration
+                end if
             end if
             !At least two non-linear iterations
             ExitNonLinearLoop =  ExitNonLinearLoop .and. its >= 2
