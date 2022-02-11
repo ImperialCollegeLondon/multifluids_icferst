@@ -2204,15 +2204,30 @@ end if
 
         !"########################UPDATE PRESSURE STEP####################################"
         !We may apply the Anderson acceleration method
-        if (solve_stokes .or. solve_mom_iteratively ) then
-          call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
-                                          MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
-          call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
+        if ((solve_stokes .or. solve_mom_iteratively)) then
+            if (solve_mom_iteratively) then
+                !Solve Schur complement using our own method
+                call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
+                                              MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
+            else !Solve Schur complement using PETSc
+                ! if (is_magma)  then!This section will be for stokes with compressibility Dmat will be the "compression" matrix
+                !     call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, CMC_petsc, P_all, &
+                !                             deltaP, rhs_p, solver_option_pressure, Dmat = CMC_petsc2) !Dmat cmc2
+                ! else            
+                call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, Mdims%n_in_pres, CMC_petsc, P_all, &
+                                        deltaP, rhs_p, solver_option_pressure)
+                ! end if
+                !Now recompute velocity
+                call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+                call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
+            end if
         end if
-
+        
         !######################## CORRECTION VELOCITY STEP####################################
         !Ensure that the velocity fulfils the continuity equation before moving on
-        call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+        if (.not. solve_stokes .or. solve_mom_iteratively ) then
+            call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+        end if
         call deallocate(deltaP)
         if (isParallel()) call halo_update(velocity)
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
