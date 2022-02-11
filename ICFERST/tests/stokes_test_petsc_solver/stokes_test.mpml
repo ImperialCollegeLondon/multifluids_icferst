@@ -18,56 +18,11 @@
     </mesh>
     <simulation_quality>
       <string_value>balanced</string_value>
+      <Balanced_P0DG/>
     </simulation_quality>
-    <Advance_options>
-      <FE_Pressure>
-        <FEM_continuity_equation/>
-      </FE_Pressure>
-    </Advance_options>
+    <Advance_options/>
   </geometry>
   <solver_options>
-    <Linear_solver>
-      <iterative_method name="gmres">
-        <restart>
-          <integer_value rank="0">30</integer_value>
-        </restart>
-      </iterative_method>
-      <preconditioner name="hypre">
-        <hypre_type name="boomeramg"/>
-      </preconditioner>
-      <relative_error>
-        <real_value rank="0">1e-10</real_value>
-      </relative_error>
-      <max_iterations>
-        <integer_value rank="0">300</integer_value>
-      </max_iterations>
-      <ignore_all_solver_failures/>
-      <diagnostics>
-        <monitors/>
-      </diagnostics>
-      <Custom_solver_configuration>
-        <Velocity>
-          <iterative_method name="gmres">
-            <restart>
-              <integer_value rank="0">30</integer_value>
-            </restart>
-          </iterative_method>
-          <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
-          </preconditioner>
-          <relative_error>
-            <real_value rank="0">1e-10</real_value>
-          </relative_error>
-          <max_iterations>
-            <integer_value rank="0">300</integer_value>
-          </max_iterations>
-          <ignore_all_solver_failures/>
-          <diagnostics>
-            <monitors/>
-          </diagnostics>
-        </Velocity>
-      </Custom_solver_configuration>
-    </Linear_solver>
     <Non_Linear_Solver>
       <integer_value rank="0">10</integer_value>
       <Fixed_Point_Iteration>
@@ -119,15 +74,17 @@
             <value name="WholeMesh">
               <anisotropic_symmetric>
                 <constant>
-                  <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">1. 0 0 1.</real_value>
+                  <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">1. 1 1 1.</real_value>
                 </constant>
               </anisotropic_symmetric>
             </value>
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <linear_scheme/>
+          <stress_form/>
+          <linear_scheme>
+            <high_order/>
+          </linear_scheme>
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
