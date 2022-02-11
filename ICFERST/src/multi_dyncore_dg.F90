@@ -2232,6 +2232,9 @@ end if
         if (isParallel()) call halo_update(velocity)
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
         call DEALLOCATE( CDP_tensor )
+        if ((solve_stokes .or. solve_mom_iteratively)) then
+            call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
+        end if
         !######################## CORRECTION VELOCITY STEP####################################
         ! Calculate control volume averaged pressure CV_P from fem pressure P
         !Ensure that prior to comming here the halos have been updated
@@ -2626,7 +2629,7 @@ end if
           type(tensor_field), intent(inout) :: cdp_tensor!>To reuse memory
           !Local variables
           REAL, DIMENSION( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods ) :: DU_VEL
-
+          integer :: u_inod, iphase, idim
           !Perform C * DP
           call zero(cdp_tensor)
           call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, deltap%val, CDP_tensor)
@@ -2635,10 +2638,8 @@ end if
           DU_VEL = 0.
           CALL Mass_matrix_MATVEC( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
           Mdims%totele, Mdims%u_nloc, ndgln%u )
-
+          !Apply correction to velocity
           velocity%val = velocity%val + DU_VEL
-
-          !if (solve_stokes) we will have to change this, as this only works as for inertia as long as M only contains the mass of the elements
 
         end subroutine project_velocity_to_affine_space
 
@@ -4036,6 +4037,8 @@ end if
             PIVIT_ON_VISC= .false.!This is to add viscosity terms into the Mu matrix
             STAB_VISC_WITH_ABS = .false.!Adds diffusion terms into Mu also in the RHS
             zero_or_two_thirds = 0.!Disable "Laplacian" of velocity
+            !Lumps the absorption terms and RHS; More consistent with the lumping of the mass matrix
+            lump_mass = .true.; lump_absorption = .false.
         end if
 
        IF( GOT_DIFFUS .or. get_gradU ) THEN
@@ -4545,6 +4548,42 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     END DO
                 END DO
             end if ! endof if (Porous_media_PIVIT_not_stored_yet) then
+
+            !For the stokes equations we need to introduce the absorption terms into the Momentum matrix
+            if (solve_stokes) then
+              DO U_JLOC = 1, Mdims%u_nloc
+                DO U_ILOC = 1, Mdims%u_nloc
+                  DO JPHASE = 1, Mdims%nphase
+                    DO JDIM = 1, Mdims%ndim
+                      JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
+                      ! J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                      DO IPHASE = 1, Mdims%nphase
+                        DO IDIM = 1, Mdims%ndim
+                          IPHA_IDIM = IDIM + (IPHASE-1)*Mdims%ndim
+                          I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+                          IF ( LUMP_MASS ) THEN
+                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) =  &
+                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  &
+                            + NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                          ELSE
+                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) = &
+                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
+                            + NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+
+                          END IF
+                          !Lump to phases (Currently PIVIT_MAT IS OVERWRITTEN elsewhere THIS MAY NEED TO BE RE-ACTIVATED IF HAVING ABSORPTION TERMS)
+                        !   J = IDIM+(JPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+                        !   Mmat%PIVIT_MAT( I, J, ELE ) =  Mmat%PIVIT_MAT( I, J, ELE ) + &
+                        !     NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                        end do
+                      end do
+                    end do
+                  end do
+                end do
+              end do
+            end if
+
+
             if (.not.is_porous_media) then!sprint_to_do; internal subroutine for this?
                 !###LOOP Loop_DGNods1 IS NOT NECESSARY FOR POROUS MEDIA###
                 Loop_DGNods1: DO U_ILOC = 1, Mdims%u_nloc
