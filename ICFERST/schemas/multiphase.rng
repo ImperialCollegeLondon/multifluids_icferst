@@ -2112,9 +2112,13 @@ D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
               <empty/>
             </element>
           </optional>
-          <optional>
+          <choice>
+            <element name="Solve_mom_with_PETSc">
+              <a:documentation>Use PETSc to create and solve the Schur complement matrix and solve for it</a:documentation>
+              <empty/>
+            </element>
             <element name="solve_mom_iteratively">
-              <a:documentation>Use this option to switch on the Anderson acceleration method for the momentum equations. The mass matrix is lumped.
+              <a:documentation>Use this option to switch on the Anderson acceleration method for the momentum equation (IC-FERST own Stokes solver). The mass matrix is lumped.
 
 This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-7.&lt;/b&gt;</a:documentation>
               <ref name="real"/>
@@ -2128,7 +2132,7 @@ This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the st
                 <optional>
                   <element name="Max_restarts">
                     <a:documentation>Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.</a:documentation>
-                    <ref name="real"/>
+                    <ref name="integer"/>
                   </element>
                 </optional>
                 <optional>
@@ -2150,7 +2154,7 @@ If Momentum_preconditioner is on then the formula is: (C^t Ad^-1 M^-1 C)^-1 (C^t
                 </optional>
               </group>
             </element>
-          </optional>
+          </choice>
         </element>
       </optional>
     </element>
