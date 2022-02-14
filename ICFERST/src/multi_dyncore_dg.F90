@@ -3529,6 +3529,7 @@ end if
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
+          ewrite(-1,*), 'iterations taken in solve_and_update_velocity: ', its_taken
           !If the system is re-scaled then now it is time to recover the correct solution
           if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
@@ -3562,6 +3563,7 @@ end if
           !Rescale RHS (it is given the the matrix has been already re-scaled)
           if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC)!Recover original X; X = D^-0.5 * X'
           call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
+          ewrite(-1,*), 'iterations taken in solve_and_update_pressure: ', its_taken
           pres_its_taken = its_taken
 
           if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
@@ -4365,9 +4367,9 @@ end if
         LOGICAL, PARAMETER :: STORED_AC_SPAR_PT=.FALSE.
         INTEGER, PARAMETER :: IDO_STORE_AC_SPAR_PT=0
         ! options for implicit solids using one eqn approach...
-        LOGICAL, PARAMETER :: solid_visc_ele_imp=.false. ! treat implicitly inside an element.
+        LOGICAL, PARAMETER :: solid_visc_ele_imp=.false.       ! treat implicitly inside an element.
         LOGICAL, PARAMETER :: solid_visc_ele_imp_stab=.false. ! treat implicitly inside an element for the projection method (suggest =.false., but may be more atable=.true.).
-        LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false. ! treat implicitly between elements.
+        LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false.   ! treat implicitly between elements.
         ! re-calculate Mmat%C matrix...
         LOGICAL :: got_c_matrix
         INTEGER, DIMENSION( :, : ), allocatable ::  FACE_ELE
@@ -5594,7 +5596,7 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                     force_solids( :, IPHASE, : )=0.0
                                     CALL CALC_FORCE_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE( :, :),  Mdims%ndim, &
                                         Mdims%x_nloc,LOC_X_ALL(:,:),force_solids(:,IPHASE,:), Mdims, ndgln, ele)
-                                    ! rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) - 1.0e8*force_solids(:,iphase, :)
+                                    rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
                                     loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
                                 END DO ! iphase
                                 !  END DO GI
@@ -5610,6 +5612,16 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                                 END DO
                                             END DO
                                         END DO
+                                    END DO
+                                else
+                                    DO U_ILOC = 1, Mdims%u_nloc
+                                        ! DO GI = 1, FE_GIdims%cv_ngi
+                                            DO IPHASE = 1, Mdims%nphase
+                                                DO U_JLOC = 1, Mdims%u_nloc
+                                                    STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC )=0.0
+                                                END DO
+                                            END DO
+                                        ! END DO
                                     END DO
                                 endif ! if(solid_visc_ele_imp) then
                             endif ! IF(IDIVID_BY_VOL_FRAC.ne.1) THEN
@@ -6202,6 +6214,16 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     END DO
                 END DO
                 DIF_STAB_U = MAX(0.0, DIF_STAB_U)
+
+                ! remove PG stab in solid region
+                if (.false.) then 
+                    if(solid_implicit) then ! add in the force from the solids.
+                        if(sigma%val(ele).GT.0.5) then
+                        DIF_STAB_U = 0.0
+                        endif
+                    endif
+                endif
+                    
                 IF ( STRESS_FORM_STAB ) THEN! stress form of viscosity...
                     DO IDIM=1,Mdims%ndim
                         DO JDIM=1,Mdims%ndim
@@ -7056,8 +7078,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                 IF(ELE2>0) THEN
                                 if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid
                                     STRESS_IJ_SOLID_ELE_EXT = STRESS_IJ_ELE_EXT
-                                    ! STRESS_IJ_ELE_EXT=0.0
-                                    STRESS_IJ_SOLID_ELE_EXT = 0.0
+                                    STRESS_IJ_ELE_EXT=0.0
+                                    ! STRESS_IJ_SOLID_ELE_EXT = 0.0
                                 endif
                                 ENDIF 
                             ! here
@@ -7067,6 +7089,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                             !                            SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION_SOLID, SLOC_UDIFFUSION_VOL_SOLID, SLOC2_UDIFFUSION_SOLID, SLOC2_UDIFFUSION_VOL_SOLID, UDIFF_SUF_STAB, &
                             !                            (ELE2.LE.0), SNORMXN_ALL  )
                             ! why (because continuous)...
+                            else 
+                                if (ele2>0) then 
+                                    if ( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid
+                                        stress_ij_ele_ext = 0.0
+                                    endif
+                                endif
                             endif ! if(solid_visc_sufele_imp) then ! option3
                         ENDIF
                             ! JXiang end
