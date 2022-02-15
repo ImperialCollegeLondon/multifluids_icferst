@@ -197,9 +197,9 @@ if (L1_norm > Tolerance_L1_NORM): Passed = False
 
 #print (L1_norm)
 if (Passed): 
-    print('BL works OK')
+    print('Flow between plates works OK')
 else:
-    print('BL does NOT work')
+    print('Flow between plates does NOT work')
 
 
 if (showPlot):
