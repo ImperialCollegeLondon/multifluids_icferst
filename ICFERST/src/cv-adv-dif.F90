@@ -286,6 +286,11 @@ contains
           ! ###################Local variables############################
           REAL :: ZERO_OR_TWO_THIRDS
 
+          REAL, dimension(:,:), ALLOCATABLE :: FXGI_ALL, int_UDGI_ALL, A_STAR_X_ALL,VEC_VEL2
+          REAL, dimension(:), ALLOCATABLE :: courant_or_minus_one_new, int_XI_LIMIT,&
+              P_STAR, U_DOT_GRADF_GI, A_STAR_F, RESIDGI, ELE_LENGTH_SCALE,FEMFGI, RGRAY, DIFF_COEF, COEF,&
+              RSCALE, COEF2, FEMFGI_CENT, FEMFGI_UP, UBCZERO
+
           !        ===>  LOGICALS  <===
           ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
           logical, PARAMETER :: integrate_other_side= .true.
@@ -476,6 +481,8 @@ contains
           !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
           !we only do this for the first non-linear iteration
           if (present(nonlinear_iteration) .and. VAD_activated) use_porous_limiter = use_porous_limiter .and. nonlinear_iteration > 1
+          !For tracers and single phase, not required to use the limiter
+           if (tracer%name /= "PackedPhaseVolumeFraction" .or. Mdims%n_in_pres <2 ) use_porous_limiter = .false.
           logical_igot_theta_flux = IGOT_THETA_FLUX == 1
 
 
@@ -693,6 +700,14 @@ contains
                   IF(.not.IGOT_T_CONST(IPHASE,IFI)) NFIELD=NFIELD+1
               END DO
           END DO
+
+          allocate (FXGI_ALL(Mdims%ndim,NFIELD));allocate (int_UDGI_ALL(Mdims%ndim,NFIELD))
+          allocate (A_STAR_X_ALL(Mdims%ndim,NFIELD));allocate (VEC_VEL2(Mdims%ndim,NFIELD))
+          allocate (courant_or_minus_one_new(NFIELD));allocate (int_XI_LIMIT(NFIELD));allocate (P_STAR(NFIELD))
+          allocate (U_DOT_GRADF_GI(NFIELD));allocate (A_STAR_F(NFIELD));allocate (RESIDGI(NFIELD))
+          allocate (ELE_LENGTH_SCALE(NFIELD));allocate (FEMFGI(NFIELD));allocate (RGRAY(NFIELD))
+          allocate (DIFF_COEF(NFIELD));allocate (COEF(NFIELD));allocate (RSCALE(NFIELD))
+          allocate (COEF2(NFIELD));allocate (FEMFGI_CENT(NFIELD));allocate (FEMFGI_UP(NFIELD));allocate (UBCZERO(NFIELD))
 
         !   if (isparallel()) call allmax(NFIELD)!<=This should be unnecessary!
 
@@ -2042,6 +2057,11 @@ contains
               call deallocate(saturation_BCs_robin2)
           end if
 
+          deallocate (FXGI_ALL); deallocate (int_UDGI_ALL); deallocate (A_STAR_X_ALL); deallocate (VEC_VEL2); deallocate (courant_or_minus_one_new)
+          deallocate (int_XI_LIMIT); deallocate (P_STAR); deallocate (U_DOT_GRADF_GI); deallocate (A_STAR_F); deallocate (RESIDGI)
+          deallocate (ELE_LENGTH_SCALE);deallocate (FEMFGI);deallocate (RGRAY);deallocate (DIFF_COEF);deallocate (COEF);deallocate (RSCALE)
+          deallocate (COEF2);deallocate (FEMFGI_CENT);deallocate (FEMFGI_UP);deallocate (UBCZERO)
+
           !These three variables are allocated simultaneously so only one need to be checked
           if (allocated(suf_t_bc)) deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
           if (VAD_activated) deallocate(CAP_DIFFUSION)
@@ -2561,10 +2581,7 @@ end if
             INTEGER :: CV_KLOC, &
                 CV_SKLOC, IDIM
             INTEGER :: IFIELD
-            REAL, dimension(Mdims%ndim,NFIELD) :: FXGI_ALL, UDGI_ALL, A_STAR_X_ALL,VEC_VEL2
-            REAL, dimension(NFIELD) :: courant_or_minus_one_new, XI_LIMIT,&
-                P_STAR, U_DOT_GRADF_GI, A_STAR_F, RESIDGI, ELE_LENGTH_SCALE,FEMFGI, RGRAY, DIFF_COEF, COEF,&
-                RSCALE, COEF2, FEMFGI_CENT, FEMFGI_UP, UBCZERO
+
             real :: CONVECTION_ADVECTION_COEFF = 1.0 !default behaviour = 1.0
             real :: CAcoeff = 0.0, NRBC2
             logical :: ULTRA_COMPRESSIVE = .false.
@@ -2595,10 +2612,10 @@ end if
                         DO IFIELD=1,NFIELD
                             IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN
                                 courant_or_minus_one_new(IFIELD) = abs ( dt * F_ndotq(IFIELD) / hdc )
-                                XI_LIMIT(IFIELD)=MAX(1./max(tolerance,(3.*courant_or_minus_one_new(IFIELD))),2.0)
+                                int_XI_LIMIT(IFIELD)=MAX(1./max(tolerance,(3.*courant_or_minus_one_new(IFIELD))),2.0)
                             else
                                 courant_or_minus_one_new(IFIELD) = -1.0
-                                XI_LIMIT(IFIELD) = 2.0
+                                int_XI_LIMIT(IFIELD) = 2.0
                             end if
                         END DO
                         IF( .not. between_elements ) THEN
@@ -2611,18 +2628,18 @@ end if
                                         END DO
                                         !FEMFGI(IFIELD) = dot_product( CV_funs%scvfen( : , GI ), LOC_FEMF(IFIELD,:)  )
                                         DO IDIM=1,Mdims%ndim
-                                            UDGI_ALL(IDIM,IFIELD) = dot_product(CV_funs%sufen( : , GI ) , LOC_UF(IDIM,IFIELD, :) )
+                                            int_UDGI_ALL(IDIM,IFIELD) = dot_product(CV_funs%sufen( : , GI ) , LOC_UF(IDIM,IFIELD, :) )
                                         END DO
                                     END DO
                                     IF ( NON_LIN_PETROV_INTERFACE == 0 ) THEN ! NOT Petrov-Galerkin for interface capturing...
                                         ! no cosine rule :
                                         DO IFIELD=1,MIN(2*Mdims%nphase,NFIELD) ! It should be Mdims%nphase because interface tracking only applied to the 1st set of fields.
-                                            RSCALE(IFIELD) = 1.0 / PTOLFUN( SQRT( SUM( UDGI_ALL(:,IFIELD)**2)   ) )
+                                            RSCALE(IFIELD) = 1.0 / PTOLFUN( SQRT( SUM( int_UDGI_ALL(:,IFIELD)**2)   ) )
                                             DO IDIM = 1, Mdims%ndim
-                                                VEC_VEL2(IDIM,IFIELD) = SUM( FSdevFuns%INV_JAC(IDIM, 1:Mdims%ndim, GI) * UDGI_ALL(1:Mdims%ndim,IFIELD) )
+                                                VEC_VEL2(IDIM,IFIELD) = SUM( FSdevFuns%INV_JAC(IDIM, 1:Mdims%ndim, GI) * int_UDGI_ALL(1:Mdims%ndim,IFIELD) )
                                             END DO
                                             ! normalize the velocity in here:
-                                            ELE_LENGTH_SCALE(IFIELD) = 0.5 * SQRT( SUM(UDGI_ALL(:,IFIELD)**2) ) / PTOLFUN( SUM( VEC_VEL2(:,IFIELD)**2 ) )
+                                            ELE_LENGTH_SCALE(IFIELD) = 0.5 * SQRT( SUM(int_UDGI_ALL(:,IFIELD)**2) ) / PTOLFUN( SUM( VEC_VEL2(:,IFIELD)**2 ) )
                                             ! For discontinuous elements half the length scale...
                                             IF(DISTCONTINUOUS_METHOD) ELE_LENGTH_SCALE(IFIELD)=0.5*ELE_LENGTH_SCALE(IFIELD)
                                             ! For quadratic elements...
@@ -2631,7 +2648,7 @@ end if
                                     ELSE ! Interface capturing...
                                         CONVECTION_ADVECTION_COEFF = Mdisopt%compcoeff
                                         DO IFIELD=1,MIN(2*Mdims%nphase,NFIELD) ! It should be Mdims%nphase because interface tracking only applied to the 1st set of fields.
-                                            U_DOT_GRADF_GI(IFIELD) = SUM( UDGI_ALL(:,IFIELD)*FXGI_ALL(:,IFIELD)  )
+                                            U_DOT_GRADF_GI(IFIELD) = SUM( int_UDGI_ALL(:,IFIELD)*FXGI_ALL(:,IFIELD)  )
                                             IF ( NON_LIN_PETROV_INTERFACE == 5 ) THEN
                                                 COEF(IFIELD) = 1.0 / PTOLFUN( SQRT( SUM(FXGI_ALL(IFIELD,:)**2)   ) )
                                             ELSE
@@ -2639,7 +2656,7 @@ end if
                                             END IF
                                             A_STAR_F(IFIELD) = 0.0
                                             A_STAR_X_ALL(:,IFIELD) = COEF(IFIELD) * FXGI_ALL(:,IFIELD)
-                                            RESIDGI(IFIELD) = SQRT ( SUM( UDGI_ALL(:,IFIELD)**2 )  ) / HDC !HDC is the distance between the nodes
+                                            RESIDGI(IFIELD) = SQRT ( SUM( int_UDGI_ALL(:,IFIELD)**2 )  ) / HDC !HDC is the distance between the nodes
                                             VEC_VEL2(1:Mdims%ndim,IFIELD) = matmul( FSdevFuns%INV_JAC(:,:,GI), A_STAR_X_ALL(1:Mdims%ndim,IFIELD) )
                                             ! Needs 0.25 for quadratic elements...Chris
                                             P_STAR(IFIELD) = 0.5 * HDC / PTOLFUN( SQRT( SUM( A_STAR_X_ALL(:,IFIELD)**2 )))
@@ -2656,33 +2673,33 @@ end if
                                                 case ( 6 )     ! accurate...
                                                     P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
                                                     IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
+                                                    RESIDGI(IFIELD)=SUM( int_UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                                     DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)**2 / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                                 case ( 7 )     ! accurate (could be positive or negative)...
                                                     P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
                                                     IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
-                                                    DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
+                                                    RESIDGI(IFIELD)=SUM( int_UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
+                                                    DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*int_UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
                                                         / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                                 case ( 8 )     ! accurate (force to be positive)...
                                                     P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
                                                     IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
-                                                    DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
+                                                    RESIDGI(IFIELD)=SUM( int_UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
+                                                    DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*int_UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
                                                         / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                                     DIFF_COEF(IFIELD) = abs(   DIFF_COEF(IFIELD)  )
                                                 case ( 9 )     ! accurate (simplified residual squared)...
                                                     P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
                                                     IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
-                                                    DIFF_COEF(IFIELD) = P_STAR(IFIELD) * (SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc))**2 &
+                                                    RESIDGI(IFIELD)=SUM( int_UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
+                                                    DIFF_COEF(IFIELD) = P_STAR(IFIELD) * (SUM(CVNORMX_ALL(:,GI)*int_UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc))**2 &
                                                         / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                                 case default   ! isotropic diffusion with u magnitide
-                                                    DIFF_COEF(IFIELD) = SQRT( SUM( UDGI_ALL(:,IFIELD)**2 )) * P_STAR(IFIELD)
+                                                    DIFF_COEF(IFIELD) = SQRT( SUM( int_UDGI_ALL(:,IFIELD)**2 )) * P_STAR(IFIELD)
                                             END select
                                             ! Make the diffusion coefficient negative (compressive)
                                             DIFF_COEF(IFIELD) = -DIFF_COEF(IFIELD)*CONVECTION_ADVECTION_COEFF
-                                            RSCALE(IFIELD) = 1. / TOLFUN( SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD))   )
+                                            RSCALE(IFIELD) = 1. / TOLFUN( SUM(CVNORMX_ALL(:,GI)*int_UDGI_ALL(:,IFIELD))   )
                                         END DO ! END OF DO IFIELD=1,NFIELD
                                     END IF ! Petrov-Galerkin end of IF(NON_LIN_PETROV_INTERFACE==0) THEN
                                 END IF ! DOWNWIND_EXTRAP
@@ -2693,12 +2710,12 @@ end if
                                     DO CV_KLOC = 1, Mdims%cv_nloc
                                         IF ( NON_LIN_PETROV_INTERFACE.NE.0 ) THEN
                                             IF ( NON_LIN_PETROV_INTERFACE == 4 ) THEN ! anisotropic diffusion...
-                                                RGRAY(IFIELD) = RSCALE(IFIELD) * COEF2(IFIELD) * P_STAR(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
+                                                RGRAY(IFIELD) = RSCALE(IFIELD) * COEF2(IFIELD) * P_STAR(IFIELD) * SUM( int_UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                             ELSE
                                                 RGRAY(IFIELD) = - DIFF_COEF(IFIELD) * RSCALE(IFIELD) * SUM( CVNORMX_ALL(:,GI)*FSdevFuns%NX_ALL( :, CV_KLOC, GI )  )
                                             END IF
                                         ELSE
-                                            RGRAY(IFIELD) = RSCALE(IFIELD) * ELE_LENGTH_SCALE(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
+                                            RGRAY(IFIELD) = RSCALE(IFIELD) * ELE_LENGTH_SCALE(IFIELD) * SUM( int_UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                         END IF
                                         FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (CV_funs%scvfen( CV_KLOC, GI ) + RGRAY(IFIELD))   * LOC_FEMF( IFIELD, CV_KLOC)
                                     END DO ! ENDOF DO CV_KLOC = 1, Mdims%cv_nloc
@@ -3986,7 +4003,7 @@ end if
         type(vector_field), dimension(size(psi_int)) :: psi_int_temp
         type(tensor_field), pointer :: tfield
         type(csr_sparsity), pointer :: sparsity
-        logical :: do_not_project, cv_test_space, is_to_update
+        logical :: do_not_project,  is_to_update
         character(len=option_path_len) :: option_path
 
         !---------------------------------
@@ -3994,7 +4011,6 @@ end if
         !---------------------------------
         !Currently hard-coded. This is not used for porous_media but it is used otherwise
         do_not_project =  is_porous_media!<=DISABLED FOR POROUS MEDIA
-        cv_test_space = .false. !have_option(projection_options//'/test_function_space::ControlVolume')  !AND IT SHOULD BE SLIGTHLY FASTER; DISABLED FOR THE PETSC MEMORY PROBLEM
         is_to_update = .not.associated(CV_funs%CV2FE%refcount)!I think this is only true after adapt and at the beginning
 
         do it=1,size(fempsi)
@@ -4053,26 +4069,20 @@ end if
                     nn = 0.0; nm = 0.0; mn = 0.0; mm = 0.0
                     do cv_gi = 1, CV_GIdims%cv_ngi
                         mn = mn+CV_funs%CVN(cv_iloc,cv_gi)*CV_funs%CVFEN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
-                        mm = mm+CV_funs%CVN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
-                        if(.not.cv_test_space) then
-                            nn = nn+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVFEN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
-                            nm = nm+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
-                        end if
+                        if (is_to_update)  mm = mm+CV_funs%CVN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
+                        if(is_to_update.and. .not. do_not_project) nn = nn+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVFEN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
+                        if (.not. do_not_project) nm = nm+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
                     end do
 
-                    if(cv_test_space) then
-                        if(is_to_update.and. .not. do_not_project) call addto(CV_funs%CV2FE,1,1,cv_nodi,cv_nodj,mn)
-                        do it = 1, size(fempsi_rhs)
-                            fempsi_rhs(it)%val(:,:,cv_nodi) = fempsi_rhs(it)%val(:,:,cv_nodi) &
-                                +mm*psi(it)%ptr%val(:,:,cv_nodj)
-                        end do
-                    else
-                        if(is_to_update.and. .not. do_not_project) call addto(CV_funs%CV2FE,1,1,cv_nodi,cv_nodj,nn)
+
+                      if(is_to_update.and. .not. do_not_project) call addto(CV_funs%CV2FE,1,1,cv_nodi,cv_nodj,nn)
+                      if (.not. do_not_project) then
                         do it = 1, size(fempsi_rhs)
                             fempsi_rhs(it)%val(:,:,cv_nodi) = fempsi_rhs(it)%val(:,:,cv_nodi) &
                                 +nm*psi(it)%ptr%val(:,:,cv_nodj)
                         end do
-                    end if
+                      end if
+
 
                     if(igetct/=0) then
                         call PosInMat(COUNT,cv_nodi,cv_nodj,Mspars%CMC%fin,Mspars%CMC%col)
