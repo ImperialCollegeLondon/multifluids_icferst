@@ -2779,7 +2779,7 @@ end if
 
                         CALL ONVDLIM_ANO_MANY( NFIELD, &
                             LIMF , FEMFGI , F_INCOME , &
-                            F_CV_NODI , F_CV_NODJ ,XI_LIMIT ,  &
+                            F_CV_NODI , F_CV_NODJ ,int_XI_LIMIT ,  &
                             FUPWIND_IN , FUPWIND_OUT  , &
                             memory_limiters(1:NFIELD), memory_limiters(NFIELD + 1:NFIELD*2),&
                             memory_limiters(2*NFIELD + 1:NFIELD*3), memory_limiters(3*NFIELD + 1:NFIELD*4),&
