@@ -408,7 +408,7 @@ contains
                     call add_option(trim(option_path)//"/stat",  stat=stat)
                     call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
                     call add_option(trim(option_path)//"/detectors",  stat=stat)
-                    call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
+                    call add_option(trim(option_path)//"/detectors/include_in_detectors",  stat=stat)
                     call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
                     !Velocity is the force density which is pretty much useless so we instead show the DarcyVelocity
                     !do_not_show velocity
