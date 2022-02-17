@@ -37,7 +37,6 @@ module cv_advection
     use petsc_tools
     use vtk_interfaces
 
-
     use shape_functions_Linear_Quadratic
     use shape_functions_NDim
     use shape_functions_prototype
@@ -2792,7 +2791,7 @@ end if
 
                             end if
                         end if
-
+                      !Only compute limited value if the field is not constant in the region
                       if ( maxval(abs(F_CV_NODI - F_CV_NODJ)/VTOLFUN(F_CV_NODI)) > 1e-8) then
                         CALL ONVDLIM_ANO_MANY( NFIELD, &
                             LIMF , FEMFGI , F_INCOME , &
@@ -2983,8 +2982,13 @@ end if
                 DO iv_iphase = 1,final_phase
                     IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
                         !(vel * shape_functions)/sigma
-                        UDGI_ALL(:, iv_iphase) = I_inv_adv_coef (iv_iphase)* matmul(perm%val(:,:,ele),&
-                            matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI )))
+                        if (is_P0DGP1) then 
+                            UDGI_ALL(:, iv_iphase) = I_inv_adv_coef (iv_iphase)* matmul(perm%val(:,:,ele),&
+                                LOC_NU( :, iv_iphase, 1 ) )
+                        else
+                            UDGI_ALL(:, iv_iphase) = I_inv_adv_coef (iv_iphase)* matmul(perm%val(:,:,ele),&
+                                matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI )))
+                        end if
                         ! Here we assume that sigma_out/sigma_in is a diagonal matrix
                         ! which effectively assumes that the anisotropy just inside the domain
                         ! is the same as just outside the domain.
@@ -3036,12 +3040,19 @@ end if
                 END DO ! PHASE LOOP
             ELSE IF( .not. between_elements) THEN!Only for same element/Continuous formulation !old flag: DISTCONTINUOUS_METHOD
                 !vel(GI) = (vel * shape_functions)/sigma
-                do iv_iphase = 1,final_phase
-                    UDGI_ALL(:, iv_iphase) = I_inv_adv_coef(iv_iphase)*&
-                        matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
-                    UDGI2_ALL(:, iv_iphase) = J_inv_adv_coef(iv_iphase)*&
-                        matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
-                end do
+                if (is_P0DGP1) then                  
+                    do iv_iphase = 1,final_phase
+                        UDGI_ALL(:, iv_iphase) = I_inv_adv_coef(iv_iphase)*LOC_NU( :, iv_iphase, 1 )
+                        UDGI2_ALL(:, iv_iphase) = J_inv_adv_coef(iv_iphase)*LOC_NU( :, iv_iphase, 1 )
+                    end do
+                else
+                    do iv_iphase = 1,final_phase
+                        UDGI_ALL(:, iv_iphase) = I_inv_adv_coef(iv_iphase)*&
+                            matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
+                        UDGI2_ALL(:, iv_iphase) = J_inv_adv_coef(iv_iphase)*&
+                            matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
+                    end do
+                end if
                 !Get the projected velocity
                 NDOTQ  = MATMUL( CVNORMX_ALL(:, GI), UDGI_ALL )
                 !Get the direction of the flow
