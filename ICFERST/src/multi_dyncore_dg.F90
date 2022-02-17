@@ -4368,6 +4368,7 @@ end if
         INTEGER, PARAMETER :: IDO_STORE_AC_SPAR_PT=0
         ! options for implicit solids using one eqn approach...
         LOGICAL, PARAMETER :: solid_visc_ele_imp=.false.       ! treat implicitly inside an element.
+        LOGICAL, PARAMETER :: solid_implicit_lump=.false.     ! lump the viscocity within the element and thus only have diagonal contributions (take abs val)
         LOGICAL, PARAMETER :: solid_visc_ele_imp_stab=.false. ! treat implicitly inside an element for the projection method (suggest =.false., but may be more atable=.true.).
         LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false.   ! treat implicitly between elements.
         ! re-calculate Mmat%C matrix...
@@ -5690,8 +5691,17 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                     IF ( STRESS_FORM ) THEN
                                         NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                            + MAX( 0.0, STRESS_IJ_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) ) &
+                                            + MAX( 0.0, STRESS_IJ_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) ) 
+
+                                       if(solid_implicit_lump) then
+                                          NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) &
+                                            = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) &
+                                            + abs( STRESS_IJ_SOLID_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) )  !JXiang
+                                       else
+                                        NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             + MAX( 0.0, STRESS_IJ_SOLID_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) )  !JXiang
+                                       endif
                                     ELSE
                                         NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
@@ -5894,8 +5904,13 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                   JPHASE = IPHASE
                                   DO JDIM = 1, Mdims%ndim
                                      DO IDIM = 1, Mdims%ndim
-                                        LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                               + STRESS_IJ_SOLID_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
+                                        if(solid_implicit_lump) then
+                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                + abs( STRESS_IJ_SOLID_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) ) * LOC_U( JDIM, IPHASE, U_ILOC )
+                                         else
+                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                + STRESS_IJ_SOLID_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
+                                         endif
                                      END DO
                                   END DO
                                END DO
@@ -5913,30 +5928,43 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                     - STRESS_IJ_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
                                             ELSE
 
-                                              IF ( LUMP_DIAG_MOM ) THEN !!-ao new lumping terms
-                                                DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
-                                                    = DIAG_BIGM_CON(1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
-                                                    + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                                    + 1.*STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added JXiang
-                                              ELSE
+                                              
                                                 DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
                                                     = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
                                                     + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                                    + 1.0*STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added by JXiang
-                                              ENDIF
+                                                if(solid_implicit) then ! add in the force from the solids.
+                                                    if(solid_visc_ele_imp) then
+                                                        if(solid_implicit_lump) then
+                                                                    DIAG_BIGM_CON( IDIM, IDIM, IPHASE, IPHASE, U_ILOC, U_ILOC, ELE )  &
+                                                                        = DIAG_BIGM_CON( IDIM, IDIM, IPHASE, IPHASE, U_ILOC, U_ILOC, ELE ) &
+                                                                        + 1.0*abs( STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ) ! added by JXiang
+                                                        else
+                                                                    DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
+                                                                        = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
+                                                                        + 1.0*STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added by JXiang
+                                                        endif
+                                                    endif
+                                                endif
 
                                             END IF
                                             IF(PIVIT_ON_VISC) THEN
                                                 I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                                 J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                                                if(solid_implicit_lump) then
+                                                    Mmat%PIVIT_MAT( I,I, ELE ) &
+                                                        = Mmat%PIVIT_MAT( I,I, ELE ) &
+                                                        +  abs( STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) )  ! JXiang
+                                                else
+                                                  Mmat%PIVIT_MAT( I,J, ELE ) &
+                                                    = Mmat%PIVIT_MAT( I,J, ELE ) &
+                                                    + STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
+                                                endif
                                                 Mmat%PIVIT_MAT( I,J, ELE ) &
                                                     = Mmat%PIVIT_MAT( I,J, ELE ) &
-                                                    +  w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                                    +  1.0*w * STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
+                                                    +  w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! &
                                             END IF
                                             RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
                                                 STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )  + &
-                                                0.0*STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC ) ! JXiang
                                         END DO
                                     END DO
                                 END DO
@@ -6216,13 +6244,13 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 DIF_STAB_U = MAX(0.0, DIF_STAB_U)
 
                 ! remove PG stab in solid region
-                if (.false.) then 
+                ! if (.false.) then 
                     if(solid_implicit) then ! add in the force from the solids.
                         if(sigma%val(ele).GT.0.5) then
                         DIF_STAB_U = 0.0
                         endif
                     endif
-                endif
+                ! endif
                     
                 IF ( STRESS_FORM_STAB ) THEN! stress form of viscosity...
                     DO IDIM=1,Mdims%ndim
@@ -6262,23 +6290,38 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                 JPHASE = IPHASE
                                 DO IDIM = 1, Mdims%ndim
                                     DO JDIM = 1, Mdims%ndim
-                                      IF(LUMP_DIAG_MOM) THEN
-                                        DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
-                                        = DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
-                                        + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                        + STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang 
-                                      ELSE
-                                        DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
-                                        = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
-                                        + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )&
-                                        + STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
-                                      END IF
+                                        IF(LUMP_DIAG_MOM) THEN
+                                            DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
+                                            = DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
+                                            + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) 
+                                        ELSE
+                                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
+                                            = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
+                                            + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                        ENDIF
+                                        if(solid_implicit_lump) then
+                                            DIAG_BIGM_CON( IDIM, IDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  &
+                                            = DIAG_BIGM_CON( IDIM, IDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) &
+                                            + abs(STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ))  ! JXiang
+                                        else 
+                                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
+                                            = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
+                                            + STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
+                                        endif
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                             J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
                                             Mmat%PIVIT_MAT( I,J, ELE )  &
-                                                = Mmat%PIVIT_MAT( I,J, ELE ) + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                                             +STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
+                                                = Mmat%PIVIT_MAT( I,J, ELE ) + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                            if(solid_implicit_lump) then
+                                                Mmat%PIVIT_MAT( I,I, ELE )  &
+                                                    = Mmat%PIVIT_MAT( I,I, ELE )  &
+                                                    + abs( STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ))   ! JXiang
+                                            else
+                                                Mmat%PIVIT_MAT( I,J, ELE )  &
+                                                    = Mmat%PIVIT_MAT( I,J, ELE ) &
+                                                    + STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
+                                            endif
                                         ENDIF
                                     END DO
                                 END DO
