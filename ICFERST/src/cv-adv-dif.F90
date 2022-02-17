@@ -1390,7 +1390,7 @@ contains
                                           upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
                                           NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT), &
-                                          .true.)
+                                          GETCT)
                                   else
                                       call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                                           LOC_T2OLD_I, LOC_T2OLD_J, LOC_DENOLD_I, LOC_DENOLD_J, &
@@ -1422,7 +1422,7 @@ contains
                                           upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
                                           NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT), &
-                                          .true.)
+                                          GETCT)
                                   else
                                       call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                                           LOC_TOLD_I, LOC_TOLD_J, LOC_DENOLD_I, LOC_DENOLD_J, &
@@ -2732,13 +2732,8 @@ end if
                                     !                              FEMFGI     = 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
                                     END IF
                                 END DO ! ENDOF DO IFIELD=1,Mdims%nphase
-                            else !For porous media 
-                                FEMFGI=0.0
-                                DO IFIELD=1,NFIELD ! Only perform this loop for the 1st field which is the interface tracking field...
-                                        DO CV_KLOC = 1, Mdims%cv_nloc
-                                            FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  CV_funs%scvfen( CV_KLOC, GI ) * LOC_FEMF( IFIELD, CV_KLOC)
-                                        END DO ! ENDOF DO CV_KLOC = 1, Mdims%cv_nloc
-                                END DO ! ENDOF DO IFIELD=1,Mdims%nphase
+                            else !For porous media obtain field at GI point
+                                FEMFGI = matmul(LOC_FEMF, CV_funs%scvfen(:,gi))
                             end if
                         ELSE  ! END OF IF( .not. between_elements ) THEN  ---DG saturation across elements
                             FEMFGI_CENT  = 0.0
@@ -2792,7 +2787,7 @@ end if
                             end if
                         end if
                       !Only compute limited value if the field is not constant in the region
-                      if ( maxval(abs(F_CV_NODI - F_CV_NODJ)/VTOLFUN(F_CV_NODI)) > 1e-8) then
+                      if ( maxval(abs(F_CV_NODI - F_CV_NODJ/VTOLFUN(F_CV_NODI))) > 1e-8) then
                         CALL ONVDLIM_ANO_MANY( NFIELD, &
                             LIMF , FEMFGI , F_INCOME , &
                             F_CV_NODI , F_CV_NODJ ,int_XI_LIMIT ,  &
@@ -2970,8 +2965,8 @@ end if
             REAL, DIMENSION( : ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT!(nphase)
             logical, intent(in) :: not_OLD_VEL
             INTEGER :: IFIELD
-            UGI_COEF_ELE_ALL=0.0 ; UGI_COEF_ELE2_ALL=0.0
 
+            UGI_COEF_ELE_ALL=0.0 ; UGI_COEF_ELE2_ALL=0.0
             Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
                 !Initialize variables
                 if (not_OLD_VEL) then
@@ -3098,14 +3093,30 @@ end if
                 !Now apply the permeability to obtain finally UDGI_ALL
                 if (permeability_jump) then
                   inv_harmonic_perm = 2.0*inverse((upwnd%inv_permeability(:,:,ele) + upwnd%inv_permeability(:,:,ele2)))
-                  DO iv_iphase = 1,final_phase
-                    !We use the harmonic average of the permeability
-                    UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), inv_harmonic_perm)
-                  end do
+                    if (has_anisotropic_permeability) then 
+                        DO iv_iphase = 1,final_phase
+                            !We use the harmonic average of the permeability
+                            UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), inv_harmonic_perm)
+                        end do
+                    else !Avoid tensor multiplication if possible
+                        DO iv_iphase = 1,final_phase
+                            do idim = 1, Mdims%ndim
+                                UDGI_ALL(idim, iv_iphase) = UDGI_ALL(idim, iv_iphase) * inv_harmonic_perm(idim,idim)
+                            end do
+                        end do
+                    end if
                 else
-                  DO iv_iphase = 1,final_phase
-                    UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), perm%val(:,:,ele))
-                  end do
+                    if (has_anisotropic_permeability) then 
+                        DO iv_iphase = 1,final_phase
+                            UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), perm%val(:,:,ele))
+                        end do
+                    else !Avoid tensor multiplication if possible 
+                        DO iv_iphase = 1,final_phase
+                            do idim = 1, Mdims%ndim
+                                UDGI_ALL(idim, iv_iphase) = UDGI_ALL(idim, iv_iphase) * perm%val(idim,idim,ele)
+                            end do
+                        end do
+                    end if
                 end if
                 if (not_OLD_VEL) then
                     do iv_idim = 1, Mdims%ndim
@@ -3207,7 +3218,8 @@ end if
                   end if
               end if
             END IF Conditional_SELE
-            ! Define whether flux is incoming or outgoing, depending on direction of flow
+
+            ! ! Define whether flux is incoming or outgoing, depending on direction of flow
             NDOTQ =  MATMUL( CVNORMX_ALL(:, GI), UDGI_ALL )
             WHERE ( NDOTQ >= 0. )
                 INCOME = 0.
@@ -3216,10 +3228,15 @@ end if
             END WHERE
             ! Calculate NDOTQNEW from NDOTQ
             if (not_OLD_VEL) then
-                do iv_iphase = 1,final_phase
-                    NDOTQNEW(iv_iphase) = NDOTQ(iv_iphase) + dot_product(matmul( CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, iv_iphase,:)*&
-                        ( LOC_U(:,iv_iphase,:)-LOC_NU(:,iv_iphase,:))), CV_funs%sufen( :, GI ))
-                end do
+                if (is_P0DGP1) then 
+                    NDOTQNEW = NDOTQ + matmul(CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, :,1)*&
+                        ( LOC_U(:,:,1)-LOC_NU(:,:,1)))
+                else
+                    do iv_iphase = 1,final_phase
+                        NDOTQNEW(iv_iphase) = NDOTQ(iv_iphase) + dot_product(matmul( CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, iv_iphase,:)*&
+                            ( LOC_U(:,iv_iphase,:)-LOC_NU(:,iv_iphase,:))), CV_funs%sufen( :, GI ))
+                    end do
+                end if
                 IF( between_elements) THEN
                     ! We have a discontinuity between elements so integrate along the face...
                     DO iv_u_skloc = 1, Mdims%u_snloc
@@ -3231,6 +3248,8 @@ end if
                         END DO
                     END DO
                 END IF
+            else
+                NDOTQNEW = NDOTQ
             end if
             RETURN
         END SUBROUTINE GET_INT_VEL_POROUS_VEL
