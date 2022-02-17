@@ -1363,16 +1363,26 @@ contains
                                           ENDIF
                                       END DO
                                   ENDIF
-                                  CALL DIFFUS_CAL_COEFF( DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
-                                      Mdims%cv_nloc, Mdims%mat_nloc, final_phase, ndgln%mat, &
-                                      CV_funs%scvfen, CV_funs%scvfen, GI, Mdims%ndim, TDIFFUSION, &
-                                      HDC, &
-                                      AUX_T, LOC_T_I, &
-                                      AUX2_T, LOC_TOLD_I, &
-                                      ELE, ELE2, CVNORMX_ALL( :, GI ), &
-                                      DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
-                                      LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
-                                      on_domain_boundary, between_elements )
+                                 
+                                  IF (.not. is_porous_media) THEN
+                                      CALL DIFFUS_CAL_COEFF( DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
+                                          Mdims%cv_nloc, Mdims%mat_nloc, final_phase, ndgln%mat, &
+                                          CV_funs%scvfen, CV_funs%scvfen, GI, Mdims%ndim, TDIFFUSION, &
+                                          HDC, &
+                                          AUX_T, LOC_T_I, &
+                                          AUX2_T, LOC_TOLD_I, &
+                                          ELE, ELE2, CVNORMX_ALL( :, GI ), &
+                                          DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
+                                          LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
+                                          on_domain_boundary, between_elements )
+                                  ELSE
+                                      ! add the tweek here
+                                      CALL calc_diffusion_ceof_porous_media( DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX &
+                                                    , on_domain_boundary, TDIFFUSION &
+                                                    , HDC, final_phase, CV_NODI, CV_NODJ)
+                                  ENDIF
+
+
                               ELSE
                                   DIFF_COEF_DIVDX = 0.0
                                   DIFF_COEFOLD_DIVDX = 0.0
@@ -4688,6 +4698,32 @@ end if
         ewrite(3,*)'about to leave DG_DERIVS'
 
     END SUBROUTINE DG_DERIVS_ALL2
+
+    subroutine calc_diffusion_ceof_porous_media( DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX &
+                                               , on_domain_boundary, TDIFFUSION &
+                                               , HDC, NPHASE, CV_NODI, CV_NODJ)
+
+        IMPLICIT NONE
+        LOGICAL, intent( in ) :: on_domain_boundary
+        REAL, intent( in ) :: HDC
+        INTEGER, intent( in ) :: NPHASE, CV_NODI, CV_NODJ
+        REAL, DIMENSION( NPHASE ), intent( inout ) :: DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
+        REAL, DIMENSION( :, :, :, : ), intent( in ) :: TDIFFUSION
+
+        INTEGER :: iphase
+
+        IF (on_domain_boundary) THEN
+            DIFF_COEF_DIVDX = 0.
+            DIFF_COEFOLD_DIVDX = 0.
+        ELSE
+            do iphase = 1, NPHASE
+                DIFF_COEF_DIVDX(IPHASE) = .5*(TDIFFUSION(CV_NODI, 1, 1, iphase)+TDIFFUSION(CV_NODJ, 1, 1, iphase))/HDC
+                DIFF_COEFOLD_DIVDX(IPHASE) = 0.
+            end do
+        endif
+
+    end subroutine calc_diffusion_ceof_porous_media
+
 
 
     SUBROUTINE DIFFUS_CAL_COEFF(DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
