@@ -1350,9 +1350,6 @@ contains
                                           LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD, &
                                           LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
                                           UGI_COEF_ELE_ALL(:,1:final_phase,:), UGI_COEF_ELE2_ALL(:,1:final_phase,:), &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
-                                          upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
                                           NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .false.)
@@ -1360,9 +1357,6 @@ contains
                                           LOC_T2_I, LOC_T2_J, LOC_FEMT2, &
                                           LOC_NU, LOC2_NU, SLOC_NU, &
                                           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
-                                          upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
                                           NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .true.)
@@ -1382,9 +1376,6 @@ contains
                                           LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD, &
                                           LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
                                           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
-                                          upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
                                           NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .false.)!Sprint_to_do store for a time-level old values?? Would halve the cost of flux calculation...
@@ -1392,9 +1383,6 @@ contains
                                           LOC_T_I, LOC_T_J, LOC_FEMT, &
                                           LOC_NU, LOC2_NU, SLOC_NU, &
                                           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
-                                          upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
                                           NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .true.)
@@ -2914,9 +2902,6 @@ end if
             LOC_T_I, LOC_T_J, LOC_FEMT, &
             LOC_NU, LOC2_NU, SLOC_NU, &
             UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-            I_adv_coef, I_adv_coef_grad, &
-            J_adv_coef, J_adv_coef_grad, &
-            I_inv_adv_coef, J_inv_adv_coef, &
             UDGI_ALL,MASS_CV_I, MASS_CV_J, &
             TUPWIND_IN, TUPWIND_OUT, &
             not_OLD_VEL)
@@ -2929,8 +2914,6 @@ end if
             REAL, DIMENSION( :, : ), intent( in ) :: LOC_FEMT
             REAL, DIMENSION( :, :, : ), intent( in ) ::  LOC_NU, LOC2_NU, SLOC_NU
             REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL!This is for the continuity equation, so we convert V into u
-            REAL, DIMENSION( : ), intent( in ) :: I_adv_coef, I_adv_coef_grad, &
-                J_adv_coef, J_adv_coef_grad, I_inv_adv_coef, J_inv_adv_coef
             REAL, DIMENSION( :, :  ), intent( inout ) :: UDGI_ALL
             REAL, intent( in ) :: MASS_CV_I, MASS_CV_J
             REAL, DIMENSION( : ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT!(nphase)
@@ -2941,17 +2924,17 @@ end if
                 !Initialize variables
                 if (not_OLD_VEL) then
                     forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
-                        ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef (iv_iphase) * SUM(perm%val(iv_idim,:,ele))
+                        ROW_SUM_INV_VI(iv_idim,iv_iphase)=upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODI) * SUM(perm%val(iv_idim,:,ele))
                     end forall
                 end if
                 IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
                   DO iv_iphase = 1,final_phase
                         !(vel * shape_functions)/sigma
-                        if (is_P0DGP1) then 
-                            UDGI_ALL(:, iv_iphase) = I_inv_adv_coef (iv_iphase)* matmul(perm%val(:,:,ele),&
+                        if (is_P0DGP1) then
+                            UDGI_ALL(:, iv_iphase) = upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODI)* matmul(perm%val(:,:,ele),&
                                 LOC_NU( :, iv_iphase, 1 ) )
                         else
-                            UDGI_ALL(:, iv_iphase) = I_inv_adv_coef (iv_iphase)* matmul(perm%val(:,:,ele),&
+                            UDGI_ALL(:, iv_iphase) = upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODI)* matmul(perm%val(:,:,ele),&
                                 matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI )))
                         end if
                         ! Here we assume that sigma_out/sigma_in is a diagonal matrix
@@ -2978,7 +2961,7 @@ end if
                                 ELSE
                                     UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)=1.0
                                 ENDIF
-                                UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)= I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc))
+                                UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc)= upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODI) * matmul(perm%val(:,:,ele),UGI_COEF_ELE_ALL(:, iv_iphase, iv_u_kloc))
                             END DO
                         end if
                         if(iv_incomming_flow) UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) * iv_SUF_SIG_DIAGTEN_BC_GI
@@ -3003,7 +2986,7 @@ end if
                             END IF
 
                         END DO
-                        UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UDGI_ALL_FOR_INV(:, iv_iphase))
+                        UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODI) * matmul(perm%val(:,:,ele),UDGI_ALL_FOR_INV(:, iv_iphase))
                       end if
                   END DO ! PHASE LOOP
                 END IF
@@ -3011,14 +2994,14 @@ end if
                 !vel(GI) = (vel * shape_functions)/sigma
                 if (is_P0DGP1) then                  
                     forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
-                        UDGI_ALL(iv_idim, iv_iphase) = I_inv_adv_coef(iv_iphase)*LOC_NU( iv_idim, iv_iphase, 1 )
-                        UDGI2_ALL(iv_idim, iv_iphase) = J_inv_adv_coef(iv_iphase)*LOC_NU( iv_idim, iv_iphase, 1 )
+                        UDGI_ALL(iv_idim, iv_iphase) = upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODI)*LOC_NU( iv_idim, iv_iphase, 1 )
+                        UDGI2_ALL(iv_idim, iv_iphase) = upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODJ)*LOC_NU( iv_idim, iv_iphase, 1 )
                     end forall
                 else
                     do iv_iphase = 1,final_phase
-                        UDGI_ALL(:, iv_iphase) = I_inv_adv_coef(iv_iphase)*&
+                        UDGI_ALL(:, iv_iphase) = upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODI)*&
                             matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
-                        UDGI2_ALL(:, iv_iphase) = J_inv_adv_coef(iv_iphase)*&
+                        UDGI2_ALL(:, iv_iphase) = upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODJ)*&
                             matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
                     end do
                 end if
@@ -3049,14 +3032,14 @@ end if
                         memory_limiters(1:final_phase), memory_limiters(final_phase + 1:final_phase*2),&
                         memory_limiters(2*final_phase + 1:final_phase*3), memory_limiters(3*final_phase + 1:final_phase*4),&
                         memory_limiters(4*final_phase + 1:final_phase*5), memory_limiters(5*final_phase + 1:final_phase*6) )
-                    abs_tilde  = 0.5*(I_adv_coef  + ( LIMT3  - LOC_T_I  ) * I_adv_coef_grad +&
-                        J_adv_coef  + ( LIMT3 - LOC_T_J  ) * J_adv_coef_grad  )
-                      
+                    abs_tilde  = 0.5*(upwnd%adv_coef(1,1,1:final_phase, MAT_NODI)  + ( LIMT3  - LOC_T_I  ) * upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI) +&
+                        upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ)  + ( LIMT3 - LOC_T_J  ) * upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ)  )
+
                     !Make sure the value of sigma is between bounds
-                    abs_tilde = min(max(I_adv_coef,  J_adv_coef), &
-                        max(min(I_adv_coef,  J_adv_coef),  abs_tilde ))
+                    abs_tilde = min(max(upwnd%adv_coef(1,1,1:final_phase, MAT_NODI),  upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ)), &
+                        max(min(upwnd%adv_coef(1,1,1:final_phase, MAT_NODI),  upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ)),  abs_tilde ))
                   else !Just harmonic average
-                    abs_tilde = 0.5*(I_adv_coef + J_adv_coef)
+                    abs_tilde = 0.5*(upwnd%adv_coef(1,1,1:final_phase, MAT_NODI) + upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ))
                   end if
                     !We need the projected velocity from the other node
                     ! NDOTQ2 = MATMUL( CVNORMX_ALL(:, GI), UDGI2_ALL )
@@ -3065,7 +3048,7 @@ end if
                         NDOTQ2(iv_iphase) = NDOTQ2(iv_iphase) + CVNORMX_ALL(iv_idim, GI) * UDGI2_ALL(iv_idim, iv_iphase)
                     end forall                   
                     !Calculation of the velocity at the interface using the sigma at the interface
-                    NDOTQ_TILDE = 0.5*( NDOTQ*I_adv_coef + NDOTQ2*J_adv_coef ) /abs_tilde
+                    NDOTQ_TILDE = 0.5*( NDOTQ*upwnd%adv_coef(1,1,1:final_phase, MAT_NODI) + NDOTQ2*upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ) ) /abs_tilde
                     !Calculate the contribution of each side
                     INCOME = MIN(1.0, MAX(0.0, (NDOTQ_TILDE - NDOTQ)/VTOLFUN( NDOTQ2 - NDOTQ ) ))
                 end if
@@ -3104,14 +3087,14 @@ end if
                             auxR = SUM(perm%val(iv_idim,:,ele))
                             RSUM = auxR
                             do iv_iphase = 1, final_phase
-                                ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef(iv_iphase) * auxR
-                                ROW_SUM_INV_VJ(iv_idim,iv_iphase)=J_inv_adv_coef(iv_iphase) * RSUM
+                                ROW_SUM_INV_VI(iv_idim,iv_iphase)=upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODI) * auxR
+                                ROW_SUM_INV_VJ(iv_idim,iv_iphase)=upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODJ) * RSUM
                             end do
                         end do
                     else 
                         forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
-                            ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef(iv_iphase) * perm%val(iv_idim,iv_idim,ele)
-                            ROW_SUM_INV_VJ(iv_idim,iv_iphase)=J_inv_adv_coef(iv_iphase) * perm%val(iv_idim,iv_idim,ele)
+                            ROW_SUM_INV_VI(iv_idim,iv_iphase)=upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODI) * perm%val(iv_idim,iv_idim,ele)
+                            ROW_SUM_INV_VJ(iv_idim,iv_iphase)=upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODJ) * perm%val(iv_idim,iv_idim,ele)
                         end forall
                     end if
                     if (is_P0DGP1) then 
@@ -3134,7 +3117,7 @@ end if
                     !Normal flow including sigma, to know direction of flow
                     NDOTQ(iv_iphase)  = dot_product( CVNORMX_ALL(:, GI),UDGI_ALL(:, iv_iphase))
                     !Actual advection velocity by removing the contribution of sigma (still not normalised by permeability)
-                    UDGI_ALL(:, iv_iphase) = I_inv_adv_coef(iv_iphase) * UDGI_ALL(:, iv_iphase)
+                    UDGI_ALL(:, iv_iphase) = upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODI) * UDGI_ALL(:, iv_iphase)
                 end do
                 do iv_iphase = 1,final_phase
                     !Velocity including sigma
@@ -3142,35 +3125,35 @@ end if
                     !Normal flow including sigma, to know direction of flow
                     NDOTQ2(iv_iphase) = dot_product( CVNORMX_ALL(:, GI),UDGI2_ALL(:, iv_iphase))
                     !Actual advection velocity by removing the contribution of sigma (still not normalised by permeability)
-                    UDGI2_ALL(:, iv_iphase) = J_inv_adv_coef(iv_iphase)*UDGI2_ALL(:, iv_iphase)
+                    UDGI2_ALL(:, iv_iphase) = upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODJ)*UDGI2_ALL(:, iv_iphase)
                 end do
 
                 !Sigma averaged with the mass to be used as divisor
-                iv_sigma_aver = 1./(I_adv_coef*MASS_CV_I+J_adv_coef*MASS_CV_J)
+                iv_sigma_aver = 1./(upwnd%adv_coef(1,1,1:final_phase, MAT_NODI)*MASS_CV_I+upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ)*MASS_CV_J)
                 do iv_iphase = 1,final_phase
                   !Calculate the contribution of each side, considering sigma and the volume of the CVs
                   if ( ( NDOTQ(iv_iphase) + NDOTQ2(iv_iphase) ) > 0.0 ) then
                     !We redefine sigma so that it detects oscillations using first order taylor series
-                    iv_aux_tensor(iv_iphase) =  I_adv_coef(iv_iphase) + 0.5 * (LOC_T_J(iv_iphase) - LOC_T_I(iv_iphase)) * I_adv_coef_grad(iv_iphase)
+                    iv_aux_tensor(iv_iphase) =  upwnd%adv_coef(1,1,iv_iphase, MAT_NODI) + 0.5 * (LOC_T_J(iv_iphase) - LOC_T_I(iv_iphase)) * upwnd%adv_coef_grad(1,1,iv_iphase, MAT_NODI)
                     !We limit the value
-                    iv_aux_tensor(iv_iphase) = min(1000.*max(I_adv_coef(iv_iphase),  J_adv_coef(iv_iphase)), &
-                    max(0.001*min(I_adv_coef(iv_iphase),  J_adv_coef(iv_iphase)), iv_aux_tensor(iv_iphase) ))
-                    iv_aux_tensor(iv_iphase)= min( 1.0, I_inv_adv_coef(iv_iphase)* iv_aux_tensor(iv_iphase))
+                    iv_aux_tensor(iv_iphase) = min(1000.*max(upwnd%adv_coef(1,1,iv_iphase, MAT_NODI),  upwnd%adv_coef(1,1,iv_iphase, MAT_NODJ)), &
+                    max(0.001*min(upwnd%adv_coef(1,1,iv_iphase, MAT_NODI),  upwnd%adv_coef(1,1,iv_iphase, MAT_NODJ)), iv_aux_tensor(iv_iphase) ))
+                    iv_aux_tensor(iv_iphase)= min( 1.0, upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODI)* iv_aux_tensor(iv_iphase))
                     !Calculate importance of each side
-                    iv_aux_tensor2(iv_iphase) = iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase)* I_adv_coef(iv_iphase)*MASS_CV_I
+                    iv_aux_tensor2(iv_iphase) = iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase)* upwnd%adv_coef(1,1,iv_iphase, MAT_NODI)*MASS_CV_I
                     !iv_aux_tensor2 has to be calculated before since iv_aux_tensor is rewritten!
-                    iv_aux_tensor(iv_iphase) = (1.-iv_aux_tensor(iv_iphase)) + iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase) * J_adv_coef(iv_iphase)*MASS_CV_J
+                    iv_aux_tensor(iv_iphase) = (1.-iv_aux_tensor(iv_iphase)) + iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase) * upwnd%adv_coef(1,1,iv_iphase, MAT_NODJ)*MASS_CV_J
                   else
                     !We redefine sigma so that it detects oscillations using first order taylor series
-                    iv_aux_tensor(iv_iphase) =  J_adv_coef(iv_iphase) + 0.5 * (LOC_T_I(iv_iphase) - LOC_T_J(iv_iphase)) * J_adv_coef_grad(iv_iphase)
+                    iv_aux_tensor(iv_iphase) =  upwnd%adv_coef(1,1,iv_iphase, MAT_NODJ) + 0.5 * (LOC_T_I(iv_iphase) - LOC_T_J(iv_iphase)) * upwnd%adv_coef_grad(1,1,iv_iphase, MAT_NODJ)
                     !We limit the value
-                    iv_aux_tensor(iv_iphase) = min(1000.*max(I_adv_coef(iv_iphase),  J_adv_coef(iv_iphase)), &
-                    max(0.001*min(I_adv_coef(iv_iphase),  J_adv_coef(iv_iphase)), iv_aux_tensor(iv_iphase) ))
-                    iv_aux_tensor(iv_iphase)= min( 1.0, J_inv_adv_coef(iv_iphase) * iv_aux_tensor(iv_iphase))
+                    iv_aux_tensor(iv_iphase) = min(1000.*max(upwnd%adv_coef(1,1,iv_iphase, MAT_NODI),  upwnd%adv_coef(1,1,iv_iphase, MAT_NODJ)), &
+                    max(0.001*min(upwnd%adv_coef(1,1,iv_iphase, MAT_NODI),  upwnd%adv_coef(1,1,iv_iphase, MAT_NODJ)), iv_aux_tensor(iv_iphase) ))
+                    iv_aux_tensor(iv_iphase)= min( 1.0, upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODJ) * iv_aux_tensor(iv_iphase))
                     !Calculate importance of each side
-                    iv_aux_tensor2(iv_iphase) = (1.-iv_aux_tensor(iv_iphase)) + iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase) * I_adv_coef(iv_iphase)*MASS_CV_I
+                    iv_aux_tensor2(iv_iphase) = (1.-iv_aux_tensor(iv_iphase)) + iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase) * upwnd%adv_coef(1,1,iv_iphase, MAT_NODI)*MASS_CV_I
                     !iv_aux_tensor2 has to be calculated before since iv_aux_tensor is rewritten!
-                    iv_aux_tensor(iv_iphase) = iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase) * J_adv_coef(iv_iphase)*MASS_CV_J
+                    iv_aux_tensor(iv_iphase) = iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase) * upwnd%adv_coef(1,1,iv_iphase, MAT_NODJ)*MASS_CV_J
                   end if
                   !Calculation of the velocity at the GI point
                   UDGI_ALL(:, iv_iphase) = iv_aux_tensor(iv_iphase) * UDGI_ALL(:, iv_iphase) + iv_aux_tensor2(iv_iphase) * UDGI2_ALL(:, iv_iphase)
@@ -3194,8 +3177,8 @@ end if
                     RSUM = auxR
                     if (between_elements) RSUM = SUM(perm%val(iv_idim,:,ele2))
                     do iv_iphase = 1, final_phase
-                      ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef(iv_iphase) * auxR
-                      ROW_SUM_INV_VJ(iv_idim,iv_iphase)=J_inv_adv_coef(iv_iphase) * RSUM
+                      ROW_SUM_INV_VI(iv_idim,iv_iphase)=upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODI) * auxR
+                      ROW_SUM_INV_VJ(iv_idim,iv_iphase)=upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODJ) * RSUM
                     end do
                   end do
                   IF( between_elements ) then
