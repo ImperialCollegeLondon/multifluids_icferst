@@ -296,7 +296,7 @@ contains
           ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
           logical, PARAMETER :: correct_method_petrov_method= .true.
           LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE
-          logical :: skip, GOT_T2, use_volume_frac_T2, FEM_continuity_equation, logical_igot_theta_flux
+          logical :: skip, GOT_T2, use_volume_frac_T2, FEM_continuity_equation, logical_igot_theta_flux, zero_vel_BC
           ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
           ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
           ! This determins how implicit velocity is in the cty eqn. (from fully implciit =1.0, to do not alter the scheme =0.)
@@ -2972,8 +2972,6 @@ end if
             REAL, intent( in ) :: MASS_CV_I, MASS_CV_J
             REAL, DIMENSION( : ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT!(nphase)
             logical, intent(in) :: not_OLD_VEL
-            INTEGER :: IFIELD
-            logical :: zero_vel_BC
 
             UGI_COEF_ELE_ALL=0.0 ; UGI_COEF_ELE2_ALL=0.0
             Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
