@@ -3040,7 +3040,7 @@ end if
                   if (maxval(abs(LOC_T_I - LOC_T_J)/LOC_T_I) > 1e-8) then!hopefully never zero!
                     !Calculate saturation at GI, necessary for the limiter
                     forall (iv_iphase = 1:final_phase, iv_u_kloc = 1:Mdims%u_nloc)
-                        FEMTGI_IPHA(iv_iphase) = FEMTGI_IPHA(iv_iphase) + CV_funs%scvfen(iv_u_kloc,GI)* LOC_FEMT(iv_u_kloc, iv_iphase)
+                        FEMTGI_IPHA(iv_iphase) = FEMTGI_IPHA(iv_iphase) + CV_funs%scvfen(iv_u_kloc,GI)* LOC_FEMT(iv_iphase, iv_u_kloc)
                     end forall
                     ! ************NEW LIMITER**************************
                      !Call the limiter to obtain the limited saturation value at the interface
