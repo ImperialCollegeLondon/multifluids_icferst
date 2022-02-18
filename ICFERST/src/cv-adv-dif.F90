@@ -2792,7 +2792,7 @@ end if
                             end if
                         end if
                       !Only compute limited value if the field is not constant in the region
-                      if ( maxval(abs(F_CV_NODI - F_CV_NODJ/VTOLFUN(F_CV_NODI))) > 1e-8) then
+                      if ( maxval(abs(F_CV_NODI - F_CV_NODJ/F_CV_NODI)) > 1e-8) then!hopefully never zero
                         CALL ONVDLIM_ANO_MANY( NFIELD, &
                             LIMF , FEMFGI , F_INCOME , &
                             F_CV_NODI , F_CV_NODJ ,int_XI_LIMIT ,  &
@@ -3046,10 +3046,10 @@ end if
             ELSE IF( .not. between_elements) THEN!Only for same element/Continuous formulation !old flag: DISTCONTINUOUS_METHOD
                 !vel(GI) = (vel * shape_functions)/sigma
                 if (is_P0DGP1) then                  
-                    do iv_iphase = 1,final_phase
-                        UDGI_ALL(:, iv_iphase) = I_inv_adv_coef(iv_iphase)*LOC_NU( :, iv_iphase, 1 )
-                        UDGI2_ALL(:, iv_iphase) = J_inv_adv_coef(iv_iphase)*LOC_NU( :, iv_iphase, 1 )
-                    end do
+                    forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
+                        UDGI_ALL(iv_idim, iv_iphase) = I_inv_adv_coef(iv_iphase)*LOC_NU( iv_idim, iv_iphase, 1 )
+                        UDGI2_ALL(iv_idim, iv_iphase) = J_inv_adv_coef(iv_iphase)*LOC_NU( iv_idim, iv_iphase, 1 )
+                    end forall
                 else
                     do iv_iphase = 1,final_phase
                         UDGI_ALL(:, iv_iphase) = I_inv_adv_coef(iv_iphase)*&
@@ -3059,7 +3059,11 @@ end if
                     end do
                 end if
                 !Get the projected velocity
-                NDOTQ  = MATMUL( CVNORMX_ALL(:, GI), UDGI_ALL )
+                NDOTQ = 0.
+                forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
+                    NDOTQ(iv_iphase) = NDOTQ(iv_iphase) + CVNORMX_ALL(iv_idim, GI)* UDGI_ALL(iv_idim, iv_iphase)
+                end forall                
+                ! NDOTQ  = MATMUL( CVNORMX_ALL(:, GI), UDGI_ALL )
                 !Get the direction of the flow
                 WHERE (NDOTQ < 0.0)
                     INCOME=1.0
@@ -3069,7 +3073,7 @@ end if
                 !Calculate velocity on the interface, either using upwinding or high order methods
                 if (use_porous_limiter) then!high order
                     !Check if there is any point on using the limiter
-                  if (maxval(abs(LOC_T_I - LOC_T_J)/VTOLFUN(LOC_T_I)) > 1e-8) then
+                  if (maxval(abs(LOC_T_I - LOC_T_J)/LOC_T_I) > 1e-8) then!hopefully never zero!
                     !Calculate saturation at GI, necessary for the limiter
                     FEMTGI_IPHA = matmul(LOC_FEMT, CV_funs%scvfen(:,GI) )
                     ! ************NEW LIMITER**************************
@@ -3089,7 +3093,11 @@ end if
                     abs_tilde = 0.5*(I_adv_coef + J_adv_coef)
                   end if
                     !We need the projected velocity from the other node
-                    NDOTQ2 = MATMUL( CVNORMX_ALL(:, GI), UDGI2_ALL )
+                    ! NDOTQ2 = MATMUL( CVNORMX_ALL(:, GI), UDGI2_ALL )
+                    NDOTQ2 = 0.
+                    forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
+                        NDOTQ2(iv_iphase) = NDOTQ2(iv_iphase) + CVNORMX_ALL(iv_idim, GI) * UDGI2_ALL(iv_idim, iv_iphase)
+                    end forall                   
                     !Calculation of the velocity at the interface using the sigma at the interface
                     NDOTQ_TILDE = 0.5*( NDOTQ*I_adv_coef + NDOTQ2*J_adv_coef ) /abs_tilde
                     !Calculate the contribution of each side
@@ -3109,11 +3117,9 @@ end if
                             UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), inv_harmonic_perm)
                         end do
                     else !Avoid tensor multiplication if possible
-                        DO iv_iphase = 1,final_phase
-                            do idim = 1, Mdims%ndim
-                                UDGI_ALL(idim, iv_iphase) = UDGI_ALL(idim, iv_iphase) * inv_harmonic_perm(idim,idim)
-                            end do
-                        end do
+                        forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
+                            UDGI_ALL(iv_idim, iv_iphase) = UDGI_ALL(iv_idim, iv_iphase) * inv_harmonic_perm(iv_idim,iv_idim)
+                        end forall
                     end if
                 else
                     if (has_anisotropic_permeability) then 
@@ -3121,27 +3127,38 @@ end if
                             UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), perm%val(:,:,ele))
                         end do
                     else !Avoid tensor multiplication if possible 
-                        DO iv_iphase = 1,final_phase
-                            do idim = 1, Mdims%ndim
-                                UDGI_ALL(idim, iv_iphase) = UDGI_ALL(idim, iv_iphase) * perm%val(idim,idim,ele)
-                            end do
-                        end do
+                        forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
+                            UDGI_ALL(iv_idim, iv_iphase) = UDGI_ALL(iv_idim, iv_iphase) * perm%val(iv_idim,iv_idim,ele)
+                        end forall
                     end if
                 end if
                 if (not_OLD_VEL) then
-                    do iv_idim = 1, Mdims%ndim
-                      auxR = SUM(perm%val(iv_idim,:,ele))
-                      RSUM = auxR
-                      if (between_elements) RSUM = SUM(perm%val(iv_idim,:,ele2))
-                      do iv_iphase = 1, final_phase
-                        ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef(iv_iphase) * auxR
-                        ROW_SUM_INV_VJ(iv_idim,iv_iphase)=J_inv_adv_coef(iv_iphase) * RSUM
-                      end do
-                    end do
-                    DO iv_iphase = 1,final_phase
-                        UGI_COEF_ELE_ALL(:, iv_iphase, :)=SPREAD(ROW_SUM_INV_VI(:,iv_iphase)* (1.0-INCOME(iv_iphase)) &
-                            +ROW_SUM_INV_VJ(:,iv_iphase)* INCOME(iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc)
-                    END DO
+                    if (has_anisotropic_permeability) then
+                        do iv_idim = 1, Mdims%ndim
+                            auxR = SUM(perm%val(iv_idim,:,ele))
+                            RSUM = auxR
+                            do iv_iphase = 1, final_phase
+                                ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef(iv_iphase) * auxR
+                                ROW_SUM_INV_VJ(iv_idim,iv_iphase)=J_inv_adv_coef(iv_iphase) * RSUM
+                            end do
+                        end do
+                    else 
+                        forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
+                            ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef(iv_iphase) * perm%val(iv_idim,iv_idim,ele)
+                            ROW_SUM_INV_VJ(iv_idim,iv_iphase)=J_inv_adv_coef(iv_iphase) * perm%val(iv_idim,iv_idim,ele)
+                        end forall
+                    end if
+                    if (is_P0DGP1) then 
+                        forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
+                            UGI_COEF_ELE_ALL(iv_idim, iv_iphase, 1)=ROW_SUM_INV_VI(iv_idim,iv_iphase)* (1.0-INCOME(iv_iphase)) &
+                                + ROW_SUM_INV_VJ(iv_idim,iv_iphase)* INCOME(iv_iphase)
+                        end forall
+                    else
+                        DO iv_iphase = 1,final_phase
+                            UGI_COEF_ELE_ALL(:, iv_iphase, :)=SPREAD(ROW_SUM_INV_VI(:,iv_iphase)* (1.0-INCOME(iv_iphase)) &
+                                +ROW_SUM_INV_VJ(:,iv_iphase)* INCOME(iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc)
+                        END DO
+                    end if
                 end if
             ELSE !For discontinuous formulation (between elements but also can be used within). Does not use a TVD limiter but a weighting method
                 !vel(GI) = (vel * shape_functions)/sigma
@@ -3230,7 +3247,10 @@ end if
             END IF Conditional_SELE
 
             ! ! Define whether flux is incoming or outgoing, depending on direction of flow
-            NDOTQ =  MATMUL( CVNORMX_ALL(:, GI), UDGI_ALL )
+            NDOTQ = 0.
+            forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
+                NDOTQ(iv_iphase) = NDOTQ(iv_iphase) + CVNORMX_ALL(iv_idim, GI)* UDGI_ALL(iv_idim, iv_iphase)
+            end forall 
             WHERE ( NDOTQ >= 0. )
                 INCOME = 0.
             ELSE WHERE
