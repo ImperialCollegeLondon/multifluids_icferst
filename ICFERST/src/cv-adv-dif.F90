@@ -3076,7 +3076,9 @@ end if
                     !Check if there is any point on using the limiter
                   if (maxval(abs(LOC_T_I - LOC_T_J)/LOC_T_I) > 1e-8) then!hopefully never zero!
                     !Calculate saturation at GI, necessary for the limiter
-                    FEMTGI_IPHA = matmul(LOC_FEMT, CV_funs%scvfen(:,GI) )
+                    forall (iv_iphase = 1:final_phase, iv_u_kloc = 1:Mdims%u_nloc)
+                        FEMTGI_IPHA(iv_iphase) = FEMTGI_IPHA(iv_iphase) + CV_funs%scvfen(iv_u_kloc,GI)* LOC_FEMT(iv_u_kloc, iv_iphase)
+                    end forall
                     ! ************NEW LIMITER**************************
                      !Call the limiter to obtain the limited saturation value at the interface
                     CALL ONVDLIM_ANO_MANY( final_phase, LIMT3, FEMTGI_IPHA, INCOME, &
@@ -6365,13 +6367,13 @@ end if
                 REAL RMATPSI
                 REAL, DIMENSION(NFIELD, TOTELE)::MINPSI, MAXPSI
 
-                if ( bound ) then
+                ! if ( bound ) then!In theory no need to bound again...
 
-                    ! find the max and min local to each element...
-                    CALL MINMAXELEWIC( PSI_ALL,NONODS,NLOC,TOTELE,NDGLNO, &
-                        &     FINDRM,COLM,NCOLM,&
-                        &     MINPSI,MAXPSI )
-                end if
+                !     ! find the max and min local to each element...
+                !     CALL MINMAXELEWIC( PSI_ALL,NONODS,NLOC,TOTELE,NDGLNO, &
+                !         &     FINDRM,COLM,NCOLM,&
+                !         &     MINPSI,MAXPSI )
+                ! end if
                 do NOD = 1, NONODS
                     do COUNT=FINDRM(NOD),FINDRM(NOD+1)-1
                         IF(NOD.NE.COLM(COUNT)) THEN
@@ -6387,13 +6389,13 @@ end if
                                     +(1./FRALINE)*(RMATPSI   -PSI_ALL(IFIELD,NOD))
 
                                 ! make locally bounded...
-                                if ( bound ) then
-                                    MATPSI_ALL(IFIELD, COUNT)   &
-                                        =MAX(MIN(RMATPSI,   MAXPSI(IFIELD, ELEWIC)),   &
-                                        &                            MINPSI(IFIELD, ELEWIC))
-                                else
-                                    MATPSI_ALL(IFIELD, COUNT)   =RMATPSI
-                                end if
+                                ! if ( bound ) then
+                                !     MATPSI_ALL(IFIELD, COUNT)   &
+                                !         =MAX(MIN(RMATPSI,   MAXPSI(IFIELD, ELEWIC)),   &
+                                !         &                            MINPSI(IFIELD, ELEWIC))
+                                ! else
+                                    MATPSI_ALL(IFIELD, COUNT)   =RMATPSI!In theory already bounded
+                                ! end if
                             END DO
                         END IF
                     END DO
