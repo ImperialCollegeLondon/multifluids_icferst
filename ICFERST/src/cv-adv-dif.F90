@@ -296,7 +296,7 @@ contains
           logical, PARAMETER :: integrate_other_side= .true.
           ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
           logical, PARAMETER :: correct_method_petrov_method= .true.
-          LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE
+          LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE, high_order_theta 
           logical :: skip, GOT_T2, use_volume_frac_T2, FEM_continuity_equation, logical_igot_theta_flux, zero_vel_BC
           ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
           ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
@@ -510,7 +510,8 @@ contains
           end if
 
           call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
-
+          !Just to speedup the checks we use a logical
+          high_order_theta = CV_DISOPT>=8
           !#################SET WORKING VARIABLES#################
 
           call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
@@ -724,7 +725,7 @@ contains
           ! This logical needs to be expanded...
           if (NFIELD>0 ) THEN
               DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
-              IF ( CV_DISOPT>=8 ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
+              IF ( high_order_theta ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
           ENDIF
 
           ! Determine IGOT_T_PACK(IPHASE,:):
@@ -824,10 +825,11 @@ contains
           end do
           psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
           psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
+          !For porous media we don't need to call this but 
           call PROJ_CV_TO_FEM(packed_state, &!For porous media we are just pointing memory from PSI to FEMPSI
               FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &!we need to get rid of all of this... check if for inertia is there any gain at all
               Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
-              IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
+              GETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
               tracer,PSI_AVE, PSI_INT)
           XC_CV_ALL=0.0
           !sprint_to_do!use the pointers instead! pointer?
@@ -1538,13 +1540,13 @@ contains
                               IF( on_domain_boundary ) BCZERO=1.0-INCOME
                               ! Define face value of theta
                               IF ( GOT_T2 ) THEN
-                                  FTHETA = FACE_THETA_MANY( ( CV_DISOPT>=8 ), &
+                                  call FACE_THETA_MANY( FTHETA, high_order_theta, &
                                       LOC_T_J * LOC_DEN_J * LOC_T2_J, &
                                       LOC_T_I * LOC_DEN_I * LOC_T2_I, &
                                       LOC_TOLD_J * LOC_DENOLD_J * LOC_T2OLD_J, &
                                       LOC_TOLD_I * LOC_DENOLD_I * LOC_T2OLD_I )
                               ELSE 
-                                  FTHETA = FACE_THETA_MANY( ( CV_DISOPT>=8 ), &
+                                  call FACE_THETA_MANY( FTHETA, high_order_theta, &
                                       LOC_T_J * LOC_DEN_J, &
                                       LOC_T_I * LOC_DEN_I, &
                                       LOC_TOLD_J * LOC_DENOLD_J, &
@@ -1635,14 +1637,15 @@ contains
 
                               Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
                                   ! Obtain the CV discretised advection/diffusion equations
-                                  ROBIN1=0.0; ROBIN2=0.0
-                                  IF( on_domain_boundary ) then
-                                      where ( WIC_T_BC_ALL(1,:,SELE) == WIC_T_BC_ROBIN )
-                                          !Robin 1 contains the value of the field outside the domain times the coefficient.
-                                          !This is also used for Neumann to impose a fixed flux
-                                          ROBIN1 = SUF_T_BC_ROB1_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
-                                          ROBIN2 = SUF_T_BC_ROB2_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
-                                      end where
+                                IF( on_domain_boundary ) then
+                                    where ( WIC_T_BC_ALL(1,:,SELE) == WIC_T_BC_ROBIN )
+                                        !Robin 1 contains the value of the field outside the domain times the coefficient.
+                                        !This is also used for Neumann to impose a fixed flux
+                                        ROBIN1 = SUF_T_BC_ROB1_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
+                                        ROBIN2 = SUF_T_BC_ROB2_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
+                                    else where
+                                        ROBIN1=0.0; ROBIN2=0.0
+                                    end where
                                   END IF
                                   LOC_CV_RHS_I=0.0; LOC_MAT_II =0.
                                   LOC_CV_RHS_J=0.0; LOC_MAT_JJ =0.
@@ -2570,7 +2573,7 @@ end if
                         END DO ! END OF DO IFIELD=1,NFIELD
                     ELSE Conditional_CV_DISOPT_ELE2
                         ! Extrapolate a downwind value for interface tracking.
-                        DOWNWIND_EXTRAP = ( cv_disopt>=8 )
+                        DOWNWIND_EXTRAP = ( high_order_theta )
                         if (.not. is_porous_media) then 
                             DO IFIELD=1,NFIELD
                                 IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN
@@ -3231,19 +3234,19 @@ end if
             RETURN
         END SUBROUTINE GET_INT_VEL_POROUS_VEL
 
-        FUNCTION FACE_THETA_MANY(  INTERFACE_TRACK, T_NODJ_IPHA, T_NODI_IPHA, TOLD_NODJ_IPHA, TOLD_NODI_IPHA )
+        subroutine FACE_THETA_MANY(  FTHETA, INTERFACE_TRACK, T_NODJ_IPHA, T_NODI_IPHA, TOLD_NODJ_IPHA, TOLD_NODI_IPHA )
             IMPLICIT NONE
             ! Define face value of theta
             REAL, DIMENSION( final_phase ), intent(in) :: T_NODJ_IPHA, T_NODI_IPHA,  &
                 TOLD_NODJ_IPHA, TOLD_NODI_IPHA
-            real, dimension(final_phase) :: FACE_THETA_MANY
+            real, dimension(final_phase) :: FTHETA
             LOGICAL, intent(in) :: INTERFACE_TRACK
             ! Local variables
             
             INTEGER :: IPHASE
 
             IF( CV_THETA >= 0.0) THEN ! Specified
-                FACE_THETA_MANY = CV_THETA
+                FTHETA = CV_THETA
             ELSE ! Non-linear
                 HF    = NDOTQ * LIMDT + DIFF_COEF_DIVDX * ( T_NODI_IPHA - T_NODJ_IPHA )
                 HFOLD = NDOTQOLD * LIMDTOLD + DIFF_COEFOLD_DIVDX * ( TOLD_NODI_IPHA - TOLD_NODJ_IPHA )
@@ -3256,20 +3259,20 @@ end if
                 IF(INTERFACE_TRACK) THEN ! For interface tracking use forward Euler as much as possible...
                     !            FTHETA = MAX( 0.0, 1. - 0.125 * MIN( ABS( PINVTH ), ABS( QINVTH )))
                     DO IPHASE=1,final_phase
-                        FACE_THETA_MANY(IPHASE) = MAX( 0.0, 1. - 0.5 * MIN( ABS( PINVTH(IPHASE) ), ABS( QINVTH(IPHASE) )))
+                        FTHETA(IPHASE) = MAX( 0.0, 1. - 0.5 * MIN( ABS( PINVTH(IPHASE) ), ABS( QINVTH(IPHASE) )))
                     END DO
                 ELSE ! for Crank Nickolson time stepping base scheme...
                     DO IPHASE=1,final_phase!with no wells this is the same to final_phase
-                        FACE_THETA_MANY(IPHASE) = MAX( 0.5, 1. - 0.125 * MIN( ABS( PINVTH(IPHASE) ), ABS( QINVTH(IPHASE) )))
+                        FTHETA(IPHASE) = MAX( 0.5, 1. - 0.125 * MIN( ABS( PINVTH(IPHASE) ), ABS( QINVTH(IPHASE) )))
                     END DO
                     ! if (final_phase /= final_phase) then!for wells we impose implicit euler, the Courant number is massive anyway...
-                    !     FACE_THETA_MANY(final_phase + 1 : final_phase) = 1.0!<=backward euler
+                    !     FTHETA(final_phase + 1 : final_phase) = 1.0!<=backward euler
                     ! end if
                 ENDIF
             ENDIF
             RETURN
 
-        END FUNCTION FACE_THETA_MANY
+        END subroutine FACE_THETA_MANY
 
         subroutine get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
                                         C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2 )
@@ -3536,8 +3539,8 @@ end if
         FTILIN = ( TDCEN - TUPWIN ) / DENOIN
         FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
         ! Velocity is going out of element
-        TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW_MANY( FTILIN, CTILIN, XI_LIMIT ) * DENOIN ) &
-            + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
+        TDLIM =        INCOME   * ( TUPWIN + MAX(  MIN(FTILIN, XI_LIMIT*CTILIN, 1.0), CTILIN) * DENOIN ) &
+            + ( 1.0 - INCOME ) * ( TUPWI2 + MAX(  MIN(FTILOU, XI_LIMIT*CTILOU, 1.0), CTILOU) * DENOOU )
         TDLIM = MAX( TDLIM, 0.0 )
         RETURN
     END SUBROUTINE ONVDLIM_ANO_MANY
@@ -3671,6 +3674,7 @@ end if
 
     ! Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
     ! to later on apply the limiters on all the fields at once
+    !THIS SEEMS CURRENTLY WORSE THAN WHAT IT WAS BEFORE! BECAUSE WE ARE CALLING TWICE
     SUBROUTINE PACK_LOC_ALL2( LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3,&
             IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase, nodi )
         IMPLICIT NONE
@@ -4025,7 +4029,7 @@ end if
     SUBROUTINE PROJ_CV_TO_FEM(packed_state, &
         fempsi, psi, &
         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
-        igetct, X, mass_ele, mass_mn_pres, &
+        GETCT, X, mass_ele, mass_mn_pres, &
         tracer, psi_ave, psi_int)
 
 
@@ -4042,7 +4046,7 @@ end if
         type(multi_shape_funs), intent(inout) :: CV_funs                    ! control volume shape function data
         type(multi_sparsities), intent(in) :: Mspars                        ! sparsity data
         type(multi_ndgln), intent(in) :: ndgln                              ! global numbering data
-        integer, intent(in) :: igetct                                       ! whether to get CT matrix
+        logical, intent(in) :: GETCT                                       ! whether to get CT matrix
         real, dimension(:,:), intent(in) :: X                               ! coordinates of the elements
         real, dimension(:), intent(inout) :: mass_ele                       ! finite element mass
         real, dimension(:), intent(inout) :: mass_mn_pres                   ! ??
@@ -4108,7 +4112,7 @@ end if
             call allocate(CV_funs%CV2FE,sparsity,[1,1],name="ProjectionMatrix")
             call zero(CV_funs%CV2FE)
         end if
-        if(igetct/=0) mass_mn_pres=0.0
+        if(GETCT) mass_mn_pres=0.0
 
         !---------------------------------
         ! projection
@@ -4145,7 +4149,7 @@ end if
                     end if
 
 
-                    if(igetct/=0) then
+                    if(GETCT) then
                         call PosInMat(COUNT,cv_nodi,cv_nodj,Mspars%CMC%fin,Mspars%CMC%col)
                         mass_mn_pres(COUNT) = mass_mn_pres(COUNT)+mn
                     end if
