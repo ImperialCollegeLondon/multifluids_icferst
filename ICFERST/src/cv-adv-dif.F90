@@ -378,8 +378,8 @@ contains
           LOGICAL :: STORE, integrate_other_side_and_not_boundary
           REAL , DIMENSION( : ), ALLOCATABLE :: F_CV_NODJ, F_CV_NODI
           LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
-          LOGICAL, DIMENSION( final_phase, 6 ) :: IGOT_T_PACK, IGOT_T_CONST!variables for get_int_tden! Set up the fields...
-          REAL, DIMENSION(  final_phase, 6 ) :: IGOT_T_CONST_VALUE!variables for get_int_tden! Set up the fields...
+          LOGICAL, DIMENSION( final_phase, max(igot_t2*6,4) ) :: IGOT_T_PACK, IGOT_T_CONST!variables for get_int_tden! Set up the fields...
+          REAL, DIMENSION(  final_phase, max(igot_t2*6,4) ) :: IGOT_T_CONST_VALUE!variables for get_int_tden! Set up the fields...
           !Working variables
           real, dimension(:), allocatable :: VOL_FRA_FLUID ! for solid coupling
           real, dimension(:, :), allocatable :: U_HAT_ALL ! for solid coupling
@@ -671,14 +671,16 @@ contains
           ! If we have any bc's then assume we ave a non-uniform field...
           ! SPRINT_TO_DO this now fails if the domain is closed and no BCs are necessary
           !We check new and old values simultaneously of the fields to see if some are constant (to avoid calculating a high order value)
-          DO IPHASE=1,final_phase
-              IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,1), IGOT_T_CONST_VALUE(IPHASE,1), T_ALL(IPHASE,:),Mdims%cv_nonods)
-          END DO
-          DO IPHASE=1,final_phase
-              IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,2), IGOT_T_CONST_VALUE(IPHASE,2), TOLD_ALL(IPHASE,:),Mdims%cv_nonods)
-          END DO
+          !We check only density and T2 as possible candidates to be constant, why would it be the tracer??? 
+          !Do not solve a transport equation for a constant field!
+          ! DO IPHASE=1,final_phase
+          !     IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
+          !         CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,1), IGOT_T_CONST_VALUE(IPHASE,1), T_ALL(IPHASE,:),Mdims%cv_nonods)
+          ! END DO
+          ! DO IPHASE=1,final_phase
+          !     IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
+          !         CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,2), IGOT_T_CONST_VALUE(IPHASE,2), TOLD_ALL(IPHASE,:),Mdims%cv_nonods)
+          ! END DO
           DO IPHASE=1,final_phase
               IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
                   CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,3), IGOT_T_CONST_VALUE(IPHASE,3), DEN_ALL(IPHASE,:),Mdims%cv_nonods)
@@ -691,22 +693,13 @@ contains
               IF(use_volume_frac_t2) THEN
                   IF( SUM(  WIC_T2_BC_ALL(:,  IPHASE, : ) ) == 0)  &
                       CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,5), IGOT_T_CONST_VALUE(IPHASE,5), T2_ALL(IPHASE,:),Mdims%cv_nonods)
-              ELSE
-                  IGOT_T_CONST(IPHASE,5)=.TRUE.
-                  IGOT_T_CONST_VALUE(IPHASE,5)=1.0
-              ENDIF
-          END DO
-          DO IPHASE=1,Mdims%nphase
-              IF(use_volume_frac_t2) THEN
                   IF( SUM(  WIC_T2_BC_ALL( :, IPHASE, : ) ) == 0)  &
                       CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,6), IGOT_T_CONST_VALUE(IPHASE,6), T2OLD_ALL(IPHASE,:),Mdims%cv_nonods)
-              ELSE
-                  IGOT_T_CONST(IPHASE,6)=.TRUE.
-                  IGOT_T_CONST_VALUE(IPHASE,6)=1.0
               ENDIF
           END DO
+
           NFIELD=0
-          DO IFI=1,6
+          DO IFI=1,size(IGOT_T_PACK,2)
               DO IPHASE=1,final_phase
                   IF(.not.IGOT_T_CONST(IPHASE,IFI)) NFIELD=NFIELD+1
               END DO
@@ -735,7 +728,7 @@ contains
 
           ! Determine IGOT_T_PACK(IPHASE,:):
           IGOT_T_PACK=.FALSE.
-          DO ILOOP=1,6
+          DO ILOOP=1,size(IGOT_T_CONST,2)
               DO IPHASE=1,final_phase
                   IF(.NOT.IGOT_T_CONST(IPHASE,ILOOP)) THEN
                       ! here we might check to see if we have this in the local storage...
@@ -1051,7 +1044,7 @@ contains
                   ! LOC_UF
                   IPT=1
                   IFI=1
-                  DO ILOOP=1,3
+                  DO ILOOP=1,size(IGOT_T_PACK,2)/2
                       DO IPHASE=1,final_phase
                           IF(IGOT_T_PACK(IPHASE,IFI)) THEN ! T:
                               LOC_UF(:, IPT, U_KLOC) =   U_ALL( :, IPHASE, U_NODK )
@@ -2977,6 +2970,7 @@ end if
             REAL, DIMENSION( : ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT!(nphase)
             logical, intent(in) :: not_OLD_VEL
             INTEGER :: IFIELD
+            logical :: zero_vel_BC
 
             UGI_COEF_ELE_ALL=0.0 ; UGI_COEF_ELE2_ALL=0.0
             Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
@@ -2986,8 +2980,8 @@ end if
                         ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef (iv_iphase) * SUM(perm%val(iv_idim,:,ele))
                     end forall
                 end if
-                DO iv_iphase = 1,final_phase
-                    IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
+                IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
+                  DO iv_iphase = 1,final_phase
                         !(vel * shape_functions)/sigma
                         if (is_P0DGP1) then 
                             UDGI_ALL(:, iv_iphase) = I_inv_adv_coef (iv_iphase)* matmul(perm%val(:,:,ele),&
@@ -3024,11 +3018,14 @@ end if
                             END DO
                         end if
                         if(iv_incomming_flow) UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) * iv_SUF_SIG_DIAGTEN_BC_GI
-
-                    ELSE ! Specified vel bc.
-                        UDGI_ALL(:, iv_iphase) = 0.0
-                        UDGI_ALL_FOR_INV(:, iv_iphase) = 0.0
-                        UGI_COEF_ELE_ALL(:, iv_iphase, :) = 0.0
+                  end do
+                ELSE ! Specified vel bc.
+                  !Majority of the times the BCs have zero velocity, check that before doing anything to save time 
+                  zero_vel_BC = maxval( abs(SUF_U_BC_ALL(:, :, &
+                      1 + Mdims%u_snloc*(SELE-1) : Mdims%u_snloc*(SELE-1) + Mdims%u_snloc) ))<1e-30
+                  UDGI_ALL = 0.0; UDGI_ALL_FOR_INV = 0.0; UGI_COEF_ELE_ALL = 0.0
+                  DO iv_iphase = 1,final_phase
+                      if (.not.zero_vel_BC) then 
                         DO iv_u_skloc = 1, Mdims%u_snloc
                             iv_u_kloc = U_SLOC2LOC( iv_u_skloc )
                             IF(WIC_U_BC_ALL( 1, iv_iphase, SELE ) == 10) THEN
@@ -3043,8 +3040,9 @@ end if
 
                         END DO
                         UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UDGI_ALL_FOR_INV(:, iv_iphase))
-                    END IF
-                END DO ! PHASE LOOP
+                      end if
+                  END DO ! PHASE LOOP
+                END IF
             ELSE IF( .not. between_elements) THEN!Only for same element/Continuous formulation !old flag: DISTCONTINUOUS_METHOD
                 !vel(GI) = (vel * shape_functions)/sigma
                 if (is_P0DGP1) then                  
