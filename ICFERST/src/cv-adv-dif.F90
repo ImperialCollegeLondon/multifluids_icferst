@@ -2695,7 +2695,10 @@ end if
                                     END IF
                                 END DO ! ENDOF DO IFIELD=1,Mdims%nphase
                             else !For porous media obtain field at GI point
-                                FEMFGI = matmul(LOC_FEMF, CV_funs%scvfen(:,gi))
+                                FEMFGI = 0.
+                                forall (iv_iphase = 1:final_phase, iv_u_kloc = 1:Mdims%u_nloc)
+                                    FEMFGI(iv_iphase) = FEMFGI(iv_iphase) + CV_funs%scvfen(iv_u_kloc,GI)* LOC_FEMF(iv_iphase, iv_u_kloc)
+                                end forall
                             end if
                         ELSE  ! END OF IF( .not. between_elements ) THEN  ---DG saturation across elements
                             FEMFGI_CENT  = 0.0
@@ -3658,7 +3661,7 @@ end if
             ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
             IMPLICIT NONE
             ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
-            integer :: i
+            integer, INTENT(IN) :: i
             REAL, DIMENSION(:), intent( in ) :: T_ALL
             DO ifield=1,nfield
                 IF(IGOT_T_PACK(ifield,i)) THEN ! Put into packing vector LOC_F
@@ -3677,7 +3680,6 @@ end if
     !THIS SEEMS CURRENTLY WORSE THAN WHAT IT WAS BEFORE! BECAUSE WE ARE CALLING TWICE
     SUBROUTINE PACK_LOC_ALL2( LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3,&
             IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase, nodi )
-        IMPLICIT NONE
         LOGICAL, DIMENSION(:,:), intent( in ) :: IGOT_T_PACK
         REAL, DIMENSION(:,:), intent( in ) :: field1, oldfield1, field2, oldfield2, field3, oldfield3
         REAL, DIMENSION(:), intent( inout ) :: LOC_F
@@ -3700,9 +3702,8 @@ end if
     contains
         SUBROUTINE PACK_LOC_int( T_ALL, i )
             ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
-            IMPLICIT NONE
             REAL, DIMENSION(:), intent( in ) :: T_ALL
-            integer :: i
+            integer, INTENT(IN) :: i
 
             DO IPHASE=1,nphase
                 IF(IGOT_T_PACK(IPHASE,i)) THEN ! Put into packing vector LOC_F
@@ -3743,10 +3744,9 @@ end if
       contains
         SUBROUTINE I_PACK_LOC_int( T_ALL, i )
             ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
-            IMPLICIT NONE
             ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
             INTEGER, DIMENSION(:), intent( in ) :: T_ALL
-            integer :: i
+            integer, INTENT(IN) :: i
 
             DO IPHASE=1,nphase
                 IF(IGOT_T_PACK(IPHASE,i)) THEN ! Put into packing vector LOC_F
@@ -3786,9 +3786,8 @@ end if
     contains
         SUBROUTINE PACK_LOC_int( T_ALL, i )
             ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
-            IMPLICIT NONE
             REAL, DIMENSION(:), intent( in ) :: T_ALL
-            integer :: i
+            integer, intent(in) :: i
 
             DO IPHASE=1,nphase
                 IF(IGOT_T_PACK(IPHASE,i)) THEN ! Put into packing vector LOC_F
