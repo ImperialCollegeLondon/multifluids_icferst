@@ -193,6 +193,7 @@ module multi_data_types
         integer, dimension(:), pointer :: limiters_ELEMATPSI=> null()!>Stores locations used by the limiters
         real, dimension(:), pointer :: limiters_ELEMATWEI=> null()!>Stores weights used by the limiters
         integer, dimension(:,:,:), pointer :: WIC_FLIP_P_VEL_BCS=> null()!Stores array to check when to flip BCs
+        INTEGER, DIMENSION( :, : ), pointer ::  FACE_ELE=> null()!Stores neighbouring elements
     end type multi_matrices
 
 
@@ -1212,6 +1213,9 @@ contains
         end if
         if (associated(Mmat%WIC_FLIP_P_VEL_BCS)) then
             deallocate(Mmat%WIC_FLIP_P_VEL_BCS); nullify(Mmat%WIC_FLIP_P_VEL_BCS)
+        end if
+        if (associated(Mmat%FACE_ELE)) then
+            deallocate (Mmat%FACE_ELE); nullify(Mmat%FACE_ELE)
         end if
         !Set flag to recalculate
         Mmat%stored = .false.

@@ -340,7 +340,6 @@ contains
               JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
               C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
 
-          INTEGER, DIMENSION( CV_GIdims%nface, Mdims%totele ) :: FACE_ELE
           REAL, DIMENSION( : ), allocatable ::  N
           real, dimension (Mdims%cv_nonods) ::  SUM_CV
           real, dimension (Mdims%totele) :: MASS_ELE
@@ -927,10 +926,14 @@ contains
                   ndgln%x,Mdims%x_nonods,Mdims%ndim, &
                   X_ALL, XC_CV_ALL, use_reflect)
           END IF
-          FACE_ELE = 0
-          CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
-              Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
-              CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
+          !Obtain elements surrounding an element (FACE_ELE) only if it is not stored yet
+          if (.not. associated(Mmat%FACE_ELE)) then 
+            allocate(Mmat%FACE_ELE(CV_GIdims%nface, Mdims%totele))
+            Mmat%FACE_ELE = 0.
+            CALL CALC_FACE_ELE( Mmat%FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
+            Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+            CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
+          end if
           IF ( GOT_DIFFUS ) THEN
               CALL DG_DERIVS_ALL( FEMT_ALL, FEMTOLD_ALL, &
                   DTX_ELE_ALL, DTOLDX_ELE_ALL, &
@@ -940,7 +943,7 @@ contains
                   CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
                   CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
                   Mdims%x_nonods, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), &
-                  CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, CV_funs%cv_sloclist, Mdims%cv_snloc, Mdims%cv_snloc, WIC_T_BC_ALL, SUF_T_BC_ALL, &
+                  CV_GIdims%nface, Mmat%FACE_ELE, CV_funs%cv_sloclist, CV_funs%cv_sloclist, Mdims%cv_snloc, Mdims%cv_snloc, WIC_T_BC_ALL, SUF_T_BC_ALL, &
                   CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfeweigh, &
                   CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly )
           END IF
@@ -1118,7 +1121,7 @@ contains
                                   CV_JLOC = CV_ILOC
                                   ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC
                                   CALL CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
-                                      FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
+                                      Mmat%FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
                                       ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
                               END IF
                               INTEGRAT_AT_GI = .NOT.( (ELE==ELE2) .AND. (SELE==0) )
@@ -1532,7 +1535,7 @@ contains
                                       CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC, &
                                       ELE, Mdims%cv_nonods, Mdims%ndim, final_phase,  &
                                       Mdims%cv_nloc,Mdims%totele, ndgln%x, ndgln%cv,  &
-                                      X_ALL,FACE_ELE,CV_GIdims%nface,BETWEEN_ELEMENTS, CV_funs%scvfen, SdevFuns%NX_ALL, GI, SdevFuns%INV_JAC, &
+                                      X_ALL,Mmat%FACE_ELE,CV_GIdims%nface,BETWEEN_ELEMENTS, CV_funs%scvfen, SdevFuns%NX_ALL, GI, SdevFuns%INV_JAC, &
                                       NUGI_ALL, on_domain_boundary )
                               ENDIF
 
@@ -7320,7 +7323,7 @@ end if
       real, dimension(Mdims%ndim) :: GI_coordinate
       integer, dimension(:), pointer :: neighbours
       REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
-      INTEGER, DIMENSION( CV_GIdims%nface, Mdims%totele ) :: FACE_ELE
+    !   INTEGER, DIMENSION( CV_GIdims%nface, Mdims%totele ) :: FACE_ELE
       !Variables to reduce communications with PETSc when assembling the matrix
       real, dimension(size(F_fields,2)) :: LOC_CV_RHS_I, LOC_CV_RHS_J, LOC_MAT_II, LOC_MAT_JJ, LOC_MAT_IJ, LOC_MAT_JI
       !###Variables for shape function calculation###
@@ -7344,12 +7347,14 @@ end if
       !Allocate derivatives of the shape functions
       call allocate_multi_dev_shape_funs(CV_funs%scvfenlx_all, CV_funs%sufenlx_all, SdevFuns)
 
-      !Obtain elements surrounding an element (FACE_ELE)
-      FACE_ELE = 0.
-      CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
-      Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
-      CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
-
+      !Obtain elements surrounding an element (FACE_ELE) only if it is not stored yet
+      if (.not. associated(Mmat%FACE_ELE)) then 
+        allocate(Mmat%FACE_ELE(CV_GIdims%nface, Mdims%totele))
+        Mmat%FACE_ELE = 0.
+        CALL CALC_FACE_ELE( Mmat%FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
+        Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+        CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
+      end if
       Loop_Elements: do ele = 1, Mdims%totele
         if (IsParallel()) then
           if (.not. assemble_ele(solution,ele)) then
@@ -7400,7 +7405,7 @@ end if
                     CV_JLOC = CV_ILOC
                     ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC
                     CALL CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
-                    FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
+                    mmat%FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
                     ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
                   END IF
                   INTEGRAT_AT_GI = .NOT.( (ELE==ELE2) .AND. (SELE==0) )
