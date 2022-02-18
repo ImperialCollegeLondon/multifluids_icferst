@@ -3495,7 +3495,7 @@ end if
 
     END SUBROUTINE CV_ASSEMB
 
-    PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
+    SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
         TDLIM, TDCEN, INCOME, &
         ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
         TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
@@ -3527,24 +3527,46 @@ end if
         real, dimension( NFIELD ), intent(inout) :: DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU
         ! Local variables
         REAL, PARAMETER :: TOLER=1.0E-10
-        ! Calculate normalisation parameters for incomming velocities
-        DENOIN = ( ETDNEW_PELE - TUPWIN )
-        where( ABS( DENOIN ) < TOLER )
-            DENOIN = SIGN( TOLER, DENOIN )
-        end where
-        CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
-        ! Calculate normalisation parameters for out going velocities
-        DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
-        where( ABS( DENOOU ) < TOLER )
-            DENOOU = SIGN( TOLER, DENOOU )
-        end where
-        CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
-        FTILIN = ( TDCEN - TUPWIN ) / DENOIN
-        FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
-        ! Velocity is going out of element
-        TDLIM =        INCOME   * ( TUPWIN + MAX(  MIN(FTILIN, XI_LIMIT*CTILIN, 1.0), CTILIN) * DENOIN ) &
-            + ( 1.0 - INCOME ) * ( TUPWI2 + MAX(  MIN(FTILOU, XI_LIMIT*CTILOU, 1.0), CTILOU) * DENOOU )
+
+        !Income is either 1 or 0, s we can halve the cost of the subroutine
+        where (income > toler)
+            ! Calculate normalisation parameters for incomming velocities
+            DENOIN = ( ETDNEW_PELE - TUPWIN )
+            DENOIN = sign(max( abs(DENOIN), TOLER), DENOIN)
+            ! if( ABS( DENOIN ) < TOLER ) DENOIN = SIGN( TOLER, DENOIN )
+            CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
+            FTILIN = ( TDCEN - TUPWIN ) / DENOIN
+            ! Velocity is going out of element
+            TDLIM =   ( TUPWIN + MAX(  MIN(FTILIN, XI_LIMIT*CTILIN, 1.0), CTILIN) * DENOIN ) 
+        else where 
+            ! Calculate normalisation parameters for out going velocities
+            DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
+            DENOOU = sign(max( abs(DENOOU), TOLER), DENOOU)
+            ! if( ABS( DENOOU ) < TOLER )DENOOU = SIGN( TOLER, DENOOU )
+            CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
+            FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
+            TDLIM = ( TUPWI2 + MAX(  MIN(FTILOU, XI_LIMIT*CTILOU, 1.0), CTILOU) * DENOOU )
+        end Where
         TDLIM = MAX( TDLIM, 0.0 )
+
+        ! ! Calculate normalisation parameters for incomming velocities
+        ! DENOIN = ( ETDNEW_PELE - TUPWIN )
+        ! where( ABS( DENOIN ) < TOLER )
+        !     DENOIN = SIGN( TOLER, DENOIN )
+        ! end where
+        ! CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
+        ! ! Calculate normalisation parameters for out going velocities
+        ! DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
+        ! where( ABS( DENOOU ) < TOLER )
+        !     DENOOU = SIGN( TOLER, DENOOU )
+        ! end where
+        ! CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
+        ! FTILIN = ( TDCEN - TUPWIN ) / DENOIN
+        ! FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
+        ! ! Velocity is going out of element
+        ! TDLIM =        INCOME   * ( TUPWIN + MAX(  MIN(FTILIN, XI_LIMIT*CTILIN, 1.0), CTILIN) * DENOIN ) &
+        !     + ( 1.0 - INCOME ) * ( TUPWI2 + MAX(  MIN(FTILOU, XI_LIMIT*CTILOU, 1.0), CTILOU) * DENOOU )
+        ! TDLIM = MAX( TDLIM, 0.0 )
         RETURN
     END SUBROUTINE ONVDLIM_ANO_MANY
 
