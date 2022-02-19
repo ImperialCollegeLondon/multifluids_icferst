@@ -368,7 +368,7 @@ contains
                                                               LOC_FEMT2OLD, LOC2_FEMT2OLD
           ! nphase Variables:
           real, dimension(final_phase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, NDOTQNEW, LIMT2OLD, LIMDTOLD, &
-              INCOMEOLD, NDOTQOLD, LIMT2, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, LIMDTT2OLD, FVT, FVT2, FVD, LIMD, LIMDT, LIMDTT2, INCOME_J
+              INCOMEOLD, NDOTQOLD, LIMT2, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, LIMDTT2OLD, FVT, FVT2, FVD, LIMD, LIMDT, LIMDTT2
           real, dimension(final_phase, Mdims%cv_nonods) :: FEMT_ALL, FEMTOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL
           REAL, DIMENSION( Mdims%ndim, final_phase, Mdims%cv_nloc, Mdims%totele ) :: DTX_ELE_ALL, DTOLDX_ELE_ALL
           REAL , DIMENSION( Mdims%ndim, final_phase ) :: NUGI_ALL, NUOLDGI_ALL
@@ -679,26 +679,29 @@ contains
           !     IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
           !         CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,1), IGOT_T_CONST_VALUE(IPHASE,1), T_ALL(IPHASE,:),Mdims%cv_nonods)
           ! END DO
-          ! DO IPHASE=1,final_phase
-          !     IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
-          !         CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,2), IGOT_T_CONST_VALUE(IPHASE,2), TOLD_ALL(IPHASE,:),Mdims%cv_nonods)
-          ! END DO
-          DO IPHASE=1,final_phase
-              IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,3), IGOT_T_CONST_VALUE(IPHASE,3), DEN_ALL(IPHASE,:),Mdims%cv_nonods)
-          END DO
-          DO IPHASE=1,final_phase
-              IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,4), IGOT_T_CONST_VALUE(IPHASE,4), DENOLD_ALL(IPHASE,:),Mdims%cv_nonods)
-          END DO
-          DO IPHASE=1,final_phase
-              IF(use_volume_frac_t2) THEN
-                  IF( SUM(  WIC_T2_BC_ALL(:,  IPHASE, : ) ) == 0)  &
-                      CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,5), IGOT_T_CONST_VALUE(IPHASE,5), T2_ALL(IPHASE,:),Mdims%cv_nonods)
-                  IF( SUM(  WIC_T2_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                      CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,6), IGOT_T_CONST_VALUE(IPHASE,6), T2OLD_ALL(IPHASE,:),Mdims%cv_nonods)
-              ENDIF
-          END DO
+          !Only limiters for the tracer
+          IGOT_T_CONST(:,2:4) = .true.
+          IF(use_volume_frac_t2)  IGOT_T_CONST(:,5:6) =.true.
+        !   DO IPHASE=1,final_phase
+            !   IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
+            !       CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,2), IGOT_T_CONST_VALUE(IPHASE,2), TOLD_ALL(IPHASE,:),Mdims%cv_nonods)
+        !   END DO
+        !   DO IPHASE=1,final_phase
+        !       IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
+        !           CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,3), IGOT_T_CONST_VALUE(IPHASE,3), DEN_ALL(IPHASE,:),Mdims%cv_nonods)
+        !   END DO
+        !   DO IPHASE=1,final_phase
+        !       IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
+        !           CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,4), IGOT_T_CONST_VALUE(IPHASE,4), DENOLD_ALL(IPHASE,:),Mdims%cv_nonods)
+        !   END DO
+        !   DO IPHASE=1,final_phase
+        !       IF(use_volume_frac_t2) THEN
+        !           IF( SUM(  WIC_T2_BC_ALL(:,  IPHASE, : ) ) == 0)  &
+        !               CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,5), IGOT_T_CONST_VALUE(IPHASE,5), T2_ALL(IPHASE,:),Mdims%cv_nonods)
+        !           IF( SUM(  WIC_T2_BC_ALL( :, IPHASE, : ) ) == 0)  &
+        !               CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,6), IGOT_T_CONST_VALUE(IPHASE,6), T2OLD_ALL(IPHASE,:),Mdims%cv_nonods)
+        !       ENDIF
+        !   END DO
 
           NFIELD=0
           DO IFI=1,size(IGOT_T_PACK,2)
@@ -1398,13 +1401,6 @@ contains
                                           LOC_NU, LOC2_NU, NUGI_ALL, UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .true. )
                                   end if
                               ENDIF
-                              !Obtain income for cv_nodj
-                              !When NDOTQ == 0, INCOME_J has to be 1 as well, not 0
-                              WHERE ( NDOTQ <= 0. )
-                                  INCOME_J = 0.
-                              ELSE WHERE
-                                  INCOME_J = 1.
-                              END WHERE
                               !Calculate the courant number for porous media
                               !SPRINT_TO_DO Currently if temperature/Concentration multiphase we are doing this more than once...
                               if (present(Courant_number) .and. is_porous_media.and. .not. on_domain_boundary) then
@@ -1502,7 +1498,14 @@ contains
                               ! Generate some local F variables ***************
                               CALL UNPACK_LOC_ALL( LIMF, LIMT, LIMTOLD, LIMD, LIMDOLD, LIMT2, LIMT2OLD,&
                                             IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE, use_volume_frac_T2, final_phase)
-
+!Use normal values instead of limited for everything excepting the tracer
+LIMTOLD=LOC_TOLD_I*(1.0-INCOME) + LOC_TOLD_J*INCOME
+LIMD=LOC_DEN_I*(1.0-INCOME) + LOC_DEN_J*INCOME
+LIMDOLD=LOC_DENOLD_I*(1.0-INCOME) + LOC_DENOLD_J * INCOME
+if (use_volume_frac_T2) then 
+    LIMT2=LOC_T2_I*(1.0-INCOME) + LOC_T2_J*INCOME
+    LIMT2OLD=LOC_T2OLD_I*(1.0-INCOME) + LOC_T2OLD_J*INCOME
+end if
                               IF(GETCT.AND.RETRIEVE_SOLID_CTY) THEN
                                   NDOTQ_HAT = 0.0
                                   DO U_KLOC = 1, Mdims%u_nloc
@@ -1673,7 +1676,7 @@ contains
                                         if (VAD_activated) LOC_MAT_IJ = LOC_MAT_IJ - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         !Assemble off-diagonal cv_nodj-cv_nodi, integrate the other CV side contribution (the sign is changed)...
                                         if(integrate_other_side_and_not_boundary) then
-                                          LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME_J * LIMD! Advection
+                                          LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * (1. - INCOME) * LIMD! Advection
                                           if (GOT_DIFFUS) LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                           if (VAD_activated) LOC_MAT_JI = LOC_MAT_JI - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         end if
@@ -1699,7 +1702,7 @@ contains
 
                                       !Assemble diagonal of the matrix of node cv_nodj
                                       if(integrate_other_side_and_not_boundary) then
-                                        LOC_MAT_JJ = LOC_MAT_JJ -  FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME_J ) * LIMD! Advection
+                                        LOC_MAT_JJ = LOC_MAT_JJ -  FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD! Advection
                                         if (GOT_DIFFUS) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                         if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         if (.not.conservative_advection) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2_J * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
