@@ -1379,25 +1379,29 @@ contains
     end function Get_DevCapPressure
 
     !>@brief: This subroutine computed the gravity effect, i.e. rho * g
-    subroutine calculate_u_source_cv(Mdims, state, packed_state, den, u_source_cv, collapse_together,ndgln) 
+    subroutine calculate_u_source_cv(Mdims, state, packed_state, den, u_source_cv, collapse_together,ndgln, drhog_tensor, drhog_tensor2, upwnd) 
         type(state_type), dimension(:), intent(in) :: state
         type( state_type ), intent( in ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         real, dimension(:,:), intent(in) :: den
         real, dimension(:,:,:), intent(inout) :: u_source_cv
         logical, optional, intent(in) :: collapse_together
+        
         !Local variables
         type(tensor_field), pointer :: sat_field
         type(vector_field), pointer :: gravity_direction
         real, dimension(Mdims%ndim) :: g
         logical :: have_gravity, high_order_Ph, use_potential
         real :: gravity_magnitude
-        integer :: idim, iphase, nod, stat, start_phase
+        integer :: idim, iphase, nod, stat, start_phase, cv_loc, imat
         real :: auxR
 
         type( vector_field ), pointer :: p_position
         integer :: ele, CV_ILOC, X_NODI, CV_NODI
         type(multi_ndgln), optional, intent(in) :: ndgln
+        type(tensor_field), optional, intent(inout) :: drhog_tensor
+        type(tensor_field), optional, intent(inout) :: drhog_tensor2
+        type (porous_adv_coefs), optional, intent(inout) :: upwnd
 
         use_potential = compute_compaction
 
@@ -1418,24 +1422,40 @@ contains
             sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
             !This is to put all the gravity contribution in the first phase
             if (use_potential) then
-              ! do nod = 1, Mdims%cv_nonods
-              !   g = node_val( gravity_direction, nod ) * gravity_magnitude
-              !   do idim = 1, Mdims%ndim
-              !     u_source_cv( idim, 1, nod ) = (den( 1, nod )- den( 2, nod ) )* sat_field%val(1, 1, nod) * g( idim )
-              !   end do
-              ! end do
+              if (present(drhog_tensor)) then 
+                do ele = 1, Mdims%totele
+                  do cv_iloc = 1, Mdims%cv_nloc
+                      imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+                      cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
 
-              p_position=>extract_vector_field(packed_state,"PressureCoordinate")
-              do ele = 1, Mdims%totele
-                DO CV_ILOC = 1, Mdims%cv_nloc
-                    X_NODI = ndgln%x( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                    CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                    g = node_val( gravity_direction, CV_NODI ) * gravity_magnitude
-                    do idim = 1, Mdims%ndim
-                      u_source_cv( idim, 1, CV_NODI ) = (den( 1, CV_NODI )- den( 2, CV_NODI ) )* sat_field%val(1, 1, CV_NODI) * g( idim ) 
-                    end do 
+                      g = node_val( gravity_direction, cv_loc ) * gravity_magnitude
+                      do idim = 1, Mdims%ndim
+                        u_source_cv( idim, 1, cv_loc ) = -(den( 1, cv_loc )- den( 2, cv_loc ) )* sat_field%val(1, 2, cv_loc) * g( idim )       
+                        drhog_tensor%val(idim, 1, cv_loc)  =  (den( 1, cv_loc )- den( 2, cv_loc ) )* sat_field%val(1, 2, cv_loc) * g( idim )/ upwnd%adv_coef(1,1,2,imat) 
+                        drhog_tensor2%val(idim, 1, cv_loc) =  (den( 1, cv_loc )- den( 2, cv_loc ) )* g( idim )/ upwnd%adv_coef(1,1,2,imat)          
+                      end do 
+                  end do  
                 end do
-              end do              !
+              else
+                do nod = 1, Mdims%cv_nonods
+                  g = node_val( gravity_direction, nod ) * gravity_magnitude
+                  do idim = 1, Mdims%ndim
+                    u_source_cv( idim, 1, nod ) = (den( 1, nod )- den( 2, nod ) )* sat_field%val(1, 1, nod) * g( idim )
+                  end do
+                end do
+            end if
+
+              ! p_position=>extract_vector_field(packed_state,"PressureCoordinate")
+              ! do ele = 1, Mdims%totele
+              !   DO CV_ILOC = 1, Mdims%cv_nloc
+              !       X_NODI = ndgln%x( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+              !       CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+              !       g = node_val( gravity_direction, CV_NODI ) * gravity_magnitude
+              !       do idim = 1, Mdims%ndim
+              !         u_source_cv( idim, 1, CV_NODI ) = (den( 1, CV_NODI )- den( 2, CV_NODI ) )* sat_field%val(1, 1, CV_NODI) * g( idim ) 
+              !       end do 
+              !   end do
+              ! end do              !
            else
               do nod = 1, Mdims%cv_nonods
                 g = node_val( gravity_direction, nod ) * gravity_magnitude
@@ -1890,7 +1910,7 @@ contains
                             !Saturation scaling of viscosity
 !For testing rescaling of viscosity with the saturation
 if (is_magma) then
-momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion( :, :, iphase, mat_nod ) * max(saturation2%val(cv_nod), 1e-6)!Ensure that it does not dissapear
+momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion( :, :, iphase, mat_nod ) * max(saturation2%val(cv_nod), 1e-7)!Ensure that it does not dissapear
 ! momentum_diffusion2%val(1, 1, iphase, mat_nod)  = momentum_diffusion2%val(1, 1, iphase, mat_nod) * max(saturation%val(cv_nod), 1e-5)!Ensure that it does not dissapear
 end if
                           else

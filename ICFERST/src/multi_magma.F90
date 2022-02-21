@@ -151,7 +151,8 @@ contains
         end if
       end do
     end if
-    series(N)=2*series(N-1)-series(N-2)
+
+    series(1)=series(2)
   end subroutine magma_Coupling_generate
 
 
@@ -370,7 +371,7 @@ contains
   !real, dimension(Mdims%cv_nonods) :: enthalpy_dim
   real :: fx, fdashx, Loc_Cp, rho
   !Parameters for the non_linear solvers (Maybe a newton solver here makes sense?)
-  real, parameter :: phi_min = 1e-6 !Need to be at least 1e-5 to obtain a relative stable result
+  real, parameter :: phi_min = 1e-7 !Need to be at least 1e-5 to obtain a relative stable result
   integer, parameter :: max_its = 25
   !!
   integer :: CV_ILOC, cv_nodi
@@ -433,8 +434,8 @@ contains
             end do
           end if
         end if
-        saturation%val(1,2, cv_nodi)=max(test_poro, phi_min)
-        saturation%val(1,1, cv_nodi)=min(1-test_poro, 1-phi_min)
+        saturation%val(1,2, cv_nodi)=max(test_poro, 0.)
+        saturation%val(1,1, cv_nodi)=min(1-test_poro, 1.)
       END IF
     end do
   end subroutine
@@ -455,7 +456,10 @@ contains
     real :: magma_coupling, phi
     integer:: c_phi_size ! length of c_phi_series
     real, dimension(4):: test
+    real :: max_absorp
     c_phi_size=size(c_phi_series)
+    
+    max_absorp=1e-8/phi2_over_c(1e-8)
     DO ELE = 1, Mdims%totele
       DO CV_ILOC = 1, Mdims%cv_nloc
         mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
@@ -463,7 +467,7 @@ contains
         ! phi = max((1.0-saturation(1,1, cv_inod)),1e-5)
         phi =saturation(1,2, cv_inod)
         do iphase =2, Mdims%nphase!Absorption is defined as a term mutiplying the velocity term, not the pressure
-          Magma_absorp(1, 1, iphase, mat_nod) = phi/phi2_over_c(saturation(1,iphase, cv_inod))
+          Magma_absorp(1, 1, iphase, mat_nod) = min(phi/phi2_over_c(saturation(1,iphase, cv_inod)),max_absorp)
         end Do
       end DO
     end DO
