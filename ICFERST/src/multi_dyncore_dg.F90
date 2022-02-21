@@ -4352,7 +4352,7 @@ end if
         ! Local Variables
         ! This is for decifering WIC_U_BC & WIC_P_BC
         LOGICAL, PARAMETER :: VOL_ELE_INT_PRES = .TRUE.
-        logical :: STAB_VISC_WITH_ABS=.true.
+        logical :: STAB_VISC_WITH_ABS=.false.
         LOGICAL :: STRESS_FORM, STRESS_FORM_STAB, THERMAL_STAB_VISC, THERMAL_LES_VISC, THERMAL_FLUID_VISC, Q_SCHEME
         ! if STAB_VISC_WITH_ABS then stabilize (in the projection mehtod) the viscosity using absorption.
         REAL, PARAMETER :: WITH_NONLIN = 1.0, TOLER = 1.E-10
@@ -4371,6 +4371,8 @@ end if
         LOGICAL, PARAMETER :: solid_implicit_lump=.false.     ! lump the viscocity within the element and thus only have diagonal contributions (take abs val)
         LOGICAL, PARAMETER :: solid_visc_ele_imp_stab=.false. ! treat implicitly inside an element for the projection method (suggest =.false., but may be more atable=.true.).
         LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false.   ! treat implicitly between elements.
+        LOGICAL, PARAMETER :: solid_visc_diag_imp=.true.      ! only add diagonal viscous stabilising term
+        REAL :: DX2 ! element diameter dx ** 2. this is approximated with element volume, to be used in sigmagi_stab
         ! re-calculate Mmat%C matrix...
         LOGICAL :: got_c_matrix
         INTEGER, DIMENSION( :, : ), allocatable ::  FACE_ELE
@@ -4624,7 +4626,7 @@ end if
 
 
         ! report solid iimplicitness options
-        ewrite(3, *) 'implicitness option 1 2 3 ?:', solid_visc_ele_imp, solid_visc_ele_imp_stab, solid_visc_sufele_imp
+        ewrite(3, *) 'implicitness option 1 lump 2 3 ?:', solid_visc_ele_imp, solid_implicit_lump, solid_visc_ele_imp_stab, solid_visc_sufele_imp
         !JXiang
 !        ALLOCATE(TEN_VOL_RATIO,Mdims%totele)
         ALLOCATE(UDIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
@@ -5431,6 +5433,22 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                         END DO
                     END DO
                 ENDIF
+                ! a diagonal viscous stabilisation term for solid implicit solver
+                if (solid_implicit .and. solid_visc_diag_imp .and. sigma%val(ele).GT.0.5) then 
+                    ! APPROXIMATE element diameter ** 2. suppose it's regular triangle or tetrahedron.
+                    if (Mdims%ndim.eq.3) then 
+                        DX2 = (Devfuns%volume*12./sqrt(2.))**(2./3.) 
+                    ELSEIF (Mdims%ndim.eq.2) then 
+                        DX2 = (Devfuns%volume*4./sqrt(3.))
+                    ENDIF
+                    DO IDIM=1,Mdims%ndim 
+                        DO IPHASE=1,Mdims%nphase 
+                            I=IDIM+(IPHASE-1)*Mdims%ndim 
+                            LOC_U_ABS_STAB( I, I, MAT_ILOC ) = LOC_U_ABS_STAB( I, I, MAT_ILOC ) + &
+                                UDIFFUSION_ALL( IDIM, IDIM, IPHASE, MAT_INOD) / DX2 
+                        ENDDO
+                    ENDDO
+                endif
                 IF ( GOT_DIFFUS ) THEN
                     LOC_UDIFFUSION( :, :, :, MAT_ILOC ) = UDIFFUSION_ALL( :, :, :, MAT_INOD )
                     LOC_UDIFFUSION_VOL( :, MAT_ILOC ) = UDIFFUSION_VOL_ALL( :, MAT_INOD )
@@ -5931,7 +5949,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                               
                                                 DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
                                                     = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
-                                                    + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
+                                                    + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) 
                                                 if(solid_implicit) then ! add in the force from the solids.
                                                     if(solid_visc_ele_imp) then
                                                         if(solid_implicit_lump) then
@@ -5964,7 +5982,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                     +  w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! &
                                             END IF
                                             RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
-                                                STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )  + &
+                                                STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )  
                                         END DO
                                     END DO
                                 END DO
