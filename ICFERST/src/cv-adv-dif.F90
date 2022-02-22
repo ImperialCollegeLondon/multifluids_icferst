@@ -6379,13 +6379,13 @@ end if
                 REAL RMATPSI
                 REAL, DIMENSION(NFIELD, TOTELE)::MINPSI, MAXPSI
 
-                ! if ( bound ) then!In theory no need to bound again...
+                if ( bound ) then!In theory no need to bound again...
 
-                !     ! find the max and min local to each element...
-                !     CALL MINMAXELEWIC( PSI_ALL,NONODS,NLOC,TOTELE,NDGLNO, &
-                !         &     FINDRM,COLM,NCOLM,&
-                !         &     MINPSI,MAXPSI )
-                ! end if
+                    ! find the max and min local to each element...
+                    CALL MINMAXELEWIC( PSI_ALL,NONODS,NLOC,TOTELE,NDGLNO, &
+                        &     FINDRM,COLM,NCOLM,&
+                        &     MINPSI,MAXPSI )
+                end if
                 do NOD = 1, NONODS
                     do COUNT=FINDRM(NOD),FINDRM(NOD+1)-1
                         IF(NOD.NE.COLM(COUNT)) THEN
@@ -6401,13 +6401,13 @@ end if
                                     +(1./FRALINE)*(RMATPSI   -PSI_ALL(IFIELD,NOD))
 
                                 ! make locally bounded...
-                                ! if ( bound ) then
-                                !     MATPSI_ALL(IFIELD, COUNT)   &
-                                !         =MAX(MIN(RMATPSI,   MAXPSI(IFIELD, ELEWIC)),   &
-                                !         &                            MINPSI(IFIELD, ELEWIC))
-                                ! else
+                                if ( bound ) then
+                                    MATPSI_ALL(IFIELD, COUNT)   &
+                                        =MAX(MIN(RMATPSI,   MAXPSI(IFIELD, ELEWIC)),   &
+                                        &                            MINPSI(IFIELD, ELEWIC))
+                                else
                                     MATPSI_ALL(IFIELD, COUNT)   =RMATPSI!In theory already bounded
-                                ! end if
+                                end if
                             END DO
                         END IF
                     END DO
