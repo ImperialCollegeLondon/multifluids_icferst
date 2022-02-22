@@ -1180,8 +1180,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
              !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
              Auto_max_backtrack = (backtrack_par_factor == -10)
-             !Retrieve number of saturation fixed point iterations from diamond, by default 9
-             call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
+             !Retrieve number of saturation fixed point iterations from diamond, by default 3 if Courant_number<=1, 9 otherwise
+             if (Courant_number(1) <= 1) then
+                 call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 3)
+             else
+                 call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
+             end if
              ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
              GET_THETA_FLUX = .FALSE.
              !####Create dummy variables required for_cv_assemb with no memory usage ####
