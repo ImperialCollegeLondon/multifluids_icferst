@@ -64,7 +64,6 @@ module cv_advection
         module procedure PACK_LOC_ALL1
         module procedure PACK_LOC_ALL2
         module procedure PACK_LOC_ALL3
-        module procedure PACK_LOC_ALL4   
     end interface PACK_LOC_ALL
 
 #include "petsc_legacy.h"
@@ -296,7 +295,7 @@ contains
           logical, PARAMETER :: integrate_other_side= .true.
           ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
           logical, PARAMETER :: correct_method_petrov_method= .true.
-          LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE, high_order_theta 
+          LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE, high_order_theta
           logical :: skip, GOT_T2, use_volume_frac_T2, FEM_continuity_equation, logical_igot_theta_flux, zero_vel_BC
           ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
           ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
@@ -368,7 +367,7 @@ contains
                                                               LOC_FEMT2OLD, LOC2_FEMT2OLD
           ! nphase Variables:
           real, dimension(final_phase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, NDOTQNEW, LIMT2OLD, LIMDTOLD, &
-              INCOMEOLD, NDOTQOLD, LIMT2, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, LIMDTT2OLD, FVT, FVT2, FVD, LIMD, LIMDT, LIMDTT2
+              INCOMEOLD, NDOTQOLD, LIMT2, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, LIMDTT2OLD, FVT, FVT2, FVD, LIMD, LIMDT, LIMDTT2, INCOME_J
           real, dimension(final_phase, Mdims%cv_nonods) :: FEMT_ALL, FEMTOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL
           REAL, DIMENSION( Mdims%ndim, final_phase, Mdims%cv_nloc, Mdims%totele ) :: DTX_ELE_ALL, DTOLDX_ELE_ALL
           REAL , DIMENSION( Mdims%ndim, final_phase ) :: NUGI_ALL, NUOLDGI_ALL
@@ -510,7 +509,7 @@ contains
           end if
 
           call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
-          !Just to speedup the checks we use a logical
+
           high_order_theta = CV_DISOPT>=8
           !#################SET WORKING VARIABLES#################
 
@@ -679,29 +678,26 @@ contains
           !     IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
           !         CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,1), IGOT_T_CONST_VALUE(IPHASE,1), T_ALL(IPHASE,:),Mdims%cv_nonods)
           ! END DO
-          !Only limiters for the tracer
-          IGOT_T_CONST(:,2:4) = .true.
-          IF(use_volume_frac_t2)  IGOT_T_CONST(:,5:6) =.true.
-        !   DO IPHASE=1,final_phase
-            !   IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
-            !       CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,2), IGOT_T_CONST_VALUE(IPHASE,2), TOLD_ALL(IPHASE,:),Mdims%cv_nonods)
-        !   END DO
-        !   DO IPHASE=1,final_phase
-        !       IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
-        !           CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,3), IGOT_T_CONST_VALUE(IPHASE,3), DEN_ALL(IPHASE,:),Mdims%cv_nonods)
-        !   END DO
-        !   DO IPHASE=1,final_phase
-        !       IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
-        !           CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,4), IGOT_T_CONST_VALUE(IPHASE,4), DENOLD_ALL(IPHASE,:),Mdims%cv_nonods)
-        !   END DO
-        !   DO IPHASE=1,final_phase
-        !       IF(use_volume_frac_t2) THEN
-        !           IF( SUM(  WIC_T2_BC_ALL(:,  IPHASE, : ) ) == 0)  &
-        !               CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,5), IGOT_T_CONST_VALUE(IPHASE,5), T2_ALL(IPHASE,:),Mdims%cv_nonods)
-        !           IF( SUM(  WIC_T2_BC_ALL( :, IPHASE, : ) ) == 0)  &
-        !               CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,6), IGOT_T_CONST_VALUE(IPHASE,6), T2OLD_ALL(IPHASE,:),Mdims%cv_nonods)
-        !       ENDIF
-        !   END DO
+          ! DO IPHASE=1,final_phase
+          !     IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
+          !         CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,2), IGOT_T_CONST_VALUE(IPHASE,2), TOLD_ALL(IPHASE,:),Mdims%cv_nonods)
+          ! END DO
+          DO IPHASE=1,final_phase
+              IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
+                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,3), IGOT_T_CONST_VALUE(IPHASE,3), DEN_ALL(IPHASE,:),Mdims%cv_nonods)
+          END DO
+          DO IPHASE=1,final_phase
+              IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
+                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,4), IGOT_T_CONST_VALUE(IPHASE,4), DENOLD_ALL(IPHASE,:),Mdims%cv_nonods)
+          END DO
+          DO IPHASE=1,final_phase
+              IF(use_volume_frac_t2) THEN
+                  IF( SUM(  WIC_T2_BC_ALL(:,  IPHASE, : ) ) == 0)  &
+                      CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,5), IGOT_T_CONST_VALUE(IPHASE,5), T2_ALL(IPHASE,:),Mdims%cv_nonods)
+                  IF( SUM(  WIC_T2_BC_ALL( :, IPHASE, : ) ) == 0)  &
+                      CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,6), IGOT_T_CONST_VALUE(IPHASE,6), T2OLD_ALL(IPHASE,:),Mdims%cv_nonods)
+              ENDIF
+          END DO
 
           NFIELD=0
           DO IFI=1,size(IGOT_T_PACK,2)
@@ -828,7 +824,6 @@ contains
           end do
           psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
           psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
-          !For porous media we don't need to call this but 
           call PROJ_CV_TO_FEM(packed_state, &!For porous media we are just pointing memory from PSI to FEMPSI
               FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &!we need to get rid of all of this... check if for inertia is there any gain at all
               Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
@@ -1213,20 +1208,20 @@ contains
                                       EXIT
                                   END IF
                               END DO
-                              ! Generate some local F variables ***************
+                               ! Generate some local F variables ***************
 
-                            !   IPT=1; F_CV_NODJ = 0.
-                            !   CALL PACK_LOC( F_CV_NODJ, LOC_T_J,    final_phase, IPT, IGOT_T_PACK(:,1) )
-                            !   CALL PACK_LOC( F_CV_NODJ, LOC_TOLD_J, final_phase, IPT, IGOT_T_PACK(:,2) )
-                            !   CALL PACK_LOC( F_CV_NODJ, LOC_DEN_J,  final_phase, IPT, IGOT_T_PACK(:,3) )
-                            !   CALL PACK_LOC( F_CV_NODJ,LOC_DENOLD_J,final_phase, IPT, IGOT_T_PACK(:,4) )
-                            !   IF(use_volume_frac_T2) THEN
-                            !       CALL PACK_LOC( F_CV_NODJ, LOC_T2_J,    final_phase, IPT, IGOT_T_PACK(:,5) )
-                            !       CALL PACK_LOC( F_CV_NODJ, LOC_T2OLD_J, final_phase, IPT, IGOT_T_PACK(:,6) )
-                            !   ENDIF PACK_LOC_ALL4
+                              IPT=1; F_CV_NODJ = 0.
+                              CALL PACK_LOC( F_CV_NODJ, LOC_T_J,    final_phase, IPT, IGOT_T_PACK(:,1) )
+                              CALL PACK_LOC( F_CV_NODJ, LOC_TOLD_J, final_phase, IPT, IGOT_T_PACK(:,2) )
+                              CALL PACK_LOC( F_CV_NODJ, LOC_DEN_J,  final_phase, IPT, IGOT_T_PACK(:,3) )
+                              CALL PACK_LOC( F_CV_NODJ,LOC_DENOLD_J,final_phase, IPT, IGOT_T_PACK(:,4) )
+                              IF(use_volume_frac_T2) THEN
+                                  CALL PACK_LOC( F_CV_NODJ, LOC_T2_J,    final_phase, IPT, IGOT_T_PACK(:,5) )
+                                  CALL PACK_LOC( F_CV_NODJ, LOC_T2OLD_J, final_phase, IPT, IGOT_T_PACK(:,6) )
+                              ENDIF
                               !Compact alternative that for some reason is messing up the memory... (it is doing the same!!!)
-                              call PACK_LOC_ALL( F_CV_NODJ, LOC_T_J, LOC_TOLD_J, LOC_DEN_J, LOC_DENOLD_J, &
-                                LOC_T2_J, LOC_T2OLD_J, IGOT_T_PACK, use_volume_frac_T2, 1, final_phase )
+                              ! call PACK_LOC_ALL( F_CV_NODJ, LOC_T_J, LOC_TOLD_J, LOC_DEN_J, LOC_DENOLD_J, &
+                              !   LOC_T2_J, LOC_T2OLD_J, IGOT_T_PACK, use_volume_frac_T2, final_phase )
 
                               ! local surface information***********
                               IF( between_elements .or. on_domain_boundary ) THEN
@@ -1252,9 +1247,27 @@ contains
                               IF( on_domain_boundary ) THEN
                                   ! bcs:
                                   ! What type of b.c's -integer
-                                  call PACK_LOC_ALL( SELE_LOC_WIC_F_BC, WIC_T_BC_ALL, WIC_T_BC_ALL, &
-                                    WIC_D_BC_ALL, WIC_D_BC_ALL, WIC_T2_BC_ALL, WIC_T2_BC_ALL, &
-                                    IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, sele )
+                                  !             BCZERO=1.0-INCOME
+                                  ! What type of b.c's -integer
+                                  IPT=1
+                                  CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_T_BC_ALL( : , : , SELE ),&
+                                      final_phase, IPT, IGOT_T_PACK( :,1) )
+                                  CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_T_BC_ALL( : , :, SELE ),&
+                                      final_phase, IPT, IGOT_T_PACK( :,2) )
+                                  CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_D_BC_ALL( :,:, SELE ),&
+                                      final_phase, IPT, IGOT_T_PACK( :,3) )
+                                  CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_D_BC_ALL( :,:, SELE ),&
+                                      final_phase, IPT, IGOT_T_PACK( :,4) )
+                                  IF(use_volume_frac_T2) THEN
+                                      CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_T2_BC_ALL( : , :, SELE ),&
+                                          final_phase, IPT, IGOT_T_PACK( :,5) )
+                                      CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_T2_BC_ALL( : , : , SELE ),&
+                                          final_phase, IPT, IGOT_T_PACK( :,6) )
+                                  ENDIF
+                                  !Sprint_to_do This PACK_LOC_ALL should be working... but it affects the memory for some tests cases
+                                  ! call PACK_LOC_ALL( SELE_LOC_WIC_F_BC, WIC_T_BC_ALL(1,:,:), WIC_T_BC_ALL(1,:,:), &
+                                  !   WIC_D_BC_ALL(1,:,:), WIC_D_BC_ALL(1,:,:), WIC_T2_BC_ALL(1,:,:), WIC_T2_BC_ALL(1,:,:), &
+                                  !   IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase, sele )
                                   ! The b.c's values:
                                   DO CV_SKLOC=1,Mdims%cv_snloc
                                       call PACK_LOC_ALL( SLOC_SUF_F_BC( :, CV_SKLOC ), &
@@ -1265,12 +1278,29 @@ contains
                               ENDIF ! IF( on_domain_boundary ) THEN
                               ! limiting VALUES*************:
                               !Sprint_to_do This PACK_LOC_ALL2 should be working... but it affects the memory for some tests cases
-                              call PACK_LOC_ALL( FUPWIND_IN, TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, &
-                                DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
-                                IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, count_in )
-                              call PACK_LOC_ALL( FUPWIND_OUT, TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, &
-                                DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
-                                IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, COUNT_OUT )
+                              IPT_IN =1
+                              IPT_OUT=1
+                              CALL PACK_LOC( FUPWIND_IN( : ),  TUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,1) )
+                              CALL PACK_LOC( FUPWIND_OUT( : ), TUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,1) )
+                              CALL PACK_LOC( FUPWIND_IN( : ),  TOLDUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,2) )
+                              CALL PACK_LOC( FUPWIND_OUT( : ), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,2) )
+                              CALL PACK_LOC( FUPWIND_IN( : ),  DENUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,3) )
+                              CALL PACK_LOC( FUPWIND_OUT( : ), DENUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,3) )
+                              CALL PACK_LOC( FUPWIND_IN( : ),  DENOLDUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,4) )
+                              CALL PACK_LOC( FUPWIND_OUT( : ), DENOLDUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,4) )
+                              IF(use_volume_frac_T2) THEN
+                                  CALL PACK_LOC( FUPWIND_IN( : ),  T2UPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,5) )
+                                  CALL PACK_LOC( FUPWIND_OUT( : ), T2UPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,5) )
+                                  CALL PACK_LOC( FUPWIND_IN( : ),  T2OLDUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,6) )
+                                  CALL PACK_LOC( FUPWIND_OUT( : ), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,6) )
+                              ENDIF
+                              !Sprint_to_do This PACK_LOC_ALL should be working... but it affects the memory for some tests cases
+                              ! call PACK_LOC_ALL( FUPWIND_IN, TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, &
+                              !   DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
+                              !   IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, count_in )
+                              ! call PACK_LOC_ALL( FUPWIND_OUT, TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, &
+                              !   DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
+                              !   IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, COUNT_OUT )
 
 
 
@@ -1498,14 +1528,14 @@ contains
                               ! Generate some local F variables ***************
                               CALL UNPACK_LOC_ALL( LIMF, LIMT, LIMTOLD, LIMD, LIMDOLD, LIMT2, LIMT2OLD,&
                                             IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE, use_volume_frac_T2, final_phase)
-!Use normal values instead of limited for everything excepting the tracer
-LIMTOLD=LOC_TOLD_I*(1.0-INCOME) + LOC_TOLD_J*INCOME
-LIMD=LOC_DEN_I*(1.0-INCOME) + LOC_DEN_J*INCOME
-LIMDOLD=LOC_DENOLD_I*(1.0-INCOME) + LOC_DENOLD_J * INCOME
-if (use_volume_frac_T2) then 
-    LIMT2=LOC_T2_I*(1.0-INCOME) + LOC_T2_J*INCOME
-    LIMT2OLD=LOC_T2OLD_I*(1.0-INCOME) + LOC_T2OLD_J*INCOME
-end if
+
+!LIMTOLD=LOC_TOLD_I*(1.0-INCOME) + LOC_TOLD_J*INCOME
+!LIMD=LOC_DEN_I*(1.0-INCOME) + LOC_DEN_J*INCOME
+!LIMDOLD=LOC_DENOLD_I*(1.0-INCOME) + LOC_DENOLD_J * INCOME
+!if (use_volume_frac_T2) then 
+!    LIMT2=LOC_T2_I*(1.0-INCOME) + LOC_T2_J*INCOME
+!    LIMT2OLD=LOC_T2OLD_I*(1.0-INCOME) + LOC_T2OLD_J*INCOME
+!end if
                               IF(GETCT.AND.RETRIEVE_SOLID_CTY) THEN
                                   NDOTQ_HAT = 0.0
                                   DO U_KLOC = 1, Mdims%u_nloc
@@ -1640,15 +1670,15 @@ end if
 
                               Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
                                   ! Obtain the CV discretised advection/diffusion equations
-                                IF( on_domain_boundary ) then
-                                    where ( WIC_T_BC_ALL(1,:,SELE) == WIC_T_BC_ROBIN )
-                                        !Robin 1 contains the value of the field outside the domain times the coefficient.
-                                        !This is also used for Neumann to impose a fixed flux
-                                        ROBIN1 = SUF_T_BC_ROB1_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
-                                        ROBIN2 = SUF_T_BC_ROB2_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
+                                  IF( on_domain_boundary ) then
+                                      where ( WIC_T_BC_ALL(1,:,SELE) == WIC_T_BC_ROBIN )
+                                          !Robin 1 contains the value of the field outside the domain times the coefficient.
+                                          !This is also used for Neumann to impose a fixed flux
+                                          ROBIN1 = SUF_T_BC_ROB1_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
+                                          ROBIN2 = SUF_T_BC_ROB2_ALL(1,1:final_phase, CV_SILOC+Mdims%cv_snloc*(sele-1))
                                     else where
                                         ROBIN1=0.0; ROBIN2=0.0
-                                    end where
+                                      end where
                                   END IF
                                   LOC_CV_RHS_I=0.0; LOC_MAT_II =0.
                                   LOC_CV_RHS_J=0.0; LOC_MAT_JJ =0.
@@ -2939,7 +2969,7 @@ end if
                 IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
                   DO iv_iphase = 1,final_phase
                         !(vel * shape_functions)/sigma
-                        if (is_P0DGP1) then
+                        if (is_P0DGP1) then 
                             UDGI_ALL(:, iv_iphase) = upwnd%inv_adv_coef(1,1,iv_iphase,MAT_NODI)* matmul(perm%val(:,:,ele),&
                                 LOC_NU( :, iv_iphase, 1 ) )
                         else
@@ -3043,7 +3073,7 @@ end if
                         memory_limiters(4*final_phase + 1:final_phase*5), memory_limiters(5*final_phase + 1:final_phase*6) )
                     abs_tilde  = 0.5*(upwnd%adv_coef(1,1,1:final_phase, MAT_NODI)  + ( LIMT3  - LOC_T_I  ) * upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI) +&
                         upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ)  + ( LIMT3 - LOC_T_J  ) * upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ)  )
-
+                      
                     !Make sure the value of sigma is between bounds
                     abs_tilde = min(max(upwnd%adv_coef(1,1,1:final_phase, MAT_NODI),  upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ)), &
                         max(min(upwnd%adv_coef(1,1,1:final_phase, MAT_NODI),  upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ)),  abs_tilde ))
@@ -3272,7 +3302,7 @@ end if
                         FTHETA(IPHASE) = MAX( 0.5, 1. - 0.125 * MIN( ABS( PINVTH(IPHASE) ), ABS( QINVTH(IPHASE) )))
                     END DO
                     ! if (final_phase /= final_phase) then!for wells we impose implicit euler, the Courant number is massive anyway...
-                    !     FTHETA(final_phase + 1 : final_phase) = 1.0!<=backward euler
+                    !     FACE_THETA_MANY(final_phase + 1 : final_phase) = 1.0!<=backward euler
                     ! end if
                 ENDIF
             ENDIF
@@ -3533,43 +3563,29 @@ end if
 
         !Income is either 1 or 0, s we can halve the cost of the subroutine
         where (income > toler)
-            ! Calculate normalisation parameters for incomming velocities
-            DENOIN = ( ETDNEW_PELE - TUPWIN )
+        ! Calculate normalisation parameters for incomming velocities
+        DENOIN = ( ETDNEW_PELE - TUPWIN )
             DENOIN = sign(max( abs(DENOIN), TOLER), DENOIN)
             ! if( ABS( DENOIN ) < TOLER ) DENOIN = SIGN( TOLER, DENOIN )
-            CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
+        CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
             FTILIN = ( TDCEN - TUPWIN ) / DENOIN
             ! Velocity is going out of element
             TDLIM =   ( TUPWIN + MAX(  MIN(FTILIN, XI_LIMIT*CTILIN, 1.0), CTILIN) * DENOIN ) 
         else where 
-            ! Calculate normalisation parameters for out going velocities
-            DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
+        ! Calculate normalisation parameters for out going velocities
+        DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
             DENOOU = sign(max( abs(DENOOU), TOLER), DENOOU)
             ! if( ABS( DENOOU ) < TOLER )DENOOU = SIGN( TOLER, DENOOU )
-            CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
-            FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
+        CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
+        FTILIN = ( TDCEN - TUPWIN ) / DENOIN
+        FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
             TDLIM = ( TUPWI2 + MAX(  MIN(FTILOU, XI_LIMIT*CTILOU, 1.0), CTILOU) * DENOOU )
         end Where
         TDLIM = MAX( TDLIM, 0.0 )
-
-        ! ! Calculate normalisation parameters for incomming velocities
-        ! DENOIN = ( ETDNEW_PELE - TUPWIN )
-        ! where( ABS( DENOIN ) < TOLER )
-        !     DENOIN = SIGN( TOLER, DENOIN )
-        ! end where
-        ! CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
-        ! ! Calculate normalisation parameters for out going velocities
-        ! DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
-        ! where( ABS( DENOOU ) < TOLER )
-        !     DENOOU = SIGN( TOLER, DENOOU )
-        ! end where
-        ! CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
-        ! FTILIN = ( TDCEN - TUPWIN ) / DENOIN
-        ! FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
-        ! ! Velocity is going out of element
-        ! TDLIM =        INCOME   * ( TUPWIN + MAX(  MIN(FTILIN, XI_LIMIT*CTILIN, 1.0), CTILIN) * DENOIN ) &
-        !     + ( 1.0 - INCOME ) * ( TUPWI2 + MAX(  MIN(FTILOU, XI_LIMIT*CTILOU, 1.0), CTILOU) * DENOOU )
-        ! TDLIM = MAX( TDLIM, 0.0 )
+        ! Velocity is going out of element
+        TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW_MANY( FTILIN, CTILIN, XI_LIMIT ) * DENOIN ) &
+            + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
+        TDLIM = MAX( TDLIM, 0.0 )
         RETURN
     END SUBROUTINE ONVDLIM_ANO_MANY
 
@@ -3612,6 +3628,7 @@ end if
         LOGICAL, DIMENSION(:), intent( in ) :: IGOT_T_PACK
         REAL, DIMENSION(:), intent( in ) :: T_ALL
         REAL, DIMENSION(:), intent( inout ) :: LOC_F
+        ! local variables...
         INTEGER :: IPHASE
 
         DO IPHASE=1,nphase
@@ -3656,6 +3673,51 @@ end if
         RETURN
     END SUBROUTINE UNPACK_LOC
 
+
+    SUBROUTINE PACK_OR_UNPACK_LOC( LOC_F, T_ALL, NPHASE, NFIELD, IPT, PACK, STORE, IGOT_T )
+        ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
+        LOGICAL, intent( in ) :: STORE, PACK
+        INTEGER, intent( in ) :: NPHASE, IGOT_T, NFIELD
+        !INTEGER, intent( in ) :: GLOBAL_FACE
+        ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
+        INTEGER, intent( inout ) :: IPT
+        REAL, DIMENSION(NPHASE), intent( inout ) :: T_ALL
+        REAL, DIMENSION(NFIELD), intent( inout ) :: LOC_F
+        ! local variables...
+        LOGICAL :: IN_STORAGE
+
+        IN_STORAGE = .FALSE.
+        IF(STORE) THEN
+            ! IF STORE then look to see if in storage
+            IN_STORAGE = .FALSE.
+        ENDIF
+
+        IF(IGOT_T==1) THEN
+            IF(PACK) THEN
+                ! Pack solution into LOC_F
+                IF(.NOT.IN_STORAGE) THEN
+                    LOC_F(IPT:IPT-1+NPHASE) = T_ALL(:)
+                    IPT=IPT+NPHASE
+                ENDIF
+            ELSE
+                ! Unpack...
+                IF(STORE) THEN
+                    IF(.NOT.IN_STORAGE) THEN ! See if we are already storing limited value
+                    ENDIF
+                    ! Put LOC_F(1:NPHASE, CV_KLOC) = DEN_ALL( 1:NPHASE, CV_NODK ) into storage...
+                    !                      T_ALL = LOC_F ???
+                    IPT=IPT+NPHASE
+                ELSE
+                    ! Put LOC_F(1:NPHASE, CV_KLOC) = DEN_ALL( 1:NPHASE, CV_NODK ) into storage...
+                    T_ALL(:) = LOC_F(IPT:IPT-1+NPHASE)
+                    IPT=IPT+NPHASE
+                ENDIF
+
+            ENDIF ! ENDOF IF(PACK) THEN ELSE
+        ENDIF ! END OF IF(IGOT_T==1) THEN
+        RETURN
+    END SUBROUTINE PACK_OR_UNPACK_LOC
+
     ! Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
     ! to later on apply the limiters on all the fields at once
     !sprint_to_do Hopefully this reduces slicing
@@ -3671,160 +3733,97 @@ end if
         INTEGER :: ifield, ipt
 
         IPT=1;LOC_F = 0.!<= Extremely important to initialise LOC_F here
-        CALL PACK_LOC_int( field1,     1 )
-        CALL PACK_LOC_int( oldfield1, 2 )
-        CALL PACK_LOC_int( field2,     3 )
-        CALL PACK_LOC_int( oldfield2, 4 )
+        CALL PACK_LOC( LOC_F, field1,    nfield, IPT, IGOT_T_PACK(:,1) )
+        CALL PACK_LOC( LOC_F, oldfield1, nfield, IPT, IGOT_T_PACK(:,2) )
+        CALL PACK_LOC( LOC_F, field2,    nfield, IPT, IGOT_T_PACK(:,3) )
+        CALL PACK_LOC( LOC_F, oldfield2, nfield, IPT, IGOT_T_PACK(:,4) )
         IF(use_volume_frac_T2) THEN
-          CALL PACK_LOC_int( field3, 5 )
-          CALL PACK_LOC_int( oldfield3, 6 )
+          CALL PACK_LOC( LOC_F, field3,  nfield, IPT, IGOT_T_PACK(:,5) )
+          CALL PACK_LOC( LOC_F,oldfield3,nfield, IPT, IGOT_T_PACK(:,6) )
         ENDIF
 
-        contains 
-
-        SUBROUTINE PACK_LOC_int( T_ALL, i )
-            ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
-            IMPLICIT NONE
-            ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
-            integer, INTENT(IN) :: i
-            REAL, DIMENSION(:), intent( in ) :: T_ALL
-            DO ifield=1,nfield
-                IF(IGOT_T_PACK(ifield,i)) THEN ! Put into packing vector LOC_F
-                    LOC_F(IPT) = T_ALL(ifield)
-                    IPT=IPT+1
-                ENDIF
-            END DO
-
-            RETURN
-        END SUBROUTINE PACK_LOC_int
     END SUBROUTINE PACK_LOC_ALL1
 
 
     ! Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
     ! to later on apply the limiters on all the fields at once
-    !THIS SEEMS CURRENTLY WORSE THAN WHAT IT WAS BEFORE! BECAUSE WE ARE CALLING TWICE
+    !sprint_to_do Hopefully this reduces slicing
     SUBROUTINE PACK_LOC_ALL2( LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3,&
             IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase, nodi )
+        !This subrotuine is for fields that are bigger than final_phase - start_phase
+        !SPRINT_TO_DO THIS ONE IS NOW DEPRECATED!
+        IMPLICIT NONE
         LOGICAL, DIMENSION(:,:), intent( in ) :: IGOT_T_PACK
         REAL, DIMENSION(:,:), intent( in ) :: field1, oldfield1, field2, oldfield2, field3, oldfield3
         REAL, DIMENSION(:), intent( inout ) :: LOC_F
         logical, intent(in) :: use_volume_frac_T2
         integer, intent(in) :: start_phase, final_phase, nodi
         ! local variables...
-        INTEGER :: ipt, NPHASE, IPHASE
-        NPHASE = final_phase - start_phase + 1
+        INTEGER :: ipt, nfield
+        nfield = final_phase - start_phase + 1
 
         IPT=1; LOC_F = 0.!<= Extremely important to initialise LOC_F here
-        CALL PACK_LOC_int( field1(start_phase : final_phase, nodi),  1 )
-        CALL PACK_LOC_int( oldfield1(start_phase : final_phase, nodi),  2 )
-        CALL PACK_LOC_int( field2(start_phase : final_phase, nodi),     3 )
-        CALL PACK_LOC_int( oldfield2(start_phase : final_phase, nodi),  4 )
+        CALL PACK_LOC( LOC_F, field1(start_phase : final_phase, nodi),    nfield, IPT, IGOT_T_PACK(:,1) )
+        CALL PACK_LOC( LOC_F, oldfield1(start_phase : final_phase, nodi), nfield, IPT, IGOT_T_PACK(:,2) )
+        CALL PACK_LOC( LOC_F, field2(start_phase : final_phase, nodi),    nfield, IPT, IGOT_T_PACK(:,3) )
+        CALL PACK_LOC( LOC_F, oldfield2(start_phase : final_phase, nodi), nfield, IPT, IGOT_T_PACK(:,4) )
         IF(use_volume_frac_T2) THEN
-          CALL PACK_LOC_int( field3(start_phase : final_phase, nodi),  5 )
-          CALL PACK_LOC_int( oldfield3(start_phase : final_phase, nodi),6 )
+          CALL PACK_LOC( LOC_F, field3(start_phase : final_phase, nodi),  nfield, IPT, IGOT_T_PACK(:,5) )
+          CALL PACK_LOC( LOC_F,oldfield3(start_phase : final_phase, nodi),nfield, IPT, IGOT_T_PACK(:,6) )
         ENDIF
-
-    contains
-        SUBROUTINE PACK_LOC_int( T_ALL, i )
-            ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
-            REAL, DIMENSION(:), intent( in ) :: T_ALL
-            integer, INTENT(IN) :: i
-
-            DO IPHASE=1,nphase
-                IF(IGOT_T_PACK(IPHASE,i)) THEN ! Put into packing vector LOC_F
-                    LOC_F(IPT) = T_ALL(IPHASE)
-                    IPT=IPT+1
-                ENDIF
-            END DO
-
-            RETURN
-        END SUBROUTINE PACK_LOC_int
 
     END SUBROUTINE PACK_LOC_ALL2
 
     ! Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
     ! to later on apply the limiters on all the fields at once. This one is for integer fields
+    !sprint_to_do Hopefully this reduces slicing
     SUBROUTINE PACK_LOC_ALL3( LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3,&
             IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase, nodi )
+        !This subrotuine is for fields that are bigger than final_phase - start_phase
+        !SPRINT_TO_DO THIS ONE IS NOW DEPRECATED!
         IMPLICIT NONE
         LOGICAL, DIMENSION(:,:), intent( in ) :: IGOT_T_PACK
-        integer, DIMENSION(:,:,:), intent( in ) :: field1, oldfield1, field2, oldfield2, field3, oldfield3
+        integer, DIMENSION(:,:), intent( in ) :: field1, oldfield1, field2, oldfield2, field3, oldfield3
         integer, DIMENSION(:), intent( inout ) :: LOC_F
         logical, intent(in) :: use_volume_frac_T2
         integer, intent(in) :: start_phase, final_phase, nodi
         ! local variables...
-        INTEGER :: ipt, nphase, iphase
-        nphase = final_phase - start_phase + 1
+        INTEGER :: ipt, nfield
+        nfield = final_phase - start_phase + 1
 
         IPT=1; LOC_F = 0.!<= Extremely important to initialise LOC_F here
-        CALL I_PACK_LOC_int( field1(1,start_phase : final_phase, nodi),     1 )
-        CALL I_PACK_LOC_int( oldfield1(1,start_phase : final_phase, nodi),  2 )
-        CALL I_PACK_LOC_int( field2(1,start_phase : final_phase, nodi),     3 )
-        CALL I_PACK_LOC_int( oldfield2(1,start_phase : final_phase, nodi),  4 )
+        CALL I_PACK_LOC( LOC_F, field1(start_phase : final_phase, nodi),    nfield, IPT, IGOT_T_PACK(:,1) )
+        CALL I_PACK_LOC( LOC_F, oldfield1(start_phase : final_phase, nodi), nfield, IPT, IGOT_T_PACK(:,2) )
+        CALL I_PACK_LOC( LOC_F, field2(start_phase : final_phase, nodi),    nfield, IPT, IGOT_T_PACK(:,3) )
+        CALL I_PACK_LOC( LOC_F, oldfield2(start_phase : final_phase, nodi), nfield, IPT, IGOT_T_PACK(:,4) )
         IF(use_volume_frac_T2) THEN
-          CALL I_PACK_LOC_int( field3(1,start_phase : final_phase, nodi),   5 )
-          CALL I_PACK_LOC_int( oldfield3(1,start_phase : final_phase, nodi), 6 )
+          CALL I_PACK_LOC( LOC_F, field3(start_phase : final_phase, nodi),  nfield, IPT, IGOT_T_PACK(:,5) )
+          CALL I_PACK_LOC( LOC_F,oldfield3(start_phase : final_phase, nodi),nfield, IPT, IGOT_T_PACK(:,6) )
         ENDIF
 
       contains
-        SUBROUTINE I_PACK_LOC_int( T_ALL, i )
+        SUBROUTINE I_PACK_LOC( LOC_F, T_ALL, NPHASE, IPT, IGOT_T_PACK )
             ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
+            IMPLICIT NONE
+            INTEGER, intent( in ) :: NPHASE
             ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
-            INTEGER, DIMENSION(:), intent( in ) :: T_ALL
-            integer, INTENT(IN) :: i
+            INTEGER, intent( inout ) :: IPT
+            LOGICAL, DIMENSION(NPHASE), intent( in ) :: IGOT_T_PACK
+            INTEGER, DIMENSION(NPHASE), intent( in ) :: T_ALL
+            INTEGER, DIMENSION(:), intent( inout ) :: LOC_F
+            ! local variables...
+            INTEGER :: IPHASE
 
             DO IPHASE=1,nphase
-                IF(IGOT_T_PACK(IPHASE,i)) THEN ! Put into packing vector LOC_F
+                IF(IGOT_T_PACK(IPHASE)) THEN ! Put into packing vector LOC_F
                     LOC_F(IPT) = T_ALL(IPHASE)
                     IPT=IPT+1
                 ENDIF
             END DO
 
             RETURN
-        END SUBROUTINE I_PACK_LOC_int
+        END SUBROUTINE I_PACK_LOC
     END SUBROUTINE PACK_LOC_ALL3
-
-   ! Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
-    ! to later on apply the limiters on all the fields at once
-    SUBROUTINE PACK_LOC_ALL4( LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3,&
-        IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase )
-    IMPLICIT NONE
-    LOGICAL, DIMENSION(:,:), intent( in ) :: IGOT_T_PACK
-    REAL, DIMENSION(:), intent( in ) :: field1, oldfield1, field2, oldfield2, field3, oldfield3
-    REAL, DIMENSION(:), intent( inout ) :: LOC_F
-    logical, intent(in) :: use_volume_frac_T2
-    integer, intent(in) :: start_phase, final_phase
-    ! local variables...
-    INTEGER :: ipt, NPHASE, IPHASE
-    NPHASE = final_phase - start_phase + 1
-
-    IPT=1; LOC_F = 0.!<= Extremely important to initialise LOC_F here
-    CALL PACK_LOC_int( field1,  1 )
-    CALL PACK_LOC_int( oldfield1,  2 )
-    CALL PACK_LOC_int( field2,     3 )
-    CALL PACK_LOC_int( oldfield2,  4 )
-    IF(use_volume_frac_T2) THEN
-      CALL PACK_LOC_int( field3,  5 )
-      CALL PACK_LOC_int( oldfield3,6 )
-    ENDIF
-
-    contains
-        SUBROUTINE PACK_LOC_int( T_ALL, i )
-            ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
-            REAL, DIMENSION(:), intent( in ) :: T_ALL
-            integer, intent(in) :: i
-
-            DO IPHASE=1,nphase
-                IF(IGOT_T_PACK(IPHASE,i)) THEN ! Put into packing vector LOC_F
-                    LOC_F(IPT) = T_ALL(IPHASE)
-                    IPT=IPT+1
-                ENDIF
-            END DO
-
-            RETURN
-        END SUBROUTINE PACK_LOC_int
-
-    END SUBROUTINE PACK_LOC_ALL4
 
     SUBROUTINE I_PACK_LOC( LOC_F, T_ALL, NPHASE, IPT, IGOT_T_PACK )
         ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
@@ -3866,40 +3865,16 @@ end if
         INTEGER :: ifield, ipt
 
         IPT=1
-        CALL UNPACK_LOC_int( field1,     1)
-        CALL UNPACK_LOC_int( oldfield1,  2)
-        CALL UNPACK_LOC_int( field2,     3)
-        CALL UNPACK_LOC_int( oldfield2,  4)
+        CALL UNPACK_LOC( LOC_F, field1,    nfield, IPT, IGOT_T_PACK(:,1), IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1))
+        CALL UNPACK_LOC( LOC_F, oldfield1, nfield, IPT, IGOT_T_PACK(:,2), IGOT_T_CONST(:,2), IGOT_T_CONST_VALUE(:,2))
+        CALL UNPACK_LOC( LOC_F, field2,    nfield, IPT, IGOT_T_PACK(:,3), IGOT_T_CONST(:,3), IGOT_T_CONST_VALUE(:,3))
+        CALL UNPACK_LOC( LOC_F, oldfield2, nfield, IPT, IGOT_T_PACK(:,4), IGOT_T_CONST(:,4), IGOT_T_CONST_VALUE(:,4))
         IF ( use_volume_frac_T2 ) THEN
-          CALL UNPACK_LOC_int( field3,   5)
-          CALL UNPACK_LOC_int( oldfield3,6)
+          CALL UNPACK_LOC( LOC_F, field3,  nfield, IPT, IGOT_T_PACK(:,5), IGOT_T_CONST(:,5), IGOT_T_CONST_VALUE(:,5))
+          CALL UNPACK_LOC( LOC_F,oldfield3,nfield, IPT, IGOT_T_PACK(:,6), IGOT_T_CONST(:,6), IGOT_T_CONST_VALUE(:,6))
         else
             field3 = 1.0; oldfield3 = 1.0
         ENDIF
-
-        contains 
-        SUBROUTINE UNPACK_LOC_int( T_ALL, i)
-            ! If PACK then UNpack loc_f into T_ALL  as long at IGOT_T==1 and STORE and not already in storage.
-            IMPLICIT NONE
-            REAL, DIMENSION(:), intent( inout ) :: T_ALL
-            integer :: i
-    
-            DO ifield=1,nfield
-                IF(IGOT_T_PACK(ifield,i)) THEN
-                    T_ALL(ifield) = LOC_F(IPT)
-                    IPT=IPT+1
-                    ! if (.not.IGOT_T_CONST(ifield)) then
-                    !     !This option is not considered yet
-                    ! ENDIF
-                ELSE IF(IGOT_T_CONST(ifield,i)) THEN
-                    T_ALL(ifield) = IGOT_T_CONST_VALUE(ifield,i)
-                ELSE ! Set to 1 as last resort e.g. for T2, T2OLD
-                    T_ALL(ifield) = 1.0
-                ENDIF
-            END DO
-    
-            RETURN
-        END SUBROUTINE UNPACK_LOC_int
 
     END SUBROUTINE UNPACK_LOC_ALL
 
@@ -6380,8 +6355,8 @@ end if
                 REAL, DIMENSION(NFIELD, TOTELE)::MINPSI, MAXPSI
 
                 if ( bound ) then!In theory no need to bound again...
+                ! if ( bound ) then!In theory no need to bound again...
 
-                    ! find the max and min local to each element...
                     CALL MINMAXELEWIC( PSI_ALL,NONODS,NLOC,TOTELE,NDGLNO, &
                         &     FINDRM,COLM,NCOLM,&
                         &     MINPSI,MAXPSI )
