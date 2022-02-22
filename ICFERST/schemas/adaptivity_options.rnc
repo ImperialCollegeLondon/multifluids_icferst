@@ -403,7 +403,22 @@ hr_adaptivity =
          (
             ## Adapt period in timesteps.
             element period_in_timesteps {
-               integer
+                    (
+                       element constant {
+                       integer
+                     }|
+                     ## Python function prescribing integer input. Functions should be of the form:
+                     ## NOTE THE RESULT MUST BE AN INTEGER.
+                     ##
+                     ##  def val(t):
+                     ##     # Function code
+                     ##     return # Return value
+                     ##
+                     ##
+                     element python {
+                       python_code
+                     }
+                  )
             }|
             ## This option enables the ability to adapt the mesh based on an accumulated shock-front Courant number.
             ## The mesh will adapt within the non-linear solver to always ensure the optimal position of 
