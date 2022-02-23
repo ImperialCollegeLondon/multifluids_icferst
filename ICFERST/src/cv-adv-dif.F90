@@ -413,7 +413,8 @@ contains
           REAL, DIMENSION( final_phase ) :: wrelax, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
           REAL, DIMENSION ( Mdims%ndim,final_phase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
           type( vector_field ), pointer :: MeanPoreCV
-          real, dimension( max(Mdims%nphase, 100) *6 ) :: memory_limiters !Get biggest between maximum nunber of fields (100), or phases
+          real, dimension(:), allocatable :: DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU
+          real, dimension(final_phase) :: DENOIN_B, CTILIN_B, DENOOU_B, CTILOU_B, FTILIN_B, FTILOU_B
           !! femdem
           type( vector_field ), pointer :: delta_u_all, us_all
           type( scalar_field ), pointer :: solid_vol_fra
@@ -709,6 +710,7 @@ contains
                 END DO
             END DO
 
+            allocate (DENOIN(NFIELD), CTILIN(NFIELD), DENOOU(NFIELD), CTILOU(NFIELD), FTILIN(NFIELD), FTILOU(NFIELD))
             allocate (FXGI_ALL(Mdims%ndim,NFIELD));allocate (int_UDGI_ALL(Mdims%ndim,NFIELD))
             allocate (A_STAR_X_ALL(Mdims%ndim,NFIELD));allocate (VEC_VEL2(Mdims%ndim,NFIELD))
             allocate (courant_or_minus_one_new(NFIELD));allocate (int_XI_LIMIT(NFIELD));allocate (P_STAR(NFIELD))
@@ -2810,9 +2812,7 @@ end if
                             LIMF , FEMFGI , F_INCOME , &
                             F_CV_NODI , F_CV_NODJ ,int_XI_LIMIT ,  &
                             FUPWIND_IN , FUPWIND_OUT  , &
-                            memory_limiters(1:NFIELD), memory_limiters(NFIELD + 1:NFIELD*2),&
-                            memory_limiters(2*NFIELD + 1:NFIELD*3), memory_limiters(3*NFIELD + 1:NFIELD*4),&
-                            memory_limiters(4*NFIELD + 1:NFIELD*5), memory_limiters(5*NFIELD + 1:NFIELD*6) )
+                            DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU)
                       else !if not just get one value as it is constant
                         LIMF = F_CV_NODI
                       end if
@@ -3091,9 +3091,7 @@ end if
                      !Call the limiter to obtain the limited saturation value at the interface
                     CALL ONVDLIM_ANO_MANY( final_phase, LIMT3, FEMTGI_IPHA, INCOME, &
                         LOC_T_I, LOC_T_J,int_XI_LIMIT, TUPWIND_IN, TUPWIND_OUT, &
-                        memory_limiters(1:final_phase), memory_limiters(final_phase + 1:final_phase*2),&
-                        memory_limiters(2*final_phase + 1:final_phase*3), memory_limiters(3*final_phase + 1:final_phase*4),&
-                        memory_limiters(4*final_phase + 1:final_phase*5), memory_limiters(5*final_phase + 1:final_phase*6) )
+                        DENOIN_B, CTILIN_B, DENOOU_B, CTILOU_B, FTILIN_B, FTILOU_B)
                     abs_tilde  = 0.5*(I_adv_coef  + ( LIMT3  - LOC_T_I  ) * I_adv_coef_grad +&
                         J_adv_coef  + ( LIMT3 - LOC_T_J  ) * J_adv_coef_grad  )
                       
