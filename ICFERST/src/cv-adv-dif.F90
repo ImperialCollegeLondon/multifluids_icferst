@@ -295,7 +295,7 @@ contains
           logical, PARAMETER :: integrate_other_side= .true.
           ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
           logical, PARAMETER :: correct_method_petrov_method= .true.
-          LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE, high_order_theta
+          LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE
           logical :: skip, GOT_T2, use_volume_frac_T2, FEM_continuity_equation, logical_igot_theta_flux, zero_vel_BC
           ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
           ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
@@ -512,7 +512,6 @@ contains
 
           call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
 
-          high_order_theta = CV_DISOPT>=8
           !#################SET WORKING VARIABLES#################
 
           call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
@@ -728,7 +727,7 @@ contains
             ! This logical needs to be expanded...
             if (NFIELD>0 ) THEN
                 DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
-                IF ( high_order_theta ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
+              IF ( CV_DISOPT>=8 ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
             ENDIF
 
             ! Determine IGOT_T_PACK(IPHASE,:):
@@ -833,7 +832,7 @@ contains
             call PROJ_CV_TO_FEM(packed_state, &!For porous media we are just pointing memory from PSI to FEMPSI
                 FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &!we need to get rid of all of this... check if for inertia is there any gain at all
                 Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
-                GETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
+              IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
                 tracer,PSI_AVE, PSI_INT)
             XC_CV_ALL=0.0
             !sprint_to_do!use the pointers instead! pointer?
@@ -892,7 +891,7 @@ contains
             call PROJ_CV_TO_FEM(packed_state, &!For porous media we are just pointing memory from PSI to FEMPSI
                 FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &!we need to get rid of all of this... check if for inertia is there any gain at all
                 Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
-                GETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
+                IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
                 tracer,PSI_AVE, PSI_INT)
             XC_CV_ALL=0.0
             !sprint_to_do!use the pointers instead! pointer?
@@ -1594,13 +1593,13 @@ contains
                               IF( on_domain_boundary ) BCZERO=1.0-INCOME
                               ! Define face value of theta
                               IF ( GOT_T2 ) THEN
-                                  call FACE_THETA_MANY( FTHETA, high_order_theta, &
+                                  call FACE_THETA_MANY( FTHETA, ( CV_DISOPT>=8 ), &
                                       LOC_T_J * LOC_DEN_J * LOC_T2_J, &
                                       LOC_T_I * LOC_DEN_I * LOC_T2_I, &
                                       LOC_TOLD_J * LOC_DENOLD_J * LOC_T2OLD_J, &
                                       LOC_TOLD_I * LOC_DENOLD_I * LOC_T2OLD_I )
                               ELSE 
-                                  call FACE_THETA_MANY( FTHETA, high_order_theta, &
+                                  call FACE_THETA_MANY( FTHETA, ( CV_DISOPT>=8 ), &
                                       LOC_T_J * LOC_DEN_J, &
                                       LOC_T_I * LOC_DEN_I, &
                                       LOC_TOLD_J * LOC_DENOLD_J, &
@@ -2627,7 +2626,7 @@ end if
                         END DO ! END OF DO IFIELD=1,NFIELD
                     ELSE Conditional_CV_DISOPT_ELE2
                         ! Extrapolate a downwind value for interface tracking.
-                        DOWNWIND_EXTRAP = ( high_order_theta )
+                        DOWNWIND_EXTRAP = ( cv_disopt>=8 )
                         if (.not. is_porous_media) then 
                             DO IFIELD=1,NFIELD
                                 IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN
@@ -2750,8 +2749,8 @@ end if
                                 END DO ! ENDOF DO IFIELD=1,Mdims%nphase
                             else !For porous media obtain field at GI point
                                 FEMFGI = 0.
-                                forall (iv_iphase = 1:final_phase, iv_u_kloc = 1:Mdims%u_nloc)
-                                    FEMFGI(iv_iphase) = FEMFGI(iv_iphase) + CV_funs%scvfen(iv_u_kloc,GI)* LOC_FEMF(iv_iphase, iv_u_kloc)
+                                forall (IFIELD = 1:nfield, CV_KLOC = 1:Mdims%cv_nloc)
+                                    FEMFGI(IFIELD) = FEMFGI(IFIELD) + CV_funs%scvfen(CV_KLOC,GI)* LOC_FEMF(IFIELD, CV_KLOC)
                                 end forall
                             end if
                         ELSE  ! END OF IF( .not. between_elements ) THEN  ---DG saturation across elements
@@ -4044,7 +4043,7 @@ end if
     SUBROUTINE PROJ_CV_TO_FEM(packed_state, &
         fempsi, psi, &
         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
-        GETCT, X, mass_ele, mass_mn_pres, &
+        igetct, X, mass_ele, mass_mn_pres, &
         tracer, psi_ave, psi_int)
 
 
@@ -4061,7 +4060,7 @@ end if
         type(multi_shape_funs), intent(inout) :: CV_funs                    ! control volume shape function data
         type(multi_sparsities), intent(in) :: Mspars                        ! sparsity data
         type(multi_ndgln), intent(in) :: ndgln                              ! global numbering data
-        logical, intent(in) :: GETCT                                       ! whether to get CT matrix
+        integer, intent(in) :: igetct                                       ! whether to get CT matrix
         real, dimension(:,:), intent(in) :: X                               ! coordinates of the elements
         real, dimension(:), intent(inout) :: mass_ele                       ! finite element mass
         real, dimension(:), intent(inout) :: mass_mn_pres                   ! ??
@@ -4127,7 +4126,7 @@ end if
             call allocate(CV_funs%CV2FE,sparsity,[1,1],name="ProjectionMatrix")
             call zero(CV_funs%CV2FE)
         end if
-        if(GETCT) mass_mn_pres=0.0
+        if(igetct/=0) mass_mn_pres=0.0
 
         !---------------------------------
         ! projection
@@ -4164,7 +4163,7 @@ end if
                     end if
 
 
-                    if(GETCT) then
+                    if(igetct/=0) then
                         call PosInMat(COUNT,cv_nodi,cv_nodj,Mspars%CMC%fin,Mspars%CMC%col)
                         mass_mn_pres(COUNT) = mass_mn_pres(COUNT)+mn
                     end if

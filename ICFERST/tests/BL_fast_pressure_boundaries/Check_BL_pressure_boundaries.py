@@ -49,7 +49,7 @@ AutomaticFile = AutoFile
 AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
-showPlot = True
+showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name = 'phase1::PhaseVolumeFraction'
@@ -217,7 +217,7 @@ Passed = True
 
 if (abs(L1_norm-Tolerance_L1_NORM)/Tolerance_L1_NORM > Tol): Passed = False
 #if (abs(L2_norm-Tolerance_L2_NORM)/Tolerance_L2_NORM > Tol): Passed = False
-print (abs(L1_norm-Tolerance_L1_NORM)/Tolerance_L1_NORM)#, abs(L2_norm-Tolerance_L2_NORM)/Tolerance_L2_NORM
+#print (abs(L1_norm-Tolerance_L1_NORM)/Tolerance_L1_NORM)#, abs(L2_norm-Tolerance_L2_NORM)/Tolerance_L2_NORM
 if (Passed): 
     print('BL works OK')
 else:
