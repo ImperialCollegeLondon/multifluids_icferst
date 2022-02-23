@@ -898,28 +898,23 @@ contains
             MASS_CV         => psi_int(1)%ptr%val(1,:)
         end if
 
-
-          ! Calculate MEAN_PORE_CV
-        if (associated(MeanPoreCV%refcount)) then 
-            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-            MEAN_PORE_CV = MeanPoreCV%val !sprint_to_do This can be done better!
-        else
-          MEAN_PORE_CV = 0.0 ; SUM_CV = 0.0
-          DO ELE = 1, Mdims%totele
-              DO CV_ILOC = 1, Mdims%cv_nloc
-                  CV_INOD = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                  SUM_CV( CV_INOD ) = SUM_CV( CV_INOD ) + MASS_ELE( ELE )
-                  MEAN_PORE_CV( :, CV_INOD ) = MEAN_PORE_CV( :, CV_INOD ) + &
-                      MASS_ELE( ELE ) * VOLFRA_PORE( :, ELE )
-              END DO
+        !Store mass_CV in packed_state. Ideally we would do this somewhere else, but here we save some
+        ! Calculate MEAN_PORE_CV
+        MEAN_PORE_CV = 0.0 ; SUM_CV = 0.0
+        DO ELE = 1, Mdims%totele
+          DO CV_ILOC = 1, Mdims%cv_nloc
+            CV_INOD = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+            SUM_CV( CV_INOD ) = SUM_CV( CV_INOD ) + MASS_ELE( ELE )
+            MEAN_PORE_CV( :, CV_INOD ) = MEAN_PORE_CV( :, CV_INOD ) + &
+            MASS_ELE( ELE ) * VOLFRA_PORE( :, ELE )
           END DO
-          DO IPRES = 1, Mdims%npres
-              MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
-          END DO
-
-          MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-          MeanPoreCV%val=MEAN_PORE_CV
-        end if
+        END DO
+        DO IPRES = 1, Mdims%npres
+          MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
+        END DO
+        MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+        MeanPoreCV%val=MEAN_PORE_CV
+        
           ALLOCATE( T2UPWIND_MAT_ALL( 1*i_use_volume_frac_t2:final_phase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( 1*i_use_volume_frac_t2:final_phase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
           if (activate_limiters) then
             IF ( CV_DISOPT < 5 ) THEN

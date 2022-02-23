@@ -850,6 +850,7 @@ contains
             call deallocate(element_shape)
             element_mesh=>extract_mesh(packed_state,'P0DG')
         end if
+
         if(has_scalar_field(state(1),"Longitudinal_Dispersivity")) then
             ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
             element_mesh=>ldfield%mesh

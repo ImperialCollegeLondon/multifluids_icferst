@@ -220,6 +220,7 @@ contains
         type(coupling_term_coef) :: coupling
         type(magma_phase_diagram) :: magma_phase_coef
         real :: bulk_power
+        character(len = OPTION_PATH_LEN) :: func
         !Variables for passive tracers
         logical :: have_Active_Tracers = .true.
         logical :: have_Passive_Tracers = .true.
@@ -385,7 +386,14 @@ contains
         call get_option( '/timestepping/timestep', dt )
         call get_option( '/timestepping/finish_time', finish_time )
         if ( have_option('/io/dump_period_in_timesteps') ) then
-            call get_option('/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1)
+            if ( have_option('/io/dump_period_in_timesteps/python') ) then
+                call get_option("/io/dump_period_in_timesteps/python", func)
+                call integer_from_python(func, acctim, dump_period_in_timesteps)
+                !Ensure it is bounded
+                dump_period_in_timesteps = min(max(dump_period_in_timesteps,0), 10000000)
+            else
+                call get_option('/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1)
+            end if
         elseif ( have_option('/io/dump_period') ) then
             call get_option('/io/dump_period/constant', dump_period, default = 0.01)
         end if
