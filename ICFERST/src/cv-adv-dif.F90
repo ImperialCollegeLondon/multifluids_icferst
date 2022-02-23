@@ -2805,7 +2805,7 @@ end if
                             end if
                         end if
                       !Only compute limited value if the field is not constant in the region
-                      if ( maxval(abs(F_CV_NODI - F_CV_NODJ/F_CV_NODI)) > 1e-8) then!hopefully never zero
+                      if ( maxval(abs(F_CV_NODI - F_CV_NODJ)/F_CV_NODI) > 1e-8) then!hopefully never zero
                         CALL ONVDLIM_ANO_MANY( NFIELD, &
                             LIMF , FEMFGI , F_INCOME , &
                             F_CV_NODI , F_CV_NODJ ,int_XI_LIMIT ,  &
