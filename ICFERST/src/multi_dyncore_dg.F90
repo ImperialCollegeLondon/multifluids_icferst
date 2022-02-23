@@ -74,6 +74,7 @@ contains
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
        THETA_GDIFF, eles_with_pipe, pipes_aux, &
        option_path, &
+       mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
        icomp, saturation, Permeability_tensor_field, nonlinear_iteration )
            ! Solve for internal energy using a control volume method.
@@ -100,6 +101,7 @@ contains
            REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
            REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
            character( len = * ), intent( in ), optional :: option_path
+           real, dimension( : ), intent( inout ), optional :: mass_ele_transp
            type(tensor_field), intent(in), optional :: saturation
            type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
            integer, optional :: icomp, nonlinear_iteration
@@ -388,6 +390,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    MeanPoreCV%val, &
                    mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &
+                   mass_ele_transp, &
                    TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
@@ -501,6 +504,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
        THETA_GDIFF, eles_with_pipe, pipes_aux, &
        option_path, &
+       mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
        icomp, saturation, Permeability_tensor_field, nonlinear_iteration, &
        magma_phase_coefficients)
@@ -528,6 +532,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
            REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
            character( len = * ), intent( in ), optional :: option_path
+           real, dimension( : ), intent( inout ), optional :: mass_ele_transp
            type(tensor_field), intent(in), optional :: saturation
            type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
            integer, optional :: icomp, nonlinear_iteration
@@ -692,6 +697,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    MeanPoreCV%val, &
                    mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &
+                   mass_ele_transp, &
                    TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
@@ -814,6 +820,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
        THETA_GDIFF, eles_with_pipe, pipes_aux, &
+       mass_ele_transp, &
        THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
        icomp, saturation, Permeability_tensor_field, nonlinear_iteration )
 
@@ -839,6 +846,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            REAL, intent( in ) :: DT
            REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
            REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+           real, dimension( : ), intent( inout ), optional :: mass_ele_transp
            type(tensor_field), intent(in), optional :: saturation
            type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
            integer, optional :: icomp, nonlinear_iteration
@@ -1012,6 +1020,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    MeanPoreCV%val, &
                    mass_Mn_pres, .false., RETRIEVE_SOLID_CTY, &
                    .true.,  mass_Mn_pres, &
+                   mass_ele_transp, &
                    TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
@@ -1057,7 +1066,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
-         V_SOURCE, VOLFRA_PORE, igot_theta_flux, &
+         V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, time_step, SFPI_taken, SFPI_its, Courant_number,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
              implicit none
@@ -1080,6 +1089,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
              !REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+             real, dimension( : ), intent( inout ) :: mass_ele_transp
              integer, intent(in) :: nonlinear_iteration
              integer, intent(in) :: time_step
              integer, intent(inout) :: SFPI_taken
@@ -1251,6 +1261,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      MEAN_PORE_CV, &
                      mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                      .false.,  mass_Mn_pres, &
+                     mass_ele_transp, &          !Capillary variables
                      VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                      Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
                      nonlinear_iteration = nonlinear_iteration)
@@ -1349,6 +1360,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                     call non_porous_ensure_sum_to_one(Mdims, packed_state)
                  end if
                  !Correct the solution obtained to make sure we are on track towards the final solution
+                 ! if (Mdims%ncomp > 0) call update_components()
+                 !Correct the solution obtained to make sure we are on track towards the final solution
                  if (backtrack_par_factor < 1.01) then
                      !If convergence is not good, then we calculate a new saturation using backtracking
                      if (.not. satisfactory_convergence) then
@@ -1445,6 +1458,34 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 
          contains
+
+        !!!>@brief: This internal subroutine deals with the components within the Saturation Fixed Point Iteration
+        !> WARNING: Still work in progress
+        subroutine update_components()
+          implicit none
+          real, dimension(Mdims%nphase, Mdims%cv_nonods) :: comp_theta_gdiff
+
+          !First, impose physical constrains to the saturation (important to update halos here)
+          call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .false. )
+          !Next, update compoents
+          !Deallocate memory re-used for the compositional assembly solve; SPRINT_TO_DO: this can be done better!
+          call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val); call deallocate(Mmat%petsc_ACV)
+          call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
+               Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
+               multi_absorp, DT, &
+               SUF_SIG_DIAGTEN_BC, &
+               Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux,  &
+               comp_theta_gdiff, eles_with_pipe, pipes_aux, mass_ele_transp, &
+               THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
+
+           !Re-allocate the fields so the saturation loop has consistency with what it expects. SPRINT_TO_DO: this can be done better!
+           call allocate(Mmat%CV_RHS,nphase,sat_field%mesh,"RHS")
+           call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
+
+           !First, impose physical constrains to the saturation (important to update halos here)
+           call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .false. )
+
+        end subroutine update_components
 
     end subroutine VolumeFraction_Assemble_Solve
 
@@ -2878,6 +2919,7 @@ end if
         REAL, PARAMETER :: v_beta = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
         LOGICAL, PARAMETER :: GETCV_DISC = .FALSE., GETCT= .TRUE., THERMAL= .FALSE.
+        REAL, DIMENSION( : ), allocatable ::  dummy_transp
         REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
         REAL, DIMENSION( : , : ), allocatable :: DENOLD_OR_ONE
         REAL, DIMENSION( : , : ), target, allocatable :: DEN_OR_ONE
@@ -2893,6 +2935,7 @@ end if
         IGOT_T2 = 0
         ALLOCATE( THETA_GDIFF( Mdims%nphase * IGOT_T2, Mdims%cv_nonods * IGOT_T2 )) ; THETA_GDIFF = 0.
         ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods )) ; MEAN_PORE_CV = 0.
+        allocate( dummy_transp( Mdims%totele ) ) ; dummy_transp = 0.
         ! Obtain the momentum and Mmat%C matricies
         if (is_porous_media .and. Mmat%CV_pressure) then
             !Only the Mass matrix and the RHS of the Darcy equation is assembled here
@@ -2943,6 +2986,7 @@ end if
             MEAN_PORE_CV, &
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
+            dummy_transp, &
             eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, &
             calculate_mass_delta = calculate_mass_delta, outfluxes = outfluxes,&
             Courant_number = Courant_number)

@@ -98,6 +98,7 @@ contains
           MEAN_PORE_CV, &
           MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
           got_free_surf,  MASS_SUF, &
+          MASS_ELE_TRANSP, &
           TDIFFUSION, &
           saturation, VAD_parameter, Phase_with_Pc, Courant_number,&
           Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
@@ -260,6 +261,7 @@ contains
           LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
           ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
           REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV !> Porosity defined control volume wise
+          REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
           type(tensor_field), intent(in), optional, target :: saturation
           REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION!> Diffusion associated with the tracer field
           !Variables for Vanishing artificial diffusion
@@ -899,6 +901,9 @@ contains
         end if
 
         !Store mass_CV in packed_state. Ideally we would do this somewhere else, but here we save some
+          IF (PRESENT(MASS_ELE_TRANSP)) &
+              MASS_ELE_TRANSP = MASS_ELE
+
         ! Calculate MEAN_PORE_CV
         MEAN_PORE_CV = 0.0 ; SUM_CV = 0.0
         DO ELE = 1, Mdims%totele
@@ -3565,27 +3570,19 @@ end if
         ! Local variables
         REAL, PARAMETER :: TOLER=1.0E-10
 
-        !Income is either 1 or 0, s we can halve the cost of the subroutine
-        where (income > toler)
-        ! Calculate normalisation parameters for incomming velocities
         DENOIN = ( ETDNEW_PELE - TUPWIN )
-            DENOIN = sign(max( abs(DENOIN), TOLER), DENOIN)
-            ! if( ABS( DENOIN ) < TOLER ) DENOIN = SIGN( TOLER, DENOIN )
+        where( ABS( DENOIN ) < TOLER )
+            DENOIN = SIGN( TOLER, DENOIN )
+        end where
         CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
-            FTILIN = ( TDCEN - TUPWIN ) / DENOIN
-            ! Velocity is going out of element
-            TDLIM =   ( TUPWIN + MAX(  MIN(FTILIN, XI_LIMIT*CTILIN, 1.0), CTILIN) * DENOIN ) 
-        else where 
         ! Calculate normalisation parameters for out going velocities
         DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
-            DENOOU = sign(max( abs(DENOOU), TOLER), DENOOU)
-            ! if( ABS( DENOOU ) < TOLER )DENOOU = SIGN( TOLER, DENOOU )
+        where( ABS( DENOOU ) < TOLER )
+            DENOOU = SIGN( TOLER, DENOOU )
+        end where
         CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
         FTILIN = ( TDCEN - TUPWIN ) / DENOIN
         FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
-            TDLIM = ( TUPWI2 + MAX(  MIN(FTILOU, XI_LIMIT*CTILOU, 1.0), CTILOU) * DENOOU )
-        end Where
-        TDLIM = MAX( TDLIM, 0.0 )
         ! Velocity is going out of element
         TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW_MANY( FTILIN, CTILIN, XI_LIMIT ) * DENOIN ) &
             + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
