@@ -98,7 +98,6 @@ contains
           MEAN_PORE_CV, &
           MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
           got_free_surf,  MASS_SUF, &
-          MASS_ELE_TRANSP, &
           TDIFFUSION, &
           saturation, VAD_parameter, Phase_with_Pc, Courant_number,&
           Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
@@ -261,7 +260,6 @@ contains
           LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
           ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
           REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV !> Porosity defined control volume wise
-          REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
           type(tensor_field), intent(in), optional, target :: saturation
           REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION!> Diffusion associated with the tracer field
           !Variables for Vanishing artificial diffusion
@@ -442,6 +440,7 @@ contains
           integer :: assembly_phase
           !Variable to decide, for porous media, whether to use high order methods or not
           logical :: use_porous_limiter = .true.
+          logical :: activate_limiters = .true.
           !Variables to calculate flux across boundaries
           logical :: calculate_flux
           integer :: U_JLOC
@@ -482,6 +481,7 @@ contains
           if (present(nonlinear_iteration) .and. VAD_activated) use_porous_limiter = use_porous_limiter .and. nonlinear_iteration > 1
           !For tracers and single phase, not required to use the limiter
            if (tracer%name /= "PackedPhaseVolumeFraction" .or. Mdims%n_in_pres <2 ) use_porous_limiter = .false.
+           if (.not. activate_limiters) use_porous_limiter = .false.!It requires the limiters to work
           logical_igot_theta_flux = IGOT_THETA_FLUX == 1
 
 
@@ -662,96 +662,100 @@ contains
           IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
               PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )
 
-          ! FOR packing as well as for detemining which variables to apply interface tracking**********
-          !          STORE=.TRUE.
-          STORE=.FALSE.
-          IF( GETCT .AND. RETRIEVE_SOLID_CTY) STORE=.FALSE. ! Avoid storing and retrieving solids voln frac. until we have sorted the code for this.
-          IGOT_T_PACK=.TRUE.
-          IGOT_T_CONST=.FALSE.
-          IGOT_T_CONST_VALUE=0.0
-          ! If we have any bc's then assume we ave a non-uniform field...
-          ! SPRINT_TO_DO this now fails if the domain is closed and no BCs are necessary
-          !We check new and old values simultaneously of the fields to see if some are constant (to avoid calculating a high order value)
-          !We check only density and T2 as possible candidates to be constant, why would it be the tracer??? 
-          !Do not solve a transport equation for a constant field!
-          ! DO IPHASE=1,final_phase
-          !     IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
-          !         CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,1), IGOT_T_CONST_VALUE(IPHASE,1), T_ALL(IPHASE,:),Mdims%cv_nonods)
-          ! END DO
-          ! DO IPHASE=1,final_phase
-          !     IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
-          !         CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,2), IGOT_T_CONST_VALUE(IPHASE,2), TOLD_ALL(IPHASE,:),Mdims%cv_nonods)
-          ! END DO
-          DO IPHASE=1,final_phase
-              IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,3), IGOT_T_CONST_VALUE(IPHASE,3), DEN_ALL(IPHASE,:),Mdims%cv_nonods)
-          END DO
-          DO IPHASE=1,final_phase
-              IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,4), IGOT_T_CONST_VALUE(IPHASE,4), DENOLD_ALL(IPHASE,:),Mdims%cv_nonods)
-          END DO
-          DO IPHASE=1,final_phase
-              IF(use_volume_frac_t2) THEN
-                  IF( SUM(  WIC_T2_BC_ALL(:,  IPHASE, : ) ) == 0)  &
-                      CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,5), IGOT_T_CONST_VALUE(IPHASE,5), T2_ALL(IPHASE,:),Mdims%cv_nonods)
-                  IF( SUM(  WIC_T2_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                      CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,6), IGOT_T_CONST_VALUE(IPHASE,6), T2OLD_ALL(IPHASE,:),Mdims%cv_nonods)
-              ENDIF
-          END DO
 
-          NFIELD=0
-          DO IFI=1,size(IGOT_T_PACK,2)
-              DO IPHASE=1,final_phase
-                  IF(.not.IGOT_T_CONST(IPHASE,IFI)) NFIELD=NFIELD+1
-              END DO
-          END DO
+          if (activate_limiters) then 
+            ! FOR packing as well as for detemining which variables to apply interface tracking**********
+            !          STORE=.TRUE.
+            STORE=.FALSE.
+            IF( GETCT .AND. RETRIEVE_SOLID_CTY) STORE=.FALSE. ! Avoid storing and retrieving solids voln frac. until we have sorted the code for this.
+            IGOT_T_PACK=.TRUE.
+            IGOT_T_CONST=.FALSE.
+            IGOT_T_CONST_VALUE=0.0
+            ! If we have any bc's then assume we ave a non-uniform field...
+            ! SPRINT_TO_DO this now fails if the domain is closed and no BCs are necessary
+            !We check new and old values simultaneously of the fields to see if some are constant (to avoid calculating a high order value)
+            !We check only density and T2 as possible candidates to be constant, why would it be the tracer??? 
+            !Do not solve a transport equation for a constant field!
+            ! DO IPHASE=1,final_phase
+            !     IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
+            !         CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,1), IGOT_T_CONST_VALUE(IPHASE,1), T_ALL(IPHASE,:),Mdims%cv_nonods)
+            ! END DO
+            ! DO IPHASE=1,final_phase
+            !     IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
+            !         CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,2), IGOT_T_CONST_VALUE(IPHASE,2), TOLD_ALL(IPHASE,:),Mdims%cv_nonods)
+            ! END DO
+            DO IPHASE=1,final_phase
+                IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
+                    CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,3), IGOT_T_CONST_VALUE(IPHASE,3), DEN_ALL(IPHASE,:),Mdims%cv_nonods)
+            END DO
+            DO IPHASE=1,final_phase
+                IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
+                    CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,4), IGOT_T_CONST_VALUE(IPHASE,4), DENOLD_ALL(IPHASE,:),Mdims%cv_nonods)
+            END DO
+            DO IPHASE=1,final_phase
+                IF(use_volume_frac_t2) THEN
+                    IF( SUM(  WIC_T2_BC_ALL(:,  IPHASE, : ) ) == 0)  &
+                        CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,5), IGOT_T_CONST_VALUE(IPHASE,5), T2_ALL(IPHASE,:),Mdims%cv_nonods)
+                    IF( SUM(  WIC_T2_BC_ALL( :, IPHASE, : ) ) == 0)  &
+                        CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,6), IGOT_T_CONST_VALUE(IPHASE,6), T2OLD_ALL(IPHASE,:),Mdims%cv_nonods)
+                ENDIF
+            END DO
 
-          allocate (FXGI_ALL(Mdims%ndim,NFIELD));allocate (int_UDGI_ALL(Mdims%ndim,NFIELD))
-          allocate (A_STAR_X_ALL(Mdims%ndim,NFIELD));allocate (VEC_VEL2(Mdims%ndim,NFIELD))
-          allocate (courant_or_minus_one_new(NFIELD));allocate (int_XI_LIMIT(NFIELD));allocate (P_STAR(NFIELD))
-          allocate (U_DOT_GRADF_GI(NFIELD));allocate (A_STAR_F(NFIELD));allocate (RESIDGI(NFIELD))
-          allocate (ELE_LENGTH_SCALE(NFIELD));allocate (FEMFGI(NFIELD));allocate (RGRAY(NFIELD))
-          allocate (DIFF_COEF(NFIELD));allocate (COEF(NFIELD));allocate (RSCALE(NFIELD))
-          allocate (COEF2(NFIELD));allocate (FEMFGI_CENT(NFIELD));allocate (FEMFGI_UP(NFIELD));allocate (UBCZERO(NFIELD))
+            NFIELD=0
+            DO IFI=1,size(IGOT_T_PACK,2)
+                DO IPHASE=1,final_phase
+                    IF(.not.IGOT_T_CONST(IPHASE,IFI)) NFIELD=NFIELD+1
+                END DO
+            END DO
 
-        !If is porous media int_XI_LIMIT = 2 and courant_or_minus_one_new = -1 always!
-          if (is_porous_media) then 
-            int_XI_LIMIT = 2; courant_or_minus_one_new = -1
-          end if
-        !   if (isparallel()) call allmax(NFIELD)!<=This should be unnecessary!
+            allocate (FXGI_ALL(Mdims%ndim,NFIELD));allocate (int_UDGI_ALL(Mdims%ndim,NFIELD))
+            allocate (A_STAR_X_ALL(Mdims%ndim,NFIELD));allocate (VEC_VEL2(Mdims%ndim,NFIELD))
+            allocate (courant_or_minus_one_new(NFIELD));allocate (int_XI_LIMIT(NFIELD));allocate (P_STAR(NFIELD))
+            allocate (U_DOT_GRADF_GI(NFIELD));allocate (A_STAR_F(NFIELD));allocate (RESIDGI(NFIELD))
+            allocate (ELE_LENGTH_SCALE(NFIELD));allocate (FEMFGI(NFIELD));allocate (RGRAY(NFIELD))
+            allocate (DIFF_COEF(NFIELD));allocate (COEF(NFIELD));allocate (RSCALE(NFIELD))
+            allocate (COEF2(NFIELD));allocate (FEMFGI_CENT(NFIELD));allocate (FEMFGI_UP(NFIELD));allocate (UBCZERO(NFIELD))
 
-          ALLOCATE( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) ! To avoid the case of NFIELD=0
-          ! This logical needs to be expanded...
-          if (NFIELD>0 ) THEN
-              DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
-              IF ( high_order_theta ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
-          ENDIF
+            !If is porous media int_XI_LIMIT = 2 and courant_or_minus_one_new = -1 always!
+            if (is_porous_media) then 
+                int_XI_LIMIT = 2; courant_or_minus_one_new = -1
+            end if
+            !   if (isparallel()) call allmax(NFIELD)!<=This should be unnecessary!
 
-          ! Determine IGOT_T_PACK(IPHASE,:):
-          IGOT_T_PACK=.FALSE.
-          DO ILOOP=1,size(IGOT_T_CONST,2)
-              DO IPHASE=1,final_phase
-                  IF(.NOT.IGOT_T_CONST(IPHASE,ILOOP)) THEN
-                      ! here we might check to see if we have this in the local storage...
-                      IGOT_T_PACK(IPHASE,ILOOP)=.TRUE.
-                  ENDIF
-              END DO
-          END DO
+            ALLOCATE( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) ! To avoid the case of NFIELD=0
+            ! This logical needs to be expanded...
+            if (NFIELD>0 ) THEN
+                DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
+                IF ( high_order_theta ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
+            ENDIF
+
+            ! Determine IGOT_T_PACK(IPHASE,:):
+            IGOT_T_PACK=.FALSE.
+            DO ILOOP=1,size(IGOT_T_CONST,2)
+                DO IPHASE=1,final_phase
+                    IF(.NOT.IGOT_T_CONST(IPHASE,ILOOP)) THEN
+                        ! here we might check to see if we have this in the local storage...
+                        IGOT_T_PACK(IPHASE,ILOOP)=.TRUE.
+                    ENDIF
+                END DO
+            END DO
 
 
-          ! F and LOC_U:
-          ALLOCATE(LOC_F(NFIELD,Mdims%cv_nloc));ALLOCATE(LOC_FEMF(NFIELD,Mdims%cv_nloc))
-          ALLOCATE(SLOC_F(NFIELD,Mdims%cv_snloc));ALLOCATE(SLOC_FEMF(NFIELD,Mdims%cv_snloc))
-          ALLOCATE(SLOC2_F(NFIELD,Mdims%cv_snloc));ALLOCATE(SLOC2_FEMF(NFIELD,Mdims%cv_snloc))
-          ALLOCATE(LOC_UF(Mdims%ndim,NFIELD,Mdims%u_nloc))
+            ! F and LOC_U:
+            ALLOCATE(LOC_F(NFIELD,Mdims%cv_nloc));ALLOCATE(LOC_FEMF(NFIELD,Mdims%cv_nloc))
+            ALLOCATE(SLOC_F(NFIELD,Mdims%cv_snloc));ALLOCATE(SLOC_FEMF(NFIELD,Mdims%cv_snloc))
+            ALLOCATE(SLOC2_F(NFIELD,Mdims%cv_snloc));ALLOCATE(SLOC2_FEMF(NFIELD,Mdims%cv_snloc))
+            ALLOCATE(LOC_UF(Mdims%ndim,NFIELD,Mdims%u_nloc))
+            ALLOCATE( SELE_LOC_WIC_F_BC( NFIELD ) );ALLOCATE( SLOC_SUF_F_BC(NFIELD, Mdims%cv_snloc) )
+            ! limiting values...
+            ALLOCATE( FUPWIND_IN( NFIELD ) );ALLOCATE( FUPWIND_OUT( NFIELD ) )
+            ! limiting and upwinding:
+            ALLOCATE( LIMF( NFIELD ) );ALLOCATE( F_INCOME( NFIELD ), F_NDOTQ( NFIELD ) )
+            ALLOCATE( F_CV_NODJ( NFIELD ) , F_CV_NODI( NFIELD ))
+        end if
+
           IF(GETCT.AND.RETRIEVE_SOLID_CTY)  ALLOCATE( LOC_U_HAT(Mdims%ndim, Mdims%u_nloc), LOC2_U_HAT(Mdims%ndim, Mdims%u_nloc) )
           ! bc's:
-          ALLOCATE( SELE_LOC_WIC_F_BC( NFIELD ) );ALLOCATE( SLOC_SUF_F_BC(NFIELD, Mdims%cv_snloc) )
-          ! limiting values...
-          ALLOCATE( FUPWIND_IN( NFIELD ) );ALLOCATE( FUPWIND_OUT( NFIELD ) )
-          ! limiting and upwinding:
-          ALLOCATE( LIMF( NFIELD ) );ALLOCATE( F_INCOME( NFIELD ), F_NDOTQ( NFIELD ) )
-          ALLOCATE( F_CV_NODJ( NFIELD ) , F_CV_NODI( NFIELD ))
 
           !###############Conditional allocations######################
           LIMT_HAT=0.0
@@ -789,104 +793,117 @@ contains
           ! variables for get_int_tden********************
 
 !###############################FROM HERE###############################
+          if (activate_limiters) then 
+            psi(1)%ptr=>tracer
+            psi(2)%ptr=>old_tracer
+            FEM_IT=2
+            if (.not. is_constant(density)) then
+                psi(FEM_IT+1)%ptr=>density
+                FEM_IT=FEM_IT+1
+            end if
+            if (.not. is_constant(old_density)) then
+                psi(FEM_IT+1)%ptr=>old_density
+                FEM_IT=FEM_IT+1
+            end if
+            if (present(saturation)) then
+                if (.not. is_constant(saturation)) then
+                    psi(FEM_IT+1)%ptr=>saturation
+                    FEM_IT=FEM_IT+1
+                end if
+                if (.not. is_constant(old_saturation)) then
+                    psi(FEM_IT+1)%ptr=>old_saturation
+                    FEM_IT=FEM_IT+1
+                end if
+            end if
+            do i=1,FEM_IT
+                if (has_tensor_field(packed_state,&
+                    GetFEMName(psi(i)%ptr))) then
+                    fempsi(i)%ptr=>extract_tensor_field(packed_state,&
+                        GetFEMName(psi(i)%ptr))
+                else
+                    allocate(fempsi(i)%ptr)
+                    call allocate(fempsi(i)%ptr,psi(i)%ptr%mesh,"FEMPSI"//trim(psi(i)%ptr%name),&
+                        dim=psi(i)%ptr%dim)
+                end if
+            end do
+            psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
+            psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
+            call PROJ_CV_TO_FEM(packed_state, &!For porous media we are just pointing memory from PSI to FEMPSI
+                FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &!we need to get rid of all of this... check if for inertia is there any gain at all
+                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
+                GETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
+                tracer,PSI_AVE, PSI_INT)
+            XC_CV_ALL=0.0
+            !sprint_to_do!use the pointers instead! pointer?
+            XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
+            MASS_CV         => psi_int(1)%ptr%val(1,:)
+            FEMT_ALL             = FEMPSI(1)%ptr%val(1,1:final_phase,:)
+            FEMTOLD_ALL          = FEMPSI(2)%ptr%val(1,1:final_phase,:)
+            FEM_IT                    = 3 !<-----------------WHY DO WE SET IT TO 3 ?
+            if (.not. is_constant(density)) then
+                FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,1:final_phase,:)
+                if (is_porous_media) then
+                    tfield => extract_tensor_field( packed_state, "PackedDensity" )
+                else
+                tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
+                end if
+                tfield%val = psi(FEM_IT)%ptr%val
+                FEM_IT=FEM_IT+1
+            else
+                FEMDEN_ALL=density%val(1,1:final_phase,:)
+            end if
+            if (.not. is_constant(old_density)) then
+                FEMDENOLD_ALL=psi(FEM_IT)%ptr%val(1,1:final_phase,:)
+                FEM_IT=FEM_IT+1
+            else
+                FEMDENOLD_ALL=old_density%val(1,1:final_phase,:)
+            end if
 
-          psi(1)%ptr=>tracer
-          psi(2)%ptr=>old_tracer
-          FEM_IT=2
-          if (.not. is_constant(density)) then
-              psi(FEM_IT+1)%ptr=>density
-              FEM_IT=FEM_IT+1
-          end if
-          if (.not. is_constant(old_density)) then
-              psi(FEM_IT+1)%ptr=>old_density
-              FEM_IT=FEM_IT+1
-          end if
-          if (present(saturation)) then
-              if (.not. is_constant(saturation)) then
-                  psi(FEM_IT+1)%ptr=>saturation
-                  FEM_IT=FEM_IT+1
-              end if
-              if (.not. is_constant(old_saturation)) then
-                  psi(FEM_IT+1)%ptr=>old_saturation
-                  FEM_IT=FEM_IT+1
-              end if
-          end if
-          do i=1,FEM_IT
-              if (has_tensor_field(packed_state,&
-                  GetFEMName(psi(i)%ptr))) then
-                  fempsi(i)%ptr=>extract_tensor_field(packed_state,&
-                      GetFEMName(psi(i)%ptr))
-              else
-                  allocate(fempsi(i)%ptr)
-                  call allocate(fempsi(i)%ptr,psi(i)%ptr%mesh,"FEMPSI"//trim(psi(i)%ptr%name),&
-                      dim=psi(i)%ptr%dim)
-              end if
-          end do
-          psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
-          psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
-          call PROJ_CV_TO_FEM(packed_state, &!For porous media we are just pointing memory from PSI to FEMPSI
-              FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &!we need to get rid of all of this... check if for inertia is there any gain at all
-              Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
-              GETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
-              tracer,PSI_AVE, PSI_INT)
-          XC_CV_ALL=0.0
-          !sprint_to_do!use the pointers instead! pointer?
-          XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
-          MASS_CV         => psi_int(1)%ptr%val(1,:)
-          FEMT_ALL             = FEMPSI(1)%ptr%val(1,1:final_phase,:)
-          FEMTOLD_ALL          = FEMPSI(2)%ptr%val(1,1:final_phase,:)
-          FEM_IT                    = 3 !<-----------------WHY DO WE SET IT TO 3 ?
-          if (.not. is_constant(density)) then
-              FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,1:final_phase,:)
-              if (is_porous_media) then
-                tfield => extract_tensor_field( packed_state, "PackedDensity" )
-              else
-              tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
-              end if
-              tfield%val = psi(FEM_IT)%ptr%val
-              FEM_IT=FEM_IT+1
-          else
-              FEMDEN_ALL=density%val(1,1:final_phase,:)
-          end if
-          if (.not. is_constant(old_density)) then
-              FEMDENOLD_ALL=psi(FEM_IT)%ptr%val(1,1:final_phase,:)
-              FEM_IT=FEM_IT+1
-          else
-              FEMDENOLD_ALL=old_density%val(1,1:final_phase,:)
-          end if
+            IF ( present(saturation) ) then
+                if (.not. is_constant(saturation)) then
+                    FEMT2_ALL=psi(FEM_IT)%ptr%val(1,1:final_phase,:)
+                    FEM_IT=FEM_IT+1
+                else
+                    FEMT2_ALL=saturation%val(1,1:final_phase,:)
+                end if
+                if (.not. is_constant(old_saturation)) then
+                    FEMt2OLD_ALL=psi(FEM_IT)%ptr%val(1,1:final_phase,:)
+                    FEM_IT=FEM_IT+1
+                else
+                    FEMt2OLD_ALL=old_saturation%val(1,1:final_phase,:)
+                end if
+            end IF
+            do i=1,FEM_IT-1!<==============WHY TO -1
+                if (fempsi(i)%ptr%name(1:6)=='FEMPSI') then
+                    call deallocate(fempsi(i)%ptr)
+                    deallocate(fempsi(i)%ptr)
+                end if
+            end do
+            !###############################TO HERE###############################
+            !IS ALL RUBBISH AND NEEDS TO BE REDONE; THERE IS A QUESTION MARK ON THE NEED OF CREATING A FE REPRESENTATION OF THE FIELDS
+            !CERTAINLY FOR POROUS MEDIA IT IS USELESS AND CURRENTLY IN THIS SECTION WE ARE COPYING FIELDS FOR THE SAKE OF IT...
+            !THE ONLY USEFUL PART CURRENTLY IS THE CALCULATION OF THE BARYCENTRES AND VOLUMES
+            !##############################################################################
+        else 
+            psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
+            psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
+            call PROJ_CV_TO_FEM(packed_state, &!For porous media we are just pointing memory from PSI to FEMPSI
+                FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &!we need to get rid of all of this... check if for inertia is there any gain at all
+                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
+                GETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
+                tracer,PSI_AVE, PSI_INT)
+            XC_CV_ALL=0.0
+            !sprint_to_do!use the pointers instead! pointer?
+            XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
+            MASS_CV         => psi_int(1)%ptr%val(1,:)
+        end if
 
-          IF ( present(saturation) ) then
-              if (.not. is_constant(saturation)) then
-                  FEMT2_ALL=psi(FEM_IT)%ptr%val(1,1:final_phase,:)
-                  FEM_IT=FEM_IT+1
-              else
-                  FEMT2_ALL=saturation%val(1,1:final_phase,:)
-              end if
-              if (.not. is_constant(old_saturation)) then
-                  FEMt2OLD_ALL=psi(FEM_IT)%ptr%val(1,1:final_phase,:)
-                  FEM_IT=FEM_IT+1
-              else
-                  FEMt2OLD_ALL=old_saturation%val(1,1:final_phase,:)
-              end if
-          end IF
-          do i=1,FEM_IT-1!<==============WHY TO -1
-              if (fempsi(i)%ptr%name(1:6)=='FEMPSI') then
-                  call deallocate(fempsi(i)%ptr)
-                  deallocate(fempsi(i)%ptr)
-              end if
-          end do
-
-
-!###############################TO HERE###############################
-!IS ALL RUBBISH AND NEEDS TO BE REDONE; THERE IS A QUESTION MARK ON THE NEED OF CREATING A FE REPRESENTATION OF THE FIELDS
-!CERTAINLY FOR POROUS MEDIA IT IS USELESS AND CURRENTLY IN THIS SECTION WE ARE COPYING FIELDS FOR THE SAKE OF IT...
-!THE ONLY USEFUL PART CURRENTLY IS THE CALCULATION OF THE BARYCENTRES AND VOLUMES
-!##############################################################################
-
-          IF (PRESENT(MASS_ELE_TRANSP)) &
-              MASS_ELE_TRANSP = MASS_ELE
 
           ! Calculate MEAN_PORE_CV
+        if (associated(MeanPoreCV%refcount)) then 
+            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+            MEAN_PORE_CV = MeanPoreCV%val !sprint_to_do This can be done better!
+        else
           MEAN_PORE_CV = 0.0 ; SUM_CV = 0.0
           DO ELE = 1, Mdims%totele
               DO CV_ILOC = 1, Mdims%cv_nloc
@@ -900,34 +917,35 @@ contains
               MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
           END DO
 
-          ewrite(3,*) 'MEAN_PORE_CV MIN/MAX:', MINVAL( MEAN_PORE_CV ), MAXVAL( MEAN_PORE_CV )
           MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
           MeanPoreCV%val=MEAN_PORE_CV
-
+        end if
           ALLOCATE( T2UPWIND_MAT_ALL( 1*i_use_volume_frac_t2:final_phase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( 1*i_use_volume_frac_t2:final_phase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
-          IF ( CV_DISOPT < 5 ) THEN
-              ! Isotropic limiting - calculate far field upwind maticies...
-              CALL ISOTROPIC_LIMITER_ALL( &
-                  ! FOR SUB SURRO_CV_MINMAX:
-                  T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, final_phase, Mdims%cv_nonods, Mspars%small_acv%ncol, Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col, &
-                  Mdims%stotel, Mdims%cv_snloc, ndgln%suf_cv, SUF_T_BC_ALL, SUF_T2_BC_ALL, SUF_D_BC_ALL, WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL, &
-                  MASS_CV, &
-                  ! FOR SUB CALC_LIMIT_MATRIX_MAX_MIN:
-                  TOLDUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
-                  TUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, T2UPWIND_MAT_ALL )
-          ELSE
-              use_reflect = have_option("/numerical_methods/use_reflect_method")
-              CALL CALC_ANISOTROP_LIM( &
-                  ! Caculate the upwind values stored in matrix form...
-                  Mmat, T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL,T2_ALL,T2OLD_ALL, &
-                  FEMT_ALL,FEMTOLD_ALL,FEMDEN_ALL,FEMDENOLD_ALL,FEMT2_ALL,FEMT2OLD_ALL, (Mdims%cv_nonods.NE.Mdims%x_nonods), &
-                  TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, &
-                  T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
-                  i_use_volume_frac_t2,final_phase,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%totele,ndgln%cv, &
-                  Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
-                  ndgln%x,Mdims%x_nonods,Mdims%ndim, &
-                  X_ALL, XC_CV_ALL, use_reflect)
-          END IF
+          if (activate_limiters) then
+            IF ( CV_DISOPT < 5 ) THEN
+                ! Isotropic limiting - calculate far field upwind maticies...
+                CALL ISOTROPIC_LIMITER_ALL( &
+                    ! FOR SUB SURRO_CV_MINMAX:
+                    T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, final_phase, Mdims%cv_nonods, Mspars%small_acv%ncol, Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col, &
+                    Mdims%stotel, Mdims%cv_snloc, ndgln%suf_cv, SUF_T_BC_ALL, SUF_T2_BC_ALL, SUF_D_BC_ALL, WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL, &
+                    MASS_CV, &
+                    ! FOR SUB CALC_LIMIT_MATRIX_MAX_MIN:
+                    TOLDUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
+                    TUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, T2UPWIND_MAT_ALL )
+            ELSE
+                use_reflect = have_option("/numerical_methods/use_reflect_method")
+                CALL CALC_ANISOTROP_LIM( &
+                    ! Caculate the upwind values stored in matrix form...
+                    Mmat, T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL,T2_ALL,T2OLD_ALL, &
+                    FEMT_ALL,FEMTOLD_ALL,FEMDEN_ALL,FEMDENOLD_ALL,FEMT2_ALL,FEMT2OLD_ALL, (Mdims%cv_nonods.NE.Mdims%x_nonods), &
+                    TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, &
+                    T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
+                    i_use_volume_frac_t2,final_phase,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%totele,ndgln%cv, &
+                    Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
+                    ndgln%x,Mdims%x_nonods,Mdims%ndim, &
+                    X_ALL, XC_CV_ALL, use_reflect)
+            END IF
+          end if
           !Obtain elements surrounding an element (FACE_ELE) only if it is not stored yet
           if (.not. associated(Mmat%FACE_ELE)) then 
             allocate(Mmat%FACE_ELE(CV_GIdims%nface, Mdims%totele))
@@ -1025,56 +1043,58 @@ contains
                   end if
               end if
 
-              ! Generate some local F variables ***************
-              DO CV_KLOC = 1, Mdims%cv_nloc
-                  CV_NODK = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_KLOC )
+              if (activate_limiters) then
+                ! Generate some local F variables ***************
+                DO CV_KLOC = 1, Mdims%cv_nloc
+                    CV_NODK = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_KLOC )
 
-                  ! loc_f
-                  call PACK_LOC_ALL( LOC_F(:, CV_KLOC), T_ALL, TOLD_ALL, DEN_ALL, DENOLD_ALL, &
-                    T2_ALL, T2OLD_ALL, IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, cv_nodk )
+                    ! loc_f
+                    call PACK_LOC_ALL( LOC_F(:, CV_KLOC), T_ALL, TOLD_ALL, DEN_ALL, DENOLD_ALL, &
+                      T2_ALL, T2OLD_ALL, IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, cv_nodk )
 
-                  ! for FEM variables...
-                  call PACK_LOC_ALL( LOC_FEMF(:, CV_KLOC), FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL, &
-                    FEMT2_ALL, FEMT2OLD_ALL, IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, cv_nodk )
-                  ! loc_femt:
-                  LOC_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_NODK)
-                  LOC_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_NODK)
-                  IF ( use_volume_frac_t2 ) THEN
-                      LOC_FEMT2(:, CV_KLOC) = FEMT2_ALL(:, CV_NODK)
-                      LOC_FEMT2OLD(:, CV_KLOC) = FEMT2OLD_ALL(:, CV_NODK)
-                  END IF
-              END DO
-              DO U_KLOC = 1, Mdims%u_nloc
-                  U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
-                  ! LOC_UF
-                  IPT=1
-                  IFI=1
-                  DO ILOOP=1,size(IGOT_T_PACK,2)/2
-                      DO IPHASE=1,final_phase
-                          IF(IGOT_T_PACK(IPHASE,IFI)) THEN ! T:
-                              LOC_UF(:, IPT, U_KLOC) =   U_ALL( :, IPHASE, U_NODK )
-                              IPT=IPT+1
-                          END IF
-                      END DO
-                      IFI=IFI+1
-                      DO IPHASE=1,final_phase
-                          IF(IGOT_T_PACK(IPHASE,IFI)) THEN ! Told:
-                              if(correct_method_petrov_method) then
-                                  LOC_UF(:, IPT, U_KLOC) =   NUOLD_ALL( :, IPHASE, U_NODK )
-                              else
-                                  LOC_UF(:, IPT, U_KLOC) =   U_ALL( :, IPHASE, U_NODK )
-                              endif
-                              IPT=IPT+1
-                          END IF
-                      END DO
-                      IFI=IFI+1
-                  END DO
-                  ! LOC_U, LOC_NU:
-                  LOC_U( :, :, U_KLOC)=U_ALL( :, 1:final_phase, U_NODK)
-                  LOC_NU( :, :, U_KLOC)=NU_ALL( :, 1:final_phase, U_NODK)
-                  LOC_NUOLD( :, :, U_KLOC)=NUOLD_ALL( :, 1:final_phase, U_NODK)
-                  IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC_U_HAT( :, U_KLOC)=U_HAT_ALL( 1:final_phase, U_NODK)
-              END DO
+                    ! for FEM variables...
+                    call PACK_LOC_ALL( LOC_FEMF(:, CV_KLOC), FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL, &
+                      FEMT2_ALL, FEMT2OLD_ALL, IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, cv_nodk )
+                    ! loc_femt:
+                    LOC_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_NODK)
+                    LOC_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_NODK)
+                    IF ( use_volume_frac_t2 ) THEN
+                        LOC_FEMT2(:, CV_KLOC) = FEMT2_ALL(:, CV_NODK)
+                        LOC_FEMT2OLD(:, CV_KLOC) = FEMT2OLD_ALL(:, CV_NODK)
+                    END IF
+                END DO
+                DO U_KLOC = 1, Mdims%u_nloc
+                    U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
+                    ! LOC_UF
+                    IPT=1
+                    IFI=1
+                    DO ILOOP=1,size(IGOT_T_PACK,2)/2
+                        DO IPHASE=1,final_phase
+                            IF(IGOT_T_PACK(IPHASE,IFI)) THEN ! T:
+                                LOC_UF(:, IPT, U_KLOC) =   U_ALL( :, IPHASE, U_NODK )
+                                IPT=IPT+1
+                            END IF
+                        END DO
+                        IFI=IFI+1
+                        DO IPHASE=1,final_phase
+                            IF(IGOT_T_PACK(IPHASE,IFI)) THEN ! Told:
+                                if(correct_method_petrov_method) then
+                                    LOC_UF(:, IPT, U_KLOC) =   NUOLD_ALL( :, IPHASE, U_NODK )
+                                else
+                                    LOC_UF(:, IPT, U_KLOC) =   U_ALL( :, IPHASE, U_NODK )
+                                endif
+                                IPT=IPT+1
+                            END IF
+                        END DO
+                        IFI=IFI+1
+                    END DO
+                    ! LOC_U, LOC_NU:
+                    LOC_U( :, :, U_KLOC)=U_ALL( :, 1:final_phase, U_NODK)
+                    LOC_NU( :, :, U_KLOC)=NU_ALL( :, 1:final_phase, U_NODK)
+                    LOC_NUOLD( :, :, U_KLOC)=NUOLD_ALL( :, 1:final_phase, U_NODK)
+                    IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC_U_HAT( :, U_KLOC)=U_HAT_ALL( 1:final_phase, U_NODK)
+                END DO
+              end if
               ! Generate some local F variables ***************...
               !
               !
@@ -1086,8 +1106,8 @@ contains
                   MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                   IMID = Mspars%small_acv%mid(CV_NODI)
 
-                  ! Generate some local variables to reduce slicing
-                  F_CV_NODI= LOC_F(:, CV_ILOC)
+                  ! Generate some local variables to reduce slicing (sprint_to_do this is a waste...)
+                  if (activate_limiters) F_CV_NODI= LOC_F(:, CV_ILOC)
                   LOC_T_I = T_ALL(1:final_phase, cv_nodi); LOC_TOLD_I = TOLD_ALL(1:final_phase, cv_nodi)
                   LOC_DEN_I =DEN_ALL(1:final_phase, cv_nodi); LOC_DENOLD_I = DENOLD_ALL(1:final_phase, cv_nodi)
                   if (use_volume_frac_T2) then
@@ -1209,107 +1229,93 @@ contains
                                   END IF
                               END DO
                                ! Generate some local F variables ***************
+                              if (activate_limiters) then
+                                IPT=1; F_CV_NODJ = 0.
+                                CALL PACK_LOC( F_CV_NODJ, LOC_T_J,    final_phase, IPT, IGOT_T_PACK(:,1) )
+                                CALL PACK_LOC( F_CV_NODJ, LOC_TOLD_J, final_phase, IPT, IGOT_T_PACK(:,2) )
+                                CALL PACK_LOC( F_CV_NODJ, LOC_DEN_J,  final_phase, IPT, IGOT_T_PACK(:,3) )
+                                CALL PACK_LOC( F_CV_NODJ,LOC_DENOLD_J,final_phase, IPT, IGOT_T_PACK(:,4) )
+                                IF(use_volume_frac_T2) THEN
+                                    CALL PACK_LOC( F_CV_NODJ, LOC_T2_J,    final_phase, IPT, IGOT_T_PACK(:,5) )
+                                    CALL PACK_LOC( F_CV_NODJ, LOC_T2OLD_J, final_phase, IPT, IGOT_T_PACK(:,6) )
+                                ENDIF
+                                !Compact alternative that for some reason is messing up the memory... (it is doing the same!!!)
+                                ! call PACK_LOC_ALL( F_CV_NODJ, LOC_T_J, LOC_TOLD_J, LOC_DEN_J, LOC_DENOLD_J, &
+                                !   LOC_T2_J, LOC_T2OLD_J, IGOT_T_PACK, use_volume_frac_T2, final_phase )
 
-                              IPT=1; F_CV_NODJ = 0.
-                              CALL PACK_LOC( F_CV_NODJ, LOC_T_J,    final_phase, IPT, IGOT_T_PACK(:,1) )
-                              CALL PACK_LOC( F_CV_NODJ, LOC_TOLD_J, final_phase, IPT, IGOT_T_PACK(:,2) )
-                              CALL PACK_LOC( F_CV_NODJ, LOC_DEN_J,  final_phase, IPT, IGOT_T_PACK(:,3) )
-                              CALL PACK_LOC( F_CV_NODJ,LOC_DENOLD_J,final_phase, IPT, IGOT_T_PACK(:,4) )
-                              IF(use_volume_frac_T2) THEN
-                                  CALL PACK_LOC( F_CV_NODJ, LOC_T2_J,    final_phase, IPT, IGOT_T_PACK(:,5) )
-                                  CALL PACK_LOC( F_CV_NODJ, LOC_T2OLD_J, final_phase, IPT, IGOT_T_PACK(:,6) )
-                              ENDIF
-                              !Compact alternative that for some reason is messing up the memory... (it is doing the same!!!)
-                              ! call PACK_LOC_ALL( F_CV_NODJ, LOC_T_J, LOC_TOLD_J, LOC_DEN_J, LOC_DENOLD_J, &
-                              !   LOC_T2_J, LOC_T2OLD_J, IGOT_T_PACK, use_volume_frac_T2, final_phase )
+                                ! local surface information***********
+                                IF( between_elements .or. on_domain_boundary ) THEN
+                                    DO CV_SKLOC = 1, Mdims%cv_snloc
+                                        CV_KLOC = CV_SLOC2LOC( CV_SKLOC )
+                                        SLOC_F(:, CV_SKLOC) = LOC_F(:, CV_KLOC)
+                                        SLOC_FEMF(:, CV_SKLOC) = LOC_FEMF(:, CV_KLOC)
+                                        !                   IF(ELE2>0) THEN
+                                        IF(between_elements) THEN
+                                            CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
+                                            CV_NODK2 = ndgln%cv( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_KLOC2 )
+                                            call PACK_LOC_ALL( SLOC2_F(:, CV_SKLOC), T_ALL, TOLD_ALL, DEN_ALL, DENOLD_ALL, &
+                                              T2_ALL, T2OLD_ALL, IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, CV_NODK2 )
+                                            !FEM representation of F
+                                            call PACK_LOC_ALL( SLOC2_FEMF(:, CV_SKLOC), FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL, &
+                                              FEMT2_ALL, FEMT2OLD_ALL, IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, CV_NODK2 )
+                                        ELSE
+                                            SLOC2_F(:, CV_SKLOC)    = SLOC_F(:, CV_SKLOC)
+                                            SLOC2_FEMF(:, CV_SKLOC) = SLOC_FEMF(:, CV_SKLOC)
+                                        ENDIF
+                                    END DO
+                                ENDIF ! ENDOF IF( between_elements .or. on_domain_boundary ) THEN ...
+                                IF( on_domain_boundary ) THEN
+                                    ! bcs:
+                                    ! What type of b.c's -integer
+                                    !             BCZERO=1.0-INCOME
+                                    ! What type of b.c's -integer
+                                    IPT=1
+                                    CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_T_BC_ALL( : , : , SELE ),&
+                                        final_phase, IPT, IGOT_T_PACK( :,1) )
+                                    CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_T_BC_ALL( : , :, SELE ),&
+                                        final_phase, IPT, IGOT_T_PACK( :,2) )
+                                    CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_D_BC_ALL( :,:, SELE ),&
+                                        final_phase, IPT, IGOT_T_PACK( :,3) )
+                                    CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_D_BC_ALL( :,:, SELE ),&
+                                        final_phase, IPT, IGOT_T_PACK( :,4) )
+                                    IF(use_volume_frac_T2) THEN
+                                        CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_T2_BC_ALL( : , :, SELE ),&
+                                            final_phase, IPT, IGOT_T_PACK( :,5) )
+                                        CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_T2_BC_ALL( : , : , SELE ),&
+                                            final_phase, IPT, IGOT_T_PACK( :,6) )
+                                    ENDIF
+                                    !Sprint_to_do This PACK_LOC_ALL should be working... but it affects the memory for some tests cases
+                                    ! call PACK_LOC_ALL( SELE_LOC_WIC_F_BC, WIC_T_BC_ALL(1,:,:), WIC_T_BC_ALL(1,:,:), &
+                                    !   WIC_D_BC_ALL(1,:,:), WIC_D_BC_ALL(1,:,:), WIC_T2_BC_ALL(1,:,:), WIC_T2_BC_ALL(1,:,:), &
+                                    !   IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase, sele )
+                                    ! The b.c's values:
+                                    DO CV_SKLOC=1,Mdims%cv_snloc
+                                        call PACK_LOC_ALL( SLOC_SUF_F_BC( :, CV_SKLOC ), &
+                                        SUF_T_BC_ALL( 1, :, : ), SUF_T_BC_ALL( 1, :, : ), SUF_D_BC_ALL( 1, :, :), SUF_D_BC_ALL( 1, :, :), &
+                                        SUF_T2_BC_ALL( 1, :, :), SUF_T2_BC_ALL( 1, :, :), IGOT_T_PACK, use_volume_frac_T2, &
+                                        1, final_phase, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) )
+                                    END DO
+                                ENDIF ! IF( on_domain_boundary ) THEN
+                                ! limiting VALUES*************:
+                                !Sprint_to_do This PACK_LOC_ALL2 should be working... but it affects the memory for some tests cases
+                                IPT_IN =1
+                                IPT_OUT=1
+                                CALL PACK_LOC( FUPWIND_IN( : ),  TUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,1) )
+                                CALL PACK_LOC( FUPWIND_OUT( : ), TUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,1) )
+                                CALL PACK_LOC( FUPWIND_IN( : ),  TOLDUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,2) )
+                                CALL PACK_LOC( FUPWIND_OUT( : ), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,2) )
+                                CALL PACK_LOC( FUPWIND_IN( : ),  DENUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,3) )
+                                CALL PACK_LOC( FUPWIND_OUT( : ), DENUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,3) )
+                                CALL PACK_LOC( FUPWIND_IN( : ),  DENOLDUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,4) )
+                                CALL PACK_LOC( FUPWIND_OUT( : ), DENOLDUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,4) )
+                                IF(use_volume_frac_T2) THEN
+                                    CALL PACK_LOC( FUPWIND_IN( : ),  T2UPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,5) )
+                                    CALL PACK_LOC( FUPWIND_OUT( : ), T2UPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,5) )
+                                    CALL PACK_LOC( FUPWIND_IN( : ),  T2OLDUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,6) )
+                                    CALL PACK_LOC( FUPWIND_OUT( : ), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,6) )
+                                ENDIF
+                              end if
 
-                              ! local surface information***********
-                              IF( between_elements .or. on_domain_boundary ) THEN
-                                  DO CV_SKLOC = 1, Mdims%cv_snloc
-                                      CV_KLOC = CV_SLOC2LOC( CV_SKLOC )
-                                      SLOC_F(:, CV_SKLOC) = LOC_F(:, CV_KLOC)
-                                      SLOC_FEMF(:, CV_SKLOC) = LOC_FEMF(:, CV_KLOC)
-                                      !                   IF(ELE2>0) THEN
-                                      IF(between_elements) THEN
-                                          CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
-                                          CV_NODK2 = ndgln%cv( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_KLOC2 )
-                                          call PACK_LOC_ALL( SLOC2_F(:, CV_SKLOC), T_ALL, TOLD_ALL, DEN_ALL, DENOLD_ALL, &
-                                            T2_ALL, T2OLD_ALL, IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, CV_NODK2 )
-                                          !FEM representation of F
-                                          call PACK_LOC_ALL( SLOC2_FEMF(:, CV_SKLOC), FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL, &
-                                            FEMT2_ALL, FEMT2OLD_ALL, IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, CV_NODK2 )
-                                      ELSE
-                                          SLOC2_F(:, CV_SKLOC)    = SLOC_F(:, CV_SKLOC)
-                                          SLOC2_FEMF(:, CV_SKLOC) = SLOC_FEMF(:, CV_SKLOC)
-                                      ENDIF
-                                  END DO
-                              ENDIF ! ENDOF IF( between_elements .or. on_domain_boundary ) THEN ...
-                              IF( on_domain_boundary ) THEN
-                                  ! bcs:
-                                  ! What type of b.c's -integer
-                                  !             BCZERO=1.0-INCOME
-                                  ! What type of b.c's -integer
-                                  IPT=1
-                                  CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_T_BC_ALL( : , : , SELE ),&
-                                      final_phase, IPT, IGOT_T_PACK( :,1) )
-                                  CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_T_BC_ALL( : , :, SELE ),&
-                                      final_phase, IPT, IGOT_T_PACK( :,2) )
-                                  CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_D_BC_ALL( :,:, SELE ),&
-                                      final_phase, IPT, IGOT_T_PACK( :,3) )
-                                  CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_D_BC_ALL( :,:, SELE ),&
-                                      final_phase, IPT, IGOT_T_PACK( :,4) )
-                                  IF(use_volume_frac_T2) THEN
-                                      CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_T2_BC_ALL( : , :, SELE ),&
-                                          final_phase, IPT, IGOT_T_PACK( :,5) )
-                                      CALL I_PACK_LOC( SELE_LOC_WIC_F_BC,WIC_T2_BC_ALL( : , : , SELE ),&
-                                          final_phase, IPT, IGOT_T_PACK( :,6) )
-                                  ENDIF
-                                  !Sprint_to_do This PACK_LOC_ALL should be working... but it affects the memory for some tests cases
-                                  ! call PACK_LOC_ALL( SELE_LOC_WIC_F_BC, WIC_T_BC_ALL(1,:,:), WIC_T_BC_ALL(1,:,:), &
-                                  !   WIC_D_BC_ALL(1,:,:), WIC_D_BC_ALL(1,:,:), WIC_T2_BC_ALL(1,:,:), WIC_T2_BC_ALL(1,:,:), &
-                                  !   IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase, sele )
-                                  ! The b.c's values:
-                                  DO CV_SKLOC=1,Mdims%cv_snloc
-                                      call PACK_LOC_ALL( SLOC_SUF_F_BC( :, CV_SKLOC ), &
-                                      SUF_T_BC_ALL( 1, :, : ), SUF_T_BC_ALL( 1, :, : ), SUF_D_BC_ALL( 1, :, :), SUF_D_BC_ALL( 1, :, :), &
-                                      SUF_T2_BC_ALL( 1, :, :), SUF_T2_BC_ALL( 1, :, :), IGOT_T_PACK, use_volume_frac_T2, &
-                                      1, final_phase, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) )
-                                  END DO
-                              ENDIF ! IF( on_domain_boundary ) THEN
-                              ! limiting VALUES*************:
-                              !Sprint_to_do This PACK_LOC_ALL2 should be working... but it affects the memory for some tests cases
-                              IPT_IN =1
-                              IPT_OUT=1
-                              CALL PACK_LOC( FUPWIND_IN( : ),  TUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,1) )
-                              CALL PACK_LOC( FUPWIND_OUT( : ), TUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,1) )
-                              CALL PACK_LOC( FUPWIND_IN( : ),  TOLDUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,2) )
-                              CALL PACK_LOC( FUPWIND_OUT( : ), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,2) )
-                              CALL PACK_LOC( FUPWIND_IN( : ),  DENUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,3) )
-                              CALL PACK_LOC( FUPWIND_OUT( : ), DENUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,3) )
-                              CALL PACK_LOC( FUPWIND_IN( : ),  DENOLDUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,4) )
-                              CALL PACK_LOC( FUPWIND_OUT( : ), DENOLDUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,4) )
-                              IF(use_volume_frac_T2) THEN
-                                  CALL PACK_LOC( FUPWIND_IN( : ),  T2UPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,5) )
-                                  CALL PACK_LOC( FUPWIND_OUT( : ), T2UPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,5) )
-                                  CALL PACK_LOC( FUPWIND_IN( : ),  T2OLDUPWIND_MAT_ALL( :, COUNT_IN),    final_phase, IPT_IN, IGOT_T_PACK(:,6) )
-                                  CALL PACK_LOC( FUPWIND_OUT( : ), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),    final_phase, IPT_OUT, IGOT_T_PACK(:,6) )
-                              ENDIF
-                              !Sprint_to_do This PACK_LOC_ALL should be working... but it affects the memory for some tests cases
-                              ! call PACK_LOC_ALL( FUPWIND_IN, TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, &
-                              !   DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
-                              !   IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, count_in )
-                              ! call PACK_LOC_ALL( FUPWIND_OUT, TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, &
-                              !   DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
-                              !   IGOT_T_PACK, use_volume_frac_T2, 1, final_phase, COUNT_OUT )
-
-
-
-
-                              ! limiting VALUES*************:
-                              !     endif ! endof if(.false.) then
-                              !
-                              ! LOC2_U, LOC2_NU for GET_INT_VEL_NEW
-                              !       IF (ELE2/=0) THEN
                               IF (between_elements) THEN
                                   LOC2_U = 0.
                                   LOC2_NU = 0.
@@ -1505,11 +1511,11 @@ contains
                                       call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, FE_funs%scvfeweigh, FE_funs%scvfen, FE_funs%scvfenlx_all, FSdevFuns)
                                   END IF
                               ENDIF
-                              IF(NFIELD.GT.0) THEN
+                              IF(activate_limiters) THEN
                                   CALL GET_INT_T_DEN_new( LIMF )
                               ENDIF
 
-                              IF(APPLY_ENO) THEN
+                              IF(APPLY_ENO .and. activate_limiters) THEN
                                   ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
                                   call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, CV_funs%scvfeweigh, CV_funs%scvfen, CV_funs%scvfenlx_all, SdevFuns)
                                   ! Apply a simple ENO scheme to T,TOLD only which is not bounded but gets rid of most of the osillations.
@@ -1526,16 +1532,20 @@ contains
                               FVT=LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
                               !FVD(:)=DEN_ALL(:,CV_NODI)*(1.0-INCOME(:)) + DEN_ALL(:,CV_NODJ)*INCOME(:)
                               ! Generate some local F variables ***************
-                              CALL UNPACK_LOC_ALL( LIMF, LIMT, LIMTOLD, LIMD, LIMDOLD, LIMT2, LIMT2OLD,&
+                              if (activate_limiters) then 
+                                CALL UNPACK_LOC_ALL( LIMF, LIMT, LIMTOLD, LIMD, LIMDOLD, LIMT2, LIMT2OLD,&
                                             IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE, use_volume_frac_T2, final_phase)
+                              else !Use upwinding to obtaing the values
+                                LIMT=LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
+                                LIMTOLD=LOC_TOLD_I*(1.0-INCOME) + LOC_TOLD_J*INCOME
+                                LIMD=LOC_DEN_I*(1.0-INCOME) + LOC_DEN_J*INCOME
+                                LIMDOLD=LOC_DENOLD_I*(1.0-INCOME) + LOC_DENOLD_J * INCOME
+                                if (use_volume_frac_T2) then 
+                                  LIMT2=LOC_T2_I*(1.0-INCOME) + LOC_T2_J*INCOME
+                                  LIMT2OLD=LOC_T2OLD_I*(1.0-INCOME) + LOC_T2OLD_J*INCOME
+                                end if
+                              end if
 
-!LIMTOLD=LOC_TOLD_I*(1.0-INCOME) + LOC_TOLD_J*INCOME
-!LIMD=LOC_DEN_I*(1.0-INCOME) + LOC_DEN_J*INCOME
-!LIMDOLD=LOC_DENOLD_I*(1.0-INCOME) + LOC_DENOLD_J * INCOME
-!if (use_volume_frac_T2) then 
-!    LIMT2=LOC_T2_I*(1.0-INCOME) + LOC_T2_J*INCOME
-!    LIMT2OLD=LOC_T2OLD_I*(1.0-INCOME) + LOC_T2OLD_J*INCOME
-!end if
                               IF(GETCT.AND.RETRIEVE_SOLID_CTY) THEN
                                   NDOTQ_HAT = 0.0
                                   DO U_KLOC = 1, Mdims%u_nloc
@@ -1566,7 +1576,6 @@ contains
                               LIMDTOLD=LIMDOLD*LIMTOLD
                               LIMDTT2=LIMD*LIMT*LIMT2
                               LIMDTT2OLD=LIMDOLD*LIMTOLD*LIMT2OLD
-                              ! Generate some local F variables ***************...
 
                               ! Make allowances for no matrix stencil operating from outside the boundary.
                               BCZERO=1.0
