@@ -1393,8 +1393,8 @@ contains
         real, dimension(Mdims%ndim) :: g
         logical :: have_gravity, high_order_Ph, use_potential
         real :: gravity_magnitude
-        integer :: idim, iphase, nod, stat, start_phase, cv_loc, imat
-        real :: auxR
+        integer :: idim, iphase, nod, stat, start_phase, cv_loc, imat, u_iloc, u_inod
+        real, dimension(:), allocatable :: auxR,auxR2
 
         type( vector_field ), pointer :: p_position
         integer :: ele, CV_ILOC, X_NODI, CV_NODI
@@ -1404,7 +1404,8 @@ contains
         type (porous_adv_coefs), optional, intent(inout) :: upwnd
 
         use_potential = compute_compaction
-
+        allocate(auxR(Mdims%ndim),auxR2(Mdims%ndim))
+        
         call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
         have_gravity = ( stat == 0 )
         !Initialise RHS
@@ -1424,17 +1425,27 @@ contains
             if (use_potential) then
               if (present(drhog_tensor)) then 
                 do ele = 1, Mdims%totele
+                  auxR=0.
+                  auxR2=0.
                   do cv_iloc = 1, Mdims%cv_nloc
                       imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
                       cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
 
                       g = node_val( gravity_direction, cv_loc ) * gravity_magnitude
                       do idim = 1, Mdims%ndim
-                        u_source_cv( idim, 1, cv_loc ) = -(den( 1, cv_loc )- den( 2, cv_loc ) )* sat_field%val(1, 2, cv_loc) * g( idim )       
-                        drhog_tensor%val(idim, 1, cv_loc)  =  (den( 1, cv_loc )- den( 2, cv_loc ) )* sat_field%val(1, 2, cv_loc) * g( idim )/ upwnd%adv_coef(1,1,2,imat) 
-                        drhog_tensor2%val(idim, 1, cv_loc) =  (den( 1, cv_loc )- den( 2, cv_loc ) )* g( idim )/ upwnd%adv_coef(1,1,2,imat)          
+                        u_source_cv( idim, 1, cv_loc ) = (den( 1, cv_loc )- den( 2, cv_loc ) )* sat_field%val(1, 1, cv_loc) * g( idim )       
+                        auxR(idim)=  auxR(idim)  +(den( 1, cv_loc )- den( 2, cv_loc ) )* sat_field%val(1, 2, cv_loc) * g( idim )* upwnd%inv_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)  
+                        auxR2(idim)= auxR2(idim) -(den( 1, cv_loc )- den( 2, cv_loc ) )* g( idim )/dble(Mdims%cv_nloc)!* upwnd%inv_adv_coef(1,1,2,imat)          
                       end do 
                   end do  
+
+                  do u_iloc = 1, Mdims%u_nloc
+                    u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
+                    do idim = 1, Mdims%ndim
+                      drhog_tensor%val(idim, 1, u_inod) = auxR(idim)*0
+                      drhog_tensor2%val(idim, 1, u_inod)= auxR2(idim)*0
+                    end do
+                  end do                 
                 end do
               else
                 do nod = 1, Mdims%cv_nonods

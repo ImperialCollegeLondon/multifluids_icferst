@@ -471,6 +471,7 @@ contains
         end Do
       end DO
     end DO
+
   contains
     !> TO INCLUDE INFORMATION ABOUT THE FUNCTION
     real function phi2_over_c(phi)

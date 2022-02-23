@@ -2393,10 +2393,7 @@ end if
         end if
                 !######################## CORRECTION VELOCITY STEP####################################
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases
-        if (compute_compaction) then 
-            call get_Darcy_phases_velocity()
-            if (second_compaction_formulation) velocity%val(:,2,:)=velocity%val(:,2,:)+drhog_tensor2%val(:,1,:)
-        end if
+        
         !Project only for inertia or when using the IC-FERST stokes solver
         if (.not. solve_stokes .or. solve_mom_iteratively ) then
             call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, Pressure, deltap, cdp_tensor, rhs_p, upwnd)
@@ -2404,8 +2401,11 @@ end if
         call deallocate(deltaP)
 
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases, must put after the corection velocity step for magma
-        if (compute_compaction) call get_Darcy_phases_velocity()
+        if (compute_compaction) then 
+            call get_Darcy_phases_velocity()            
+        end if
         ! call force_zero_boundary_value(Mdims, velocity)
+        
 
         if (isParallel()) call halo_update(velocity)
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
@@ -3024,8 +3024,7 @@ print *, k,':', conv_test
         type(multi_dimensions), intent(in) :: Mdims
         type (multi_sparsities), intent(in) :: Mspars
         type (multi_matrices), intent(in) :: Mmat
-        REAL, DIMENSION( :, :, : ), intent(in) :: INV_B
-        REAL, DIMENSION( :, :, : ), intent(inout) :: velocity
+        REAL, DIMENSION( :, :, : ), intent(in) :: INV_B, velocity
         type( vector_field ), intent(inout) :: rhs_p
         logical, optional, intent(in) :: force_transpose_C
         REAL, optional, DIMENSION( :, :, : ), intent(in) :: drhog_tensor
@@ -3037,7 +3036,6 @@ print *, k,':', conv_test
         integer :: one_or_n_in_press
         force_transpose_C2 = .false.
         if (present(force_transpose_C)) force_transpose_C2 = force_transpose_C
-        if (present(drhog_tensor)) velocity(:,1,:)=velocity(:,1,:)+drhog_tensor(:,1,:)
 
         IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
           ALLOCATE ( rhs_p2(final_phase,Mdims%cv_nonods) ) ; rhs_p2=0.0
@@ -3065,11 +3063,19 @@ print *, k,':', conv_test
           one_or_n_in_press=Mdims%n_in_pres
           if (compute_compaction) one_or_n_in_press=1
             if ( .not.FEM_continuity_equation .and. .not. force_transpose_C2) then ! original
-                DO IPRES = 1, Mdims%npres
-                        CALL CT_MULT2( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
+                if (present(drhog_tensor)) then
+                    DO IPRES = 1, Mdims%npres
+                        CALL CT_MULT2( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : )+drhog_tensor(:,1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press,:), &
                         Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, &
                         Mmat%CT( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
-                END DO
+                    END DO
+                else
+                    DO IPRES = 1, Mdims%npres
+                            CALL CT_MULT2( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
+                            Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, &
+                            Mmat%CT( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
+                    END DO
+                end if
             else
                 DO IPRES = 1, Mdims%npres
                       CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
@@ -3118,7 +3124,8 @@ print *, k,':', conv_test
         call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), darcy_phases/)); call zero(cdp_tensor)
         call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, darcy_phases, &
            Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-
+        
+        if (second_compaction_formulation) CDP_tensor%val=CDP_tensor%val+drhog_tensor2%val
         ! Here we use the updated pressure gradient CDP_tensor which is passed down from velocity correction to calculated the darcy velocity of the liquid phase
         !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
         CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
