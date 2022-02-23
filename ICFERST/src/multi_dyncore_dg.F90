@@ -3122,16 +3122,16 @@ print *, k,':', conv_test
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
         call deallocate(CDP_tensor);
         call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), darcy_phases/)); call zero(cdp_tensor)
+
         call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, darcy_phases, &
            Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
         
-        if (second_compaction_formulation) CDP_tensor%val=CDP_tensor%val+drhog_tensor2%val
         ! Here we use the updated pressure gradient CDP_tensor which is passed down from velocity correction to calculated the darcy velocity of the liquid phase
         !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
         CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:Mdims%nphase,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:Mdims%nphase,:)*0 + CDP_tensor%val,&
             Mdims%ndim, darcy_phases, Mdims%totele, Mdims%u_nloc, ndgln%u )
-
+        if (second_compaction_formulation) velocity % VAL(:, 2,:)=velocity % VAL(:, 2,:)+drhog_tensor2%val(:,1,:)
 
       end subroutine get_Darcy_phases_velocity
 

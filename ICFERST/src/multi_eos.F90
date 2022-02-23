@@ -1403,6 +1403,7 @@ contains
         type(tensor_field), optional, intent(inout) :: drhog_tensor2
         type (porous_adv_coefs), optional, intent(inout) :: upwnd
 
+
         use_potential = compute_compaction
         allocate(auxR(Mdims%ndim),auxR2(Mdims%ndim))
         
@@ -1433,17 +1434,17 @@ contains
 
                       g = node_val( gravity_direction, cv_loc ) * gravity_magnitude
                       do idim = 1, Mdims%ndim
-                        u_source_cv( idim, 1, cv_loc ) = (den( 1, cv_loc )- den( 2, cv_loc ) )* sat_field%val(1, 1, cv_loc) * g( idim )       
+                        u_source_cv( idim, 1, cv_loc ) = -(den( 1, cv_loc )- den( 2, cv_loc ) )* sat_field%val(1, 2, cv_loc) * g( idim )    
                         auxR(idim)=  auxR(idim)  +(den( 1, cv_loc )- den( 2, cv_loc ) )* sat_field%val(1, 2, cv_loc) * g( idim )* upwnd%inv_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)  
-                        auxR2(idim)= auxR2(idim) -(den( 1, cv_loc )- den( 2, cv_loc ) )* g( idim )/dble(Mdims%cv_nloc)!* upwnd%inv_adv_coef(1,1,2,imat)          
+                        auxR2(idim)= auxR2(idim) +(den( 1, cv_loc )- den( 2, cv_loc ) )* g( idim )/dble(Mdims%cv_nloc)!* upwnd%inv_adv_coef(1,1,2,imat)          
                       end do 
                   end do  
 
                   do u_iloc = 1, Mdims%u_nloc
                     u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
                     do idim = 1, Mdims%ndim
-                      drhog_tensor%val(idim, 1, u_inod) = auxR(idim)*0
-                      drhog_tensor2%val(idim, 1, u_inod)= auxR2(idim)*0
+                      drhog_tensor%val(idim, 1, u_inod) = -auxR(idim)  ! don't know why, this has to be negative...:((
+                      drhog_tensor2%val(idim, 1, u_inod)= -auxR2(idim)
                     end do
                   end do                 
                 end do
