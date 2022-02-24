@@ -730,7 +730,6 @@ contains
             if (is_porous_media) then 
                 int_XI_LIMIT = 2; courant_or_minus_one_new = -1
             end if
-            !   if (isparallel()) call allmax(NFIELD)!<=This should be unnecessary!
 
             ALLOCATE( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) ! To avoid the case of NFIELD=0
             ! This logical needs to be expanded...
@@ -1097,16 +1096,17 @@ contains
                         END DO
                         IFI=IFI+1
                     END DO
-                    ! LOC_U, LOC_NU:
-                    LOC_U( :, :, U_KLOC)=U_ALL( :, 1:final_phase, U_NODK)
-                    LOC_NU( :, :, U_KLOC)=NU_ALL( :, 1:final_phase, U_NODK)
-                    LOC_NUOLD( :, :, U_KLOC)=NUOLD_ALL( :, 1:final_phase, U_NODK)
-                    IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC_U_HAT( :, U_KLOC)=U_HAT_ALL( 1:final_phase, U_NODK)
                 END DO
               end if
-              ! Generate some local F variables ***************...
-              !
-              !
+
+              !Local copies of U
+              DO U_KLOC = 1, Mdims%u_nloc
+                U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
+                LOC_U( :, :, U_KLOC)=U_ALL( :, 1:final_phase, U_NODK)
+                LOC_NU( :, :, U_KLOC)=NU_ALL( :, 1:final_phase, U_NODK)
+                LOC_NUOLD( :, :, U_KLOC)=NUOLD_ALL( :, 1:final_phase, U_NODK)
+                IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC_U_HAT( :, U_KLOC)=U_HAT_ALL( 1:final_phase, U_NODK)
+              END DO
               Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
 
                   ! Global node number of the local node
