@@ -922,32 +922,32 @@ contains
         MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
         MeanPoreCV%val=MEAN_PORE_CV
         
+        if (activate_limiters) then
           ALLOCATE( T2UPWIND_MAT_ALL( 1*i_use_volume_frac_t2:final_phase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( 1*i_use_volume_frac_t2:final_phase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
-          if (activate_limiters) then
-            IF ( CV_DISOPT < 5 ) THEN
-                ! Isotropic limiting - calculate far field upwind maticies...
-                CALL ISOTROPIC_LIMITER_ALL( &
-                    ! FOR SUB SURRO_CV_MINMAX:
-                    T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, final_phase, Mdims%cv_nonods, Mspars%small_acv%ncol, Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col, &
-                    Mdims%stotel, Mdims%cv_snloc, ndgln%suf_cv, SUF_T_BC_ALL, SUF_T2_BC_ALL, SUF_D_BC_ALL, WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL, &
-                    MASS_CV, &
-                    ! FOR SUB CALC_LIMIT_MATRIX_MAX_MIN:
-                    TOLDUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
-                    TUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, T2UPWIND_MAT_ALL )
-            ELSE
-                use_reflect = have_option("/numerical_methods/use_reflect_method")
-                CALL CALC_ANISOTROP_LIM( &
-                    ! Caculate the upwind values stored in matrix form...
-                    Mmat, T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL,T2_ALL,T2OLD_ALL, &
-                    FEMT_ALL,FEMTOLD_ALL,FEMDEN_ALL,FEMDENOLD_ALL,FEMT2_ALL,FEMT2OLD_ALL, (Mdims%cv_nonods.NE.Mdims%x_nonods), &
-                    TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, &
-                    T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
-                    i_use_volume_frac_t2,final_phase,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%totele,ndgln%cv, &
-                    Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
-                    ndgln%x,Mdims%x_nonods,Mdims%ndim, &
-                    X_ALL, XC_CV_ALL, use_reflect)
-            END IF
-          end if
+          IF ( CV_DISOPT < 5 ) THEN
+              ! Isotropic limiting - calculate far field upwind maticies...
+              CALL ISOTROPIC_LIMITER_ALL( &
+                  ! FOR SUB SURRO_CV_MINMAX:
+                  T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, final_phase, Mdims%cv_nonods, Mspars%small_acv%ncol, Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col, &
+                  Mdims%stotel, Mdims%cv_snloc, ndgln%suf_cv, SUF_T_BC_ALL, SUF_T2_BC_ALL, SUF_D_BC_ALL, WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL, &
+                  MASS_CV, &
+                  ! FOR SUB CALC_LIMIT_MATRIX_MAX_MIN:
+                  TOLDUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
+                  TUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, T2UPWIND_MAT_ALL )
+          ELSE
+              use_reflect = have_option("/numerical_methods/use_reflect_method")
+              CALL CALC_ANISOTROP_LIM( &
+                  ! Caculate the upwind values stored in matrix form...
+                  Mmat, T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL,T2_ALL,T2OLD_ALL, &
+                  FEMT_ALL,FEMTOLD_ALL,FEMDEN_ALL,FEMDENOLD_ALL,FEMT2_ALL,FEMT2OLD_ALL, (Mdims%cv_nonods.NE.Mdims%x_nonods), &
+                  TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, &
+                  T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
+                  i_use_volume_frac_t2,final_phase,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%totele,ndgln%cv, &
+                  Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
+                  ndgln%x,Mdims%x_nonods,Mdims%ndim, &
+                  X_ALL, XC_CV_ALL, use_reflect)
+          END IF
+        end if
           !Obtain elements surrounding an element (FACE_ELE) only if it is not stored yet
           if (.not. associated(Mmat%FACE_ELE)) then 
             allocate(Mmat%FACE_ELE(CV_GIdims%nface, Mdims%totele))
@@ -2331,6 +2331,7 @@ contains
                             LOCNODS(2)=X_NDGLN((ELE2-1)*CV_NLOC+3)
                             LOCNODS(3)=X_NDGLN((ELE2-1)*CV_NLOC+6)
                             IF(NDIM==3) LOCNODS(4)=X_NDGLN((ELE2-1)*CV_NLOC+10)
+                        else
                             LOCNODS(1:CV_NLOC)=X_NDGLN((ELE2-1)*CV_NLOC+1:(ELE2-1)*CV_NLOC+CV_NLOC)
                         ENDIF
 
@@ -4190,11 +4191,11 @@ end if
         end if
 
         ! solve the petsc matrix
-        if(.not.do_not_project) then
-            ! do it = 1, size(fempsi)
-            !     call set(fempsi(it)%ptr,psi(it)%ptr)
-            ! end do
-        ! else
+        if(do_not_project) then
+            do it = 1, size(fempsi)
+                call set(fempsi(it)%ptr,psi(it)%ptr)
+            end do
+        else
             do it = 1, size(fempsi)
                 ! call zero_non_owned(fempsi_rhs(it))!Use default solver for this
                 call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = '/solver_options/Linear_solver')
