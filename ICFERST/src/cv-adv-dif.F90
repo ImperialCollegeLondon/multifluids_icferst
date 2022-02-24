@@ -366,8 +366,9 @@ contains
           REAL, DIMENSION ( final_phase, Mdims%cv_nloc ) :: LOC_FEMT, LOC2_FEMT, LOC_FEMTOLD, LOC2_FEMTOLD, LOC_FEMT2, LOC2_FEMT2, &
                                                               LOC_FEMT2OLD, LOC2_FEMT2OLD
           ! nphase Variables:
-          real, dimension(final_phase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, NDOTQNEW, LIMT2OLD, LIMDTOLD, &
-              INCOMEOLD, NDOTQOLD, LIMT2, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, LIMDTT2OLD, FVT, FVT2, FVD, LIMD, LIMDT, LIMDTT2, INCOME_J
+          real, dimension(final_phase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, NDOTQNEW, LIMDTOLD, &
+              INCOMEOLD, NDOTQOLD, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, LIMDTT2OLD, FVT, FVT2, LIMD, LIMDT, LIMDTT2, INCOME_J
+          real, dimension(final_phase)::LIMT2, LIMT2OLD
           real, dimension(final_phase, Mdims%cv_nonods) :: FEMT_ALL, FEMTOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL
           REAL, DIMENSION( Mdims%ndim, final_phase, Mdims%cv_nloc, Mdims%totele ) :: DTX_ELE_ALL, DTOLDX_ELE_ALL
           REAL , DIMENSION( Mdims%ndim, final_phase ) :: NUGI_ALL, NUOLDGI_ALL
@@ -477,6 +478,10 @@ contains
               VAD_activated = Phase_with_Pc >0
           end if
           flux_limited_vad = have_option("/numerical_methods/flux_limited_vad")
+
+          !Check whether to use limiters or not
+          call get_option("/geometry/simulation_quality", option_path2, stat=stat)
+          activate_limiters = .not. trim(option_path2) == "fast"
           !this is true if the user is asking for high order advection scheme
           use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
           !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
@@ -531,6 +536,8 @@ contains
           end if
           T_ALL =>tracer%val(1,:,:)
           TOLD_ALL =>old_tracer%val(1,:,:)
+          !Initialise local t2
+          LIMT2 =1.0; LIMT2OLD = 1.0
           if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
          !################## END OF SET VARIABLES ##################
 
@@ -896,7 +903,7 @@ contains
                 FEMPSI(1:2),PSI(1:2), &!we need to get rid of all of this... check if for inertia is there any gain at all
                 Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
                 IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
-                tracer,PSI_AVE, PSI_INT)
+                tracer,PSI_AVE, PSI_INT, activate_limiters = .false.)
             !sprint_to_do!use the pointers instead! pointer?
             XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
             MASS_CV         => psi_int(1)%ptr%val(1,:)
@@ -1543,19 +1550,47 @@ contains
 
                               ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
                               FVT=LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
-                              !FVD(:)=DEN_ALL(:,CV_NODI)*(1.0-INCOME(:)) + DEN_ALL(:,CV_NODJ)*INCOME(:)
-                              ! Generate some local F variables ***************
+
                               if (activate_limiters) then 
                                 CALL UNPACK_LOC_ALL( LIMF, LIMT, LIMTOLD, LIMD, LIMDOLD, LIMT2, LIMT2OLD,&
                                             IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE, use_volume_frac_T2, final_phase)
-                              else !Use upwinding to obtaing the values
-                                LIMT=LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
-                                LIMTOLD=LOC_TOLD_I*(1.0-INCOME) + LOC_TOLD_J*INCOME
-                                LIMD=LOC_DEN_I*(1.0-INCOME) + LOC_DEN_J*INCOME
-                                LIMDOLD=LOC_DENOLD_I*(1.0-INCOME) + LOC_DENOLD_J * INCOME
-                                if (use_volume_frac_T2) then 
-                                  LIMT2=LOC_T2_I*(1.0-INCOME) + LOC_T2_J*INCOME
-                                  LIMT2OLD=LOC_T2OLD_I*(1.0-INCOME) + LOC_T2OLD_J*INCOME
+                              else !Use upwinding to obtaing the values                        
+                                IF ( on_domain_boundary ) THEN
+                                    !tracer
+                                    where ( WIC_T_BC_ALL( 1,1:final_phase, SELE ) /= WIC_T_BC_DIRICHLET )
+                                        LIMT = LOC_T_I
+                                        LIMTOLD = LOC_TOLD_I
+                                    ELSE where
+                                        LIMT = LOC_T_I * (1.0-INCOME) + INCOME* SUF_T_BC_ALL( 1, 1: final_phase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                        LIMTOLD = LOC_TOLD_I * (1.0-INCOMEOLD) + INCOMEOLD* SUF_T_BC_ALL( 1, 1: final_phase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                    END where
+                                      !Density
+                                    where ( WIC_D_BC_ALL( 1 , 1:final_phase, SELE ) /= WIC_D_BC_DIRICHLET )
+                                      LIMD = LOC_DEN_I
+                                      LIMDOLD = LOC_DENOLD_I
+                                    ELSE where
+                                      LIMD = LOC_DEN_I * (1.0-INCOME) + INCOME* SUF_D_BC_ALL( 1, 1: final_phase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                      LIMTOLD = LOC_DENOLD_I * (1.0-INCOMEOLD) + INCOMEOLD* SUF_D_BC_ALL( 1, 1: final_phase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                    END where  
+                                    !Saturation
+                                    if (use_volume_frac_T2) then 
+                                      where ( WIC_T2_BC_ALL( 1 , 1:final_phase, SELE ) /= WIC_T_BC_DIRICHLET )
+                                        LIMT2 = LOC_T2_I
+                                        LIMT2OLD = LOC_T2OLD_I
+                                      ELSE where
+                                        LIMT2 = LOC_T2_I * (1.0-INCOME) + INCOME* SUF_T2_BC_ALL( 1, 1: final_phase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                        LIMT2OLD = LOC_T2OLD_I * (1.0-INCOMEOLD) + INCOMEOLD* SUF_T2_BC_ALL( 1, 1: final_phase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                      END where
+                                    end if                                                                        
+                                else
+                                  LIMT=LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
+                                  LIMTOLD=LOC_TOLD_I*(1.0-INCOMEOLD) + LOC_TOLD_J*INCOMEOLD
+                                  LIMD=LOC_DEN_I*(1.0-INCOME) + LOC_DEN_J*INCOME
+                                  LIMDOLD=LOC_DENOLD_I*(1.0-INCOMEOLD) + LOC_DENOLD_J * INCOMEOLD
+                                  if (use_volume_frac_T2) then 
+                                    LIMT2=LOC_T2_I*(1.0-INCOME) + LOC_T2_J*INCOME
+                                    LIMT2OLD=LOC_T2OLD_I*(1.0-INCOMEOLD) + LOC_T2OLD_J*INCOMEOLD
+                                  end if
                                 end if
                               end if
 
@@ -4042,7 +4077,7 @@ end if
         fempsi, psi, &
         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
         igetct, X, mass_ele, mass_mn_pres, &
-        tracer, psi_ave, psi_int)
+        tracer, psi_ave, psi_int, activate_limiters)
 
 
         implicit none
@@ -4063,6 +4098,7 @@ end if
         real, dimension(:), intent(inout) :: mass_ele                       ! finite element mass
         real, dimension(:), intent(inout) :: mass_mn_pres                   ! ??
         type(tensor_field), intent(in) :: tracer
+        logical, optional, intent(in) :: activate_limiters
         ! the following two need to be changed to optional in the future
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_int ! control volume area
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_ave ! control volume barycentre
@@ -4191,15 +4227,17 @@ end if
         end if
 
         ! solve the petsc matrix
-        if(do_not_project) then
-            do it = 1, size(fempsi)
-                call set(fempsi(it)%ptr,psi(it)%ptr)
-            end do
-        else
-            do it = 1, size(fempsi)
-                ! call zero_non_owned(fempsi_rhs(it))!Use default solver for this
-                call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = '/solver_options/Linear_solver')
-            end do
+        if (present_and_true(activate_limiters)) then 
+          if(do_not_project) then
+              do it = 1, size(fempsi)
+                  call set(fempsi(it)%ptr,psi(it)%ptr)
+              end do
+          else
+              do it = 1, size(fempsi)
+                  ! call zero_non_owned(fempsi_rhs(it))!Use default solver for this
+                  call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = '/solver_options/Linear_solver')
+              end do
+          end if
         end if
 
         ! deallocation
