@@ -888,20 +888,21 @@ contains
             !THE ONLY USEFUL PART CURRENTLY IS THE CALCULATION OF THE BARYCENTRES AND VOLUMES
             !##############################################################################
         else 
+            psi(1)%ptr=>tracer
+            psi(2)%ptr=>old_tracer
             psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
             psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
             call PROJ_CV_TO_FEM(packed_state, &!For porous media we are just pointing memory from PSI to FEMPSI
-                FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &!we need to get rid of all of this... check if for inertia is there any gain at all
+                FEMPSI(1:2),PSI(1:2), &!we need to get rid of all of this... check if for inertia is there any gain at all
                 Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
                 IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
                 tracer,PSI_AVE, PSI_INT)
-            XC_CV_ALL=0.0
             !sprint_to_do!use the pointers instead! pointer?
             XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
             MASS_CV         => psi_int(1)%ptr%val(1,:)
         end if
 
-        !Store mass_CV in packed_state. Ideally we would do this somewhere else, but here we save some
+        !Store mass_CV in packed_state. Ideally we would do this somewhere else, but here we are...
           IF (PRESENT(MASS_ELE_TRANSP)) &
               MASS_ELE_TRANSP = MASS_ELE
 
@@ -1505,26 +1506,25 @@ contains
                                   ENTH_RHS_DIFF_COEF_DIVDX = 0.0
                                 ENDIF
                               end if
-
                               ! Pack ndotq information:
-                              call PACK_LOC_ALL( F_INCOME, INCOME, &
-                                  INCOMEOLD, INCOME, INCOMEOLD, & !Tracer, density and T2
-                                  INCOME, INCOMEOLD, IGOT_T_PACK, use_volume_frac_T2, final_phase )
-
-                              call PACK_LOC_ALL( F_NDOTQ, NDOTQ, &
-                                  NDOTQOLD, NDOTQ, NDOTQOLD, & !Tracer, density and T2
-                                  NDOTQ, NDOTQOLD, IGOT_T_PACK, use_volume_frac_T2, final_phase )
-
-                                    !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
-                                    ! Calculate T and DEN on the CV face at quadrature point GI.
-
+                              
+                              !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
+                              ! Calculate T and DEN on the CV face at quadrature point GI.
+                              
                               ! Only when cvdispot>=8. See/Find [INTRO_NX_ALL] above.
                               if (NFIELD>0 ) THEN
-                                  IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
-                                      call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, FE_funs%scvfeweigh, FE_funs%scvfen, FE_funs%scvfenlx_all, FSdevFuns)
-                                  END IF
+                                IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
+                                    call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, FE_funs%scvfeweigh, FE_funs%scvfen, FE_funs%scvfenlx_all, FSdevFuns)
+                                END IF
                               ENDIF
                               IF(activate_limiters) THEN
+                                call PACK_LOC_ALL( F_INCOME, INCOME, &
+                                    INCOMEOLD, INCOME, INCOMEOLD, & !Tracer, density and T2
+                                    INCOME, INCOMEOLD, IGOT_T_PACK, use_volume_frac_T2, final_phase )
+    
+                                call PACK_LOC_ALL( F_NDOTQ, NDOTQ, &
+                                    NDOTQOLD, NDOTQ, NDOTQOLD, & !Tracer, density and T2
+                                    NDOTQ, NDOTQOLD, IGOT_T_PACK, use_volume_frac_T2, final_phase )
                                   CALL GET_INT_T_DEN_new( LIMF )
                               ENDIF
 
@@ -2053,34 +2053,34 @@ contains
               call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, DEN_ALL, 2)
           endif
           ! Deallocating temporary working arrays
-          IF(GETCT) THEN
-              DEALLOCATE( JCOUNT_KLOC )
-          ENDIF
-          DEALLOCATE(T2UPWIND_MAT_ALL)
-          DEALLOCATE(T2OLDUPWIND_MAT_ALL)
           call deallocate_multi_dev_shape_funs(SdevFuns)
-
+          
           if (NFIELD>0 ) THEN
             IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
-              call deallocate_multi_dev_shape_funs(FSdevFuns) !!-ao this is also new
-              call deallocate_multi_shape_funs(FE_funs) !!-ao this is also new
+                call deallocate_multi_dev_shape_funs(FSdevFuns) !!-ao this is also new
+                call deallocate_multi_shape_funs(FE_funs) !!-ao this is also new
             END IF
-          endif
-
-          call deallocate(tracer_BCs)
-          call deallocate(tracer_BCs_robin2)
-          call deallocate(density_BCs)
-          call deallocate(velocity_BCs)
-          if(got_free_surf .or. is_porous_media .or. Mmat%CV_pressure) call deallocate(pressure_BCs)
-          if (present(saturation)) then
-              call deallocate(saturation_BCs)
-              call deallocate(saturation_BCs_robin2)
-          end if
-
-          deallocate (FXGI_ALL); deallocate (int_UDGI_ALL); deallocate (A_STAR_X_ALL); deallocate (VEC_VEL2); deallocate (courant_or_minus_one_new)
-          deallocate (int_XI_LIMIT); deallocate (P_STAR); deallocate (U_DOT_GRADF_GI); deallocate (A_STAR_F); deallocate (RESIDGI)
-          deallocate (ELE_LENGTH_SCALE);deallocate (FEMFGI);deallocate (RGRAY);deallocate (DIFF_COEF);deallocate (COEF);deallocate (RSCALE)
-          deallocate (COEF2);deallocate (FEMFGI_CENT);deallocate (FEMFGI_UP);deallocate (UBCZERO)
+        endif
+        
+        call deallocate(tracer_BCs)
+        call deallocate(tracer_BCs_robin2)
+        call deallocate(density_BCs)
+        call deallocate(velocity_BCs)
+        if(got_free_surf .or. is_porous_media .or. Mmat%CV_pressure) call deallocate(pressure_BCs)
+        if (present(saturation)) then
+            call deallocate(saturation_BCs)
+            call deallocate(saturation_BCs_robin2)
+        end if
+        
+        !   IF(GETCT) THEN
+        !       DEALLOCATE( JCOUNT_KLOC )
+        !   ENDIF
+        !   DEALLOCATE(T2UPWIND_MAT_ALL)
+        !   DEALLOCATE(T2OLDUPWIND_MAT_ALL)
+        !   deallocate (FXGI_ALL); deallocate (int_UDGI_ALL); deallocate (A_STAR_X_ALL); deallocate (VEC_VEL2); deallocate (courant_or_minus_one_new)
+        !   deallocate (int_XI_LIMIT); deallocate (P_STAR); deallocate (U_DOT_GRADF_GI); deallocate (A_STAR_F); deallocate (RESIDGI)
+        !   deallocate (ELE_LENGTH_SCALE);deallocate (FEMFGI);deallocate (RGRAY);deallocate (DIFF_COEF);deallocate (COEF);deallocate (RSCALE)
+        !   deallocate (COEF2);deallocate (FEMFGI_CENT);deallocate (FEMFGI_UP);deallocate (UBCZERO)
 
           !These three variables are allocated simultaneously so only one need to be checked
           if (allocated(suf_t_bc)) deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
@@ -2331,7 +2331,6 @@ contains
                             LOCNODS(2)=X_NDGLN((ELE2-1)*CV_NLOC+3)
                             LOCNODS(3)=X_NDGLN((ELE2-1)*CV_NLOC+6)
                             IF(NDIM==3) LOCNODS(4)=X_NDGLN((ELE2-1)*CV_NLOC+10)
-                        ELSE
                             LOCNODS(1:CV_NLOC)=X_NDGLN((ELE2-1)*CV_NLOC+1:(ELE2-1)*CV_NLOC+CV_NLOC)
                         ENDIF
 
@@ -4078,7 +4077,6 @@ end if
         type(tensor_field), dimension(size(psi)) :: fempsi_rhs
         type(vector_field), dimension(size(psi_ave)) :: psi_ave_temp
         type(vector_field), dimension(size(psi_int)) :: psi_int_temp
-        type(tensor_field), pointer :: tfield
         type(csr_sparsity), pointer :: sparsity
         logical :: do_not_project,  is_to_update
         character(len=option_path_len) :: option_path
@@ -4089,15 +4087,14 @@ end if
         !Currently hard-coded. This is not used for porous_media but it is used otherwise
         do_not_project =  is_porous_media!<=DISABLED FOR POROUS MEDIA
         is_to_update = .not.associated(CV_funs%CV2FE%refcount)!I think this is only true after adapt and at the beginning
-
-        do it=1,size(fempsi)
-            call zero(fempsi(it)%ptr)
-            call allocate(fempsi_rhs(it),psi(it)%ptr%mesh,"RHS",dim=psi(it)%ptr%dim)
-            call zero(fempsi_rhs(it))
-            ! call halo_update(psi(it)%ptr)!Fields should get here already updated
-        end do
-        tfield=>psi(1)%ptr
-
+        if (.not. do_not_project) then
+            do it=1,size(fempsi)
+                call zero(fempsi(it)%ptr)
+                call allocate(fempsi_rhs(it),psi(it)%ptr%mesh,"RHS",dim=psi(it)%ptr%dim)
+                call zero(fempsi_rhs(it))
+                ! call halo_update(psi(it)%ptr)!Fields should get here already updated
+            end do
+        end if
         if(is_to_update) then
             call allocate(cv_mass,psi(1)%ptr%mesh,'CV_mass')
             call zero(cv_mass)
@@ -4193,11 +4190,11 @@ end if
         end if
 
         ! solve the petsc matrix
-        if(do_not_project) then
-            do it = 1, size(fempsi)
-                call set(fempsi(it)%ptr,psi(it)%ptr)
-            end do
-        else
+        if(.not.do_not_project) then
+            ! do it = 1, size(fempsi)
+            !     call set(fempsi(it)%ptr,psi(it)%ptr)
+            ! end do
+        ! else
             do it = 1, size(fempsi)
                 ! call zero_non_owned(fempsi_rhs(it))!Use default solver for this
                 call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = '/solver_options/Linear_solver')
@@ -4207,9 +4204,11 @@ end if
         ! deallocation
         call deallocate_multi_dev_shape_funs(DevFuns)
 
-        do it = 1,size(fempsi_rhs)
-            call deallocate(fempsi_rhs(it))
-        end do
+        if (.not. do_not_project) then 
+            do it = 1,size(fempsi_rhs)
+                call deallocate(fempsi_rhs(it))
+            end do
+        end if
         if(is_to_update) then
             call deallocate(cv_mass)
             do it = 1,size(psi_ave_temp)
