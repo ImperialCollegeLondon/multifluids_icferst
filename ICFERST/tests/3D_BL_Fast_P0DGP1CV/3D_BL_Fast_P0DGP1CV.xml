@@ -8,15 +8,15 @@
   </problem_definition>
   <variables/>
   <pass_tests>
-    <test name="3D_BL_Fast_P0DGP1CV" language="python">3D_BL_Fast_P0DGP1CV = False
+    <test name="BL_Fast_P0DGP1CV" language="python">BL_Fast_P0DGP1CV = False
 with open("log", "r") as f:
     linelist = f.readlines()           # Read the first line.
     last = linelist[len(linelist)-1]   # The last line
 f.close 
 
-if 'OK' in last: 3D_BL_Fast_P0DGP1CV = True
+if 'OK' in last: BL_Fast_P0DGP1CV = True
 
-assert(3D_BL_Fast_P0DGP1CV)</test>
+assert(BL_Fast_P0DGP1CV)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

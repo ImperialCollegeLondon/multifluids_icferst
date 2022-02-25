@@ -18,7 +18,7 @@ int_tracer1 = stat("QuickTest_DG.stat")["phase1"]["Tracer"]["integral"][-1]</var
   <pass_tests>
     <test name="Assert final max tracer 1" language="python">assert(abs(max_tracer1 - 1) &lt; 0.01)</test>
     <test name="Assert final max tracer 2" language="python">assert(abs(max_tracer2 - 1) &lt; 0.01)</test>
-    <test name="Assert final integral tracer 1" language="python">assert(abs(int_tracer1 - 0.045)/0.045 &lt; 0.01)</test>
+    <test name="Assert final integral tracer 1" language="python">assert(abs(int_tracer1 - 0.0444)/0.0444 &lt; 0.01)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
