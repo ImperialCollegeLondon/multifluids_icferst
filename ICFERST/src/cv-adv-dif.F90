@@ -248,7 +248,7 @@ contains
           REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
           REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
           REAL, DIMENSION( :, : ), target, intent( inout ) :: DEN_ALL!> Density of the field, different memory to the feld density, used to apply the Boussinesq approximation
-          REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL!> Density of the field, different memory to the feld density, used to apply the Boussinesq approximation
+          REAL, DIMENSION( :, : ), target, intent( inout ) :: DENOLD_ALL!> Density of the field, different memory to the feld density, used to apply the Boussinesq approximation
           REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (nphase,Mdims%cv_nonods)
           REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
           REAL, intent( in ) :: DT, CV_THETA, CV_BETA
@@ -325,8 +325,9 @@ contains
           REAL, dimension(final_phase) :: FTHETA, FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, &
               ROBIN1, ROBIN2, BCZERO
           !Local copy of tracers and densities
-          real, dimension(final_phase) :: LOC_T_J, LOC_TOLD_J, LOC_T_I, LOC_TOLD_I, LOC_DEN_J, LOC_DENOLD_J, LOC_DEN_I, LOC_DENOLD_I, &
-              LOC_T2_J, LOC_T2OLD_J, LOC_T2_I, LOC_T2OLD_I, AUX_T, AUX2_T
+          real, dimension(final_phase) :: AUX_T, AUX2_T
+          real, dimension(:), pointer :: LOC_T_J, LOC_TOLD_J, LOC_T_I, LOC_TOLD_I, LOC_DEN_J, LOC_DENOLD_J, LOC_DEN_I, LOC_DENOLD_I, &
+          LOC_T2_J, LOC_T2OLD_J, LOC_T2_I, LOC_T2OLD_I    
           REAL :: GRAVTY
           character( len = option_path_len ) :: option_path2
           LOGICAL, DIMENSION( Mdims%x_nonods ) :: X_SHARE
@@ -1133,10 +1134,10 @@ contains
 
                   ! Generate some local variables to reduce slicing (sprint_to_do this is a waste...)
                   if (activate_limiters) F_CV_NODI= LOC_F(:, CV_ILOC)
-                  LOC_T_I = T_ALL(1:final_phase, cv_nodi); LOC_TOLD_I = TOLD_ALL(1:final_phase, cv_nodi)
-                  LOC_DEN_I =DEN_ALL(1:final_phase, cv_nodi); LOC_DENOLD_I = DENOLD_ALL(1:final_phase, cv_nodi)
+                  LOC_T_I => T_ALL(1:final_phase, cv_nodi); LOC_TOLD_I => TOLD_ALL(1:final_phase, cv_nodi)
+                  LOC_DEN_I =>DEN_ALL(1:final_phase, cv_nodi); LOC_DENOLD_I => DENOLD_ALL(1:final_phase, cv_nodi)
                   if (use_volume_frac_T2) then
-                    LOC_T2_I = T2_ALL(1:final_phase, cv_nodi); LOC_T2OLD_I = T2OLD_ALL(1:final_phase, cv_nodi)
+                    LOC_T2_I => T2_ALL(1:final_phase, cv_nodi); LOC_T2OLD_I => T2OLD_ALL(1:final_phase, cv_nodi)
                   end if
                   ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
                   Loop_GCOUNT: DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
@@ -1196,10 +1197,10 @@ contains
                             permeability_jump = abs(perm%val(1,1,ele) - perm%val(1,1,ele2)/perm%val(1,1,ele)) > 1e-8
                           end if
                           !Create local variables to reduce slicing
-                          LOC_T_J = T_ALL(1:final_phase, cv_nodj); LOC_TOLD_J = TOLD_ALL(1:final_phase, cv_nodj)
-                          LOC_DEN_J =DEN_ALL(1:final_phase, cv_nodj); LOC_DENOLD_J = DENOLD_ALL(1:final_phase, cv_nodj)
+                          LOC_T_J => T_ALL(1:final_phase, cv_nodj); LOC_TOLD_J => TOLD_ALL(1:final_phase, cv_nodj)
+                          LOC_DEN_J =>DEN_ALL(1:final_phase, cv_nodj); LOC_DENOLD_J => DENOLD_ALL(1:final_phase, cv_nodj)
                           if (use_volume_frac_T2) then
-                            LOC_T2_J = T2_ALL(1:final_phase, cv_nodj); LOC_T2OLD_J = T2OLD_ALL(1:final_phase, cv_nodj)
+                            LOC_T2_J => T2_ALL(1:final_phase, cv_nodj); LOC_T2OLD_J => T2OLD_ALL(1:final_phase, cv_nodj)
                           end if
 
                           if((.not.integrate_other_side).or.(CV_NODJ >= CV_NODI)) then
@@ -1227,7 +1228,7 @@ contains
                               integrate_other_side_and_not_boundary = integrate_other_side.and.(SELE.LE.0)
                               GLOBAL_FACE = GLOBAL_FACE + 1
                               JMID = Mspars%small_acv%mid(CV_NODJ)
-                              ! Calculate the control volume normals at the Gauss pts. Internal subroutine for speed
+                              ! Calculate the control volume normals at the Gauss pts.
                               CALL SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, between_elements, &
                                     ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( :, CV_NODI ), X_NODI, X_NODJ)
                               !Obtain the list of neighbouring nodes
