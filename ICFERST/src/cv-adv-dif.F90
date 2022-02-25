@@ -488,10 +488,10 @@ contains
               VAD_activated = Phase_with_Pc >0
           end if
           flux_limited_vad = have_option("/numerical_methods/flux_limited_vad")
-
           !Check whether to use limiters or not
           call get_option("/geometry/simulation_quality", option_path2, stat=stat)
           activate_limiters = .not. trim(option_path2) == "fast"
+          if (have_option("/numerical_methods/disable_limiters")) activate_limiters = .false.
           !this is true if the user is asking for high order advection scheme
           use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
           !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
@@ -3347,8 +3347,13 @@ end if
             ! Calculate NDOTQNEW from NDOTQ
             if (not_OLD_VEL) then
                 if (is_P0DGP1) then 
-                    NDOTQNEW = NDOTQ + matmul(CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, :,1)*&
-                        ( LOC_U(:,:,1)-LOC_NU(:,:,1)))
+                  NDOTQNEW = NDOTQ
+                  forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
+                      NDOTQNEW(iv_iphase) = NDOTQNEW(iv_iphase) + CVNORMX_ALL(iv_idim, GI)* UGI_COEF_ELE_ALL(iv_idim, iv_iphase,1)*&
+                          ( LOC_U(iv_idim, iv_iphase,1)-LOC_NU(iv_idim, iv_iphase,1))
+                  end forall 
+                    ! NDOTQNEW = NDOTQ + matmul(CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, :,1)*&
+                    !     ( LOC_U(:,:,1)-LOC_NU(:,:,1)))
                 else
                     do iv_iphase = 1,final_phase
                         NDOTQNEW(iv_iphase) = NDOTQ(iv_iphase) + dot_product(matmul( CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, iv_iphase,:)*&
@@ -4230,15 +4235,15 @@ end if
 
             U_OTHER_LOC = 0 ! Determine U_OTHER_LOC(U_KLOC)
             if (.not.is_P0DGP1) then!XU_NDGLN not defined for P0DGP1
-            ! Works for non constant and constant (XU_NLOC=1) vel basis functions...
-            DO U_KLOC = 1, U_NLOC ! Find opposite local node
-                XU_NODK = XU_NDGLN( ( ELE - 1 ) * XU_NLOC + U_KLOC )
-                DO U_KLOC2 = 1, U_NLOC
-                    XU_NODK2 = XU_NDGLN(( ELE2 - 1 ) * XU_NLOC + U_KLOC2 )
-                    IF ( ( XU_NODK2 == XU_NODK ) .OR. ( XU_NLOC == 1 ) ) &
-                        U_OTHER_LOC( U_KLOC ) = U_KLOC2
-                END DO
-            END DO
+              ! Works for non constant and constant (XU_NLOC=1) vel basis functions...
+              DO U_KLOC = 1, U_NLOC ! Find opposite local node
+                  XU_NODK = XU_NDGLN( ( ELE - 1 ) * XU_NLOC + U_KLOC )
+                  DO U_KLOC2 = 1, U_NLOC
+                      XU_NODK2 = XU_NDGLN(( ELE2 - 1 ) * XU_NLOC + U_KLOC2 )
+                      IF ( ( XU_NODK2 == XU_NODK ) .OR. ( XU_NLOC == 1 ) ) &
+                          U_OTHER_LOC( U_KLOC ) = U_KLOC2
+                  END DO
+              END DO
             end if
             MAT_OTHER_LOC = CV_OTHER_LOC
         ELSE

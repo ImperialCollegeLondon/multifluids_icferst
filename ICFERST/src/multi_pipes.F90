@@ -128,7 +128,7 @@ contains
       !Logical to check if we using a conservative method or not, to save cpu time
       logical :: conservative_advection
       !Parameters of the simulation
-      logical, parameter :: UPWIND_PIPES = .false.! Used for testing...
+      logical, parameter :: UPWIND_PIPES = .true.! Used for testing...
       logical, parameter :: PIPE_MIN_DIAM=.true. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
       logical, parameter :: LUMP_COUPLING_RES_PIPES = .true. ! Lump the coupling term which couples the pressure between the pipe and reservior.
       real, parameter :: INFINY=1.0E+20
