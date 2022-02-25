@@ -2804,6 +2804,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: BIGM_CON
         logical :: LUMP_DIAG_MOM, lump_mass
 
+        logical :: report_residual = .true. ! flag to report momentum residual
+        real :: residual_l2norm
         !For the time being, let the user decide whether to rescale the mom matrices
         rescale_mom_matrices = have_option("/solver_options/Momemtum_matrix/rescale_mom_matrices")
         !The stokes solver method can be activated from diamond also
@@ -3138,7 +3140,7 @@ end if
               !For a velocity field the diagonal of A needs to be extracted using a vector field
               call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
             end if
-            if ( .not. (solve_stokes .or. solve_mom_iteratively) )  call deallocate(Mmat%DGM_PETSC)
+            if ( .not. (solve_stokes .or. solve_mom_iteratively .or. report_residual) )  call deallocate(Mmat%DGM_PETSC)
         END IF
         !"########################UPDATE PRESSURE STEP####################################"
         !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver, for inertia this is a huge save as for that momemt DGM_petsc is deallocated!)
@@ -3198,6 +3200,17 @@ end if
         call deallocate(deltaP)
         if (isParallel()) call halo_update(velocity)
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
+
+        ! CALCULATE MOMENTUM RESIDUAL
+        if (report_residual) then
+            ! UPDATE grad P Mmat%C * P
+            call zero(cdp_tensor)
+            call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+            CALL cal_vel_residual(residual_l2norm, Mmat, velocity, CDP_tensor, Mmat%U_RHS)
+            call deallocate(Mmat%DGM_PETSC)
+            ewrite(-1,*) 'momentum residual l2_norm' , residual_l2norm
+        endif
+
         call DEALLOCATE( CDP_tensor )
         !######################## CORRECTION VELOCITY STEP####################################
         ! Calculate control volume averaged pressure CV_P from fem pressure P
@@ -3810,6 +3823,43 @@ end if
 
         end subroutine calc_CVPres_from_FEPres
 
+
+        !---------------------------------------------------------------------------
+        !> @author Linfeng Li
+        !> @brief calculate velocity residual after one p-v solve.
+        !> so that we can know how well non-linear iteration converges
+        !---------------------------------------------------------------------------
+        subroutine cal_vel_residual(residual_l2norm, Mmat,Velocity, CDP_tensor, U_RHS)
+           
+            implicit none 
+            type (multi_matrices), intent(inout) :: Mmat
+            real, dimension(Mdims%ndim * Mdims%nphase, Mdims%u_nonods), intent(in) :: U_RHS!Conversion to two entries
+            type(tensor_field), intent(inout) :: Velocity, CDP_tensor
+            real , intent(inout) :: residual_l2norm
+            !Local variables
+            type( tensor_field ) :: residual_field
+            type( vector_field ) :: packed_vel, rhs, residual
+
+            ! convert from tensor data to vector data
+            packed_vel = as_packed_vector(Velocity)
+            call allocate(residual_field, velocity%mesh, "residual", dim=velocity%dim); call zero(residual_field)
+                    ! velocity tensor field shape ndim x nphase x u_nonods
+            residual = as_packed_vector(residual_field)
+            
+            ! ewrite(3,*) 'size residual', residual%dim, node_count(residual),&
+            !     'size dgm_petsc', blocks(Mmat%DGM_PETSC,1), blocks(Mmat%DGM_PETSC, 2), &
+            !         block_size(Mmat%DGM_PETSC,1),  block_size(Mmat%DGM_PETSC,2),&
+            !     'size packed_vel', packed_vel%dim, node_count(packed_vel)
+            call mult(residual, Mmat%DGM_PETSC, packed_vel)
+            
+            rhs = as_packed_vector(CDP_tensor)
+            rhs%val = rhs%val + U_RHS
+            residual%val = residual%val - rhs%val
+            if(isParallel()) call halo_update(residual_field)
+            residual_l2norm =  sqrt(sum(residual%val**2))
+            
+            call deallocate(residual_field)
+        end subroutine cal_vel_residual
 
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
