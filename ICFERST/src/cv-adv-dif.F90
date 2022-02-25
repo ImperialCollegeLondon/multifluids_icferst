@@ -3394,6 +3394,7 @@ end if
             SCV_DXDLX = 0.0;SCV_DXDLY = 0.0
             SCV_DYDLX = 0.0;SCV_DYDLY = 0.0
             SCV_DZDLX = 0.0;SCV_DZDLY = 0.0
+            
             do  SCV_JLOC = 1, Mdims%x_nloc
     
               SCV_NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+SCV_JLOC)
