@@ -857,7 +857,7 @@ contains
                 FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &!we need to get rid of all of this... check if for inertia is there any gain at all
                 Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
               IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
-                tracer,PSI_AVE, PSI_INT)
+                tracer,PSI_AVE, PSI_INT, activate_limiters = .true.)
             XC_CV_ALL=0.0
             !sprint_to_do!use the pointers instead! pointer?
             XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
@@ -918,7 +918,7 @@ contains
                 FEMPSI(1:2),PSI(1:2), &!we need to get rid of all of this... check if for inertia is there any gain at all
                 Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
                 IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
-                tracer,PSI_AVE, PSI_INT, activate_limiters = .false.)
+                tracer,PSI_AVE, PSI_INT)
             !sprint_to_do!use the pointers instead! pointer?
             XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
             MASS_CV         => psi_int(1)%ptr%val(1,:)
