@@ -863,6 +863,12 @@ contains
             call insert(packed_state,element_mesh,'P0DG')
         end if
 
+        !Insert mass_elements
+        call allocate(vec_field,1,element_mesh,"MASS_ELE")
+        call zero(vec_field)
+        call insert(packed_state,vec_field,"MASS_ELE")
+        call deallocate(vec_field)
+
         ! pack rock-fluid properties
         ! if there is capillary pressure, we store 5 entries, otherwise just 3:
         ! (Immobile fraction, Krmax, relperm exponent, [capillary entry pressure, capillary exponent])

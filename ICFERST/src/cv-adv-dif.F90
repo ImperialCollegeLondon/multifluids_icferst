@@ -343,9 +343,10 @@ contains
 
           REAL, DIMENSION( : ), allocatable ::  N
           real, dimension (Mdims%cv_nonods) ::  SUM_CV
-          real, dimension (Mdims%totele) :: MASS_ELE
+          real, dimension (:), pointer :: MASS_ELE
+          type(vector_field), pointer :: vfield
           REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
-          REAL, DIMENSION( Mdims%ndim, Mdims%cv_nonods ) :: XC_CV_ALL
+          REAL, DIMENSION( :,: ), pointer :: XC_CV_ALL
           REAL, DIMENSION( Mdims%ndim,final_phase,Mdims%u_nloc ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
           REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
           !###Variables for shape function calculation###
@@ -854,18 +855,19 @@ contains
             end do
             psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
             psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
+            vfield => extract_vector_field(packed_state,"MASS_ELE")
+            MASS_ELE => vfield%val(1,:)
             call PROJ_CV_TO_FEM(packed_state, &!For porous media we are just pointing memory from PSI to FEMPSI
                 FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &!we need to get rid of all of this... check if for inertia is there any gain at all
                 Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
               IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
                 tracer,PSI_AVE, PSI_INT, activate_limiters = .true.)
-            XC_CV_ALL=0.0
             !sprint_to_do!use the pointers instead! pointer?
-            XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
-            MASS_CV         => psi_int(1)%ptr%val(1,:)
-            FEMT_ALL             = FEMPSI(1)%ptr%val(1,1:final_phase,:)
-            FEMTOLD_ALL          = FEMPSI(2)%ptr%val(1,1:final_phase,:)
-            FEM_IT                    = 3 !<-----------------WHY DO WE SET IT TO 3 ?
+            XC_CV_ALL  => psi_ave(1)%ptr%val
+            MASS_CV    => psi_int(1)%ptr%val(1,:)
+            FEMT_ALL   = FEMPSI(1)%ptr%val(1,1:final_phase,:)
+            FEMTOLD_ALL= FEMPSI(2)%ptr%val(1,1:final_phase,:)
+            FEM_IT     = 3 !<-----------------WHY DO WE SET IT TO 3 ?
             if (.not. is_constant(density)) then
                 FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,1:final_phase,:)
                 if (is_porous_media) then
@@ -911,18 +913,22 @@ contains
             !THE ONLY USEFUL PART CURRENTLY IS THE CALCULATION OF THE BARYCENTRES AND VOLUMES
             !##############################################################################
         else 
+          psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
+          psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
+          vfield => extract_vector_field(packed_state,"MASS_ELE")
+          MASS_ELE => vfield%val(1,:)
+          XC_CV_ALL => psi_ave(1)%ptr%val
+          MASS_CV   => psi_int(1)%ptr%val(1,:)
+          !This works because GETCT is the first call and therefore we will have later on masses and barycenters
+          if (.not.associated(CV_funs%CV2FE%refcount)) then!This is true after adapt and at the beginning
             psi(1)%ptr=>tracer
             psi(2)%ptr=>old_tracer
-            psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
-            psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
             call PROJ_CV_TO_FEM(packed_state, &!For porous media we are just pointing memory from PSI to FEMPSI
                 FEMPSI(1:2),PSI(1:2), &!we need to get rid of all of this... check if for inertia is there any gain at all
                 Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
                 IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
                 tracer,PSI_AVE, PSI_INT)
-            !sprint_to_do!use the pointers instead! pointer?
-            XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
-            MASS_CV         => psi_int(1)%ptr%val(1,:)
+          end if
         end if
 
         !Store mass_CV in packed_state. Ideally we would do this somewhere else, but here we are...
@@ -1589,31 +1595,33 @@ contains
                               else !Use upwinding to obtaing the values                        
                                 IF ( on_domain_boundary ) THEN
                                     !tracer
-                                    where ( WIC_T_BC_ALL( 1,1:final_phase, SELE ) /= WIC_T_BC_DIRICHLET )
-                                        LIMT = LOC_T_I
-                                        LIMTOLD = LOC_TOLD_I
-                                    ELSE where
-                                        LIMT = LOC_T_I * (1.0-INCOME) + INCOME* SUF_T_BC_ALL( 1, 1: final_phase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                        LIMTOLD = LOC_TOLD_I * (1.0-INCOMEOLD) + INCOMEOLD* SUF_T_BC_ALL( 1, 1: final_phase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                    END where
+                                  do iphase = 1, final_phase
+                                    if ( WIC_T_BC_ALL( 1,iphase, SELE ) /= WIC_T_BC_DIRICHLET )then
+                                        LIMT(iphase) = LOC_T_I(iphase)
+                                        LIMTOLD(iphase) = LOC_TOLD_I(iphase)
+                                    ELSE 
+                                        LIMT(iphase) = LOC_T_I(iphase) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_T_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                        LIMTOLD(iphase) = LOC_TOLD_I(iphase) * (1.0-INCOMEOLD(iphase)) + INCOMEOLD(iphase)* SUF_T_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                    END if
                                       !Density
-                                    where ( WIC_D_BC_ALL( 1 , 1:final_phase, SELE ) /= WIC_D_BC_DIRICHLET )
-                                      LIMD = LOC_DEN_I
-                                      LIMDOLD = LOC_DENOLD_I
-                                    ELSE where
-                                      LIMD = LOC_DEN_I * (1.0-INCOME) + INCOME* SUF_D_BC_ALL( 1, 1: final_phase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                      LIMTOLD = LOC_DENOLD_I * (1.0-INCOMEOLD) + INCOMEOLD* SUF_D_BC_ALL( 1, 1: final_phase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                    END where  
+                                    if ( WIC_D_BC_ALL( 1, iphase, SELE ) /= WIC_D_BC_DIRICHLET ) then
+                                      LIMD(iphase) = LOC_DEN_I(iphase)
+                                      LIMDOLD(iphase) = LOC_DENOLD_I(iphase)
+                                    ELSE 
+                                      LIMD(iphase) = LOC_DEN_I(iphase) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_D_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                      LIMTOLD(iphase) = LOC_DENOLD_I(iphase) * (1.0-INCOMEOLD(iphase)) + INCOMEOLD(iphase)* SUF_D_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                    END if  
                                     !Saturation
                                     if (use_volume_frac_T2) then 
-                                      where ( WIC_T2_BC_ALL( 1 , 1:final_phase, SELE ) /= WIC_T_BC_DIRICHLET )
-                                        LIMT2 = LOC_T2_I
-                                        LIMT2OLD = LOC_T2OLD_I
-                                      ELSE where
-                                        LIMT2 = LOC_T2_I * (1.0-INCOME) + INCOME* SUF_T2_BC_ALL( 1, 1: final_phase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                        LIMT2OLD = LOC_T2OLD_I * (1.0-INCOMEOLD) + INCOMEOLD* SUF_T2_BC_ALL( 1, 1: final_phase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                      END where
-                                    end if                                                                        
+                                      if ( WIC_T2_BC_ALL( 1, iphase, SELE ) /= WIC_T_BC_DIRICHLET ) then
+                                        LIMT2(iphase) = LOC_T2_I(iphase)
+                                        LIMT2OLD(iphase) = LOC_T2OLD_I(iphase)
+                                      ELSE 
+                                        LIMT2(iphase) = LOC_T2_I(iphase) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_T2_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                        LIMT2OLD (iphase)= LOC_T2OLD_I(iphase) * (1.0-INCOMEOLD(iphase)) + INCOMEOLD(iphase)* SUF_T2_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                      END if
+                                    end if  
+                                  end do                                                                      
                                 else
                                   LIMT=LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
                                   LIMTOLD=LOC_TOLD_I*(1.0-INCOMEOLD) + LOC_TOLD_J*INCOMEOLD
