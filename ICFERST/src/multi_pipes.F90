@@ -564,37 +564,39 @@ contains
                           CV_NODJ = CV_GL_GL(CV_LJLOC)
                           direction_norm = - direction
                       END IF
-                      TUPWIND_OUT=0.0; DUPWIND_OUT=0.0
-                      TUPWIND_IN=0.0; DUPWIND_IN=0.0
+                      if (.not. UPWIND_PIPES) then 
+                        TUPWIND_OUT=0.0; DUPWIND_OUT=0.0
+                        TUPWIND_IN=0.0; DUPWIND_IN=0.0
 
-                      !Only for the wells domain
-                      DO IPHASE=1, final_phase
-                        global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
-                        compact_phase = iphase + (Mdims%npres - 1)*final_phase
-                      ! DO IPHASE = n_in_pres+1, final_phase
-                          ! CV incomming T:
-                          IF ( T_ALL%val( 1, global_phase, CV_NODI ) > T_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
-                              TUPWIND_OUT( compact_phase ) = TMAX_ALL( compact_phase, CV_NODI )
-                          ELSE
-                              TUPWIND_OUT( compact_phase ) = TMIN_ALL( compact_phase, CV_NODI )
-                          END IF
-                          IF ( DEN_ALL%val( 1, global_phase, CV_NODI ) > DEN_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
-                              DUPWIND_OUT( compact_phase ) = DENMAX_ALL( compact_phase, CV_NODI )
-                          ELSE
-                              DUPWIND_OUT( compact_phase ) = DENMIN_ALL( compact_phase, CV_NODI )
-                          END IF
-                          ! CV outgoing T:
-                          IF ( T_ALL%val( 1, global_phase, CV_NODI ) < T_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
-                              TUPWIND_IN( compact_phase ) = TMAX_ALL( compact_phase, CV_NODJ )
-                          ELSE
-                              TUPWIND_IN( compact_phase ) = TMIN_ALL( compact_phase, CV_NODJ )
-                          END IF
-                          IF ( DEN_ALL%val( 1, global_phase, CV_NODI ) < DEN_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
-                              DUPWIND_IN( compact_phase ) = DENMAX_ALL( compact_phase, CV_NODJ )
-                          ELSE
-                              DUPWIND_IN( compact_phase ) = DENMIN_ALL( compact_phase, CV_NODJ )
-                          END IF
-                      END DO
+                        !Only for the wells domain
+                        DO IPHASE=1, final_phase
+                            global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
+                            compact_phase = iphase + (Mdims%npres - 1)*final_phase
+                        ! DO IPHASE = n_in_pres+1, final_phase
+                            ! CV incomming T:
+                            IF ( T_ALL%val( 1, global_phase, CV_NODI ) > T_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
+                                TUPWIND_OUT( compact_phase ) = TMAX_ALL( compact_phase, CV_NODI )
+                            ELSE
+                                TUPWIND_OUT( compact_phase ) = TMIN_ALL( compact_phase, CV_NODI )
+                            END IF
+                            IF ( DEN_ALL%val( 1, global_phase, CV_NODI ) > DEN_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
+                                DUPWIND_OUT( compact_phase ) = DENMAX_ALL( compact_phase, CV_NODI )
+                            ELSE
+                                DUPWIND_OUT( compact_phase ) = DENMIN_ALL( compact_phase, CV_NODI )
+                            END IF
+                            ! CV outgoing T:
+                            IF ( T_ALL%val( 1, global_phase, CV_NODI ) < T_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
+                                TUPWIND_IN( compact_phase ) = TMAX_ALL( compact_phase, CV_NODJ )
+                            ELSE
+                                TUPWIND_IN( compact_phase ) = TMIN_ALL( compact_phase, CV_NODJ )
+                            END IF
+                            IF ( DEN_ALL%val( 1, global_phase, CV_NODI ) < DEN_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
+                                DUPWIND_IN( compact_phase ) = DENMAX_ALL( compact_phase, CV_NODJ )
+                            ELSE
+                                DUPWIND_IN( compact_phase ) = DENMIN_ALL( compact_phase, CV_NODJ )
+                            END IF
+                        END DO
+                      end if
                       ! Value of sigma in the force balance eqn...
                       INV_SIGMA_GI = 1.0!sprint_to_do remove INV_SIGMA_GI??
                       ! Velocity in the pipe
