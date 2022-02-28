@@ -2026,12 +2026,12 @@ contains
             if (have_option(trim(path))) then
               call initialise_field_over_regions(targ_Store, trim(path), position)
               t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
-            else 
+            else
               !Only for reservoir phases
-              if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then 
+              if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
                 FLAbort("For multiphase porous media flow, relperm max needs to be defined for all the regions of the model.")
               else
-                t_field%val(2,iphase,:) = 1.0 
+                t_field%val(2,iphase,:) = 1.0
               end if
             end if
           end do
@@ -2045,10 +2045,10 @@ contains
                   t_field%val(3,iphase,:) = targ_Store%val
               else !default value
               !Only for reservoir phases
-                if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then 
+                if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
                   FLAbort("For multiphase porous media flow, relperm exponent needs to be defined for all the regions of the model.")
                 else
-                  t_field%val(3,iphase,:) = 1.0 
+                  t_field%val(3,iphase,:) = 1.0
                 end if
               end if
           end do
@@ -2151,7 +2151,7 @@ contains
               end do
             else !default value for immiscible values
               !Only for reservoir phases
-              if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then 
+              if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
                 FLAbort("For multiphase porous media flow, relperm exponent needs to be defined for all the regions of the model.")
               else
                 t_field%val(1,iphase,:) = 0.0!<=to be removed and only use a CV-wise version of this
@@ -2521,7 +2521,8 @@ contains
                   MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)
         ! Update dissolved CO2 (passive tracer, in mol/m3)
         concentration_field%val(1,receiving_phase_pos,cv_nod) = concentration_field%val(1,receiving_phase_pos,cv_nod) + &
-                          min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod))
+                          min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*saturation_field%val(1,receiving_phase_pos,cv_nod))
+        ! Compute the gas CO2 present in the CV (in mol))
         ! Update gas CO2 (in mol)
         n_co2_gas = n_co2_gas - min(delta_n, n_co2_gas)
         ! Update gas CO2 (change in saturation)
