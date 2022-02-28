@@ -3855,6 +3855,7 @@ end if
             residual%val = residual%val - rhs%val
             if(isParallel()) call halo_update(residual_field)
             residual_l2norm =  sqrt(sum(residual%val**2))
+            if (isparallel()) call allsum(residual_l2norm)
             
             call deallocate(residual_field)
         end subroutine cal_vel_residual
