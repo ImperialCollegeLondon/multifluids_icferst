@@ -807,10 +807,15 @@ contains
 
        !Obtain inverse of permeability and store it
        !SPRINT_TO_DO THIS COULD BE DONE FASTER IF WE KNOW IF IT HAS OFF DIAGONALS OR NOT
-       do i = 1, size(perm%val,3)
-           upwnd%inv_permeability( :, :, i)=inverse(perm%val( :, :, i))
-       end do
-
+       if (has_anisotropic_permeability) then 
+        do i = 1, size(perm%val,3)
+          upwnd%inv_permeability( :, :, i)=inverse(perm%val( :, :, i))
+        end do
+       else 
+        forall (j = 1:size(perm%val,1), i = 1:size(perm%val,3)) 
+          upwnd%inv_permeability( j, j, i) = 1./perm%val( j, j, i)
+        end forall
+       end if
        allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
        DO IPHASE = 1, Mdims%nphase!Get viscosity for all the phases
         option_path_python = "/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&

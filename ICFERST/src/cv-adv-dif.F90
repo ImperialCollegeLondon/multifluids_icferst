@@ -687,8 +687,8 @@ contains
 
           IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
               PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )
-
-
+          !Initialise NFIELD
+          NFIELD=0
           if (activate_limiters) then 
             ! FOR packing as well as for detemining which variables to apply interface tracking**********
             !          STORE=.TRUE.
@@ -727,7 +727,6 @@ contains
                 ENDIF
             END DO
 
-            NFIELD=0
             DO IFI=1,size(IGOT_T_PACK,2)
                 DO IPHASE=1,final_phase
                     IF(.not.IGOT_T_CONST(IPHASE,IFI)) NFIELD=NFIELD+1
