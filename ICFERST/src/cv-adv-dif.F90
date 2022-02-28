@@ -687,8 +687,8 @@ contains
 
           IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
               PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )
-
-
+          !Initialise NFIELD
+          NFIELD=0
           if (activate_limiters) then 
             ! FOR packing as well as for detemining which variables to apply interface tracking**********
             !          STORE=.TRUE.
@@ -727,7 +727,6 @@ contains
                 ENDIF
             END DO
 
-            NFIELD=0
             DO IFI=1,size(IGOT_T_PACK,2)
                 DO IPHASE=1,final_phase
                     IF(.not.IGOT_T_CONST(IPHASE,IFI)) NFIELD=NFIELD+1
@@ -1780,171 +1779,158 @@ contains
                                   LOC_CV_RHS_J=0.0; LOC_MAT_JJ =0.
                                   LOC_MAT_IJ = 0.0; LOC_MAT_JI =0.
                                   IF ( GETMAT ) THEN
-                                      ! - Calculate the integration of the limited, high-order flux over a face
-                                      ! Conservative discretisation. The matrix (PIVOT ON LOW ORDER SOLN)
-                                      IF ( on_domain_boundary) THEN
-                                        if (GOT_DIFFUS) then
-                                          DO IPHASE=1,final_phase
-                                              IF(WIC_T_BC_ALL(1,iphase,sele) == WIC_T_BC_DIRICHLET) THEN
-                                                  LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
-                                                      + FTHETA_T2(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
-                                                      * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1))
-                                                  IF(GET_GTHETA) THEN
-                                                      THETA_GDIFF( IPHASE, CV_NODI ) =  THETA_GDIFF( IPHASE, CV_NODI ) &
-                                                          + FTHETA_T2(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
-                                                          * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                                  END IF
-                                              END IF
-                                          END DO
-                                        else if (got_diffus_low_order) then 
-                                          DO IPHASE=1,final_phase
-                                            IF(WIC_T_BC_ALL(1,iphase,sele) == WIC_T_BC_DIRICHLET) THEN
-                                                LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
-                                                    + LIMT2(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
-                                                    * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1))
-                                            END IF
-                                          END DO
-                                        end if
-                                      ELSE
-                                        !Assemble off-diagonal cv_nodi-cv_nodj
-                                        LOC_MAT_IJ = LOC_MAT_IJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD! Advection
-                                        if (GOT_DIFFUS) LOC_MAT_IJ = LOC_MAT_IJ - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                        if (got_diffus_low_order) LOC_MAT_IJ = LOC_MAT_IJ - LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                        if (VAD_activated) LOC_MAT_IJ = LOC_MAT_IJ - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
-                                        !Assemble off-diagonal cv_nodj-cv_nodi, integrate the other CV side contribution (the sign is changed)...
-                                        if(integrate_other_side_and_not_boundary) then
-                                          LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * (1. - INCOME) * LIMD! Advection
-                                          if (GOT_DIFFUS) LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                          if (got_diffus_low_order) LOC_MAT_JI = LOC_MAT_JI - LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                          if (VAD_activated) LOC_MAT_JI = LOC_MAT_JI - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
-                                        end if
-
-                                          IF ( GET_GTHETA ) THEN
-                                              THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
-                                                  + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_J ! Diffusion contribution
-                                              ! integrate the other CV side contribution (the sign is changed)...
-                                              if(integrate_other_side_and_not_boundary) then
-                                                  THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
-                                                      + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_I ! Diffusion contribution
-                                              endif
-                                          END IF
-                                      END IF ! endif of IF ( on_domain_boundary ) THEN ELSE
-
-                                      !Assemble diagonal of the matrix of node cv_nodi
-                                      LOC_MAT_II = LOC_MAT_II +  FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME ) * LIMD! Advection
-                                      if (GOT_DIFFUS) LOC_MAT_II = LOC_MAT_II + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                      if (got_diffus_low_order) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                      if (VAD_activated) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
-                                      if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - FTHETA_T2 * ( ONE_M_CV_BETA ) * &
-                                                                                    SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
-                                      if (on_domain_boundary) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * ROBIN2
-
-                                      !Assemble diagonal of the matrix of node cv_nodj
-                                      if(integrate_other_side_and_not_boundary) then
-                                        LOC_MAT_JJ = LOC_MAT_JJ -  FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD! Advection
-                                        if (GOT_DIFFUS) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                        if (got_diffus_low_order) LOC_MAT_JJ = LOC_MAT_JJ + LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                        if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
-                                        if (.not.conservative_advection) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2_J * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
-                                      endif
-
-                                      IF ( GET_GTHETA ) THEN
-                                          THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
-                                              -  FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_I & ! Diffusion contribution
-                                              -  SdevFuns%DETWEI( GI ) * robin1 * LOC_T_I  ! Robin bc
-                                          if(integrate_other_side_and_not_boundary) then
-                                              THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
-                                                  -  FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_J ! Diffusion contribution
-                                          endif
-                                      END IF
-                                  END IF  ! ENDOF IF ( GETMAT ) THEN
-
-                                  ! Put results into the RHS vector
-                                  LOC_CV_RHS_I =  LOC_CV_RHS_I  &
-                                         ! subtract 1st order adv. soln.
+                                    !##################ADVECTION####################################
+                                    IF (on_domain_boundary) THEN
+                                      !LHS of ROBIN BCS
+                                      LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * ROBIN2 
+                                      !RHS of ROBIN BCs
+                                      LOC_CV_RHS_I =  LOC_CV_RHS_I + SdevFuns%DETWEI( GI ) * ROBIN1
+                                    else
+                                      !Matrix terms
+                                      LOC_MAT_IJ = LOC_MAT_IJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD
+                                      LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * (1. - INCOME) * LIMD
+                                      LOC_MAT_JJ = LOC_MAT_JJ -  FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD
+                                      !Now RHS 
+                                      LOC_CV_RHS_J =  LOC_CV_RHS_J  &
+                                          ! subtract 1st order adv. soln.
+                                          - FTHETA_T2_J * NDOTQNEW * SdevFuns%DETWEI( GI ) * LIMD * FVT * BCZERO &
+                                          +  SdevFuns%DETWEI( GI ) * ( FTHETA_T2_J * NDOTQNEW * LIMDT &
+                                          + ONE_M_FTHETA_T2OLD_J * NDOTQOLD * LIMDTOLD )  
+                                      if (.not.conservative_advection) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
+                                          + FTHETA_T2_J * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD * LOC_T_J &
+                                          - ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) * ( FTHETA_T2_J * NDOTQNEW * LOC_T_J * LIMD  &
+                                          + ONE_M_FTHETA_T2OLD_J * NDOTQOLD * LIMDOLD * LOC_TOLD_J )    
+                                    end if
+                                    LOC_MAT_II = LOC_MAT_II +  FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME ) * LIMD
+                                    !RHS terms
+                                    LOC_CV_RHS_I =  LOC_CV_RHS_I  &
+                                    ! subtract 1st order adv. soln.
                                       + FTHETA_T2 * NDOTQNEW * SdevFuns%DETWEI( GI ) * LIMD * FVT * BCZERO &
                                       -  SdevFuns%DETWEI( GI ) * ( FTHETA_T2 * NDOTQNEW * LIMDT &
                                       + ONE_M_FTHETA_T2OLD* NDOTQOLD * LIMDTOLD ) ! hi order adv
-                                  ! Subtract out 1st order term non-conservative adv.
-                                      if (GOT_DIFFUS) LOC_CV_RHS_I =  LOC_CV_RHS_I &
-                                          + ONE_M_FTHETA_T2OLD * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
-                                          * ( LOC_TOLD_J - LOC_TOLD_I )
-                                      if (VAD_activated) LOC_CV_RHS_I =  LOC_CV_RHS_I &
-                                          - LIMT2* SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
-                                          * ( LOC_T_J - LOC_T_I )
-                                      if (.not.conservative_advection) LOC_CV_RHS_I =  LOC_CV_RHS_I &
+                                    if (.not.conservative_advection) LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           - FTHETA_T2 * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD * LOC_T_I &
-                                          + ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) &
-                                          * ( FTHETA_T2 * NDOTQNEW * LOC_T_I * LIMD  &
-                                          + ONE_M_FTHETA_T2OLD * NDOTQOLD * LIMDOLD * LOC_TOLD_I )
-                                      if (on_domain_boundary) LOC_CV_RHS_I =  LOC_CV_RHS_I &
-                                          + SdevFuns%DETWEI( GI ) * ROBIN1
-
-                                      if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
-                                        !Solid phase
-                                        LOC_CV_RHS_I(1) = LOC_CV_RHS_I(1) + &
-                                            Latent_heat * density%val(1, 1, CV_NODI)*SdevFuns%DETWEI(GI) &
-                                        !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * ( LOC_T2_J(2)*LOC_T2_J(1) - LOC_T2_I(2)*LOC_T2_I(1))&
-                                        !Advection term solid
-                                            +  (1. + LIMT2(2)) * NDOTQNEW(1) * LOC_T2_I(1) )
-                                        !Liquid phase
-                                        LOC_CV_RHS_I(2) = LOC_CV_RHS_I(2) + &
-                                            Latent_heat * density%val(1, 2, CV_NODI)*SdevFuns%DETWEI(GI) &
-                                        !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * ( LOC_T2_J(2)**2. - LOC_T2_I(2)**2.) &
-                                        !Advection term fluid
-                                            +   NDOTQNEW(2) * LOC_T2_I(2)**2. )
+                                          + ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) * ( FTHETA_T2 * NDOTQNEW * LOC_T_I * LIMD  &
+                                          + ONE_M_FTHETA_T2OLD * NDOTQOLD * LIMDOLD * LOC_TOLD_I )  
+                                    !############END OF Advection####################################
+                                    !###############DIFFUSION########################################
+                                    if (got_diffus_low_order) then 
+                                      IF ( on_domain_boundary) THEN
+                                        DO IPHASE=1,final_phase
+                                          IF(WIC_T_BC_ALL(1,iphase,sele) == WIC_T_BC_DIRICHLET) THEN
+                                              LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
+                                                  + LIMT2(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
+                                                  * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1))
+                                          END IF
+                                        END DO
+                                      else
+                                        LOC_MAT_IJ = LOC_MAT_IJ - LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
+                                        LOC_MAT_JI = LOC_MAT_JI - LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
+                                        LOC_MAT_JJ = LOC_MAT_JJ + LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                       end if
-
-                                  if(integrate_other_side_and_not_boundary) then
-                                      LOC_CV_RHS_J =  LOC_CV_RHS_J  &
-                                             ! subtract 1st order adv. soln.
-                                          - FTHETA_T2_J * NDOTQNEW * SdevFuns%DETWEI( GI ) * LIMD * FVT * BCZERO &
-                                          +  SdevFuns%DETWEI( GI ) * ( FTHETA_T2_J * NDOTQNEW * LIMDT &
-                                          + ONE_M_FTHETA_T2OLD_J * NDOTQOLD * LIMDTOLD )
-                                      if (GOT_DIFFUS) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
-                                          + ONE_M_FTHETA_T2OLD_J * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
-                                          * ( LOC_TOLD_I - LOC_TOLD_J )
-                                      if (VAD_activated) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
-                                          - LIMT2 * SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
-                                          * ( LOC_T_I - LOC_T_J )
-                                      if (.not.conservative_advection) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
-                                          + FTHETA_T2_J * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD * LOC_T_J &
-                                          - ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) &
-                                          * ( FTHETA_T2_J * NDOTQNEW * LOC_T_J * LIMD  &
-                                          + ONE_M_FTHETA_T2OLD_J * NDOTQOLD * LIMDOLD * LOC_TOLD_J )
-
-                                      if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
-                                        !Solid phase
-                                        LOC_CV_RHS_J(1) = LOC_CV_RHS_J(1) + &
-                                            Latent_heat * density%val(1, 1, CV_NODJ)*SdevFuns%DETWEI(GI) &
-                                        !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * ( LOC_T2_I(2)*LOC_T2_I(1) - LOC_T2_J(2)*LOC_T2_J(1))&
-                                        !Advection term solid
-                                            +  (1. + LOC_T2_J(2)) * NDOTQNEW(1) * LOC_T2_J(1) )
-                                        !Liquid phase
-                                        LOC_CV_RHS_J(2) = LOC_CV_RHS_J(2) + &
-                                            Latent_heat * density%val(1, 2, CV_NODJ)*SdevFuns%DETWEI(GI) &
-                                        !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * ( LOC_T2_I(2)**2. - LOC_T2_J(2)**2.) &
-                                        !Advection term fluid
-                                            +   NDOTQNEW(2) * LOC_T2_J(2)**2. )
+                                      LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
+                                    else if (GOT_DIFFUS) then
+                                      IF ( on_domain_boundary) THEN
+                                        DO IPHASE=1,final_phase
+                                            IF(WIC_T_BC_ALL(1,iphase,sele) == WIC_T_BC_DIRICHLET) THEN
+                                                LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
+                                                    + FTHETA_T2(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
+                                                    * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1))
+                                            END IF
+                                        END DO
+                                      else 
+                                        LOC_MAT_IJ = LOC_MAT_IJ - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
+                                        LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
+                                        LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
+                                        !Now RHS 
+                                        LOC_CV_RHS_J =  LOC_CV_RHS_J  + ONE_M_FTHETA_T2OLD_J * SdevFuns%DETWEI(GI)&
+                                                        * DIFF_COEFOLD_DIVDX * ( LOC_TOLD_I - LOC_TOLD_J )
                                       end if
-                                  endif
-                                  IF ( GET_GTHETA ) THEN
+                                      LOC_MAT_II = LOC_MAT_II + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
+                                      !Now RHS 
+                                      LOC_CV_RHS_I =  LOC_CV_RHS_I + ONE_M_FTHETA_T2OLD * SdevFuns%DETWEI(GI) &
+                                                      * DIFF_COEFOLD_DIVDX * ( LOC_TOLD_J - LOC_TOLD_I )
+                                    end if
+                                    !###############END OF DIFFUSION########################################
+                                    !###############VANISHING ARTIFICIAL DIFFUSION##########################
+                                    if (VAD_activated) then 
+                                      IF ( .not. on_domain_boundary) THEN
+                                        LOC_MAT_IJ = LOC_MAT_IJ - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                        LOC_MAT_JI = LOC_MAT_JI - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                        LOC_MAT_JJ = LOC_MAT_JJ +  LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                        !RHS terms
+                                        LOC_CV_RHS_J =  LOC_CV_RHS_J - LIMT2 * SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & 
+                                                                  * ( LOC_T_I - LOC_T_J )
+                                      end if
+                                      LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                      !RHS terms
+                                      LOC_CV_RHS_I =  LOC_CV_RHS_I - LIMT2* SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  
+                                                                * ( LOC_T_J - LOC_T_I )
+                                    end if
+                                    !########END OF VANISHING ARTIFICIAL DIFFUSION##########################
+                                    !###############?????????????????????##########################
+                                    IF ( GET_GTHETA ) THEN!Whatever this is...
+                                      IF ( on_domain_boundary) THEN
+                                        THETA_GDIFF( IPHASE, CV_NODI ) =  THETA_GDIFF( IPHASE, CV_NODI ) &
+                                            + FTHETA_T2(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
+                                            * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                      else
+                                        THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
+                                                  + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_J ! Diffusion contribution
+                                              ! integrate the other CV side contribution (the sign is changed)...
+                                        THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
+                                            + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_I ! Diffusion contribution
+                                            THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
+                                            -  FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_J ! Diffusion contribution
+                                        THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
+                                            + (1.-FTHETA_T2) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
+                                            * ( LOC_TOLD_I - LOC_TOLD_J )
+                                      end if
                                       THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
-                                          + (1.-FTHETA_T2) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
-                                          * ( LOC_TOLD_J - LOC_TOLD_I ) &
-                                          ! Robin bc
-                                          + SdevFuns%DETWEI( GI ) * robin2
-                                      if(integrate_other_side_and_not_boundary) then
-                                          THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
+                                            -  FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX * LOC_T_I & ! Diffusion contribution
+                                            -  SdevFuns%DETWEI( GI ) * robin1 * LOC_T_I  ! Robin bc
+                                      THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
                                               + (1.-FTHETA_T2) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
-                                              * ( LOC_TOLD_I - LOC_TOLD_J )
-                                      endif
-                                  END IF
-                                  ! this is for the internal energy equation source term..
+                                              * ( LOC_TOLD_J - LOC_TOLD_I ) &
+                                              ! Robin bc
+                                              + SdevFuns%DETWEI( GI ) * robin2
+                                    end if
+                                    !###############?????????????????????##########################
+                                    !###############ENTHALPY TO BE REMOVED##########################
+                                    ! if (asssembling_enthalpy) then
+                                    !     !Solid phase
+                                    !   LOC_CV_RHS_I(1) = LOC_CV_RHS_I(1) + &
+                                    !       Latent_heat * density%val(1, 1, CV_NODI)*SdevFuns%DETWEI(GI) &
+                                    !   !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
+                                    !       * ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * ( LOC_T2_J(2)*LOC_T2_J(1) - LOC_T2_I(2)*LOC_T2_I(1))&
+                                    !   !Advection term solid
+                                    !       +  (1. + LIMT2(2)) * NDOTQNEW(1) * LOC_T2_I(1) )
+                                    !   !Liquid phase
+                                    !   LOC_CV_RHS_I(2) = LOC_CV_RHS_I(2) + &
+                                    !       Latent_heat * density%val(1, 2, CV_NODI)*SdevFuns%DETWEI(GI) &
+                                    !   !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
+                                    !       * ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * ( LOC_T2_J(2)**2. - LOC_T2_I(2)**2.) &
+                                    !   !Advection term fluid
+                                    !       +   NDOTQNEW(2) * LOC_T2_I(2)**2. )
+
+                                    !    !Solid phase
+                                    !   LOC_CV_RHS_J(1) = LOC_CV_RHS_J(1) + &
+                                    !       Latent_heat * density%val(1, 1, CV_NODJ)*SdevFuns%DETWEI(GI) &
+                                    !   !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
+                                    !        * ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * ( LOC_T2_I(2)*LOC_T2_I(1) - LOC_T2_J(2)*LOC_T2_J(1))&
+                                    !   !Advection term solid
+                                    !       +  (1. + LOC_T2_J(2)) * NDOTQNEW(1) * LOC_T2_J(1) )
+                                    !   !Liquid phase
+                                    !   LOC_CV_RHS_J(2) = LOC_CV_RHS_J(2) + &
+                                    !       Latent_heat * density%val(1, 2, CV_NODJ)*SdevFuns%DETWEI(GI) &
+                                    !   !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
+                                    !        * ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * ( LOC_T2_I(2)**2. - LOC_T2_J(2)**2.) &
+                                    !   !Advection term fluid
+                                    !       +   NDOTQNEW(2) * LOC_T2_J(2)**2. )   
+
+                                    ! end if
+                                    !###############ENTHALPY TO BE REMOVED##########################
+                                  END IF  ! ENDOF IF ( GETMAT ) THEN
                                   ! This is to introduce the compressibility term due to expansion and therefore the divergence of the velocity is non-zero
                                   !for wells this is not straightforward <= need to CHANGE THIS FOR COMPRESSIBILITY
                                   IF ( THERMAL .and. Mdims%npres == 1) THEN
