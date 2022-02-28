@@ -89,7 +89,7 @@ module multi_SP
           ! F_fields(1, 1, cv_inod) = Saturation%val(1, 1, cv_inod); k = 1
           if (has_concentration) then
             !Convert to Moles/Litre
-            F_fields(2, 1, cv_inod) = Concentration%val(1, 1, cv_inod) * 1000 !To convert from mol/m^3 to mol/l which is how the formulae are defined
+            F_fields(2, 1, cv_inod) = Concentration%val(1, 1, cv_inod) / 1000 !To convert from mol/m^3 to mol/l which is how the formulae are defined
             k = 2
           end if
           !Here the temperature can be in Kelvin or Celsius as we are looking at gradients
@@ -195,9 +195,9 @@ module multi_SP
               ewrite(0, *) "SelfPotential will NOT be computed."
               return
             end if
-          else !Compute water conductivity based on Temperature and concentration (Sen and Goode, 1992)
+          else !Compute water conductivity based on Temperature and concentration (Sen and Goode, 1992)!
             do cv_inod = 1, Mdims%cv_nonods
-              if (has_temperature) temp = Temperature(cv_inod)                   !Water concentration
+              if (has_temperature) temp = Temperature(cv_inod)  - Kelv_conv !<= formula uses Celsius   !Water concentration
               water_conductivity(cv_inod) = (5.6 + 0.27 * temp - 1.5e-4 * temp**2.)*(Concentration(cv_inod)+tol) &
               - Concentration(cv_inod)**1.5 * ( 2.36 + 0.099 * temp) / (1 + 0.214 * Concentration(cv_inod)**0.5)
             end do
