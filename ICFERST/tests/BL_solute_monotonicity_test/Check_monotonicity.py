@@ -128,13 +128,13 @@ for test in range(2):
   for i in range(resolution-1):
     if (Experimental_Y[i]< 1e-10): continue 
     if (Experimental_Y[i] - Experimental_Y[i+1] < -Tolerance ): 
-      #print Experimental_Y[i], Experimental_Y[i+1], Experimental_Y[i] - Experimental_Y[i+1], i, test
+      #print(Experimental_Y[i], Experimental_Y[i+1], Experimental_Y[i] - Experimental_Y[i+1], i)
       Passed = False
 
 #Check the experiment has finished
 if (AutoNumber < 20): Passed = False
 
-#print L1_norm, L2_norm
+
 if (Passed): 
     print('Monotonicity for Tracer and Saturation works OK')
 else:

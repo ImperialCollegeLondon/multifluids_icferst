@@ -1265,7 +1265,8 @@ contains
                         Cont_correction = 0
                         if (jphase /= iphase) then!Don't know how this will work for more than 2 phases
                             do ele = 1, totele
-
+                                !SPRINT_TO_DO get rid of this call and use instead the stored volumes
+                                ! extract_vector_field(packed_state,"CVIntegral")
                                 call DETNLXR(ele, X_ALL, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
 
                                 do cv_iloc = 1, cv_nloc

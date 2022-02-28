@@ -1180,8 +1180,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
              !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
              Auto_max_backtrack = (backtrack_par_factor == -10)
-             !Retrieve number of saturation fixed point iterations from diamond, by default 9
-             call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
+             !Retrieve number of saturation fixed point iterations from diamond, by default 3 if Courant_number<=1, 9 otherwise
+             if (Courant_number(1) <= 1) then
+                 call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 3)
+             else
+                 call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
+             end if
              ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
              GET_THETA_FLUX = .FALSE.
              !####Create dummy variables required for_cv_assemb with no memory usage ####
@@ -1355,7 +1359,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  if (.not. is_porous_media) then
                     call non_porous_ensure_sum_to_one(Mdims, packed_state)
                  end if
-                 ! ! !If we have components (and it is multiphase, obviously) update components
+                 !Correct the solution obtained to make sure we are on track towards the final solution
                  ! if (Mdims%ncomp > 0) call update_components()
                  !Correct the solution obtained to make sure we are on track towards the final solution
                  if (backtrack_par_factor < 1.01) then

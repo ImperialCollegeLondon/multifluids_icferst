@@ -850,6 +850,7 @@ contains
             call deallocate(element_shape)
             element_mesh=>extract_mesh(packed_state,'P0DG')
         end if
+
         if(has_scalar_field(state(1),"Longitudinal_Dispersivity")) then
             ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
             element_mesh=>ldfield%mesh
@@ -861,6 +862,15 @@ contains
             element_mesh=>tdfield%mesh
             call insert(packed_state,element_mesh,'P0DG')
         end if
+
+        !Insert mass_elements
+        call allocate(vec_field,1,element_mesh,"MASS_ELE")
+        call zero(vec_field)
+        call insert(packed_state,vec_field,"MASS_ELE")
+        do icomp = 1, ncomp
+            call insert(multicomponent_state(icomp),vec_field,"MASS_ELE")
+        end do        
+        call deallocate(vec_field)
 
         ! pack rock-fluid properties
         ! if there is capillary pressure, we store 5 entries, otherwise just 3:
