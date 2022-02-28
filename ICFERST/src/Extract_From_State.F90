@@ -867,6 +867,9 @@ contains
         call allocate(vec_field,1,element_mesh,"MASS_ELE")
         call zero(vec_field)
         call insert(packed_state,vec_field,"MASS_ELE")
+        do icomp = 1, ncomp
+            call insert(multicomponent_state(icomp),vec_field,"MASS_ELE")
+        end do        
         call deallocate(vec_field)
 
         ! pack rock-fluid properties

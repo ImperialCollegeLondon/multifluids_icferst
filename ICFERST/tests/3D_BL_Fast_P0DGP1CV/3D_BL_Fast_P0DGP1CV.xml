@@ -1,22 +1,22 @@
 <?xml version='1.0' encoding='utf-8'?>
 <testproblem>
-  <name>3D_BL_Fast_P0DGP1CV</name>
+  <name>Check_3DBL_fast</name>
   <owner userid="pablo.salinas"/>
   <tags>porous mpml 3D tbc</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>python3 ./*.py &gt; log</command_line>
+    <command_line>python3 ./Check_3DBL_fast.py &gt; log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>
-    <test name="BL_Fast_P0DGP1CV" language="python">BL_Fast_P0DGP1CV = False
+    <test name="Check_3DBL_fast" language="python">Check_3DBL_fast = False
 with open("log", "r") as f:
     linelist = f.readlines()           # Read the first line.
     last = linelist[len(linelist)-1]   # The last line
 f.close 
 
-if 'OK' in last: BL_Fast_P0DGP1CV = True
+if 'OK' in last: Check_3DBL_fast = True
 
-assert(BL_Fast_P0DGP1CV)</test>
+assert(Check_3DBL_fast)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
