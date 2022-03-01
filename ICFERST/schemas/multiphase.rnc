@@ -17,8 +17,22 @@ start =
       ## IC-FERST is a next generation simulator based on Double-Control-Volume
       ## Finite Element methods and dynamic unstructured mesh optimisation.
       ##
-      ## IC-FERST is licensed under the LGPL. For more information
+      ## IC-FERST is licensed under the AGPL. For more information
       ## please visit: http://multifluids.github.io/
+      ## 
+      ## <b>Performance tips:</b>
+      ##
+      ## 1) Adapt the mesh as little as possible as it is costly (adapting every 5 time levels adds ~10% extra cost);
+      ##
+      ## 2) Avoid if possible using python fields since it comes with an extra cost (~5% for each field);
+      ##
+      ## 3) When possible use the fast option;
+      ## 
+      ## 4) Output files only when required, it adds extra computations apart from the I/O;
+      ##
+      ## 5) Do not use tensor_field to define permeability unless a full anisotropic tensor is required;
+      ##
+      ## 6) PassiveTracers are cheaper as they are computed every time-level while ActiveTracers are withing the non-linear loop;
       element icferst_options {
          comment,
          ## Model output files are named according to the simulation
@@ -727,6 +741,8 @@ start =
                   }
                   )
                }|
+               ## <b>ONLY USE THIS OPTION IF YOU ARE GOING TO USE A FULL ANISOTROPIC TENSOR</b>
+               ## if not, vector_field is much faster and the results are the same
                element tensor_field {
                   attribute name { "Permeability" },
                   (
