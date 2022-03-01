@@ -4181,7 +4181,7 @@ end if
         !Currently hard-coded. This is not used for porous_media but it is used otherwise
         do_not_project =  .true.!<=DISABLED unless...
         !...limiters are active
-        if (present(activate_limiters)) do_not_project = .not. activate_limiters .and. .not. is_porous_media
+        if (present(activate_limiters)) do_not_project = .not. activate_limiters .or. is_porous_media
         is_to_update = .not.associated(CV_funs%CV2FE%refcount)!I think this is only true after adapt and at the beginning
         if (.not. do_not_project) then
             do it=1,size(fempsi)
