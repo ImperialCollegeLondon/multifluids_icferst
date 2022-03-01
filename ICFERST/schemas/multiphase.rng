@@ -969,8 +969,8 @@ For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conduc
               <element name="scalar_field">
                 <a:documentation>Specify scalar field density of the porous media
 
-&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix). 
-Double check and convert your input values so they only represent the matrix property 
+&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
+Double check and convert your input values so they only represent the matrix property
 (e.g. bulk measurement divided by porosity)</a:documentation>
                 <attribute name="name">
                   <value>porous_density</value>
@@ -991,8 +991,8 @@ Double check and convert your input values so they only represent the matrix pro
                 <element name="scalar_field">
                   <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
 
-&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix). 
-Double check and convert your input values so they only represent the matrix property 
+&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
+Double check and convert your input values so they only represent the matrix property
 (e.g. bulk measurement divided by porosity)</a:documentation>
                   <attribute name="name">
                     <value>porous_heat_capacity</value>
@@ -1014,8 +1014,8 @@ Double check and convert your input values so they only represent the matrix pro
                 <element name="tensor_field">
                   <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )
 
-&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix). 
-Double check and convert your input values so they only represent the matrix property 
+&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
+Double check and convert your input values so they only represent the matrix property
 (e.g. bulk measurement divided by porosity)</a:documentation>
                   <attribute name="name">
                     <value>porous_thermal_conductivity</value>
@@ -1954,7 +1954,7 @@ The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc
               <optional>
                 <element name="ML_model_path">
                   <a:documentation>Recommended method. XGBoost installed and compiled with ICFERST is a requirement.
-Specify here the path to the machine learning (XGBoost) model.               </a:documentation>
+Specify here the path to the machine learning (XGBoost) model.</a:documentation>
                   <data type="string" datatypeLibrary=""/>
                   <group>
                     <optional>
@@ -1966,9 +1966,9 @@ It saves the model in the same folder of the old model using the name "name_old_
                     </optional>
                     <optional>
                       <element name="target_num_nonlinear">
-                        <a:documentation>Target number of inner-nonlinear iterations per outer-nonlinear iteration. 
+                        <a:documentation>Target number of inner-nonlinear iterations per outer-nonlinear iteration.
 
-&lt;b&gt;Recommended values: 1.0 to 5.0 &lt;/b&gt;     
+&lt;b&gt;Recommended values: 1.0 to 5.0 &lt;/b&gt;
 
 &lt;b&gt;Default value: 1.0 &lt;/b&gt;</a:documentation>
                         <ref name="real"/>
@@ -2041,6 +2041,13 @@ If this is off, a classical method based on the number of FPI performed is used 
 By default this is the 20% of the maximum number of non-linear iterations.
 Please double-check that the number of 'Non_Linear_Solver' iterations is greater than 'Aim_num_FPI'</a:documentation>
                             <ref name="integer"/>
+                          </element>
+                        </optional>
+                        <optional>
+                          <element name="FPI_only">
+                            <a:documentation>Only use number of NLI to control timestep and not the error of the non linear solver.
+Can sometimes be a faster option compared to both using aim NLI and error.</a:documentation>
+                            <empty/>
                           </element>
                         </optional>
                       </element>
@@ -3364,7 +3371,7 @@ mass fraction with a particular phase</a:documentation>
       <element name="scalar_field">
         <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
 
-PassiveTracers are not part of the convergence criteria and are computed outside the non-linear loop. 
+PassiveTracers are not part of the convergence criteria and are computed outside the non-linear loop.
 Also, to reduce their cost, low order methods are used for their computation.</a:documentation>
         <attribute name="rank">
           <value>0</value>

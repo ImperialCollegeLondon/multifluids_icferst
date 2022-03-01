@@ -19,7 +19,7 @@ start =
       ##
       ## IC-FERST is licensed under the AGPL. For more information
       ## please visit: http://multifluids.github.io/
-      ## 
+      ##
       ## <b>Performance tips:</b>
       ##
       ## 1) Adapt the mesh as little as possible as it is costly (adapting every 5 time levels adds ~10% extra cost);
@@ -27,7 +27,7 @@ start =
       ## 2) Avoid if possible using python fields since it comes with an extra cost (~5% for each field);
       ##
       ## 3) When possible use the fast option;
-      ## 
+      ##
       ## 4) Output files only when required, it adds extra computations apart from the I/O;
       ##
       ## 5) Do not use tensor_field to define permeability unless a full anisotropic tensor is required;
@@ -796,8 +796,8 @@ start =
             element porous_properties{
                 ## Specify scalar field density of the porous media
                 ##
-                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix). 
-                ## Double check and convert your input values so they only represent the matrix property 
+                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix).
+                ## Double check and convert your input values so they only represent the matrix property
                 ## (e.g. bulk measurement divided by porosity)
                 element scalar_field {
                    attribute name { "porous_density" },
@@ -815,8 +815,8 @@ start =
                 },
                 ## Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
                 ##
-                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix). 
-                ## Double check and convert your input values so they only represent the matrix property 
+                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix).
+                ## Double check and convert your input values so they only represent the matrix property
                 ## (e.g. bulk measurement divided by porosity)
                 element scalar_field {
                    attribute name { "porous_heat_capacity" },
@@ -837,8 +837,8 @@ start =
 
                 ## Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin => W/(m·K) )
                 ##
-                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix). 
-                ## Double check and convert your input values so they only represent the matrix property 
+                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix).
+                ## Double check and convert your input values so they only represent the matrix property
                 ## (e.g. bulk measurement divided by porosity)
                element tensor_field {
                   attribute name { "porous_thermal_conductivity" },
@@ -1139,7 +1139,7 @@ start =
                }?
           )}?,
           ## This parameter specifies the maximum dissolved gas (phase2) into the liquid phase (phase1).
-          ## 
+          ##
           ## The dissolution is considered instantaneous (flash). The units are mol/Kg.
           ## It requires a Concentration field on the first phase.
 	         element Gas_dissolution {
@@ -1148,13 +1148,13 @@ start =
 	         	## Molar mass of the gas being dissolved. For example for CO2 it is: 0.0441 kg/mol
 	         	element molar_mass{real},
 	         	## Name of the phase that dissolves
-	         	element from_phase{string},     
+	         	element from_phase{string},
 	         	## Name of the phase in which from_phase dissolves into
 	         	element to_phase{string,
 	         	(
 	           	## Name of the tracer that contains the dissolution
-	           	element tracer_name{string}	         	
-	         	)}     	
+	           	element tracer_name{string}
+	         	)}
 		        )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 	        ##
@@ -1279,7 +1279,7 @@ start =
             ## VAD is multiplied by the normalised flux. This should help focusing the VAD towards moving directions instead of acting as pure diffusion
             element flux_limited_vad {
                empty
-            }?, 
+            }?,
             ## Impose strong BCs for wells, only on the pressure BCs. Also imposes gamma to be zero at those nodes.
             ## Note that this is already imposed for wells when using P0DGP1 and gamma = 0. at one pressure BC.
             element Strong_BCs_for_P0DG_wells {
@@ -1580,7 +1580,7 @@ solver_options =
                 }?
               ),
                 ## Recommended method. XGBoost installed and compiled with ICFERST is a requirement.
-                ## Specify here the path to the machine learning (XGBoost) model.               
+                ## Specify here the path to the machine learning (XGBoost) model.
                 element ML_model_path{
                 string,
                 (
@@ -1589,14 +1589,14 @@ solver_options =
                     element save_model{
                     empty
                     }?,
-                    ## Target number of inner-nonlinear iterations per outer-nonlinear iteration. 
+                    ## Target number of inner-nonlinear iterations per outer-nonlinear iteration.
                     ##
-                    ## <b>Recommended values: 1.0 to 5.0 </b>     
+                    ## <b>Recommended values: 1.0 to 5.0 </b>
                     ##
                     ## <b>Default value: 1.0 </b>
                     element target_num_nonlinear{
                     real
-                    }?              
+                    }?
                 )
                 }?,
                 ## Introduce over-relaxation in the saturation equation.
@@ -1657,6 +1657,11 @@ solver_options =
                         ## Please double-check that the number of 'Non_Linear_Solver' iterations is greater than 'Aim_num_FPI'
                         element Aim_num_FPI {
                           integer
+                        }?,
+                        ## Only use number of NLI to control timestep and not the error of the non linear solver.
+                        ## Can sometimes be a faster option compared to both using aim NLI and error.
+                        element FPI_only {
+                           empty
                         }?
                     }?,
                     ## If any of the solvers failt to achieve convergence the time-step size is
@@ -2775,7 +2780,7 @@ scalar_field_choice =
          }|
          ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
          ##
-         ## PassiveTracers are not part of the convergence criteria and are computed outside the non-linear loop. 
+         ## PassiveTracers are not part of the convergence criteria and are computed outside the non-linear loop.
          ## Also, to reduce their cost, low order methods are used for their computation.
          element scalar_field {
             attribute rank { "0" },
