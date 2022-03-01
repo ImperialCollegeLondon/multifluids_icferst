@@ -2527,7 +2527,7 @@ contains
                   MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)
         ! Update dissolved CO2 (passive tracer, in mol/m3)
         concentration_field%val(1,receiving_phase_pos,cv_nod) = concentration_field%val(1,receiving_phase_pos,cv_nod) + &
-                          min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*saturation_field%val(1,receiving_phase_pos,cv_nod))
+                          min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*max(saturation_field%val(1,receiving_phase_pos,cv_nod),1e-8))
         ! Compute the gas CO2 present in the CV (in mol))
         ! Update gas CO2 (in mol)
         n_co2_gas = n_co2_gas - min(delta_n, n_co2_gas)
