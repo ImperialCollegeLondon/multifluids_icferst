@@ -63,6 +63,7 @@ module multi_SP
         type(scalar_field), pointer :: SelfPotential
         type( vector_field ), pointer :: X_ALL
         integer :: reference_nod
+        real, parameter :: Kelv_conv = 273.15
         logical :: reference_node_owned
         real :: reference_value, top_coordinate, gravity_magnitude
 
@@ -92,8 +93,8 @@ module multi_SP
             F_fields(2, 1, cv_inod) = Concentration%val(1, 1, cv_inod) / 1000 !To convert from mol/m^3 to mol/l which is how the formulae are defined
             k = 2
           end if
-          !Here the temperature can be in Kelvin or Celsius as we are looking at gradients
-          if (has_temperature) F_fields(k+1, 1, cv_inod) =  Temperature%val(1, 1, cv_inod)
+          !Here the temperature has to be in Celsius
+          if (has_temperature) F_fields(k+1, 1, cv_inod) =  Temperature%val(1, 1, cv_inod) - Kelv_conv 
         end do
 
         !Obtain the conductivity of the saturated rock
@@ -195,9 +196,9 @@ module multi_SP
               ewrite(0, *) "SelfPotential will NOT be computed."
               return
             end if
-          else !Compute water conductivity based on Temperature and concentration (Sen and Goode, 1992)!
+          else !Compute water conductivity based on Temperature (Celsius) and concentration (Sen and Goode, 1992)!
             do cv_inod = 1, Mdims%cv_nonods
-              if (has_temperature) temp = Temperature(cv_inod)  - Kelv_conv !<= formula uses Celsius   !Water concentration
+              if (has_temperature) temp = Temperature(cv_inod) - Kelv_conv     !Water concentration
               water_conductivity(cv_inod) = (5.6 + 0.27 * temp - 1.5e-4 * temp**2.)*(Concentration(cv_inod)+tol) &
               - Concentration(cv_inod)**1.5 * ( 2.36 + 0.099 * temp) / (1 + 0.214 * Concentration(cv_inod)**0.5)
             end do

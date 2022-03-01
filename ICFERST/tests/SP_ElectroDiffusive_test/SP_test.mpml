@@ -90,19 +90,6 @@
           <nonlinear_scheme/>
         </viscosity_scheme>
       </Viscosity>
-      <tensor_field name="Solute_Diffusivity" rank="2">
-        <prescribed>
-          <mesh name="PressureMesh"/>
-          <value name="WholeMesh">
-            <isotropic>
-              <constant>
-                <real_value rank="0">1.5e-5</real_value>
-              </constant>
-            </isotropic>
-          </value>
-          <output/>
-        </prescribed>
-      </tensor_field>
     </phase_properties>
     <scalar_field name="Pressure" rank="0">
       <prognostic>
@@ -224,6 +211,10 @@
     <scalar_field name="Concentration" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <Impose_min_max>
+          <automatic_min_limit/>
+          <automatic_max_limit/>
+        </Impose_min_max>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.001</real_value>
@@ -365,14 +356,14 @@
         <real_value rank="0">343</real_value>
       </Reservoir_temperature>
       <python_Rock_sat_conductivity_code>
-        <algorithm name="scalar_python_diagnostic" material_phase_support="single">
+        <algorithm name="scalar_python_diagnostic">
           <string_value lines="20" type="code" language="python">for i in range( field.node_count ):
  val = 1.#We disable rock sat conductivity
  field.set( i, val )</string_value>
         </algorithm>
       </python_Rock_sat_conductivity_code>
       <python_ElectroKinetic_code>
-        <algorithm name="scalar_python_diagnostic" material_phase_support="single">
+        <algorithm name="scalar_python_diagnostic">
           <string_value lines="20" type="code" language="python">for i in range( field.node_count ):
  val = 0.#We disable EK for this test case
  field.set( i, val )</string_value>
