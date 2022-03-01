@@ -807,10 +807,15 @@ contains
 
        !Obtain inverse of permeability and store it
        !SPRINT_TO_DO THIS COULD BE DONE FASTER IF WE KNOW IF IT HAS OFF DIAGONALS OR NOT
-       do i = 1, size(perm%val,3)
-           upwnd%inv_permeability( :, :, i)=inverse(perm%val( :, :, i))
-       end do
-
+       if (has_anisotropic_permeability) then 
+        do i = 1, size(perm%val,3)
+          upwnd%inv_permeability( :, :, i)=inverse(perm%val( :, :, i))
+        end do
+       else 
+        forall (j = 1:size(perm%val,1), i = 1:size(perm%val,3)) 
+          upwnd%inv_permeability( j, j, i) = 1./perm%val( j, j, i)
+        end forall
+       end if
        allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
        DO IPHASE = 1, Mdims%nphase!Get viscosity for all the phases
         option_path_python = "/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
@@ -1265,7 +1270,8 @@ contains
                         Cont_correction = 0
                         if (jphase /= iphase) then!Don't know how this will work for more than 2 phases
                             do ele = 1, totele
-
+                                !SPRINT_TO_DO get rid of this call and use instead the stored volumes
+                                ! extract_vector_field(packed_state,"CVIntegral")
                                 call DETNLXR(ele, X_ALL, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
 
                                 do cv_iloc = 1, cv_nloc
@@ -2026,12 +2032,12 @@ contains
             if (have_option(trim(path))) then
               call initialise_field_over_regions(targ_Store, trim(path), position)
               t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
-            else 
+            else
               !Only for reservoir phases
-              if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then 
+              if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
                 FLAbort("For multiphase porous media flow, relperm max needs to be defined for all the regions of the model.")
               else
-                t_field%val(2,iphase,:) = 1.0 
+                t_field%val(2,iphase,:) = 1.0
               end if
             end if
           end do
@@ -2045,10 +2051,10 @@ contains
                   t_field%val(3,iphase,:) = targ_Store%val
               else !default value
               !Only for reservoir phases
-                if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then 
+                if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
                   FLAbort("For multiphase porous media flow, relperm exponent needs to be defined for all the regions of the model.")
                 else
-                  t_field%val(3,iphase,:) = 1.0 
+                  t_field%val(3,iphase,:) = 1.0
                 end if
               end if
           end do
@@ -2151,7 +2157,7 @@ contains
               end do
             else !default value for immiscible values
               !Only for reservoir phases
-              if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then 
+              if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
                 FLAbort("For multiphase porous media flow, relperm exponent needs to be defined for all the regions of the model.")
               else
                 t_field%val(1,iphase,:) = 0.0!<=to be removed and only use a CV-wise version of this
@@ -2521,7 +2527,8 @@ contains
                   MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)
         ! Update dissolved CO2 (passive tracer, in mol/m3)
         concentration_field%val(1,receiving_phase_pos,cv_nod) = concentration_field%val(1,receiving_phase_pos,cv_nod) + &
-                          min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod))
+                          min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*max(saturation_field%val(1,receiving_phase_pos,cv_nod),1e-8))
+        ! Compute the gas CO2 present in the CV (in mol))
         ! Update gas CO2 (in mol)
         n_co2_gas = n_co2_gas - min(delta_n, n_co2_gas)
         ! Update gas CO2 (change in saturation)

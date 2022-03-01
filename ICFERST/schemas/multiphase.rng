@@ -1538,6 +1538,13 @@ This option is useful if your field is suddenly changing after adapting the mesh
             </element>
           </optional>
           <optional>
+            <element name="disable_limiters">
+              <a:documentation>This disable the limiters regarless of the precision used
+Limiters are quite expensive so if your simulation is slow it might be worth trying this.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
             <element name="flux_limited_vad">
               <a:documentation>VAD is multiplied by the normalised flux. This should help focusing the VAD towards moving directions instead of acting as pure diffusion</a:documentation>
               <empty/>
@@ -1677,13 +1684,13 @@ activate this to also output the force_density</a:documentation>
         <a:documentation>Selects the quality configuration of the experiment
 For Porous media the P1/P0 stands for P0, for inertia for P1.
 
-Fast =&gt; Element pair = P1/P0DGP1(CV). Upwinding and implicit Euler;
+Fast (&lt;b&gt;recommended&lt;/b&gt;) =&gt; Element pair = P0DGP1(CV). Upwinding and adaptive theta;
 
-Balanced (&lt;b&gt;recommended&lt;/b&gt;) =&gt; Element pair = P1/P0DGP1(CV). High order advection scheme and adaptive theta;
+Balanced =&gt; Element pair = P1/P0DGP1(CV). High order advection scheme, adaptive theta and limiters;
 
-Precision =&gt; Element pair = P1DGP2(CV). High order advection scheme and adaptive theta
+Precision =&gt; Element pair = P1DGP2(CV). High order advection scheme and adaptive theta and limiters;
 
-Discontinuous_pressure =&gt; P1DG(BL)P1DG(CV). High order advection scheme and adaptive theta</a:documentation>
+Discontinuous_pressure =&gt; P1DG(BL)P1DG(CV). High order advection scheme and adaptive theta and limiters;</a:documentation>
         <element name="string_value">
           <choice>
             <value>fast</value>

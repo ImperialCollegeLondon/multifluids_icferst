@@ -100,10 +100,8 @@ contains
         implicit none
         real, dimension(:), intent(in) :: val
         real, dimension(size(val)) :: v_tolfun
-        ! Local
-        real, parameter :: tolerance = 1.e-10
 
-        v_tolfun = sign( 1.0, val ) * max( tolerance, abs(val) )
+        v_tolfun = sign( 1.0, val ) * max( 1.e-10, abs(val) )
 
         return
 
@@ -183,17 +181,17 @@ contains
         logical, PARAMETER :: orig_limit=.false. ! original limiter is less invasive.
 
         ! For the region 0 < UC < 1 on the NVD, define the limiter
-        if(orig_limit) then
-            where( ( UC > 0.0 ) .AND. ( UC < 1.0 ) )
-                nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( 0.0, UF ) )
-            !       nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( UC, UF ) )
-            !      nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
-            ELSE where ! Outside the region 0<UC<1 on the NVD, use first-order upwinding
-                nvd_limit = UC
-            END where
-        else
-            nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
-        endif
+        ! if(orig_limit) then
+        !     where( ( UC > 0.0 ) .AND. ( UC < 1.0 ) )
+        !         nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( 0.0, UF ) )
+        !     !       nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( UC, UF ) )
+        !     !      nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
+        !     ELSE where ! Outside the region 0<UC<1 on the NVD, use first-order upwinding
+        !         nvd_limit = UC
+        !     END where
+        ! else
+        nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
+        ! endif
 
     end function nvdfunnew_many
 

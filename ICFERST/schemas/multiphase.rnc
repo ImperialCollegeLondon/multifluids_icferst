@@ -1255,6 +1255,11 @@ start =
             element do_not_bound_after_adapt {
                empty
             }?,
+            ## This disable the limiters regarless of the precision used
+            ## Limiters are quite expensive so if your simulation is slow it might be worth trying this.
+            element disable_limiters {
+               empty
+            }?,
             ## VAD is multiplied by the normalised flux. This should help focusing the VAD towards moving directions instead of acting as pure diffusion
             element flux_limited_vad {
                empty
@@ -1352,13 +1357,13 @@ geometry =
            ## Selects the quality configuration of the experiment
            ## For Porous media the P1/P0 stands for P0, for inertia for P1.
            ##
-           ## Fast => Element pair = P1/P0DGP1(CV). Upwinding and implicit Euler;
+           ## Fast (<b>recommended</b>) => Element pair = P0DGP1(CV). Upwinding and adaptive theta;
            ##
-           ## Balanced (<b>recommended</b>) => Element pair = P1/P0DGP1(CV). High order advection scheme and adaptive theta;
+           ## Balanced => Element pair = P1/P0DGP1(CV). High order advection scheme, adaptive theta and limiters;
            ##
-           ## Precision => Element pair = P1DGP2(CV). High order advection scheme and adaptive theta
+           ## Precision => Element pair = P1DGP2(CV). High order advection scheme and adaptive theta and limiters;
            ##
-           ## Discontinuous_pressure => P1DG(BL)P1DG(CV). High order advection scheme and adaptive theta
+           ## Discontinuous_pressure => P1DG(BL)P1DG(CV). High order advection scheme and adaptive theta and limiters;
             element simulation_quality {
               element string_value{
                  "fast" | "balanced" | "precision"|"discontinuous_pressure"

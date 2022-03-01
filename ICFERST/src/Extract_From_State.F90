@@ -493,7 +493,7 @@ contains
           default_theta  = -1.
         else !Unlest fast method secified
           default_flux_scheme = 1
-          default_theta  = 1.
+          default_theta  = -1.
         end if
         default_consv_vel =0.
         if (is_porous_media) default_consv_vel = 1.
@@ -850,6 +850,7 @@ contains
             call deallocate(element_shape)
             element_mesh=>extract_mesh(packed_state,'P0DG')
         end if
+
         if(has_scalar_field(state(1),"Longitudinal_Dispersivity")) then
             ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
             element_mesh=>ldfield%mesh
@@ -861,6 +862,15 @@ contains
             element_mesh=>tdfield%mesh
             call insert(packed_state,element_mesh,'P0DG')
         end if
+
+        !Insert mass_elements
+        call allocate(vec_field,1,element_mesh,"MASS_ELE")
+        call zero(vec_field)
+        call insert(packed_state,vec_field,"MASS_ELE")
+        do icomp = 1, ncomp
+            call insert(multicomponent_state(icomp),vec_field,"MASS_ELE")
+        end do        
+        call deallocate(vec_field)
 
         ! pack rock-fluid properties
         ! if there is capillary pressure, we store 5 entries, otherwise just 3:
@@ -3452,10 +3462,9 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
     ! Local variables
     type (vector_field_pointer), dimension(Mdims%nphase) ::darcy_velocity
     type(tensor_field), pointer :: velocity, saturation, perm
-    real, dimension(Mdims%nphase*Mdims%ndim,Mdims%nphase*Mdims%ndim) :: loc_absorp_matrix
     real, dimension(Mdims%ndim) :: sat_weight_velocity
-    real :: auxR
-    integer :: cv_iloc, u_iloc, ele, iphase, imat, u_inod, cv_loc, idim
+    real :: R_cv_nloc
+    integer :: cv_iloc, u_iloc, ele, iphase, imat, u_inod, cv_loc, idim, i
     ! Initialisation
     do iphase = 1, Mdims%n_in_pres
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
@@ -3465,22 +3474,44 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
     velocity => extract_tensor_field(packed_state,"PackedVelocity")
     saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
     perm=>extract_tensor_field(packed_state,"Permeability")
+    R_cv_nloc = real(Mdims%cv_nloc)
     ! Calculation
-    do ele = 1, Mdims%totele
-        do u_iloc = 1, Mdims%u_nloc
-            u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
-            do cv_iloc = 1, Mdims%cv_nloc
-                imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
-                cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                do iphase = 1, Mdims%n_in_pres
-                    sat_weight_velocity = upwnd%inv_adv_coef(1,1,iphase,imat) * matmul(perm%val(:,:,ele), velocity%val(:,iphase,u_inod))
-                    !P0 darcy velocities per element
-                    darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
-                        sat_weight_velocity(:)*saturation%val(1,iphase,cv_loc)/real(Mdims%cv_nloc)
+    if (has_anisotropic_permeability) then
+        do ele = 1, Mdims%totele
+            do u_iloc = 1, Mdims%u_nloc
+                u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
+                do cv_iloc = 1, Mdims%cv_nloc
+                    imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+                    cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+                    do iphase = 1, Mdims%n_in_pres
+                        sat_weight_velocity = upwnd%inv_adv_coef(1,1,iphase,imat) * matmul(perm%val(:,:,ele), velocity%val(:,iphase,u_inod))
+                        !P0 darcy velocities per element
+                        darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
+                            sat_weight_velocity*saturation%val(1,iphase,cv_loc)/R_cv_nloc
+                    end do
                 end do
             end do
         end do
-    end do
+    else 
+        do ele = 1, Mdims%totele
+            do u_iloc = 1, Mdims%u_nloc
+                u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
+                do cv_iloc = 1, Mdims%cv_nloc
+                    imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+                    cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+                    do iphase = 1, Mdims%n_in_pres
+                        do i = 1, Mdims%ndim 
+                            sat_weight_velocity(i) = perm%val(i,i,ele) * velocity%val(i,iphase,u_inod)
+                        end do
+                        !P0 darcy velocities per element
+                        darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
+                            upwnd%inv_adv_coef(1,1,iphase,imat) * sat_weight_velocity*saturation%val(1,iphase,cv_loc)/R_cv_nloc
+                    end do
+                end do
+            end do
+        end do
+
+    end if
     ! do iphase = 1, Mdims%n_in_pres!No need to update halos if the velocity is already updated
     !     call halo_update(darcy_velocity(iphase)%ptr)
     ! end do

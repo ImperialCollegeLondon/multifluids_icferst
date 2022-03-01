@@ -188,7 +188,7 @@ contains
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
         type (multi_pipe_package) :: pipes_aux
         !type(scalar_field), pointer :: bathymetry
-        logical, parameter :: write_all_stats=.true.
+        logical :: write_all_stats=.true.
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
         ! Ioutlet counts the number of boundaries over which to calculate the outflux
         integer :: ioutlet
@@ -220,6 +220,7 @@ contains
         type(coupling_term_coef) :: coupling
         type(magma_phase_diagram) :: magma_phase_coef
         real :: bulk_power
+        character(len = OPTION_PATH_LEN) :: func
         !Variables for passive tracers
         logical :: have_Active_Tracers = .true.
         logical :: have_Passive_Tracers = .true.
@@ -240,6 +241,10 @@ contains
         ewrite(0,*) "WARNING: ML path specified for a model but ICFERST hasn't been compiled with XGboost. Classical method used instead."
     end if
 #endif
+
+        !If we are using the fast settings then we save time not always computing the stats
+        call get_option("/geometry/simulation_quality", option_name, stat=stat)
+        write_all_stats = .not. trim(option_name) == "fast"
 
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
@@ -385,7 +390,14 @@ contains
         call get_option( '/timestepping/timestep', dt )
         call get_option( '/timestepping/finish_time', finish_time )
         if ( have_option('/io/dump_period_in_timesteps') ) then
-            call get_option('/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1)
+            if ( have_option('/io/dump_period_in_timesteps/python') ) then
+                call get_option("/io/dump_period_in_timesteps/python", func)
+                call integer_from_python(func, acctim, dump_period_in_timesteps)
+                !Ensure it is bounded
+                dump_period_in_timesteps = min(max(dump_period_in_timesteps,0), 10000000)
+            else
+                call get_option('/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1)
+            end if
         elseif ( have_option('/io/dump_period') ) then
             call get_option('/io/dump_period/constant', dump_period, default = 0.01)
         end if
@@ -910,7 +922,8 @@ contains
             !therefore we compute it based on the actual difference of time
             call set_option( '/timestepping/timestep', acctim-old_acctim)
             !Time to compute the self-potential if required
-            if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
+            if (write_all_stats .and. have_option("/porous_media/SelfPotential")) &
+                    call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
             !Now compute diagnostics
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             !calculate_diagnostic_variables_new <= computes other diagnostics such as python-based fields
@@ -1283,7 +1296,11 @@ contains
                         checkpoint_number=checkpoint_number+1
                     end if
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
+                    if (.not. write_all_stats) then 
+                        if (have_option("/porous_media/SelfPotential")) &
+                            call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
+                        call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
+                    end if
                     not_to_move_det_yet = .false. ;
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
@@ -1296,7 +1313,11 @@ contains
                             protect_simulation_name=.true.,file_type='.mpml')
                         checkpoint_number=checkpoint_number+1
                     end if
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
+                    if (.not. write_all_stats) then 
+                        if (have_option("/porous_media/SelfPotential")) &
+                            call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
+                        call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
+                    end if                    
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
                     if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
