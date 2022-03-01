@@ -679,7 +679,9 @@ contains
           call add_option(trim(option_path)//"from_mesh/mesh_shape/element_type", stat=stat)
           call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
           call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
-          if (simulation_quality < 100) then
+          if (simulation_quality< 10) then !For fast always P0DG
+            call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 0)
+          else if (simulation_quality < 100) then
               if (have_option("/porous_media_simulator") .or. have_option("/geometry/simulation_quality/Balanced_P0DG")) then
                 call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 0)
               else !we use P1 otherwise
