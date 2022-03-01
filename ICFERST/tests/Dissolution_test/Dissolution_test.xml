@@ -17,10 +17,10 @@ integral_val = stat("Drainage_test.stat")["water"]["Concentration"]["integral"][
 integral_sat = stat("Drainage_test.stat")["CO2"]["PhaseVolumeFraction"]["integral"][-1]</variable>
   </variables>
   <pass_tests>
-    <test name="Assert final max concentration" language="python">assert(abs((max_val - 0.0340742)/0.0340742) &lt; 0.01)</test>
-    <test name="Assert final min concentration" language="python">assert(abs((min_val - 0.0255)/0.0255) &lt; 0.01)</test>
-    <test name="Assert final integral concentration" language="python">assert(abs((integral_val - 0.003735)/0.003735) &lt; 0.01)</test>
-    <test name="Assert final integral Saturation CO2" language="python">assert(abs((integral_sat - 0.036729)/0.036729) &lt; 0.01)</test>
+    <test name="Assert final max concentration" language="python">assert(abs((max_val - 0.0347)/0.0347) &lt; 0.01)</test>
+    <test name="Assert final min concentration" language="python">assert(abs((min_val - 0.00273872)/0.00273872) &lt; 0.01)</test>
+    <test name="Assert final integral concentration" language="python">assert(abs((integral_val - 0.00359411)/0.00359411) &lt; 0.01)</test>
+    <test name="Assert final integral Saturation CO2" language="python">assert(abs((integral_sat - 0.013176)/0.013176) &lt; 0.01)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
