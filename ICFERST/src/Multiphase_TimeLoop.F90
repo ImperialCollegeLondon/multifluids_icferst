@@ -244,8 +244,8 @@ contains
 #endif
 
         !If we are using the fast settings then we save time not always computing the stats
-        call get_option("/geometry/simulation_quality", option_name, stat=stat)
-        write_all_stats = .not. trim(option_name) == "fast"
+        ! call get_option("/geometry/simulation_quality", option_name, stat=stat)
+        ! write_all_stats = .not. trim(option_name) == "fast"
 
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
