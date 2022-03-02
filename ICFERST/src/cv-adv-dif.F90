@@ -918,7 +918,7 @@ contains
           XC_CV_ALL => psi_ave(1)%ptr%val
           MASS_CV   => psi_int(1)%ptr%val(1,:)
           !This works because GETCT is the first call and therefore we will have later on masses and barycenters
-          if (.not.associated(CV_funs%CV2FE%refcount)) then!This is true after adapt and at the beginning
+          if (.not.associated(CV_funs%CV2FE%refcount) .or. .not. is_porous_media) then!This is true after adapt and at the beginning
             psi(1)%ptr=>tracer
             psi(2)%ptr=>old_tracer
             call PROJ_CV_TO_FEM(packed_state, &!For porous media we are just pointing memory from PSI to FEMPSI
@@ -4179,7 +4179,9 @@ end if
         ! initialisation and allocation
         !---------------------------------
         !Currently hard-coded. This is not used for porous_media but it is used otherwise
-        do_not_project =  is_porous_media!<=DISABLED FOR POROUS MEDIA
+        do_not_project =  .true.!<=DISABLED unless...
+        !...limiters are active
+        if (present(activate_limiters)) do_not_project = .not. activate_limiters .or. is_porous_media
         is_to_update = .not.associated(CV_funs%CV2FE%refcount)!I think this is only true after adapt and at the beginning
         if (.not. do_not_project) then
             do it=1,size(fempsi)

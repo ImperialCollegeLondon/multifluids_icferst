@@ -869,7 +869,7 @@ contains
         call insert(packed_state,vec_field,"MASS_ELE")
         do icomp = 1, ncomp
             call insert(multicomponent_state(icomp),vec_field,"MASS_ELE")
-        end do        
+        end do
         call deallocate(vec_field)
 
         ! pack rock-fluid properties
@@ -2723,6 +2723,8 @@ contains
         end if
         if (max_criteria) then
             Cn(1) = maxval(Cn)
+        else if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/FPI_only")) then 
+            Cn(1)=Cn(3)
         else
             Cn(1) = (sum(Cn)+maxval(Cn))/(aux+1.)
         end if
@@ -3492,7 +3494,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
                 end do
             end do
         end do
-    else 
+    else
         do ele = 1, Mdims%totele
             do u_iloc = 1, Mdims%u_nloc
                 u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
@@ -3500,7 +3502,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
                     imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
                     cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                     do iphase = 1, Mdims%n_in_pres
-                        do i = 1, Mdims%ndim 
+                        do i = 1, Mdims%ndim
                             sat_weight_velocity(i) = perm%val(i,i,ele) * velocity%val(i,iphase,u_inod)
                         end do
                         !P0 darcy velocities per element

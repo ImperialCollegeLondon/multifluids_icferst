@@ -78,6 +78,7 @@ module multiphase_time_loop
     use multi_SP
     use multi_tools
     use momentum_diagnostic_fields, only: calculate_densities
+    use embed_python
 
 #ifdef HAVE_ZOLTAN
   use zoltan
@@ -931,7 +932,7 @@ contains
             !Now we ensure that the time-step is the correct one
             call set_option( '/timestepping/timestep', dt)
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
-            
+
             !Now we ensure that the time-step is the correct one
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
@@ -1296,7 +1297,7 @@ contains
                         checkpoint_number=checkpoint_number+1
                     end if
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
-                    if (.not. write_all_stats) then 
+                    if (.not. write_all_stats) then
                         if (have_option("/porous_media/SelfPotential")) &
                             call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                         call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
@@ -1313,11 +1314,11 @@ contains
                             protect_simulation_name=.true.,file_type='.mpml')
                         checkpoint_number=checkpoint_number+1
                     end if
-                    if (.not. write_all_stats) then 
+                    if (.not. write_all_stats) then
                         if (have_option("/porous_media/SelfPotential")) &
                             call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                         call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
-                    end if                    
+                    end if
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
                     if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
@@ -1334,6 +1335,8 @@ contains
             real, dimension(2)            :: min_max_limits_before, concentration_min_max_limits_before
             type (tensor_field), pointer  :: tempfield, ComponentMassFraction
             type (tensor_field), pointer  :: Concentration
+            character(len=PYTHON_FUNC_LEN) :: pyfunc
+            real :: acctim
 
             if (numberfields_CVGalerkin_interp > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
@@ -1356,10 +1359,18 @@ contains
                 !concentration_min_max_limits_before(2) = 1.0; call allmax(concentration_min_max_limits_before(2))
             end if
             do_reallocate_fields = .false.
+
+            call get_option( '/timestepping/current_time', acctim )
+
             Conditional_Adaptivity_ReallocatingFields: if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
                 if( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps') ) then
-                    call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps', &
+                  if( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps/constant') ) then
+                    call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps/constant', &
                         adapt_time_steps, default=5 )
+                  else if ( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps/python') ) then
+                    call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps/python', pyfunc)
+                    call integer_from_python(pyfunc, acctim, adapt_time_steps)
+                  end if
 
                 !-ao solid modelling (AMR field for fracturing)
                 if (is_multifracture ) then
