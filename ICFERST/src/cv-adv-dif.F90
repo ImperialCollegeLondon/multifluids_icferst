@@ -2894,7 +2894,7 @@ end if
                             end if
                         end if
                       !Only compute limited value if the field is not constant in the region
-                      if ( maxval(abs(F_CV_NODI - F_CV_NODJ)/F_CV_NODI) > 1e-8) then!hopefully never zero
+                      if ( maxval(abs(F_CV_NODI - F_CV_NODJ)/VTOLFUN(F_CV_NODI)) > 1e-8) then
                         CALL ONVDLIM_ANO_MANY( NFIELD, &
                             LIMF , FEMFGI , F_INCOME , &
                             F_CV_NODI , F_CV_NODJ ,int_XI_LIMIT ,  &
@@ -3171,7 +3171,7 @@ end if
                 !Calculate velocity on the interface, either using upwinding or high order methods
                 if (use_porous_limiter) then!high order
                     !Check if there is any point on using the limiter
-                  if (maxval(abs(LOC_T_I - LOC_T_J)/LOC_T_I) > 1e-8) then!hopefully never zero!
+                  if (maxval(abs(LOC_T_I - LOC_T_J)/VTOLFUN(LOC_T_I)) > 1e-8) then
                     !Calculate saturation at GI, necessary for the limiter
                     FEMTGI_IPHA = matmul(LOC_FEMT, CV_funs%scvfen(:,GI) )
                     ! ************NEW LIMITER**************************
