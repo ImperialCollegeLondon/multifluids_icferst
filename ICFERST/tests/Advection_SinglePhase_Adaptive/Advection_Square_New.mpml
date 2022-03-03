@@ -536,7 +536,9 @@ def val(X,t):
   <mesh_adaptivity>
     <hr_adaptivity>
       <period_in_timesteps>
-        <integer_value rank="0">1</integer_value>
+        <constant>
+          <integer_value rank="0">1</integer_value>
+        </constant>
       </period_in_timesteps>
       <maximum_number_of_nodes>
         <integer_value rank="0">100000</integer_value>
