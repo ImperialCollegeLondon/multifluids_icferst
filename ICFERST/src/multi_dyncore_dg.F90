@@ -4677,7 +4677,7 @@ end if
 
 
         ! report solid iimplicitness options
-        ewrite(3, *) 'implicitness option 1 lump 2 3 ?:', solid_visc_ele_imp, solid_implicit_lump, solid_visc_ele_imp_stab, solid_visc_sufele_imp
+        ewrite(3, *) 'implicitness option 1 lump 2 3 dx2?:', solid_visc_ele_imp, solid_implicit_lump, solid_visc_ele_imp_stab, solid_visc_sufele_imp,solid_visc_diag_imp
         !JXiang
 !        ALLOCATE(TEN_VOL_RATIO,Mdims%totele)
         ALLOCATE(UDIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
