@@ -2293,7 +2293,7 @@ end if
             if (solve_stokes .or. solve_mom_iteratively) then
                 if (compute_compaction) then
                     if (solve_mom_iteratively) then
-                        call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, Compaction_length)  !using AA 
+                        call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, Compaction_length,1e7)  !using AA 
                     else
                         call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, Compaction_length)  !using petsc
                     end if 
@@ -2560,14 +2560,16 @@ end if
           real,dimension(:,:), allocatable :: optimal_velocity
           type( vector_field ) :: packed_CDP_tensor, packed_aux_velocity
           real, dimension(2) :: totally_min_max
-          integer :: TEST, EXTRA, max_iter
+          integer :: TEST, EXTRA, max_iter, non_improved_step
           real :: min_residue
           real, dimension(:), allocatable :: P_optimal
-
+          
+          real, save :: CMC_scale=1e7
           logical, save :: first_step = .true.
 
           EXTRA=0
-            
+          non_improved_step=0
+
           allocate(P_optimal(Mdims%cv_nonods))
           allocate(optimal_velocity(Mdims%ndim ,Mdims%u_nonods))
 
@@ -2646,9 +2648,16 @@ end if
             conv_test = maxval(abs(rhs_p%val(1,:)))
 
             if (min_residue>conv_test) then
+                if (conv_test/min_residue>0.9) then 
+                    non_improved_step=non_improved_step+1
+                else
+                    non_improved_step=0
+                end if
                 min_residue=min(conv_test, min_residue)
                 P_optimal=P_all%val(1,1,:)
                 optimal_velocity=velocity%val(:,1,:)
+            else
+                non_improved_step=non_improved_step+1
             end if
 
             ref_CDP_tensor%val = CDP_tensor%val
@@ -2661,6 +2670,25 @@ end if
               exit stokesloop
             end if
 
+            if (non_improved_step>10) then 
+                if (abs(conv_test/min_residue)<1000.) then 
+                    omega=omega*10.
+                    print *, 'CMC scale increased (10)'
+                else
+                    omega=omega/5.
+                    P_all%val(1,1,:)=P_optimal
+                    velocity%val(:,1,:)=optimal_velocity  
+                    print *, 'CMC scale decreased (5)'                  
+                end if
+                non_improved_step=0
+                call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, CMC_scale=CMC_scale)
+                call allocate(CMC_petsc2,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc2",diag)
+                CALL COLOR_GET_CMC_PHA( Mdims, final_phase, Mspars, ndgln, Mmat,&
+                DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                CMC_petsc2, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
+                pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
+                
+            end if
 
 
             M = i - 2; if (M <= 0) M = stokes_max_its + M
@@ -2780,7 +2808,7 @@ print *, k,':', conv_test
         !> @brief Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not.
         !> For magma only the first phase is imposed here as for Darcy the Mass matrix is generated in ASSEM_FORCE_CTY
         !---------------------------------------------------------------------------
-        subroutine generate_Pivit_matrix_Stokes(state, ndgln,  Mdims, final_phase,  Mmat, MASS_ELE, diagonal_A, upwnd, Pivit_type, Compaction_length)
+        subroutine generate_Pivit_matrix_Stokes(state, ndgln,  Mdims, final_phase,  Mmat, MASS_ELE, diagonal_A, upwnd, Pivit_type, Compaction_length, CMC_scale)
           implicit none
           type( state_type ), dimension( : ), intent( inout ) :: state
           type(multi_ndgln), intent(in) :: ndgln
@@ -2799,7 +2827,14 @@ print *, k,':', conv_test
           real :: auxR, auxR2, TEST, TEST2
           real, parameter :: tol = 1e-8
           real, optional, DIMENSION (:), intent( in ):: Compaction_Length
-          real :: max_c
+          real, optional, intent( in ):: CMC_scale
+          real :: max_c, scale
+
+          if (present(CMC_scale)) then 
+            scale=CMC_scale
+          else 
+            scale=1.0
+          end if
 
           max_c=maxval(upwnd%inv_adv_coef(1,1,2,:))
 
@@ -2869,11 +2904,13 @@ print *, k,':', conv_test
                     cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                     ! the second phase of upwnd%adv_coef containts c/phi
                     if (saturation%val(cv_loc)<0.02) then 
-                        auxR = auxR + 6e-10/dble(Mdims%cv_nloc)
+                        auxR = auxR + 1e-16/dble(Mdims%cv_nloc)
                     else
                         auxR = auxR +  saturation%val(cv_loc)*upwnd%inv_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
                     end if 
+                    ! print *, saturation%val(cv_loc)*upwnd%inv_adv_coef(1,1,2,imat)
                 end do
+                
                 !Include now the corresponding element mass
                 auxR = dble(Mdims%u_nloc)/MASS_ELE(ele)*auxR
                 !Introduce into the pivit matrix
@@ -2881,7 +2918,7 @@ print *, k,':', conv_test
                     u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
                     do i = 1, final_phase*Mdims%ndim
                         j = i + (u_iloc-1)*final_phase*Mdims%ndim
-                        Mmat%PIVIT_MAT(J, J, ELE) = (auxR)!+1./(diagonal_A%val(i,u_inod)*MASS_ELE(ele))  
+                        Mmat%PIVIT_MAT(J, J, ELE) = scale*(auxR)!+1./(diagonal_A%val(i,u_inod)*MASS_ELE(ele))  
                         ! print *, auxR, 1./(diagonal_A%val(i,u_inod)*MASS_ELE(ele))                       
                     end do
                 end do
