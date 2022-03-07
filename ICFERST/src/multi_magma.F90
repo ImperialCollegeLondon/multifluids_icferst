@@ -442,7 +442,7 @@ contains
 
 
   !>@brief:This subroutine updated the FEM-stored values of the coefficient phi/C in the field magma_absorp
-  subroutine update_magma_coupling_coefficients(Mdims, state, saturation, ndgln, Magma_absorp,  c_phi_series)
+  subroutine update_magma_coupling_coefficients(Mdims, state, saturation, ndgln, Magma_absorp,  c_phi_series, absorption_type)
     implicit none
     type( state_type ), dimension( : ), intent( inout ) :: state
     real, dimension(:,:,:), intent(in) :: saturation
@@ -451,26 +451,47 @@ contains
     type( multi_dimensions ), intent( in ) :: Mdims
     type(coupling_term_coef) :: coupling
     real, dimension(:), intent(in) :: c_phi_series !generated c coefficients
+    logical, optional, intent(in) :: absorption_type
     !Local variables
     integer :: mat_nod, ele, CV_ILOC, cv_inod, iphase, jphase
     real :: magma_coupling, phi
     integer:: c_phi_size ! length of c_phi_series
     real, dimension(4):: test
-    real :: max_absorp
+    real :: max_absorp_phi
     c_phi_size=size(c_phi_series)
     
-    max_absorp=1e-8/phi2_over_c(1e-8)
-    DO ELE = 1, Mdims%totele
-      DO CV_ILOC = 1, Mdims%cv_nloc
-        mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
-        cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-        ! phi = max((1.0-saturation(1,1, cv_inod)),1e-5)
-        phi =saturation(1,2, cv_inod)
-        do iphase =2, Mdims%nphase!Absorption is defined as a term mutiplying the velocity term, not the pressure
-          Magma_absorp(1, 1, iphase, mat_nod) = min(phi/phi2_over_c(saturation(1,iphase, cv_inod)),max_absorp)
-        end Do
+    max_absorp_phi=1e-8
+
+    if (present_and_true(absorption_type)) then 
+      DO ELE = 1, Mdims%totele
+        DO CV_ILOC = 1, Mdims%cv_nloc
+            mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
+            cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+            DO IPHASE = 2, Mdims%nphase!Not phase 1
+              magma_coupling = c_value(saturation(1,2, cv_inod))
+              do jphase = 1, Mdims%nphase
+                if (jphase == iphase) then
+                  Magma_absorp(1, iphase, jphase, mat_nod ) = -magma_coupling
+                else
+                  Magma_absorp(1, iphase, jphase, mat_nod ) = magma_coupling
+                end if
+              end do
+            end do
+        END DO
+      END DO
+    else
+      DO ELE = 1, Mdims%totele
+        DO CV_ILOC = 1, Mdims%cv_nloc
+          mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
+          cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+          ! phi = max((1.0-saturation(1,1, cv_inod)),1e-5)
+          phi =max(saturation(1,2, cv_inod),max_absorp_phi)
+          do iphase =2, Mdims%nphase!Absorption is defined as a term mutiplying the velocity term, not the pressure
+            Magma_absorp(1, 1, iphase, mat_nod) = phi/phi2_over_c(phi)
+          end Do
+        end DO
       end DO
-    end DO
+    end if 
 
   contains
     !> TO INCLUDE INFORMATION ABOUT THE FUNCTION
@@ -488,6 +509,21 @@ contains
           phi2_over_c=c_phi_series(pos)*(1-portion)+c_phi_series(pos+1)*portion
         end if
       end function phi2_over_c
+
+      real function c_value(phi)
+        real, intent(in) :: phi
+        integer :: pos
+        real:: portion
+
+        pos= int(phi*(c_phi_size-1))+1
+        if (pos==c_phi_size) then
+          c_value=phi**2/c_phi_series(c_phi_size)
+        else
+          portion=(phi-(pos-1.0)/(c_phi_size-1.0))*c_phi_size
+          c_value=phi**2/c_phi_series(pos)*(1-portion)+phi**2/c_phi_series(pos+1)*portion
+          ! c_value=c_phi_series(pos)
+        end if
+      end function c_value
   end subroutine update_magma_coupling_coefficients
 
 

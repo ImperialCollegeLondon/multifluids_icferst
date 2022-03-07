@@ -841,7 +841,8 @@ contains
             !If all the information is contained in the diagonals, then the mass matrix is lumped
             lumped_matrix = ((sum(abs(PIVIT_MAT(:, :, 1))) - abs(aux))/sum(abs(PIVIT_MAT(:, :, 1))) < 1d-8)
         end if
-        lumped_matrix=.true.
+        if (is_magma) lumped_matrix=.true.
+        
         if (lumped_matrix) then
             !Only invert the diagonal
              DO ELE = 1, Mdims%TOTELE

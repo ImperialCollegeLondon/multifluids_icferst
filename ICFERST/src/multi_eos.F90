@@ -1477,14 +1477,24 @@ contains
               end do
             end if
           else
-            do nod = 1, Mdims%cv_nonods
-              g = node_val( gravity_direction, nod ) * gravity_magnitude
-              do iphase = start_phase, Mdims%nphase
+            if (is_magma) then 
+              sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+              do nod = 1, Mdims%cv_nonods
+                g = node_val( gravity_direction, nod ) * gravity_magnitude
                 do idim = 1, Mdims%ndim
-                  u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim )
+                  u_source_cv( idim, 1, nod ) = (den( 1, nod )- den( 2, nod ) )* sat_field%val(1, 1, nod) * g( idim )
                 end do
               end do
-            end do
+            else
+              do nod = 1, Mdims%cv_nonods
+                g = node_val( gravity_direction, nod ) * gravity_magnitude
+                do iphase = start_phase, Mdims%nphase
+                  do idim = 1, Mdims%ndim
+                    u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim )
+                  end do
+                end do
+              end do
+            end if
         end if
       end if
 
@@ -1918,7 +1928,7 @@ contains
                           if (iphase==1) then !only the solid phase has viscosity terms
                             momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
                             !Currently only magma uses momentum_diffusion2
-                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))
+                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))*0
                             !Saturation scaling of viscosity
 !For testing rescaling of viscosity with the saturation
 if (is_magma) then
@@ -1962,7 +1972,7 @@ end if
         real :: a!> TO BE FILLED
         real :: n!> TO BE FILLED
         real :: phi!> TO BE FILLED
-        zeta=a*phi**(-n)
+        zeta=a*max(phi,1e-7)**(-n)
         return
       end function zeta
 

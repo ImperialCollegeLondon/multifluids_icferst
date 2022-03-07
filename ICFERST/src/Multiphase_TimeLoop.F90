@@ -637,6 +637,7 @@ contains
                 !#    TODO. This has to be updated with adaptivity as well.
                 !#=================================================================================================================
                 !$ Now solving the Momentum Equation ( = Force Balance Equation )
+                if (is_magma) compute_compaction= .true.
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
                     !if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
@@ -645,6 +646,19 @@ contains
                         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
                         calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling)
+
+
+                ! if (is_magma) then 
+                !     compute_compaction= .false.
+                !     call update_magma_coupling_coefficients(Mdims, state, saturation_field%val, ndgln, multi_absorp%Magma%val,  magma_c_phi_series, .true.)
+
+                !     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
+                !         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
+                !         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
+                !         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
+                !         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
+                !         calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling)
+                ! end if
                 end if Conditional_ForceBalanceEquation
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
@@ -918,12 +932,25 @@ contains
                 call get_option( '/timestepping/adaptive_timestep/maximum_timestep', maxc, stat, default = 66.e6)
                 call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat, default = 1.1)
                 !For porous media we need to use the Courant number obtained in cv_assemb
-                if (is_porous_media .or. is_magma) then
+                if (is_porous_media) then
                   !We use stat here as a normal integer
                   stat = 1
                   if (have_option("/timestepping/adaptive_timestep/requested_cfl/Shock_front_CFL")) stat = 2
                   c = max ( c, Courant_number(stat) )
                     ! ewrite(1,*) "maximum cfl number at", current_time, "s =", c
+                elseif (is_magma) then 
+                    rc_field => extract_scalar_field( state( 1 ), 'RequestedCFL', stat )
+                    if ( stat == 0 ) rc = min( rc, minval( rc_field % val ) )
+                    ! max cfl
+                    cfl => extract_scalar_field( state( 1 ), 'CFLNumber' )
+                    
+                    ! print *, size(cfl % val)
+                    if (size(cfl % val)==size(saturation_field%val(1,2,:))) then 
+                        c = max ( c, max(maxval( cfl % val), maxval(cfl % val*saturation_field%val(1,2,:)/max(0.05,saturation_field%val(1,1,:)))))
+                    else
+                        print *, 'cfl size and saturation size does not match, using only solid phase cfl.'
+                        c = max ( c, maxval( cfl % val ) )
+                    end if
                 else
                     do iphase = 1, Mdims%nphase
                         ! requested cfl

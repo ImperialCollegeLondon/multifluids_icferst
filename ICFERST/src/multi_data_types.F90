@@ -381,7 +381,7 @@ contains
 
             if (trim(field_name)=="Magma_AbsorptionTerm") then
                 mfield%is_constant = .false.!It cannot be constant
-                mfield%memory_type = 7      !To store the coupline between phases
+                mfield%memory_type = 3      !To store the coupline between phases
             end if
 
             if (trim(field_name)=="ComponentAbsorption") then
