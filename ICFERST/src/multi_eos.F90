@@ -1403,6 +1403,14 @@ contains
         type(tensor_field), optional, intent(inout) :: drhog_tensor2
         type (porous_adv_coefs), optional, intent(inout) :: upwnd
 
+        type(tensor_field), pointer :: component_field
+        real:: denl1,denl2, dens1, dens2, denl, dens 
+        ! temperoral settings for the parameters before it put in Diamond
+        denl1=2040
+        denl2=2730
+        
+        dens1=2600
+        dens2=3000
 
         use_potential = compute_compaction
         allocate(auxR(Mdims%ndim),auxR2(Mdims%ndim))
@@ -1424,6 +1432,7 @@ contains
             sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
             !This is to put all the gravity contribution in the first phase
             if (use_potential) then
+              component_field=>extract_tensor_field(packed_state,"PackedConcentration")
               if (present(drhog_tensor)) then 
                 do ele = 1, Mdims%totele
                   auxR=0.
@@ -1448,13 +1457,18 @@ contains
                     end do
                   end do                 
                 end do
-              else
+              else                
+                ! densities are now scaled with component 
                 do nod = 1, Mdims%cv_nonods
+                  denl=denl2*component_field%val(1,2,nod)+denl1*(1-component_field%val(1,2,nod))
+                  dens=dens2*component_field%val(1,1,nod)+dens1*(1-component_field%val(1,1,nod))
+
                   g = node_val( gravity_direction, nod ) * gravity_magnitude
                   do idim = 1, Mdims%ndim
-                    u_source_cv( idim, 1, nod ) = (den( 1, nod )- den( 2, nod ) )* sat_field%val(1, 1, nod) * g( idim )
+                    u_source_cv( idim, 1, nod ) = (dens- denl )* sat_field%val(1, 1, nod) * g( idim )
                   end do
                 end do
+
             end if
 
               ! p_position=>extract_vector_field(packed_state,"PressureCoordinate")
@@ -1478,7 +1492,7 @@ contains
             end if
           else
             if (is_magma) then 
-              sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+              sat_field => extract_tensor_field(packed_state,"PackedConcentration")
               do nod = 1, Mdims%cv_nonods
                 g = node_val( gravity_direction, nod ) * gravity_magnitude
                 do idim = 1, Mdims%ndim

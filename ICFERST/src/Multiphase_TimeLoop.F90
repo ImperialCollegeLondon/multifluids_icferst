@@ -943,7 +943,7 @@ contains
                     if ( stat == 0 ) rc = min( rc, minval( rc_field % val ) )
                     ! max cfl
                     cfl => extract_scalar_field( state( 1 ), 'CFLNumber' )
-                    
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                     ! print *, size(cfl % val)
                     if (size(cfl % val)==size(saturation_field%val(1,2,:))) then 
                         c = max ( c, max(maxval( cfl % val), maxval(cfl % val*saturation_field%val(1,2,:)/max(0.05,saturation_field%val(1,1,:)))))

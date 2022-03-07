@@ -100,7 +100,7 @@ contains
 
 
   subroutine magma_Coupling_generate(series, state, coupling)
-    ! Coefficients phi^2/C is generated and stored in coupling
+    ! Coefficients phi^2/C (C without liquid viscosity) is generated and stored in coupling
     implicit none
     type( state_type ), dimension(:), intent( inout ) :: state
     !Global variables
@@ -125,7 +125,7 @@ contains
     a=coupling%a
     b=coupling%b
     t_field => extract_tensor_field( state(2), 'Viscosity', stat )
-    mu=t_field%val(1,1,1)  !currently only consider a constant liquid viscosity
+    mu=1.!
 
     low=coupling%cut_low
     high=coupling%cut_high
@@ -458,6 +458,9 @@ contains
     integer:: c_phi_size ! length of c_phi_series
     real, dimension(4):: test
     real :: max_absorp_phi
+
+    type(scalar_field), pointer :: lcomponent_field
+    real:: mu_l
     c_phi_size=size(c_phi_series)
     
     max_absorp_phi=1e-8
@@ -480,14 +483,16 @@ contains
         END DO
       END DO
     else
+      lcomponent_field=> extract_scalar_field( state(2), "Concentration" )
       DO ELE = 1, Mdims%totele
         DO CV_ILOC = 1, Mdims%cv_nloc
           mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
           cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
           ! phi = max((1.0-saturation(1,1, cv_inod)),1e-5)
           phi =max(saturation(1,2, cv_inod),max_absorp_phi)
+          mu_l=lcomponent_field%val(cv_inod)*1e5+(1-lcomponent_field%val(cv_inod))*1.   !liquid viscosity scaled with composition from 1 to 1e5
           do iphase =2, Mdims%nphase!Absorption is defined as a term mutiplying the velocity term, not the pressure
-            Magma_absorp(1, 1, iphase, mat_nod) = phi/phi2_over_c(phi)
+            Magma_absorp(1, 1, iphase, mat_nod) = phi/phi2_over_c(phi,mu_l)
           end Do
         end DO
       end DO
@@ -495,18 +500,18 @@ contains
 
   contains
     !> TO INCLUDE INFORMATION ABOUT THE FUNCTION
-    real function phi2_over_c(phi)
-        real, intent(in) :: phi
+    real function phi2_over_c(phi,mu_l)
+        real, intent(in) :: phi, mu_l
         integer :: pos
         real:: portion, phi2
         !Ensure boundedness
         phi2 = min(max(0., phi), 1.)
         pos= int(phi2*(c_phi_size-1))+1
         if (pos==c_phi_size) then
-          phi2_over_c=c_phi_series(c_phi_size)
+          phi2_over_c=c_phi_series(c_phi_size)/mu_l
         else
           portion=(phi2-(pos-1.0)/(c_phi_size-1.0))*c_phi_size
-          phi2_over_c=c_phi_series(pos)*(1-portion)+c_phi_series(pos+1)*portion
+          phi2_over_c=(c_phi_series(pos)*(1-portion)+c_phi_series(pos+1)*portion)/mu_l
         end if
       end function phi2_over_c
 
