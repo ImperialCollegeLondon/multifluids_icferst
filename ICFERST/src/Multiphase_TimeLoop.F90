@@ -212,6 +212,8 @@ contains
         Integer:: rcp                 !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
         Logical:: EnterSolve =.true., after_adapt_itime =.false.  !Flag to either enter or not the pressure solve
         type(vector_field), pointer :: XOLD_ALL, X_ALL, X_coord !JXiang
+        type(tensor_field) :: old_velocity
+        real, DIMENSION(:), ALLOCATABLE :: max_diff_vel
         Logical:: solid_implicit, diffusion_solid_implicit    !JXiang
 
         integer :: SFPI_its = 0
@@ -654,6 +656,10 @@ contains
                 !#    TODO. This has to be updated with adaptivity as well.
                 !#=================================================================================================================
                 !$ Now solving the Momentum Equation ( = Force Balance Equation )
+                if(solid_implicit) then 
+                    call allocate(old_velocity, velocity_field%mesh, "old_v", dim=velocity_field%dim); call zero(old_velocity)
+                    old_velocity%val = velocity_field%val
+                endif
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
                     !if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
@@ -665,15 +671,26 @@ contains
                 end if Conditional_ForceBalanceEquation
                 !JXiang
                 if(solid_implicit) then
-                !call one single diffusion equation here
-                X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
-                XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
-                if(its==1) XOLD_ALL%val=X_ALL%val
+                    !call one single diffusion equation here
+                    X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
+                    XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
+                    if(its==1) XOLD_ALL%val=X_ALL%val
                     if(diffusion_solid_implicit) then
                         call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , .false. )
                     END If
                 END If
-                ewrite(-1,*) 'timestep, acctim, its', timestep, acctim, its
+                if (solid_implicit) then 
+                    old_velocity%val = abs(old_velocity%val - velocity_field%val)
+                    if (.not. allocated(max_diff_vel)) allocate(max_diff_vel(Mdims%ndim))
+                    ! ewrite(-1,*),'velocity_field dimension', size(velocity_field%val, 1), size(velocity_field%val, 2), size(velocity_field%val, 3)
+                    ! ewrite(-1,*),'old_velocity dimension', size(old_velocity%val, 1), size(old_velocity%val, 2), size(old_velocity%val, 3)
+                    do i = 1,Mdims%ndim 
+                        max_diff_vel(i) = maxval(old_velocity%val(i,1,:))
+                        if (isparallel()) call allmax(max_diff_vel(i))
+                    enddo
+                    call deallocate(old_velocity)
+                endif
+                ewrite(-1,*) 'timestep, acctim, its, max_vel_diff', timestep, acctim, its, max_diff_vel
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
