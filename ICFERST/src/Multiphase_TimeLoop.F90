@@ -483,7 +483,12 @@ contains
           !We need to get RhoCp before getting the enthalpy
           call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
           call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
+
+          ! recalculate the melt fraction and compositions to guarantee that the initial condition is consistent
+          call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
+          call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
         end if
+
 
 
         call petsc_logging(3,stages,ierrr,default=.true.)
@@ -593,9 +598,9 @@ contains
                 if ( is_magma ) then
                   !update_magma_coupling_coefficients must go first!
                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                  call update_magma_coupling_coefficients(Mdims, state, saturation_field%val, ndgln, multi_absorp%Magma%val,  magma_c_phi_series)
+                  call update_magma_coupling_coefficients(Mdims, state, saturation_field%val, ndgln, multi_absorp%Magma%val,  magma_c_phi_series,Magma_absorp_capped=multi_absorp%Magma_capped%val)
                   call Calculate_Magma_AbsorptionTerms( state, packed_state, multi_absorp%Magma, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
-                                                                    upwnd, suf_sig_diagten_bc, magma_c_phi_series )                  
+                                                                    upwnd, suf_sig_diagten_bc, magma_c_phi_series, multi_absorp%Magma_capped )                  
                 end if
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
@@ -639,7 +644,7 @@ contains
                 !$ Now solving the Momentum Equation ( = Force Balance Equation )
                 if (is_magma) compute_compaction= .true.
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
-                    !if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
+                    if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
@@ -768,9 +773,9 @@ contains
                 !The ordering is important to be able to compute the Composition_magma_source term of mass exchange between the concentration between phases
                 IF (is_magma) then
                 !   Backup of the composition and melt fraction to be used to compute the phase change source term
-                  tracer_field=>extract_tensor_field(packed_state,"PackedConcentration")
-                  allocate(Compostion_temp(Mdims%cv_nonods), melt_temp(Mdims%cv_nonods))
-                  Compostion_temp= tracer_field%val(1,2,:); melt_temp = saturation_field%val(1,2,:)! second phase is the melt!
+                !   tracer_field=>extract_tensor_field(packed_state,"PackedConcentration")
+                !   allocate(Compostion_temp(Mdims%cv_nonods), melt_temp(Mdims%cv_nonods))
+                !   Compostion_temp= tracer_field%val(1,2,:); melt_temp = saturation_field%val(1,2,:)! second phase is the melt!
                   
                   !Here we  Calculate melt fraction from phase diagram
                   call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
@@ -783,7 +788,7 @@ contains
                   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
                   ! Calulate the composition source term
                   !call compute_composition_change_source(Mdims, state, packed_state, melt_temp, Compostion_temp, dt)
-                  deallocate(Compostion_temp, melt_temp)
+                !   deallocate(Compostion_temp, melt_temp)
                 end if
                 !#=================================================================================================================
                 call petsc_logging(3,stages,ierrr,default=.true.)
@@ -946,7 +951,7 @@ contains
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                     ! print *, size(cfl % val)
                     if (size(cfl % val)==size(saturation_field%val(1,2,:))) then 
-                        c = max ( c, max(maxval( cfl % val), maxval(cfl % val*saturation_field%val(1,2,:)/max(0.05,saturation_field%val(1,1,:)))))
+                        c = max ( c, max(maxval( cfl % val), maxval(cfl % val*  min(saturation_field%val(1,2,:)/max(0.05,saturation_field%val(1,1,:)),10.))))
                     else
                         print *, 'cfl size and saturation size does not match, using only solid phase cfl.'
                         c = max ( c, maxval( cfl % val ) )

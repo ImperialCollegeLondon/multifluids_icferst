@@ -2061,6 +2061,7 @@ contains
 
         if (is_magma) then
           call allocate_multi_field( Mdims, multi_absorp%Magma, ovmesh%nodes, field_name="Magma_AbsorptionTerm")
+          call allocate_multi_field( Mdims, multi_absorp%Magma_capped, ovmesh%nodes, field_name="Magma_AbsorptionTerm_Capped")
         end if
 
     end subroutine prepare_absorptions

@@ -116,8 +116,11 @@ contains
     type( tensor_field ), pointer :: t_field !liquid viscosity
     type(coupling_term_coef), intent(in) :: coupling
     integer :: N  !number of items in the series
-    real,  PARAMETER :: phi_min=1e-6
+    integer :: index_fluid  !number of items in the series
+    real,  PARAMETER :: phi_min=1e-8, phi_fluid=0.98
     real :: scaling ! a temporal fix for the scaling difference between the viscosity in ICFERST and the models
+
+    real :: suspension_scale=10.0   !HH
     scaling=1.0    ! the viscosity difference between ICFERST and the model
     N = size(series)
     s= -2 !> transition coefficient of the linking function
@@ -144,15 +147,19 @@ contains
         else if (phi(i)<=low) then
           series(i)= d**2/a/mu*phi(i)**b  !coupling%a/d**2*mu*phi(i)**(1-coupling%b)*scaling
         else if (phi(i)>=high) then
-          series(i)= d**2/mu*phi(i)**7/(1-phi(i))!1/d**2*mu*phi(i)**(-6)*(1-phi(i))*scaling
+          series(i)= d**2/mu*phi(i)**7/(1-phi(i))/suspension_scale!1/d**2*mu*phi(i)**(-6)*(1-phi(i))*scaling
         else
           H=exp(s/((phi(i)-low)/(high-low)))/(exp(s/((phi(i)-low)/(high-low)))+exp(s/(1-(phi(i)-low)/(high-low))))
-          series(i)= d**2/mu*phi(i)**7/(1-phi(i))*H+d**2/a/mu*phi(i)**b*(1-H) !(coupling%a/d**2*mu*phi(i)**(1-coupling%b)*(1-H)+1/d**2*mu*phi(i)**(-6)*(1-phi(i))*H)*scaling
+          series(i)= d**2/mu*phi(i)**7/(1-phi(i))*H/suspension_scale+d**2/a/mu*phi(i)**b*(1-H) !(coupling%a/d**2*mu*phi(i)**(1-coupling%b)*(1-H)+1/d**2*mu*phi(i)**(-6)*(1-phi(i))*H)*scaling
         end if
       end do
     end if
 
     series(1)=series(2)
+    series(N)=series(N-1)
+
+    index_fluid=int(phi_fluid*N)
+    series(index_fluid:N)=series(int(0.6*N))
   end subroutine magma_Coupling_generate
 
 
@@ -165,15 +172,22 @@ contains
     !Local variables
     type( tensor_field), pointer :: Composition, saturation
     integer :: iphase, cv_inod
+
+    type( scalar_field ), pointer :: Bcomposition
+    Bcomposition=>extract_scalar_field(state(1),'BulkComposition')
+
     Composition=>extract_tensor_field(packed_state,"PackedConcentration")
     saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
+    
+    
     BulkComposition = 0.
     do cv_inod = 1, Mdims%cv_nonods
       do iphase = 1, Mdims%nphase
         BulkComposition(cv_inod) = BulkComposition(cv_inod) + Composition%val(1,iphase,cv_inod)*saturation%val(1,iphase,cv_inod)
       end do
     end do
+    Bcomposition%val=BulkComposition
   end subroutine
 
   real function get_Liquidus(Bulk_comp,phase_coef)
@@ -225,6 +239,7 @@ contains
     type(magma_phase_diagram) :: phase_coef
     integer :: cv_nodi
 
+    type( scalar_field ), pointer :: Bcomposition
     ! BulkComposition=> extract_scalar_field(state(1), "BulkComposition")
     Composition=>extract_tensor_field(packed_state,"PackedConcentration")
     temperature =>  extract_tensor_field( packed_state, "PackedTemperature" )
@@ -232,8 +247,13 @@ contains
     Cp => extract_scalar_field(state(1), 'TemperatureHeatCapacity')   !
     saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
+   
+
+    ! DO NOT RECALCULATE BULK COMPOSITION HERE SINCE THE MELT FRACTION HAS CHANGED! JUST LOAD THE CALCULATED ONE!!
     !Compute BulkComposition
-    call cal_bulkcomposition(state,packed_state, Mdims, BulkComposition)
+    !call cal_bulkcomposition(state,packed_state, Mdims, BulkComposition)
+    Bcomposition=>extract_scalar_field(state(1),'BulkComposition')
+    BulkComposition=Bcomposition%val 
 
     do cv_nodi = 1, Mdims%cv_nonods
       ! above liquidus
@@ -254,7 +274,9 @@ contains
                    (enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BulkComposition(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)+ &
                    phase_coef%Lf*(1-BulkComposition(cv_nodi))/(1.0000001-phase_coef%Ae))) then
               Composition%val(1,2,cv_nodi)=phase_coef%Ae
-              Composition%val(1,1,cv_nodi)=(BulkComposition(cv_nodi)-saturation%val(1,2,cv_nodi)*phase_coef%Ae)/saturation%val(1,1,cv_nodi)
+              Composition%val(1,1,cv_nodi)=(BulkComposition(cv_nodi)-saturation%val(1,2,cv_nodi)*phase_coef%Ae)/max(saturation%val(1,1,cv_nodi),1e-8)
+              Composition%val(1,1,cv_nodi)=max(Composition%val(1,1,cv_nodi),0.)
+              Composition%val(1,1,cv_nodi)=min(Composition%val(1,1,cv_nodi),1.)
       ! between eutectic melting and liquidus
         else
           if(BulkComposition(cv_nodi)>phase_coef%Ae) then
@@ -442,7 +464,7 @@ contains
 
 
   !>@brief:This subroutine updated the FEM-stored values of the coefficient phi/C in the field magma_absorp
-  subroutine update_magma_coupling_coefficients(Mdims, state, saturation, ndgln, Magma_absorp,  c_phi_series, absorption_type)
+  subroutine update_magma_coupling_coefficients(Mdims, state, saturation, ndgln, Magma_absorp,  c_phi_series, absorption_type, Magma_absorp_capped)
     implicit none
     type( state_type ), dimension( : ), intent( inout ) :: state
     real, dimension(:,:,:), intent(in) :: saturation
@@ -452,12 +474,15 @@ contains
     type(coupling_term_coef) :: coupling
     real, dimension(:), intent(in) :: c_phi_series !generated c coefficients
     logical, optional, intent(in) :: absorption_type
+
+    real, optional, dimension(:,:,:,:), INTENT(INOUT) :: Magma_absorp_capped
     !Local variables
     integer :: mat_nod, ele, CV_ILOC, cv_inod, iphase, jphase
     real :: magma_coupling, phi
     integer:: c_phi_size ! length of c_phi_series
     real, dimension(4):: test
     real :: max_absorp_phi
+    real :: phi_min=0.03 !the phi value that capped for the coupling coefficient
 
     type(scalar_field), pointer :: lcomponent_field
     real:: mu_l
@@ -490,14 +515,14 @@ contains
           cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
           ! phi = max((1.0-saturation(1,1, cv_inod)),1e-5)
           phi =max(saturation(1,2, cv_inod),max_absorp_phi)
-          mu_l=lcomponent_field%val(cv_inod)*1e5+(1-lcomponent_field%val(cv_inod))*1.   !liquid viscosity scaled with composition from 1 to 1e5
+          mu_l=lcomponent_field%val(cv_inod)*1e4+(1-lcomponent_field%val(cv_inod))*1.   !liquid viscosity scaled with composition from 1 to 1e5
           do iphase =2, Mdims%nphase!Absorption is defined as a term mutiplying the velocity term, not the pressure
             Magma_absorp(1, 1, iphase, mat_nod) = phi/phi2_over_c(phi,mu_l)
+            if (present(Magma_absorp_capped)) Magma_absorp_capped(1, 1, iphase, mat_nod) = max(phi,phi_min)/phi2_over_c(max(phi,phi_min),mu_l)
           end Do
         end DO
       end DO
     end if 
-
   contains
     !> TO INCLUDE INFORMATION ABOUT THE FUNCTION
     real function phi2_over_c(phi,mu_l)
@@ -564,7 +589,7 @@ contains
   !> the upwnd the first phase contains ones so it works for the Stokes solid phase also
   !> and we can treat all the phases consistently when computing transport or the continuity equation
   subroutine Calculate_Magma_AbsorptionTerms( state, packed_state, Magma_absorp, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
-                                                    upwnd, suf_sig_diagten_bc , magma_c_phi_series )
+                                                    upwnd, suf_sig_diagten_bc , magma_c_phi_series,  Magma_absorp_capped)
      implicit none
      type( state_type ), dimension( : ), intent( inout ) :: state
      type( state_type ), intent( inout ) :: packed_state
@@ -577,6 +602,8 @@ contains
      type (porous_adv_coefs), intent(inout) :: upwnd
      real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
      real, dimension(:), intent(in) :: magma_c_phi_series
+
+     type (multi_field), optional :: Magma_absorp_capped
      !Local variables
      type( tensor_field ), pointer :: state_viscosity
      real, dimension(:,:), allocatable :: viscosities
@@ -590,7 +617,7 @@ contains
        call assign_val(viscosities(i, :),state_viscosity%val(1,1,:))!Take the first term only as for porous media we consider only scalar
      end do
 
-     call Calculate_PorousMagma_adv_terms( Magma_absorp, Mdims, upwnd, viscosities )
+     call Calculate_PorousMagma_adv_terms( Magma_absorp, Mdims, upwnd, viscosities, Magma_absorp_capped)
 
      call calculate_SUF_SIG_DIAGTEN_BC_magma( packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
          Mspars, ndgln, upwnd%adv_coef)
@@ -599,13 +626,14 @@ contains
 
      contains
         !>@brief: Computes the absorption and its derivatives against the saturation
-         subroutine Calculate_PorousMagma_adv_terms( Magma_absorp, Mdims, upwnd, viscosities )
+         subroutine Calculate_PorousMagma_adv_terms( Magma_absorp, Mdims, upwnd, viscosities, Magma_absorp_capped )
 
              implicit none
              type (multi_field), intent( inout ) :: Magma_absorp
              type( multi_dimensions ), intent( in ) :: Mdims
              type (porous_adv_coefs), intent(inout) :: upwnd
              real, dimension(:,:) :: viscosities
+             type (multi_field), intent( inout ) :: Magma_absorp_capped
              !!$ Local variables:
              type(tensor_field), pointer :: satura, OldSatura
              integer :: cv_inod, iphase, ele, cv_iloc, mat_nod, icv
@@ -626,7 +654,8 @@ contains
                  !Solid phase has a value of 1
                  upwnd%inv_adv_coef(1,1,1,mat_nod)=1.0; upwnd%adv_coef(1,1,1,mat_nod)=1.0
                  do iphase = 2, Mdims%nphase!if absorpt is the same we may want to reuse memory...
-                   upwnd%adv_coef(1,1,iphase,mat_nod) = Magma_absorp%val(1,1,iphase,mat_nod)
+                   upwnd%adv_coef(1,1,iphase,mat_nod)        = Magma_absorp%val(1,1,iphase,mat_nod)
+                   upwnd%capped_adv_coef(1,1,iphase,mat_nod) = Magma_absorp_capped%val(1,1,iphase,mat_nod)
                    !Now the inverse
                    upwnd%inv_adv_coef(1,1,iphase,mat_nod) = 1./upwnd%adv_coef(1,1,iphase,mat_nod)
                  end do

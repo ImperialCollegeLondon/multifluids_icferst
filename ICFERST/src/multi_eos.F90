@@ -1383,7 +1383,7 @@ contains
         type(state_type), dimension(:), intent(in) :: state
         type( state_type ), intent( in ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
-        real, dimension(:,:), intent(in) :: den
+        real, dimension(:,:), intent(inout) :: den
         real, dimension(:,:,:), intent(inout) :: u_source_cv
         logical, optional, intent(in) :: collapse_together
         
@@ -1406,11 +1406,11 @@ contains
         type(tensor_field), pointer :: component_field
         real:: denl1,denl2, dens1, dens2, denl, dens 
         ! temperoral settings for the parameters before it put in Diamond
-        denl1=2040
-        denl2=2730
+        denl1=2300
+        denl2=2300
         
-        dens1=2600
-        dens2=3000
+        dens1=2800!2600
+        dens2=2800!3000
 
         use_potential = compute_compaction
         allocate(auxR(Mdims%ndim),auxR2(Mdims%ndim))
@@ -1462,10 +1462,11 @@ contains
                 do nod = 1, Mdims%cv_nonods
                   denl=denl2*component_field%val(1,2,nod)+denl1*(1-component_field%val(1,2,nod))
                   dens=dens2*component_field%val(1,1,nod)+dens1*(1-component_field%val(1,1,nod))
-
+                  ! den( 1, nod )=dens
+                  ! den( 2, nod )=denl
                   g = node_val( gravity_direction, nod ) * gravity_magnitude
                   do idim = 1, Mdims%ndim
-                    u_source_cv( idim, 1, nod ) = (dens- denl )* sat_field%val(1, 1, nod) * g( idim )
+                    u_source_cv( idim, 1, nod ) = (dens-denl)* sat_field%val(1, 1, nod) * g( idim ) !(dens- denl )
                   end do
                 end do
 
@@ -1940,13 +1941,15 @@ contains
                         cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
                         if (is_magma) then
                           if (iphase==1) then !only the solid phase has viscosity terms
-                            momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
+                            mu_tmp( :, :, iloc )=mus_varied(saturation%val(cv_nod), mu_tmp( 1, 1, iloc )) 
+
+                            momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )  !mu_tmp( :, :, iloc )
                             !Currently only magma uses momentum_diffusion2
-                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))*0
+                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))
                             !Saturation scaling of viscosity
 !For testing rescaling of viscosity with the saturation
 if (is_magma) then
-momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion( :, :, iphase, mat_nod ) * max(saturation2%val(cv_nod), 1e-7)!Ensure that it does not dissapear
+momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion( :, :, iphase, mat_nod ) * max(saturation2%val(cv_nod), 1e-2)!Ensure that it does not dissapear
 ! momentum_diffusion2%val(1, 1, iphase, mat_nod)  = momentum_diffusion2%val(1, 1, iphase, mat_nod) * max(saturation%val(cv_nod), 1e-5)!Ensure that it does not dissapear
 end if
                           else
@@ -1969,7 +1972,7 @@ end if
                      end do
                   end do
                end do
-            end if
+            end if            
             deallocate( component_tmp, mu_tmp )
          end if
       end if
@@ -1986,9 +1989,27 @@ end if
         real :: a!> TO BE FILLED
         real :: n!> TO BE FILLED
         real :: phi!> TO BE FILLED
-        zeta=a*max(phi,1e-7)**(-n)
+        zeta=a*max(phi,1e-2)**(-n)
         return
       end function zeta
+
+      real function mus_varied(phi,mu)
+        implicit none        
+        real :: phi
+        real :: mu
+
+        real :: cut
+        real :: phi2
+        real :: mus1
+
+        mus1=1e18
+        cut=0.01
+
+        phi2=min(phi,cut)
+        
+        mus_varied=mu+(mus1-mu)*exp(-phi2/(cut-phi2))
+        return
+      end function mus_varied
 
     end subroutine calculate_viscosity
 

@@ -52,6 +52,7 @@ module multiphase_1D_engine
     use ieee_arithmetic
     use multi_magma
 
+    use sparse_tools_petsc
     implicit none
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
@@ -798,6 +799,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer, save :: nconc = -1 !> Number of phases with concentration, this works if the phases with concentration start from the first one and are consecutive
            integer, save :: nconc_in_pres
            type(vector_field) :: solution
+
            !Retrieve the number of phases that have Concentration fraction, and then if they are concecutive and start from the first one
            if (nconc < 0) then
              nconc = option_count("/material_phase/scalar_field::Concentration")
@@ -938,6 +940,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
                    ! call zero_non_owned(Mmat%CV_RHS)
                    call zero(solution)
+
+                   call assemble(Mmat%petsc_ACV)
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
                    !Ensure that the solution is above zero always
                   solution%val = max(solution%val,min_concentration)
@@ -958,7 +962,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    !Checking solver not fully implemented
                    solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
                    call allor(solver_not_converged)
-                   exit!good to go!
+                   if (.not. its_taken==0) then
+                        exit!good to go!
+                   else 
+                        print *, 'petsc solver issue.'
+                   end if
 
            END DO Loop_NonLinearFlux
 
@@ -1967,6 +1975,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         logical :: second_compaction_formulation    
         
         integer :: TEST_temperal
+        real :: cmcscaling
+        cmcscaling=33
         ! if (is_magma) compute_compaction= .true.  ! For magma only the first phase is assembled for the momentum equation.
 
         call get_option("/numerical_methods/max_sat_its", TEST_temperal)
@@ -2087,7 +2097,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 call allocate(drhog_tensor2,velocity%mesh,"CDP",dim = (/velocity%dim(1), final_phase/)); call zero(drhog_tensor2)
                 call calculate_u_source_cv( Mdims, state, packed_state, uden_all, U_SOURCE_CV_ALL, compute_compaction, ndgln, drhog_tensor=drhog_tensor, drhog_tensor2=drhog_tensor2, upwnd=upwnd)
             else
-                call calculate_u_source_cv( Mdims, state, packed_state, uden_all, U_SOURCE_CV_ALL, compute_compaction, ndgln)
+                call calculate_u_source_cv( Mdims, state, packed_state, DEN_ALL2%VAL( 1, :, : ), U_SOURCE_CV_ALL, compute_compaction, ndgln)
             end if
            end if
             
@@ -2167,12 +2177,12 @@ if (associated(multi_absorp%PorousMedia%val))then!sprint_to_do AVOID THESE CONVE
     end do
 end if
 
-if (is_magma .and. (.not. compute_compaction)) then!sprint_to_do AVOID THESE CONVERSIONS...
-    print *, 'add magma absorption term'
-    do cv_nod = 1, size(multi_absorp%Magma%val,4)
-        call add_multi_field_to_array(multi_absorp%Magma, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
-    end do
-end if
+! if (is_magma .and. (.not. compute_compaction)) then!sprint_to_do AVOID THESE CONVERSIONS...
+!     print *, 'add magma absorption term'
+!     do cv_nod = 1, size(multi_absorp%Magma%val,4)
+!         call add_multi_field_to_array(multi_absorp%Magma, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
+!     end do
+! end if
 
         !Check if as well the Mass matrix
         SUF_INT_MASS_MATRIX = .false.!= have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/Suf_mass_matrix' )
@@ -2293,7 +2303,7 @@ end if
             if (solve_stokes .or. solve_mom_iteratively) then
                 if (compute_compaction) then
                     if (solve_mom_iteratively) then
-                        call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, Compaction_length,1e7)  !using AA 
+                        call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, Compaction_length, CMC_scale=cmcscaling)  !using AA 
                     else
                         call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, Compaction_length)  !using petsc
                     end if 
@@ -2401,7 +2411,7 @@ end if
             if (solve_mom_iteratively) then
                 !Solve Schur complement using our own method
                 call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
-                                              MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
+                                              MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its, CMC_scale=cmcscaling)
             else !Solve Schur complement using PETSc
                 if (is_magma)  then
                     call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, CMC_petsc2, P_all, &
@@ -2525,14 +2535,14 @@ end if
         end subroutine force_zero_boundary_value
 
         !---------------------------------------------------------------------------
-        !> @author Pablo Salinas
+        !> @author Pablo Salinas, Haiyang Hu
         !> @brief Generic subroutine that perform the Anderson acceleration solver.
         !> This is storing a set of results for a system that converges based on a FPI
         !> and finding an optimal combination of all of these results that minimise the residual
         !> Method explained in DOI.10.1137/16M1076770
         !---------------------------------------------------------------------------
         subroutine Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
-            MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
+            MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its, CMC_scale)
           implicit none
           integer, intent(in) :: stokes_max_its
           type( state_type ), intent( inout ) :: packed_state
@@ -2564,9 +2574,10 @@ end if
           real :: min_residue
           real, dimension(:), allocatable :: P_optimal
           
-          real, save :: CMC_scale=1e7
+          real, optional, intent(inout) :: CMC_scale
           logical, save :: first_step = .true.
 
+          CMC_scale=CMC_scale*1.1
           EXTRA=0
           non_improved_step=0
 
@@ -2617,7 +2628,7 @@ end if
           restart_now = .false.
           min_residue=1
           if (first_step) then
-            max_iter=300
+            max_iter=200
             first_step=.false.
           else
             max_iter=stokes_max_its*Max_restarts
@@ -2648,7 +2659,7 @@ end if
             conv_test = maxval(abs(rhs_p%val(1,:)))
 
             if (min_residue>conv_test) then
-                if (conv_test/min_residue>0.9) then 
+                if (conv_test/min_residue>0.95) then 
                     non_improved_step=non_improved_step+1
                 else
                     non_improved_step=0
@@ -2670,25 +2681,24 @@ end if
               exit stokesloop
             end if
 
-            if (non_improved_step>10) then 
-                if (abs(conv_test/min_residue)<1000.) then 
-                    omega=omega*10.
-                    print *, 'CMC scale increased (10)'
-                else
-                    omega=omega/5.
-                    P_all%val(1,1,:)=P_optimal
-                    velocity%val(:,1,:)=optimal_velocity  
-                    print *, 'CMC scale decreased (5)'                  
-                end if
-                non_improved_step=0
-                call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, CMC_scale=CMC_scale)
-                call allocate(CMC_petsc2,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc2",diag)
-                CALL COLOR_GET_CMC_PHA( Mdims, final_phase, Mspars, ndgln, Mmat,&
-                DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                CMC_petsc2, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-                pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
-                
-            end if
+            ! if (non_improved_step>25 .and. conv_test>1e-8) then 
+            !     if (abs(conv_test/min_residue)<1000.) then 
+            !         CMC_scale=max(CMC_scale*0.95,1.)
+            !         print *, 'CMC scale increased :', CMC_scale
+            !     else
+            !         CMC_scale=CMC_scale*1.1
+            !         P_all%val(1,1,:)=P_optimal
+            !         velocity%val(:,1,:)=optimal_velocity  
+            !         print *, 'CMC scale decreased :', CMC_scale                 
+            !     end if
+            !     non_improved_step=0
+            !     call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, CMC_scale=CMC_scale)
+            !     call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc2",diag)
+            !     CALL COLOR_GET_CMC_PHA( Mdims, final_phase, Mspars, ndgln, Mmat,&
+            !     DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+            !     CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
+            !     pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )                
+            ! end if
 
 
             M = i - 2; if (M <= 0) M = stokes_max_its + M
@@ -2828,12 +2838,12 @@ print *, k,':', conv_test
           real, parameter :: tol = 1e-8
           real, optional, DIMENSION (:), intent( in ):: Compaction_Length
           real, optional, intent( in ):: CMC_scale
-          real :: max_c, scale
+          real :: max_c, scale_cmc
 
           if (present(CMC_scale)) then 
-            scale=CMC_scale
+            scale_cmc=CMC_scale
           else 
-            scale=1.0
+            scale_cmc=1.0
           end if
 
           max_c=maxval(upwnd%inv_adv_coef(1,1,2,:))
@@ -2903,12 +2913,13 @@ print *, k,':', conv_test
                     imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
                     cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                     ! the second phase of upwnd%adv_coef containts c/phi
-                    if (saturation%val(cv_loc)<0.02) then 
-                        auxR = auxR + 1e-16/dble(Mdims%cv_nloc)
+                    if (saturation%val(cv_loc)<0.03) then 
+                        ! auxR = auxR + 1e-9/dble(Mdims%cv_nloc)/scale_cmc
+                        auxR = auxR +  0.03/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
                     else
-                        auxR = auxR +  saturation%val(cv_loc)*upwnd%inv_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
-                    end if 
-                    ! print *, saturation%val(cv_loc)*upwnd%inv_adv_coef(1,1,2,imat)
+                        auxR = auxR +  saturation%val(cv_loc)/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
+                    end if
+                    ! auxR = auxR +  saturation%val(cv_loc)/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
                 end do
                 
                 !Include now the corresponding element mass
@@ -2918,8 +2929,7 @@ print *, k,':', conv_test
                     u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
                     do i = 1, final_phase*Mdims%ndim
                         j = i + (u_iloc-1)*final_phase*Mdims%ndim
-                        Mmat%PIVIT_MAT(J, J, ELE) = scale*(auxR)!+1./(diagonal_A%val(i,u_inod)*MASS_ELE(ele))  
-                        ! print *, auxR, 1./(diagonal_A%val(i,u_inod)*MASS_ELE(ele))                       
+                        Mmat%PIVIT_MAT(J, J, ELE) = scale_cmc*(auxR)!+1./(diagonal_A%val(i,u_inod)*MASS_ELE(ele))  
                     end do
                 end do
 

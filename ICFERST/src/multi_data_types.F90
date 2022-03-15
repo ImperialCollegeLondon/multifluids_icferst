@@ -200,6 +200,8 @@ module multi_data_types
         real, dimension( :, :, :, : ), pointer :: inv_adv_coef => null()!>Inverse of sigmas at the boundary to calculate fluxes
         real, dimension( :, :, :, : ), pointer :: adv_coef_grad => null()!>Gradient of the sigmas at the boundary to calculate fluxes
         real, dimension( :, :, : ),    pointer :: inv_permeability => null()!>Gradient of the sigmas at the boundary to calculate fluxes
+
+        real, dimension( :, :, :, : ), pointer :: capped_adv_coef => null()!>capped values for magma solver
     end type porous_adv_coefs
 
     type multi_field
@@ -231,6 +233,7 @@ module multi_data_types
         type (multi_field) :: Velocity
         !>Magma absorption
         type (multi_field) :: Magma !>Initially to use memory type = 3  Isotropic coupled
+        type (multi_field) :: Magma_capped !>Initially to use memory type = 3  Isotropic coupled
     end type multi_absorption
 
     type multi_transport_scalar
@@ -384,6 +387,11 @@ contains
                 mfield%memory_type = 3      !To store the coupline between phases
             end if
 
+            if (trim(field_name)=="Magma_AbsorptionTerm_Capped") then
+                mfield%is_constant = .false.!It cannot be constant
+                mfield%memory_type = 3      !To store the coupline between phases
+            end if
+
             if (trim(field_name)=="ComponentAbsorption") then
                 mfield%memory_type = 4
                 nonods = Mdims%cv_nonods
@@ -455,6 +463,7 @@ contains
         if (associated(multi_absorp%Velocity%val))    call deallocate_multi_field(multi_absorp%Velocity, and_destroy2)
         if (associated(multi_absorp%Concentration%val))call deallocate_multi_field(multi_absorp%Concentration, and_destroy2)
         if (associated(multi_absorp%Magma%val))    call deallocate_multi_field(multi_absorp%Magma, and_destroy2)
+        if (associated(multi_absorp%Magma_capped%val))    call deallocate_multi_field(multi_absorp%Magma_capped, and_destroy2)
     end subroutine deallocate_multi_absorption
 
     subroutine get_multi_field(mfield, inode_in, output)
@@ -1324,6 +1333,8 @@ contains
         type (multi_dimensions), intent(in)  ::Mdims
 
         if (is_magma .and. .not.associated(upwnd%adv_coef)) allocate(upwnd%adv_coef(1,1,Mdims%nphase,Mdims%mat_nonods))
+        if (is_magma .and. .not.associated(upwnd%capped_adv_coef)) allocate(upwnd%capped_adv_coef(1,1,Mdims%nphase,Mdims%mat_nonods))
+
         if (.not.associated(upwnd%inv_adv_coef)) allocate(upwnd%inv_adv_coef(1,1,Mdims%nphase,Mdims%mat_nonods))
         if (.not.associated(upwnd%adv_coef_grad)) allocate(upwnd%adv_coef_grad(1,1,Mdims%nphase,Mdims%mat_nonods))
         if (.not.associated(upwnd%inv_permeability)) allocate(upwnd%inv_permeability(Mdims%ndim,Mdims%ndim,Mdims%totele))
@@ -1333,6 +1344,7 @@ contains
         type (porous_adv_coefs), intent(inout) :: upwnd
 
         if (is_magma .and. associated(upwnd%adv_coef)) deallocate(upwnd%adv_coef)!This memory is pointing to
+        if (is_magma .and. associated(upwnd%capped_adv_coef)) deallocate(upwnd%capped_adv_coef)!This memory is pointing to
                                             !multi_absorption%porousMedia as is being deallocated there
         if (associated(upwnd%inv_adv_coef)) deallocate(upwnd%inv_adv_coef)
         if (associated(upwnd%adv_coef_grad)) deallocate(upwnd%adv_coef_grad)
