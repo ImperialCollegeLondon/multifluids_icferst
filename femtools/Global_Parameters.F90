@@ -208,6 +208,7 @@ module global_parameters
   !!Public string containing a generic warning and tips to get the code working
   character(len=OPTION_PATH_LEN) :: multi_generic_warning =""
 
+  logical :: petsc_error = .false.
 contains
 
   function get_surface_radius() bind(c)

@@ -216,6 +216,7 @@ contains
         integer :: fields
         character( len = option_path_len ) :: option_name
 
+        logical :: redo_time_step=.true.
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -641,6 +642,8 @@ contains
                 !# Andreas. I added a flag in the Conditional_ForceBalanceEquation to eiher enter or not.
                 !#    TODO. This has to be updated with adaptivity as well.
                 !#=================================================================================================================
+                redo_time_step= .true.    
+            do while (redo_time_step) 
                 !$ Now solving the Momentum Equation ( = Force Balance Equation )
                 if (is_magma) compute_compaction= .true.
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
@@ -765,10 +768,15 @@ contains
                        THETA_GDIFF, eles_with_pipe, pipes_aux, &
                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
 
-                   nullify(tracer_field)
-
+                   nullify(tracer_field)                
+                   
                 end if Conditional_ScalarAdvectionField2
-
+                if (.not. petsc_error) then 
+                    redo_time_step= .false.
+                else 
+                    print *,'Now redo this nonlinear iteration.'
+                end if
+            end do
                 !Do not change the ordering of these if, this one has to occur after calling ENTHALPY_ASSEM_SOLVE and Concentration_assem_solve
                 !The ordering is important to be able to compute the Composition_magma_source term of mass exchange between the concentration between phases
                 IF (is_magma) then
@@ -951,7 +959,7 @@ contains
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                     ! print *, size(cfl % val)
                     if (size(cfl % val)==size(saturation_field%val(1,2,:))) then 
-                        c = max ( c, max(maxval( cfl % val), maxval(cfl % val*  min(saturation_field%val(1,2,:)/max(0.05,saturation_field%val(1,1,:)),10.))))
+                        c = max ( c, max(maxval( cfl % val), maxval(cfl % val*  min(saturation_field%val(1,2,:)/max(0.05,saturation_field%val(1,1,:)),6.))))
                     else
                         print *, 'cfl size and saturation size does not match, using only solid phase cfl.'
                         c = max ( c, maxval( cfl % val ) )

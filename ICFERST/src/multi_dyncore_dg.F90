@@ -890,7 +890,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-           NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
+           NITS_FLUX_LIM = 1!<= currently looping here more does not add anything as RHS and/or velocity are not updated
 
            solver_option_path = "/solver_options/Linear_solver"
            if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::Concentration')) then
@@ -956,18 +956,20 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    !Apply if required the min max principle
                    call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
                    !Just after the solvers
-                   call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
+                !    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
                    !Update halo communications
                    call halo_update(tracer)
                    !Checking solver not fully implemented
                    solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
                    call allor(solver_not_converged)
-                   if (.not. its_taken==0) then
-                        exit!good to go!
-                   else 
-                        print *, 'petsc solver issue.'
+                   if (.not. its_taken==0) then                        
+                        petsc_error= .false.
+                   else
+                        petsc_error= .true.    
+                        print *,'************************'                     
+                        print *, 'Petsc solver issue, restart this time step.'
                    end if
-
+                   exit!good to go!
            END DO Loop_NonLinearFlux
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
@@ -2576,7 +2578,8 @@ end if
           
           real, optional, intent(inout) :: CMC_scale
           logical, save :: first_step = .true.
-
+          real :: petsc_error_scale 
+          
           CMC_scale=CMC_scale*1.1
           EXTRA=0
           non_improved_step=0
@@ -2587,6 +2590,13 @@ end if
           !Retrieve settings from diamond
           if (solver_tolerance<0) then
             call get_option("/solver_options/Momemtum_matrix/solve_mom_iteratively", solver_tolerance, default = 1d-7)
+            if (petsc_error) then 
+                 call random_number(petsc_error_scale)
+                 print *, 'convergence criterion rescaled with:', petsc_error_scale
+                 petsc_error_scale=min(petsc_error_scale,0.8)
+                 petsc_error_scale=max(petsc_error_scale,0.2)
+                 solver_tolerance=solver_tolerance*petsc_error_scale
+            end if
             show_FPI_conv = 1
             if (have_option( '/io/Show_Convergence')) show_FPI_conv = 0
             !Type of preconditioner
@@ -2632,6 +2642,7 @@ end if
             first_step=.false.
           else
             max_iter=stokes_max_its*Max_restarts
+            if (petsc_error) max_iter=stokes_max_its*Max_restarts+3
           end if
 
           stokesloop: do k = 1, max_iter
