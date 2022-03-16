@@ -22,7 +22,7 @@ t = 0.1
 nodes = 202
 gamma = 1.
 pi = 3.141596
-Tolerance_L1_NORM = 0.025
+Tolerance_L1_NORM = 0.01
 
 print('Running the model')
 path = os.getcwd()

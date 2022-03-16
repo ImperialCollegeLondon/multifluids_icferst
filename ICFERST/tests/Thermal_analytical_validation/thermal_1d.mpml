@@ -320,24 +320,6 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
-    <multiphase_properties>
-      <immobile_fraction>
-        <scalar_field name="value">
-          <prescribed>
-            <mesh name="P0DG"/>
-            <value name="WholeMesh">
-              <constant>
-                <real_value rank="0">0.2</real_value>
-              </constant>
-            </value>
-            <stat/>
-            <detectors>
-              <exclude_from_detectors/>
-            </detectors>
-          </prescribed>
-        </scalar_field>
-      </immobile_fraction>
-    </multiphase_properties>
   </material_phase>
   <porous_media>
     <scalar_field name="Porosity">

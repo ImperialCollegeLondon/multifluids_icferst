@@ -631,7 +631,7 @@ contains
           end if
           !For porous media, but possibly for inertia, 
           !we use a diffusion that does not take 10%! of the total time only to generate the term
-          if (GOT_DIFFUS .and. (is_porous_media .or. .not.activate_limiters)) then 
+          if (GOT_DIFFUS .and. .not.activate_limiters) then 
             got_diffus_low_order = .true.
             GOT_DIFFUS = .false.
           end if
@@ -1528,8 +1528,8 @@ contains
                               !Use a low order method to compute diffusion, does not require stabilisation
                               if (got_diffus_low_order) then 
                                   do iphase = 1, final_phase
-                                    DIFF_COEF_DIVDX(IPHASE) = (TDIFFUSION(MAT_NODI, 1, 1, iphase)* &
-                                        (1.-INCOME(iphase))+TDIFFUSION(MAT_NODJ, 1, 1, iphase)* INCOME(iphase))/HDC
+                                    DIFF_COEF_DIVDX(IPHASE) = 0.5*(TDIFFUSION(MAT_NODI, 1, 1, iphase) &
+                                        + TDIFFUSION(MAT_NODJ, 1, 1, iphase))/HDC
                                   end do  
                                   IF ( on_domain_boundary ) THEN
                                     do iphase = 1, final_phase
@@ -1804,7 +1804,7 @@ contains
                                             END IF
                                           END DO
                                         end if
-                                      ELSE
+                                      ELSE                                      
                                         !Assemble off-diagonal cv_nodi-cv_nodj
                                         LOC_MAT_IJ = LOC_MAT_IJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD! Advection
                                         if (GOT_DIFFUS) LOC_MAT_IJ = LOC_MAT_IJ - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
