@@ -3050,7 +3050,7 @@ end if
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON ) !
+            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON , nonlinear_its) !
         deallocate(UDIFFUSION_ALL)
 
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
@@ -3884,7 +3884,7 @@ end if
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON) !-ao
+        FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON , nonlinear_its) !-ao
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -3930,6 +3930,7 @@ end if
         REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  DIAG_BIGM_CON
         REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  BIGM_CON
         real, dimension(:), intent(inout) :: Courant_number
+        integer, intent(in) :: nonlinear_its
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
@@ -4018,7 +4019,7 @@ end if
                 JUST_BL_DIAG_MAT, &
                 UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, DEN_ALL, RETRIEVE_SOLID_CTY, &
                 IPLIKE_GRAD_SOU,DIAG_BIGM_CON, BIGM_CON, &
-                got_free_surf, MASS_SUF, FEM_continuity_equation, MASS_ELE)
+                got_free_surf, MASS_SUF, FEM_continuity_equation, MASS_ELE , nonlinear_its)
         end if
 
         ALLOCATE( DEN_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DEN_OR_ONE = 1.
@@ -4368,7 +4369,7 @@ end if
         DT, JUST_BL_DIAG_MAT,  &
         UDIFFUSION_temp, UDIFFUSION_VOL, DEN_ALL, RETRIEVE_SOLID_CTY, &    !JXiang
         IPLIKE_GRAD_SOU,  DIAG_BIGM_CON, BIGM_CON,&
-        got_free_surf, mass_suf, FEM_continuity_equation, MASS_ELE )
+        got_free_surf, mass_suf, FEM_continuity_equation, MASS_ELE , nonlinear_its)
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -4400,6 +4401,7 @@ end if
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY, got_free_surf, FEM_continuity_equation
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         real, dimension(:), intent(inout) :: MASS_ELE
+        integer, intent(in) :: nonlinear_its
         ! Local Variables
         ! This is for decifering WIC_U_BC & WIC_P_BC
         LOGICAL, PARAMETER :: VOL_ELE_INT_PRES = .TRUE.
@@ -4424,6 +4426,8 @@ end if
         LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false.   ! treat implicitly between elements.
         LOGICAL, PARAMETER :: solid_visc_diag_imp=.true.      ! only add diagonal viscous stabilising term
         REAL :: DX2 ! element diameter dx ** 2. this is approximated with element volume, to be used in sigmagi_stab
+        REAL, DIMENSION(:,:), ALLOCATABLE :: force_stab       ! this is solid_force / velocity, as a diagonal stabilisation.
+                                                              ! use either this or mu/dx2 stab.
         ! re-calculate Mmat%C matrix...
         LOGICAL :: got_c_matrix
         INTEGER, DIMENSION( :, : ), allocatable ::  FACE_ELE
@@ -5043,6 +5047,7 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
 
         ALLOCATE( STRESS_IJ_SOLID_ELE_EXT( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_snloc, 2*Mdims%u_nloc ) )
         STRESS_IJ_SOLID_ELE_EXT=0.0
+        allocate(force_stab(Mdims%ndim, Mdims%u_nloc))
         !JXiang end ****new code for interface between solid and fluid
         ALLOCATE( SLOC_UDIFFUSION_INTERFACE(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
         ALLOCATE( SLOC2_UDIFFUSION_INTERFACE(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
@@ -5485,21 +5490,21 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                     END DO
                 ENDIF
                 ! a diagonal viscous stabilisation term for solid implicit solver
-                if (solid_implicit .and. solid_visc_diag_imp .and. sigma%val(ele).GT.0.5) then 
-                    ! APPROXIMATE element diameter ** 2. suppose it's regular triangle or tetrahedron.
-                    if (Mdims%ndim.eq.3) then 
-                        DX2 = (Devfuns%volume*12./sqrt(2.))**(2./3.) 
-                    ELSEIF (Mdims%ndim.eq.2) then 
-                        DX2 = (Devfuns%volume*4./sqrt(3.))
-                    ENDIF
-                    DO IDIM=1,Mdims%ndim 
-                        DO IPHASE=1,Mdims%nphase 
-                            I=IDIM+(IPHASE-1)*Mdims%ndim 
-                            LOC_U_ABS_STAB( I, I, MAT_ILOC ) = LOC_U_ABS_STAB( I, I, MAT_ILOC ) + &
-                                UDIFFUSION_ALL( IDIM, IDIM, IPHASE, MAT_INOD) / DX2 
-                        ENDDO
-                    ENDDO
-                endif
+                ! if (solid_implicit .and. solid_visc_diag_imp .and. sigma%val(ele).GT.0.5) then 
+                !     ! APPROXIMATE element diameter ** 2. suppose it's regular triangle or tetrahedron.
+                !     if (Mdims%ndim.eq.3) then 
+                !         DX2 = (Devfuns%volume*12./sqrt(2.))**(2./3.) 
+                !     ELSEIF (Mdims%ndim.eq.2) then 
+                !         DX2 = (Devfuns%volume*4./sqrt(3.))
+                !     ENDIF
+                !     DO IDIM=1,Mdims%ndim 
+                !         DO IPHASE=1,Mdims%nphase 
+                !             I=IDIM+(IPHASE-1)*Mdims%ndim 
+                !             LOC_U_ABS_STAB( I, I, MAT_ILOC ) = LOC_U_ABS_STAB( I, I, MAT_ILOC ) + &
+                !                 UDIFFUSION_ALL( IDIM, IDIM, IPHASE, MAT_INOD) / DX2 
+                !         ENDDO
+                !     ENDDO
+                ! endif
                 IF ( GOT_DIFFUS ) THEN
                     LOC_UDIFFUSION( :, :, :, MAT_ILOC ) = UDIFFUSION_ALL( :, :, :, MAT_INOD )
                     LOC_UDIFFUSION_VOL( :, MAT_ILOC ) = UDIFFUSION_VOL_ALL( :, MAT_INOD )
@@ -5694,6 +5699,29 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                         ! END DO
                                     END DO
                                 endif ! if(solid_visc_ele_imp) then
+
+                                if (solid_visc_diag_imp) then 
+                                    ! if (modulo(nonlinear_its-1, 5) .eq. 0) then
+                                    DO U_ILOC = 1, Mdims%u_nloc
+                                        IPHASE = 1
+                                        DO idim = 1, Mdims%ndim 
+                                            if (loc_vel_all(idim,U_ILOC).eq. 0.) then 
+                                                force_stab(idim,u_iloc) = 0.    ! avoid dividing by 0
+                                            else
+                                                force_stab(idim,u_iloc) = 10.* abs(force_solids(idim,iphase,u_iloc) / LOC_VEL_ALL(idim,u_iloc))
+                                                ! if (force_stab(idim,u_iloc).le. 0.) force_stab(idim, u_iloc) = 0.   ! if abs. is negative, ignore it.
+                                                if (force_stab(idim,u_iloc).gt. 1.e8) force_stab(idim, u_iloc) = 1e8    ! limiting from above.
+                                            endif
+                                            LOC_U_RHS(idim,iphase,u_iloc) = LOC_U_RHS(idim,iphase,u_iloc)+force_stab(idim,u_iloc)*LOC_VEL_ALL(idim,u_iloc)
+                                            DIAG_BIGM_CON(idim,idim,iphase,iphase,u_iloc,u_iloc,ele) = DIAG_BIGM_CON(idim,idim,iphase,iphase,u_iloc,u_iloc,ele) &
+                                                + force_stab(idim,u_iloc)
+                                        ENDDO
+                                    ENDDO 
+                                    ! endif
+                                    ! ewrite(3,*),'f', force_solids
+                                    ! ewrite(3,*),'v', LOC_VEL_ALL
+                                    ! ewrite(3,*),ele,'|',DIAG_BIGM_CON(:,:,:,:,:,:,ele)
+                                endif
                             endif ! IF(IDIVID_BY_VOL_FRAC.ne.1) THEN
                         ENDIF ! IF ( STRESS_FORM ) THEN
                     endif ! if(sigma%val(ele).GT.0.5) then
@@ -5854,6 +5882,9 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     END DO
                 END DO
             end if ! endof if (Porous_media_PIVIT_not_stored_yet) then
+            ! if(sigma%val(ele).gt.0.5) then 
+            !     ewrite(3,*),ele,'|',DIAG_BIGM_CON(:,:,:,:,:,:,ele),'|'
+            ! endif
             if (.not.is_porous_media) then!sprint_to_do; internal subroutine for this?
                 !###LOOP Loop_DGNods1 IS NOT NECESSARY FOR POROUS MEDIA###
                 Loop_DGNods1: DO U_ILOC = 1, Mdims%u_nloc
