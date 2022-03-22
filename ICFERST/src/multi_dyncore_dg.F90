@@ -5666,8 +5666,8 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                     force_solids( :, IPHASE, : )=0.0
                                     CALL CALC_FORCE_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE( :, :),  Mdims%ndim, &
                                         Mdims%x_nloc,LOC_X_ALL(:,:),force_solids(:,IPHASE,:), Mdims, ndgln, ele)
-                                    rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
-                                    loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
+                                    ! rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
+                                    ! loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
                                 END DO ! iphase
                                 !  END DO GI
                                 
@@ -6504,6 +6504,26 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 Mmat%U_RHS( :, :, U_INOD ) = Mmat%U_RHS( :, :, U_INOD ) + LOC_U_RHS( :, :, U_ILOC )
             END DO
         END DO Loop_Elements
+        
+        !! taking average of solid force
+        type (vector_field), pointer :: solid_force 
+        real, dimension(:,:), allocatable :: cv_solid_force 
+        real, dimension(:), allocatable :: sigma_plus_bc, vel_count_solid
+        allocate( cv_solid_force(Mdims%ndim, Mdims%cv_nonods) , sigma_plus_bc(Mdims%cv_nonods) , vel_count_solid(Mdims%cv_nonods) )
+        do ele=1,Mdims%totele
+            do cv_iloc=1,Mdims%cv_nloc
+                cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                sigma_plus_bc(cv_inod) = sigma_plus_bc(cv_inod) + sigma%val(ele)
+                vel_count_solid(cv_inod)=vel_count_solid(cv_inod)+1.0*sigma%val(ele)*MASS_ELE(ELE)
+                do idim=1,Mdims%ndim     
+                    cv_solid_force(idim,cv_inod) = cv_solid_force(idim,cv_inod) + sigma%val(ele)*solid_force(idim,u_inod)*MASS_ELE(ELE)
+                end do
+            end do
+        end do
+        do cv_inod = 1,Mdims%cv_nonods
+            cv_solid_force(idim,cv_inod) = 
+
         !!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!!
         !!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!!
         !! *************************loop over surfaces*********************************************
