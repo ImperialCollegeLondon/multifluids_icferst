@@ -669,7 +669,7 @@ contains
                     solid_force => extract_vector_field(state(1), "SolidForce")
                     call allocate(old_solid_force_diagonostic, solid_force%dim, solid_force%mesh, "old_f" ); call zero(old_solid_force_diagonostic)
                     old_solid_force_diagonostic%val = solid_force%val 
-                    if(its .eq. 1) then 
+                    if((itime.gt.1 .and. its.eq.1) .or. (itime.eq.1 .and. its .eq. 2)) then 
                         old_solid_force => extract_vector_field(state(1), "PastSolidForce")
                         old_solid_force%val = solid_force%val
                         ewrite(3,*), 'I am storing old solid force...', 'stored sum is', sum(old_solid_force%val)
