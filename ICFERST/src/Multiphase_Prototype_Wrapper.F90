@@ -902,7 +902,7 @@ contains
 !                call add_option(trim(option_path)//"/consistent_interpolation",  stat=stat)
 !            end if
 
-            option_path = "/material_phase["// int2str( 0 )//"]/vector_field::SolidOldCoordinate/prescribed"
+            option_path = "/material_phase["// int2str( 0 )//"]/vector_field::SolidOldCoordinate/prognostic"
             if (.not.have_option(option_path)) then
                 call add_option(trim(option_path),  stat=stat)
                 call add_option(trim(option_path)//"/mesh::PressureMesh",  stat=stat)
@@ -915,7 +915,7 @@ contains
                 call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
             end if       
      
-            option_path = "/material_phase["// int2str( 0 )//"]/vector_field::GridSolidVelocity/prescribed"
+            option_path = "/material_phase["// int2str( 0 )//"]/vector_field::GridSolidVelocity/prognostic"
             if (.not.have_option(option_path)) then
                 call add_option(trim(option_path),  stat=stat)
                 call add_option(trim(option_path)//"/mesh::VelocityMesh",  stat=stat)
@@ -928,7 +928,20 @@ contains
                 call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
             end if 
 
-            option_path = "/material_phase["// int2str( 0 )//"]/vector_field::SolidForce/prescribed"
+            option_path = "/material_phase["// int2str( 0 )//"]/vector_field::SolidForce/prognostic"
+            if (.not.have_option(option_path)) then
+                call add_option(trim(option_path),  stat=stat)
+                call add_option(trim(option_path)//"/mesh::VelocityMesh",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh/no_initial_condition",  stat=stat)
+                call add_option(trim(option_path)//"/output",  stat=stat)
+                call add_option(trim(option_path)//"/stat",  stat=stat)
+                call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
+                call add_option(trim(option_path)//"/detectors",  stat=stat)
+                call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
+            end if 
+
+            option_path = "/material_phase["// int2str( 0 )//"]/vector_field::PastSolidForce/prognostic"
             if (.not.have_option(option_path)) then
                 call add_option(trim(option_path),  stat=stat)
                 call add_option(trim(option_path)//"/mesh::VelocityMesh",  stat=stat)

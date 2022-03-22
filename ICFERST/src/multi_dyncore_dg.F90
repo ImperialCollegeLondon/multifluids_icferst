@@ -4458,6 +4458,7 @@ end if
         type(multi_dev_shape_funs) :: Devfuns, Devfuns0    ! Devfuns0 added by JXiang 
         type(vector_field), pointer :: X0_ALL   ! added by JXiang
         type( tensor_field ), pointer :: temp_stress    ! solid implicit -- solid stress
+        type (vector_field), pointer :: old_solid_force
 
 ! Local variables...
 !            INTEGER, PARAMETER :: LES_DISOPT=0
@@ -4686,6 +4687,7 @@ end if
         density_solid=>extract_scalar_field( state(1), "Density_Solid" )
         sigma=>extract_scalar_field( state(1), "Sigma_Solid")
         vis=>extract_tensor_field( state(1), "Viscosity_Solid", stat)
+        old_solid_force => extract_vector_field( state(1), "PastSolidForce")
         ewrite(3,*) ' vis',vis%val(:,:,1)
         sum_udif=0.0
         sum_udif_temp=0.0
@@ -5666,6 +5668,14 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                     force_solids( :, IPHASE, : )=0.0
                                     CALL CALC_FORCE_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE( :, :),  Mdims%ndim, &
                                         Mdims%x_nloc,LOC_X_ALL(:,:),force_solids(:,IPHASE,:), Mdims, ndgln, ele)
+
+                                    ! theta method for solid force
+                                    ! theta * future + (1-theta) * past
+                                    do u_iloc = 1,Mdims%u_nloc 
+                                        u_nodi = ndgln%u( (ele-1)*Mdims%u_nloc + u_iloc )
+                                        force_solids(:,iphase,u_iloc) = 0.5 * force_solids(:,iphase,u_iloc) + (1-0.5) * old_solid_force%val(:,u_nodi)
+                                    enddo
+
                                     rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
                                     loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
                                 END DO ! iphase
