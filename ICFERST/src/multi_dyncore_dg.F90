@@ -5718,9 +5718,12 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                         ENDDO
                                     ENDDO 
                                     ! endif
-                                    ! ewrite(3,*),'f', force_solids
-                                    ! ewrite(3,*),'v', LOC_VEL_ALL
-                                    ! ewrite(3,*),ele,'|',DIAG_BIGM_CON(:,:,:,:,:,:,ele)
+                                    if (any(force_stab.eq.1e8)) then 
+                                        ewrite(-1,*), 'force_abs touching ceiling! ele = ', ele
+                                        ewrite(-1,*),'f', force_solids
+                                        ewrite(-1,*),'v', LOC_VEL_ALL
+                                        ewrite(-1,*),ele,'|',DIAG_BIGM_CON(:,:,:,:,:,:,ele)
+                                    endif
                                 endif
                             endif ! IF(IDIVID_BY_VOL_FRAC.ne.1) THEN
                         ENDIF ! IF ( STRESS_FORM ) THEN
