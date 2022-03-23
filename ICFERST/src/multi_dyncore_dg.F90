@@ -6515,6 +6515,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
             sigma_plus_bc = 0.0; vel_count_solid = 0.0; cv_solid_force = 0.0
             solid_force => extract_vector_field(state(1), "SolidForce")
             do ele=1,Mdims%totele
+                if (sigma%val(ele).lt.0.5) cycle
                 do cv_iloc=1,Mdims%cv_nloc
                     cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
                     u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
@@ -6526,20 +6527,27 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 end do
             end do
             do cv_inod = 1,Mdims%cv_nonods
-                if ( sigma_plus_bc(cv_inod) .lt. 0.5 ) then
-                    cv_solid_force(:,cv_inod) = cv_solid(:,cv_inod) / vel_count_solid(cv_inod)
-                enddo
-            enddo
+                if ( sigma_plus_bc(cv_inod) .gt. 0.5 ) then
+                    cv_solid_force(:,cv_inod) = cv_solid_force(:,cv_inod) / vel_count_solid(cv_inod)
+                end if
+            end do
             iphase = 1
             do ele = 1, Mdims%totele 
-                do cv_iloc=1.Mdis%cv_nloc
+                if (sigma%val(ele).lt.0.5) cycle
+                do cv_iloc=1,Mdims%cv_nloc
                     cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
                     u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-                    solid_force%val(:, u_inod) = cv_solid_force(:,cv_inod) * MASS(ELE)
+                    solid_force%val(:, u_inod) = cv_solid_force(:,cv_inod) * MASS_ELE(ELE)
+                end do
+            end do
+            if (isparallel()) call halo_update(solid_force)
+            do ele = 1, Mdims%totele
+                if (sigma%val(ele).lt.0.5) cycle
+                do cv_iloc=1,Mdims%cv_nloc
                     Mmat%U_RHS(:,iphase,u_inod) = solid_force%val(:,u_inod)
-                enddo
-            enddo
-        endif
+                end do
+            end do
+        end if
 
         !!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!!
         !!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!!
