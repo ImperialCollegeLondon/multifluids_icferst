@@ -6544,7 +6544,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
             do ele = 1, Mdims%totele
                 if (sigma%val(ele).lt.0.5) cycle
                 do cv_iloc=1,Mdims%cv_nloc
-                    Mmat%U_RHS(:,iphase,u_inod) = solid_force%val(:,u_inod)
+                    u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    ! ewrite(3,*),ele,'|',u_inod,'|',mmat%U_RHS(:,iphase,u_inod)
+                    Mmat%U_RHS(:,iphase,u_inod) = Mmat%U_RHS(:,iphase,u_inod) + solid_force%val(:,u_inod)
+                    ! ewrite(3,*),ele,'|',u_inod,'|',mmat%U_RHS(:,iphase,u_inod)
                 end do
             end do
         end if
