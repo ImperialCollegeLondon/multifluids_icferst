@@ -4678,6 +4678,10 @@ end if
         REAL :: LOC_X_ALL(Mdims%ndim, Mdims%X_NLOC),LOC_X0_ALL(Mdims%ndim, Mdims%X_NLOC)
         REAL :: LOC_VEL_ALL(Mdims%ndim, Mdims%X_NLOC)
         type( scalar_field ), pointer :: X_CO, Y_CO, Z_CO
+        !! taking average of solid force
+        type (vector_field), pointer :: solid_force 
+        real, dimension(:,:), allocatable :: cv_solid_force 
+        real, dimension(:), allocatable :: sigma_plus_bc, vel_count_solid
 
 
         ! report solid iimplicitness options
@@ -5671,8 +5675,8 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                     force_solids( :, IPHASE, : )=0.0
                                     CALL CALC_FORCE_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE( :, :),  Mdims%ndim, &
                                         Mdims%x_nloc,LOC_X_ALL(:,:),force_solids(:,IPHASE,:), Mdims, ndgln, ele)
-                                    rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
-                                    loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
+                                    ! rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
+                                    ! loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
                                 END DO ! iphase
                                 !  END DO GI
                                 
@@ -6538,6 +6542,50 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 Mmat%U_RHS( :, :, U_INOD ) = Mmat%U_RHS( :, :, U_INOD ) + LOC_U_RHS( :, :, U_ILOC )
             END DO
         END DO Loop_Elements
+        
+        !! taking average of solid force
+        if (solid_implicit) then
+            allocate( cv_solid_force(Mdims%ndim, Mdims%cv_nonods) , sigma_plus_bc(Mdims%cv_nonods) , vel_count_solid(Mdims%cv_nonods) )
+            sigma_plus_bc = 0.0; vel_count_solid = 0.0; cv_solid_force = 0.0
+            solid_force => extract_vector_field(state(1), "SolidForce")
+            do ele=1,Mdims%totele
+                if (sigma%val(ele).lt.0.5) cycle
+                do cv_iloc=1,Mdims%cv_nloc
+                    cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    sigma_plus_bc(cv_inod) = sigma_plus_bc(cv_inod) + sigma%val(ele)
+                    vel_count_solid(cv_inod)=vel_count_solid(cv_inod)+1.0*sigma%val(ele)*MASS_ELE(ELE)
+                    do idim=1,Mdims%ndim     
+                        cv_solid_force(idim,cv_inod) = cv_solid_force(idim,cv_inod) + sigma%val(ele)*solid_force%val(idim,u_inod)
+                    end do
+                end do
+            end do
+            do cv_inod = 1,Mdims%cv_nonods
+                if ( sigma_plus_bc(cv_inod) .gt. 0.5 ) then
+                    cv_solid_force(:,cv_inod) = cv_solid_force(:,cv_inod) / vel_count_solid(cv_inod)
+                end if
+            end do
+            iphase = 1
+            do ele = 1, Mdims%totele 
+                if (sigma%val(ele).lt.0.5) cycle
+                do cv_iloc=1,Mdims%cv_nloc
+                    cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    solid_force%val(:, u_inod) = cv_solid_force(:,cv_inod) * MASS_ELE(ELE)
+                end do
+            end do
+            if (isparallel()) call halo_update(solid_force)
+            do ele = 1, Mdims%totele
+                if (sigma%val(ele).lt.0.5) cycle
+                do cv_iloc=1,Mdims%cv_nloc
+                    u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    ! ewrite(3,*),ele,'|',u_inod,'|',mmat%U_RHS(:,iphase,u_inod)
+                    Mmat%U_RHS(:,iphase,u_inod) = Mmat%U_RHS(:,iphase,u_inod) + solid_force%val(:,u_inod)
+                    ! ewrite(3,*),ele,'|',u_inod,'|',mmat%U_RHS(:,iphase,u_inod)
+                end do
+            end do
+        end if
+
         !!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!!
         !!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!!
         !! *************************loop over surfaces*********************************************
