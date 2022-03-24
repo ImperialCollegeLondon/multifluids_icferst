@@ -5713,32 +5713,6 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                         ! END DO
                                     END DO
                                 endif ! if(solid_visc_ele_imp) then
-
-                                if (solid_visc_diag_imp) then 
-                                    ! if (modulo(nonlinear_its-1, 5) .eq. 0) then
-                                    DO U_ILOC = 1, Mdims%u_nloc
-                                        IPHASE = 1
-                                        DO idim = 1, Mdims%ndim 
-                                            if (loc_vel_all(idim,U_ILOC).eq. 0.) then 
-                                                force_stab(idim,u_iloc) = 0.    ! avoid dividing by 0
-                                            else
-                                                force_stab(idim,u_iloc) = 10.* abs(force_solids(idim,iphase,u_iloc) / LOC_VEL_ALL(idim,u_iloc))
-                                                ! if (force_stab(idim,u_iloc).le. 0.) force_stab(idim, u_iloc) = 0.   ! if abs. is negative, ignore it.
-                                                if (force_stab(idim,u_iloc).gt. 1.e8) force_stab(idim, u_iloc) = 1e8    ! limiting from above.
-                                            endif
-                                            LOC_U_RHS(idim,iphase,u_iloc) = LOC_U_RHS(idim,iphase,u_iloc)+force_stab(idim,u_iloc)*LOC_VEL_ALL(idim,u_iloc)
-                                            DIAG_BIGM_CON(idim,idim,iphase,iphase,u_iloc,u_iloc,ele) = DIAG_BIGM_CON(idim,idim,iphase,iphase,u_iloc,u_iloc,ele) &
-                                                + force_stab(idim,u_iloc)
-                                        ENDDO
-                                    ENDDO 
-                                    ! endif
-                                    if (any(force_stab.eq.1e8)) then 
-                                        ewrite(-1,*), 'force_abs touching ceiling! ele = ', ele
-                                        ewrite(-1,*),'f', force_solids
-                                        ewrite(-1,*),'v', LOC_VEL_ALL
-                                        ewrite(-1,*),ele,'|',DIAG_BIGM_CON(:,:,:,:,:,:,ele)
-                                    endif
-                                endif
                             endif ! IF(IDIVID_BY_VOL_FRAC.ne.1) THEN
                         ENDIF ! IF ( STRESS_FORM ) THEN
                     endif ! if(sigma%val(ele).GT.0.5) then
@@ -6593,6 +6567,37 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     Mmat%U_RHS(:,iphase,u_inod) = Mmat%U_RHS(:,iphase,u_inod) + solid_force%val(:,u_inod)
                     ! ewrite(3,*),ele,'|',u_inod,'|',mmat%U_RHS(:,iphase,u_inod)
                 end do
+
+                if (solid_visc_diag_imp) then 
+                    ! if (modulo(nonlinear_its-1, 5) .eq. 0) then
+                    DO U_ILOC = 1, Mdims%u_nloc
+                        u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + U_ILOC )
+                        cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + u_iloc )
+                        x_inod = NDGLN%X((ELE-1)*Mdims%X_NLOC+u_iloc)
+                        IPHASE = 1
+                        DO idim = 1, Mdims%ndim 
+                            if ( U_ALL(idim,iphase,u_inod).eq. 0.) then 
+                                force_stab(idim,u_iloc) = 0.    ! avoid dividing by 0
+                            else
+                                force_stab(idim,u_iloc) = 10*abs(solid_force%val(idim,u_inod) / U_ALL(idim,iphase,u_inod))
+                                ! if (force_stab(idim,u_iloc).le. 0.) force_stab(idim, u_iloc) = 0.   ! if stab. is negative, ignore it.
+                                if (force_stab(idim,u_iloc).gt. 1.e8) force_stab(idim, u_iloc) = 1e8    ! limiting from above.
+                            endif
+                            Mmat%U_RHS(:,iphase,u_inod) = Mmat%U_RHS(:,iphase,u_inod) + force_stab(idim,u_iloc)*U_ALL(idim,iphase,u_inod)
+                            DIAG_BIGM_CON(idim,idim,iphase,iphase,u_iloc,u_iloc,ele) = DIAG_BIGM_CON(idim,idim,iphase,iphase,u_iloc,u_iloc,ele) &
+                                + force_stab(idim,u_iloc)
+                        ENDDO
+                        ewrite(-1,*),'f', u_inod, cv_inod,'|', old_solid_force%val(:,u_inod),'|',solid_force%val(:,u_inod)
+                        ewrite(-1,*),'v', UOLD_ALL(:,iphase,u_inod),'|',U_ALL(:,iphase,u_inod)
+                        ewrite(-1,*),'x', x_all(:,x_inod), '|'
+                    ENDDO 
+                    ! endif
+                    ! if (any(force_stab.eq.1e8)) then 
+                    !     ewrite(-1,*), 'force_abs touching ceiling! ele = ', ele
+                        ewrite(-1,*),'fstab',force_stab
+                        ewrite(-1,*),ele,'|',DIAG_BIGM_CON(:,:,:,:,:,:,ele)
+                    ! endif
+                endif
             end do
         end if
 

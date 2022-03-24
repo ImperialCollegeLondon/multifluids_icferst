@@ -674,6 +674,14 @@ contains
                         old_solid_force%val = solid_force%val
                         ewrite(3,*), 'I am storing old solid force...', 'stored sum is', sum(old_solid_force%val)
                     endif
+
+                    ! if (itime.eq.1 .and. its.eq.1) then 
+                    !     ! calculate new coordinate so that we can use future solid stress
+                    !     X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
+                    !     XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
+                    !     if(its==1) XOLD_ALL%val=X_ALL%val
+                    !     call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , .true. )
+                    ! endif
                 endif
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
                     !if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
