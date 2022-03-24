@@ -5312,7 +5312,7 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
         Y_CO => extract_scalar_field( state (1), "SolidOriginalCoordinateY" )
         if (Mdims%ndim .eq. 3)  Z_CO => extract_scalar_field( state (1), "SolidOriginalCoordinateZ" )
         UG_ALL=>extract_vector_field(state (1 ),"GridSolidVelocity")
-
+        solid_force => extract_vector_field( state(1), "SolidForce")
         sum_udif=0.0
         sum_udif_temp=0.0
          allocate(UDEN_temp(Mdims%u_nonods), UDENOLD_temp(Mdims%u_nonods))
@@ -5679,10 +5679,11 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                         Mdims%x_nloc,LOC_X_ALL(:,:),force_solids(:,IPHASE,:), Mdims, ndgln, ele)
 
                                     ! theta method for solid force
-                                    ! theta * future + (1-theta) * past
+                                    ! theta * future + (1-theta) * past. theta value is hardwired.
                                     do u_iloc = 1,Mdims%u_nloc 
                                         u_nodi = ndgln%u( (ele-1)*Mdims%u_nloc + u_iloc )
                                         force_solids(:,iphase,u_iloc) = 0.5 * force_solids(:,iphase,u_iloc) + (1-0.5) * old_solid_force%val(:,u_nodi)
+                                        solid_force%val(:,u_nodi) = force_solids(:,iphase,u_iloc)   ! store the mid-point solid force to vector field
                                     enddo
 
                                     ! rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
@@ -6564,7 +6565,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 do cv_iloc=1,Mdims%cv_nloc
                     u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
                     ! ewrite(3,*),ele,'|',u_inod,'|',mmat%U_RHS(:,iphase,u_inod)
-                    Mmat%U_RHS(:,iphase,u_inod) = Mmat%U_RHS(:,iphase,u_inod) + solid_force%val(:,u_inod)
+                    Mmat%U_RHS(:,iphase,u_inod) = Mmat%U_RHS(:,iphase,u_inod) + solid_force%val(:,u_inod)   ! add solid force to rhs
                     ! ewrite(3,*),ele,'|',u_inod,'|',mmat%U_RHS(:,iphase,u_inod)
                 end do
 
@@ -6579,24 +6580,29 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                             if ( U_ALL(idim,iphase,u_inod).eq. 0.) then 
                                 force_stab(idim,u_iloc) = 0.    ! avoid dividing by 0
                             else
-                                force_stab(idim,u_iloc) = 10*abs(solid_force%val(idim,u_inod) / U_ALL(idim,iphase,u_inod))
+                                force_stab(idim,u_iloc) = 10.*abs(solid_force%val(idim,u_inod) / U_ALL(idim,iphase,u_inod))
                                 ! if (force_stab(idim,u_iloc).le. 0.) force_stab(idim, u_iloc) = 0.   ! if stab. is negative, ignore it.
                                 if (force_stab(idim,u_iloc).gt. 1.e8) force_stab(idim, u_iloc) = 1e8    ! limiting from above.
                             endif
-                            Mmat%U_RHS(:,iphase,u_inod) = Mmat%U_RHS(:,iphase,u_inod) + force_stab(idim,u_iloc)*U_ALL(idim,iphase,u_inod)
                             DIAG_BIGM_CON(idim,idim,iphase,iphase,u_iloc,u_iloc,ele) = DIAG_BIGM_CON(idim,idim,iphase,iphase,u_iloc,u_iloc,ele) &
-                                + force_stab(idim,u_iloc)
+                                + force_stab(idim,u_iloc)   ! force stab. term add to lhs
+                            if (.not. node_owned(velocity,u_inod)) cycle
+                            ! force stab. * v add to rhs so that it will cancelled out when converge
+                            Mmat%U_RHS(idim,iphase,u_inod) = Mmat%U_RHS(idim,iphase,u_inod) + force_stab(idim,u_iloc)*U_ALL(idim,iphase,u_inod) 
                         ENDDO
+                        if(ele.eq.15.or.ele.eq.16) then
                         ewrite(-1,*),'f', u_inod, cv_inod,'|', old_solid_force%val(:,u_inod),'|',solid_force%val(:,u_inod)
                         ewrite(-1,*),'v', UOLD_ALL(:,iphase,u_inod),'|',U_ALL(:,iphase,u_inod)
                         ewrite(-1,*),'x', x_all(:,x_inod), '|'
+                        endif
                     ENDDO 
                     ! endif
                     ! if (any(force_stab.eq.1e8)) then 
                     !     ewrite(-1,*), 'force_abs touching ceiling! ele = ', ele
+                    if(ele.eq.15.or.ele.eq.16) then
                         ewrite(-1,*),'fstab',force_stab
                         ewrite(-1,*),ele,'|',DIAG_BIGM_CON(:,:,:,:,:,:,ele)
-                    ! endif
+                    endif
                 endif
             end do
         end if
