@@ -4838,6 +4838,30 @@ Introduce the same name as the scalar field being used. For example: Tracer_CO2<
                 </element>
               </zeroOrMore>
             </element>
+          <element name="BW_eos">
+            <a:documentation>Batzle and Wang (1992) EOS
+            Use for basin scale simulations.
+            Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg.
+            NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentation>
+            <optional>
+              <element name="C0">
+                <a:documentation>Reference concentration (in kg/kg, default 0)</a:documentation>
+                <ref name="real"/>
+              </element>
+            </optional>
+            <optional>
+              <element name="T0">
+                <a:documentation>Reference temperature (in K, default 298 K)</a:documentation>
+                <ref name="real"/>
+              </element>
+            </optional>
+            <optional>
+              <element name="P0">
+                <a:documentation>Reference pressure (in Pa, default 1e5 Pa)</a:documentation>
+                <ref name="real"/>
+              </element>
+            </optional>
+          </element>
           </choice>
           <optional>
             <element name="Boussinesq_approximation">
