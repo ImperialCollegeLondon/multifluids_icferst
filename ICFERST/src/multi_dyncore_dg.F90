@@ -6564,6 +6564,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 if (sigma%val(ele).lt.0.5) cycle
                 do cv_iloc=1,Mdims%cv_nloc
                     u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    if (.not. node_owned(velocity,u_inod)) cycle
                     ! ewrite(3,*),ele,'|',u_inod,'|',mmat%U_RHS(:,iphase,u_inod)
                     Mmat%U_RHS(:,iphase,u_inod) = Mmat%U_RHS(:,iphase,u_inod) + solid_force%val(:,u_inod)   ! add solid force to rhs
                     ! ewrite(3,*),ele,'|',u_inod,'|',mmat%U_RHS(:,iphase,u_inod)
@@ -6577,10 +6578,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         x_inod = NDGLN%X((ELE-1)*Mdims%X_NLOC+u_iloc)
                         IPHASE = 1
                         DO idim = 1, Mdims%ndim 
-                            if ( U_ALL(idim,iphase,u_inod).eq. 0.) then 
+                            if ( UOLD_ALL(idim,iphase,u_inod).eq. 0.) then 
                                 force_stab(idim,u_iloc) = 0.    ! avoid dividing by 0
                             else
-                                force_stab(idim,u_iloc) = 10.*abs(solid_force%val(idim,u_inod) / U_ALL(idim,iphase,u_inod))
+                                force_stab(idim,u_iloc) = 1.*abs(old_solid_force%val(idim,u_inod) / UOLD_ALL(idim,iphase,u_inod))
                                 ! if (force_stab(idim,u_iloc).le. 0.) force_stab(idim, u_iloc) = 0.   ! if stab. is negative, ignore it.
                                 if (force_stab(idim,u_iloc).gt. 1.e8) force_stab(idim, u_iloc) = 1e8    ! limiting from above.
                             endif
