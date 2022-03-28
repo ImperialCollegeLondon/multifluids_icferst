@@ -217,7 +217,7 @@ contains
         type(vector_field), pointer :: old_solid_force  ! this is to store solid force at the start of non-linear iteration,
                                                         ! so that we can use theta-method for solid force
         type(vector_field), pointer :: solid_force
-        real, DIMENSION(:), ALLOCATABLE :: max_diff_vel, max_diff_force
+        real, DIMENSION(:), ALLOCATABLE :: max_diff_vel, max_diff_force, min_diff_vel, min_diff_force
         Logical:: solid_implicit, diffusion_solid_implicit    !JXiang
 
         integer :: SFPI_its = 0
@@ -703,11 +703,13 @@ contains
                     END If
                 END If
                 if (solid_implicit) then 
-                    old_velocity%val = abs(old_velocity%val - velocity_field%val)
+                    old_velocity%val = (old_velocity%val - velocity_field%val)
                     if (.not. allocated(max_diff_vel)) allocate(max_diff_vel(Mdims%ndim))
+                    if (.not. allocated(min_diff_vel)) allocate(min_diff_vel(Mdims%ndim))
 
                     old_solid_force_diagonostic%val = abs(old_solid_force_diagonostic%val - solid_force%val)
                     if (.not. allocated(max_diff_force)) allocate(max_diff_force(Mdims%ndim))
+                    if (.not. allocated(min_diff_force)) allocate(min_diff_force(Mdims%ndim))
 
                     ! ewrite(-1,*),'velocity_field dimension', size(velocity_field%val, 1), size(velocity_field%val, 2), size(velocity_field%val, 3)
                     ! ewrite(-1,*),'old_velocity dimension', size(old_velocity%val, 1), size(old_velocity%val, 2), size(old_velocity%val, 3)
@@ -717,12 +719,19 @@ contains
 
                         max_diff_force(i) = maxval(old_solid_force_diagonostic%val(i,:))
                         if (IsParallel()) call allmax(max_diff_force(i))
+
+                        min_diff_vel(i) = minval(old_velocity%val(i,1,:))
+                        if (isparallel()) call allmin(min_diff_vel(i))
+
+                        min_diff_force(i) = minval(old_solid_force_diagonostic%val(i,:))
+                        if (IsParallel()) call allmin(min_diff_force(i))
                     enddo
                     call deallocate(old_velocity)
                     call deallocate(old_solid_force_diagonostic)
                 endif
-                ewrite(-1,*) 'timestep, acctim, its | max_vel_diff | max_force_diff', timestep, acctim, its, '|', max_diff_vel, '|', max_diff_force
-
+                ewrite(-1,*) 'timestep, acctim, its ', timestep, acctim, its, '|'
+                ewrite(-1,*) 'max_vel_diff | max_force_diff', max_diff_vel, '|', max_diff_force
+                ewrite(-1,*) 'min_vel_diff | min_force_diff', min_diff_vel, '|', min_diff_force
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
                 !#=================================================================================================================
