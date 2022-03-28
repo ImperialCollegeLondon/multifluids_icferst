@@ -959,7 +959,7 @@ contains
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                     ! print *, size(cfl % val)
                     if (size(cfl % val)==size(saturation_field%val(1,2,:))) then 
-                        c = max ( c, max(maxval( cfl % val), maxval(cfl % val*  min(saturation_field%val(1,2,:)/max(0.05,saturation_field%val(1,1,:)),6.))))
+                        c = max ( c, max(maxval( cfl % val), maxval(cfl % val*  min(saturation_field%val(1,2,:)/max(0.05,saturation_field%val(1,1,:)),2.))))
                     else
                         print *, 'cfl size and saturation size does not match, using only solid phase cfl.'
                         c = max ( c, maxval( cfl % val ) )

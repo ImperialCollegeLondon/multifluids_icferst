@@ -1978,7 +1978,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         
         integer :: TEST_temperal
         real :: cmcscaling
-        cmcscaling=33
+        cmcscaling=5e2! 13 for solid viscosity order 13
         ! if (is_magma) compute_compaction= .true.  ! For magma only the first phase is assembled for the momentum equation.
 
         call get_option("/numerical_methods/max_sat_its", TEST_temperal)
@@ -2924,9 +2924,9 @@ print *, k,':', conv_test
                     imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
                     cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                     ! the second phase of upwnd%adv_coef containts c/phi
-                    if (saturation%val(cv_loc)<0.03) then 
+                    if (saturation%val(cv_loc)<0.08) then 
                         ! auxR = auxR + 1e-9/dble(Mdims%cv_nloc)/scale_cmc
-                        auxR = auxR +  0.03/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
+                        auxR = auxR +  0.08/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
                     else
                         auxR = auxR +  saturation%val(cv_loc)/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
                     end if

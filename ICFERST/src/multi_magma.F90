@@ -482,7 +482,7 @@ contains
     integer:: c_phi_size ! length of c_phi_series
     real, dimension(4):: test
     real :: max_absorp_phi
-    real :: phi_min=0.03 !the phi value that capped for the coupling coefficient
+    real :: phi_min=0.08 !the phi value that capped for the coupling coefficient
 
     type(scalar_field), pointer :: lcomponent_field
     real:: mu_l
