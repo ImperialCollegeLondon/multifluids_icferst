@@ -6535,28 +6535,53 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
             solid_force => extract_vector_field(state(1), "SolidForce")
             do ele=1,Mdims%totele
                 if (sigma%val(ele).lt.0.5) cycle
+                if (IsParallel()) then
+                    if (.not. assemble_ele(pressure,ele)) then
+                        skip=.true.
+                        neighbours=>ele_neigh(pressure,ele)
+                        do nb=1,size(neighbours)
+                            if (neighbours(nb)<=0) cycle
+                            if (assemble_ele(pressure,neighbours(nb))) then
+                                skip=.false.
+                                exit
+                            end if
+                        end do
+                        if (skip) cycle
+                    end if
+                end if
+                DO IFACE = 1, FE_GIdims%nface
+                    ELE2  = FACE_ELE( IFACE, ELE )
+                    if (ele2 .le. 0 & ! this surface is on boundary 
+                    .or. (ele2.gt.0 .and. sigma%val(ele2).lt.0.5) ) then ! this surface is on fluid-solid interface 
+                        do cv_siloc = 1, Mdims%cv_snloc 
+                            cv_iloc = FE_funs%cv_sloclist(IFACE, CV_SILOC)
+                            cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                            sigma_plus_bc(cv_inod) = -1 ! mark such cv nodes as -1 so that they are excluded from averaging process
+                        enddo
+                    endif
+                enddo
                 do cv_iloc=1,Mdims%cv_nloc
                     cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    if ( sigma_plus_bc(cv_inod) .lt. 0 ) cycle   ! excluding bc/interface nodes
                     u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-                    sigma_plus_bc(cv_inod) = sigma_plus_bc(cv_inod) + sigma%val(ele)
                     vel_count_solid(cv_inod)=vel_count_solid(cv_inod)+1.0*sigma%val(ele)*MASS_ELE(ELE)
                     do idim=1,Mdims%ndim     
                         cv_solid_force(idim,cv_inod) = cv_solid_force(idim,cv_inod) + sigma%val(ele)*solid_force%val(idim,u_inod)
                     end do
                 end do
             end do
-            do cv_inod = 1,Mdims%cv_nonods
-                if ( sigma_plus_bc(cv_inod) .gt. 0.5 ) then
-                    cv_solid_force(:,cv_inod) = cv_solid_force(:,cv_inod) / vel_count_solid(cv_inod)
-                end if
-            end do
+            ! do cv_inod = 1,Mdims%cv_nonods
+            !     if ( sigma_plus_bc(cv_inod) .lt. 0 ) cycle   ! excluding bc/interface nodes
+            !     cv_solid_force(:,cv_inod) = cv_solid_force(:,cv_inod) / vel_count_solid(cv_inod)
+            ! end do
             iphase = 1
             do ele = 1, Mdims%totele 
                 if (sigma%val(ele).lt.0.5) cycle
                 do cv_iloc=1,Mdims%cv_nloc
                     cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    if ( sigma_plus_bc(cv_inod) .lt. 0 ) cycle   ! excluding bc/interface nodes
                     u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-                    solid_force%val(:, u_inod) = cv_solid_force(:,cv_inod) * MASS_ELE(ELE)
+                    solid_force%val(:, u_inod) = cv_solid_force(:,cv_inod) / vel_count_solid(cv_inod) * MASS_ELE(ELE)
                 end do
             end do
             if (isparallel()) call halo_update(solid_force)
@@ -6578,10 +6603,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         x_inod = NDGLN%X((ELE-1)*Mdims%X_NLOC+u_iloc)
                         IPHASE = 1
                         DO idim = 1, Mdims%ndim 
-                            if ( UOLD_ALL(idim,iphase,u_inod).eq. 0.) then 
+                            if ( U_ALL(idim,iphase,u_inod).eq. 0.) then 
                                 force_stab(idim,u_iloc) = 0.    ! avoid dividing by 0
                             else
-                                force_stab(idim,u_iloc) = 1.*abs(old_solid_force%val(idim,u_inod) / UOLD_ALL(idim,iphase,u_inod))
+                                force_stab(idim,u_iloc) = 10.*abs(solid_force%val(idim,u_inod) / U_ALL(idim,iphase,u_inod))
                                 ! if (force_stab(idim,u_iloc).le. 0.) force_stab(idim, u_iloc) = 0.   ! if stab. is negative, ignore it.
                                 if (force_stab(idim,u_iloc).gt. 1.e8) force_stab(idim, u_iloc) = 1e8    ! limiting from above.
                             endif

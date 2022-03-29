@@ -707,7 +707,7 @@ contains
                     if (.not. allocated(max_diff_vel)) allocate(max_diff_vel(Mdims%ndim))
                     if (.not. allocated(min_diff_vel)) allocate(min_diff_vel(Mdims%ndim))
 
-                    old_solid_force_diagonostic%val = abs(old_solid_force_diagonostic%val - solid_force%val)
+                    old_solid_force_diagonostic%val = (old_solid_force_diagonostic%val - solid_force%val)
                     if (.not. allocated(max_diff_force)) allocate(max_diff_force(Mdims%ndim))
                     if (.not. allocated(min_diff_force)) allocate(min_diff_force(Mdims%ndim))
 
