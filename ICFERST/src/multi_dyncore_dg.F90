@@ -69,7 +69,7 @@ contains
 
 
 
-     SUBROUTINE all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs, move_mesh )
+     SUBROUTINE all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs, move_mesh , old_velocity)
 ! *************************************************************************************************
 ! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
 ! *************************************************************************************************
@@ -87,15 +87,20 @@ contains
       type( state_type ), intent( inout ) :: packed_state
       type(multi_ndgln), intent(in) :: ndgln
       type(multi_shape_funs), intent(in) :: CV_funs                    ! control volume shape function data
-      logical, intent(in) :: move_mesh  ! a flag, true: change mesh coordinate at the end of this subroutine;
-                                        ! false: doesn't change coordinate but only calculate mesh velocity
+      integer, intent(in) :: move_mesh  ! a flag, --1 or --2: change mesh coordinate at the end of this subroutine;
+                                        ! --0: doesn't change coordinate but only calculate mesh velocity
+      type( tensor_field ), intent(in), optional :: old_velocity
       ! local variables...
         Logical:: diffusion_solid_implicit
 
         diffusion_solid_implicit= have_option( '/solid_implicit')
         diffusion_solid_implicit=.true.
         if(diffusion_solid_implicit) then ! the 3 diffusion eqns for the grid velocities...
-           call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh)
+            if (present(old_velocity)) then 
+                call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh, old_velocity)
+            else
+                call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh)
+            endif
         else
            call one_eqn_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh)
         endif
@@ -107,7 +112,7 @@ contains
 
 
 
-     SUBROUTINE diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh)
+     SUBROUTINE diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh , old_velocity )
 ! *************************************************************************************************
 ! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
 ! *************************************************************************************************
@@ -131,8 +136,9 @@ contains
       type( state_type ), intent( inout ) :: packed_state
       type(multi_ndgln), intent(in) :: ndgln
       type(multi_shape_funs), intent(in) :: CV_funs                    ! control volume shape function data
-      logical, intent(in) :: move_mesh  ! a flag, true: change mesh coordinate at the end of this subroutine;
-                                        ! false: doesn't change coordinate but only calculate mesh velocity
+      integer, intent(in) :: move_mesh  ! a flag, --1 or --2: change mesh coordinate at the end of this subroutine;
+                                        ! --0: doesn't change coordinate but only calculate mesh velocity
+      type( tensor_field ), intent(in), optional :: old_velocity
       ! local variables...
 
       integer :: ic, nconc, number_fields,number_fields2, ndim_nphase
@@ -192,7 +198,7 @@ contains
 
 !      call allocate( u_lambda(Mdims%ndim), c_lambda(Mdims%ndim) )
       allocate( u_lambda(Mdims%ndim))
-      ewrite(3, *) "weighted average? " , weighted_ave
+      ewrite(3, *) "weighted average? " , weighted_ave, "move mesh?", move_mesh
 ! JXiang add below line
 
       call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
@@ -348,17 +354,32 @@ contains
                      ic=ic+1     
                      cc(ic,cv_inod) = cc(ic,cv_inod) + u_all%val(idim,iphase,u_inod)
                   endif
-                  if (.not. weighted_ave) then
-                  u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
-                          + u_all%val(idim,iphase,u_inod)
-                  u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
-                          + u_all%val(idim,iphase,u_inod) * sigma(ele)
-                  else                 
-                    u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
-                          + u_all%val(idim,iphase,u_inod)*volume
-                    u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
-                          + u_all%val(idim,iphase,u_inod) * sigma(ele)*volume
+                  if (move_mesh.lt.2) then 
+                    if (.not. weighted_ave) then
+                        u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
+                            + u_all%val(idim,iphase,u_inod)
+                        u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
+                            + u_all%val(idim,iphase,u_inod) * sigma(ele)
+                    else                 
+                        u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
+                            + u_all%val(idim,iphase,u_inod)*volume
+                        u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
+                            + u_all%val(idim,iphase,u_inod) * sigma(ele)*volume
+                    endif
+                  elseif (move_mesh.eq.2) then 
+                    if (.not. weighted_ave) then
+                        u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
+                            + (u_all%val(idim,iphase,u_inod)+old_velocity%val(idim,iphase,u_inod))/2.
+                        u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
+                            + (u_all%val(idim,iphase,u_inod)+old_velocity%val(idim,iphase,u_inod))/2. * sigma(ele)
+                    else                 
+                        u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
+                            + (u_all%val(idim,iphase,u_inod)+old_velocity%val(idim,iphase,u_inod))/2.*volume
+                        u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
+                            + (u_all%val(idim,iphase,u_inod)+old_velocity%val(idim,iphase,u_inod))/2. * sigma(ele)*volume
+                    endif
                   endif
+                        
                end do
             end do
          end do
@@ -610,7 +631,7 @@ end if
           !                                                      end do ! do ele = 1, Mdims%totele
 
 !       ewrite(3,*) "cv_ug_all", cv_ug_all
-      if (move_mesh) then
+      if (move_mesh.gt.0) then
       x_all%val = xold_all%val + dt * cv_ug_all! get new grid positions
       call halo_update(x_all)
       endif
@@ -701,7 +722,7 @@ end if
       type( state_type ), intent( inout ) :: packed_state
       type(multi_ndgln), intent(in) :: ndgln
       type(multi_shape_funs), intent(in) :: CV_funs                    ! control volume shape function data
-      logical, intent(in) :: move_mesh  ! a flag, true: change mesh coordinate at the end of this subroutine;
+      integer, intent(in) :: move_mesh  ! a flag, true: change mesh coordinate at the end of this subroutine;
                                         ! false: doesn't change coordinate but only calculate mesh velocity
       ! local variables...
 
@@ -977,7 +998,7 @@ end if
        END DO
       END DO
 
-      if (move_mesh) then
+      if (move_mesh.gt.0) then
       x_all%val = xold_all%val + dt * cv_ug_all! get new grid positions
       call halo_update(x_all)
       endif
@@ -6549,17 +6570,17 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         if (skip) cycle
                     end if
                 end if
-                DO IFACE = 1, FE_GIdims%nface
-                    ELE2  = FACE_ELE( IFACE, ELE )
-                    if (ele2 .le. 0 & ! this surface is on boundary 
-                    .or. (ele2.gt.0 .and. sigma%val(ele2).lt.0.5) ) then ! this surface is on fluid-solid interface 
-                        do cv_siloc = 1, Mdims%cv_snloc 
-                            cv_iloc = FE_funs%cv_sloclist(IFACE, CV_SILOC)
-                            cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-                            sigma_plus_bc(cv_inod) = -1 ! mark such cv nodes as -1 so that they are excluded from averaging process
-                        enddo
-                    endif
-                enddo
+                ! DO IFACE = 1, FE_GIdims%nface
+                !     ELE2  = FACE_ELE( IFACE, ELE )
+                !     if (ele2 .le. 0 & ! this surface is on boundary 
+                !     .or. (ele2.gt.0 .and. sigma%val(ele2).lt.0.5) ) then ! this surface is on fluid-solid interface 
+                !         do cv_siloc = 1, Mdims%cv_snloc 
+                !             cv_iloc = FE_funs%cv_sloclist(IFACE, CV_SILOC)
+                !             cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                !             sigma_plus_bc(cv_inod) = -1 ! mark such cv nodes as -1 so that they are excluded from averaging process
+                !         enddo
+                !     endif
+                ! enddo
                 do cv_iloc=1,Mdims%cv_nloc
                     cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
                     if ( sigma_plus_bc(cv_inod) .lt. 0 ) cycle   ! excluding bc/interface nodes

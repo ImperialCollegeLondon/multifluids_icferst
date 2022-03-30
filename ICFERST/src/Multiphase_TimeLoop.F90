@@ -218,6 +218,8 @@ contains
                                                         ! so that we can use theta-method for solid force
         type(vector_field), pointer :: solid_force
         real, DIMENSION(:), ALLOCATABLE :: max_diff_vel, max_diff_force, min_diff_vel, min_diff_force
+        integer :: move_mesh ! a flag to determine if move mesh or not. --0: doesn't move; --1: move mesh according to current velocity
+                            ! --2: move mesh according to current and previous non-linear step velocity (relax...)
         Logical:: solid_implicit, diffusion_solid_implicit    !JXiang
 
         integer :: SFPI_its = 0
@@ -698,8 +700,16 @@ contains
                     X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
                     XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
                     if(its==1) XOLD_ALL%val=X_ALL%val
+                    ! we are going to use velocity at this non-linear step and 
+                    ! 1 previous non-linear step as well to advance the mesh velocity
+                    ! (and mesh coordinate, and eventually solid force)
+                    if(its.gt.1) then 
+                        move_mesh = 2
+                    else
+                        move_mesh = 1
+                    endif
                     if(diffusion_solid_implicit) then
-                        call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , .true. )
+                        call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh , old_velocity)
                     END If
                 END If
                 if (solid_implicit) then 
@@ -1012,7 +1022,7 @@ contains
             !JXiang change coordinate of pressure mesh            
             if(solid_implicit) then
                 if(diffusion_solid_implicit) then
-                    call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , .true.)
+                    call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , 1)
                 END If
                 X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
                 XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
