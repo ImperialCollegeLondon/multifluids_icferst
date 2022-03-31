@@ -624,16 +624,17 @@ contains
 
           IDUM = 0
           ewrite(3,*) 'In CV_ASSEMB'
-          GOT_DIFFUS = .false.; got_diffus_low_order = .false.
+          GOT_DIFFUS = .false.; 
           if (present(TDIFFUSION)) then
               GOT_DIFFUS = ( R2NORM( TDIFFUSION, size(TDIFFUSION,1) * size(TDIFFUSION,2) * size(TDIFFUSION,3) * size(TDIFFUSION,4)  ) /= 0 )!<=I hate this thing...
               call allor(GOT_DIFFUS)                                                  !it should be if present then true, but it breaks the parallel CWC P1DGP2
           end if
-          !For porous media, but possibly for inertia, 
-          !we use a diffusion that does not take 10%! of the total time only to generate the term
-          if (GOT_DIFFUS .and. .not.activate_limiters) then 
-            got_diffus_low_order = .true.
-            GOT_DIFFUS = .false.
+          !If selected low order diffusion we use a diffusion that does not take 10%! of the total time only to generate the term
+          !Currently the results seems a bit off using this diffusion...
+          got_diffus_low_order = .false.
+          if (GOT_DIFFUS) then 
+            got_diffus_low_order = have_option("/numerical_methods/Low_order_diffusion")
+            GOT_DIFFUS = .not. got_diffus_low_order
           end if
           call get_option( "/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
           ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS:', &
@@ -984,18 +985,32 @@ contains
             CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
           end if
           IF ( GOT_DIFFUS) THEN
-              CALL DG_DERIVS_ALL( FEMT_ALL, FEMTOLD_ALL, &
-                  DTX_ELE_ALL, DTOLDX_ELE_ALL, &
-                  Mdims%ndim, final_phase, Mdims%totele, ndgln%cv, &
-                  ndgln%x, Mdims%x_nloc, ndgln%x,&
-                  CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVWEIGHT, &
-                  CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
-                  CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
-                  Mdims%x_nonods, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), &
-                  CV_GIdims%nface, Mmat%FACE_ELE, CV_funs%cv_sloclist, CV_funs%cv_sloclist, Mdims%cv_snloc, Mdims%cv_snloc, WIC_T_BC_ALL, SUF_T_BC_ALL, &
-                  CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfeweigh, &
-                  CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly )
-          END IF
+            if (activate_limiters) then 
+             CALL DG_DERIVS_ALL( FEMT_ALL, FEMTOLD_ALL, &
+                 DTX_ELE_ALL, DTOLDX_ELE_ALL, &
+                 Mdims%ndim, final_phase, Mdims%totele, ndgln%cv, &
+                 ndgln%x, Mdims%x_nloc, ndgln%x,&
+                 CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVWEIGHT, &
+                 CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
+                 CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
+                 Mdims%x_nonods, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), &
+                 CV_GIdims%nface, Mmat%FACE_ELE, CV_funs%cv_sloclist, CV_funs%cv_sloclist, Mdims%cv_snloc, Mdims%cv_snloc, WIC_T_BC_ALL, SUF_T_BC_ALL, &
+                 CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfeweigh, &
+                 CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly )
+            else 
+               CALL DG_DERIVS_ALL( T_ALL, TOLD_ALL, &
+               DTX_ELE_ALL, DTOLDX_ELE_ALL, &
+               Mdims%ndim, final_phase, Mdims%totele, ndgln%cv, &
+               ndgln%x, Mdims%x_nloc, ndgln%x,&
+               CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVWEIGHT, &
+               CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
+               CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
+               Mdims%x_nonods, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), &
+               CV_GIdims%nface, Mmat%FACE_ELE, CV_funs%cv_sloclist, CV_funs%cv_sloclist, Mdims%cv_snloc, Mdims%cv_snloc, WIC_T_BC_ALL, SUF_T_BC_ALL, &
+               CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfeweigh, &
+               CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly )
+            end if
+          end if
           !     =============== DEFINE THETA FOR TIME-STEPPING ===================
           ! Define the type of time integration:
           ! Timopt is 0 if CV_DISOPT is even (theta specified);
