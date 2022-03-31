@@ -703,11 +703,11 @@ contains
                     ! we are going to use velocity at this non-linear step and 
                     ! 1 previous non-linear step as well to advance the mesh velocity
                     ! (and mesh coordinate, and eventually solid force)
-                    if(its.gt.1) then 
-                        move_mesh = 2
-                    else
+                    ! if(its.gt.1) then 
+                    !     move_mesh = 2
+                    ! else
                         move_mesh = 1
-                    endif
+                    ! endif
                     if(diffusion_solid_implicit) then
                         call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh , old_velocity)
                     END If

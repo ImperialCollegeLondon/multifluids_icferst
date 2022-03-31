@@ -4445,7 +4445,7 @@ end if
         LOGICAL, PARAMETER :: solid_implicit_lump=.false.     ! lump the viscocity within the element and thus only have diagonal contributions (take abs val)
         LOGICAL, PARAMETER :: solid_visc_ele_imp_stab=.false. ! treat implicitly inside an element for the projection method (suggest =.false., but may be more atable=.true.).
         LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false.   ! treat implicitly between elements.
-        LOGICAL, PARAMETER :: solid_visc_diag_imp=.true.      ! only add diagonal viscous stabilising term
+        LOGICAL, PARAMETER :: solid_visc_diag_imp=.false.      ! only add diagonal viscous stabilising term
         REAL :: DX2 ! element diameter dx ** 2. this is approximated with element volume, to be used in sigmagi_stab
         REAL, DIMENSION(:,:), ALLOCATABLE :: force_stab       ! this is solid_force / velocity, as a diagonal stabilisation.
                                                               ! use either this or mu/dx2 stab.
@@ -6570,17 +6570,17 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         if (skip) cycle
                     end if
                 end if
-                ! DO IFACE = 1, FE_GIdims%nface
-                !     ELE2  = FACE_ELE( IFACE, ELE )
-                !     if (ele2 .le. 0 & ! this surface is on boundary 
-                !     .or. (ele2.gt.0 .and. sigma%val(ele2).lt.0.5) ) then ! this surface is on fluid-solid interface 
-                !         do cv_siloc = 1, Mdims%cv_snloc 
-                !             cv_iloc = FE_funs%cv_sloclist(IFACE, CV_SILOC)
-                !             cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-                !             sigma_plus_bc(cv_inod) = -1 ! mark such cv nodes as -1 so that they are excluded from averaging process
-                !         enddo
-                !     endif
-                ! enddo
+                DO IFACE = 1, FE_GIdims%nface
+                    ELE2  = FACE_ELE( IFACE, ELE )
+                    if (ele2 .le. 0 ) then !& ! this surface is on boundary 
+                    ! .or. (ele2.gt.0 .and. sigma%val(ele2).lt.0.5) ) then ! this surface is on fluid-solid interface 
+                        do cv_siloc = 1, Mdims%cv_snloc 
+                            cv_iloc = FE_funs%cv_sloclist(IFACE, CV_SILOC)
+                            cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                            sigma_plus_bc(cv_inod) = -1 ! mark such cv nodes as -1 so that they are excluded from averaging process
+                        enddo
+                    endif
+                enddo
                 do cv_iloc=1,Mdims%cv_nloc
                     cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
                     if ( sigma_plus_bc(cv_inod) .lt. 0 ) cycle   ! excluding bc/interface nodes
@@ -6600,9 +6600,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 if (sigma%val(ele).lt.0.5) cycle
                 do cv_iloc=1,Mdims%cv_nloc
                     cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-                    if ( sigma_plus_bc(cv_inod) .lt. 0 ) cycle   ! excluding bc/interface nodes
                     u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-                    solid_force%val(:, u_inod) = cv_solid_force(:,cv_inod) / vel_count_solid(cv_inod) * MASS_ELE(ELE)
+                    if ( sigma_plus_bc(cv_inod) .lt. 0 ) then 
+                        solid_force%val(:, u_inod) = 0
+                    else !cycle   ! excluding bc/interface nodes
+                        solid_force%val(:, u_inod) = cv_solid_force(:,cv_inod) / vel_count_solid(cv_inod) * MASS_ELE(ELE)
+                    endif
                 end do
             end do
             if (isparallel()) call halo_update(solid_force)
@@ -7312,12 +7315,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                           IF(SOLID_IMPLICIT) THEN
                             if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid ONLY
                             else
-                                if( (sigma%val(ele).GT.0.5) ) then ! is solid element ELE but ELE2 is a fluid
+                                if( (sigma%val(ele).GT.0.5) .and. (sigma%val(ele2).lt.0.5)) then ! is solid element ELE but ELE2 is a fluid
                                     SLOC_UDIFFUSION_INTERFACE =  SLOC2_UDIFFUSION
                                     SLOC_UDIFFUSION_VOL_INTERFACE =  SLOC2_UDIFFUSION_VOL
                                     SLOC2_UDIFFUSION_INTERFACE =  SLOC2_UDIFFUSION
                                     SLOC2_UDIFFUSION_VOL_INTERFACE =  SLOC2_UDIFFUSION_VOL
-                                else ! is fluid element ELE but ELE2 is a solid. 
+                                elseif((sigma%val(ele).lt.0.5).and.(sigma%val(ele2).gt.0.5)) then ! is fluid element ELE but ELE2 is a solid. 
                                     SLOC_UDIFFUSION_INTERFACE =  SLOC_UDIFFUSION
                                     SLOC_UDIFFUSION_VOL_INTERFACE =  SLOC_UDIFFUSION_VOL
                                     SLOC2_UDIFFUSION_INTERFACE =  SLOC_UDIFFUSION
@@ -7354,7 +7357,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                             else 
                                 if (ele2>0) then 
                                     if ( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid
-                                        stress_ij_ele_ext = 0.0
+                                        ! stress_ij_ele_ext = 0.0
                                     endif
                                 endif
                             endif ! if(solid_visc_sufele_imp) then ! option3
