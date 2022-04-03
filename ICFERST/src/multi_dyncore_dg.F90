@@ -6556,20 +6556,20 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
             solid_force => extract_vector_field(state(1), "SolidForce")
             do ele=1,Mdims%totele
                 if (sigma%val(ele).lt.0.5) cycle
-                if (IsParallel()) then
-                    if (.not. assemble_ele(pressure,ele)) then
-                        skip=.true.
-                        neighbours=>ele_neigh(pressure,ele)
-                        do nb=1,size(neighbours)
-                            if (neighbours(nb)<=0) cycle
-                            if (assemble_ele(pressure,neighbours(nb))) then
-                                skip=.false.
-                                exit
-                            end if
-                        end do
-                        if (skip) cycle
-                    end if
-                end if
+                ! if (IsParallel()) then
+                !     if (.not. assemble_ele(pressure,ele)) then
+                !         skip=.true.
+                !         neighbours=>ele_neigh(pressure,ele)
+                !         do nb=1,size(neighbours)
+                !             if (neighbours(nb)<=0) cycle
+                !             if (assemble_ele(pressure,neighbours(nb))) then
+                !                 skip=.false.
+                !                 exit
+                !             end if
+                !         end do
+                !         if (skip) cycle
+                !     end if
+                ! end if
                 DO IFACE = 1, FE_GIdims%nface
                     ELE2  = FACE_ELE( IFACE, ELE )
                     if (ele2 .le. 0 ) then !& ! this surface is on boundary 
