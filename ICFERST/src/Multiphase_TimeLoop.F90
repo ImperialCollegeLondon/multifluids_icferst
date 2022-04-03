@@ -929,6 +929,11 @@ contains
                 after_adapt=.false.
                 its = its + 1
                 first_nonlinear_time_step = .false.
+
+                ! let's see if we can output every non-linear iteration step results.
+                ! so that we can better monitor the force/velocity oscillation
+                ! call write_state( dump_no, state ) 
+
             end do Loop_NonLinearIteration
 
 
@@ -1021,9 +1026,13 @@ contains
 
             !JXiang change coordinate of pressure mesh            
             if(solid_implicit) then
-                if(diffusion_solid_implicit) then
-                    call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , 1)
-                END If
+                ! I don't know if this is necessary! Since we are updating ug / coordinate 
+                ! after each mom. solve.
+                ! this may clash with relaxing solid force (move_mesh=2)
+
+                ! if(diffusion_solid_implicit) then
+                !     call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , 1)
+                ! END If
                 X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
                 XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
                 x_coord=> extract_vector_field( state, "Coordinate" )
