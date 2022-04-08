@@ -5268,7 +5268,18 @@ end if
                 DO JDIM=1,NDIM    
                     CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM )-hydro_pressure
                 END DO
-                
+                ! ! sigma' = sigma - 1/3 tr(sigma)
+                ! trb = 0.;
+                ! DO IDIM = 1,NDIM
+                !     trb = trb + FEN_TEN_XX(IDIM, IDIM)
+                ! ENDDO
+                ! do jdim = 1,ndim 
+                !     do idim = 1,ndim 
+                !         CAUCHY_STRESS_IJ_SOLID_ELE(idim, jdim) = DPEMU/TEN_VOL_RATIO*FEN_TEN_XX(idim,jdim)
+                !     enddo
+                !     CAUCHY_STRESS_IJ_SOLID_ELE(jdim,jdim) = CAUCHY_STRESS_IJ_SOLID_ELE(jdim,jdim) -1./3.*trb 
+                ! enddo
+
                 ! linfeng update solid stress, for output in vtk file.
                 ! ewrite(3, *) "++++++++++++  write solid stress  +++++++++++++"
                 DO JDIM=1,NDIM
@@ -5363,6 +5374,17 @@ end if
                 DO JDIM=1,NDIM    
                     CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM )-hydro_pressure
                 END DO
+                ! ! stress' = stress - 1/2tr(stress)
+                ! trb = 0.;
+                ! DO IDIM = 1,NDIM
+                !     trb = trb + FEN_TEN_XX(IDIM, IDIM)
+                ! ENDDO
+                ! do jdim = 1,ndim 
+                !     do idim = 1,ndim 
+                !         CAUCHY_STRESS_IJ_SOLID_ELE(idim, jdim) = DPEMU/TEN_VOL_RATIO*FEN_TEN_XX(idim,jdim)
+                !     enddo
+                !     CAUCHY_STRESS_IJ_SOLID_ELE(jdim,jdim) = CAUCHY_STRESS_IJ_SOLID_ELE(jdim,jdim) -1./2.*trb 
+                ! enddo
 
             else ! if (isCompressible)
                 ! let's use incompressible Neo-Hookean (from J Bonet and Wood: Nonlinear Continuum Mechanics for Finite Element Analysis)
