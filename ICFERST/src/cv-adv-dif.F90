@@ -5257,28 +5257,28 @@ end if
 
             ! FEN_TEN_VOL(:)=UFENX_ILOC(:) * TEN_VOL
             if (isCompressible) then
-                DO JDIM=1,NDIM
-                    DO IDIM=1,NDIM
-                        CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)+DPEKS*D(IDIM,JDIM)
-                    END DO
-                    CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM)+(DPELA*LOG(TEN_VOL_RATIO)-DPEMU)/TEN_VOL_RATIO
-                END DO
+                ! DO JDIM=1,NDIM
+                !     DO IDIM=1,NDIM
+                !         CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)+DPEKS*D(IDIM,JDIM)
+                !     END DO
+                !     CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM)+(DPELA*LOG(TEN_VOL_RATIO)-DPEMU)/TEN_VOL_RATIO
+                ! END DO
 
-                hydro_pressure=DPELA*LOG(TEN_VOL_RATIO)/TEN_VOL_RATIO
-                DO JDIM=1,NDIM    
-                    CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM )-hydro_pressure
-                END DO
-                ! ! sigma' = sigma - 1/3 tr(sigma)
-                ! trb = 0.;
-                ! DO IDIM = 1,NDIM
-                !     trb = trb + FEN_TEN_XX(IDIM, IDIM)
-                ! ENDDO
-                ! do jdim = 1,ndim 
-                !     do idim = 1,ndim 
-                !         CAUCHY_STRESS_IJ_SOLID_ELE(idim, jdim) = DPEMU/TEN_VOL_RATIO*FEN_TEN_XX(idim,jdim)
-                !     enddo
-                !     CAUCHY_STRESS_IJ_SOLID_ELE(jdim,jdim) = CAUCHY_STRESS_IJ_SOLID_ELE(jdim,jdim) -1./3.*trb 
-                ! enddo
+                ! hydro_pressure=DPELA*LOG(TEN_VOL_RATIO)/TEN_VOL_RATIO
+                ! DO JDIM=1,NDIM    
+                !     CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM )-hydro_pressure
+                ! END DO
+                ! sigma' = sigma - 1/3 tr(sigma)
+                trb = 0.;
+                DO IDIM = 1,NDIM
+                    trb = trb + FEN_TEN_XX(IDIM, IDIM)
+                ENDDO
+                do jdim = 1,ndim 
+                    do idim = 1,ndim 
+                        CAUCHY_STRESS_IJ_SOLID_ELE(idim, jdim) = DPEMU/TEN_VOL_RATIO*FEN_TEN_XX(idim,jdim)
+                    enddo
+                    CAUCHY_STRESS_IJ_SOLID_ELE(jdim,jdim) = CAUCHY_STRESS_IJ_SOLID_ELE(jdim,jdim) -1./3.*trb 
+                enddo
 
                 ! linfeng update solid stress, for output in vtk file.
                 ! ewrite(3, *) "++++++++++++  write solid stress  +++++++++++++"
@@ -5363,28 +5363,28 @@ end if
             
             ! now we are going to use constitutive models and cauclate Cauchy stress
             if (isCompressible) then
-                ! let's use neo-Hookean (compressible)
-                DO JDIM=1,NDIM
-                    DO IDIM=1,NDIM
-                        CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)+DPEKS*D(IDIM,JDIM)
-                    END DO
-                    CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM)+(DPELA*LOG(TEN_VOL_RATIO)-DPEMU)/TEN_VOL_RATIO
-                END DO
-                hydro_pressure=DPELA*LOG(TEN_VOL_RATIO)/TEN_VOL_RATIO
-                DO JDIM=1,NDIM    
-                    CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM )-hydro_pressure
-                END DO
-                ! ! stress' = stress - 1/2tr(stress)
-                ! trb = 0.;
-                ! DO IDIM = 1,NDIM
-                !     trb = trb + FEN_TEN_XX(IDIM, IDIM)
-                ! ENDDO
-                ! do jdim = 1,ndim 
-                !     do idim = 1,ndim 
-                !         CAUCHY_STRESS_IJ_SOLID_ELE(idim, jdim) = DPEMU/TEN_VOL_RATIO*FEN_TEN_XX(idim,jdim)
-                !     enddo
-                !     CAUCHY_STRESS_IJ_SOLID_ELE(jdim,jdim) = CAUCHY_STRESS_IJ_SOLID_ELE(jdim,jdim) -1./2.*trb 
-                ! enddo
+                ! ! let's use neo-Hookean (compressible)
+                ! DO JDIM=1,NDIM
+                !     DO IDIM=1,NDIM
+                !         CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)+DPEKS*D(IDIM,JDIM)
+                !     END DO
+                !     CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM)+(DPELA*LOG(TEN_VOL_RATIO)-DPEMU)/TEN_VOL_RATIO
+                ! END DO
+                ! hydro_pressure=DPELA*LOG(TEN_VOL_RATIO)/TEN_VOL_RATIO
+                ! DO JDIM=1,NDIM    
+                !     CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM )-hydro_pressure
+                ! END DO
+                ! stress' = stress - 1/2tr(stress)
+                trb = 0.;
+                DO IDIM = 1,NDIM
+                    trb = trb + FEN_TEN_XX(IDIM, IDIM)
+                ENDDO
+                do jdim = 1,ndim 
+                    do idim = 1,ndim 
+                        CAUCHY_STRESS_IJ_SOLID_ELE(idim, jdim) = DPEMU/TEN_VOL_RATIO*FEN_TEN_XX(idim,jdim)
+                    enddo
+                    CAUCHY_STRESS_IJ_SOLID_ELE(jdim,jdim) = CAUCHY_STRESS_IJ_SOLID_ELE(jdim,jdim) -1./2.*trb 
+                enddo
 
             else ! if (isCompressible)
                 ! let's use incompressible Neo-Hookean (from J Bonet and Wood: Nonlinear Continuum Mechanics for Finite Element Analysis)
