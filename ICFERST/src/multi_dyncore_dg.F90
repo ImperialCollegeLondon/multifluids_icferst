@@ -182,6 +182,8 @@ contains
       type( vector_field ), pointer :: UG_ALL
       integer :: u_nodi, x_nodi, u_iloc
 
+      real :: theta_F ! force relaxation factor. hardwired - to be changed to varying based on oscillation detection
+      theta_F=0.2
 
       allocate( sigma( Mdims%totele) )
       allocate( rhs(Mdims%ndim,Mdims%cv_nonods), cv_ug_all(Mdims%ndim,Mdims%cv_nonods) )
@@ -369,14 +371,14 @@ contains
                   elseif (move_mesh.eq.2) then 
                     if (.not. weighted_ave) then
                         u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
-                            + (u_all%val(idim,iphase,u_inod)+old_velocity%val(idim,iphase,u_inod))/2.
+                            + (u_all%val(idim,iphase,u_inod)*theta_F+old_velocity%val(idim,iphase,u_inod)*(1-theta_F))
                         u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
-                            + (u_all%val(idim,iphase,u_inod)+old_velocity%val(idim,iphase,u_inod))/2. * sigma(ele)
+                            + (u_all%val(idim,iphase,u_inod)*theta_F+old_velocity%val(idim,iphase,u_inod)*(1-theta_F)) * sigma(ele)
                     else                 
                         u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
-                            + (u_all%val(idim,iphase,u_inod)+old_velocity%val(idim,iphase,u_inod))/2.*volume
+                            + (u_all%val(idim,iphase,u_inod)*theta_F+old_velocity%val(idim,iphase,u_inod)*(1-theta_F))*volume
                         u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
-                            + (u_all%val(idim,iphase,u_inod)+old_velocity%val(idim,iphase,u_inod))/2. * sigma(ele)*volume
+                            + (u_all%val(idim,iphase,u_inod)*theta_F+old_velocity%val(idim,iphase,u_inod)*(1-theta_F)) * sigma(ele)*volume
                     endif
                   endif
                         
@@ -6630,7 +6632,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                             if ( U_ALL(idim,iphase,u_inod).eq. 0.) then 
                                 force_stab(idim,u_iloc) = 0.    ! avoid dividing by 0
                             else
-                                force_stab(idim,u_iloc) = 10.*abs(solid_force%val(idim,u_inod) / U_ALL(idim,iphase,u_inod))
+                                force_stab(idim,u_iloc) = 0.*abs(solid_force%val(idim,u_inod) / U_ALL(idim,iphase,u_inod))
                                 ! if (force_stab(idim,u_iloc).le. 0.) force_stab(idim, u_iloc) = 0.   ! if stab. is negative, ignore it.
                                 if (force_stab(idim,u_iloc).gt. 1.e8) force_stab(idim, u_iloc) = 1e8    ! limiting from above.
                             endif
