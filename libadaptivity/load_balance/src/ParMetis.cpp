@@ -80,9 +80,9 @@ void Graph::RepartRemap(vector<int>& vtxdist, vector<int>& noddom){
   int edgecut;
   int numflag = 0;
   
-  ParMETIS_V3_AdaptiveRepart(&(vtxdist[0]), &(bptr[0]), &(edges[0]), vwgt, NULL,
-                             adjwgt, &wgtflag, &numflag, &ncon, &nparts, &(tpwgts[0]),
-                             &(ubvec[0]), &ipc_factor, options, &edgecut, &(noddom[0]), &comm_world);
+  // ParMETIS_V3_AdaptiveRepart(&(vtxdist[0]), &(bptr[0]), &(edges[0]), vwgt, NULL,
+  //                            adjwgt, &wgtflag, &numflag, &ncon, &nparts, &(tpwgts[0]),
+  //                            &(ubvec[0]), &ipc_factor, options, &edgecut, &(noddom[0]), &comm_world);
 
   return;
 }
@@ -129,9 +129,9 @@ void Graph::Repart(vector<int>& vtxdist, vector<int>& noddom, int nparts){
   int ncon=0;
 
   if(nnodes[MyRank]){
-    ParMETIS_V3_PartKway(&(vtxdist[0]), &(bptr[0]), &(edges[0]), NULL, &(eweight[0]),
-                         &wgtflag, &numflag, &ncon, &nparts, NULL, NULL,
-                         options, &edgecut, &(noddom[0]), &sub_comm);
+    // ParMETIS_V3_PartKway(&(vtxdist[0]), &(bptr[0]), &(edges[0]), NULL, &(eweight[0]),
+    //                      &wgtflag, &numflag, &ncon, &nparts, NULL, NULL,
+    //                      options, &edgecut, &(noddom[0]), &sub_comm);
 
     MPI_Comm_free(&sub_comm);
   }

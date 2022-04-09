@@ -46,10 +46,17 @@ module solvers
   use vtk_interfaces
   use halos
   use MeshDiagnostics
-  implicit none
-  ! Module to provide explicit interfaces to matrix solvers.
 
+
+! Module to provide explicit interfaces to matrix solvers.  
 #include "petsc_legacy.h"
+  use petscksp
+implicit none 
+
+! #if defined(PETSC_USING_F90) && !defined(PETSC_USE_FORTRANKIND)
+       external KSPMONITORDEFAULT
+       external KSPMonitorTrueResidualNorm
+! #endif
 
   ! stuff used in the PETSc monitor (see petsc_solve_callback_setup() below)
   integer :: petsc_monitor_iteration = 0
@@ -732,7 +739,7 @@ subroutine petsc_solve_setup(y, A, b, ksp, petsc_numbering, &
 !!
 !! PETSc solution vector
 Vec, intent(out):: y
-!! PETSc matrix
+! PETSc matrix
 Mat, intent(out):: A
 !! PETSc rhs vector
 Vec, intent(out):: b
@@ -1788,15 +1795,15 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        '/diagnostics/monitors/preconditioned_residual')) then
         call PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, &
            PETSC_VIEWER_DEFAULT,vf,ierr)
-        call KSPMonitorSet(ksp, KSPMonitorDefault, vf, &
-           PetscViewerAndFormatDestroy, ierr)
+        ! call KSPMonitorSet(ksp, KSPMonitorDefault, vf, &  !KSPMonitorDefault
+        !    PetscViewerAndFormatDestroy, ierr)
     end if
     if (have_option(trim(solver_option_path)// &
        '/diagnostics/monitors/true_residual')) then
         call PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, &
            PETSC_VIEWER_DEFAULT,vf,ierr)
-        call KSPMonitorSet(ksp, KSPMonitorTrueResidualNorm, vf, &
-           PetscViewerAndFormatDestroy, ierr)
+        ! call KSPMonitorSet(ksp, KSPMonitorTrueResidualNorm, vf, &   !KSPMonitorTrueResidualNorm
+        !    PetscViewerAndFormatDestroy, ierr)
     end if
 
     if (have_option(trim(solver_option_path)// &

@@ -486,8 +486,8 @@ contains
           call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
 
           ! recalculate the melt fraction and compositions to guarantee that the initial condition is consistent
-          call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
-          call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
+          call poro_component_solve(state,packed_state, Mdims, ndgln, magma_phase_coef, initilization=.true.)
+        !   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
         end if
 
 
@@ -648,12 +648,12 @@ contains
                 if (is_magma) compute_compaction= .true.
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
                     if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
-                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
-                        Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
-                        dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
-                        igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling)
+                    ! CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
+                    !     Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
+                    !     Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
+                    !     dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
+                    !     igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
+                    !     calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling)
 
 
                 ! if (is_magma) then 
@@ -786,14 +786,14 @@ contains
                 !   Compostion_temp= tracer_field%val(1,2,:); melt_temp = saturation_field%val(1,2,:)! second phase is the melt!
                   
                   !Here we  Calculate melt fraction from phase diagram
-                  call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
+                  call poro_component_solve(state,packed_state, Mdims, ndgln, magma_phase_coef)
                   !we impose backtrack_or_convergence = 1 to ensure that the convergence check works
                   backtrack_or_convergence = 1.0
                   ! ! Update the temperature field
                   call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
                   call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
                   ! ! Update the composition
-                  call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
+                !   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
                   ! Calulate the composition source term
                   !call compute_composition_change_source(Mdims, state, packed_state, melt_temp, Compostion_temp, dt)
                 !   deallocate(Compostion_temp, melt_temp)

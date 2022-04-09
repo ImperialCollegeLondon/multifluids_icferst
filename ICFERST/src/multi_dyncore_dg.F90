@@ -1978,7 +1978,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         
         integer :: TEST_temperal
         real :: cmcscaling
-        cmcscaling=5e2! 13 for solid viscosity order 13
+        cmcscaling=1e3! 13 for solid viscosity order 13
         ! if (is_magma) compute_compaction= .true.  ! For magma only the first phase is assembled for the momentum equation.
 
         call get_option("/numerical_methods/max_sat_its", TEST_temperal)
@@ -2580,7 +2580,7 @@ end if
           logical, save :: first_step = .true.
           real :: petsc_error_scale 
           
-          CMC_scale=CMC_scale*1.1
+
           EXTRA=0
           non_improved_step=0
 
@@ -2638,7 +2638,7 @@ end if
           restart_now = .false.
           min_residue=1
           if (first_step) then
-            max_iter=200
+            max_iter=1000
             first_step=.false.
           else
             max_iter=stokes_max_its*Max_restarts
@@ -2659,13 +2659,13 @@ end if
               i = 2; stored_field(:, i) = P_all%val(1,1,:)
               restart_now = .false.
             end if
-            !Compute grad P as a proxy of velocity
-            call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
-            !Check normalised relative pressure convergence
-            totally_min_max(1)=minval(CDP_tensor%val)!use stored field
-            totally_min_max(2)=maxval(CDP_tensor%val)!use stored field
-            !For parallel
-            call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+            !! Compute grad P as a proxy of velocity
+            ! call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
+            ! !Check normalised relative pressure convergence
+            ! totally_min_max(1)=minval(CDP_tensor%val)!use stored field
+            ! totally_min_max(2)=maxval(CDP_tensor%val)!use stored field
+            ! !For parallel
+            ! call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
             ! conv_test = inf_norm_vector_normalised(CDP_tensor%val, ref_CDP_tensor%val, totally_min_max)
             conv_test = maxval(abs(rhs_p%val(1,:)))
 
@@ -2721,11 +2721,12 @@ end if
 print *, k,':', conv_test
             !##########################Now solve the equations##########################
             ! ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
-            call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
-
-            call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
+            ! if (mod(k,40)==1 .or. conv_test>1e-7) then  
+                call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
+                call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)            
             ! call force_zero_boundary_value(Mdims, velocity)
-            if (isParallel()) call halo_update(velocity)
+                if (isParallel()) call halo_update(velocity)
+            ! end if
             !Perform Div * U for the RHS of the pressure equation
             !If we end up using the residual, this call just below is unnecessary
             rhs_p%val = 0.
@@ -2786,6 +2787,8 @@ print *, k,':', conv_test
           end do stokesloop
           print *, 'Use optimal value, residue:', min_residue
           P_all%val(1,1,:)= P_optimal
+        !   call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
+        !   call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)     
           velocity%val(:,1,:)=optimal_velocity
           if (Special_precond) then
             call deallocate(aux_velocity)
