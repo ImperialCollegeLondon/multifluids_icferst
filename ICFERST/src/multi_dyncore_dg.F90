@@ -777,7 +777,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            real, dimension(:,:,:), pointer :: T_AbsorB=>null()
            integer :: ncomp_diff_coef, comp_diffusion_opt
            real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
-           type( tensor_field ), pointer :: perm, python_tfield
+           type( tensor_field ), pointer :: perm, python_tfield, old_saturation, old_concentration
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
@@ -800,6 +800,32 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer, save :: nconc_in_pres
            type(vector_field) :: solution
 
+           real, dimension(:,:,:), allocatable :: saturation_save, old_saturation_save, old_concentration_save
+           type( vector_field ), pointer :: p_position 
+           p_position=>extract_vector_field(packed_state,"PressureCoordinate")
+
+           if (is_magma) then 
+            allocate(saturation_save(1, Mdims%nphase,Mdims%cv_nonods),old_saturation_save(1, Mdims%nphase,Mdims%cv_nonods), old_concentration_save(1, Mdims%nphase,Mdims%cv_nonods))
+            saturation_save=saturation%val
+
+            old_saturation=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
+            old_concentration=>extract_tensor_field(packed_state,"PackedOldConcentration")
+            old_saturation_save=old_saturation%val
+            old_concentration_save=old_concentration%val
+            do cv_nodi = 1, Mdims%cv_nonods     
+                if (abs(p_position%val(1,cv_nodi)+194.631)<1e-2 .and. abs(p_position%val(2,cv_nodi)-194.631)<1e-2) then 
+                    print *, 'component:', tracer%val(1,1,cv_nodi), tracer%val(1,2,cv_nodi)            
+                    print *, 'Saturation:', saturation%val(1,1,cv_nodi), saturation%val(1,2,cv_nodi)    
+               end if                      
+                tracer%val(1,1,cv_nodi)= tracer%val(1,1,cv_nodi)*saturation%val(1, 1, cv_nodi )
+                tracer%val(1,2,cv_nodi)= tracer%val(1,2,cv_nodi)*saturation%val(1, 2, cv_nodi )
+
+                old_concentration%val(1,1,cv_nodi)= old_concentration%val(1,1,cv_nodi)*old_saturation%val(1, 1, cv_nodi )
+                old_concentration%val(1,2,cv_nodi)= old_concentration%val(1,2,cv_nodi)*old_saturation%val(1, 2, cv_nodi )
+            end do
+            old_saturation%val=1.0
+            saturation%val=1.0
+           end if
            !Retrieve the number of phases that have Concentration fraction, and then if they are concecutive and start from the first one
            if (nconc < 0) then
              nconc = option_count("/material_phase/scalar_field::Concentration")
@@ -842,7 +868,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               denold_all = denold_all2 % val ( 1, :, : )
            endif
 
-           IGOT_T2_loc = 1
+           if (is_magma) then
+            IGOT_T2_loc = .true.   ! This doesn't work since in CV_ASSEMB, it always pass T2 when assembling GETCV_DISC, we need to pass 
+                                    !saturation as one
+           else
+            IGOT_T2_loc = .true.
+           end if
 
            call get_option( '/material_phase[0]/scalar_field::Concentration/prognostic/temporal_discretisation/' // &
                'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
@@ -952,6 +983,28 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                       tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*nconc_in_pres,:)
                     end do
                    end do
+
+                   if (is_magma) then 
+                    saturation%val=saturation_save
+                    old_saturation%val=old_saturation_save
+                    old_concentration%val=old_concentration_save
+                    do cv_nodi = 1, Mdims%cv_nonods    
+                        if (abs(p_position%val(1,cv_nodi)+194.631)<1e-2 .and. abs(p_position%val(2,cv_nodi)-194.631)<1e-2) then 
+                             print *, 'hii:', tracer%val(1,1,cv_nodi), tracer%val(1,2,cv_nodi)            
+                             print *, 'hii:', saturation%val(1,1,cv_nodi), saturation%val(1,2,cv_nodi)    
+                        end if       
+                        if (saturation%val(1, 2, cv_nodi )<1e-8 ) then 
+                            tracer%val(1,1,cv_nodi)= tracer%val(1,1,cv_nodi)+tracer%val(1,2,cv_nodi)
+                            tracer%val(1,2,cv_nodi)= 1.
+                        elseif (saturation%val(1, 2, cv_nodi )>1-1e-8 ) then 
+                            tracer%val(1,1,cv_nodi)= 0.
+                            tracer%val(1,2,cv_nodi)= tracer%val(1,1,cv_nodi)+tracer%val(1,2,cv_nodi)
+                        else
+                            tracer%val(1,1,cv_nodi)= tracer%val(1,1,cv_nodi)/saturation%val(1,1,cv_nodi)
+                            tracer%val(1,2,cv_nodi)= tracer%val(1,2,cv_nodi)/saturation%val(1,2,cv_nodi)
+                        end if
+                    end do                    
+                   end if
 
                    !Apply if required the min max principle
                    call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)

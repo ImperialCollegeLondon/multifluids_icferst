@@ -427,7 +427,6 @@ contains
     
       
     do cv_nodi = 1, Mdims%cv_nonods
-      if (abs(p_position%val(1,cv_nodi)+194.631)<1e-2 .and. abs(p_position%val(2,cv_nodi)-194.631)<1e-2) print *, 'hmmm:', BulkComposition(cv_nodi)
       Loc_Cp = node_val(Cp,cv_nodi) ! Cp%val(cv_nodi)
       rho=den%val(1,iphase,cv_nodi)
       IF (enthalpy%val(1,1,cv_nodi)>get_Enthalpy_Liquidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)) then
@@ -501,8 +500,12 @@ contains
         saturation%val(1,2, cv_nodi)=test_poro
         saturation%val(1,1, cv_nodi)=1.-test_poro
       END IF
+      if (abs(p_position%val(1,cv_nodi)+194.631)<1e-2 .and. abs(p_position%val(2,cv_nodi)-194.631)<1e-2) then 
+         print *, 'BC:', BulkComposition(cv_nodi)
+         print *, 'hmmm:', Composition%val(1,1,cv_nodi),Composition%val(1,2,cv_nodi)
+         print *, 'hmmm:', saturation%val(1,1, cv_nodi), saturation%val(1,2, cv_nodi)
+      end if 
     end do
-    call cal_bulkcomposition(state,packed_state, Mdims)
   end subroutine
 
 
