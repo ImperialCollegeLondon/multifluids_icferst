@@ -813,10 +813,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             old_saturation_save=old_saturation%val
             old_concentration_save=old_concentration%val
             do cv_nodi = 1, Mdims%cv_nonods     
-                if (abs(p_position%val(1,cv_nodi)+194.631)<1e-2 .and. abs(p_position%val(2,cv_nodi)-194.631)<1e-2) then 
-                    print *, 'component:', tracer%val(1,1,cv_nodi), tracer%val(1,2,cv_nodi)            
-                    print *, 'Saturation:', saturation%val(1,1,cv_nodi), saturation%val(1,2,cv_nodi)    
-               end if                      
+            !     if (abs(p_position%val(1,cv_nodi)+194.631)<1e-2 .and. abs(p_position%val(2,cv_nodi)-194.631)<1e-2) then 
+            !         print *, 'component:', tracer%val(1,1,cv_nodi), tracer%val(1,2,cv_nodi)            
+            !         print *, 'Saturation:', saturation%val(1,1,cv_nodi), saturation%val(1,2,cv_nodi)    
+            !    end if                      
                 tracer%val(1,1,cv_nodi)= tracer%val(1,1,cv_nodi)*saturation%val(1, 1, cv_nodi )
                 tracer%val(1,2,cv_nodi)= tracer%val(1,2,cv_nodi)*saturation%val(1, 2, cv_nodi )
 
@@ -989,10 +989,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                     old_saturation%val=old_saturation_save
                     old_concentration%val=old_concentration_save
                     do cv_nodi = 1, Mdims%cv_nonods    
-                        if (abs(p_position%val(1,cv_nodi)+194.631)<1e-2 .and. abs(p_position%val(2,cv_nodi)-194.631)<1e-2) then 
-                             print *, 'hii:', tracer%val(1,1,cv_nodi), tracer%val(1,2,cv_nodi)            
-                             print *, 'hii:', saturation%val(1,1,cv_nodi), saturation%val(1,2,cv_nodi)    
-                        end if       
+                        ! if (abs(p_position%val(1,cv_nodi)+194.631)<1e-2 .and. abs(p_position%val(2,cv_nodi)-194.631)<1e-2) then 
+                        !      print *, 'hii:', tracer%val(1,1,cv_nodi), tracer%val(1,2,cv_nodi)            
+                        !      print *, 'hii:', saturation%val(1,1,cv_nodi), saturation%val(1,2,cv_nodi)    
+                        ! end if       
                         if (saturation%val(1, 2, cv_nodi )<1e-8 ) then 
                             tracer%val(1,1,cv_nodi)= tracer%val(1,1,cv_nodi)+tracer%val(1,2,cv_nodi)
                             tracer%val(1,2,cv_nodi)= 1.
@@ -2031,7 +2031,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         
         integer :: TEST_temperal
         real :: cmcscaling
-        cmcscaling=1e3! 13 for solid viscosity order 13
+        cmcscaling=77! 13 for solid viscosity order 13
         ! if (is_magma) compute_compaction= .true.  ! For magma only the first phase is assembled for the momentum equation.
 
         call get_option("/numerical_methods/max_sat_its", TEST_temperal)
@@ -2482,6 +2482,7 @@ end if
         end if
 
     end if
+    if (is_magma) call cal_contribution()
                 !######################## CORRECTION VELOCITY STEP####################################
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases
         
@@ -2495,6 +2496,7 @@ end if
         if (compute_compaction) then 
             call get_Darcy_phases_velocity()            
         end if
+        
         ! call force_zero_boundary_value(Mdims, velocity)
         
         if (isParallel()) call halo_update(velocity)
@@ -2509,7 +2511,7 @@ end if
         !Ensure that prior to comming here the halos have been updated
         if (.not. is_porous_media) call calc_CVPres_from_FEPres()!No need for porous media
 !       
-
+        
         DEALLOCATE( Mmat%CT )
         DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
         DEALLOCATE( Mmat%U_RHS )
@@ -2530,6 +2532,44 @@ end if
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
       contains
+      !>@brief: Computes the contribution for the melt fraction and bulk composition change
+  subroutine cal_contribution()
+    !Local variables
+    type( tensor_field), pointer :: Composition, old_Composition, saturation, old_saturation, velocity
+    type( scalar_field ), pointer :: Bcomposition, phidecomH, phidecomC,phidecomR, cbdecomC, cbdecomR
+    REAL, DIMENSION( :, :, : ), allocatable :: scaled_velocity
+    integer :: ele, u_iloc, u_inod, cv_iloc, cv_loc
+    ! Bcomposition=>extract_scalar_field(state(1),'BulkComposition')
+
+    ! Composition=>extract_tensor_field(packed_state,"PackedConcentration")
+    ! old_Composition=>extract_tensor_field(packed_state,"PackedOldConcentration")
+    saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+    ! old_saturation=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
+    velocity=>extract_tensor_field(packed_state,"PackedVelocity")
+
+    
+
+    if (have_option('/material_phase::phase1/scalar_field::PhiDecompositionC')) then
+      allocate(scaled_velocity(1,1,Mdims%u_nonods))
+      do ele = 1, Mdims%totele
+        do u_iloc = 1, Mdims%u_nloc
+            u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
+            do cv_iloc = 1, Mdims%cv_nloc
+              cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+              scaled_velocity(1,1,u_inod)=velocity%val(1,1,u_inod)*saturation%val(1,1,cv_loc)
+            end do
+        end do
+      end do
+
+      phidecomC=>extract_scalar_field(state(1),'PhiDecompositionC')
+      rhs_p%val=0.
+      call compute_DIV_U(Mdims, Mmat, Mspars, scaled_velocity, inv_b, rhs_p)      
+      phidecomC%val=rhs_p%val(1,:)
+      deallocate(scaled_velocity)
+    end if
+
+    ! call get_option('/material_phase::phase1/scalar_field::BulkComposition/prognostic/initial_condition::WholeMesh/constant', init_bulk)
+  end subroutine
         !---------------------------------------------------------------------------
         !> @author Haiyang Hu
         !> @Compute compaction length (squared) of a magma system which is used to estimate the coefficient alpha in the magma velocity solver
@@ -2691,7 +2731,7 @@ end if
           restart_now = .false.
           min_residue=1
           if (first_step) then
-            max_iter=1000
+            max_iter=120
             first_step=.false.
           else
             max_iter=stokes_max_its*Max_restarts

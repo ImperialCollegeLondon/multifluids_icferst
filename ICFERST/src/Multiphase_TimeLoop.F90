@@ -603,6 +603,7 @@ contains
                   call Calculate_Magma_AbsorptionTerms( state, packed_state, multi_absorp%Magma, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
                                                                     upwnd, suf_sig_diagten_bc, magma_c_phi_series, multi_absorp%Magma_capped )                  
                 end if
+                
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
                    PhaseVolumeFractionComponentSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionComponentSource")
@@ -648,27 +649,14 @@ contains
                 if (is_magma) compute_compaction= .true.
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
                     if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
-                    ! CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                    !     Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
-                    !     Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
-                    !     dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
-                    !     igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                    !     calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling)
-
-
-                ! if (is_magma) then 
-                !     compute_compaction= .false.
-                !     call update_magma_coupling_coefficients(Mdims, state, saturation_field%val, ndgln, multi_absorp%Magma%val,  magma_c_phi_series, .true.)
-
-                !     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                !         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
-                !         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
-                !         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
-                !         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                !         calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling)
-                ! end if
+                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
+                        Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
+                        dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
+                        igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
+                        calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling)
                 end if Conditional_ForceBalanceEquation
-
+                ! call cal_contribution(state,packed_state)
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
                 !#=================================================================================================================
@@ -881,6 +869,8 @@ contains
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
+            ! For magma, calculate the contributions for the melt fraction and bulk composition change
+            if (is_magma) call cal_contribution2(state,packed_state, Mdims, Mmat, ndgln, dt)
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
               ewrite(0,*) "Iterations taken by the pressure linear solver:", pres_its_taken
             end if

@@ -179,7 +179,7 @@ contains
     Composition=>extract_tensor_field(packed_state,"PackedConcentration")
     saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
-    call get_option('/material_phase::phase1/scalar_field::BulkComposition/prognostic/initial_condition::WholeMesh/constant', init_bulk)
+    ! call get_option('/material_phase::phase1/scalar_field::BulkComposition/prognostic/initial_condition::WholeMesh/constant', init_bulk)
     
     if (present_and_true(initilization)) then 
       Bcomposition%val=0.08
@@ -193,6 +193,65 @@ contains
       Bcomposition%val(cv_inod)=max(Bcomposition%val(cv_inod),0.)
       Bcomposition%val(cv_inod)=min(Bcomposition%val(cv_inod),1.)
     end if 
+  end subroutine
+
+  !>@brief: Computes the contribution for the melt fraction and bulk composition change
+  subroutine cal_contribution2(state,packed_state, Mdims, Mmat, ndgln, dt)
+    type( state_type ), dimension( : ), intent( inout ) :: state
+    type( state_type ), intent( inout ) :: packed_state
+    type(multi_dimensions), intent( in ) :: Mdims
+    type (multi_matrices), intent(inout) :: Mmat
+    ! type (multi_sparsities), intent(in) :: Mspars
+    type(multi_ndgln), intent(in) :: ndgln
+    real, intent( in ) :: dt
+    !Local variables
+    type( tensor_field), pointer :: Composition, old_Composition, saturation, old_saturation
+    integer :: iphase, cv_inod
+    real :: init_bulk
+    type( scalar_field ), pointer :: Bcomposition, phidecomH, phidecomC,phidecomR,  phidecomH2, phidecomC2,phidecomR2
+    ! type( vector_field ) :: rhs_p
+    ! REAL, DIMENSION( :, :, : ), allocatable :: scaled_velocity
+    ! integer :: ele, u_iloc, u_inod, cv_iloc, cv_loc
+    Bcomposition=>extract_scalar_field(state(1),'BulkComposition')
+
+    Composition=>extract_tensor_field(packed_state,"PackedConcentration")
+    old_Composition=>extract_tensor_field(packed_state,"PackedOldConcentration")
+    saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+    old_saturation=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
+
+    
+
+    if (have_option('/material_phase::phase1/scalar_field::PhiDecompositionC')) then
+      phidecomC=>extract_scalar_field(state(1),'PhiDecompositionC')
+      if (have_option('/material_phase::phase1/scalar_field::PhiDecompositionCa')) then
+        phidecomC2=>extract_scalar_field(state(1),'PhiDecompositionCa')
+        phidecomC2%val=phidecomC2%val+phidecomC2%val
+      end if
+
+      if (have_option('/material_phase::phase1/scalar_field::PhiDecompositionH')) then 
+        phidecomH=>extract_scalar_field(state(1),'PhiDecompositionH')
+        phidecomH%val=1./(Composition%val(1,2,:)-Composition%val(1,1,:))*(-(Composition%val(1,1,:)-old_Composition%val(1,1,:))*saturation%val(1,1,:)/dt- (Composition%val(1,2,:)-old_Composition%val(1,2,:))*saturation%val(1,2,:)/dt)
+      end if
+
+      if (have_option('/material_phase::phase1/scalar_field::PhiDecompositionHa')) then
+        phidecomH2=>extract_scalar_field(state(1),'PhiDecompositionHa')
+        phidecomH2%val=phidecomH2%val+phidecomH%val
+      end if
+
+      if (have_option('/material_phase::phase1/scalar_field::PhiDecompositionR')) then 
+        phidecomR=>extract_scalar_field(state(1),'PhiDecompositionR')
+        phidecomC=>extract_scalar_field(state(1),'PhiDecompositionC')
+        phidecomR%val=saturation%val(1,2,:)-old_saturation%val(1,2,:)-phidecomH%val-phidecomC%val
+      end if
+
+      if (have_option('/material_phase::phase1/scalar_field::PhiDecompositionRa')) then 
+        phidecomR2=>extract_scalar_field(state(1),'PhiDecompositionRa')
+        phidecomR2%val=phidecomR2%val+phidecomR%val
+      end if
+      print *, 'Done!', phidecomH%val(100), phidecomC%val(100), phidecomR%val(100)
+    end if
+
+    ! call get_option('/material_phase::phase1/scalar_field::BulkComposition/prognostic/initial_condition::WholeMesh/constant', init_bulk)
   end subroutine
 
   real function get_Liquidus(Bulk_comp,phase_coef)
@@ -500,11 +559,11 @@ contains
         saturation%val(1,2, cv_nodi)=test_poro
         saturation%val(1,1, cv_nodi)=1.-test_poro
       END IF
-      if (abs(p_position%val(1,cv_nodi)+194.631)<1e-2 .and. abs(p_position%val(2,cv_nodi)-194.631)<1e-2) then 
-         print *, 'BC:', BulkComposition(cv_nodi)
-         print *, 'hmmm:', Composition%val(1,1,cv_nodi),Composition%val(1,2,cv_nodi)
-         print *, 'hmmm:', saturation%val(1,1, cv_nodi), saturation%val(1,2, cv_nodi)
-      end if 
+      ! if (abs(p_position%val(1,cv_nodi)+194.631)<1e-2 .and. abs(p_position%val(2,cv_nodi)-194.631)<1e-2) then 
+      !    print *, 'BC:', BulkComposition(cv_nodi)
+      !    print *, 'hmmm:', Composition%val(1,1,cv_nodi),Composition%val(1,2,cv_nodi)
+      !    print *, 'hmmm:', saturation%val(1,1, cv_nodi), saturation%val(1,2, cv_nodi)
+      ! end if 
     end do
   end subroutine
 
