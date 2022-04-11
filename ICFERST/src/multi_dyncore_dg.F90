@@ -183,7 +183,7 @@ contains
       integer :: u_nodi, x_nodi, u_iloc
 
       real :: theta_F ! force relaxation factor. hardwired - to be changed to varying based on oscillation detection
-      theta_F=0.2
+      theta_F=0.1
 
       allocate( sigma( Mdims%totele) )
       allocate( rhs(Mdims%ndim,Mdims%cv_nonods), cv_ug_all(Mdims%ndim,Mdims%cv_nonods) )
@@ -4447,7 +4447,8 @@ end if
         LOGICAL, PARAMETER :: solid_implicit_lump=.false.     ! lump the viscocity within the element and thus only have diagonal contributions (take abs val)
         LOGICAL, PARAMETER :: solid_visc_ele_imp_stab=.false. ! treat implicitly inside an element for the projection method (suggest =.false., but may be more atable=.true.).
         LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false.   ! treat implicitly between elements.
-        LOGICAL, PARAMETER :: solid_visc_diag_imp=.false.      ! only add diagonal viscous stabilising term
+        LOGICAL, PARAMETER :: solid_visc_diag_imp=.true.      ! only add diagonal viscous stabilising term mu/dx2
+        LOGICAL, PARAMETER :: solid_s_u = .false.             ! s/u stabilisation for solid force
         REAL :: DX2 ! element diameter dx ** 2. this is approximated with element volume, to be used in sigmagi_stab
         REAL, DIMENSION(:,:), ALLOCATABLE :: force_stab       ! this is solid_force / velocity, as a diagonal stabilisation.
                                                               ! use either this or mu/dx2 stab.
@@ -4709,7 +4710,7 @@ end if
 
 
         ! report solid iimplicitness options
-        ewrite(3, *) 'implicitness option 1 lump 2 3 dx2?:', solid_visc_ele_imp, solid_implicit_lump, solid_visc_ele_imp_stab, solid_visc_sufele_imp,solid_visc_diag_imp
+        ewrite(3, *) 'implicitness option 1 lump 2 3 dx2 s/u?:', solid_visc_ele_imp, solid_implicit_lump, solid_visc_ele_imp_stab, solid_visc_sufele_imp,solid_visc_diag_imp,solid_s_u
         !JXiang
 !        ALLOCATE(TEN_VOL_RATIO,Mdims%totele)
         ALLOCATE(UDIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
@@ -5519,21 +5520,21 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                     END DO
                 ENDIF
                 ! a diagonal viscous stabilisation term for solid implicit solver
-                ! if (solid_implicit .and. solid_visc_diag_imp .and. sigma%val(ele).GT.0.5) then 
-                !     ! APPROXIMATE element diameter ** 2. suppose it's regular triangle or tetrahedron.
-                !     if (Mdims%ndim.eq.3) then 
-                !         DX2 = (Devfuns%volume*12./sqrt(2.))**(2./3.) 
-                !     ELSEIF (Mdims%ndim.eq.2) then 
-                !         DX2 = (Devfuns%volume*4./sqrt(3.))
-                !     ENDIF
-                !     DO IDIM=1,Mdims%ndim 
-                !         DO IPHASE=1,Mdims%nphase 
-                !             I=IDIM+(IPHASE-1)*Mdims%ndim 
-                !             LOC_U_ABS_STAB( I, I, MAT_ILOC ) = LOC_U_ABS_STAB( I, I, MAT_ILOC ) + &
-                !                 UDIFFUSION_ALL( IDIM, IDIM, IPHASE, MAT_INOD) / DX2 
-                !         ENDDO
-                !     ENDDO
-                ! endif
+                if (solid_implicit .and. solid_visc_diag_imp .and. sigma%val(ele).GT.0.5) then 
+                    ! APPROXIMATE element diameter ** 2. suppose it's regular triangle or tetrahedron.
+                    if (Mdims%ndim.eq.3) then 
+                        DX2 = (Devfuns%volume*12./sqrt(2.))**(2./3.) 
+                    ELSEIF (Mdims%ndim.eq.2) then 
+                        DX2 = (Devfuns%volume*4./sqrt(3.))
+                    ENDIF
+                    DO IDIM=1,Mdims%ndim 
+                        DO IPHASE=1,Mdims%nphase 
+                            I=IDIM+(IPHASE-1)*Mdims%ndim 
+                            LOC_U_ABS_STAB( I, I, MAT_ILOC ) = LOC_U_ABS_STAB( I, I, MAT_ILOC ) + &
+                                UDIFFUSION_ALL( IDIM, IDIM, IPHASE, MAT_INOD) / DX2 
+                        ENDDO
+                    ENDDO
+                endif
                 IF ( GOT_DIFFUS ) THEN
                     LOC_UDIFFUSION( :, :, :, MAT_ILOC ) = UDIFFUSION_ALL( :, :, :, MAT_INOD )
                     LOC_UDIFFUSION_VOL( :, MAT_ILOC ) = UDIFFUSION_VOL_ALL( :, MAT_INOD )
@@ -6621,7 +6622,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     ! ewrite(3,*),ele,'|',u_inod,'|',mmat%U_RHS(:,iphase,u_inod)
                 end do
 
-                if (solid_visc_diag_imp) then 
+                if (solid_s_u) then 
                     ! if (modulo(nonlinear_its-1, 5) .eq. 0) then
                     DO U_ILOC = 1, Mdims%u_nloc
                         u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + U_ILOC )
@@ -6632,7 +6633,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                             if ( U_ALL(idim,iphase,u_inod).eq. 0.) then 
                                 force_stab(idim,u_iloc) = 0.    ! avoid dividing by 0
                             else
-                                force_stab(idim,u_iloc) = 0.*abs(solid_force%val(idim,u_inod) / U_ALL(idim,iphase,u_inod))
+                                force_stab(idim,u_iloc) = 1.*abs(solid_force%val(idim,u_inod) / U_ALL(idim,iphase,u_inod))
                                 ! if (force_stab(idim,u_iloc).le. 0.) force_stab(idim, u_iloc) = 0.   ! if stab. is negative, ignore it.
                                 if (force_stab(idim,u_iloc).gt. 1.e8) force_stab(idim, u_iloc) = 1e8    ! limiting from above.
                             endif
