@@ -674,11 +674,18 @@ end if
         integer, intent(in):: dims 
         real, dimension(:,:), intent(in):: x_all_
         real, intent(out):: volume 
-        real, dimension(4):: x,y,z
+        real, dimension(:), ALLOCATABLE:: x,y,z
 
-        x = x_all_(1,:)
-        y = x_all_(2,:)
-        z = x_all_(3,:)
+        if (dims.eq.2) then 
+            allocate(x(3),y(3))
+            x = x_all_(1,:)
+            y = x_all_(2,:)
+        elseif(dims.eq.3) then 
+            allocate(x(4),y(4),z(4))
+            x = x_all_(1,:)
+            y = x_all_(2,:)
+            z = x_all_(3,:)
+        endif
 
         if (dims.eq.2) then 
           ! triangle
@@ -4447,7 +4454,7 @@ end if
         LOGICAL, PARAMETER :: solid_implicit_lump=.false.     ! lump the viscocity within the element and thus only have diagonal contributions (take abs val)
         LOGICAL, PARAMETER :: solid_visc_ele_imp_stab=.false. ! treat implicitly inside an element for the projection method (suggest =.false., but may be more atable=.true.).
         LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false.   ! treat implicitly between elements.
-        LOGICAL, PARAMETER :: solid_visc_diag_imp=.true.      ! only add diagonal viscous stabilising term mu/dx2
+        LOGICAL, PARAMETER :: solid_visc_diag_imp=.false.      ! only add diagonal viscous stabilising term mu/dx2
         LOGICAL, PARAMETER :: solid_s_u = .false.             ! s/u stabilisation for solid force
         REAL :: DX2 ! element diameter dx ** 2. this is approximated with element volume, to be used in sigmagi_stab
         REAL, DIMENSION(:,:), ALLOCATABLE :: force_stab       ! this is solid_force / velocity, as a diagonal stabilisation.
