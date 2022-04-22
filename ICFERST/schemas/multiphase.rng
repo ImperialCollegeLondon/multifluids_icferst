@@ -1700,7 +1700,7 @@ activate this to also output the force_density</a:documentation>
         <a:documentation>Selects the quality configuration of the experiment
 For Porous media the P1/P0 stands for P0, for inertia for P1.
 
-Fast (&lt;b&gt;recommended&lt;/b&gt;) =&gt; Element pair = P0DGP1(CV). Upwinding and adaptive theta;
+Fast (&lt;b&gt;recommended&lt;/b&gt;) =&gt; Element pair = P0DGP1(CV). Upwinding and implicit euler;
 
 Balanced =&gt; Element pair = P1/P0DGP1(CV). High order advection scheme, adaptive theta and limiters;
 

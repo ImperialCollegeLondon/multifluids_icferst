@@ -491,9 +491,9 @@ contains
         if (simulation_quality>=10) then
           default_flux_scheme = 5
           default_theta  = -1.
-        else !Unlest fast method secified
+        else !Unless fast method secified
           default_flux_scheme = 1
-          default_theta  = -1.
+          default_theta  = 1.
         end if
         default_consv_vel =0.
         if (is_porous_media) default_consv_vel = 1.
