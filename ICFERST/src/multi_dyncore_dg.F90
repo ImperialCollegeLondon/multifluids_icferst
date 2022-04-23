@@ -69,7 +69,7 @@ contains
 
 
 
-     SUBROUTINE all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs, move_mesh , old_velocity)
+     SUBROUTINE all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs, move_mesh , theta_f, old_velocity)
 ! *************************************************************************************************
 ! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
 ! *************************************************************************************************
@@ -89,6 +89,7 @@ contains
       type(multi_shape_funs), intent(in) :: CV_funs                    ! control volume shape function data
       integer, intent(in) :: move_mesh  ! a flag, --1 or --2: change mesh coordinate at the end of this subroutine;
                                         ! --0: doesn't change coordinate but only calculate mesh velocity
+      real, intent(in) :: theta_f
       type( tensor_field ), intent(in), optional :: old_velocity
       ! local variables...
         Logical:: diffusion_solid_implicit
@@ -97,9 +98,9 @@ contains
         diffusion_solid_implicit=.true.
         if(diffusion_solid_implicit) then ! the 3 diffusion eqns for the grid velocities...
             if (present(old_velocity)) then 
-                call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh, old_velocity)
+                call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh,theta_f, old_velocity)
             else
-                call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh)
+                call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh,theta_f)
             endif
         else
            call one_eqn_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh)
@@ -112,7 +113,7 @@ contains
 
 
 
-     SUBROUTINE diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh , old_velocity )
+     SUBROUTINE diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh , theta_f,old_velocity )
 ! *************************************************************************************************
 ! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
 ! *************************************************************************************************
@@ -139,6 +140,7 @@ contains
       integer, intent(in) :: move_mesh  ! a flag, --1 or --2: change mesh coordinate at the end of this subroutine;
                                         ! --0: doesn't change coordinate but only calculate mesh velocity
       type( tensor_field ), intent(in), optional :: old_velocity
+      real, intent(in) :: theta_f
       ! local variables...
 
       integer :: ic, nconc, number_fields,number_fields2, ndim_nphase
@@ -182,8 +184,8 @@ contains
       type( vector_field ), pointer :: UG_ALL
       integer :: u_nodi, x_nodi, u_iloc
 
-      real :: theta_F ! force relaxation factor. hardwired - to be changed to varying based on oscillation detection
-      theta_F=0.1
+    !   real :: theta_F ! force relaxation factor. hardwired - to be changed to varying based on oscillation detection
+    !   theta_F=0.1
 
       allocate( sigma( Mdims%totele) )
       allocate( rhs(Mdims%ndim,Mdims%cv_nonods), cv_ug_all(Mdims%ndim,Mdims%cv_nonods) )
@@ -2735,7 +2737,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
         DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, &
         IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J,&
-        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, Courant_number)
+        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, Courant_number, residual_l2norm)
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -2764,6 +2766,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
         integer, intent(inout) :: pres_its_taken
         real, dimension(:), intent(inout) :: Courant_number
+        real, intent(inout) :: residual_l2norm
         ! Local Variables
         character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
         character(len=option_path_len) :: solver_option_velocity = "/solver_options/Linear_solver"
@@ -2835,7 +2838,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         logical :: LUMP_DIAG_MOM, lump_mass
 
         logical :: report_residual = .true. ! flag to report momentum residual
-        real :: residual_l2norm
+        
         !For the time being, let the user decide whether to rescale the mom matrices
         rescale_mom_matrices = have_option("/solver_options/Momemtum_matrix/rescale_mom_matrices")
         !The stokes solver method can be activated from diamond also

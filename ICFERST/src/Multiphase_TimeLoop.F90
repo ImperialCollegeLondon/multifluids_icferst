@@ -218,6 +218,10 @@ contains
                                                         ! so that we can use theta-method for solid force
         type(vector_field), pointer :: solid_force
         real, DIMENSION(:), ALLOCATABLE :: max_diff_vel, max_diff_force, min_diff_vel, min_diff_force
+        real :: theta_f=0.01
+        real, dimension(:,:), ALLOCATABLE :: max_v_diff
+        real :: residual_l2norm ! momentum residual l2 norm
+        real, dimension(:):: residual_stored(2) ! store 2 steps of momentum residuals for adjusting relaxation
         integer :: move_mesh ! a flag to determine if move mesh or not. --0: doesn't move; --1: move mesh according to current velocity
                             ! --2: move mesh according to current and previous non-linear step velocity (relax...)
         Logical:: solid_implicit, diffusion_solid_implicit    !JXiang
@@ -692,7 +696,7 @@ contains
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
                         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        calculate_mass_delta, outfluxes, pres_its_taken, its, Courant_number)
+                        calculate_mass_delta, outfluxes, pres_its_taken, its, Courant_number, residual_l2norm)
                 end if Conditional_ForceBalanceEquation
                 !JXiang
                 if(solid_implicit) then
@@ -709,7 +713,7 @@ contains
                         move_mesh = 1
                     endif
                     if(diffusion_solid_implicit) then
-                        call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh , old_velocity)
+                        call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh , theta_f, old_velocity)
                     END If
                 END If
                 if (solid_implicit) then 
@@ -738,10 +742,48 @@ contains
                     enddo
                     call deallocate(old_velocity)
                     call deallocate(old_solid_force_diagonostic)
+
+                    if (its.eq.1) then 
+                        residual_stored(:) = residual_l2norm
+                    else
+                        residual_stored(1) = residual_stored(2)
+                        residual_stored(2) = residual_l2norm
+                    endif
+                    ewrite(-1,*) 'timestep, acctim, its ', timestep, acctim, its, '|'
+                    ewrite(-1,*) 'max_vel_diff | max_force_diff', max_diff_vel, '|', max_diff_force
+                    ewrite(-1,*) 'min_vel_diff | min_force_diff', min_diff_vel, '|', min_diff_force
                 endif
-                ewrite(-1,*) 'timestep, acctim, its ', timestep, acctim, its, '|'
-                ewrite(-1,*) 'max_vel_diff | max_force_diff', max_diff_vel, '|', max_diff_force
-                ewrite(-1,*) 'min_vel_diff | min_force_diff', min_diff_vel, '|', min_diff_force
+
+                if (.not. allocated(max_v_diff)) allocate(max_v_diff(2,Mdims%ndim))
+                if (its.eq.1) then 
+                    theta_f = 0.01
+                endif
+
+                if (its.gt.2) then 
+                    max_v_diff(1,:) = max_v_diff(2,:)
+                    do i = 1,Mdims%ndim
+                        max_v_diff(2,i) = max(abs(max_diff_vel(i)), abs(min_diff_vel(i)))
+                    enddo
+                    ! let's use y-direction to detect oscillation 
+                    i = 2
+                    
+                        if ( ( max_v_diff(2,i) .gt. max_v_diff(1,i) ) .and. (max_v_diff(2,i).gt.1.e-4) ) then
+                        ! if ( residual_stored(2) .gt. residual_stored(1) ) then 
+                            theta_f = theta_f/2. 
+                            theta_f = max(theta_f, 5e-3)
+                        elseif (  ( max_v_diff(2,i) .lt. 1.)  ) then ! we don't want to increase it too much when residaul is yet large
+                            ! ( max_v_diff(2,i) .lt. max_v_diff(1,i) ) .and.
+                        ! else 
+                            theta_f = theta_f*1.1 
+                            theta_f = min(theta_f, 0.5)
+                        ! elseif(  ( max_v_diff(2,i) .lt. 1.) .and. (residual_stored(2) .gt. residual_stored(1)) ) then 
+                        !     theta_f = theta_f/1.1
+                        !     theta_f = max(theta_f, 5e-3)
+                        endif
+                    
+                    ewrite(-1,*), 'theta_f now is ', theta_f
+                endif
+
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
                 !#=================================================================================================================
@@ -911,6 +953,15 @@ contains
 
                 !Flag the matrices as already calculated (only the storable ones
                 Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI
+
+                ! checking velocity, solid force before exiting non-linear loop
+                if (solid_implicit) then 
+                    ! ExitNonLinearLoop = ExitNonLinearLoop .and. (.not. any(max_diff_vel.gt.1e-5) ) &
+                    !  .and. (.not. any(min_diff_vel.lt.-1e-5) ) &
+                    !  .and. (.not. any(max_diff_force.gt.1e-4) ) &
+                    !  .and. (.not. any(min_diff_force.lt.-1e-4) )
+                    ExitNonLinearLoop = ExitNonLinearLoop .and. (residual_l2norm .lt.1e-4)
+                endif
 
                 if (ExitNonLinearLoop) then
                     if (adapt_mesh_in_FPI) then
