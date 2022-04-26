@@ -147,11 +147,13 @@ contains
       !If we are going to calculate the outfluxes (this is done when GETCT=.true.)
       compute_outfluxes = GETCT
       IF ( compute_outfluxes ) THEN
-        allocate(outfluxes_fields(size(outfluxes%field_names)))
-        !Extract fields to be used for the outfluxes section
-        do k = 1, size(outfluxes%field_names) 
-          outfluxes_fields(k)%ptr =>extract_tensor_field( packed_state, "Packed"//outfluxes%field_names(k) )
-        end do
+        if (allocated(outfluxes%area_outlet)) then
+            allocate(outfluxes_fields(size(outfluxes%field_names)))
+            !Extract fields to be used for the outfluxes section
+            do k = 1, size(outfluxes%field_names) 
+            outfluxes_fields(k)%ptr =>extract_tensor_field( packed_state, "Packed"//outfluxes%field_names(k) )
+            end do
+        end if
       end if
 
 
