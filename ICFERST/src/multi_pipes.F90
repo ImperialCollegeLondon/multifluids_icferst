@@ -144,7 +144,6 @@ contains
 
       conservative_advection = abs(cv_beta) > 0.99
 
-
       !If we are going to calculate the outfluxes (this is done when GETCT=.true.)
       compute_outfluxes = GETCT
       IF ( compute_outfluxes ) THEN
@@ -153,17 +152,6 @@ contains
         do k = 1, size(outfluxes%field_names) 
           outfluxes_fields(k)%ptr =>extract_tensor_field( packed_state, "Packed"//outfluxes%field_names(k) )
         end do
-        !We may need to retrieve some extra fields
-        ! if (has_temperature) then
-        !     temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
-        !     if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = 0
-        ! end if
-        ! if (has_concentration) then
-        !     Concentration_field => extract_tensor_field( packed_state, "PackedConcentration" )
-        !     if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
-        ! end if
-
-
       end if
 
 
