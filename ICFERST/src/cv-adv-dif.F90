@@ -573,18 +573,21 @@ contains
               !Allocate array to pass to store mass going through the boundaries
               if (allocated( outfluxes%outlet_id )) then
                   allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
-              else
+                else
                   allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:1)); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
               end if
               allocate ( calculate_mass_internal(final_phase));calculate_mass_internal(:) = 0.0  ! calculate_internal_mass subroutine
               allocate(outfluxes_fields(size(outfluxes%field_names)))
-              !Initialize to zero the area of the outlet surfaces
-              outfluxes%area_outlet = 0.
-              !Extract fields to be used for the outfluxes section
-              do k = 1, size(outfluxes%field_names)
-                outfluxes_fields(k)%ptr =>extract_tensor_field( packed_state, "Packed"//outfluxes%field_names(k) )
-                if (outfluxes%calculate_flux)outfluxes%totout(k, :,:) = 0.0
-              end do
+              !Use this as flag to know whether we are outputting the csv file or not here
+              if (allocated(outfluxes%area_outlet)) then
+                !Initialize to zero the area of the outlet surfaces
+                 outfluxes%area_outlet = 0.
+                !Extract fields to be used for the outfluxes section
+                do k = 1, size(outfluxes%field_names)
+                    outfluxes_fields(k)%ptr =>extract_tensor_field( packed_state, "Packed"//outfluxes%field_names(k) )
+                    if (outfluxes%calculate_flux)outfluxes%totout(k, :,:) = 0.0
+                end do
+              end if
           end if
 
           !! Get boundary conditions from field
