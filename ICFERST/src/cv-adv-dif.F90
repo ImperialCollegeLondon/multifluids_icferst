@@ -577,15 +577,15 @@ contains
                   allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:1)); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
               end if
               allocate ( calculate_mass_internal(final_phase));calculate_mass_internal(:) = 0.0  ! calculate_internal_mass subroutine
-              allocate(outfluxes_fields(size(outfluxes%field_names)))
+              allocate(outfluxes_fields(size(outfluxes%field_names,2)))
               !Use this as flag to know whether we are outputting the csv file or not here
               if (allocated(outfluxes%area_outlet)) then
                 !Initialize to zero the area of the outlet surfaces
-                 outfluxes%area_outlet = 0.
+                 outfluxes%area_outlet = 0.; outfluxes%totout = 0.
                 !Extract fields to be used for the outfluxes section
-                do k = 1, size(outfluxes%field_names)
-                    outfluxes_fields(k)%ptr =>extract_tensor_field( packed_state, "Packed"//outfluxes%field_names(k) )
-                    if (outfluxes%calculate_flux)outfluxes%totout(k, :,:) = 0.0
+                do k = 1, size(outfluxes%field_names,2)!We use the first phase as it is the one that must contain all the prognostic fields
+                    outfluxes_fields(k)%ptr =>extract_tensor_field( packed_state, "Packed"//outfluxes%field_names(1,k) )
+                    if (outfluxes%calculate_flux)outfluxes%avgout(k, :,:) = 0.0
                 end do
               end if
           end if
@@ -3602,7 +3602,7 @@ end if
                         !Retrieve only the values of bcs_outfluxes we are interested in
                         do k = 1, size(outfluxes%outlet_id)
                             do iphase = 1, Mdims%nphase
-                                outfluxes%totout(1, iphase, k) = sum(bcs_outfluxes( iphase, :, k))
+                                outfluxes%totout(iphase, k) = sum(bcs_outfluxes( iphase, :, k))
                             end do
                         end do
                         ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
@@ -3610,9 +3610,7 @@ end if
                             do k = 1,size(outfluxes%outlet_id)
                                 ! Ensure all processors have the correct value of totout for parallel runs
                                 do iphase = 1, Mdims%nphase
-                                    call allsum(outfluxes%totout(1, iphase, k))
-                                    if (has_temperature) call allmax(outfluxes%totout(2, iphase, k))!Just interested in max temp
-                                    if (has_concentration) call allsum(outfluxes%totout(3, iphase, k))
+                                    call allsum(outfluxes%totout(iphase, k))
                                 end do
                             end do
                         end if

@@ -148,10 +148,10 @@ contains
       compute_outfluxes = GETCT
       IF ( compute_outfluxes ) THEN
         if (allocated(outfluxes%area_outlet)) then
-            allocate(outfluxes_fields(size(outfluxes%field_names)))
+            allocate(outfluxes_fields(size(outfluxes%field_names,2)))
             !Extract fields to be used for the outfluxes section
-            do k = 1, size(outfluxes%field_names) 
-            outfluxes_fields(k)%ptr =>extract_tensor_field( packed_state, "Packed"//outfluxes%field_names(k) )
+            do k = 1, size(outfluxes%field_names,2) !We use the first phase as it must contain all the fields
+                outfluxes_fields(k)%ptr =>extract_tensor_field( packed_state, "Packed"//outfluxes%field_names(1,k) )
             end do
         end if
       end if

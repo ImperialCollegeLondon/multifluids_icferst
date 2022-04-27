@@ -3598,15 +3598,15 @@ end subroutine get_DarcyVelocity
         where (outfluxes%totout /= outfluxes%totout)
             outfluxes%totout = 0.!If nan then make it zero
         end where
-        outfluxes%intflux = outfluxes%intflux + outfluxes%totout(1, :, :)*dt
+        outfluxes%intflux = outfluxes%intflux + outfluxes%totout(:, :)*dt
 
         !Ensure consistency for averaged fields in parallel, i.e. not saturation
         if (isparallel()) then 
             do ioutlet = 1, size(outfluxes%outlet_id) 
                 do iphase = 1, size(outfluxes%intflux,1)
                     call allsum(outfluxes%area_outlet(iphase, ioutlet))
-                    do ifields = 2, size(outfluxes%field_names)
-                        call allsum(outfluxes%totout(ifields, iphase, ioutlet))
+                    do ifields = 1, size(outfluxes%field_names,2)
+                        call allsum(outfluxes%avgout(ifields+1, iphase, ioutlet))
                     end do 
                 end do
             end do
@@ -3628,27 +3628,13 @@ end subroutine get_DarcyVelocity
                 enddo
 
               !Maxval to start with
-                do ifields = 2, size(outfluxes%field_names)
-                    do iphase = 1, size(outfluxes%intflux,1)
+                do ifields = 1, size(outfluxes%field_names,2)
+                    do iphase = 1, size(outfluxes%field_names,1)
                         write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),&
-                                                                                  "- Average "//trim(outfluxes%field_names(ifields))
+                                                                                  "- Averaged "//trim(outfluxes%field_names(iphase, ifields))
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     end do
                 end do
-
-                ! if (has_temperature) then
-                !     do iphase = 1, size(outfluxes%intflux,1)
-                !         write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Maximum temperature"
-                !         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                !     enddo
-                ! end if
-                ! if (has_concentration) then
-                !     do iphase = 1, size(outfluxes%intflux,1)
-                !         write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Maximum Concentration"
-                !         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                !     enddo
-                ! end if
-
             end do
              ! Write out the line
             write(89,*), trim(whole_line)
@@ -3658,7 +3644,7 @@ end subroutine get_DarcyVelocity
         whole_line =  trim(numbers)
         do ioutlet =1, size(outfluxes%intflux,2)
             do iphase = 1, size(outfluxes%intflux,1)
-                write(fluxstring(iphase),'(E17.11)') outfluxes%totout(1, iphase,ioutlet)
+                write(fluxstring(iphase),'(E17.11)') outfluxes%totout(iphase,ioutlet)
                 whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
             enddo
             do iphase = 1, size(outfluxes%intflux,1)
@@ -3666,9 +3652,9 @@ end subroutine get_DarcyVelocity
                 whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
             enddo
             !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
-            do ifields = 2, size(outfluxes%field_names)
+            do ifields = 1, size(outfluxes%field_names,2)
                 do iphase = 1, size(outfluxes%intflux,1) !Here we output the average value over the surface
-                    write(tempstring(iphase),'(E17.11)') outfluxes%totout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
+                    write(tempstring(iphase),'(E17.11)') outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
                     whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                 end do
             end do
@@ -3716,9 +3702,9 @@ end subroutine get_DarcyVelocity
                 Vol_flux(iphase)
               end do
               !Average value over the surface
-              do ifields = 2, size(outfluxes_fields)
+              do ifields = 1, size(outfluxes_fields)
                 do iphase = start_phase, end_phase
-                    outfluxes%totout(ifields, iphase, iofluxes) = outfluxes%totout(ifields, iphase, iofluxes) + &
+                    outfluxes%avgout(ifields, iphase, iofluxes) = outfluxes%avgout(ifields, iphase, iofluxes) + &
                                     outfluxes_fields(ifields)%ptr%val(1,iphase,CV_NODI) * suf_area
                 end do
               end do
