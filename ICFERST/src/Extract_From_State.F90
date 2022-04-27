@@ -3606,7 +3606,7 @@ end subroutine get_DarcyVelocity
                 do iphase = 1, size(outfluxes%intflux,1)
                     call allsum(outfluxes%area_outlet(iphase, ioutlet))
                     do ifields = 1, size(outfluxes%field_names,2)
-                        call allsum(outfluxes%avgout(ifields+1, iphase, ioutlet))
+                        call allsum(outfluxes%avgout(ifields, iphase, ioutlet))
                     end do 
                 end do
             end do
@@ -3627,7 +3627,7 @@ end subroutine get_DarcyVelocity
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
 
-              !Maxval to start with
+              !Averaged value over the surface
                 do ifields = 1, size(outfluxes%field_names,2)
                     do iphase = 1, size(outfluxes%field_names,1)
                         write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),&
