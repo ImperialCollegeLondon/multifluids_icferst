@@ -423,7 +423,8 @@ contains
           real :: theta_cty_solid, VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
           type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
           type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
-          type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field, concentration_field
+          type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield!, temp_field, concentration_field
+          type (tensor_field_pointer), allocatable, DIMENSION(:) :: outfluxes_fields
 
           ! variables for pipes (that are needed in cv_assemb as well), allocatable because they are big and barely used
           Real, dimension(:), pointer :: MASS_CV
@@ -572,19 +573,20 @@ contains
               !Allocate array to pass to store mass going through the boundaries
               if (allocated( outfluxes%outlet_id )) then
                   allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
-              else
+                else
                   allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:1)); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
               end if
-
               allocate ( calculate_mass_internal(final_phase));calculate_mass_internal(:) = 0.0  ! calculate_internal_mass subroutine
-              !Extract temperature for outfluxes if required
-              if (has_temperature) then
-                  temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
-                  if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = 0.0
-              end if
-              if (has_concentration) then
-                  concentration_field => extract_tensor_field( packed_state, "PackedConcentration" )
-                  if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
+              allocate(outfluxes_fields(size(outfluxes%field_names,2)))
+              !Use this as flag to know whether we are outputting the csv file or not here
+              if (allocated(outfluxes%area_outlet)) then
+                !Initialize to zero the area of the outlet surfaces
+                 outfluxes%area_outlet = 0.; outfluxes%totout = 0.
+                !Extract fields to be used for the outfluxes section
+                do k = 1, size(outfluxes%field_names,2)!We use the first phase as it is the one that must contain all the prognostic fields
+                    outfluxes_fields(k)%ptr =>extract_tensor_field( packed_state, "Packed"//outfluxes%field_names(1,k) )
+                    if (outfluxes%calculate_flux)outfluxes%avgout(k, :,:) = 0.0
+                end do
               end if
           end if
 
@@ -1959,9 +1961,9 @@ contains
 
                             !Finally store fluxes across all the boundaries either for mass conservation check or mass outflux
                             if (compute_outfluxes .and. on_domain_boundary) then
-                              call update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi,  &
+                              call update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi,  SdevFuns%DETWEI(gi), &
                                 ndotqnew * SdevFuns%DETWEI(gi) * LIMT, ndotqnew * SdevFuns%DETWEI(gi) * LIMDT, & !Vol_flux and Mass_flux
-                                old_tracer, temp_field, concentration_field, 1, final_phase )
+                                old_tracer, outfluxes_fields, 1, final_phase )
                             end if
 
                           endif ! if(CV_NODJ.ge.CV_NODI) then
@@ -3600,7 +3602,7 @@ end if
                         !Retrieve only the values of bcs_outfluxes we are interested in
                         do k = 1, size(outfluxes%outlet_id)
                             do iphase = 1, Mdims%nphase
-                                outfluxes%totout(1, iphase, k) = sum(bcs_outfluxes( iphase, :, k))
+                                outfluxes%totout(iphase, k) = sum(bcs_outfluxes( iphase, :, k))
                             end do
                         end do
                         ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
@@ -3608,9 +3610,7 @@ end if
                             do k = 1,size(outfluxes%outlet_id)
                                 ! Ensure all processors have the correct value of totout for parallel runs
                                 do iphase = 1, Mdims%nphase
-                                    call allsum(outfluxes%totout(1, iphase, k))
-                                    if (has_temperature) call allmax(outfluxes%totout(2, iphase, k))!Just interested in max temp
-                                    if (has_concentration) call allsum(outfluxes%totout(3, iphase, k))
+                                    call allsum(outfluxes%totout(iphase, k))
                                 end do
                             end do
                         end if

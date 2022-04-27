@@ -3577,7 +3577,7 @@ end subroutine get_DarcyVelocity
         integer :: counter
         character (len=1000000) :: whole_line
         character (len=1000000) :: numbers
-        integer :: iphase
+        integer :: iphase, ifields
         ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
         character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: fluxstring
         character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: intfluxstring
@@ -3598,7 +3598,19 @@ end subroutine get_DarcyVelocity
         where (outfluxes%totout /= outfluxes%totout)
             outfluxes%totout = 0.!If nan then make it zero
         end where
-        outfluxes%intflux = outfluxes%intflux + outfluxes%totout(1, :, :)*dt
+        outfluxes%intflux = outfluxes%intflux + outfluxes%totout(:, :)*dt
+
+        !Ensure consistency for averaged fields in parallel, i.e. not saturation
+        if (isparallel()) then 
+            do ioutlet = 1, size(outfluxes%outlet_id) 
+                do iphase = 1, size(outfluxes%intflux,1)
+                    call allsum(outfluxes%area_outlet(iphase, ioutlet))
+                    do ifields = 1, size(outfluxes%field_names,2)
+                        call allsum(outfluxes%avgout(ifields+1, iphase, ioutlet))
+                    end do 
+                end do
+            end do
+        end if
 
         ! Write column headings to file
         counter = 0
@@ -3614,18 +3626,15 @@ end subroutine get_DarcyVelocity
                     write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Cumulative production"
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
-                if (has_temperature) then
-                    do iphase = 1, size(outfluxes%intflux,1)
-                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Maximum temperature"
+
+              !Maxval to start with
+                do ifields = 1, size(outfluxes%field_names,2)
+                    do iphase = 1, size(outfluxes%field_names,1)
+                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),&
+                                                                                  "- Averaged "//trim(outfluxes%field_names(iphase, ifields))
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                    enddo
-                end if
-                if (has_concentration) then
-                    do iphase = 1, size(outfluxes%intflux,1)
-                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Maximum Concentration"
-                        whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                    enddo
-                end if
+                    end do
+                end do
             end do
              ! Write out the line
             write(89,*), trim(whole_line)
@@ -3635,25 +3644,20 @@ end subroutine get_DarcyVelocity
         whole_line =  trim(numbers)
         do ioutlet =1, size(outfluxes%intflux,2)
             do iphase = 1, size(outfluxes%intflux,1)
-                write(fluxstring(iphase),'(E17.11)') outfluxes%totout(1, iphase,ioutlet)
+                write(fluxstring(iphase),'(E17.11)') outfluxes%totout(iphase,ioutlet)
                 whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
             enddo
             do iphase = 1, size(outfluxes%intflux,1)
                 write(intfluxstring(iphase),'(E17.11)') outfluxes%intflux(iphase,ioutlet)
                 whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
             enddo
-            if (has_temperature) then
-                do iphase = 1, size(outfluxes%intflux,1)
-                    write(tempstring(iphase),'(E17.11)') outfluxes%totout(2, iphase,ioutlet)
+            !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
+            do ifields = 1, size(outfluxes%field_names,2)
+                do iphase = 1, size(outfluxes%intflux,1) !Here we output the average value over the surface
+                    write(tempstring(iphase),'(E17.11)') outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
                     whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                enddo
-            end if
-            if (has_concentration) then
-                do iphase = 1, size(outfluxes%intflux,1)
-                    write(tempstring(iphase),'(E17.11)') outfluxes%totout(3, iphase,ioutlet)
-                    whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                enddo
-            end if
+                end do
+            end do
         end do
         ! Write out the line
         write(89,*), trim(whole_line)
@@ -3664,15 +3668,17 @@ end subroutine get_DarcyVelocity
     !>This subroutine should only be called if SELE is on the BOUNDARY
     !>Example of Mass_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
     !>Example of Vol_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
-    subroutine update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi, Vol_flux, Mass_flux, tracer, temp_field, concentration_field, start_phase, end_phase )
+    subroutine update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi, suf_area, Vol_flux, Mass_flux, tracer, outfluxes_fields, start_phase, end_phase )
       implicit none
       integer, intent(in) :: sele, cv_nodi, start_phase, end_phase
       type (multi_outfluxes), intent(inout) :: outfluxes
       real, dimension(:, :,0:), intent(inout) :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
-      type (tensor_field), pointer, intent(in) :: tracer, temp_field, concentration_field
+      type (tensor_field), pointer, intent(in) :: tracer
+      type (tensor_field_pointer), DIMENSION(:) :: outfluxes_fields
       real, dimension(:), intent(in) :: Vol_flux, Mass_flux
+      real, intent(in) :: suf_area
       !local variables
-      integer :: iphase, iofluxes
+      integer :: iphase, iofluxes, ifields
 
       if (surface_element_owned(tracer, sele)) then
         !Store total outflux; !velocity * area * density * saturation
@@ -3691,26 +3697,17 @@ end subroutine get_DarcyVelocity
           do iofluxes = 1, size(outfluxes%outlet_id)!here below we just need a saturation
             if (integrate_over_surface_element(tracer, sele, (/outfluxes%outlet_id(iofluxes)/))) then
               do iphase = start_phase, end_phase
+                outfluxes%area_outlet(iphase, iofluxes) = outfluxes%area_outlet(iphase, iofluxes) + suf_area
                 bcs_outfluxes(iphase, CV_NODI, iofluxes) =  bcs_outfluxes(iphase, CV_NODI, iofluxes) + &
                 Vol_flux(iphase)
               end do
-              if (has_temperature) then!Instead of max tem, maybe energy produced... Mass_FLUX*Cp*Temp
-              !   do iphase = start_phase,end_phase
-              !     outfluxes%totout(2, iphase, iofluxes) =  outfluxes%totout(2, iphase, iofluxes) + &
-              !      Mass_flux(iphase) *4185. * temp_field%val(1,iphase,CV_NODI)
-              !   end do
+              !Average value over the surface
+              do ifields = 1, size(outfluxes_fields)
                 do iphase = start_phase, end_phase
-                  outfluxes%totout(2, iphase, iofluxes) =  max(  temp_field%val(1,iphase,CV_NODI),&
-                  outfluxes%totout(2, iphase, iofluxes)   )
+                    outfluxes%avgout(ifields, iphase, iofluxes) = outfluxes%avgout(ifields, iphase, iofluxes) + &
+                                    outfluxes_fields(ifields)%ptr%val(1,iphase,CV_NODI) * suf_area
                 end do
-              end if
-              !Maybe rather than max_sat would be better Mass of C? Mass_flux*Concentration
-              if (has_concentration) then
-                do iphase = start_phase, end_phase
-                  outfluxes%totout(3, iphase, iofluxes) =  max(  concentration_field%val(1,iphase,CV_NODI),&
-                  outfluxes%totout(3, iphase, iofluxes)   )
-                end do
-              end if
+              end do
             end if
           end do
         end if
