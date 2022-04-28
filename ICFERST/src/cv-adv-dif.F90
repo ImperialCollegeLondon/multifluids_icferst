@@ -567,7 +567,7 @@ contains
                   call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
               ENDIF
           ENDIF
-          compute_outfluxes = is_porous_media .and. present(calculate_mass_delta) .and. present(outfluxes) .and. GETCT
+          compute_outfluxes = present(calculate_mass_delta) .and. present(outfluxes) .and. GETCT
           if (compute_outfluxes) then
               ! Initialise the calculate_mass variables
               !Allocate array to pass to store mass going through the boundaries
