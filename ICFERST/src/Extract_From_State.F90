@@ -3606,7 +3606,7 @@ end subroutine get_DarcyVelocity
                 do iphase = 1, size(outfluxes%intflux,1)
                     call allsum(outfluxes%area_outlet(iphase, ioutlet))
                     do ifields = 1, size(outfluxes%field_names,2)
-                        call allsum(outfluxes%avgout(ifields+1, iphase, ioutlet))
+                        call allsum(outfluxes%avgout(ifields, iphase, ioutlet))
                     end do 
                 end do
             end do
@@ -3615,7 +3615,11 @@ end subroutine get_DarcyVelocity
         ! Write column headings to file
         counter = 0
         if(itime.eq.1) then
-            write(whole_line,*) "Current Time (s)" // "," // "Current Time (years)" // "," // "Pore Volume"
+            if (is_porous_media) then 
+                write(whole_line,*) "Current Time (s)" // "," // "Current Time (years)" // "," // "Pore Volume"
+            else 
+                write(whole_line,*) "Current Time (s)" // "," // "Current Time (minutes)" // "," // "Volume"
+            end if
             whole_line = trim(whole_line)
             do ioutlet =1, size(outfluxes%intflux,2)
                 do iphase = 1, size(outfluxes%intflux,1)
@@ -3627,7 +3631,7 @@ end subroutine get_DarcyVelocity
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
 
-              !Maxval to start with
+              !Averaged value over the surface
                 do ifields = 1, size(outfluxes%field_names,2)
                     do iphase = 1, size(outfluxes%field_names,1)
                         write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),&
@@ -3640,7 +3644,12 @@ end subroutine get_DarcyVelocity
             write(89,*), trim(whole_line)
         endif
         ! Write the actual numbers to the file now
-        write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
+        if (is_porous_media) then 
+            write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
+        else 
+            write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(60.) , ",",  outfluxes%porevolume
+        end if
+        
         whole_line =  trim(numbers)
         do ioutlet =1, size(outfluxes%intflux,2)
             do iphase = 1, size(outfluxes%intflux,1)
@@ -3679,7 +3688,6 @@ end subroutine get_DarcyVelocity
       real, intent(in) :: suf_area
       !local variables
       integer :: iphase, iofluxes, ifields
-
       if (surface_element_owned(tracer, sele)) then
         !Store total outflux; !velocity * area * density * saturation
         if (has_boussinesq_aprox) then

@@ -1433,7 +1433,7 @@ contains
                 option_path = "/material_phase["// int2str( iphase - 1)//"]/scalar_field["// int2str( k - 1)//"]/prognostic"
                 if (have_option(trim(option_path))) then!Only for prognostic fields
                     call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",Field_Name)
-                    if (trim(Field_Name)/="Pressure" ) then !.and. trim(Field_Name)/="Density" .and. trim(Field_Name)/="PhaseVolumeFraction"
+                    if (trim(Field_Name)/="Pressure" .and. trim(Field_Name)/="HydrostaticPressure") then !.and. trim(Field_Name)/="Density" .and. trim(Field_Name)/="PhaseVolumeFraction"
                         nfields = nfields + 1
                     end if
                 end if
@@ -1453,7 +1453,7 @@ contains
                 option_path = "/material_phase["// int2str( iphase - 1)//"]/scalar_field["// int2str( k - 1)//"]/prognostic"
                 if (have_option(trim(option_path))) then!Only for prognostic fields
                     call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",Field_Name)
-                    if (trim(Field_Name)/="Pressure") then                     
+                    if (trim(Field_Name)/="Pressure".and. trim(Field_Name)/="HydrostaticPressure") then                     
                         nfields = nfields + 1
                         outfluxes%field_names(iphase, nfields) = Field_Name
                     end if
