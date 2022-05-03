@@ -218,7 +218,8 @@ contains
                                                         ! so that we can use theta-method for solid force
         type(vector_field), pointer :: solid_force
         real, DIMENSION(:), ALLOCATABLE :: max_diff_vel, max_diff_force, min_diff_vel, min_diff_force
-        real :: theta_f=0.01
+        real :: theta_f=1.
+        logical :: relax_f = .true.
         real, dimension(:,:), ALLOCATABLE :: max_v_diff
         real :: residual_l2norm ! momentum residual l2 norm
         real, dimension(:):: residual_stored(2) ! store 2 steps of momentum residuals for adjusting relaxation
@@ -707,9 +708,13 @@ contains
                     ! we are going to use velocity at this non-linear step and 
                     ! 1 previous non-linear step as well to advance the mesh velocity
                     ! (and mesh coordinate, and eventually solid force)
-                    if(its.gt.1) then 
-                        move_mesh = 2
-                    else
+                    if (relax_f) then 
+                        if(its.gt.1) then 
+                            move_mesh = 2
+                        else
+                            move_mesh = 1
+                        endif
+                    else 
                         move_mesh = 1
                     endif
                     if(diffusion_solid_implicit) then
@@ -752,37 +757,39 @@ contains
                     ewrite(-1,*) 'timestep, acctim, its ', timestep, acctim, its, '|'
                     ewrite(-1,*) 'max_vel_diff | max_force_diff', max_diff_vel, '|', max_diff_force
                     ewrite(-1,*) 'min_vel_diff | min_force_diff', min_diff_vel, '|', min_diff_force
-                endif
+                
 
-                if (.not. allocated(max_v_diff)) allocate(max_v_diff(2,Mdims%ndim))
-                if (its.eq.1) then 
-                    theta_f = 0.01
-                endif
-
-                if (its.gt.2) then 
-                    max_v_diff(1,:) = max_v_diff(2,:)
-                    do i = 1,Mdims%ndim
-                        max_v_diff(2,i) = max(abs(max_diff_vel(i)), abs(min_diff_vel(i)))
-                    enddo
-                    ! let's use y-direction to detect oscillation 
-                    i = 2
-                    
-                        if ( ( max_v_diff(2,i) .gt. max_v_diff(1,i) ) .and. (max_v_diff(2,i).gt.1.e-4) ) then
-                        ! if ( residual_stored(2) .gt. residual_stored(1) ) then 
-                            theta_f = theta_f/2. 
-                            theta_f = max(theta_f, 5e-3)
-                        elseif (  ( max_v_diff(2,i) .lt. 1.)  ) then ! we don't want to increase it too much when residaul is yet large
-                            ! ( max_v_diff(2,i) .lt. max_v_diff(1,i) ) .and.
-                        ! else 
-                            theta_f = theta_f*1.1 
-                            theta_f = min(theta_f, 0.5)
-                        ! elseif(  ( max_v_diff(2,i) .lt. 1.) .and. (residual_stored(2) .gt. residual_stored(1)) ) then 
-                        !     theta_f = theta_f/1.1
-                        !     theta_f = max(theta_f, 5e-3)
+                    if (.not. allocated(max_v_diff)) allocate(max_v_diff(2,Mdims%ndim))
+                    if(relax_f) then 
+                        if (its.eq.1) then 
+                            theta_f = 0.01
                         endif
-                    
+
+                        if (its.gt.2) then 
+                            max_v_diff(1,:) = max_v_diff(2,:)
+                            do i = 1,Mdims%ndim
+                                max_v_diff(2,i) = max(abs(max_diff_vel(i)), abs(min_diff_vel(i)))
+                            enddo
+                            ! let's use y-direction to detect oscillation 
+                            i = 2
+                            
+                            if ( ( max_v_diff(2,i) .gt. max_v_diff(1,i) ) .and. (max_v_diff(2,i).gt.1.e-4) ) then
+                            ! if ( residual_stored(2) .gt. residual_stored(1) ) then 
+                                theta_f = theta_f/2. 
+                                theta_f = max(theta_f, 5e-3)
+                            elseif (  ( max_v_diff(2,i) .lt. 1.)  ) then ! we don't want to increase it too much when residaul is yet large
+                                ! ( max_v_diff(2,i) .lt. max_v_diff(1,i) ) .and.
+                            ! else 
+                                theta_f = theta_f*1.1 
+                                theta_f = min(theta_f, 0.5)
+                            ! elseif(  ( max_v_diff(2,i) .lt. 1.) .and. (residual_stored(2) .gt. residual_stored(1)) ) then 
+                            !     theta_f = theta_f/1.1
+                            !     theta_f = max(theta_f, 5e-3)
+                            endif
+                        endif
+                    endif ! relax_f 
                     ewrite(-1,*), 'theta_f now is ', theta_f
-                endif
+                endif ! solid_implicit
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
