@@ -120,7 +120,7 @@ contains
     real,  PARAMETER :: phi_min=1e-8, phi_fluid=0.98
     real :: scaling ! a temporal fix for the scaling difference between the viscosity in ICFERST and the models
 
-    real :: suspension_scale=10.0   !HH
+    real :: suspension_scale=20.0   !HH
     scaling=1.0    ! the viscosity difference between ICFERST and the model
     N = size(series)
     s= -2 !> transition coefficient of the linking function
@@ -182,7 +182,7 @@ contains
     ! call get_option('/material_phase::phase1/scalar_field::BulkComposition/prognostic/initial_condition::WholeMesh/constant', init_bulk)
     
     if (present_and_true(initilization)) then 
-      Bcomposition%val=0.08
+      Bcomposition%val=0.2
     else
       Bcomposition%val = 0.
       do cv_inod = 1, Mdims%cv_nonods
@@ -207,7 +207,7 @@ contains
     !Local variables
     type( tensor_field), pointer :: Composition, old_Composition, saturation, old_saturation
     integer :: iphase, cv_inod
-    real :: init_bulk
+    real :: init_bulk, weight
     type( scalar_field ), pointer :: Bcomposition, phidecomH, phidecomC,phidecomR,  phidecomH2, phidecomC2,phidecomR2
     ! type( vector_field ) :: rhs_p
     ! REAL, DIMENSION( :, :, : ), allocatable :: scaled_velocity
@@ -225,12 +225,15 @@ contains
       phidecomC=>extract_scalar_field(state(1),'PhiDecompositionC')
       if (have_option('/material_phase::phase1/scalar_field::PhiDecompositionCa')) then
         phidecomC2=>extract_scalar_field(state(1),'PhiDecompositionCa')
-        phidecomC2%val=phidecomC2%val+phidecomC2%val
+        phidecomC%val=old_saturation%val(1,1,:)-phidecomC%val
+        phidecomC2%val=phidecomC2%val+phidecomC%val
       end if
 
       if (have_option('/material_phase::phase1/scalar_field::PhiDecompositionH')) then 
         phidecomH=>extract_scalar_field(state(1),'PhiDecompositionH')
-        phidecomH%val=1./(Composition%val(1,2,:)-Composition%val(1,1,:))*(-(Composition%val(1,1,:)-old_Composition%val(1,1,:))*saturation%val(1,1,:)/dt- (Composition%val(1,2,:)-old_Composition%val(1,2,:))*saturation%val(1,2,:)/dt)
+        weight=0.5
+        phidecomH%val=1./((Composition%val(1,2,:)-Composition%val(1,1,:))*weight+(old_Composition%val(1,2,:)-old_Composition%val(1,1,:))*(1-weight))* &
+        (-(Composition%val(1,1,:)-old_Composition%val(1,1,:))*(saturation%val(1,1,:)*weight+old_saturation%val(1,1,:)*(1-weight))- (Composition%val(1,2,:)-old_Composition%val(1,2,:))*(saturation%val(1,2,:)*weight+old_saturation%val(1,2,:)*(1-weight)))
       end if
 
       if (have_option('/material_phase::phase1/scalar_field::PhiDecompositionHa')) then

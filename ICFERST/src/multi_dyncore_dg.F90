@@ -1370,7 +1370,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              real, dimension(:,:,:), pointer :: p, V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
              real, dimension(:, :), pointer :: satura
              type(tensor_field), pointer :: velocity, density, deriv, sat_field
-             type(scalar_field), pointer :: gamma
+             type(scalar_field), pointer :: gamma, phidecomC
              type(vector_field) :: solution
              !Variable to assign an automatic maximum backtracking parameter based on the Courant number
              logical :: Auto_max_backtrack
@@ -1558,6 +1558,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  call deallocate(Mmat%petsc_ACV)
  ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
                 !Copy solution back to sat_field (not ideal...)
+                 if (is_magma) then ! for magma, this subroutine is used to calculate the contribution from compaction
+                    if (have_option('/material_phase::phase1/scalar_field::PhiDecompositionC')) then
+                        phidecomC=>extract_scalar_field(state(1),'PhiDecompositionC')
+                        phidecomC%val=solution%val(1,:)
+                    end if
+                 else
                   do ipres =1, mdims%npres
                     do iphase = 1 , n_in_pres
                      sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*n_in_pres,:)
@@ -1571,6 +1577,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      end do
                    end if
                  end do
+                end if
 
                  !Set to zero the fields
                  call zero(Mmat%CV_RHS)
@@ -2031,16 +2038,16 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         
         integer :: TEST_temperal
         real :: cmcscaling
-        cmcscaling=77! 13 for solid viscosity order 13
+        cmcscaling=17! 13 for solid viscosity order 13
         ! if (is_magma) compute_compaction= .true.  ! For magma only the first phase is assembled for the momentum equation.
 
-        call get_option("/numerical_methods/max_sat_its", TEST_temperal)
-        if (abs(TEST_temperal-1)<1e-3) then 
-            second_compaction_formulation= .true.    
-        else
-            second_compaction_formulation=.false.            
-        end if
-
+        ! call get_option("/numerical_methods/max_sat_its", TEST_temperal)
+        ! if (abs(TEST_temperal-1)<1e-3) then 
+        !     second_compaction_formulation= .true.    
+        ! else
+        !     second_compaction_formulation=.false.            
+        ! end if
+        second_compaction_formulation=.false. 
         if (compute_compaction) then
           final_phase=1
         else
@@ -2482,7 +2489,7 @@ end if
         end if
 
     end if
-    if (is_magma) call cal_contribution()
+    ! if (is_magma) call cal_contribution()
                 !######################## CORRECTION VELOCITY STEP####################################
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases
         
@@ -2539,6 +2546,7 @@ end if
     type( scalar_field ), pointer :: Bcomposition, phidecomH, phidecomC,phidecomR, cbdecomC, cbdecomR
     REAL, DIMENSION( :, :, : ), allocatable :: scaled_velocity
     integer :: ele, u_iloc, u_inod, cv_iloc, cv_loc
+    real :: auxR
     ! Bcomposition=>extract_scalar_field(state(1),'BulkComposition')
 
     ! Composition=>extract_tensor_field(packed_state,"PackedConcentration")
@@ -2550,14 +2558,17 @@ end if
     
 
     if (have_option('/material_phase::phase1/scalar_field::PhiDecompositionC')) then
-      allocate(scaled_velocity(1,1,Mdims%u_nonods))
+      allocate(scaled_velocity(2,1,Mdims%u_nonods))
       do ele = 1, Mdims%totele
+        auxR= 0.
+        do cv_iloc = 1, Mdims%cv_nloc
+            cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+            auxR = auxR + saturation%val(1, 1, cv_loc)/dble(Mdims%cv_nloc)
+        end do
+
         do u_iloc = 1, Mdims%u_nloc
             u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
-            do cv_iloc = 1, Mdims%cv_nloc
-              cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-              scaled_velocity(1,1,u_inod)=velocity%val(1,1,u_inod)*saturation%val(1,1,cv_loc)
-            end do
+            scaled_velocity(:,1,u_inod)=velocity%val(:,1,u_inod)*auxR
         end do
       end do
 
@@ -3013,6 +3024,15 @@ print *, k,':', conv_test
              end do
          else if(Pivit_type==4 ) then !Pivit contains (c/phi^2- diag(A)^-1) * mass
             saturation => extract_scalar_field(state(2), "PhaseVolumeFraction")!1 - sat1 = porosity
+            if (maxval(saturation%val)<0.9) scale_cmc=CMC_scale*3.5
+            if (maxval(saturation%val)<0.8) scale_cmc=CMC_scale*10.
+            if (maxval(saturation%val)<0.7) scale_cmc=CMC_scale*30.
+            if (maxval(saturation%val)<0.6) scale_cmc=CMC_scale*60.
+            if (maxval(saturation%val)<0.5) scale_cmc=CMC_scale*90.
+            if (maxval(saturation%val)<0.4) scale_cmc=CMC_scale*120.
+            if (maxval(saturation%val)<0.3) scale_cmc=CMC_scale*150.
+            if (maxval(saturation%val)<0.2) scale_cmc=CMC_scale*180.
+            if (maxval(saturation%val)<0.1) scale_cmc=CMC_scale*210.
             do ele = 1, Mdims%totele
                 !Perform a CV to P0DG projection. We just take a quarter(P1 3D) of each CV per element
                 auxR = 0.

@@ -486,7 +486,7 @@ contains
           call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
 
           ! recalculate the melt fraction and compositions to guarantee that the initial condition is consistent
-          call poro_component_solve(state,packed_state, Mdims, ndgln, magma_phase_coef, initilization=.true.)
+          call poro_component_solve(state,packed_state, Mdims, ndgln, magma_phase_coef, initilization=.false.)
         !   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
         end if
 
@@ -656,7 +656,7 @@ contains
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
                         calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling)
                 end if Conditional_ForceBalanceEquation
-                ! call cal_contribution(state,packed_state)
+                
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
                 !#=================================================================================================================
@@ -870,7 +870,14 @@ contains
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
             ! For magma, calculate the contributions for the melt fraction and bulk composition change
-            if (is_magma) call cal_contribution2(state,packed_state, Mdims, Mmat, ndgln, dt)
+            if (is_magma .and. timestep>=2) then 
+                call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
+                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
+                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, Courant_number, &
+                        sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
+                call cal_contribution2(state,packed_state, Mdims, Mmat, ndgln, dt)
+            end if
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
               ewrite(0,*) "Iterations taken by the pressure linear solver:", pres_its_taken
             end if
