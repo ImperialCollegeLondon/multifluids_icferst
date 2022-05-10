@@ -1427,7 +1427,7 @@ contains
         allocate(outfluxes%intflux(Mdims%nphase,size(outfluxes%outlet_id)))
         allocate(outfluxes%area_outlet(Mdims%nphase,size(outfluxes%outlet_id)))
 
-        do iphase = 1, Mdims%n_in_pres 
+        do iphase = 1, 1
             nfields = 0
             do k = 1, option_count("/material_phase[" // int2str(iphase-1) // "]/scalar_field")
                 option_path = "/material_phase["// int2str( iphase - 1)//"]/scalar_field["// int2str( k - 1)//"]/prognostic"

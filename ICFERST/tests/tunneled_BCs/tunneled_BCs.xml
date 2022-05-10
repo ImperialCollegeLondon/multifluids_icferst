@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Tunneled_Bcs</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml </tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst tunneled_BCs.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="max_val" language="python">from fluidity_tools import stat_parser as stat
+max_val = stat("connected_bcs.stat")["water"]["Concentration"]["max"][-1]</variable>
+    <variable name="min_val" language="python">from fluidity_tools import stat_parser as stat
+int_val = stat("connected_bcs.stat")["water"]["Concentration"]["integral"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="Assert final max sat" language="python">assert(abs((max_val - 0.39)/0.39) &lt; 0.01)</test>
+    <test name="Assert final min sar" language="python">assert(abs((int_val - 0.0123)/0.0123) &lt; 0.01)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
