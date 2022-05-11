@@ -226,7 +226,7 @@ contains
         integer :: fields
         character( len = option_path_len ) :: option_name
         integer :: phreeqc_id
-        double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
+        double precision, ALLOCATABLE, dimension(:,:) :: sp_concentration_phreeqc
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -663,7 +663,7 @@ contains
                 if (after_adapt .or. (itime == 1 .and. its == 1)) then
                   if (have_option("/porous_media/Phreeqc_coupling"))then
 #ifdef USING_PHREEQC
-                    call init_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc, after_adapt)
+                    call init_PHREEQC(Mdims, state, packed_state, phreeqc_id, sp_concentration_phreeqc, after_adapt)
 #else
                     FLAbort( "PHREEQC coupling option activated by the link to PHREEQRM is not activated." )
 #endif
@@ -841,7 +841,7 @@ contains
 
 
 #ifdef USING_PHREEQC
-            call run_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc)
+            call run_PHREEQC(Mdims, state, packed_state, phreeqc_id, sp_concentration_phreeqc)
 #endif
 
             if (have_Passive_Tracers) then
@@ -918,7 +918,7 @@ contains
             !Now we ensure that the time-step is the correct one
             call set_option( '/timestepping/timestep', dt)
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
-            
+
             !Now we ensure that the time-step is the correct one
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 

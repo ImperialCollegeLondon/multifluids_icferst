@@ -76,6 +76,7 @@ Multiphase_TimeLoop.o ../include/multiphase_time_loop.mod: \
    ../include/compositional_terms.mod ../include/copy_outof_state.mod \
    ../include/cv_advection.mod ../include/multi_data_types.mod \
    ../include/multi_interpolation.mod ../include/multi_machine_learning.mod \
+   ../include/multi_phreeqc.mod \
    ../include/multi_magma.mod ../include/multi_pipes.mod \
    ../include/multi_sp.mod ../include/multi_tools.mod \
    ../include/multiphase_1d_engine.mod ../include/multiphase_eos.mod \
@@ -250,7 +251,9 @@ multi_phreeqc.o ../include/multi_phreeqc.mod: multi_phreeqc.F90 \
    ../../include/memory_diagnostics.mod ../../include/parallel_fields.mod \
    ../../include/parallel_tools.mod ../../include/spud.mod \
    ../../include/state_module.mod ../include/multi_data_types.mod \
-   ../include/multi_tools.mod
+   ../include/iphreeqc.mod \
+   ../include/multi_tools.mod \
+   ../include/phreeqcrm.mod
 
 ../include/multi_pipes.mod: multi_pipes.o
 	@true

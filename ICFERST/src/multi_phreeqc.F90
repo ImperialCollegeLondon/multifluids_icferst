@@ -44,16 +44,18 @@ module multi_phreeqc
 
   contains
 
-    subroutine init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc, after_adapt)
+    subroutine init_PHREEQC(Mdims, state, packed_state, id, sp_concentration_phreeqc, after_adapt)
         implicit none
 
         integer, INTENT(out) :: id
         type( state_type ), intent( inout ) :: packed_state
+        type( state_type ), dimension( : ), intent( inout ) :: state
         type(multi_dimensions), intent( in ) :: Mdims
-        real, dimension(:,:), allocatable, INTENT(OUT) :: concetration_phreeqc
+        real, dimension(:,:), allocatable, INTENT(OUT)  :: sp_concentration_phreeqc
+        real, dimension(:), allocatable :: temp_phreeqc, pressure_phreeqc
         logical, intent (in) :: after_adapt
 
-        integer :: i,j,k, ICncomp, iphase, icomp, cv_inod
+        integer :: i,j,k, ICncomp, iphase, icomp, cv_inod, stat, nbound
         integer :: nxyz
         integer :: nthreads
         integer :: status
@@ -63,15 +65,19 @@ module multi_phreeqc
         real, dimension(:), allocatable   :: rv
         real, dimension(:), allocatable   :: sat
         character(100)                                :: string
-        integer                                       :: ncomps, nspecies
-        character(100),   dimension(:), allocatable   :: components, species_name
+        integer                                       :: nspecies, ncomps, col, n_user
+        character(100),   dimension(:), allocatable   :: species
         integer,          dimension(:,:), allocatable :: ic1, ic2
+        integer,          dimension(:), allocatable :: bc1, bc2
+        double precision, dimension(:,:), allocatable ::	bc_conc
         real, dimension(:,:), allocatable :: f1
+        real, dimension(:), allocatable :: f1_2
         real  :: time, time_step
         real  :: pH
-        real, dimension(:,:), allocatable :: species_c
-        type(tensor_field), pointer :: tfield, tfield_old
+        type(tensor_field), pointer :: tfield, tfield_old, temp_field, pressure_field
         type(vector_field), pointer :: vfield
+      !  type(scalar_field), pointer :: calcite, pH_field
+      !  real, dimension(:,:),ALLOCATABLE :: selected_out
         character( len = option_path_len ) :: option_path, option_name
         character(len=option_path_len), dimension(:),  allocatable :: file_strings
         character(len=25), dimension(7) :: reaction_types
@@ -118,10 +124,18 @@ module multi_phreeqc
         call get_option("/porous_media/Phreeqc_coupling/simulation_name",option_name)
         status = RM_RunFile(id, 1, 1, 1, trim(option_name))
         ! Clear contents of workers and utility
-        string = "DELETE; -all"
-        status = RM_RunString(id, 1, 0, 1, string)  ! workers, initial_phreeqc, utility
-        ! Determine number of components to transport
+        !string = "DELETE; -all"
+        !status = RM_RunString(id, 1, 1, 1, string)  ! workers, initial_phreeqc, utility
+        ! Determine number of species to transport
+
         ncomps = RM_FindComponents(id)
+        nspecies = RM_GetSpeciesCount(id)
+        allocate(species(nspecies))
+        do i = 1, nspecies
+           status = RM_GetSpeciesName(id, i, species(i))
+           print *, species(i)
+        end do
+
         !Check how many species have been defined for Fotran and check that they match!
         ICncomp= 0
         do k = 1, option_count("/material_phase[0]/scalar_field")!We check the first phase only
@@ -131,14 +145,10 @@ module multi_phreeqc
           end if
         end do
         !PHREEQC will have an extra one which is charge
-        if (ncomps /= ICncomp) then
+        if (nspecies /= (ICncomp)) then
           FLAbort("The number of Species defined in ICFERST and PHREEQC do not match. Please double check both input files.")
         end if
 
-        allocate(components(ncomps))
-        do i = 1, ncomps
-          status = RM_GetComponent(id, i, components(i))
-        enddo
         !Setting up intial conditions - I think this is basically saying what kind
         !of reactions are expecting Phreeqc to run
         reaction_types(1) = 'SOLUTION'
@@ -170,9 +180,18 @@ module multi_phreeqc
         !Transfer solutions and reactants from the InitialPhreeqc instance
         !to the reaction-module workers - basically the part will actually be running things
         status = RM_InitialPhreeqc2Module(id, ic1, ic2, f1)
+
+        nbound = 1
+        allocate(bc1(nbound), bc2(nbound), f1_2(nbound))
+        allocate(bc_conc(nbound, ncomps))
+        bc1 = 0           ! solution 0 from InitialPhreeqc instance
+        bc2 = -1          ! no bc2 solution for mixing
+        f1_2 = 1.0          ! mixing fraction for bc1
+        status = RM_InitialPhreeqc2Concentrations(id, bc_conc, nbound, bc1, bc2, f1_2)
         call get_option( '/timestepping/timestep', time_step )
         call get_option( '/timestepping/current_time', time )
-        allocate(concetration_phreeqc(nxyz, ncomps))
+
+        allocate(sp_concentration_phreeqc(nxyz, nspecies))
         status = RM_SetTime(id, time)
         status = RM_SetTimeStep(id, time_step)
         save_on = RM_SetSpeciesSaveOn(id, 1)
@@ -180,62 +199,89 @@ module multi_phreeqc
           status = RM_RunCells(id)
           if (.not. after_adapt) then
           !Get the output data
-          status = RM_GetConcentrations(id, concetration_phreeqc)
+          status = RM_GetSpeciesConcentrations(id, sp_concentration_phreeqc)
             do iphase = 1, 1!Mdims%nphase!TODO SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
-              do icomp = 1, ncomps
-                tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp), .false.))
-                tfield_old=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp), .true.))
+              do icomp = 1, nspecies
+                tfield=>extract_tensor_field(packed_state,get_packed_Species_name(species(nspecies), .false.))
+                tfield_old=>extract_tensor_field(packed_state,get_packed_Species_name(species(nspecies), .true.))
                 do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
-                  tfield%val(1,iphase,cv_inod) = concetration_phreeqc(cv_inod, icomp)
-                  tfield_old%val(1,iphase,cv_inod) = concetration_phreeqc(cv_inod, icomp)
+                  tfield%val(1,iphase,cv_inod) = sp_concentration_phreeqc(cv_inod, nspecies)
+                  tfield_old%val(1,iphase,cv_inod) = sp_concentration_phreeqc(cv_inod, nspecies)
                 end do
               end do
             end do
           end if
         end if
+
+
 #endif
       end subroutine init_PHREEQC
 
-      subroutine run_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
+      subroutine run_PHREEQC(Mdims, state, packed_state, id, sp_concentration_phreeqc)
         implicit none
         integer , INTENT(INOUT) :: id
-        integer :: status, iphase, icomp, cv_inod, ncomps, i
+        integer :: status, iphase, icomp, cv_inod, ncomps, nspecies, i, n_user, col, nxyz, stat
 
-        real, dimension(:,:),INTENT(INOUT) :: concetration_phreeqc
-        real :: time, time_step
+        real, dimension(:,:),INTENT(INOUT) :: sp_concentration_phreeqc
         type( state_type ), intent( inout ) :: packed_state
+        type( state_type ), dimension( : ), intent( inout ) :: state
         type(multi_dimensions), intent( in ) :: Mdims
-        type(tensor_field), pointer :: tfield
-        character(100),   dimension(:), allocatable   :: components
+        real, dimension (:), allocatable :: temp_phreeqc, pressure_phreeqc
+        real :: time, time_step
+        type(tensor_field), pointer :: tfield, temp_field, pressure_field
+        character(100),   dimension(:), allocatable   :: species
+        logical :: have_temperature_field
+        real, dimension(:), ALLOCATABLE :: temp
 #ifdef USING_PHREEQC
         ! Determine number of components to transport
         ncomps = RM_FindComponents(id)
-        allocate(components(ncomps))
-        do i = 1, ncomps
-          status = RM_GetComponent(id, i, components(i))
-        enddo
+        nspecies = RM_GetSpeciesCount(id)
+        allocate(species(nspecies))
+        do i = 1, nspecies
+           status = RM_GetSpeciesName(id, i, species(i))
+        end do
+
+        call get_option( '/timestepping/timestep', time_step )
+        status = RM_SetTimeStep(id, time_step)
 
         do iphase = 1, 1!Mdims%nphase!SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
-          do icomp = 1, ncomps
-            tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp), .false.))
+          do icomp = 1, nspecies
+            tfield=>extract_tensor_field(packed_state,get_packed_Species_name(species(icomp), .false.))
             do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
-              concetration_phreeqc(cv_inod, icomp) = tfield%val(1,iphase,cv_inod)
+              sp_concentration_phreeqc(cv_inod, icomp) = tfield%val(1,iphase,cv_inod)
             end do
           end do
         end do
+        nxyz = Mdims%cv_nonods
+        allocate(temp(nxyz))
+        temp = 25.0
+        status = RM_SetTemperature(id, temp)
 
-        status = RM_SetConcentrations(id, concetration_phreeqc)
+      !  temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
+    !    allocate(temp_phreeqc(nxyz))
+    !    do iphase = 1, 1!Mdims%nphase!SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
+    !      do cv_inod = 1, Mdims%cv_nonods !Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
+    !!          temp_phreeqc(cv_inod) = temp_field%val(1,iphase,cv_inod) - 273.15
+    !      end do
+    !    end do
+    !    status = RM_SetTemperature(id, temp_phreeqc)
+    !    deallocate(temp_phreeqc)
+
+        status = RM_SpeciesConcentrations2Module(id,sp_concentration_phreeqc)
         status = RM_RunCells(id)
         !Get the output data
-        status = RM_GetConcentrations(id, concetration_phreeqc)
+        status = RM_GetSpeciesConcentrations(id, sp_concentration_phreeqc)
         do iphase = 1, 1!Mdims%nphase!SINGLE PHASE FOR THE TIME BEING, WE NEED TO KNOW HOW PHREEQC WOULD DEAL WITH MULTIPHASE
-          do icomp = 1, ncomps
-            tfield=>extract_tensor_field(packed_state,get_packed_Species_name(components(icomp), .false.))
+          do icomp = 1, nspecies
+            tfield=>extract_tensor_field(packed_state,get_packed_Species_name(species(icomp), .false.))
             do cv_inod = 1, Mdims%cv_nonods!Since PHREEQC is not following column major, we use a do loop to hopefully speed it up
-              tfield%val(1,iphase,cv_inod) = concetration_phreeqc(cv_inod, icomp)
+              tfield%val(1,iphase,cv_inod) = sp_concentration_phreeqc(cv_inod, icomp)
             end do
           end do
         end do
+
+
+
       end subroutine run_PHREEQC
 
       subroutine read_inputfile(file_strings)
@@ -260,7 +306,7 @@ module multi_phreeqc
 
 #endif
       end subroutine
-      
+
       subroutine deallocate_PHREEQC(id)
 
         implicit none
