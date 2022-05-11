@@ -3894,7 +3894,14 @@ end subroutine get_DarcyVelocity
             integer, intent(in), dimension(:, :) :: from_BC_list
             !Local variables
             integer, dimension(1) :: pos
-            pos = findloc(outfluxes%outlet_id, from_BC_list(iphase, kpos))
+            integer :: iter 
+            do iter = 1, size(outfluxes%outlet_id)
+                if (outfluxes%outlet_id(iter)==from_BC_list(iphase, kpos)) then 
+                    pos = iter
+                    exit
+                end if
+            end do
+            ! pos = findloc(outfluxes%outlet_id, from_BC_list(iphase, kpos))
             avg_value_for_BC = outfluxes%avgout(ifield, iphase, pos(1))/outfluxes%area_outlet(iphase, pos(1))
         end function avg_value_for_BC
 
