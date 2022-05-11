@@ -3860,6 +3860,7 @@ end subroutine get_DarcyVelocity
                     end if
                 end do
                 do k = 1, size(tracer%bc%boundary_condition)
+                    if (size(tracer%bc%boundary_condition(k)%surface_element_list)==0) cycle
                     !Identify a representative surface element
                     sele = tracer%bc%boundary_condition(k)%surface_element_list(1)
                     !Now for each phase identify the position of the boundary condition on the tensor field and impose the value     
