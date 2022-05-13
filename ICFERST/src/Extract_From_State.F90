@@ -3852,6 +3852,7 @@ end subroutine get_DarcyVelocity
             do_anything_at_all = 10!We have tunneled BCs so we make sure that in the future we go through all the process!
             do ifield = 1, field_its
                 tracer => extract_tensor_field(packed_state, "Packed"//trim(field_names(ifield)))
+                field_pos = -1
                 !identify field position in outfluxes
                 do k = 1, size(outfluxes%field_names,2)
                     if(trim(outfluxes%field_names(1,k))==trim(field_names(ifield))) then 
@@ -3859,6 +3860,8 @@ end subroutine get_DarcyVelocity
                         exit
                     end if
                 end do
+                !For parallel cases or if by mistake it cannot find field_pos
+                if (field_pos < 0) cycle
                 do k = 1, size(tracer%bc%boundary_condition)
                     if (size(tracer%bc%boundary_condition(k)%surface_element_list)==0) cycle
                     !Identify a representative surface element
@@ -3885,6 +3888,7 @@ end subroutine get_DarcyVelocity
                 end do
             end do
         end if
+
 
         contains
 
