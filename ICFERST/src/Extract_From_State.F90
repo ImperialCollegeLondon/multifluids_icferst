@@ -3851,6 +3851,19 @@ end subroutine get_DarcyVelocity
 
         !If we have tunneled BCs then we do stuff!
         if (maxval(number_of_BC_ids) > 1) then 
+
+            !Ensure consistency for averaged fields in parallel, i.e. not saturation
+            if (isparallel()) then 
+                do k = 1, size(outfluxes%outlet_id) 
+                    do iphase = 1, size(outfluxes%area_outlet,1)
+                        call allsum(outfluxes%area_outlet(iphase, k))
+                        do ifield = 1, size(outfluxes%field_names,2)
+                            call allsum(outfluxes%avgout(ifield, iphase, k))
+                        end do 
+                    end do
+                end do
+            end if
+
             do_anything_at_all = 10!We have tunneled BCs so we make sure that in the future we go through all the process!
             do ifield = 1, field_its
                 tracer => extract_tensor_field(packed_state, "Packed"//trim(field_names(ifield)))
