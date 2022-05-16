@@ -910,7 +910,7 @@ contains
 
             ! If calculating boundary fluxes, dump them to outfluxes.csv
             if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
-                if(getprocno() == 1) call dump_outflux(acctim,itime,outfluxes)
+                call dump_outflux(acctim,itime,outfluxes)
             endif
             if (nonLinearAdaptTs) then
                 !As the value of dt and acctim may have changed we retrieve their values

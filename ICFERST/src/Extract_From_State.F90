@@ -3583,27 +3583,10 @@ end subroutine get_DarcyVelocity
         character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: intfluxstring
         character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: tempstring
         character (len = 50) :: simulation_name
-
-        call get_option('/simulation_name', simulation_name)
-
-        if (itime == 1) then
-            !The first time, remove file if already exists
-            open(unit=89, file=trim(simulation_name)//"_outfluxes.csv", status="replace", action="write")
-        else
-            open(unit=89, file=trim(simulation_name)//"_outfluxes.csv", action="write", position="append")
-        end if
-
-
-        ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
-        where (outfluxes%totout /= outfluxes%totout)
-            outfluxes%totout = 0.!If nan then make it zero
-        end where
-        outfluxes%intflux = outfluxes%intflux + outfluxes%totout(:, :)*dt
-
         !Ensure consistency for averaged fields in parallel, i.e. not saturation
         if (isparallel()) then 
             do ioutlet = 1, size(outfluxes%outlet_id) 
-                do iphase = 1, size(outfluxes%intflux,1)
+                do iphase = 1, size(outfluxes%area_outlet,1)
                     call allsum(outfluxes%area_outlet(iphase, ioutlet))
                     do ifields = 1, size(outfluxes%field_names,2)
                         call allsum(outfluxes%avgout(ifields, iphase, ioutlet))
@@ -3611,66 +3594,85 @@ end subroutine get_DarcyVelocity
                 end do
             end do
         end if
+        !The writing process is performed only by processor 1
+        if(getprocno() == 1) then 
+            call get_option('/simulation_name', simulation_name)
 
-        ! Write column headings to file
-        counter = 0
-        if(itime.eq.1) then
-            if (is_porous_media) then 
-                write(whole_line,*) "Current Time (s)" // "," // "Current Time (years)" // "," // "Pore Volume"
-            else 
-                write(whole_line,*) "Current Time (s)" // "," // "Current Time (minutes)" // "," // "Volume"
+            if (itime == 1) then
+                !The first time, remove file if already exists
+                open(unit=89, file=trim(simulation_name)//"_outfluxes.csv", status="replace", action="write")
+            else
+                open(unit=89, file=trim(simulation_name)//"_outfluxes.csv", action="write", position="append")
             end if
-            whole_line = trim(whole_line)
+
+
+            ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
+            where (outfluxes%totout /= outfluxes%totout)
+                outfluxes%totout = 0.!If nan then make it zero
+            end where
+            outfluxes%intflux = outfluxes%intflux + outfluxes%totout(:, :)*dt
+            
+
+            ! Write column headings to file
+            counter = 0
+            if(itime.eq.1) then
+                if (is_porous_media) then 
+                    write(whole_line,*) "Current Time (s)" // "," // "Current Time (years)" // "," // "Pore Volume"
+                else 
+                    write(whole_line,*) "Current Time (s)" // "," // "Current Time (minutes)" // "," // "Volume"
+                end if
+                whole_line = trim(whole_line)
+                do ioutlet =1, size(outfluxes%intflux,2)
+                    do iphase = 1, size(outfluxes%intflux,1)
+                        write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, "-S", outfluxes%outlet_id(ioutlet), "- Volume rate"
+                        whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+                    enddo
+                    do iphase = 1, size(outfluxes%intflux,1)
+                        write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Cumulative production"
+                        whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+                    enddo
+
+                !Averaged value over the surface
+                    do ifields = 1, size(outfluxes%field_names,2)
+                        do iphase = 1, size(outfluxes%field_names,1)
+                            write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),&
+                                                                                    "- Averaged "//trim(outfluxes%field_names(iphase, ifields))
+                            whole_line = trim(whole_line) //","// trim(tempstring(iphase))
+                        end do
+                    end do
+                end do
+                ! Write out the line
+                write(89,*), trim(whole_line)
+            endif
+            ! Write the actual numbers to the file now
+            if (is_porous_media) then 
+                write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
+            else 
+                write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(60.) , ",",  outfluxes%porevolume
+            end if
+            
+            whole_line =  trim(numbers)
             do ioutlet =1, size(outfluxes%intflux,2)
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, "-S", outfluxes%outlet_id(ioutlet), "- Volume rate"
+                    write(fluxstring(iphase),'(E17.11)') outfluxes%totout(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Cumulative production"
+                    write(intfluxstring(iphase),'(E17.11)') outfluxes%intflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
-
-              !Averaged value over the surface
+                !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
                 do ifields = 1, size(outfluxes%field_names,2)
-                    do iphase = 1, size(outfluxes%field_names,1)
-                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),&
-                                                                                  "- Averaged "//trim(outfluxes%field_names(iphase, ifields))
+                    do iphase = 1, size(outfluxes%intflux,1) !Here we output the average value over the surface
+                        write(tempstring(iphase),'(E17.11)') outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     end do
                 end do
             end do
-             ! Write out the line
+            ! Write out the line
             write(89,*), trim(whole_line)
-        endif
-        ! Write the actual numbers to the file now
-        if (is_porous_media) then 
-            write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
-        else 
-            write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(60.) , ",",  outfluxes%porevolume
+            close (89)
         end if
-        
-        whole_line =  trim(numbers)
-        do ioutlet =1, size(outfluxes%intflux,2)
-            do iphase = 1, size(outfluxes%intflux,1)
-                write(fluxstring(iphase),'(E17.11)') outfluxes%totout(iphase,ioutlet)
-                whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
-            enddo
-            do iphase = 1, size(outfluxes%intflux,1)
-                write(intfluxstring(iphase),'(E17.11)') outfluxes%intflux(iphase,ioutlet)
-                whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
-            enddo
-            !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
-            do ifields = 1, size(outfluxes%field_names,2)
-                do iphase = 1, size(outfluxes%intflux,1) !Here we output the average value over the surface
-                    write(tempstring(iphase),'(E17.11)') outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
-                    whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                end do
-            end do
-        end do
-        ! Write out the line
-        write(89,*), trim(whole_line)
-        close (89)
     end subroutine dump_outflux
 
     !>@brief: Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a given GI point in a certain element
@@ -3849,9 +3851,23 @@ end subroutine get_DarcyVelocity
 
         !If we have tunneled BCs then we do stuff!
         if (maxval(number_of_BC_ids) > 1) then 
+
+            !Ensure consistency for averaged fields in parallel, i.e. not saturation
+            if (isparallel()) then 
+                do k = 1, size(outfluxes%outlet_id) 
+                    do iphase = 1, size(outfluxes%area_outlet,1)
+                        call allsum(outfluxes%area_outlet(iphase, k))
+                        do ifield = 1, size(outfluxes%field_names,2)
+                            call allsum(outfluxes%avgout(ifield, iphase, k))
+                        end do 
+                    end do
+                end do
+            end if
+
             do_anything_at_all = 10!We have tunneled BCs so we make sure that in the future we go through all the process!
             do ifield = 1, field_its
                 tracer => extract_tensor_field(packed_state, "Packed"//trim(field_names(ifield)))
+                field_pos = -1
                 !identify field position in outfluxes
                 do k = 1, size(outfluxes%field_names,2)
                     if(trim(outfluxes%field_names(1,k))==trim(field_names(ifield))) then 
@@ -3859,6 +3875,8 @@ end subroutine get_DarcyVelocity
                         exit
                     end if
                 end do
+                !For parallel cases or if by mistake it cannot find field_pos
+                if (field_pos < 0) cycle
                 do k = 1, size(tracer%bc%boundary_condition)
                     if (size(tracer%bc%boundary_condition(k)%surface_element_list)==0) cycle
                     !Identify a representative surface element
@@ -3885,6 +3903,7 @@ end subroutine get_DarcyVelocity
                 end do
             end do
         end if
+
 
         contains
 
