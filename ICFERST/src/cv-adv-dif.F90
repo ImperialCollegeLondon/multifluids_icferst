@@ -5366,15 +5366,23 @@ end if
 
             else ! if (isCompressible)
                 ! let's use incompressible Neo-Hookean (from J Bonet and Wood: Nonlinear Continuum Mechanics for Finite Element Analysis)
-                trb = 0;
-                DO IDIM = 1,NDIM
-                    trb = trb + FEN_TEN_XX(IDIM, IDIM)
-                ENDDO
-                CAUCHY_STRESS_IJ_SOLID_ELE = FEN_TEN_XX * DPEMU * TEN_VOL_RATIO**(-5./3.)+DPEKS*D
-                DO JDIM = 1,NDIM
-                    CAUCHY_STRESS_IJ_SOLID_ELE(JDIM, JDIM) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM) &
-                    - DPEMU * TEN_VOL_RATIO**(-5./3.) * 1./2. * trb ! note that in 2D the coefficient to trb is 1/2 instead of 1/3
-                ENDDO 
+                ! pg280 Material 10.6 \sigma = \mu(b - J^-2 I)
+                ! trb = 0;
+                ! DO IDIM = 1,NDIM
+                !     trb = trb + FEN_TEN_XX(IDIM, IDIM)
+                ! ENDDO
+                ! CAUCHY_STRESS_IJ_SOLID_ELE = FEN_TEN_XX * DPEMU * TEN_VOL_RATIO**(-5./3.)+DPEKS*D
+                ! DO JDIM = 1,NDIM
+                !     CAUCHY_STRESS_IJ_SOLID_ELE(JDIM, JDIM) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM) &
+                !     - DPEMU * TEN_VOL_RATIO**(-5./3.) * 1./2. * trb ! note that in 2D the coefficient to trb is 1/2 instead of 1/3
+                ! ENDDO 
+                CAUCHY_STRESS_IJ_SOLID_ELE = FEN_TEN_XX * DPEMU + DPEKS*D
+                do jdim = 1,ndim 
+                    CAUCHY_STRESS_IJ_SOLID_ELE(jdim, jdim) = CAUCHY_STRESS_IJ_SOLID_ELE(jdim, jdim) &
+                    - DPEMU * TEN_VOL_RATIO**(-2.) 
+                enddo
+                ! ewrite(-3,*),'det b',FEN_TEN_XX(1,1)*FEN_TEN_XX(2,2)-FEN_TEN_XX(1,2)*FEN_TEN_XX(2,1),&
+                ! 'j^2', TEN_VOL_RATIO**2
             endif ! if (isCompressible)
 
             ! store solid stress to tensor field
