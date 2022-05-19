@@ -12,6 +12,7 @@ on:
       - phreeqc_link
       - geraldine_dev_new
       - vinicius_dev
+      - meissam_dev_new
 jobs:
 
   build:
