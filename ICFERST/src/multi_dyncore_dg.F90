@@ -69,7 +69,7 @@ contains
 
 
 
-     SUBROUTINE all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs, move_mesh )
+     SUBROUTINE all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs, move_mesh , theta_f, old_velocity)
 ! *************************************************************************************************
 ! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
 ! *************************************************************************************************
@@ -87,15 +87,21 @@ contains
       type( state_type ), intent( inout ) :: packed_state
       type(multi_ndgln), intent(in) :: ndgln
       type(multi_shape_funs), intent(in) :: CV_funs                    ! control volume shape function data
-      logical, intent(in) :: move_mesh  ! a flag, true: change mesh coordinate at the end of this subroutine;
-                                        ! false: doesn't change coordinate but only calculate mesh velocity
+      integer, intent(in) :: move_mesh  ! a flag, --1 or --2: change mesh coordinate at the end of this subroutine;
+                                        ! --0: doesn't change coordinate but only calculate mesh velocity
+      real, intent(in) :: theta_f
+      type( tensor_field ), intent(in), optional :: old_velocity
       ! local variables...
         Logical:: diffusion_solid_implicit
 
         diffusion_solid_implicit= have_option( '/solid_implicit')
         diffusion_solid_implicit=.true.
         if(diffusion_solid_implicit) then ! the 3 diffusion eqns for the grid velocities...
-           call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh)
+            if (present(old_velocity)) then 
+                call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh,theta_f, old_velocity)
+            else
+                call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh,theta_f)
+            endif
         else
            call one_eqn_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh)
         endif
@@ -107,7 +113,7 @@ contains
 
 
 
-     SUBROUTINE diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh)
+     SUBROUTINE diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs , move_mesh , theta_f,old_velocity )
 ! *************************************************************************************************
 ! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
 ! *************************************************************************************************
@@ -131,8 +137,10 @@ contains
       type( state_type ), intent( inout ) :: packed_state
       type(multi_ndgln), intent(in) :: ndgln
       type(multi_shape_funs), intent(in) :: CV_funs                    ! control volume shape function data
-      logical, intent(in) :: move_mesh  ! a flag, true: change mesh coordinate at the end of this subroutine;
-                                        ! false: doesn't change coordinate but only calculate mesh velocity
+      integer, intent(in) :: move_mesh  ! a flag, --1 or --2: change mesh coordinate at the end of this subroutine;
+                                        ! --0: doesn't change coordinate but only calculate mesh velocity
+      type( tensor_field ), intent(in), optional :: old_velocity
+      real, intent(in) :: theta_f
       ! local variables...
 
       integer :: ic, nconc, number_fields,number_fields2, ndim_nphase
@@ -176,6 +184,8 @@ contains
       type( vector_field ), pointer :: UG_ALL
       integer :: u_nodi, x_nodi, u_iloc
 
+    !   real :: theta_F ! force relaxation factor. hardwired - to be changed to varying based on oscillation detection
+    !   theta_F=0.1
 
       allocate( sigma( Mdims%totele) )
       allocate( rhs(Mdims%ndim,Mdims%cv_nonods), cv_ug_all(Mdims%ndim,Mdims%cv_nonods) )
@@ -192,7 +202,7 @@ contains
 
 !      call allocate( u_lambda(Mdims%ndim), c_lambda(Mdims%ndim) )
       allocate( u_lambda(Mdims%ndim))
-      ewrite(3, *) "weighted average? " , weighted_ave
+      ewrite(3, *) "weighted average? " , weighted_ave, "move mesh?", move_mesh
 ! JXiang add below line
 
       call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
@@ -348,17 +358,32 @@ contains
                      ic=ic+1     
                      cc(ic,cv_inod) = cc(ic,cv_inod) + u_all%val(idim,iphase,u_inod)
                   endif
-                  if (.not. weighted_ave) then
-                  u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
-                          + u_all%val(idim,iphase,u_inod)
-                  u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
-                          + u_all%val(idim,iphase,u_inod) * sigma(ele)
-                  else                 
-                    u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
-                          + u_all%val(idim,iphase,u_inod)*volume
-                    u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
-                          + u_all%val(idim,iphase,u_inod) * sigma(ele)*volume
+                  if (move_mesh.lt.2) then 
+                    if (.not. weighted_ave) then
+                        u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
+                            + u_all%val(idim,iphase,u_inod)
+                        u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
+                            + u_all%val(idim,iphase,u_inod) * sigma(ele)
+                    else                 
+                        u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
+                            + u_all%val(idim,iphase,u_inod)*volume
+                        u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
+                            + u_all%val(idim,iphase,u_inod) * sigma(ele)*volume
+                    endif
+                  elseif (move_mesh.eq.2) then 
+                    if (.not. weighted_ave) then
+                        u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
+                            + (u_all%val(idim,iphase,u_inod)*theta_F+old_velocity%val(idim,iphase,u_inod)*(1-theta_F))
+                        u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
+                            + (u_all%val(idim,iphase,u_inod)*theta_F+old_velocity%val(idim,iphase,u_inod)*(1-theta_F)) * sigma(ele)
+                    else                 
+                        u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
+                            + (u_all%val(idim,iphase,u_inod)*theta_F+old_velocity%val(idim,iphase,u_inod)*(1-theta_F))*volume
+                        u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
+                            + (u_all%val(idim,iphase,u_inod)*theta_F+old_velocity%val(idim,iphase,u_inod)*(1-theta_F)) * sigma(ele)*volume
+                    endif
                   endif
+                        
                end do
             end do
          end do
@@ -609,7 +634,7 @@ end if
           !                                                      end do ! do ele = 1, Mdims%totele
 
 !       ewrite(3,*) "cv_ug_all", cv_ug_all
-      if (move_mesh) then
+      if (move_mesh.gt.0) then
       x_all%val = xold_all%val + dt * cv_ug_all! get new grid positions
       call halo_update(x_all)
       endif
@@ -650,11 +675,18 @@ end if
         integer, intent(in):: dims 
         real, dimension(:,:), intent(in):: x_all_
         real, intent(out):: volume 
-        real, dimension(4):: x,y,z
+        real, dimension(:), ALLOCATABLE:: x,y,z
 
-        x = x_all_(1,:)
-        y = x_all_(2,:)
-        z = x_all_(3,:)
+        if (dims.eq.2) then 
+            allocate(x(3),y(3))
+            x = x_all_(1,:)
+            y = x_all_(2,:)
+        elseif(dims.eq.3) then 
+            allocate(x(4),y(4),z(4))
+            x = x_all_(1,:)
+            y = x_all_(2,:)
+            z = x_all_(3,:)
+        endif
 
         if (dims.eq.2) then 
           ! triangle
@@ -700,7 +732,7 @@ end if
       type( state_type ), intent( inout ) :: packed_state
       type(multi_ndgln), intent(in) :: ndgln
       type(multi_shape_funs), intent(in) :: CV_funs                    ! control volume shape function data
-      logical, intent(in) :: move_mesh  ! a flag, true: change mesh coordinate at the end of this subroutine;
+      integer, intent(in) :: move_mesh  ! a flag, true: change mesh coordinate at the end of this subroutine;
                                         ! false: doesn't change coordinate but only calculate mesh velocity
       ! local variables...
 
@@ -976,7 +1008,7 @@ end if
        END DO
       END DO
 
-      if (move_mesh) then
+      if (move_mesh.gt.0) then
       x_all%val = xold_all%val + dt * cv_ug_all! get new grid positions
       call halo_update(x_all)
       endif
@@ -2704,7 +2736,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
         DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, &
         IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J,&
-        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, Courant_number)
+        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, Courant_number, residual_l2norm)
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -2733,6 +2765,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
         integer, intent(inout) :: pres_its_taken
         real, dimension(:), intent(inout) :: Courant_number
+        real, intent(inout) :: residual_l2norm
         ! Local Variables
         character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
         character(len=option_path_len) :: solver_option_velocity = "/solver_options/Linear_solver"
@@ -2803,6 +2836,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: BIGM_CON
         logical :: LUMP_DIAG_MOM, lump_mass
 
+        logical :: report_residual = .true. ! flag to report momentum residual
+        
         !For the time being, let the user decide whether to rescale the mom matrices
         rescale_mom_matrices = have_option("/solver_options/Momemtum_matrix/rescale_mom_matrices")
         !The stokes solver method can be activated from diamond also
@@ -3047,7 +3082,7 @@ end if
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON ) !
+            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON , nonlinear_its) !
         deallocate(UDIFFUSION_ALL)
 
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
@@ -3137,7 +3172,7 @@ end if
               !For a velocity field the diagonal of A needs to be extracted using a vector field
               call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
             end if
-            if ( .not. (solve_stokes .or. solve_mom_iteratively) )  call deallocate(Mmat%DGM_PETSC)
+            if ( .not. (solve_stokes .or. solve_mom_iteratively .or. report_residual) )  call deallocate(Mmat%DGM_PETSC)
         END IF
         !"########################UPDATE PRESSURE STEP####################################"
         !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver, for inertia this is a huge save as for that momemt DGM_petsc is deallocated!)
@@ -3197,6 +3232,17 @@ end if
         call deallocate(deltaP)
         if (isParallel()) call halo_update(velocity)
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
+
+        ! CALCULATE MOMENTUM RESIDUAL
+        if (report_residual) then
+            ! UPDATE grad P Mmat%C * P
+            call zero(cdp_tensor)
+            call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+            CALL cal_vel_residual(residual_l2norm, Mmat, velocity, CDP_tensor, Mmat%U_RHS)
+            call deallocate(Mmat%DGM_PETSC)
+            ewrite(-1,*) 'momentum residual l2_norm' , residual_l2norm
+        endif
+
         call DEALLOCATE( CDP_tensor )
         !######################## CORRECTION VELOCITY STEP####################################
         ! Calculate control volume averaged pressure CV_P from fem pressure P
@@ -3528,6 +3574,7 @@ end if
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
+          ewrite(-1,*), 'iterations taken in solve_and_update_velocity: ', its_taken
           !If the system is re-scaled then now it is time to recover the correct solution
           if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
@@ -3561,6 +3608,7 @@ end if
           !Rescale RHS (it is given the the matrix has been already re-scaled)
           if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC)!Recover original X; X = D^-0.5 * X'
           call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
+          ewrite(-1,*), 'iterations taken in solve_and_update_pressure: ', its_taken
           pres_its_taken = its_taken
 
           if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
@@ -3808,6 +3856,44 @@ end if
         end subroutine calc_CVPres_from_FEPres
 
 
+        !---------------------------------------------------------------------------
+        !> @author Linfeng Li
+        !> @brief calculate velocity residual after one p-v solve.
+        !> so that we can know how well non-linear iteration converges
+        !---------------------------------------------------------------------------
+        subroutine cal_vel_residual(residual_l2norm, Mmat,Velocity, CDP_tensor, U_RHS)
+           
+            implicit none 
+            type (multi_matrices), intent(inout) :: Mmat
+            real, dimension(Mdims%ndim * Mdims%nphase, Mdims%u_nonods), intent(in) :: U_RHS!Conversion to two entries
+            type(tensor_field), intent(inout) :: Velocity, CDP_tensor
+            real , intent(inout) :: residual_l2norm
+            !Local variables
+            type( tensor_field ) :: residual_field
+            type( vector_field ) :: packed_vel, rhs, residual
+
+            ! convert from tensor data to vector data
+            packed_vel = as_packed_vector(Velocity)
+            call allocate(residual_field, velocity%mesh, "residual", dim=velocity%dim); call zero(residual_field)
+                    ! velocity tensor field shape ndim x nphase x u_nonods
+            residual = as_packed_vector(residual_field)
+            
+            ! ewrite(3,*) 'size residual', residual%dim, node_count(residual),&
+            !     'size dgm_petsc', blocks(Mmat%DGM_PETSC,1), blocks(Mmat%DGM_PETSC, 2), &
+            !         block_size(Mmat%DGM_PETSC,1),  block_size(Mmat%DGM_PETSC,2),&
+            !     'size packed_vel', packed_vel%dim, node_count(packed_vel)
+            call mult(residual, Mmat%DGM_PETSC, packed_vel)
+            
+            rhs = as_packed_vector(CDP_tensor)
+            rhs%val = rhs%val + U_RHS
+            residual%val = residual%val - rhs%val
+            if(isParallel()) call halo_update(residual_field)
+            residual_l2norm =  sqrt(sum(residual%val**2))
+            if (isparallel()) call allsum(residual_l2norm)
+            
+            call deallocate(residual_field)
+        end subroutine cal_vel_residual
+
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
 
@@ -3830,7 +3916,7 @@ end if
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON) !-ao
+        FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON , nonlinear_its) !-ao
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -3876,6 +3962,7 @@ end if
         REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  DIAG_BIGM_CON
         REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  BIGM_CON
         real, dimension(:), intent(inout) :: Courant_number
+        integer, intent(in) :: nonlinear_its
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
@@ -3964,7 +4051,7 @@ end if
                 JUST_BL_DIAG_MAT, &
                 UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, DEN_ALL, RETRIEVE_SOLID_CTY, &
                 IPLIKE_GRAD_SOU,DIAG_BIGM_CON, BIGM_CON, &
-                got_free_surf, MASS_SUF, FEM_continuity_equation, MASS_ELE)
+                got_free_surf, MASS_SUF, FEM_continuity_equation, MASS_ELE , nonlinear_its)
         end if
 
         ALLOCATE( DEN_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DEN_OR_ONE = 1.
@@ -4314,7 +4401,7 @@ end if
         DT, JUST_BL_DIAG_MAT,  &
         UDIFFUSION_temp, UDIFFUSION_VOL, DEN_ALL, RETRIEVE_SOLID_CTY, &    !JXiang
         IPLIKE_GRAD_SOU,  DIAG_BIGM_CON, BIGM_CON,&
-        got_free_surf, mass_suf, FEM_continuity_equation, MASS_ELE )
+        got_free_surf, mass_suf, FEM_continuity_equation, MASS_ELE , nonlinear_its)
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -4346,10 +4433,11 @@ end if
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY, got_free_surf, FEM_continuity_equation
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         real, dimension(:), intent(inout) :: MASS_ELE
+        integer, intent(in) :: nonlinear_its
         ! Local Variables
         ! This is for decifering WIC_U_BC & WIC_P_BC
         LOGICAL, PARAMETER :: VOL_ELE_INT_PRES = .TRUE.
-        logical :: STAB_VISC_WITH_ABS=.FALSE.
+        logical :: STAB_VISC_WITH_ABS=.false.
         LOGICAL :: STRESS_FORM, STRESS_FORM_STAB, THERMAL_STAB_VISC, THERMAL_LES_VISC, THERMAL_FLUID_VISC, Q_SCHEME
         ! if STAB_VISC_WITH_ABS then stabilize (in the projection mehtod) the viscosity using absorption.
         REAL, PARAMETER :: WITH_NONLIN = 1.0, TOLER = 1.E-10
@@ -4364,9 +4452,15 @@ end if
         LOGICAL, PARAMETER :: STORED_AC_SPAR_PT=.FALSE.
         INTEGER, PARAMETER :: IDO_STORE_AC_SPAR_PT=0
         ! options for implicit solids using one eqn approach...
-        LOGICAL, PARAMETER :: solid_visc_ele_imp=.true. ! treat implicitly inside an element.
+        LOGICAL, PARAMETER :: solid_visc_ele_imp=.false.       ! treat implicitly inside an element.
+        LOGICAL, PARAMETER :: solid_implicit_lump=.false.     ! lump the viscocity within the element and thus only have diagonal contributions (take abs val)
         LOGICAL, PARAMETER :: solid_visc_ele_imp_stab=.false. ! treat implicitly inside an element for the projection method (suggest =.false., but may be more atable=.true.).
-        LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false. ! treat implicitly between elements.
+        LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false.   ! treat implicitly between elements.
+        LOGICAL, PARAMETER :: solid_visc_diag_imp=.false.      ! only add diagonal viscous stabilising term mu/dx2
+        LOGICAL, PARAMETER :: solid_s_u = .false.             ! s/u stabilisation for solid force
+        REAL :: DX2 ! element diameter dx ** 2. this is approximated with element volume, to be used in sigmagi_stab
+        REAL, DIMENSION(:,:), ALLOCATABLE :: force_stab       ! this is solid_force / velocity, as a diagonal stabilisation.
+                                                              ! use either this or mu/dx2 stab.
         ! re-calculate Mmat%C matrix...
         LOGICAL :: got_c_matrix
         INTEGER, DIMENSION( :, : ), allocatable ::  FACE_ELE
@@ -4401,6 +4495,7 @@ end if
         type(multi_dev_shape_funs) :: Devfuns, Devfuns0    ! Devfuns0 added by JXiang 
         type(vector_field), pointer :: X0_ALL   ! added by JXiang
         type( tensor_field ), pointer :: temp_stress    ! solid implicit -- solid stress
+        type (vector_field), pointer :: old_solid_force
 
 ! Local variables...
 !            INTEGER, PARAMETER :: LES_DISOPT=0
@@ -4617,10 +4712,14 @@ end if
         REAL :: LOC_X_ALL(Mdims%ndim, Mdims%X_NLOC),LOC_X0_ALL(Mdims%ndim, Mdims%X_NLOC)
         REAL :: LOC_VEL_ALL(Mdims%ndim, Mdims%X_NLOC)
         type( scalar_field ), pointer :: X_CO, Y_CO, Z_CO
+        !! taking average of solid force
+        type (vector_field), pointer :: solid_force 
+        real, dimension(:,:), allocatable :: cv_solid_force 
+        real, dimension(:), allocatable :: sigma_plus_bc, vel_count_solid
 
 
         ! report solid iimplicitness options
-        ewrite(3, *) 'implicitness option 1 2 3 ?:', solid_visc_ele_imp, solid_visc_ele_imp_stab, solid_visc_sufele_imp
+        ewrite(3, *) 'implicitness option 1 lump 2 3 dx2 s/u?:', solid_visc_ele_imp, solid_implicit_lump, solid_visc_ele_imp_stab, solid_visc_sufele_imp,solid_visc_diag_imp,solid_s_u
         !JXiang
 !        ALLOCATE(TEN_VOL_RATIO,Mdims%totele)
         ALLOCATE(UDIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
@@ -4629,6 +4728,7 @@ end if
         density_solid=>extract_scalar_field( state(1), "Density_Solid" )
         sigma=>extract_scalar_field( state(1), "Sigma_Solid")
         vis=>extract_tensor_field( state(1), "Viscosity_Solid", stat)
+        old_solid_force => extract_vector_field( state(1), "PastSolidForce")
         ewrite(3,*) ' vis',vis%val(:,:,1)
         sum_udif=0.0
         sum_udif_temp=0.0
@@ -4986,6 +5086,7 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
 
         ALLOCATE( STRESS_IJ_SOLID_ELE_EXT( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_snloc, 2*Mdims%u_nloc ) )
         STRESS_IJ_SOLID_ELE_EXT=0.0
+        allocate(force_stab(Mdims%ndim, Mdims%u_nloc))
         !JXiang end ****new code for interface between solid and fluid
         ALLOCATE( SLOC_UDIFFUSION_INTERFACE(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
         ALLOCATE( SLOC2_UDIFFUSION_INTERFACE(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
@@ -5244,7 +5345,7 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
         Y_CO => extract_scalar_field( state (1), "SolidOriginalCoordinateY" )
         if (Mdims%ndim .eq. 3)  Z_CO => extract_scalar_field( state (1), "SolidOriginalCoordinateZ" )
         UG_ALL=>extract_vector_field(state (1 ),"GridSolidVelocity")
-
+        solid_force => extract_vector_field( state(1), "SolidForce")
         sum_udif=0.0
         sum_udif_temp=0.0
          allocate(UDEN_temp(Mdims%u_nonods), UDENOLD_temp(Mdims%u_nonods))
@@ -5427,6 +5528,22 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                         END DO
                     END DO
                 ENDIF
+                ! a diagonal viscous stabilisation term for solid implicit solver
+                if (solid_implicit .and. solid_visc_diag_imp .and. sigma%val(ele).GT.0.5) then 
+                    ! APPROXIMATE element diameter ** 2. suppose it's regular triangle or tetrahedron.
+                    if (Mdims%ndim.eq.3) then 
+                        DX2 = (Devfuns%volume*12./sqrt(2.))**(2./3.) 
+                    ELSEIF (Mdims%ndim.eq.2) then 
+                        DX2 = (Devfuns%volume*4./sqrt(3.))
+                    ENDIF
+                    DO IDIM=1,Mdims%ndim 
+                        DO IPHASE=1,Mdims%nphase 
+                            I=IDIM+(IPHASE-1)*Mdims%ndim 
+                            LOC_U_ABS_STAB( I, I, MAT_ILOC ) = LOC_U_ABS_STAB( I, I, MAT_ILOC ) + &
+                                UDIFFUSION_ALL( IDIM, IDIM, IPHASE, MAT_INOD) / DX2 
+                        ENDDO
+                    ENDDO
+                endif
                 IF ( GOT_DIFFUS ) THEN
                     LOC_UDIFFUSION( :, :, :, MAT_ILOC ) = UDIFFUSION_ALL( :, :, :, MAT_INOD )
                     LOC_UDIFFUSION_VOL( :, MAT_ILOC ) = UDIFFUSION_VOL_ALL( :, MAT_INOD )
@@ -5593,8 +5710,17 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                     force_solids( :, IPHASE, : )=0.0
                                     CALL CALC_FORCE_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE( :, :),  Mdims%ndim, &
                                         Mdims%x_nloc,LOC_X_ALL(:,:),force_solids(:,IPHASE,:), Mdims, ndgln, ele)
-                                    ! rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) - 1.0e8*force_solids(:,iphase, :)
-                                    loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
+
+                                    ! theta method for solid force
+                                    ! theta * future + (1-theta) * past. theta value is hardwired.
+                                    do u_iloc = 1,Mdims%u_nloc 
+                                        u_nodi = ndgln%u( (ele-1)*Mdims%u_nloc + u_iloc )
+                                        force_solids(:,iphase,u_iloc) = 0.5 * force_solids(:,iphase,u_iloc) + (1-0.5) * old_solid_force%val(:,u_nodi)
+                                        solid_force%val(:,u_nodi) = force_solids(:,iphase,u_iloc)   ! store the mid-point solid force to vector field
+                                    enddo
+
+                                    ! rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
+                                    ! loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) + 1.0*force_solids(:,iphase, :)
                                 END DO ! iphase
                                 !  END DO GI
                                 
@@ -5609,6 +5735,16 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                                 END DO
                                             END DO
                                         END DO
+                                    END DO
+                                else
+                                    DO U_ILOC = 1, Mdims%u_nloc
+                                        ! DO GI = 1, FE_GIdims%cv_ngi
+                                            DO IPHASE = 1, Mdims%nphase
+                                                DO U_JLOC = 1, Mdims%u_nloc
+                                                    STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC )=0.0
+                                                END DO
+                                            END DO
+                                        ! END DO
                                     END DO
                                 endif ! if(solid_visc_ele_imp) then
                             endif ! IF(IDIVID_BY_VOL_FRAC.ne.1) THEN
@@ -5677,8 +5813,17 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                     IF ( STRESS_FORM ) THEN
                                         NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                            + MAX( 0.0, STRESS_IJ_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) ) &
+                                            + MAX( 0.0, STRESS_IJ_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) ) 
+
+                                       if(solid_implicit_lump) then
+                                          NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) &
+                                            = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) &
+                                            + abs( STRESS_IJ_SOLID_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) )  !JXiang
+                                       else
+                                        NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             + MAX( 0.0, STRESS_IJ_SOLID_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) )  !JXiang
+                                       endif
                                     ELSE
                                         NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
@@ -5762,6 +5907,9 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     END DO
                 END DO
             end if ! endof if (Porous_media_PIVIT_not_stored_yet) then
+            ! if(sigma%val(ele).gt.0.5) then 
+            !     ewrite(3,*),ele,'|',DIAG_BIGM_CON(:,:,:,:,:,:,ele),'|'
+            ! endif
             if (.not.is_porous_media) then!sprint_to_do; internal subroutine for this?
                 !###LOOP Loop_DGNods1 IS NOT NECESSARY FOR POROUS MEDIA###
                 Loop_DGNods1: DO U_ILOC = 1, Mdims%u_nloc
@@ -5881,8 +6029,13 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                   JPHASE = IPHASE
                                   DO JDIM = 1, Mdims%ndim
                                      DO IDIM = 1, Mdims%ndim
-                                        LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                               + STRESS_IJ_SOLID_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
+                                        if(solid_implicit_lump) then
+                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                + abs( STRESS_IJ_SOLID_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) ) * LOC_U( JDIM, IPHASE, U_ILOC )
+                                         else
+                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                + STRESS_IJ_SOLID_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
+                                         endif
                                      END DO
                                   END DO
                                END DO
@@ -5900,30 +6053,43 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                     - STRESS_IJ_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
                                             ELSE
 
-                                              IF ( LUMP_DIAG_MOM ) THEN !!-ao new lumping terms
-                                                DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
-                                                    = DIAG_BIGM_CON(1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
-                                                    + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                                    + 1.*STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added JXiang
-                                              ELSE
+                                              
                                                 DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
                                                     = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
-                                                    + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                                    + 1.0*STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added by JXiang
-                                              ENDIF
+                                                    + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) 
+                                                if(solid_implicit) then ! add in the force from the solids.
+                                                    if(solid_visc_ele_imp) then
+                                                        if(solid_implicit_lump) then
+                                                                    DIAG_BIGM_CON( IDIM, IDIM, IPHASE, IPHASE, U_ILOC, U_ILOC, ELE )  &
+                                                                        = DIAG_BIGM_CON( IDIM, IDIM, IPHASE, IPHASE, U_ILOC, U_ILOC, ELE ) &
+                                                                        + 1.0*abs( STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ) ! added by JXiang
+                                                        else
+                                                                    DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
+                                                                        = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
+                                                                        + 1.0*STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added by JXiang
+                                                        endif
+                                                    endif
+                                                endif
 
                                             END IF
                                             IF(PIVIT_ON_VISC) THEN
                                                 I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                                 J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                                                if(solid_implicit_lump) then
+                                                    Mmat%PIVIT_MAT( I,I, ELE ) &
+                                                        = Mmat%PIVIT_MAT( I,I, ELE ) &
+                                                        +  abs( STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) )  ! JXiang
+                                                else
+                                                  Mmat%PIVIT_MAT( I,J, ELE ) &
+                                                    = Mmat%PIVIT_MAT( I,J, ELE ) &
+                                                    + STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
+                                                endif
                                                 Mmat%PIVIT_MAT( I,J, ELE ) &
                                                     = Mmat%PIVIT_MAT( I,J, ELE ) &
-                                                    +  w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                                    +  1.0*w * STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
+                                                    +  w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! &
                                             END IF
                                             RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
-                                                STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )  + &
-                                                0.0*STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC ) ! JXiang
+                                                STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )  
                                         END DO
                                     END DO
                                 END DO
@@ -6201,6 +6367,16 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     END DO
                 END DO
                 DIF_STAB_U = MAX(0.0, DIF_STAB_U)
+
+                ! remove PG stab in solid region
+                ! if (.false.) then 
+                    if(solid_implicit) then ! add in the force from the solids.
+                        if(sigma%val(ele).GT.0.5) then
+                        DIF_STAB_U = 0.0
+                        endif
+                    endif
+                ! endif
+                    
                 IF ( STRESS_FORM_STAB ) THEN! stress form of viscosity...
                     DO IDIM=1,Mdims%ndim
                         DO JDIM=1,Mdims%ndim
@@ -6239,23 +6415,38 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                 JPHASE = IPHASE
                                 DO IDIM = 1, Mdims%ndim
                                     DO JDIM = 1, Mdims%ndim
-                                      IF(LUMP_DIAG_MOM) THEN
-                                        DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
-                                        = DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
-                                        + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                        + STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang 
-                                      ELSE
-                                        DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
-                                        = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
-                                        + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )&
-                                        + STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
-                                      END IF
+                                        IF(LUMP_DIAG_MOM) THEN
+                                            DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
+                                            = DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
+                                            + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) 
+                                        ELSE
+                                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
+                                            = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
+                                            + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                        ENDIF
+                                        if(solid_implicit_lump) then
+                                            DIAG_BIGM_CON( IDIM, IDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  &
+                                            = DIAG_BIGM_CON( IDIM, IDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) &
+                                            + abs(STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ))  ! JXiang
+                                        else 
+                                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
+                                            = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
+                                            + STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
+                                        endif
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                             J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
                                             Mmat%PIVIT_MAT( I,J, ELE )  &
-                                                = Mmat%PIVIT_MAT( I,J, ELE ) + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                                             +STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
+                                                = Mmat%PIVIT_MAT( I,J, ELE ) + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                            if(solid_implicit_lump) then
+                                                Mmat%PIVIT_MAT( I,I, ELE )  &
+                                                    = Mmat%PIVIT_MAT( I,I, ELE )  &
+                                                    + abs( STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ))   ! JXiang
+                                            else
+                                                Mmat%PIVIT_MAT( I,J, ELE )  &
+                                                    = Mmat%PIVIT_MAT( I,J, ELE ) &
+                                                    + STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
+                                            endif
                                         ENDIF
                                     END DO
                                 END DO
@@ -6369,6 +6560,115 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 Mmat%U_RHS( :, :, U_INOD ) = Mmat%U_RHS( :, :, U_INOD ) + LOC_U_RHS( :, :, U_ILOC )
             END DO
         END DO Loop_Elements
+        
+        !! taking average of solid force
+        if (solid_implicit) then
+            allocate( cv_solid_force(Mdims%ndim, Mdims%cv_nonods) , sigma_plus_bc(Mdims%cv_nonods) , vel_count_solid(Mdims%cv_nonods) )
+            sigma_plus_bc = 0.0; vel_count_solid = 0.0; cv_solid_force = 0.0
+            solid_force => extract_vector_field(state(1), "SolidForce")
+            do ele=1,Mdims%totele
+                if (sigma%val(ele).lt.0.5) cycle
+                ! if (IsParallel()) then
+                !     if (.not. assemble_ele(pressure,ele)) then
+                !         skip=.true.
+                !         neighbours=>ele_neigh(pressure,ele)
+                !         do nb=1,size(neighbours)
+                !             if (neighbours(nb)<=0) cycle
+                !             if (assemble_ele(pressure,neighbours(nb))) then
+                !                 skip=.false.
+                !                 exit
+                !             end if
+                !         end do
+                !         if (skip) cycle
+                !     end if
+                ! end if
+                DO IFACE = 1, FE_GIdims%nface
+                    ELE2  = FACE_ELE( IFACE, ELE )
+                    if (ele2 .le. 0 ) then !& ! this surface is on boundary 
+                    ! .or. (ele2.gt.0 .and. sigma%val(ele2).lt.0.5) ) then ! this surface is on fluid-solid interface 
+                        do cv_siloc = 1, Mdims%cv_snloc 
+                            cv_iloc = FE_funs%cv_sloclist(IFACE, CV_SILOC)
+                            cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                            sigma_plus_bc(cv_inod) = -1 ! mark such cv nodes as -1 so that they are excluded from averaging process
+                        enddo
+                    endif
+                enddo
+                do cv_iloc=1,Mdims%cv_nloc
+                    cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    if ( sigma_plus_bc(cv_inod) .lt. 0 ) cycle   ! excluding bc/interface nodes
+                    u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    vel_count_solid(cv_inod)=vel_count_solid(cv_inod)+1.0*sigma%val(ele)*MASS_ELE(ELE)
+                    do idim=1,Mdims%ndim     
+                        cv_solid_force(idim,cv_inod) = cv_solid_force(idim,cv_inod) + sigma%val(ele)*solid_force%val(idim,u_inod)
+                    end do
+                end do
+            end do
+            ! do cv_inod = 1,Mdims%cv_nonods
+            !     if ( sigma_plus_bc(cv_inod) .lt. 0 ) cycle   ! excluding bc/interface nodes
+            !     cv_solid_force(:,cv_inod) = cv_solid_force(:,cv_inod) / vel_count_solid(cv_inod)
+            ! end do
+            iphase = 1
+            do ele = 1, Mdims%totele 
+                if (sigma%val(ele).lt.0.5) cycle
+                do cv_iloc=1,Mdims%cv_nloc
+                    cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    if ( sigma_plus_bc(cv_inod) .lt. 0 ) then 
+                        solid_force%val(:, u_inod) = 0
+                    else !cycle   ! excluding bc/interface nodes
+                        solid_force%val(:, u_inod) = cv_solid_force(:,cv_inod) / vel_count_solid(cv_inod) * MASS_ELE(ELE)
+                    endif
+                end do
+            end do
+            if (isparallel()) call halo_update(solid_force)
+            do ele = 1, Mdims%totele
+                if (sigma%val(ele).lt.0.5) cycle
+                do cv_iloc=1,Mdims%cv_nloc
+                    u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    if (.not. node_owned(velocity,u_inod)) cycle
+                    ! ewrite(3,*),ele,'|',u_inod,'|',mmat%U_RHS(:,iphase,u_inod)
+                    Mmat%U_RHS(:,iphase,u_inod) = Mmat%U_RHS(:,iphase,u_inod) + solid_force%val(:,u_inod)   ! add solid force to rhs
+                    ! ewrite(3,*),ele,'|',u_inod,'|',mmat%U_RHS(:,iphase,u_inod)
+                end do
+
+                if (solid_s_u) then 
+                    ! if (modulo(nonlinear_its-1, 5) .eq. 0) then
+                    DO U_ILOC = 1, Mdims%u_nloc
+                        u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + U_ILOC )
+                        cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + u_iloc )
+                        x_inod = NDGLN%X((ELE-1)*Mdims%X_NLOC+u_iloc)
+                        IPHASE = 1
+                        DO idim = 1, Mdims%ndim 
+                            if ( U_ALL(idim,iphase,u_inod).eq. 0.) then 
+                                force_stab(idim,u_iloc) = 0.    ! avoid dividing by 0
+                            else
+                                force_stab(idim,u_iloc) = 1.*abs(solid_force%val(idim,u_inod) / U_ALL(idim,iphase,u_inod))
+                                ! if (force_stab(idim,u_iloc).le. 0.) force_stab(idim, u_iloc) = 0.   ! if stab. is negative, ignore it.
+                                if (force_stab(idim,u_iloc).gt. 1.e8) force_stab(idim, u_iloc) = 1e8    ! limiting from above.
+                            endif
+                            DIAG_BIGM_CON(idim,idim,iphase,iphase,u_iloc,u_iloc,ele) = DIAG_BIGM_CON(idim,idim,iphase,iphase,u_iloc,u_iloc,ele) &
+                                + force_stab(idim,u_iloc)   ! force stab. term add to lhs
+                            if (.not. node_owned(velocity,u_inod)) cycle
+                            ! force stab. * v add to rhs so that it will cancelled out when converge
+                            Mmat%U_RHS(idim,iphase,u_inod) = Mmat%U_RHS(idim,iphase,u_inod) + force_stab(idim,u_iloc)*U_ALL(idim,iphase,u_inod) 
+                        ENDDO
+                        if(ele.eq.15.or.ele.eq.16) then
+                        ewrite(-1,*),'f', u_inod, cv_inod,'|', old_solid_force%val(:,u_inod),'|',solid_force%val(:,u_inod)
+                        ewrite(-1,*),'v', UOLD_ALL(:,iphase,u_inod),'|',U_ALL(:,iphase,u_inod)
+                        ewrite(-1,*),'x', x_all(:,x_inod), '|'
+                        endif
+                    ENDDO 
+                    ! endif
+                    ! if (any(force_stab.eq.1e8)) then 
+                    !     ewrite(-1,*), 'force_abs touching ceiling! ele = ', ele
+                    if(ele.eq.15.or.ele.eq.16) then
+                        ewrite(-1,*),'fstab',force_stab
+                        ewrite(-1,*),ele,'|',DIAG_BIGM_CON(:,:,:,:,:,:,ele)
+                    endif
+                endif
+            end do
+        end if
+
         !!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!!
         !!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!!
         !! *************************loop over surfaces*********************************************
@@ -7027,12 +7327,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                           IF(SOLID_IMPLICIT) THEN
                             if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid ONLY
                             else
-                                if( (sigma%val(ele).GT.0.5) ) then ! is solid element ELE but ELE2 is a fluid
+                                if( (sigma%val(ele).GT.0.5) .and. (sigma%val(ele2).lt.0.5)) then ! is solid element ELE but ELE2 is a fluid
                                     SLOC_UDIFFUSION_INTERFACE =  SLOC2_UDIFFUSION
                                     SLOC_UDIFFUSION_VOL_INTERFACE =  SLOC2_UDIFFUSION_VOL
                                     SLOC2_UDIFFUSION_INTERFACE =  SLOC2_UDIFFUSION
                                     SLOC2_UDIFFUSION_VOL_INTERFACE =  SLOC2_UDIFFUSION_VOL
-                                else ! is fluid element ELE but ELE2 is a solid. 
+                                elseif((sigma%val(ele).lt.0.5).and.(sigma%val(ele2).gt.0.5)) then ! is fluid element ELE but ELE2 is a solid. 
                                     SLOC_UDIFFUSION_INTERFACE =  SLOC_UDIFFUSION
                                     SLOC_UDIFFUSION_VOL_INTERFACE =  SLOC_UDIFFUSION_VOL
                                     SLOC2_UDIFFUSION_INTERFACE =  SLOC_UDIFFUSION
@@ -7050,13 +7350,13 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         STRESS_IJ_SOLID_ELE_EXT=0.0
                         ! added by JXiang 
                         IF(SOLID_IMPLICIT) THEN
-                            !if(solid_visc_sufele_imp) then  ! option3
-                            if (.true.) then
+                            if(solid_visc_sufele_imp) then  ! option3
+                            ! if (.true.) then
                                 IF(ELE2>0) THEN
                                 if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid
                                     STRESS_IJ_SOLID_ELE_EXT = STRESS_IJ_ELE_EXT
                                     STRESS_IJ_ELE_EXT=0.0
-                                    STRESS_IJ_SOLID_ELE_EXT = 0.0
+                                    ! STRESS_IJ_SOLID_ELE_EXT = 0.0
                                 endif
                                 ENDIF 
                             ! here
@@ -7066,6 +7366,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                             !                            SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION_SOLID, SLOC_UDIFFUSION_VOL_SOLID, SLOC2_UDIFFUSION_SOLID, SLOC2_UDIFFUSION_VOL_SOLID, UDIFF_SUF_STAB, &
                             !                            (ELE2.LE.0), SNORMXN_ALL  )
                             ! why (because continuous)...
+                            else 
+                                if (ele2>0) then 
+                                    if ( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid
+                                        ! stress_ij_ele_ext = 0.0
+                                    endif
+                                endif
                             endif ! if(solid_visc_sufele_imp) then ! option3
                         ENDIF
                             ! JXiang end
@@ -7276,7 +7582,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                         J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
                                                         Mmat%PIVIT_MAT(I,J,ELE) &
                                                             =Mmat%PIVIT_MAT(I,J,ELE) + ws * STRESS_IJ_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC ) &
-                                                                            + ws * DT* STRESS_IJ_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC )   ! JXiang
+                                                                            + ws * STRESS_IJ_SOLID_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC )   ! JXiang
                                                     ENDIF
                                                 END DO
                                             END DO
