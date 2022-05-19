@@ -23,7 +23,7 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Lifetime = 18
+Lifetime = 17
 
 showPlot = False
 ################################AUTOMATIC STUFF###############################
@@ -37,7 +37,7 @@ with open(filename, 'r') as csvfile:
     for row in datareader:
         try:
             time.append(float(row[1]))#time in years
-            temp.append(float(row[8]))#this is the closest BC to the production
+            temp.append(float(row[10]))#this is the closest BC to the production
         except:
             continue
 pos = 0

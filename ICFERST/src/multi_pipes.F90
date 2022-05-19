@@ -134,7 +134,8 @@ contains
       real, parameter :: INFINY=1.0E+20
       integer, parameter :: WIC_B_BC_DIRICHLET = 1
       !Variables extra for outfluxes
-      type(tensor_field), pointer ::temp_field, Concentration_field
+    !   type(tensor_field), pointer ::temp_field, Concentration_field
+      type (tensor_field_pointer), allocatable, DIMENSION(:) :: outfluxes_fields
       logical :: compute_outfluxes
 
       PetscScalar,parameter :: one = 1.0
@@ -143,21 +144,16 @@ contains
 
       conservative_advection = abs(cv_beta) > 0.99
 
-
       !If we are going to calculate the outfluxes (this is done when GETCT=.true.)
       compute_outfluxes = GETCT
       IF ( compute_outfluxes ) THEN
-        !We may need to retrieve some extra fields
-        if (has_temperature) then
-            temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
-            if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = 0
+        if (allocated(outfluxes%area_outlet)) then
+            allocate(outfluxes_fields(size(outfluxes%field_names,2)))
+            !Extract fields to be used for the outfluxes section
+            do k = 1, size(outfluxes%field_names,2) !We use the first phase as it must contain all the fields
+                outfluxes_fields(k)%ptr =>extract_tensor_field( packed_state, "Packed"//outfluxes%field_names(1,k) )
+            end do
         end if
-        if (has_concentration) then
-            Concentration_field => extract_tensor_field( packed_state, "PackedConcentration" )
-            if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
-        end if
-
-
       end if
 
 
@@ -835,9 +831,9 @@ contains
                   !Finally store fluxes across all the boundaries either for mass conservation check or mass outflux
                   if (compute_outfluxes) then
                     sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)!We need SELE for this, not ideal but this operation is not done much overall
-                    call update_outfluxes(bcs_outfluxes, outfluxes, sele, JCV_NOD,  &
+                    call update_outfluxes(bcs_outfluxes, outfluxes, sele, JCV_NOD, suf_area,  &
                         NDOTQ * suf_area * LIMT, NDOTQ * suf_area * LIMDT, &!Vol_flux and Mass_flux
-                        T_ALL, temp_field, Concentration_field, wells_first_phase, final_phase*2 )
+                        T_ALL, outfluxes_fields, wells_first_phase, final_phase*2 )
                   end if
 
               ENDIF ! ENDOF IF(JCV_NOD.NE.0) THEN

@@ -63,7 +63,7 @@ module Copy_Outof_State
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         have_option_for_any_phase, Get_Ele_Type_new,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions, &
-        EnterForceBalanceEquation, update_outfluxes
+        EnterForceBalanceEquation, update_outfluxes, Impose_connected_BCs
 
 
     !>@brief: Obtain the surface global to local conversor
@@ -491,9 +491,9 @@ contains
         if (simulation_quality>=10) then
           default_flux_scheme = 5
           default_theta  = -1.
-        else !Unlest fast method secified
+        else !Unless fast method secified
           default_flux_scheme = 1
-          default_theta  = -1.
+          default_theta  = 1.
         end if
         default_consv_vel =0.
         if (is_porous_media) default_consv_vel = 1.
@@ -3577,103 +3577,119 @@ end subroutine get_DarcyVelocity
         integer :: counter
         character (len=1000000) :: whole_line
         character (len=1000000) :: numbers
-        integer :: iphase
+        integer :: iphase, ifields
         ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
         character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: fluxstring
         character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: intfluxstring
         character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: tempstring
         character (len = 50) :: simulation_name
-
-        call get_option('/simulation_name', simulation_name)
-
-        if (itime == 1) then
-            !The first time, remove file if already exists
-            open(unit=89, file=trim(simulation_name)//"_outfluxes.csv", status="replace", action="write")
-        else
-            open(unit=89, file=trim(simulation_name)//"_outfluxes.csv", action="write", position="append")
+        !Ensure consistency for averaged fields in parallel, i.e. not saturation
+        if (isparallel()) then 
+            do ioutlet = 1, size(outfluxes%outlet_id) 
+                do iphase = 1, size(outfluxes%area_outlet,1)
+                    call allsum(outfluxes%area_outlet(iphase, ioutlet))
+                    do ifields = 1, size(outfluxes%field_names,2)
+                        call allsum(outfluxes%avgout(ifields, iphase, ioutlet))
+                    end do 
+                end do
+            end do
         end if
+        !The writing process is performed only by processor 1
+        if(getprocno() == 1) then 
+            call get_option('/simulation_name', simulation_name)
+
+            if (itime == 1) then
+                !The first time, remove file if already exists
+                open(unit=89, file=trim(simulation_name)//"_outfluxes.csv", status="replace", action="write")
+            else
+                open(unit=89, file=trim(simulation_name)//"_outfluxes.csv", action="write", position="append")
+            end if
 
 
-        ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
-        where (outfluxes%totout /= outfluxes%totout)
-            outfluxes%totout = 0.!If nan then make it zero
-        end where
-        outfluxes%intflux = outfluxes%intflux + outfluxes%totout(1, :, :)*dt
+            ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
+            where (outfluxes%totout /= outfluxes%totout)
+                outfluxes%totout = 0.!If nan then make it zero
+            end where
+            outfluxes%intflux = outfluxes%intflux + outfluxes%totout(:, :)*dt
+            
 
-        ! Write column headings to file
-        counter = 0
-        if(itime.eq.1) then
-            write(whole_line,*) "Current Time (s)" // "," // "Current Time (years)" // "," // "Pore Volume"
-            whole_line = trim(whole_line)
+            ! Write column headings to file
+            counter = 0
+            if(itime.eq.1) then
+                if (is_porous_media) then 
+                    write(whole_line,*) "Current Time (s)" // "," // "Current Time (years)" // "," // "Pore Volume"
+                else 
+                    write(whole_line,*) "Current Time (s)" // "," // "Current Time (minutes)" // "," // "Volume"
+                end if
+                whole_line = trim(whole_line)
+                do ioutlet =1, size(outfluxes%intflux,2)
+                    do iphase = 1, size(outfluxes%intflux,1)
+                        write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, "-S", outfluxes%outlet_id(ioutlet), "- Volume rate"
+                        whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+                    enddo
+                    do iphase = 1, size(outfluxes%intflux,1)
+                        write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Cumulative production"
+                        whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+                    enddo
+
+                !Averaged value over the surface
+                    do ifields = 1, size(outfluxes%field_names,2)
+                        do iphase = 1, size(outfluxes%field_names,1)
+                            write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),&
+                                                                                    "- Averaged "//trim(outfluxes%field_names(iphase, ifields))
+                            whole_line = trim(whole_line) //","// trim(tempstring(iphase))
+                        end do
+                    end do
+                end do
+                ! Write out the line
+                write(89,*), trim(whole_line)
+            endif
+            ! Write the actual numbers to the file now
+            if (is_porous_media) then 
+                write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
+            else 
+                write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(60.) , ",",  outfluxes%porevolume
+            end if
+            
+            whole_line =  trim(numbers)
             do ioutlet =1, size(outfluxes%intflux,2)
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, "-S", outfluxes%outlet_id(ioutlet), "- Volume rate"
+                    write(fluxstring(iphase),'(E17.11)') outfluxes%totout(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Cumulative production"
+                    write(intfluxstring(iphase),'(E17.11)') outfluxes%intflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
-                if (has_temperature) then
-                    do iphase = 1, size(outfluxes%intflux,1)
-                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Maximum temperature"
+                !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
+                do ifields = 1, size(outfluxes%field_names,2)
+                    do iphase = 1, size(outfluxes%intflux,1) !Here we output the average value over the surface
+                        write(tempstring(iphase),'(E17.11)') outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                    enddo
-                end if
-                if (has_concentration) then
-                    do iphase = 1, size(outfluxes%intflux,1)
-                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Maximum Concentration"
-                        whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                    enddo
-                end if
+                    end do
+                end do
             end do
-             ! Write out the line
+            ! Write out the line
             write(89,*), trim(whole_line)
-        endif
-        ! Write the actual numbers to the file now
-        write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
-        whole_line =  trim(numbers)
-        do ioutlet =1, size(outfluxes%intflux,2)
-            do iphase = 1, size(outfluxes%intflux,1)
-                write(fluxstring(iphase),'(E17.11)') outfluxes%totout(1, iphase,ioutlet)
-                whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
-            enddo
-            do iphase = 1, size(outfluxes%intflux,1)
-                write(intfluxstring(iphase),'(E17.11)') outfluxes%intflux(iphase,ioutlet)
-                whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
-            enddo
-            if (has_temperature) then
-                do iphase = 1, size(outfluxes%intflux,1)
-                    write(tempstring(iphase),'(E17.11)') outfluxes%totout(2, iphase,ioutlet)
-                    whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                enddo
-            end if
-            if (has_concentration) then
-                do iphase = 1, size(outfluxes%intflux,1)
-                    write(tempstring(iphase),'(E17.11)') outfluxes%totout(3, iphase,ioutlet)
-                    whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                enddo
-            end if
-        end do
-        ! Write out the line
-        write(89,*), trim(whole_line)
-        close (89)
+            close (89)
+        end if
     end subroutine dump_outflux
 
     !>@brief: Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a given GI point in a certain element
     !>This subroutine should only be called if SELE is on the BOUNDARY
     !>Example of Mass_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
     !>Example of Vol_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
-    subroutine update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi, Vol_flux, Mass_flux, tracer, temp_field, concentration_field, start_phase, end_phase )
+    subroutine update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi, suf_area, Vol_flux, Mass_flux, tracer, outfluxes_fields, start_phase, end_phase )
       implicit none
       integer, intent(in) :: sele, cv_nodi, start_phase, end_phase
       type (multi_outfluxes), intent(inout) :: outfluxes
       real, dimension(:, :,0:), intent(inout) :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
-      type (tensor_field), pointer, intent(in) :: tracer, temp_field, concentration_field
+      type (tensor_field), pointer, intent(in) :: tracer
+      type (tensor_field_pointer), DIMENSION(:) :: outfluxes_fields
       real, dimension(:), intent(in) :: Vol_flux, Mass_flux
+      real, intent(in) :: suf_area
       !local variables
-      integer :: iphase, iofluxes
-
+      integer :: iphase, iofluxes, ifields
       if (surface_element_owned(tracer, sele)) then
         !Store total outflux; !velocity * area * density * saturation
         if (has_boussinesq_aprox) then
@@ -3691,26 +3707,17 @@ end subroutine get_DarcyVelocity
           do iofluxes = 1, size(outfluxes%outlet_id)!here below we just need a saturation
             if (integrate_over_surface_element(tracer, sele, (/outfluxes%outlet_id(iofluxes)/))) then
               do iphase = start_phase, end_phase
+                outfluxes%area_outlet(iphase, iofluxes) = outfluxes%area_outlet(iphase, iofluxes) + suf_area
                 bcs_outfluxes(iphase, CV_NODI, iofluxes) =  bcs_outfluxes(iphase, CV_NODI, iofluxes) + &
                 Vol_flux(iphase)
               end do
-              if (has_temperature) then!Instead of max tem, maybe energy produced... Mass_FLUX*Cp*Temp
-              !   do iphase = start_phase,end_phase
-              !     outfluxes%totout(2, iphase, iofluxes) =  outfluxes%totout(2, iphase, iofluxes) + &
-              !      Mass_flux(iphase) *4185. * temp_field%val(1,iphase,CV_NODI)
-              !   end do
+              !Average value over the surface
+              do ifields = 1, size(outfluxes_fields)
                 do iphase = start_phase, end_phase
-                  outfluxes%totout(2, iphase, iofluxes) =  max(  temp_field%val(1,iphase,CV_NODI),&
-                  outfluxes%totout(2, iphase, iofluxes)   )
+                    outfluxes%avgout(ifields, iphase, iofluxes) = outfluxes%avgout(ifields, iphase, iofluxes) + &
+                                    outfluxes_fields(ifields)%ptr%val(1,iphase,CV_NODI) * suf_area
                 end do
-              end if
-              !Maybe rather than max_sat would be better Mass of C? Mass_flux*Concentration
-              if (has_concentration) then
-                do iphase = start_phase, end_phase
-                  outfluxes%totout(3, iphase, iofluxes) =  max(  concentration_field%val(1,iphase,CV_NODI),&
-                  outfluxes%totout(3, iphase, iofluxes)   )
-                end do
-              end if
+              end do
             end if
           end do
         end if
@@ -3774,6 +3781,150 @@ end subroutine get_DarcyVelocity
        !print*, "In the end of Sub:", EnterSolve, after_adapt_itime , after_adapt, itime, its !, acctim, t_adapt_threshold
     end subroutine EnterForceBalanceEquation
 
+    !>@brief: Using the outfluxes values, it imposes as BC the averaged value of another BC(from within the domain)
+    !> It is a basic method to get this functionality but it will work in parallel. 
+    !> However, it does not guarantee mass conservation as it uses the value from the previous time-step
+    !> although it can still be used for many cases such as ATES, or ventilation.
+    !> Overwrites the dirichlet BC values.
+    subroutine Impose_connected_BCs(outfluxes, packed_state, Mdims, acctime )
+        implicit none
+        type (multi_outfluxes), intent(inout) :: outfluxes
+        type(multi_dimensions), intent(in) :: Mdims
+        type(state_type), intent(in) :: packed_state
+        real, INTENT(IN) :: acctime 
+        !local variables
+        integer :: iphase, ifields, i,  k, n_bcs, sele, from_BC, pos, field_its, ifield, field_pos, bc_pos
+        integer, dimension(Mdims%nphase) :: number_of_BC_ids
+        integer, dimension(Mdims%nphase, 5000) :: from_BC_list, to_BC_list
+        real :: period_BC
+        real, dimension(Mdims%nphase, 5000) :: period_BC_list
+        integer, dimension(:), allocatable :: to_BC_ids
+        integer, dimension(2) :: shape_option
+        character( len = option_path_len ) :: option_path, field_name
+        character( len = option_path_len ), dimension(100) :: field_names
+        integer, save :: do_anything_at_all = 1
+        logical :: found_tunneled_BC
+        type(tensor_field), pointer :: tracer
 
+        ! character(len=FIELD_NAME_LEN) :: bc_type
+        !As this is expensive and very unlikely to be used regularly we add a check to see if we need to do this at all.
+        if (do_anything_at_all < 0) return 
+        do_anything_at_all = -1
+        from_BC_list = 0; to_BC_list = 0; number_of_BC_ids = 1; period_BC_list = -1
+        field_its = 0
+        do iphase = 1, Mdims%nphase 
+            do k = 1, option_count("/material_phase[" // int2str(iphase-1) // "]/scalar_field")
+                option_path = "/material_phase["// int2str( iphase - 1)//"]/scalar_field["// int2str( k - 1)//"]/prognostic/"
+                if (have_option(trim(option_path))) then!Only for prognostic fields
+                    call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",Field_Name)
+                    if (trim(Field_Name)/="Pressure".and. trim(Field_Name)/="HydrostaticPressure") then                     
+                        n_bcs = option_count(trim(option_path)//"boundary_conditions")
+                        found_tunneled_BC = .false.
+                        do i = 1, n_bcs
+                            if (have_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//"]/type::dirichlet/tunneled_from_another_BC")) then 
+                                call get_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//&
+                                                "]/type::dirichlet/tunneled_from_another_BC/from_BC_id", from_BC)                             
+                                shape_option=option_shape(trim(option_path)//"boundary_conditions["//int2str(i-1)//&
+                                "]/surface_ids")           
+                                allocate(to_BC_ids(1:shape_option(1)))
+                                call get_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//&
+                                                "]/surface_ids", to_BC_ids)                                          
+                                from_BC_list(iphase, number_of_BC_ids(iphase):number_of_BC_ids(iphase)+size(to_BC_ids)-1) = from_BC
+                                to_BC_list(iphase, number_of_BC_ids(iphase):number_of_BC_ids(iphase)+size(to_BC_ids)-1) = to_BC_ids
+                                number_of_BC_ids(iphase) = number_of_BC_ids(iphase) + size(to_BC_ids)
+                                !Check if period BC 
+                                call get_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//&
+                                "]/type::dirichlet/tunneled_from_another_BC/period", period_BC, default = -1.) 
+                                if (period_BC > 0) period_BC_list(iphase, number_of_BC_ids(iphase):number_of_BC_ids(iphase)+size(to_BC_ids)) = period_BC
+                                found_tunneled_BC = .true.
+                                deallocate(to_BC_ids)
+                            end if
+                        end do
+                        if (found_tunneled_BC) then 
+                            field_its = field_its + 1
+                            Field_Names(field_its) = field_name
+                        end if
+                    end if
+                end if
+            end do
+        end do
+
+        !If we have tunneled BCs then we do stuff!
+        if (maxval(number_of_BC_ids) > 1) then 
+
+            !Ensure consistency for averaged fields in parallel, i.e. not saturation
+            if (isparallel()) then 
+                do k = 1, size(outfluxes%outlet_id) 
+                    do iphase = 1, size(outfluxes%area_outlet,1)
+                        call allsum(outfluxes%area_outlet(iphase, k))
+                        do ifield = 1, size(outfluxes%field_names,2)
+                            call allsum(outfluxes%avgout(ifield, iphase, k))
+                        end do 
+                    end do
+                end do
+            end if
+
+            do_anything_at_all = 10!We have tunneled BCs so we make sure that in the future we go through all the process!
+            do ifield = 1, field_its
+                tracer => extract_tensor_field(packed_state, "Packed"//trim(field_names(ifield)))
+                field_pos = -1
+                !identify field position in outfluxes
+                do k = 1, size(outfluxes%field_names,2)
+                    if(trim(outfluxes%field_names(1,k))==trim(field_names(ifield))) then 
+                        field_pos = k
+                        exit
+                    end if
+                end do
+                !For parallel cases or if by mistake it cannot find field_pos
+                if (field_pos < 0) cycle
+                do k = 1, size(tracer%bc%boundary_condition)
+                    if (size(tracer%bc%boundary_condition(k)%surface_element_list)==0) cycle
+                    !Identify a representative surface element
+                    sele = tracer%bc%boundary_condition(k)%surface_element_list(1)
+                    !Now for each phase identify the position of the boundary condition on the tensor field and impose the value     
+                    do iphase = 1, Mdims%nphase
+                        BC_pos = 0
+                        if (period_BC_list(iphase, k) < 0 .or. mod(int(acctime/period_BC_list(iphase, k)),2) == 0) then
+                            if (integrate_over_surface_element(tracer, &
+                                        sele, to_BC_list(iphase, 1:number_of_BC_ids(iphase)))) BC_pos = k
+                            if (BC_pos == 0) cycle
+                            tracer%bc%boundary_condition(BC_pos)%scalar_surface_fields(1)%val = &
+                                avg_value_for_BC(iphase, 1, field_pos, from_BC_list)
+                        else 
+                            if (integrate_over_surface_element(tracer, &
+                                        sele, from_BC_list(iphase, 1:number_of_BC_ids(iphase)))) BC_pos = k
+                            if (BC_pos == 0) cycle
+                            do i = 1, number_of_BC_ids(iphase)
+                                tracer%bc%boundary_condition(BC_pos)%scalar_surface_fields(1)%val = &
+                                    avg_value_for_BC(iphase, i, field_pos, TO_BC_list)
+                            end do
+                        end if
+                    end do
+                end do
+            end do
+        end if
+
+
+        contains
+
+        !> Function to extract the average value to be tunneled to the inlet BC
+        real function avg_value_for_BC(iphase, kpos, ifield, from_BC_list)
+            implicit none 
+            integer, INTENT(IN) :: iphase, kpos, ifield
+            integer, intent(in), dimension(:, :) :: from_BC_list
+            !Local variables
+            integer, dimension(1) :: pos
+            integer :: iter 
+            do iter = 1, size(outfluxes%outlet_id)
+                if (outfluxes%outlet_id(iter)==from_BC_list(iphase, kpos)) then 
+                    pos = iter
+                    exit
+                end if
+            end do
+            ! pos = findloc(outfluxes%outlet_id, from_BC_list(iphase, kpos))
+            avg_value_for_BC = outfluxes%avgout(ifield, iphase, pos(1))/outfluxes%area_outlet(iphase, pos(1))
+        end function avg_value_for_BC
+
+      end subroutine Impose_connected_BCs
 
 end module Copy_Outof_State

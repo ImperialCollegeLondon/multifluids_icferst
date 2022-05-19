@@ -451,6 +451,7 @@ contains
             call Initialise_Saturation_sums_one(Mdims, packed_state, .true.)
         end if
 
+
         !!$ Starting Time Loop
         itime = 0
         ! if this is not a zero timestep simulation (otherwise, there would
@@ -587,6 +588,15 @@ contains
             SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
+
+                !##########################Impose tunneled BCs############################################################
+                !We impose it once per time-level with the exception of the first time-level where we do it after the second non-linear loop 
+                !This is because we need outfluxes to contain data
+                if ((itime > 1 .and. its == 1 ).or. (itime == 1 .and. its== 2)) &
+                                call Impose_connected_BCs(outfluxes, packed_state, Mdims, acctim )
+                !##########################End tunneled BCs############################################################
+
+
 
                 !#=================================================================================================================
                 !# Vinicius: Exit simulation if it do not reach convergence
@@ -900,7 +910,7 @@ contains
 
             ! If calculating boundary fluxes, dump them to outfluxes.csv
             if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
-                if(getprocno() == 1) call dump_outflux(acctim,itime,outfluxes)
+                call dump_outflux(acctim,itime,outfluxes)
             endif
             if (nonLinearAdaptTs) then
                 !As the value of dt and acctim may have changed we retrieve their values
@@ -915,7 +925,6 @@ contains
             end if
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
-
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
             !!$ Calculate diagnostic fields (it should be outside the timeloop as a one-way coupling field only)
             call get_option( '/timestepping/timestep', dt); !Backup of dt
@@ -1031,7 +1040,7 @@ contains
             end if
             ! ####UP TO HERE####
 
-            !Post processing if the mesh has been adapted or to ecalculate fields for the new time-level
+            !Post processing if the mesh has been adapted or to recalculate fields for the new time-level
             if ( do_reallocate_fields ) then
                 after_adapt=.true.
             else

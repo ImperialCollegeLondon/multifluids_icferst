@@ -259,8 +259,12 @@ module multi_data_types
         logical :: calculate_flux !>True if all the process related with this has to start or not
         integer, dimension(:), allocatable :: outlet_id !>ids the user wants
         real :: porevolume !> for outfluxes.csv to calculate the pore volume injected
-        real, allocatable, dimension(:,:,:) :: totout!>(field -saturation, temperature-, Mdims%nphase, size(outlet_id))
+        real, allocatable, dimension(:,:) :: totout!>(Mdims%nphase, size(outlet_id))
+        real, allocatable, dimension(:,:,:) :: avgout!>(fields, Mdims%nphase, size(outlet_id))
+        real, allocatable, dimension(:, :) :: area_outlet !> Mdins%nphase, size(outlet_id)
         real, dimension(:,:),  allocatable  :: intflux
+        character(len = FIELD_NAME_LEN), allocatable, dimension(:,:) :: field_names !> Mdins%nphase, nfields: Store with the same ordering the field names
+
     end type
 
      type pipe_coords
@@ -1415,20 +1419,47 @@ contains
         type (multi_dimensions), intent(in)  ::Mdims
         type (multi_outfluxes), intent(inout) :: outfluxes
         !Local variables
-        integer :: k
+        integer :: k, iphase, nfields
+        character( len = FIELD_NAME_LEN ) :: Field_Name
+        character( len = option_path_len ) :: option_path
 
         !REMEBER TO CHECK MASS CONSERVATION FOR THE CONCENTRATION AS WELL
         allocate(outfluxes%intflux(Mdims%nphase,size(outfluxes%outlet_id)))
-        k = 3!Consider always all possible fields
-        ! if (has_temperature) k = k + 1
-        !(field -saturation, temperature-, Mdims%nphase, size(outfluxes%outlet_id))
-        ! allocate(outfluxes%totout(k, Mdims%nphase, size(outfluxes%outlet_id)))
+        allocate(outfluxes%area_outlet(Mdims%nphase,size(outfluxes%outlet_id)))
 
-        ! if (has_concentration) k = k + 2
-        allocate(outfluxes%totout(k, Mdims%nphase, size(outfluxes%outlet_id)))
+        do iphase = 1, 1
+            nfields = 0
+            do k = 1, option_count("/material_phase[" // int2str(iphase-1) // "]/scalar_field")
+                option_path = "/material_phase["// int2str( iphase - 1)//"]/scalar_field["// int2str( k - 1)//"]/prognostic"
+                if (have_option(trim(option_path))) then!Only for prognostic fields
+                    call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",Field_Name)
+                    if (trim(Field_Name)/="Pressure" .and. trim(Field_Name)/="HydrostaticPressure") then !.and. trim(Field_Name)/="Density" .and. trim(Field_Name)/="PhaseVolumeFraction"
+                        nfields = nfields + 1
+                    end if
+                end if
+            end do
+        end do
+    
+        allocate(outfluxes%field_names(Mdims%nphase, nfields))
+        allocate(outfluxes%totout( Mdims%nphase, size(outfluxes%outlet_id)))
+        allocate(outfluxes%avgout(nfields, Mdims%nphase, size(outfluxes%outlet_id)))
+        outfluxes%intflux= 0.; outfluxes%totout= 0.; outfluxes%avgout= 0.
 
-        outfluxes%intflux= 0.
-        outfluxes%totout= 0.
+        !Now We have to re-do it because Fortran won't let you do linked lists...
+        
+        do iphase = 1, Mdims%nphase 
+            nfields = 0
+            do k = 1, option_count("/material_phase[" // int2str(iphase-1) // "]/scalar_field")
+                option_path = "/material_phase["// int2str( iphase - 1)//"]/scalar_field["// int2str( k - 1)//"]/prognostic"
+                if (have_option(trim(option_path))) then!Only for prognostic fields
+                    call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",Field_Name)
+                    if (trim(Field_Name)/="Pressure".and. trim(Field_Name)/="HydrostaticPressure") then                     
+                        nfields = nfields + 1
+                        outfluxes%field_names(iphase, nfields) = Field_Name
+                    end if
+                end if
+            end do
+        end do
 
     end subroutine allocate_multi_outfluxes
 
@@ -1436,7 +1467,7 @@ contains
         implicit none
         type (multi_outfluxes), intent(inout) :: outfluxes
 
-        deallocate(outfluxes%totout, outfluxes%intflux,outfluxes%outlet_id )
+        deallocate(outfluxes%totout, outfluxes%intflux,outfluxes%outlet_id, outfluxes%avgout, outfluxes%area_outlet )
 
     end subroutine destroy_multi_outfluxes
 
