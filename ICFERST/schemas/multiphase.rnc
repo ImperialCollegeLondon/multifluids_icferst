@@ -3973,6 +3973,25 @@ element Density{(
                            element Coef {
                               real
                            })}*
+                        }|
+                        ## Batzle and Wang (1992) EOS
+                        ## Use for basin scale simulations.
+                        ## Valid for ranges: 5<=P<=100 MPa, 20<=T<=350 degrees Celsius, C<=0.32 kg/kg salinity.
+                        ##
+                        ## NOTE: Reference density is calculated using reference C0, T0, P0.
+                        element BW_eos {
+                           ## Reference concentration (default 0)
+                           element C0 {
+                              real
+                           }?,
+                           ## Reference temperature (default 298)
+                           element T0 {
+                              real
+                           }?,
+                           ## Reference pressure (default 1e5 Pa)
+                           element P0 {
+                              real
+                           }?
                         }
                       ),      ## Use the boussinesq approximation. Useful for small variations of density.
                       ## For porous media only the formulate, including linear pressure, with a reference density work with this.
