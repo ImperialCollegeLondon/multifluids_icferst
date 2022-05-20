@@ -706,22 +706,28 @@ contains
             !     IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
             !         CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,2), IGOT_T_CONST_VALUE(IPHASE,2), TOLD_ALL(IPHASE,:),Mdims%cv_nonods)
             ! END DO
-            DO IPHASE=1,final_phase
-                IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                    CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,3), IGOT_T_CONST_VALUE(IPHASE,3), DEN_ALL(IPHASE,:),Mdims%cv_nonods)
-            END DO
-            DO IPHASE=1,final_phase
-                IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                    CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,4), IGOT_T_CONST_VALUE(IPHASE,4), DENOLD_ALL(IPHASE,:),Mdims%cv_nonods)
-            END DO
-            DO IPHASE=1,final_phase
-                IF(use_volume_frac_t2) THEN
-                    IF( SUM(  WIC_T2_BC_ALL(:,  IPHASE, : ) ) == 0)  &
-                        CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,5), IGOT_T_CONST_VALUE(IPHASE,5), T2_ALL(IPHASE,:),Mdims%cv_nonods)
-                    IF( SUM(  WIC_T2_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                        CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,6), IGOT_T_CONST_VALUE(IPHASE,6), T2OLD_ALL(IPHASE,:),Mdims%cv_nonods)
-                ENDIF
-            END DO
+
+            do iphase = 1, final_phase
+              !Tracer, if prognostic then the value is being modified               !The tracer name includes Packed...
+              IGOT_T_CONST(iphase, 1:2) = have_option('/material_phase::['//int2str(iphase-1)//']/scalar_field::'//trim(tracer%name(7:))//'/prescribed')
+              !Density, if incompressible then it must be constant (or if boussinesq it is considered constant for transport)
+              IGOT_T_CONST(iphase, 3:4) = has_boussinesq_aprox .or. have_option('/material_phase::['//int2str(iphase-1)//']/phase_properties/Density/incompressible')
+              !Saturation if we are transporting a multiphase tracer
+              IF(use_volume_frac_t2) &
+                IGOT_T_CONST(iphase, 5:6) = have_option('/material_phase::['//int2str(iphase-1)//']/scalar_field::PhaseVolumeFraction/prescribed')
+            end do
+
+            !If values are constant then we assign those values
+            do iphase = 1, final_phase
+              if (IGOT_T_CONST(iphase,1)) IGOT_T_CONST_VALUE(iphase,1) = T_ALL(iphase,1)
+              if (IGOT_T_CONST(iphase,2)) IGOT_T_CONST_VALUE(iphase,2) = TOLD_ALL(iphase,1)
+              if (IGOT_T_CONST(iphase,3)) IGOT_T_CONST_VALUE(iphase,3) = DEN_ALL(iphase,1)
+              if (IGOT_T_CONST(iphase,4)) IGOT_T_CONST_VALUE(iphase,4) = DENOLD_ALL(iphase,1)
+              IF(use_volume_frac_t2) then
+                if (IGOT_T_CONST(iphase,5)) IGOT_T_CONST_VALUE(iphase,5) = T2_ALL(iphase,1)
+                if (IGOT_T_CONST(iphase,6)) IGOT_T_CONST_VALUE(iphase,6) = T2OLD_ALL(iphase,1)
+              end if
+            end do
 
             DO IFI=1,size(IGOT_T_PACK,2)
                 DO IPHASE=1,final_phase
