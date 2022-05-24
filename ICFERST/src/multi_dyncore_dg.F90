@@ -4458,7 +4458,7 @@ end if
         LOGICAL, PARAMETER :: solid_visc_sufele_imp=.false.   ! treat implicitly between elements.
         LOGICAL, PARAMETER :: solid_visc_diag_imp=.false.      ! only add diagonal viscous stabilising term mu/dx2
         LOGICAL, PARAMETER :: solid_s_u = .false.             ! s/u stabilisation for solid force
-        REAL :: DX2 ! element diameter dx ** 2. this is approximated with element volume, to be used in sigmagi_stab
+        REAL :: DX2 ! element diameter dx ** 2. this is approximated with element volume, to be used in sigmagi_stab & Nitsche method
         REAL, DIMENSION(:,:), ALLOCATABLE :: force_stab       ! this is solid_force / velocity, as a diagonal stabilisation.
                                                               ! use either this or mu/dx2 stab.
         ! re-calculate Mmat%C matrix...
@@ -4716,49 +4716,53 @@ end if
         type (vector_field), pointer :: solid_force 
         real, dimension(:,:), allocatable :: cv_solid_force 
         real, dimension(:), allocatable :: sigma_plus_bc, vel_count_solid
+        !! imposing interface kinematic eq. via Nitsche method
+        real, dimension(:,:), allocatable :: NN_Nitsche12
+        real::Nitsche_Para = 1.
+        real:: r_suf_sum
 
-
-        ! report solid iimplicitness options
-        ewrite(3, *) 'implicitness option 1 lump 2 3 dx2 s/u?:', solid_visc_ele_imp, solid_implicit_lump, solid_visc_ele_imp_stab, solid_visc_sufele_imp,solid_visc_diag_imp,solid_s_u
-        !JXiang
-!        ALLOCATE(TEN_VOL_RATIO,Mdims%totele)
+        
+        !    ALLOCATE(TEN_VOL_RATIO,Mdims%totele)
         ALLOCATE(UDIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
         solid_implicit = have_option( '/solid_implicit')
         if(solid_implicit) then
-        density_solid=>extract_scalar_field( state(1), "Density_Solid" )
-        sigma=>extract_scalar_field( state(1), "Sigma_Solid")
-        vis=>extract_tensor_field( state(1), "Viscosity_Solid", stat)
-        old_solid_force => extract_vector_field( state(1), "PastSolidForce")
-        ewrite(3,*) ' vis',vis%val(:,:,1)
-        sum_udif=0.0
-        sum_udif_temp=0.0
-        do ele = 1, Mdims%totele
-            do MAT_iloc = 1, Mdims%MAT_nloc
-                MAT_Inod = ndgln%mat( ( ele - 1 ) * Mdims%MAT_nloc + MAT_iloc )
-                u_nodi=ndgln%u((ele-1)*Mdims%u_nloc + MAT_iloc)
-!                ewrite(3,*) 'MAT_inod, U_nodi',MAT_Inod,U_nodi
-                do idim = 1, Mdims%ndim
-                   do jdim = 1, Mdims%ndim 
-                UDIFFUSION(idim,jdim,:,MAT_Inod)=UDIFFUSION_temp(idim,jdim,:,MAT_Inod)*(1.-sigma%val(ele))+&
-                     vis%val(idim,jdim,1)*sigma%val(ele)
-!                UDIFFUSION(idim,jdim,:,MAT_Inod)=UDIFFUSION_temp(idim,jdim,:,MAT_Inod)*(1.-sigma%val(ele))+&
-!                     20000.0*sigma%val(ele)
-             sum_udif=UDIFFUSION(idim,jdim,1,MAT_Inod)*UDIFFUSION(idim,jdim,1,MAT_Inod)+sum_udif
-             sum_udif_temp=UDIFFUSION_temp(idim,jdim,1,MAT_Inod)*UDIFFUSION_temp(idim,jdim,1,MAT_Inod)+sum_udif_temp
-!                 ewrite(3,*) 'UDIFFUSION, UDIFFUSION_temp',MAT_Inod,UDIFFUSION(idim,jdim,:,MAT_Inod),& 
-!                         UDIFFUSION_temp(idim,jdim,:,MAT_Inod),vis%val(idim,jdim,1),sigma%val(ele)
-               END DO 
-             END DO   
-            END DO
-        END DO
-  !      UDIFFUSION=UDIFFUSION_temp
-        ELSE
-                UDIFFUSION=UDIFFUSION_temp
+            ! report solid iimplicitness options
+            ewrite(3, *) 'implicitness option 1 lump 2 3 dx2 s/u?:', solid_visc_ele_imp, solid_implicit_lump, solid_visc_ele_imp_stab, solid_visc_sufele_imp,solid_visc_diag_imp,solid_s_u
+            ! retrieve solid-related fields
+            density_solid=>extract_scalar_field( state(1), "Density_Solid" )
+            sigma=>extract_scalar_field( state(1), "Sigma_Solid")
+            vis=>extract_tensor_field( state(1), "Viscosity_Solid", stat)
+            old_solid_force => extract_vector_field( state(1), "PastSolidForce")
+            ewrite(3,*) ' vis',vis%val(:,:,1)
+            ! since we don't need solid viscosity anymore, let's omit the following code snippet.
+            sum_udif=0.0
+            sum_udif_temp=0.0
+            ! do ele = 1, Mdims%totele
+            !     do MAT_iloc = 1, Mdims%MAT_nloc
+            !         MAT_Inod = ndgln%mat( ( ele - 1 ) * Mdims%MAT_nloc + MAT_iloc )
+            !         u_nodi=ndgln%u((ele-1)*Mdims%u_nloc + MAT_iloc)
+            !         !    ewrite(3,*) 'MAT_inod, U_nodi',MAT_Inod,U_nodi
+            !         do idim = 1, Mdims%ndim
+            !             do jdim = 1, Mdims%ndim 
+            !                 UDIFFUSION(idim,jdim,:,MAT_Inod)=UDIFFUSION_temp(idim,jdim,:,MAT_Inod)*(1.-sigma%val(ele))+&
+            !                     vis%val(idim,jdim,1)*sigma%val(ele)
+            !                 !    UDIFFUSION(idim,jdim,:,MAT_Inod)=UDIFFUSION_temp(idim,jdim,:,MAT_Inod)*(1.-sigma%val(ele))+&
+            !                 !         20000.0*sigma%val(ele)
+            !                 sum_udif=UDIFFUSION(idim,jdim,1,MAT_Inod)*UDIFFUSION(idim,jdim,1,MAT_Inod)+sum_udif
+            !                 sum_udif_temp=UDIFFUSION_temp(idim,jdim,1,MAT_Inod)*UDIFFUSION_temp(idim,jdim,1,MAT_Inod)+sum_udif_temp
+            !                     ! ewrite(3,*) 'UDIFFUSION, UDIFFUSION_temp',MAT_Inod,UDIFFUSION(idim,jdim,:,MAT_Inod),& 
+            !                     !         UDIFFUSION_temp(idim,jdim,:,MAT_Inod),vis%val(idim,jdim,1),sigma%val(ele)
+            !             END DO 
+            !         END DO   
+            !     END DO
+            ! END DO
         end if
-ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSION,Mdims%mat_nonods * Mdims%ndim * Mdims%ndim *Mdims%nphase),&
+        UDIFFUSION=UDIFFUSION_temp
+
+        ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSION,Mdims%mat_nonods * Mdims%ndim * Mdims%ndim *Mdims%nphase),&
         R2NORM(UDIFFUSION_temp,Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase)
-!        solid_implicit= .false.
-! end JXiang
+
+        ! end JXiang
         fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction", stat )
         if (stat/=0) fem_vol_frac_f => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction", stat )
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
@@ -5715,7 +5719,7 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                                     ! theta * future + (1-theta) * past. theta value is hardwired.
                                     do u_iloc = 1,Mdims%u_nloc 
                                         u_nodi = ndgln%u( (ele-1)*Mdims%u_nloc + u_iloc )
-                                        force_solids(:,iphase,u_iloc) = 0.5 * force_solids(:,iphase,u_iloc) + (1-0.5) * old_solid_force%val(:,u_nodi)
+                                        force_solids(:,iphase,u_iloc) = 1.0 * force_solids(:,iphase,u_iloc) + (1-1.0) * old_solid_force%val(:,u_nodi)
                                         solid_force%val(:,u_nodi) = force_solids(:,iphase,u_iloc)   ! store the mid-point solid force to vector field
                                     enddo
 
@@ -6774,15 +6778,34 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 END IF If_ele2_notzero_1
                 ! insert calculation method for matrix ready for determining high order linear method for viscocity...
                 IF(GOT_DIFFUS .AND. LINEAR_HIGHORDER_DIFFUSION) THEN
-                    IF(ELE2.GT.0) THEN
-                        CALL DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT_ELE(:,:,:,ELE), NNX_MAT_ELE(:,:,:,ELE2), NN_MAT_ELE(:,:,ELE), NN_MAT_ELE(:,:,ELE2),  &
-                            Mdims%u_snloc, Mdims%u_nloc, SBUFEN_REVERSED, SDETWE, FE_GIdims%sbcvngi, SNORMXN_ALL, Mdims%ndim, &
-                            U_SLOC2LOC, U_OTHER_LOC, 2*Mdims%u_nloc , .FALSE. )
-                    ELSE
-                        CALL DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT_ELE(:,:,:,ELE), NNX_MAT_ELE(:,:,:,ELE), NN_MAT_ELE(:,:,ELE), NN_MAT_ELE(:,:,ELE),  &
-                            Mdims%u_snloc, Mdims%u_nloc, SBUFEN_REVERSED, SDETWE, FE_GIdims%sbcvngi, SNORMXN_ALL, Mdims%ndim, &
-                            U_SLOC2LOC, U_OTHER_LOC, 2*Mdims%u_nloc , .TRUE.)
-                    ENDIF
+                    if (.not.solid_implicit) then
+                        IF(ELE2.GT.0) THEN
+                            CALL DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT_ELE(:,:,:,ELE), NNX_MAT_ELE(:,:,:,ELE2), NN_MAT_ELE(:,:,ELE), NN_MAT_ELE(:,:,ELE2),  &
+                                Mdims%u_snloc, Mdims%u_nloc, SBUFEN_REVERSED, SDETWE, FE_GIdims%sbcvngi, SNORMXN_ALL, Mdims%ndim, &
+                                U_SLOC2LOC, U_OTHER_LOC, 2*Mdims%u_nloc , .FALSE. )
+                        ELSE
+                            CALL DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT_ELE(:,:,:,ELE), NNX_MAT_ELE(:,:,:,ELE), NN_MAT_ELE(:,:,ELE), NN_MAT_ELE(:,:,ELE),  &
+                                Mdims%u_snloc, Mdims%u_nloc, SBUFEN_REVERSED, SDETWE, FE_GIdims%sbcvngi, SNORMXN_ALL, Mdims%ndim, &
+                                U_SLOC2LOC, U_OTHER_LOC, 2*Mdims%u_nloc , .TRUE.)
+                        ENDIF
+                    else 
+                        IF(ELE2.GT.0) THEN ! inner facets
+                            if ((sigma%val(ele).lt. 0.5 .and. sigma%val(ele2).lt.0.5) .or. &
+                                (sigma%val(ele).gt. 0.5 .and. sigma%val(ele2).gt.0.5) )  then ! and inner either fluid/solid subdomain
+                                CALL DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT_ELE(:,:,:,ELE), NNX_MAT_ELE(:,:,:,ELE2), NN_MAT_ELE(:,:,ELE), NN_MAT_ELE(:,:,ELE2),  &
+                                    Mdims%u_snloc, Mdims%u_nloc, SBUFEN_REVERSED, SDETWE, FE_GIdims%sbcvngi, SNORMXN_ALL, Mdims%ndim, &
+                                    U_SLOC2LOC, U_OTHER_LOC, 2*Mdims%u_nloc , .FALSE. )
+                            else    ! on interface! treat it like boundary.
+                                CALL DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT_ELE(:,:,:,ELE), NNX_MAT_ELE(:,:,:,ELE), NN_MAT_ELE(:,:,ELE), NN_MAT_ELE(:,:,ELE),  &
+                                    Mdims%u_snloc, Mdims%u_nloc, SBUFEN_REVERSED, SDETWE, FE_GIdims%sbcvngi, SNORMXN_ALL, Mdims%ndim, &
+                                    U_SLOC2LOC, U_OTHER_LOC, 2*Mdims%u_nloc , .TRUE.)
+                            endif 
+                        ELSE
+                            CALL DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT_ELE(:,:,:,ELE), NNX_MAT_ELE(:,:,:,ELE), NN_MAT_ELE(:,:,ELE), NN_MAT_ELE(:,:,ELE),  &
+                                Mdims%u_snloc, Mdims%u_nloc, SBUFEN_REVERSED, SDETWE, FE_GIdims%sbcvngi, SNORMXN_ALL, Mdims%ndim, &
+                                U_SLOC2LOC, U_OTHER_LOC, 2*Mdims%u_nloc , .TRUE.)
+                        ENDIF
+                    endif
                 ENDIF
                 !Calculate all the necessary stuff and introduce the CapPressure in the RHS
                 if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Grad_RHS_field_term (&
@@ -7332,11 +7355,13 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                     SLOC_UDIFFUSION_VOL_INTERFACE =  SLOC2_UDIFFUSION_VOL
                                     SLOC2_UDIFFUSION_INTERFACE =  SLOC2_UDIFFUSION
                                     SLOC2_UDIFFUSION_VOL_INTERFACE =  SLOC2_UDIFFUSION_VOL
+                                    ewrite(3,*),'solid side interface | other side', SLOC_UDIFFUSION, '|', SLOC2_UDIFFUSION
                                 elseif((sigma%val(ele).lt.0.5).and.(sigma%val(ele2).gt.0.5)) then ! is fluid element ELE but ELE2 is a solid. 
                                     SLOC_UDIFFUSION_INTERFACE =  SLOC_UDIFFUSION
                                     SLOC_UDIFFUSION_VOL_INTERFACE =  SLOC_UDIFFUSION_VOL
                                     SLOC2_UDIFFUSION_INTERFACE =  SLOC_UDIFFUSION
                                     SLOC2_UDIFFUSION_VOL_INTERFACE =  SLOC_UDIFFUSION_VOL
+                                    ewrite(3,*),'fluid side interface | other side', SLOC_UDIFFUSION, '|', SLOC2_UDIFFUSION
                                 endif
                                 
                             endif
@@ -7976,42 +8001,90 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         !     endif ! ele2.gt.0
                         ! endif ! sigma%val(ele)>0.5
                         if (ele2.gt.0) then ! make sure we are not on the boundary!
-                          if ((sigma%val(ele)>0.5 .and. sigma%val(ele2)<0.5) .or. (sigma%val(ele)<0.5 .and. sigma%val(ele2)>0.5)) then 
+                        !   if ((sigma%val(ele)>0.5 .and. sigma%val(ele2)<0.5) .or. (sigma%val(ele)<0.5 .and. sigma%val(ele2)>0.5)) then 
+                            if ((sigma%val(ele)<0.5 .and. sigma%val(ele2)>0.5)) then
+                                if (.not. allocated(NN_Nitsche12) ) allocate(NN_Nitsche12(Mdims%u_nloc , Mdims%u_nloc*2))
                             ! this IFACE of ELE is on the interface!
-                            do u_siloc = 1, Mdims%u_snloc
-                                u_iloc = u_sloc2loc( u_siloc)
-                                U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
-                                u_jloc2 = u_other_loc(u_iloc)
-                                U_iNOD2 = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_jLOC2 )
+                                NN_Nitsche12 = 0.
                                 
+                                if (Mdims%ndim.eq.3) then 
+                                    DX2 = (Mass_ele(ele)*12./sqrt(2.))**(2./3.) 
+                                ELSEIF (Mdims%ndim.eq.2) then 
+                                    DX2 = (Mass_ele(ele)*4./sqrt(3.))
+                                ENDIF
+                                DO U_SILOC=1,Mdims%u_snloc
+                                    U_ILOC=U_SLOC2LOC(U_SILOC)
+                                    DO U_SJLOC=1,Mdims%u_snloc
+                                        U_JLOC=U_SLOC2LOC(U_SJLOC)
+                                        U_JLOC2 = U_ILOC_OTHER_SIDE(U_SJLOC)
+                                        MAT_INOD = ndgln%mat( (ELE-1)*Mdims%cv_nloc + U_JLOC )
+                                        MAT_INOD2 = ndgln%mat( (ELE2-1)*Mdims%cv_nloc + U_JLOC2 )
+                                        ! DO IDIM=1,NDIM   ! since its the same for all dimensional components, we omit loop over ndim here.
+                                            R_SUF_SUM=SUM( SBUFEN_REVERSED(:,U_SILOC)*SBUFEN_REVERSED(:,U_SJLOC)*SDETWE(:) )
+                                            NN_Nitsche12(U_ILOC,U_JLOC)                = NN_Nitsche12(U_ILOC,U_JLOC)              +  R_SUF_SUM
+                                            ! R_SUF_SUM=SUM( SBUFEN_REVERSED(:,U_SILOC)*SBUFEN_REVERSED(:,U_SJLOC)*SDETWE(:) )
+                                            NN_Nitsche12(U_ILOC,U_JLOC+Mdims%u_nloc)   = NN_Nitsche12(U_ILOC,U_JLOC2+Mdims%u_nloc) -  R_SUF_SUM
+                                            NN_Nitsche12=NN_Nitsche12*Nitsche_Para* &
+                                                max(UDIFFUSION( 1, 1, 1, MAT_INOD), UDIFFUSION( 1, 1, 1, MAT_INOD2)) & ! idim, idim, iphase, mat_inod
+                                                /dx2
+                                            if(ele.eq.6 .or. ele.eq.1899) then
+                                            ewrite(3,*) 'siloc,sjloc,iloc,jloc,U_JLOC2,Nitsche-para, mu1, mu2, dx2,RSUM', &
+                                                U_SILOC, U_SJLOC, U_ILOC, U_JLOC, U_JLOC,Nitsche_Para, &
+                                                UDIFFUSION( 1, 1, 1, MAT_INOD), UDIFFUSION( 1, 1, 1, MAT_INOD2), &
+                                                dx2,R_SUF_SUM
+                                                ewrite(3,*), 'mat_inod, mat_inod2, udiffusion_l2norm', mat_inod, mat_inod2, norm2(UDIFFUSION(1,1,1,:))
+                                            endif
+                                        ! END DO
+                                    END DO
+                                END DO
 
-                                ! if (ele.eq.6 .or. ele.eq.1899) then 
-                                !     X_NODI = NDGLN%X((ELE-1)*Mdims%X_NLOC+U_ILOC)
-                                !     ewrite(3, *), 'node coor: ', X_ALL(:,X_NODI), 'ele, ele2, and sigmas', ele, ele2, sigma%val(ele), sigma%val(ele2), 'uden uden_ele2', UDEN_temp(U_INOD) , UDEN_temp(U_iNOD2), max(UDEN_temp(U_INOD) , UDEN_temp(U_iNOD2))
-                                ! endif
-                                do idim = 1, Mdims%ndim 
-                                    do iphase = 1, Mdims%nphase
-                                        ! if (ele.eq.6 .or. ele.eq.1899) then 
-                                        !     ewrite(3, *) 'idim, iphase, u_iloc, u_jloc2, ele, count_ele', idim, iphase, u_iloc, u_jloc2, ele, count_ele
-                                        !     ewrite(3, *) 'before', DIAG_BIGM_CON(idim, idim, iphase, iphase, u_iloc, u_iloc, ele), &
-                                        !     bigm_con(idim, idim, iphase, iphase, u_iloc, u_jloc2, COUNT_ELE)
-                                        ! endif
+                                ! do u_siloc = 1, Mdims%u_snloc
+                                !     u_iloc = u_sloc2loc( u_siloc)
+                                !     ! U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
+                                !     DO U_SJLOC=1,Mdims%u_snloc
+                                !         U_JLOC=U_SLOC2LOC(U_SJLOC)
+                                !         U_JLOC2 = U_ILOC_OTHER_SIDE(U_SJLOC)
+                                !         ! U_iNOD2 = ndgln%u( ( ELE2 - 1 ) * Mdims%u_nloc + U_jLOC )
 
-                                        DIAG_BIGM_CON(idim, idim, iphase, iphase, u_iloc, u_iloc, ele) = &
-                                            DIAG_BIGM_CON(idim, idim, iphase, iphase, u_iloc, u_iloc, ele) &
-                                            + max(UDEN_temp(U_INOD) , UDEN_temp(U_iNOD2)) / DT
-                                        bigm_con(idim, idim, iphase, iphase, u_iloc, u_jloc2, COUNT_ELE) = &
-                                            bigm_con(idim, idim, iphase, iphase, u_iloc, u_jloc2, COUNT_ELE) &
-                                            - max(UDEN_temp(U_INOD) , UDEN_temp(U_iNOD2)) / DT
+                                !         ! if (ele.eq.6 .or. ele.eq.1899) then 
+                                !         !     X_NODI = NDGLN%X((ELE-1)*Mdims%X_NLOC+U_ILOC)
+                                !         !     ewrite(3, *), 'node coor: ', X_ALL(:,X_NODI), 'ele, ele2, and sigmas', ele, ele2, sigma%val(ele), sigma%val(ele2), 'uden uden_ele2', UDEN_temp(U_INOD) , UDEN_temp(U_iNOD2), max(UDEN_temp(U_INOD) , UDEN_temp(U_iNOD2))
+                                !         ! endif
+                                !         ! do idim = 1, Mdims%ndim 
+                                !         idim = 1
+                                !             ! do iphase = 1, Mdims%nphase
+                                !             iphase = 1
+                                !                 if (ele.eq.6 .or. ele.eq.1899) then 
+                                !                     ewrite(3,*), 'u_sloc2loc(u_sjloc), U_ILOC_OTHER_SIDE(U_SJLOC)',u_sloc2loc(u_sjloc), U_OTHER_LOC(U_SJLOC)
+                                !                     ewrite(3, *) 'idim, iphase, u_iloc, u_jloc, u_jloc2, ele, count_ele', idim, iphase, u_iloc, u_jloc, u_jloc2, ele, count_ele
+                                !                     ewrite(3, *) 'before', DIAG_BIGM_CON(:, :, :, :, u_iloc, u_jloc, ele), '|',&
+                                !                     bigm_con(:, :, :, :, u_iloc, u_jloc2, COUNT_ELE)
+                                !                 endif
 
-                                        ! if (ele.eq.6 .or. ele.eq.1899) then 
-                                        !     ewrite(3, *) 'after ', DIAG_BIGM_CON(idim, idim, iphase, iphase, u_iloc, u_iloc, ele), &
-                                        !     bigm_con(idim, idim, iphase, iphase, u_iloc, u_jloc2, COUNT_ELE)
-                                        ! endif
-                                    enddo !iphase
-                                enddo !idim
-                            enddo !u_siloc
-                          endif
+                                !                 ! DIAG_BIGM_CON(idim, idim, iphase, iphase, u_iloc, u_iloc, ele) = &
+                                !                 !     DIAG_BIGM_CON(idim, idim, iphase, iphase, u_iloc, u_iloc, ele) &
+                                !                 !     + max(UDEN_temp(U_INOD) , UDEN_temp(U_iNOD2)) / DT
+                                !                 ! bigm_con(idim, idim, iphase, iphase, u_iloc, u_jloc, COUNT_ELE) = &
+                                !                 !     bigm_con(idim, idim, iphase, iphase, u_iloc, u_jloc, COUNT_ELE) &
+                                !                 !     - max(UDEN_temp(U_INOD) , UDEN_temp(U_iNOD2)) / DT
+                                                
+                                !                 ! Variable: Nitsche parameter
+                                !                 DIAG_BIGM_CON(:, :, :, :, u_iloc, u_iloc, ele) = &
+                                !                     DIAG_BIGM_CON(:, :, :, :, u_iloc, u_jloc, ele) &
+                                !                     + NN_Nitsche12(u_iloc, u_jloc)
+                                !                 bigm_con(:, :, :, :, u_iloc, u_jloc2, COUNT_ELE) = &
+                                !                     bigm_con(:, :, :, :, u_iloc, u_jloc2, COUNT_ELE) &
+                                !                     + NN_Nitsche12(u_iloc, u_jloc2+Mdims%u_nloc)
+
+                                !                 if (ele.eq.6 .or. ele.eq.1899) then 
+                                !                     ewrite(3, *) 'after ', DIAG_BIGM_CON(:, :, :, :, u_iloc, u_iloc, ele), '|',&
+                                !                     bigm_con(:, :, :, :, u_iloc, u_jloc2, COUNT_ELE)
+                                !                 endif
+                                !             ! enddo !iphase
+                                !         ! enddo !idim
+                                !     enddo !u_sjloc
+                                ! enddo !u_siloc
+                            endif
                         endif
                     endif
                 ENDIF If_diffusion_or_momentum3
