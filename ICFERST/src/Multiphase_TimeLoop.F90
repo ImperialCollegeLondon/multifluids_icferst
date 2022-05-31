@@ -486,8 +486,7 @@ contains
           call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
 
           ! recalculate the melt fraction and compositions to guarantee that the initial condition is consistent
-          call poro_component_solve(state,packed_state, Mdims, ndgln, magma_phase_coef, initilization=.false.)
-        !   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
+          call poro_component_solve(state,packed_state, Mdims, ndgln, magma_phase_coef, initilization=.true.)
         end if
 
 
@@ -583,6 +582,7 @@ contains
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
               !for the diagnostic field, now it seems to be working fine...
                 ewrite(2,*) '  NEW ITS', its
+                no_nonlinear_iteration=its
                 !if adapt_mesh_in_FPI, relax the convergence criteria, since we only want the approx position of the flow
                 if (adapt_mesh_in_FPI) call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 1)
 
@@ -657,6 +657,11 @@ contains
                         calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling)
                 end if Conditional_ForceBalanceEquation
                 
+                ! velocity_field%val(1,2,:)=0.
+                ! velocity_field%val(2,1,:)=0.
+                ! velocity_field%val(1,1,:)=velocity_field%val(1,1,:)*1e7
+                ! velocity_field%val(1,1,:)=-3.0
+
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
                 !#=================================================================================================================
@@ -768,23 +773,13 @@ contains
                 !Do not change the ordering of these if, this one has to occur after calling ENTHALPY_ASSEM_SOLVE and Concentration_assem_solve
                 !The ordering is important to be able to compute the Composition_magma_source term of mass exchange between the concentration between phases
                 IF (is_magma) then
-                !   Backup of the composition and melt fraction to be used to compute the phase change source term
-                !   tracer_field=>extract_tensor_field(packed_state,"PackedConcentration")
-                !   allocate(Compostion_temp(Mdims%cv_nonods), melt_temp(Mdims%cv_nonods))
-                !   Compostion_temp= tracer_field%val(1,2,:); melt_temp = saturation_field%val(1,2,:)! second phase is the melt!
-                  
-                  !Here we  Calculate melt fraction from phase diagram
+                  !Here we  Calculate melt fraction and component from phase diagram
                   call poro_component_solve(state,packed_state, Mdims, ndgln, magma_phase_coef)
                   !we impose backtrack_or_convergence = 1 to ensure that the convergence check works
                   backtrack_or_convergence = 1.0
                   ! ! Update the temperature field
                   call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
                   call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
-                  ! ! Update the composition
-                !   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
-                  ! Calulate the composition source term
-                  !call compute_composition_change_source(Mdims, state, packed_state, melt_temp, Compostion_temp, dt)
-                !   deallocate(Compostion_temp, melt_temp)
                 end if
                 !#=================================================================================================================
                 call petsc_logging(3,stages,ierrr,default=.true.)

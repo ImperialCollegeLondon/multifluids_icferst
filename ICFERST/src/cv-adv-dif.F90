@@ -616,6 +616,7 @@ contains
           !cv_beta == 1 means conservative, meaning that everything multiplied by one_m_cv_beta can be ignored
           one_m_cv_beta = 1.0 - cv_beta
           conservative_advection = abs(one_m_cv_beta) <= 1e-8
+          if (trim(tracer%name)=='PackedConcentration' .or. trim(tracer%name)=='PackedEnthalpy' ) conservative_advection=.true.
           QUAD_OVER_WHOLE_ELE=.FALSE.
           ! Allocate memory for the control volume surface shape functions, etc.
           IF(GETCT) THEN
@@ -1587,6 +1588,14 @@ contains
                                       ENDIF
                                   END DO
                               ENDIF
+                              if (trim(tracer%name)=='PackedConcentration') then 
+                                ! print *, 'THETA_VEL:', THETA_VEL
+                                ! print *, 'FTHETA', FTHETA
+                                ! THETA_VEL=1.
+                                ! FTHETA=1.
+                              end if
+
+                              
                               NDOTQOLD = THETA_VEL*NDOTQ + (1.0-THETA_VEL)*NDOTQOLD
                               FTHETA_T2 = FTHETA * LIMT2
                               ONE_M_FTHETA_T2OLD = (1.0-FTHETA) * LIMT2OLD

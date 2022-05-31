@@ -209,6 +209,7 @@ module global_parameters
   character(len=OPTION_PATH_LEN) :: multi_generic_warning =""
 
   logical :: petsc_error = .false.
+  integer :: no_nonlinear_iteration
 contains
 
   function get_surface_radius() bind(c)

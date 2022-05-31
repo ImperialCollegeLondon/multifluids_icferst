@@ -780,7 +780,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type( tensor_field ), pointer :: perm, python_tfield, old_saturation, old_concentration
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
-           type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
+           type( scalar_field ), pointer :: sfield, porous_field, solid_concentration, Bcomposition
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2) :: totally_min_max
@@ -823,8 +823,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 old_concentration%val(1,1,cv_nodi)= old_concentration%val(1,1,cv_nodi)*old_saturation%val(1, 1, cv_nodi )
                 old_concentration%val(1,2,cv_nodi)= old_concentration%val(1,2,cv_nodi)*old_saturation%val(1, 2, cv_nodi )
             end do
-            old_saturation%val=1.0
-            saturation%val=1.0
+            old_saturation%val=1.
+            saturation%val=1.
            end if
            !Retrieve the number of phases that have Concentration fraction, and then if they are concecutive and start from the first one
            if (nconc < 0) then
@@ -867,7 +867,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               den_all    = den_all2 % val ( 1, :, : )
               denold_all = denold_all2 % val ( 1, :, : )
            endif
-
+           
            if (is_magma) then
             IGOT_T2_loc = .true.   ! This doesn't work since in CV_ASSEMB, it always pass T2 when assembling GETCV_DISC, we need to pass 
                                     !saturation as one
@@ -916,7 +916,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              TDIFFUSION = TDIFFUSION + CDISPERSION
            end if
 
-           if (is_magma) TDIFFUSION=0.0
+        !    if (is_magma) TDIFFUSION=0.0
            !Start with the process to apply the min max principle
            call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
@@ -947,7 +947,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
 
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
-
+               
                call CV_ASSEMB( state, packed_state, &
                    nconc_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
                    tracer, velocity, density, multi_absorp, &
@@ -973,9 +973,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    call zero(solution)
 
                    call assemble(Mmat%petsc_ACV)
+
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+
+
                    !Ensure that the solution is above zero always
                   solution%val = max(solution%val,min_concentration)
+                  
 
                    !Copy solution back to tracer(not ideal...)
                    do ipres =1, mdims%npres
@@ -983,11 +987,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                       tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*nconc_in_pres,:)
                     end do
                    end do
-
                    if (is_magma) then 
                     saturation%val=saturation_save
                     old_saturation%val=old_saturation_save
                     old_concentration%val=old_concentration_save
+
+                    Bcomposition=>extract_scalar_field(state(1),'BulkComposition')
+                    Bcomposition%val=tracer%val(1,1,:)+tracer%val(1,2,:)
                     do cv_nodi = 1, Mdims%cv_nonods    
                         ! if (abs(p_position%val(1,cv_nodi)+194.631)<1e-2 .and. abs(p_position%val(2,cv_nodi)-194.631)<1e-2) then 
                         !      print *, 'hii:', tracer%val(1,1,cv_nodi), tracer%val(1,2,cv_nodi)            
@@ -1003,11 +1009,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                             tracer%val(1,1,cv_nodi)= tracer%val(1,1,cv_nodi)/saturation%val(1,1,cv_nodi)
                             tracer%val(1,2,cv_nodi)= tracer%val(1,2,cv_nodi)/saturation%val(1,2,cv_nodi)
                         end if
-                    end do                    
+                    end do   
+                    deallocate(saturation_save)
+                    deallocate(old_saturation_save)
+                    deallocate(old_concentration_save)                 
                    end if
 
                    !Apply if required the min max principle
                    call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
+
                    !Just after the solvers
                 !    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
                    !Update halo communications
@@ -1018,7 +1028,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    if (.not. its_taken==0) then                        
                         petsc_error= .false.
                    else
-                        petsc_error= .true.    
+                        petsc_error= .false.    
                         print *,'************************'                     
                         print *, 'Petsc solver issue, restart this time step.'
                    end if
@@ -2195,7 +2205,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
           call allocate_multi_field( Mdims, UDIFFUSION_VOL_ALL, Mdims%mat_nonods, mem_type = 1)
         end if
         ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
-        call calculate_viscosity( state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL)
+        call calculate_viscosity( state, packed_state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL)
 
 
         if (compute_compaction) then
@@ -2668,7 +2678,7 @@ end if
           integer, save :: show_FPI_conv
           integer :: i, k, cv_nodi, M, total_u_nodes, Max_restarts
           real, dimension(:,:), allocatable :: stored_field, field_residuals
-          real,save :: solver_tolerance = -1
+          real :: solver_tolerance = -1
           real, dimension(:,:), allocatable :: BAK_matrix, ref_pressure
           real :: conv_test, total_max, total_min, Omega
           logical :: restart_now
@@ -2682,7 +2692,9 @@ end if
           
           real, optional, intent(inout) :: CMC_scale
           logical, save :: first_step = .true.
-          real :: petsc_error_scale 
+          real :: petsc_error_scale           
+          integer:: max_nonlinear_iteraion
+
           
 
           EXTRA=0
@@ -2692,20 +2704,24 @@ end if
           allocate(optimal_velocity(Mdims%ndim ,Mdims%u_nonods))
 
           !Retrieve settings from diamond
-          if (solver_tolerance<0) then
+        !   if (solver_tolerance<0) then
+            call get_option("/solver_options/Non_Linear_Solver", max_nonlinear_iteraion)  
             call get_option("/solver_options/Momemtum_matrix/solve_mom_iteratively", solver_tolerance, default = 1d-7)
             if (petsc_error) then 
                  call random_number(petsc_error_scale)
                  print *, 'convergence criterion rescaled with:', petsc_error_scale
                  petsc_error_scale=min(petsc_error_scale,0.8)
                  petsc_error_scale=max(petsc_error_scale,0.2)
-                 solver_tolerance=solver_tolerance*petsc_error_scale
             end if
+            ! Let the convergence criteria more relaxed on the first non-linear steps and decreases as the iteration increases
+            solver_tolerance=solver_tolerance*10**(-2.*no_nonlinear_iteration/real(max_nonlinear_iteraion-1)+2./real(max_nonlinear_iteraion-1)+2.)
+            print *, 'no_nonlinear_iteration:', no_nonlinear_iteration
+            print *, 'solver_tolerance:', solver_tolerance
             show_FPI_conv = 1
             if (have_option( '/io/Show_Convergence')) show_FPI_conv = 0
             !Type of preconditioner
             Special_precond = .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Disable_advance_preconditioner")
-          end if
+        !   end if
           !Retrieve the maximum number
           call get_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Max_restarts", Max_restarts, default = 5)
           allocate(ref_pressure(Mdims%npres,Mdims%cv_nonods));ref_pressure = 0.
@@ -2716,8 +2732,7 @@ end if
           totally_min_max(2)=maxval(ref_pressure)!use stored field
           !For parallel
           call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-          conv_test = inf_norm_scalar_normalised(P_ALL%val(1,:,:), ref_pressure, 1.0, totally_min_max)
-
+          conv_test = maxval(abs(rhs_p%val(1,:)))
           if ( conv_test < solver_tolerance) then
             ewrite(1,*)"No need for AA"
             deallocate(ref_pressure)
@@ -2789,7 +2804,7 @@ end if
             ref_CDP_tensor%val = CDP_tensor%val
             !We use deltaP as residual check for convergence
                 min_residue=min(conv_test, min_residue)
-            if ( k>3 .and. (conv_test < solver_tolerance)) then
+            if ( conv_test < solver_tolerance) then
               if (getprocno() == 1) then
                 ewrite(show_FPI_conv,*)"Iterations taken in the AA method for Stokes: ", k
               end if

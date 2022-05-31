@@ -117,13 +117,13 @@ contains
     type(coupling_term_coef), intent(in) :: coupling
     integer :: N  !number of items in the series
     integer :: index_fluid  !number of items in the series
-    real,  PARAMETER :: phi_min=1e-8, phi_fluid=0.98
+    real,  PARAMETER :: phi_min=1e-8, phi_fluid=0.95, cap_suspension=0.9
     real :: scaling ! a temporal fix for the scaling difference between the viscosity in ICFERST and the models
-
     real :: suspension_scale=20.0   !HH
     scaling=1.0    ! the viscosity difference between ICFERST and the model
     N = size(series)
     s= -2 !> transition coefficient of the linking function
+
     d=coupling%grain_size
     a=coupling%a
     b=coupling%b
@@ -136,6 +136,7 @@ contains
     do i=1, N
       phi(i) = real(i - 1) / (N - 1)
     end do
+
     if (Test) then
       do i=2, N
         series(i)=d**2/a/mu*phi(i)**b !coupling%a/d**2*mu*phi(i)**(1-coupling%b)*scaling
@@ -158,8 +159,8 @@ contains
     series(1)=series(2)
     series(N)=series(N-1)
 
-    index_fluid=int(phi_fluid*N)
-    series(index_fluid:N)=series(int(0.6*N))
+    index_fluid=int(cap_suspension*N)
+    series(index_fluid:N)=series(index_fluid)
   end subroutine magma_Coupling_generate
 
 
@@ -181,9 +182,9 @@ contains
 
     ! call get_option('/material_phase::phase1/scalar_field::BulkComposition/prognostic/initial_condition::WholeMesh/constant', init_bulk)
     
-    if (present_and_true(initilization)) then 
-      Bcomposition%val=0.2
-    else
+    ! if (present_and_true(initilization)) then 
+    !   Bcomposition%val=0.2
+    ! else
       Bcomposition%val = 0.
       do cv_inod = 1, Mdims%cv_nonods
         do iphase = 1, Mdims%nphase
@@ -192,7 +193,7 @@ contains
       end do
       Bcomposition%val(cv_inod)=max(Bcomposition%val(cv_inod),0.)
       Bcomposition%val(cv_inod)=min(Bcomposition%val(cv_inod),1.)
-    end if 
+    ! end if 
   end subroutine
 
   !>@brief: Computes the contribution for the melt fraction and bulk composition change

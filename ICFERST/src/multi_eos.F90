@@ -1406,11 +1406,11 @@ contains
         type(tensor_field), pointer :: component_field
         real:: denl1,denl2, dens1, dens2, denl, dens 
         ! temperoral settings for the parameters before it put in Diamond
-        denl1=2730
-        denl2=2040
+        denl1=2600
+        denl2=2200 !2200
         
-        dens1=3000 
-        dens2=2600 
+        dens1=3000
+        dens2=2600!2600
 
         use_potential = compute_compaction
         allocate(auxR(Mdims%ndim),auxR2(Mdims%ndim))
@@ -1844,11 +1844,12 @@ contains
     end subroutine calculate_solute_dispersity
 
     !>@brief: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media
-    subroutine calculate_viscosity( state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2 )
+    subroutine calculate_viscosity( state, packed_state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2 )
       implicit none
       type( multi_dimensions ), intent( in ) :: Mdims
       type( multi_ndgln ), intent( in ) :: ndgln
       type( state_type ), dimension( : ), intent( in ) :: state
+      type( state_type ), intent( inout ) :: packed_state
       real, dimension( :, :, :, : ), intent( inout ) :: Momentum_Diffusion
       type( multi_field ), intent( inout ) :: Momentum_Diffusion2
 
@@ -1859,10 +1860,12 @@ contains
       logical :: linearise_viscosity, cg_mesh
       real, dimension( : ), allocatable :: component_tmp
       real, dimension( :, :, : ), allocatable :: mu_tmp
-      integer :: iloc, ndim1, ndim2, idim, jdim
+      integer :: iloc, ndim1, ndim2, idim, jdim, x_inod
       integer :: multiplier
 
       real :: exp_zeta_function
+
+      type( vector_field ), pointer :: p_position
 
   ! DELETE Momentum_Diffusion - START USING THE NEW MEMORY ---
 
@@ -1919,6 +1922,8 @@ contains
                if (is_magma)  then
                  saturation => extract_scalar_field(state(2), "PhaseVolumeFraction") !HH melt is the 2nd phase
                  saturation2 => extract_scalar_field(state(1), "PhaseVolumeFraction") !Solid phase saturation
+
+                !  p_position=>extract_vector_field(packed_state,"PressureCoordinate")
                  call get_option('/magma_parameters/bulk_viscosity_exponential_coefficient' , exp_zeta_function)
                end if
                cg_mesh = have_option( '/material_phase[0]/phase_properties/Viscosity/tensor_field::Viscosity/diagnostic/mesh::PressureMesh')
@@ -1939,13 +1944,15 @@ contains
                      do iloc = 1, Mdims%cv_nloc
                         mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
                         cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
+
+                        x_inod = ndgln%x ( (ele - 1 ) * Mdims%cv_nloc + iloc )
                         if (is_magma) then
                           if (iphase==1) then !only the solid phase has viscosity terms
                             mu_tmp( :, :, iloc )=mus_varied(saturation%val(cv_nod), mu_tmp( 1, 1, iloc )) 
-
                             momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )  !mu_tmp( :, :, iloc )
+                            ! if (abs(p_position%val(2,x_inod)-0.)<25 .or. p_position%val(2,x_inod)>875) momentum_diffusion( :, :, iphase, mat_nod )=1e19
                             !Currently only magma uses momentum_diffusion2
-                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))
+                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc )*1e-2, exp_zeta_function, saturation%val(cv_nod))! make it 1/10
                             !Saturation scaling of viscosity
 !For testing rescaling of viscosity with the saturation
 if (is_magma) then
@@ -2002,7 +2009,7 @@ end if
         real :: phi2
         real :: mus1
 
-        mus1=1e18
+        mus1=1e19
         cut=0.005
 
         phi2=min(phi,cut)
