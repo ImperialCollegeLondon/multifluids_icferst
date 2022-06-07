@@ -1019,7 +1019,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
 
                    !Just after the solvers
-                !    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
+                   call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
                    !Update halo communications
                    call halo_update(tracer)
                    !Checking solver not fully implemented
@@ -2545,7 +2545,7 @@ end if
             call deallocate(diagonal_A)
         end if
         if (rescale_mom_matrices)  call deallocate(diagonal_CMC)
-        if (associated(UDIFFUSION_VOL_ALL%val)) call deallocate_multi_field(UDIFFUSION_VOL_ALL)
+        if (is_magma) call deallocate_multi_field(UDIFFUSION_VOL_ALL)
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
       contains
@@ -2811,26 +2811,6 @@ end if
               exit stokesloop
             end if
 
-            ! if (non_improved_step>25 .and. conv_test>1e-8) then 
-            !     if (abs(conv_test/min_residue)<1000.) then 
-            !         CMC_scale=max(CMC_scale*0.95,1.)
-            !         print *, 'CMC scale increased :', CMC_scale
-            !     else
-            !         CMC_scale=CMC_scale*1.1
-            !         P_all%val(1,1,:)=P_optimal
-            !         velocity%val(:,1,:)=optimal_velocity  
-            !         print *, 'CMC scale decreased :', CMC_scale                 
-            !     end if
-            !     non_improved_step=0
-            !     call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, CMC_scale=CMC_scale)
-            !     call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc2",diag)
-            !     CALL COLOR_GET_CMC_PHA( Mdims, final_phase, Mspars, ndgln, Mmat,&
-            !     DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-            !     CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-            !     pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )                
-            ! end if
-
-
             M = i - 2; if (M <= 0) M = stokes_max_its + M
             ! call get_option("/numerical_methods/max_sat_its", TEST)
               !Find the optimal combination of pressure fields that minimise the residual
@@ -2840,7 +2820,6 @@ end if
 print *, k,':', conv_test
             !##########################Now solve the equations##########################
             ! ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
-            ! if (mod(k,40)==1 .or. conv_test>1e-7) then  
                 call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
                 call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)            
             ! call force_zero_boundary_value(Mdims, velocity)
@@ -2913,7 +2892,7 @@ print *, k,':', conv_test
             call deallocate(aux_velocity)
           end if
           call deallocate(ref_CDP_tensor)
-          deallocate(field_residuals, stored_field, ref_pressure)
+          deallocate(field_residuals, stored_field, ref_pressure,P_optimal,optimal_velocity)
         end subroutine Stokes_Anderson_acceleration
 
         !---------------------------------------------------------------------------

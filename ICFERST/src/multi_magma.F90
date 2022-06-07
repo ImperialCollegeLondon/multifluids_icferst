@@ -117,7 +117,7 @@ contains
     type(coupling_term_coef), intent(in) :: coupling
     integer :: N  !number of items in the series
     integer :: index_fluid  !number of items in the series
-    real,  PARAMETER :: phi_min=1e-8, phi_fluid=0.95, cap_suspension=0.9
+    real,  PARAMETER :: phi_min=1e-8, cap_suspension=0.8
     real :: scaling ! a temporal fix for the scaling difference between the viscosity in ICFERST and the models
     real :: suspension_scale=20.0   !HH
     scaling=1.0    ! the viscosity difference between ICFERST and the model
@@ -190,9 +190,10 @@ contains
         do iphase = 1, Mdims%nphase
           Bcomposition%val(cv_inod) = Bcomposition%val(cv_inod) + Composition%val(1,iphase,cv_inod)*saturation%val(1,iphase,cv_inod)
         end do
+        Bcomposition%val(cv_inod)=max(Bcomposition%val(cv_inod),0.)
+        Bcomposition%val(cv_inod)=min(Bcomposition%val(cv_inod),1.)
       end do
-      Bcomposition%val(cv_inod)=max(Bcomposition%val(cv_inod),0.)
-      Bcomposition%val(cv_inod)=min(Bcomposition%val(cv_inod),1.)
+
     ! end if 
   end subroutine
 
