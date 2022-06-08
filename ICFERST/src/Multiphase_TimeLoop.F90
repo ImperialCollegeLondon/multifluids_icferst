@@ -540,6 +540,7 @@ contains
             call get_option( '/timestepping/current_time', acctim )
             old_acctim = acctim
             acctim = acctim + dt
+            current_time = acctim
             call set_option( '/timestepping/current_time', acctim )
             new_lim = .true.
             ! Added a tolerance of 0.001dt to the condition below that stops us exiting the loop before printing the last time step.
