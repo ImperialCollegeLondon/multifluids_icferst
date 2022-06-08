@@ -194,7 +194,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     ! this may already have been done in populate_state, but now
     ! we evaluate at the correct "shifted" time level:
-    call set_boundary_conditions_values(state, shift_time=.true.)
+    call set_boundary_conditions_values(state, shift_time=.false.)
 
     call enforce_discrete_properties(state, only_prescribed=.true., &
         exclude_interpolated=.true., &

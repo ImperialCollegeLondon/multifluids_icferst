@@ -605,7 +605,7 @@ contains
 
         suf_t_bc = 0. ; suf_t_bc_rob1 = 0. ; suf_t_bc_rob2 = 0.
 
-        call set_boundary_conditions_values( state, shift_time = .true. )
+        call set_boundary_conditions_values( state, shift_time = .false. )
 
         pmesh => extract_mesh( state, 'PressureMesh' )
 
