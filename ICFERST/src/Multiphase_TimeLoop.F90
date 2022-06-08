@@ -281,7 +281,7 @@ contains
         call pack_multistate( Mdims%npres, state, packed_state, multiphase_state, &
             multicomponent_state )
         call prepare_absorptions(state, Mdims, multi_absorp)
-        call set_boundary_conditions_values(state, shift_time=.true.)
+        call set_boundary_conditions_values(state, shift_time=.false.)
 
         !  Access boundary conditions via a call like
         !  call get_entire_boundary_condition(extract_tensor_field(packed_state,"Packed"//name),["weakdirichlet"],tfield,bc_type_list)
@@ -911,6 +911,7 @@ contains
 
             ! If calculating boundary fluxes, dump them to outfluxes.csv
             if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
+                call get_option( '/timestepping/current_time', acctim )
                 call dump_outflux(acctim,itime,outfluxes)
             endif
             if (nonLinearAdaptTs) then
@@ -923,7 +924,7 @@ contains
                     itime = itime - 1
                     cycle Loop_Time
                 end if
-            end if
+            end if 
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
@@ -932,6 +933,8 @@ contains
             !dT may have changed for the next time level, however for diagnostics we need it as it has been done for this time level
             !therefore we compute it based on the actual difference of time
             call set_option( '/timestepping/timestep', acctim-old_acctim)
+            !Now we ensure that the time-step is the correct one
+            call set_option( '/timestepping/timestep', dt)            
             !Time to compute the self-potential if required
             if (write_all_stats .and. have_option("/porous_media/SelfPotential")) &
                     call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
@@ -939,8 +942,7 @@ contains
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             !calculate_diagnostic_variables_new <= computes other diagnostics such as python-based fields
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
-            !Now we ensure that the time-step is the correct one
-            call set_option( '/timestepping/timestep', dt)
+
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
 
             !Now we ensure that the time-step is the correct one
@@ -1052,7 +1054,7 @@ contains
             else
                 call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
             end if
-            call set_boundary_conditions_values(state, shift_time=.true.)
+            call set_boundary_conditions_values(state, shift_time=.false.)
             if (sig_hup .or. sig_int) then
                 ewrite(1,*) "Caught signal, exiting"
                 exit Loop_Time
@@ -1467,7 +1469,7 @@ contains
                 call pack_multistate(Mdims%npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
                 call prepare_absorptions(state, Mdims, multi_absorp)
-                call set_boundary_conditions_values(state, shift_time=.true.)
+                call set_boundary_conditions_values(state, shift_time=.false.)
                 !!$ Deallocating array variables:
                 deallocate( &
                     !!$ Working arrays
