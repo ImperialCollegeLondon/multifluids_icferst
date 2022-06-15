@@ -5142,31 +5142,36 @@ end if
 
     END SUBROUTINE CALC_STRESS_TEN
 
-    SUBROUTINE CALC_STRESS_TEN_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE,  NDIM, NLOC,   &
-    LOC_X_ALL,LOC_X0_ALL, LOC_VEL_ALL, TEN_VOL_RATIO_temp, ELE)
+    SUBROUTINE CALC_STRESS_TEN_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE, D_sigma, NDIM, NLOC,   &
+    LOC_X_ALL,LOC_X0_ALL, LOC_VEL_ALL, ELE, ufenx_all, dt)
         ! determine stress form of viscocity...
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state !> Linked list containing all the fields defined in diamond and considered by Fluidity
 
-        INTEGER, intent( in )  :: NDIM, NLOC , ELE ! linfeng needs index of element (ELE)
-        type( tensor_field ), pointer :: temp_stress    ! linfeng sets this temporary to update solid stress tensor
-        REAL, DIMENSION( :, :  ), intent( inOUT ) :: CAUCHY_STRESS_IJ_SOLID_ELE
+        INTEGER, intent( in )  :: NDIM, NLOC , ELE 
+        type( tensor_field ), pointer :: temp_stress    ! temporary field pointer to update solid stress tensor
+        REAL, DIMENSION( :, :  ), intent( inOUT ) :: CAUCHY_STRESS_IJ_SOLID_ELE 
+        REAL, DIMENSION( :, :  ,:,:), intent( inOUT ) :: D_sigma ! D_sigma is directional derivative of stress. to be multiplied by velocity. dimension: (u_nloc, ndim, ndim, ndim) -> link each velocity components to Dsigma
         !   REAL, DIMENSION( :, :  ), intent( inOUT ) :: PRESSURE
-        REAL, intent( in ) :: TEN_VOL_RATIO_temp
+        ! REAL, intent( in ) :: TEN_VOL_RATIO_temp
         REAL, DIMENSION( :,: ), intent( in ) :: LOC_X_ALL, LOC_VEL_ALL
         REAL, DIMENSION( :,: ), intent( in ) :: LOC_X0_ALL
-        REAL :: F0( NDIM,NDIM ),FX( NDIM,NDIM ),F0inv( NDIM,NDIM ),Fxinv( NDIM,NDIM )
-        REAL :: voli,volc, LX( NDIM,NDIM ), L(NDIM,NDIM ),D(NDIM,NDIM )
-
-        ! TEN_VOL is volumetric viscocity - mostly set to zero other than q-scheme or use with kinetic theory
-        !    REAL, DIMENSION( : ), intent( in ) :: UFENX_JLOC
+        REAL, DIMENSION( :,:,:), intent( in ) :: ufenx_all ! derivative of shapefunctions, (ndim, u_ngi, u_nloc)
+        REAL, INTENT(IN) :: dt ! timestep
+        
         ! Local variables...
-        REAL :: FEN_TEN_XX(NDIM,NDIM),FEN_TEN_VOL(NDIM),UFENX(NDIM,NDIM), trb
-        INTEGER :: IDIM,JDIM,KDIM,ILOC,II
-        REAL::DPEMU,DPELA,TEN_VOL_RATIO, hydro_pressure, DPEKS 
+        REAL :: F0( NDIM,NDIM ),FX( NDIM,NDIM ),F0inv( NDIM,NDIM ),Fxinv( NDIM,NDIM ) ! aids to compute F (deformation gradient, stored in UFENX)
+        REAL :: voli,volc, LX( NDIM,NDIM ), L(NDIM,NDIM ),D(NDIM,NDIM )  ! more aids...
+        REAL :: dF(NLOC, NDIM, NDIM,NDIM )  ! \delta F (correcting direction of deformation gradient). first two dimensions: velocity components; last two dimensions: dF.
+        REAL :: trFmTdF(NLOC, NDIM)  ! double dot product of  F^-T:dF. dimension: velocity copmonents
+        REAL :: FEN_TEN_XX(NDIM,NDIM),UFENX(NDIM,NDIM), trb   ! fen_ten_xx is b=FF^T; UFENX is F; trb is trace of b(=FF^T)
+        REAL :: UFENXinv(NDIM, NDIM) ! inverse of F
+        INTEGER :: IDIM,JDIM,KDIM,ILOC,II,u_inod
+        REAL::DPEMU,DPELA,TEN_VOL_RATIO, hydro_pressure, DPEKS  ! lame coeff MU; lame coeff LAMBDA; J; **; damping coeff 
         logical :: isCompressible
     !     ewrite(3,*)"enter stress tensor calculation, TEN_VOL_RATIO", TEN_VOL_RATIO
-
+        dF = 0.
+        trFmTdF = 0.
         ! DPEMU=1.0e+05
         ! DPELA=1.0e+05
         ! DPEKS=300.
@@ -5255,7 +5260,6 @@ end if
             END DO
             END DO
 
-            ! FEN_TEN_VOL(:)=UFENX_ILOC(:) * TEN_VOL
             if (isCompressible) then
                 DO JDIM=1,NDIM
                     DO IDIM=1,NDIM
@@ -5337,6 +5341,9 @@ end if
                     enddo
                 enddo
             enddo
+            ! find the inverse of deformation gradient F
+            UFENXinv = UFENX 
+            call invert(UFENXinv)
             ! left Cauchy-Green strain b = F*F^T (FEN_TEN_XX)
             ! and deformation rate tensor D 
             FEN_TEN_XX = 0.0
@@ -5383,6 +5390,50 @@ end if
                 enddo
                 ! ewrite(-3,*),'det b',FEN_TEN_XX(1,1)*FEN_TEN_XX(2,2)-FEN_TEN_XX(1,2)*FEN_TEN_XX(2,1),&
                 ! 'j^2', TEN_VOL_RATIO**2
+
+                !! now find the directional derivative 
+                ! delta F
+                do u_inod = 1,NLOC 
+                    do idim = 1,ndim 
+                        do jdim = 1,ndim
+                            do kdim = 1,ndim
+                                dF(u_inod, idim, idim, jdim) = dF(u_inod, idim, idim, jdim) + sum(ufenx_all(kdim, :, u_inod)*UFENX(kdim,jdim))
+                            enddo
+                        enddo
+                    enddo
+                enddo
+                dF = dF*dt
+                ! F^-T:delta F
+                trFmTdF=0.
+                do u_inod = 1,NLOC
+                    do idim = 1,ndim
+                        do jdim = 1,ndim
+                            do kdim = 1,ndim
+                                trFmTdF(u_inod, idim) = trFmTdF(u_inod, idim) + UFENXinv(kdim,jdim)*dF(u_inod,idim,jdim,kdim) ! [F^-T]_(jk)*[dF]_(jk) = [F^-1]_(kj)*[dF]_(jk)
+                            enddo
+                        enddo
+                    enddo
+                enddo
+                ! D_sigma 
+                D_sigma = 0.0
+                do u_inod = 1,NLOC
+                    do idim = 1,ndim
+                        do jdim = 1,ndim
+                            do kdim = 1,ndim
+                                D_sigma(u_inod, idim, jdim, kdim) = D_sigma(u_inod, idim, jdim, kdim) &
+                                    + sum(dF(u_inod, idim, jdim, :)*UFENX(kdim,:)) & ! dF*F^T
+                                    + sum(UFENX(jdim,:)*dF(u_inod, idim, kdim,:))    ! F*dF^T
+                            enddo
+                            D_sigma(u_inod, idim, jdim, jdim) = D_sigma(u_inod, idim, jdim, jdim) + 2*TEN_VOL_RATIO**(-2.)*trFmTdF(u_inod, idim)
+                        enddo
+                    enddo
+                enddo
+                D_sigma = D_sigma*DPEMU
+ewrite(3,*), 'D_Sigma', D_sigma
+ewrite(3,*), 'F', ufenx 
+ewrite(3,*), 'Finv', UFENXinv
+ewrite(3,*), 'J', TEN_VOL_RATIO
+ewrite(3,*), 'dF', dF
             endif ! if (isCompressible)
 
             ! store solid stress to tensor field

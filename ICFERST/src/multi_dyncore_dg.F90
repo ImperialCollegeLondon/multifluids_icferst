@@ -4639,7 +4639,9 @@ end if
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: STRESS_IJ_ELE_EXT
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: STRESS_IJ_SOLID_ELE_EXT   !JXiang
         REAL, DIMENSION ( :, : ), allocatable :: CAUCHY_STRESS_IJ_SOLID_ELE   !JXiang
-
+        REAL, DIMENSION ( :, :, :, :), allocatable :: D_sigma
+        real, dimension(:,:,:,:), allocatable :: D_sigma_int
+        logical :: newton_linear_stress = .true. ! Newton linearised solid stress
         REAL, DIMENSION ( :, :, : ), allocatable :: S_INV_NNX_MAT12
         REAL, DIMENSION ( :, :, :, : ), allocatable :: NNX_MAT_ELE
         REAL, DIMENSION ( :, :, : ), allocatable :: NN_MAT_ELE
@@ -4751,6 +4753,7 @@ end if
             !         END DO   
             !     END DO
             ! END DO
+            if (newton_linear_stress) allocate( D_sigma_int(Mdims%u_nloc, Mdims%ndim, Mdims%ndim, Mdims%u_nloc) )
         end if
         UDIFFUSION=UDIFFUSION_temp
 
@@ -5082,7 +5085,7 @@ end if
         !JXiang
         ALLOCATE( STRESS_IJ_solid_ELE( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc,Mdims%u_nloc )); STRESS_IJ_solid_ELE = 0.
         ALLOCATE( CAUCHY_STRESS_IJ_solid_ELE( Mdims%ndim, Mdims%ndim )); CAUCHY_STRESS_IJ_solid_ELE = 0.
-
+        ALLOCATE( D_sigma( Mdims%u_nloc, Mdims%ndim, Mdims%ndim, Mdims%ndim)); D_sigma = 0.
         ALLOCATE( STRESS_IJ_SOLID_ELE_EXT( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_snloc, 2*Mdims%u_nloc ) )
         STRESS_IJ_SOLID_ELE_EXT=0.0
         allocate(force_stab(Mdims%ndim, Mdims%u_nloc))
@@ -5703,12 +5706,23 @@ end if
                             IF(IDIVID_BY_VOL_FRAC.ne.1) THEN
                                 GI=1! DO GI = 1, FE_GIdims%cv_ngi
                                 DO IPHASE = 1, Mdims%nphase
-                                    CALL CALC_STRESS_TEN_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE( :, :), Mdims%ndim, &
-                                        Mdims%x_nloc, LOC_X_ALL(:,:),LOC_X0_ALL(:,:), LOC_VEL_ALL(:,:), &
-                                        TEN_VOL_RATIO(GI), ele )
+                                    CALL CALC_STRESS_TEN_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE( :, :), D_sigma(:,:,:,:), Mdims%ndim, Mdims%x_nloc,&
+                                        LOC_X_ALL(:,:),LOC_X0_ALL(:,:), LOC_VEL_ALL(:,:), ele , UFENX_ALL_REVERSED(:,:,:), dt)
+                                        
                                     force_solids( :, IPHASE, : )=0.0
                                     CALL CALC_FORCE_SOLID(state, CAUCHY_STRESS_IJ_SOLID_ELE( :, :),  Mdims%ndim, &
                                         Mdims%x_nloc,LOC_X_ALL(:,:),force_solids(:,IPHASE,:), Mdims, ndgln, ele)
+
+                                    ! integrating D_sigma over element
+                                    if (newton_linear_stress) then
+                                        D_sigma_int(:,:,:,:) = 0.0
+                                        do u_iloc = 1, Mdims%u_nloc
+                                            do idim = 1, Mdims%ndim 
+                                                call CALC_FORCE_SOLID(state, D_sigma(u_iloc, idim, :,:), Mdims%ndim, &
+                                                    Mdims%x_nloc,LOC_X_ALL(:,:),D_sigma_int(u_iloc, idim, :,:), Mdims, ndgln, ele)
+                                            enddo
+                                        enddo
+                                    endif 
 
                                     ! theta method for solid force
                                     ! theta * future + (1-theta) * past. theta value is hardwired.
@@ -5899,6 +5913,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                             END IF
                                           END IF
                                         END IF
+                                        if (newton_linear_stress) then 
+                                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) = &
+                                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
+                                            + D_sigma_int(U_JLOC, JDIM, IDIM, U_ILOC)
+                                        endif
                                     END DO
                                 END DO
                             END DO
@@ -6039,6 +6058,22 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                   END DO
                                END DO
                             endif
+                        endif
+
+                        ! Newton-linearisation of solid stress term - rhs term: D_sigma * u_current
+                        if (newton_linear_stress) then 
+                            do IPHASE = 1, Mdims%nphase 
+                                do jdim = 1, Mdims%ndim 
+                                    ! do U_JLOC = 1, Mdims%u_nloc 
+                                        do idim = 1, Mdims%ndim
+                                            ! do U_ILOC = 1, Mdims%u_nloc
+                                                LOC_U_RHS( IDIM, IPHASE, U_ILOC) = LOC_U_RHS( IDIM, IPHASE, U_ILOC) & 
+                                                    + D_sigma_int(U_JLOC, jdim, idim, U_ILOC) * loc_u(jdim, iphase, u_jloc)
+                                            ! enddo
+                                        enddo
+                                    ! enddo
+                                enddo
+                            enddo
                         endif
     
                         IF ( .NOT.JUST_BL_DIAG_MAT ) THEN
