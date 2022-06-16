@@ -4753,6 +4753,7 @@ end if
             !         END DO   
             !     END DO
             ! END DO
+            ! newton_linear_stress = nonlinear_its.gt.3 ! solid stress: first do 3 picard iteration; then do Newton iteration
             if (newton_linear_stress) allocate( D_sigma_int(Mdims%u_nloc, Mdims%ndim, Mdims%ndim, Mdims%u_nloc) )
         end if
         UDIFFUSION=UDIFFUSION_temp
@@ -5916,7 +5917,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                         if (newton_linear_stress) then 
                                             DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) = &
                                             DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
-                                            + D_sigma_int(U_JLOC, JDIM, IDIM, U_ILOC)
+                                            - D_sigma_int(U_JLOC, JDIM, IDIM, U_ILOC)
                                         endif
                                     END DO
                                 END DO
@@ -6068,7 +6069,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                         do idim = 1, Mdims%ndim
                                             ! do U_ILOC = 1, Mdims%u_nloc
                                                 LOC_U_RHS( IDIM, IPHASE, U_ILOC) = LOC_U_RHS( IDIM, IPHASE, U_ILOC) & 
-                                                    + D_sigma_int(U_JLOC, jdim, idim, U_ILOC) * loc_u(jdim, iphase, u_jloc)
+                                                    - D_sigma_int(U_JLOC, jdim, idim, U_ILOC) * loc_u(jdim, iphase, u_jloc)
                                             ! enddo
                                         enddo
                                     ! enddo

@@ -5169,7 +5169,7 @@ end if
         INTEGER :: IDIM,JDIM,KDIM,ILOC,II,u_inod
         REAL::DPEMU,DPELA,TEN_VOL_RATIO, hydro_pressure, DPEKS  ! lame coeff MU; lame coeff LAMBDA; J; **; damping coeff 
         logical :: isCompressible
-    !     ewrite(3,*)"enter stress tensor calculation, TEN_VOL_RATIO", TEN_VOL_RATIO
+        ! ewrite(3,*)"enter stress tensor calculation, TEN_VOL_RATIO", TEN_VOL_RATIO
         dF = 0.
         trFmTdF = 0.
         ! DPEMU=1.0e+05
@@ -5429,11 +5429,11 @@ end if
                     enddo
                 enddo
                 D_sigma = D_sigma*DPEMU
-ewrite(3,*), 'D_Sigma', D_sigma
-ewrite(3,*), 'F', ufenx 
-ewrite(3,*), 'Finv', UFENXinv
-ewrite(3,*), 'J', TEN_VOL_RATIO
-ewrite(3,*), 'dF', dF
+! ewrite(3,*), 'D_Sigma', D_sigma
+! ewrite(3,*), 'F', ufenx
+! ewrite(3,*), 'Finv', UFENXinv
+! ewrite(3,*), 'J', TEN_VOL_RATIO
+! ewrite(3,*), 'dF', dF
             endif ! if (isCompressible)
 
             ! store solid stress to tensor field
