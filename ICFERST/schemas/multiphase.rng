@@ -17,8 +17,22 @@
       <a:documentation>IC-FERST is a next generation simulator based on Double-Control-Volume
 Finite Element methods and dynamic unstructured mesh optimisation.
 
-IC-FERST is licensed under the LGPL. For more information
-please visit: http://multifluids.github.io/</a:documentation>
+IC-FERST is licensed under the AGPL. For more information
+please visit: http://multifluids.github.io/
+
+&lt;b&gt;Performance tips:&lt;/b&gt;
+
+1) Adapt the mesh as little as possible as it is costly (adapting every 5 time levels adds ~10% extra cost);
+
+2) Avoid if possible using python fields since it comes with an extra cost (~5% for each field);
+
+3) When possible use the fast option;
+
+4) Output files only when required, it adds extra computations apart from the I/O;
+
+5) Do not use tensor_field to define permeability unless a full anisotropic tensor is required;
+
+6) PassiveTracers are cheaper as they are computed every time-level while ActiveTracers are withing the non-linear loop;</a:documentation>
       <ref name="comment"/>
       <element name="simulation_name">
         <a:documentation>Model output files are named according to the simulation
@@ -797,38 +811,36 @@ ONLY specify for the wetting phase</a:documentation>
                   </optional>
                 </element>
               </optional>
-              <optional>
-                <element name="immobile_fraction">
-                  <a:documentation>Immobile volume of fluid phase</a:documentation>
-                  <choice>
-                    <a:documentation>Immobile fraction</a:documentation>
-                    <element name="scalar_field">
-                      <attribute name="name">
-                        <value>value</value>
-                      </attribute>
-                      <element name="prescribed">
-                        <ref name="material_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
-                      </element>
+              <element name="immobile_fraction">
+                <a:documentation>Immobile volume of fluid phase</a:documentation>
+                <choice>
+                  <a:documentation>Immobile fraction</a:documentation>
+                  <element name="scalar_field">
+                    <attribute name="name">
+                      <value>value</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
                     </element>
-                    <element name="scalar_field">
-                      <a:documentation>For drainage the immobile fraction is computed dynamically using the Land formula.
+                  </element>
+                  <element name="scalar_field">
+                    <a:documentation>For drainage the immobile fraction is computed dynamically using the Land formula.
 NOTE: No thermal effects considered to change the trapping, i.e. trapping is permanent
 
 High hysteresis ~ 0.2. Low hysteresis &gt; 5
 
 Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".</a:documentation>
-                      <attribute name="name">
-                        <value>Land_coefficient</value>
-                      </attribute>
-                      <element name="prescribed">
-                        <ref name="material_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
-                      </element>
+                    <attribute name="name">
+                      <value>Land_coefficient</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
                     </element>
-                  </choice>
-                </element>
-              </optional>
+                  </element>
+                </choice>
+              </element>
             </element>
           </optional>
         </element>
@@ -895,6 +907,8 @@ Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".</a:docu
               </choice>
             </element>
             <element name="tensor_field">
+              <a:documentation>&lt;b&gt;ONLY USE THIS OPTION IF YOU ARE GOING TO USE A FULL ANISOTROPIC TENSOR&lt;/b&gt;
+if not, vector_field is much faster and the results are the same</a:documentation>
               <attribute name="name">
                 <value>Permeability</value>
               </attribute>
@@ -959,9 +973,9 @@ For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conduc
               <element name="scalar_field">
                 <a:documentation>Specify scalar field density of the porous media
 
-The value to specify here is the value of the minerals or grains that make up the rock.
-This is the bulk value divided by (1-porosity).
-Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
+&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
+Double check and convert your input values so they only represent the matrix property
+(e.g. bulk measurement divided by porosity)</a:documentation>
                 <attribute name="name">
                   <value>porous_density</value>
                 </attribute>
@@ -981,9 +995,9 @@ Note: Bulk density is the one normally obtained in lab experiments.</a:documenta
                 <element name="scalar_field">
                   <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
 
-The value to specify here is the value of the minerals or grains that make up the rock.
-This is the bulk value divided by (1-porosity).
-Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
+&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
+Double check and convert your input values so they only represent the matrix property
+(e.g. bulk measurement divided by porosity)</a:documentation>
                   <attribute name="name">
                     <value>porous_heat_capacity</value>
                   </attribute>
@@ -1004,9 +1018,9 @@ Note: Bulk density is the one normally obtained in lab experiments.</a:documenta
                 <element name="tensor_field">
                   <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )
 
-The value to specify here is the value of the minerals or grains that make up the rock.
-This is the bulk value divided by (1-porosity).
-Note: Bulk density is the one normally obtained in lab experiments.</a:documentation>
+&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
+Double check and convert your input values so they only represent the matrix property
+(e.g. bulk measurement divided by porosity)</a:documentation>
                   <attribute name="name">
                     <value>porous_thermal_conductivity</value>
                   </attribute>
@@ -1544,6 +1558,13 @@ This option is useful if your field is suddenly changing after adapting the mesh
             </element>
           </optional>
           <optional>
+            <element name="disable_limiters">
+              <a:documentation>This disable the limiters regarless of the precision used
+Limiters are quite expensive so if your simulation is slow it might be worth trying this.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
             <element name="flux_limited_vad">
               <a:documentation>VAD is multiplied by the normalised flux. This should help focusing the VAD towards moving directions instead of acting as pure diffusion</a:documentation>
               <empty/>
@@ -1698,13 +1719,13 @@ activate this to also output the force_density</a:documentation>
         <a:documentation>Selects the quality configuration of the experiment
 For Porous media the P1/P0 stands for P0, for inertia for P1.
 
-Fast =&gt; Element pair = P1/P0DGP1(CV). Upwinding and implicit Euler;
+Fast (&lt;b&gt;recommended&lt;/b&gt;) =&gt; Element pair = P0DGP1(CV). Upwinding and implicit euler;
 
-Balanced (&lt;b&gt;recommended&lt;/b&gt;) =&gt; Element pair = P1/P0DGP1(CV). High order advection scheme and adaptive theta;
+Balanced =&gt; Element pair = P1/P0DGP1(CV). High order advection scheme, adaptive theta and limiters;
 
-Precision =&gt; Element pair = P1DGP2(CV). High order advection scheme and adaptive theta
+Precision =&gt; Element pair = P1DGP2(CV). High order advection scheme and adaptive theta and limiters;
 
-Discontinuous_pressure =&gt; P1DG(BL)P1DG(CV). High order advection scheme and adaptive theta</a:documentation>
+Discontinuous_pressure =&gt; P1DG(BL)P1DG(CV). High order advection scheme and adaptive theta and limiters;</a:documentation>
         <element name="string_value">
           <choice>
             <value>fast</value>
@@ -1952,7 +1973,7 @@ The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc
               <optional>
                 <element name="ML_model_path">
                   <a:documentation>Recommended method. XGBoost installed and compiled with ICFERST is a requirement.
-Specify here the path to the machine learning (XGBoost) model.               </a:documentation>
+Specify here the path to the machine learning (XGBoost) model.</a:documentation>
                   <data type="string" datatypeLibrary=""/>
                   <group>
                     <optional>
@@ -1964,9 +1985,9 @@ It saves the model in the same folder of the old model using the name "name_old_
                     </optional>
                     <optional>
                       <element name="target_num_nonlinear">
-                        <a:documentation>Target number of inner-nonlinear iterations per outer-nonlinear iteration. 
+                        <a:documentation>Target number of inner-nonlinear iterations per outer-nonlinear iteration.
 
-&lt;b&gt;Recommended values: 1.0 to 5.0 &lt;/b&gt;     
+&lt;b&gt;Recommended values: 1.0 to 5.0 &lt;/b&gt;
 
 &lt;b&gt;Default value: 1.0 &lt;/b&gt;</a:documentation>
                         <ref name="real"/>
@@ -2039,6 +2060,13 @@ If this is off, a classical method based on the number of FPI performed is used 
 By default this is the 20% of the maximum number of non-linear iterations.
 Please double-check that the number of 'Non_Linear_Solver' iterations is greater than 'Aim_num_FPI'</a:documentation>
                             <ref name="integer"/>
+                          </element>
+                        </optional>
+                        <optional>
+                          <element name="FPI_only">
+                            <a:documentation>Only use number of NLI to control timestep and not the error of the non linear solver.
+Can sometimes be a faster option compared to both using aim NLI and error.</a:documentation>
+                            <empty/>
                           </element>
                         </optional>
                       </element>
@@ -2133,9 +2161,13 @@ D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
               <empty/>
             </element>
           </optional>
-          <optional>
+          <choice>
+            <element name="Solve_mom_with_PETSc">
+              <a:documentation>Use PETSc to create and solve the Schur complement matrix and solve for it</a:documentation>
+              <empty/>
+            </element>
             <element name="solve_mom_iteratively">
-              <a:documentation>Use this option to switch on the Anderson acceleration method for the momentum equations. The mass matrix is lumped.
+              <a:documentation>Use this option to switch on the Anderson acceleration method for the momentum equation (IC-FERST own Stokes solver). The mass matrix is lumped.
 
 This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-7.&lt;/b&gt;</a:documentation>
               <ref name="real"/>
@@ -2149,7 +2181,7 @@ This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the st
                 <optional>
                   <element name="Max_restarts">
                     <a:documentation>Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.</a:documentation>
-                    <ref name="real"/>
+                    <ref name="integer"/>
                   </element>
                 </optional>
                 <optional>
@@ -2171,7 +2203,7 @@ If Momentum_preconditioner is on then the formula is: (C^t Ad^-1 M^-1 C)^-1 (C^t
                 </optional>
               </group>
             </element>
-          </optional>
+          </choice>
         </element>
       </optional>
     </element>
@@ -3358,7 +3390,7 @@ mass fraction with a particular phase</a:documentation>
       <element name="scalar_field">
         <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
 
-PassiveTracers are not part of the convergence criteria and are computed outside the non-linear loop. 
+PassiveTracers are not part of the convergence criteria and are computed outside the non-linear loop.
 Also, to reduce their cost, low order methods are used for their computation.</a:documentation>
         <attribute name="rank">
           <value>0</value>
@@ -4763,7 +4795,7 @@ DEN = A * P ^ B
 DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))
 
 NOTE: This equation is only valid for small changes in density.
-Internally it is bounded to not vary more than 10%</a:documentation>
+&lt;b&gt; Internally it is bounded to stay between [DEN0/2,DEN0*2] &lt;/b&gt;</a:documentation>
               <element name="reference_density">
                 <a:documentation>This is the density value at reference properties</a:documentation>
                 <ref name="real"/>
@@ -4825,6 +4857,30 @@ Introduce the same name as the scalar field being used. For example: Tracer_CO2<
                 </element>
               </zeroOrMore>
             </element>
+          <element name="BW_eos">
+            <a:documentation>Batzle and Wang (1992) EOS
+            Use for basin scale simulations.
+            Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg.
+            NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentation>
+            <optional>
+              <element name="C0">
+                <a:documentation>Reference concentration (in kg/kg, default 0)</a:documentation>
+                <ref name="real"/>
+              </element>
+            </optional>
+            <optional>
+              <element name="T0">
+                <a:documentation>Reference temperature (in K, default 298 K)</a:documentation>
+                <ref name="real"/>
+              </element>
+            </optional>
+            <optional>
+              <element name="P0">
+                <a:documentation>Reference pressure (in Pa, default 1e5 Pa)</a:documentation>
+                <ref name="real"/>
+              </element>
+            </optional>
+          </element>
           </choice>
           <optional>
             <element name="Boussinesq_approximation">

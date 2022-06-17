@@ -560,6 +560,34 @@ contains
 
               end if
               deallocate( eos_coefs )
+
+          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/BW_eos' ) then
+            ! Batzle and Wang (1992) EOS
+            ! Use for basin scale simulations.
+            ! Valid for ranges: 5<=P<=100 MPa, 20<=T<=350 degrees Celsius, C<=0.32 kg/kg salinity.
+            ! Note: Reference density is calculated using reference C0, T0, P0.
+
+            !Calculate the freshwater density
+            rho = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*pressure%val(1,1,:)*1e-6 - 2*(temperature % val - 273.15)*pressure%val(1,1,:)*1e-6 + 0.016*((temperature % val - 273.15))**2*pressure%val(1,1,:)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*pressure%val(1,1,:)*1e-6 -0.333*(pressure%val(1,1,:)*1e-6)**2 - 0.002*(temperature % val - 273.15)*(pressure%val(1,1,:)*1e-6)**2))
+            !Add the brine contribution
+            rho = rho + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*pressure%val(1,1,:)*1e-6 - 2400*pressure%val(1,1,:)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*pressure%val(1,1,:)*1e-6 + 47*pressure%val(1,1,:)*1e-6*Concentration % val)))
+
+            if (has_boussinesq_aprox) then
+              dRhodP = 0.0
+            else
+              perturbation_pressure = 1.e-5
+
+              RhoPlus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 2*(temperature % val - 273.15)*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2))
+              !Add the brine contribution
+              RhoPlus = RhoPlus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val)))
+
+              RhoMinus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 2*(temperature % val - 273.15)*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2))
+              !Add the brine contribution
+              RhoMinus = RhoMinus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val)))
+
+              dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
+            endif
+
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 
             density => extract_scalar_field( state( iphase ), 'Density', stat )
@@ -630,8 +658,8 @@ contains
         end do
         !Finally multiply by the reference density
         rho_internal = rho_internal * eos_coefs( 1 )
-        !Ensure that the density does not vary more than 10%, in theory it should never pass 5%
-        rho_internal = min(max(rho_internal, eos_coefs( 1 )/1.1), eos_coefs( 1 )*1.1)
+        !Ensure that the density stays between [DEN0/2, DEN0*2], in theory it should never pass 5%
+        rho_internal = min(max(rho_internal, eos_coefs( 1 )/2.0), eos_coefs( 1 )*2.0)
 
       end subroutine
     end subroutine Calculate_Rho_dRhodP
@@ -753,6 +781,9 @@ contains
               elseif( have_option( trim( eos_option_path_out ) // '/Linear_eos' ) ) then
                   eos_option_path_out = trim( eos_option_path_out ) // '/Linear_eos'
 
+              elseif( have_option( trim( eos_option_path_out ) // '/BW_eos' ) ) then
+                    eos_option_path_out = trim( eos_option_path_out ) // '/BW_eos'
+
             elseif( have_option( trim( eos_option_path_out ) // '/Temperature_Pressure_correlation' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/Temperature_Pressure_correlation'
 
@@ -807,10 +838,15 @@ contains
 
        !Obtain inverse of permeability and store it
        !SPRINT_TO_DO THIS COULD BE DONE FASTER IF WE KNOW IF IT HAS OFF DIAGONALS OR NOT
-       do i = 1, size(perm%val,3)
-           upwnd%inv_permeability( :, :, i)=inverse(perm%val( :, :, i))
-       end do
-
+       if (has_anisotropic_permeability) then 
+        do i = 1, size(perm%val,3)
+          upwnd%inv_permeability( :, :, i)=inverse(perm%val( :, :, i))
+        end do
+       else 
+        forall (j = 1:size(perm%val,1), i = 1:size(perm%val,3)) 
+          upwnd%inv_permeability( j, j, i) = 1./perm%val( j, j, i)
+        end forall
+       end if
        allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
        DO IPHASE = 1, Mdims%nphase!Get viscosity for all the phases
         option_path_python = "/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
@@ -1265,7 +1301,8 @@ contains
                         Cont_correction = 0
                         if (jphase /= iphase) then!Don't know how this will work for more than 2 phases
                             do ele = 1, totele
-
+                                !SPRINT_TO_DO get rid of this call and use instead the stored volumes
+                                ! extract_vector_field(packed_state,"CVIntegral")
                                 call DETNLXR(ele, X_ALL, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
 
                                 do cv_iloc = 1, cv_nloc
@@ -2026,8 +2063,13 @@ contains
             if (have_option(trim(path))) then
               call initialise_field_over_regions(targ_Store, trim(path), position)
               t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
-            else !default value
-              t_field%val(2,iphase,:) = 1.0
+            else
+              !Only for reservoir phases
+              if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
+                FLAbort("For multiphase porous media flow, relperm max needs to be defined for all the regions of the model.")
+              else
+                t_field%val(2,iphase,:) = 1.0
+              end if
             end if
           end do
 
@@ -2039,7 +2081,12 @@ contains
                   call initialise_field_over_regions(targ_Store, trim(path) , position)
                   t_field%val(3,iphase,:) = targ_Store%val
               else !default value
-                  t_field%val(3,iphase,:) = 2.0
+              !Only for reservoir phases
+                if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
+                  FLAbort("For multiphase porous media flow, relperm exponent needs to be defined for all the regions of the model.")
+                else
+                  t_field%val(3,iphase,:) = 1.0
+                end if
               end if
           end do
           !Initialize capillary pressure
@@ -2140,8 +2187,13 @@ contains
                 end do
               end do
             else !default value for immiscible values
+              !Only for reservoir phases
+              if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
+                FLAbort("For multiphase porous media flow, relperm exponent needs to be defined for all the regions of the model.")
+              else
                 t_field%val(1,iphase,:) = 0.0!<=to be removed and only use a CV-wise version of this
                 CV_immobile_fraction(iphase, :) = 0.0
+              end if
             end if
         end do
         call deallocate(targ_Store)
@@ -2371,7 +2423,7 @@ contains
       !local variables
       character( len = option_path_len ) :: eos_option_path
       character( len = option_path_len ) :: option_path_comp, option_path_incomp, option_path_python
-      real :: ref_rho
+      real :: ref_rho, ref_C0, ref_T0, ref_P0
       type (scalar_field) :: sfield
       type (scalar_field), pointer :: pnt_sfield
       type (vector_field), pointer :: position
@@ -2430,6 +2482,15 @@ contains
       elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Linear_eos' ) then
         !!$ Den = den0 * ( 1 + alpha * solute mass fraction - beta * DeltaT )
         call get_option( trim( eos_option_path ) // '/reference_density', ref_rho )
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/BW_eos' ) then
+        !!$ Reference density is calculated using reference C0, T0, P0.
+        call get_option( trim( eos_option_path ) // '/C0', ref_C0 )
+        call get_option( trim( eos_option_path ) // '/T0', ref_T0 )
+        call get_option( trim( eos_option_path ) // '/P0', ref_P0 )
+        !Calculate the reference freshwater density
+        ref_rho = 1e3 * ( 1 + 1e-6 * (-80*(ref_T0 - 273.15) - 3.3*((ref_T0 - 273.15))**2 + 0.00175*((ref_T0 - 273.15))**3 + 489*ref_P0*1e-6 - 2*(ref_T0 - 273.15)*ref_P0*1e-6 + 0.016*((ref_T0 - 273.15))**2*ref_P0*1e-6 - 1.3e-5*((ref_T0 - 273.15))**3*ref_P0*1e-6 -0.333*(ref_P0*1e-6)**2 - 0.002*(ref_T0 - 273.15)*(ref_P0*1e-6)**2))
+        !Add the reference brine contribution
+        ref_rho = ref_rho + 1e3*ref_C0 * (0.668 + 0.44*ref_C0 + 1e-6 * (300*ref_P0*1e-6 - 2400*ref_P0*1e-6*ref_C0 + (ref_T0 - 273.15) * (80 + 3*(ref_T0 - 273.15) - 3300*ref_C0 - 13*ref_P0*1e-6 + 47*ref_P0*1e-6*ref_C0)))
       else if( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
         call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/rho0', ref_rho)
       elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
@@ -2506,7 +2567,8 @@ contains
                   MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)
         ! Update dissolved CO2 (passive tracer, in mol/m3)
         concentration_field%val(1,receiving_phase_pos,cv_nod) = concentration_field%val(1,receiving_phase_pos,cv_nod) + &
-                          min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod))
+                          min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*max(saturation_field%val(1,receiving_phase_pos,cv_nod),1e-8))
+        ! Compute the gas CO2 present in the CV (in mol))
         ! Update gas CO2 (in mol)
         n_co2_gas = n_co2_gas - min(delta_n, n_co2_gas)
         ! Update gas CO2 (change in saturation)
@@ -2518,21 +2580,24 @@ contains
       end do
 
       !#####Now proceed to check if we need to update the immobile fraction####
-      call get_var_from_packed_state(packed_state,CV_Immobile_Fraction = CV_Immobile_Fraction)
-      saturation_flip => extract_scalar_field(state(donor_phase_pos), "Saturation_flipping")
-      do ele = 1, Mdims%totele
-        do cv_iloc = 1, Mdims%cv_nloc
-          cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
-          !If the saturation drops below the immobile fraction we update the
-          !flipping saturation so the immobile fraction is updated in get_RockFluidProp
-          if (saturation_field%val(1,donor_phase_pos,cv_nod) < CV_Immobile_Fraction(donor_phase_pos, cv_nod)) then
-            !Positive sign because we want to ensure that if the saturation start to increase
-            !and drop again a new immobile fraction is computed, this requires however to also update Oldsaturation_field
-            saturation_flip%val(cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
-            Oldsaturation_field%val(1,donor_phase_pos,cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
+      if (have_option("/material_phase["//int2str(iphase-1)//&
+      "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then
+        call get_var_from_packed_state(packed_state,CV_Immobile_Fraction = CV_Immobile_Fraction)
+        saturation_flip => extract_scalar_field(state(donor_phase_pos), "Saturation_flipping")
+        do ele = 1, Mdims%totele
+          do cv_iloc = 1, Mdims%cv_nloc
+            cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+            !If the saturation drops below the immobile fraction we update the
+            !flipping saturation so the immobile fraction is updated in get_RockFluidProp
+            if (saturation_field%val(1,donor_phase_pos,cv_nod) < CV_Immobile_Fraction(donor_phase_pos, cv_nod)) then
+              !Positive sign because we want to ensure that if the saturation start to increase
+              !and drop again a new immobile fraction is computed, this requires however to also update Oldsaturation_field
+              saturation_flip%val(cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
+              Oldsaturation_field%val(1,donor_phase_pos,cv_nod) = saturation_field%val(1,donor_phase_pos,cv_nod)
             end if
+          end do
         end do
-      end do
+      end if
 
     end subroutine flash_gas_dissolution
 

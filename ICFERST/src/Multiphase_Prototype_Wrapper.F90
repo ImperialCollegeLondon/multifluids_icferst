@@ -194,7 +194,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     ! this may already have been done in populate_state, but now
     ! we evaluate at the correct "shifted" time level:
-    call set_boundary_conditions_values(state, shift_time=.true.)
+    call set_boundary_conditions_values(state, shift_time=.false.)
 
     call enforce_discrete_properties(state, only_prescribed=.true., &
         exclude_interpolated=.true., &
@@ -408,7 +408,7 @@ contains
                     call add_option(trim(option_path)//"/stat",  stat=stat)
                     call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
                     call add_option(trim(option_path)//"/detectors",  stat=stat)
-                    call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
+                    call add_option(trim(option_path)//"/detectors/include_in_detectors",  stat=stat)
                     call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
                     !Velocity is the force density which is pretty much useless so we instead show the DarcyVelocity
                     !do_not_show velocity
@@ -679,7 +679,9 @@ contains
           call add_option(trim(option_path)//"from_mesh/mesh_shape/element_type", stat=stat)
           call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
           call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
-          if (simulation_quality < 100) then
+          if (simulation_quality< 10) then !For fast always P0DG
+            call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 0)
+          else if (simulation_quality < 100) then
               if (have_option("/porous_media_simulator") .or. have_option("/geometry/simulation_quality/Balanced_P0DG")) then
                 call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 0)
               else !we use P1 otherwise
@@ -1157,7 +1159,8 @@ contains
         !Check boussinesq flag
         has_boussinesq_aprox = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" ) &
                      .or. have_option( "/material_phase[0]/phase_properties/Density/python_state/Boussinesq_approximation")
-
+        !Check if we are using anisotropic permeability
+        has_anisotropic_permeability = have_option( "/porous_media/tensor_field::Permeability" )
         ! Check if Porous media model initialisation
         is_porous_initialisation =  have_option("/porous_media/FWL")
 

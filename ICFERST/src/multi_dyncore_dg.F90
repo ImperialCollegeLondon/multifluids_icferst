@@ -2193,8 +2193,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
              !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
              Auto_max_backtrack = (backtrack_par_factor == -10)
-             !Retrieve number of saturation fixed point iterations from diamond, by default 9
-             call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
+             !Retrieve number of saturation fixed point iterations from diamond, by default 3 if Courant_number<=1, 9 otherwise
+             if (Courant_number(1) <= 1) then
+                 call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 3)
+             else
+                 call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
+             end if
              ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
              GET_THETA_FLUX = .FALSE.
              !####Create dummy variables required for_cv_assemb with no memory usage ####
@@ -2368,7 +2372,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  if (.not. is_porous_media) then
                     call non_porous_ensure_sum_to_one(Mdims, packed_state)
                  end if
-                 ! ! !If we have components (and it is multiphase, obviously) update components
+                 !Correct the solution obtained to make sure we are on track towards the final solution
                  ! if (Mdims%ncomp > 0) call update_components()
                  !Correct the solution obtained to make sure we are on track towards the final solution
                  if (backtrack_par_factor < 1.01) then
@@ -3220,15 +3224,30 @@ end if
 
         !"########################UPDATE PRESSURE STEP####################################"
         !We may apply the Anderson acceleration method
-        if (solve_stokes .or. solve_mom_iteratively ) then
-          call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
-                                          MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
-          call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
+        if ((solve_stokes .or. solve_mom_iteratively)) then
+            if (solve_mom_iteratively) then
+                !Solve Schur complement using our own method
+                call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
+                                              MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
+            else !Solve Schur complement using PETSc
+                ! if (is_magma)  then!This section will be for stokes with compressibility Dmat will be the "compression" matrix
+                !     call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, CMC_petsc, P_all, &
+                !                             deltaP, rhs_p, solver_option_pressure, Dmat = CMC_petsc2) !Dmat cmc2
+                ! else            
+                call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, Mdims%n_in_pres, CMC_petsc, P_all, &
+                                        deltaP, rhs_p, solver_option_pressure)
+                ! end if
+                !Now recompute velocity
+                call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+                call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
+            end if
         end if
-
+        
         !######################## CORRECTION VELOCITY STEP####################################
         !Ensure that the velocity fulfils the continuity equation before moving on
-        call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+        if (.not. solve_stokes .or. solve_mom_iteratively ) then
+            call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+        end if
         call deallocate(deltaP)
         if (isParallel()) call halo_update(velocity)
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
@@ -3244,6 +3263,9 @@ end if
         endif
 
         call DEALLOCATE( CDP_tensor )
+        if ((solve_stokes .or. solve_mom_iteratively)) then
+            call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
+        end if
         !######################## CORRECTION VELOCITY STEP####################################
         ! Calculate control volume averaged pressure CV_P from fem pressure P
         !Ensure that prior to comming here the halos have been updated
@@ -3640,7 +3662,7 @@ end if
           type(tensor_field), intent(inout) :: cdp_tensor!>To reuse memory
           !Local variables
           REAL, DIMENSION( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods ) :: DU_VEL
-
+          integer :: u_inod, iphase, idim
           !Perform C * DP
           call zero(cdp_tensor)
           call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, deltap%val, CDP_tensor)
@@ -3649,10 +3671,8 @@ end if
           DU_VEL = 0.
           CALL Mass_matrix_MATVEC( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
           Mdims%totele, Mdims%u_nloc, ndgln%u )
-
+          !Apply correction to velocity
           velocity%val = velocity%val + DU_VEL
-
-          !if (solve_stokes) we will have to change this, as this only works as for inertia as long as M only contains the mass of the elements
 
         end subroutine project_velocity_to_affine_space
 
@@ -5251,6 +5271,8 @@ end if
             PIVIT_ON_VISC= .false.!This is to add viscosity terms into the Mu matrix
             STAB_VISC_WITH_ABS = .false.!Adds diffusion terms into Mu also in the RHS
             zero_or_two_thirds = 0.!Disable "Laplacian" of velocity
+            !Lumps the absorption terms and RHS; More consistent with the lumping of the mass matrix
+            lump_mass = .true.; lump_absorption = .false.
         end if
 
        IF( GOT_DIFFUS .or. get_gradU ) THEN
@@ -5906,9 +5928,42 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     END DO
                 END DO
             end if ! endof if (Porous_media_PIVIT_not_stored_yet) then
-            ! if(sigma%val(ele).gt.0.5) then 
-            !     ewrite(3,*),ele,'|',DIAG_BIGM_CON(:,:,:,:,:,:,ele),'|'
-            ! endif
+
+            !For the stokes equations we need to introduce the absorption terms into the Momentum matrix
+            if (solve_stokes) then
+              DO U_JLOC = 1, Mdims%u_nloc
+                DO U_ILOC = 1, Mdims%u_nloc
+                  DO JPHASE = 1, Mdims%nphase
+                    DO JDIM = 1, Mdims%ndim
+                      JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
+                      ! J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                      DO IPHASE = 1, Mdims%nphase
+                        DO IDIM = 1, Mdims%ndim
+                          IPHA_IDIM = IDIM + (IPHASE-1)*Mdims%ndim
+                          I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+                          IF ( LUMP_MASS ) THEN
+                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) =  &
+                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  &
+                            + NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                          ELSE
+                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) = &
+                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
+                            + NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+
+                          END IF
+                          !Lump to phases (Currently PIVIT_MAT IS OVERWRITTEN elsewhere THIS MAY NEED TO BE RE-ACTIVATED IF HAVING ABSORPTION TERMS)
+                        !   J = IDIM+(JPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+                        !   Mmat%PIVIT_MAT( I, J, ELE ) =  Mmat%PIVIT_MAT( I, J, ELE ) + &
+                        !     NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                        end do
+                      end do
+                    end do
+                  end do
+                end do
+              end do
+            end if
+
+
             if (.not.is_porous_media) then!sprint_to_do; internal subroutine for this?
                 !###LOOP Loop_DGNods1 IS NOT NECESSARY FOR POROUS MEDIA###
                 Loop_DGNods1: DO U_ILOC = 1, Mdims%u_nloc

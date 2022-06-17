@@ -17,8 +17,7 @@
       </from_file>
     </mesh>
     <simulation_quality>
-      <string_value>balanced</string_value>
-      <Balanced_P0DG/>
+      <string_value>fast</string_value>
     </simulation_quality>
     <Advance_options/>
   </geometry>
@@ -216,6 +215,10 @@
     <scalar_field name="Density" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <Impose_min_max>
+          <automatic_min_limit/>
+          <automatic_max_limit/>
+        </Impose_min_max>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">1.</real_value>
@@ -812,33 +815,4 @@
       </prognostic>
     </scalar_field>
   </material_phase>
-  <mesh_adaptivity>
-    <hr_adaptivity>
-      <period_in_timesteps>
-        <integer_value rank="0">500000000</integer_value>
-      </period_in_timesteps>
-      <maximum_number_of_nodes>
-        <integer_value rank="0">5000</integer_value>
-      </maximum_number_of_nodes>
-      <enable_gradation>
-        <gradation_parameter>
-          <real_value rank="0">1.5</real_value>
-        </gradation_parameter>
-      </enable_gradation>
-      <tensor_field name="MinimumEdgeLengths">
-        <anisotropic_symmetric>
-          <constant>
-            <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">0.02 0.0 0.0 0.02</real_value>
-          </constant>
-        </anisotropic_symmetric>
-      </tensor_field>
-      <tensor_field name="MaximumEdgeLengths">
-        <anisotropic_symmetric>
-          <constant>
-            <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">0.2 0.0 0.0 0.2</real_value>
-          </constant>
-        </anisotropic_symmetric>
-      </tensor_field>
-    </hr_adaptivity>
-  </mesh_adaptivity>
 </icferst_options>

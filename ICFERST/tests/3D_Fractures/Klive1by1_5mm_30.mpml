@@ -52,6 +52,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -86,6 +87,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <galerkin_projection>
           <continuous>
             <bounded name="Diffuse">
@@ -93,20 +97,10 @@
                 <integer_value rank="0">10</integer_value>
               </boundedness_iterations>
             </bounded>
-            <solver>
-              <relative_error>
-                <real_value rank="0">1e-10</real_value>
-              </relative_error>
-              <max_iterations>
-                <integer_value rank="0">300</integer_value>
-              </max_iterations>
-              <ignore_all_solver_failures/>
-              <diagnostics>
-                <monitors/>
-              </diagnostics>
-            </solver>
+            <solver/>
           </continuous>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -167,7 +161,11 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -189,6 +187,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <adaptivity_options>
           <absolute_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -213,23 +214,59 @@
                 <integer_value rank="0">10</integer_value>
               </boundedness_iterations>
             </bounded>
-            <solver>
-              <relative_error>
-                <real_value rank="0">1e-10</real_value>
-              </relative_error>
-              <max_iterations>
-                <integer_value rank="0">300</integer_value>
-              </max_iterations>
-              <ignore_all_solver_failures/>
-              <diagnostics>
-                <monitors/>
-              </diagnostics>
-            </solver>
+            <solver/>
           </continuous>
         </galerkin_projection>
       </prognostic>
     </scalar_field>
-    <multiphase_properties/>
+    <multiphase_properties>
+      <Relperm_Corey>
+        <scalar_field name="relperm_max">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">1</real_value>
+              </constant>
+            </value>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
+        <scalar_field name="relperm_exponent">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">2</real_value>
+              </constant>
+            </value>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
+      </Relperm_Corey>
+      <immobile_fraction>
+        <scalar_field name="value">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">0</real_value>
+              </constant>
+            </value>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
+      </immobile_fraction>
+    </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
     <phase_properties>
@@ -241,6 +278,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -292,7 +330,11 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -314,6 +356,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <galerkin_projection>
           <continuous>
             <bounded name="Diffuse">
@@ -321,22 +366,59 @@
                 <integer_value rank="0">10</integer_value>
               </boundedness_iterations>
             </bounded>
-            <solver>
-              <relative_error>
-                <real_value rank="0">1e-10</real_value>
-              </relative_error>
-              <max_iterations>
-                <integer_value rank="0">300</integer_value>
-              </max_iterations>
-              <ignore_all_solver_failures/>
-              <diagnostics>
-                <monitors/>
-              </diagnostics>
-            </solver>
+            <solver/>
           </continuous>
         </galerkin_projection>
       </prognostic>
     </scalar_field>
+    <multiphase_properties>
+      <Relperm_Corey>
+        <scalar_field name="relperm_max">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">1</real_value>
+              </constant>
+            </value>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
+        <scalar_field name="relperm_exponent">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">2</real_value>
+              </constant>
+            </value>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
+      </Relperm_Corey>
+      <immobile_fraction>
+        <scalar_field name="value">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">0</real_value>
+              </constant>
+            </value>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
+      </immobile_fraction>
+    </multiphase_properties>
   </material_phase>
   <mesh_adaptivity>
     <hr_adaptivity>
@@ -391,6 +473,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <tensor_field name="Permeability">
@@ -416,6 +499,7 @@
             </constant>
           </diagonal>
         </value>
+        <output/>
       </prescribed>
     </tensor_field>
   </porous_media>

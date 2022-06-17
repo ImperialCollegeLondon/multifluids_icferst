@@ -17,7 +17,7 @@
       </from_file>
     </mesh>
     <simulation_quality>
-      <string_value>balanced</string_value>
+      <string_value>fast</string_value>
     </simulation_quality>
   </geometry>
   <solver_options/>
@@ -39,7 +39,7 @@
       <real_value rank="0">0.4</real_value>
     </timestep>
     <finish_time>
-      <real_value rank="0">0.8</real_value>
+      <real_value rank="0">2</real_value>
     </finish_time>
   </timestepping>
   <material_phase name="water">
@@ -131,7 +131,7 @@
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
-                  <real_value rank="0">0.2</real_value>
+                  <real_value rank="0">0.05</real_value>
                 </constant>
               </x_component>
               <y_component>
@@ -345,7 +345,7 @@
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
-                  <real_value rank="0">0.2</real_value>
+                  <real_value rank="0">0.05</real_value>
                 </constant>
               </x_component>
               <y_component>

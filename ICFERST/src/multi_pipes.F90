@@ -128,13 +128,14 @@ contains
       !Logical to check if we using a conservative method or not, to save cpu time
       logical :: conservative_advection
       !Parameters of the simulation
-      logical, parameter :: UPWIND_PIPES = .false.! Used for testing...
+      logical, parameter :: UPWIND_PIPES = .true.! Used for testing...
       logical, parameter :: PIPE_MIN_DIAM=.true. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
       logical, parameter :: LUMP_COUPLING_RES_PIPES = .true. ! Lump the coupling term which couples the pressure between the pipe and reservior.
       real, parameter :: INFINY=1.0E+20
       integer, parameter :: WIC_B_BC_DIRICHLET = 1
       !Variables extra for outfluxes
-      type(tensor_field), pointer ::temp_field, Concentration_field
+    !   type(tensor_field), pointer ::temp_field, Concentration_field
+      type (tensor_field_pointer), allocatable, DIMENSION(:) :: outfluxes_fields
       logical :: compute_outfluxes
 
       PetscScalar,parameter :: one = 1.0
@@ -143,21 +144,16 @@ contains
 
       conservative_advection = abs(cv_beta) > 0.99
 
-
       !If we are going to calculate the outfluxes (this is done when GETCT=.true.)
       compute_outfluxes = GETCT
       IF ( compute_outfluxes ) THEN
-        !We may need to retrieve some extra fields
-        if (has_temperature) then
-            temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
-            if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = 0
+        if (allocated(outfluxes%area_outlet)) then
+            allocate(outfluxes_fields(size(outfluxes%field_names,2)))
+            !Extract fields to be used for the outfluxes section
+            do k = 1, size(outfluxes%field_names,2) !We use the first phase as it must contain all the fields
+                outfluxes_fields(k)%ptr =>extract_tensor_field( packed_state, "Packed"//outfluxes%field_names(1,k) )
+            end do
         end if
-        if (has_concentration) then
-            Concentration_field => extract_tensor_field( packed_state, "PackedConcentration" )
-            if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
-        end if
-
-
       end if
 
 
@@ -564,37 +560,39 @@ contains
                           CV_NODJ = CV_GL_GL(CV_LJLOC)
                           direction_norm = - direction
                       END IF
-                      TUPWIND_OUT=0.0; DUPWIND_OUT=0.0
-                      TUPWIND_IN=0.0; DUPWIND_IN=0.0
+                      if (.not. UPWIND_PIPES) then 
+                        TUPWIND_OUT=0.0; DUPWIND_OUT=0.0
+                        TUPWIND_IN=0.0; DUPWIND_IN=0.0
 
-                      !Only for the wells domain
-                      DO IPHASE=1, final_phase
-                        global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
-                        compact_phase = iphase + (Mdims%npres - 1)*final_phase
-                      ! DO IPHASE = n_in_pres+1, final_phase
-                          ! CV incomming T:
-                          IF ( T_ALL%val( 1, global_phase, CV_NODI ) > T_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
-                              TUPWIND_OUT( compact_phase ) = TMAX_ALL( compact_phase, CV_NODI )
-                          ELSE
-                              TUPWIND_OUT( compact_phase ) = TMIN_ALL( compact_phase, CV_NODI )
-                          END IF
-                          IF ( DEN_ALL%val( 1, global_phase, CV_NODI ) > DEN_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
-                              DUPWIND_OUT( compact_phase ) = DENMAX_ALL( compact_phase, CV_NODI )
-                          ELSE
-                              DUPWIND_OUT( compact_phase ) = DENMIN_ALL( compact_phase, CV_NODI )
-                          END IF
-                          ! CV outgoing T:
-                          IF ( T_ALL%val( 1, global_phase, CV_NODI ) < T_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
-                              TUPWIND_IN( compact_phase ) = TMAX_ALL( compact_phase, CV_NODJ )
-                          ELSE
-                              TUPWIND_IN( compact_phase ) = TMIN_ALL( compact_phase, CV_NODJ )
-                          END IF
-                          IF ( DEN_ALL%val( 1, global_phase, CV_NODI ) < DEN_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
-                              DUPWIND_IN( compact_phase ) = DENMAX_ALL( compact_phase, CV_NODJ )
-                          ELSE
-                              DUPWIND_IN( compact_phase ) = DENMIN_ALL( compact_phase, CV_NODJ )
-                          END IF
-                      END DO
+                        !Only for the wells domain
+                        DO IPHASE=1, final_phase
+                            global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
+                            compact_phase = iphase + (Mdims%npres - 1)*final_phase
+                        ! DO IPHASE = n_in_pres+1, final_phase
+                            ! CV incomming T:
+                            IF ( T_ALL%val( 1, global_phase, CV_NODI ) > T_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
+                                TUPWIND_OUT( compact_phase ) = TMAX_ALL( compact_phase, CV_NODI )
+                            ELSE
+                                TUPWIND_OUT( compact_phase ) = TMIN_ALL( compact_phase, CV_NODI )
+                            END IF
+                            IF ( DEN_ALL%val( 1, global_phase, CV_NODI ) > DEN_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
+                                DUPWIND_OUT( compact_phase ) = DENMAX_ALL( compact_phase, CV_NODI )
+                            ELSE
+                                DUPWIND_OUT( compact_phase ) = DENMIN_ALL( compact_phase, CV_NODI )
+                            END IF
+                            ! CV outgoing T:
+                            IF ( T_ALL%val( 1, global_phase, CV_NODI ) < T_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
+                                TUPWIND_IN( compact_phase ) = TMAX_ALL( compact_phase, CV_NODJ )
+                            ELSE
+                                TUPWIND_IN( compact_phase ) = TMIN_ALL( compact_phase, CV_NODJ )
+                            END IF
+                            IF ( DEN_ALL%val( 1, global_phase, CV_NODI ) < DEN_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
+                                DUPWIND_IN( compact_phase ) = DENMAX_ALL( compact_phase, CV_NODJ )
+                            ELSE
+                                DUPWIND_IN( compact_phase ) = DENMIN_ALL( compact_phase, CV_NODJ )
+                            END IF
+                        END DO
+                      end if
                       ! Value of sigma in the force balance eqn...
                       INV_SIGMA_GI = 1.0!sprint_to_do remove INV_SIGMA_GI??
                       ! Velocity in the pipe
@@ -833,9 +831,9 @@ contains
                   !Finally store fluxes across all the boundaries either for mass conservation check or mass outflux
                   if (compute_outfluxes) then
                     sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)!We need SELE for this, not ideal but this operation is not done much overall
-                    call update_outfluxes(bcs_outfluxes, outfluxes, sele, JCV_NOD,  &
+                    call update_outfluxes(bcs_outfluxes, outfluxes, sele, JCV_NOD, suf_area,  &
                         NDOTQ * suf_area * LIMT, NDOTQ * suf_area * LIMDT, &!Vol_flux and Mass_flux
-                        T_ALL, temp_field, Concentration_field, wells_first_phase, final_phase*2 )
+                        T_ALL, outfluxes_fields, wells_first_phase, final_phase*2 )
                   end if
 
               ENDIF ! ENDOF IF(JCV_NOD.NE.0) THEN

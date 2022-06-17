@@ -192,6 +192,8 @@ module global_parameters
   logical :: is_blasting = .false.
   !! Has boussinesq option on
   logical :: has_boussinesq_aprox = .false.
+  !! Porous media, anisotropic permeability
+  logical :: has_anisotropic_permeability = .false.
   !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
   real :: backtrack_or_convergence
   logical :: FPI_have_converged = .false.
@@ -199,7 +201,6 @@ module global_parameters
   logical :: first_time_step = .false.
   logical :: first_nonlinear_time_step = .false.
   logical :: solver_not_converged = .false.
-
   !!Public string containing a generic warning and tips to get the code working
   character(len=OPTION_PATH_LEN) :: multi_generic_warning =""
 
