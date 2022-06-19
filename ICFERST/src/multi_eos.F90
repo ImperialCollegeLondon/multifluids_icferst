@@ -1862,7 +1862,7 @@ contains
       real, dimension( :, :, : ), allocatable :: mu_tmp
       integer :: iloc, ndim1, ndim2, idim, jdim, x_inod
       integer :: multiplier
-
+      real :: mus_scale, mub_scale
       real :: exp_zeta_function
 
       type( vector_field ), pointer :: p_position
@@ -1952,12 +1952,16 @@ contains
                             momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )  !mu_tmp( :, :, iloc )
                             ! if (abs(p_position%val(2,x_inod)-0.)<25 .or. p_position%val(2,x_inod)>875) momentum_diffusion( :, :, iphase, mat_nod )=1e19
                             !Currently only magma uses momentum_diffusion2
-                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc )*1e-2, exp_zeta_function, saturation%val(cv_nod))! make it 1/10
+                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc )*1e-1, exp_zeta_function, saturation%val(cv_nod))! make it 1/10
                             !Saturation scaling of viscosity
+
+                            ! call calculate_viscosity_Schmeling(saturation%val(cv_nod), mu_tmp( 1, 1, iloc ), mus_scale, mub_scale)
+                            ! momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )*mus_scale
+                            ! momentum_diffusion2%val(1, 1, iphase, mat_nod)=mu_tmp( 1, 1, iloc )*mub_scale
 !For testing rescaling of viscosity with the saturation
 if (is_magma) then
-momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion( :, :, iphase, mat_nod ) * max(saturation2%val(cv_nod), 1e-2)!Ensure that it does not dissapear
-! momentum_diffusion2%val(1, 1, iphase, mat_nod)  = momentum_diffusion2%val(1, 1, iphase, mat_nod) * max(saturation%val(cv_nod), 1e-5)!Ensure that it does not dissapear
+momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion( :, :, iphase, mat_nod ) * max(saturation2%val(cv_nod), 1e-4)!Ensure that it does not dissapear
+momentum_diffusion2%val(:, :, iphase, mat_nod)  = momentum_diffusion2%val(:, :, iphase, mat_nod) * max(saturation2%val(cv_nod), 1e-4)!Ensure that it does not dissapear
 end if
                           else
                             momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
@@ -2010,13 +2014,43 @@ end if
         real :: mus1
 
         mus1=1e19
-        cut=0.005
+        cut=0.1
 
         phi2=min(phi,cut)
         
         mus_varied=mu+(mus1-mu)*exp(-phi2/(cut-phi2))
         return
       end function mus_varied
+
+      subroutine calculate_viscosity_Schmeling(phi, mu0, mus, mub)
+      ! shear viscosity as a functon of melt fracton according to (Schmeling et al, 2012)
+      implicit none 
+      real, parameter :: a1=0.97, a2=0.8, b1=2.2455, b2=3.45, k2=1.25, k3=1.29, c3=2.4
+      real, parameter :: alpha =0.08 ! this is the only paramter that can change in Schmeling viscosity model
+      real, parameter :: mu00 =7e18 ! the reference viscosity of the pure solid
+      real, parameter :: phi_cut =1e-4 ! lowest melt fracton considered
+      real, intent( in ) :: phi, mu0 !mu0 is the 'effective' viscosity that we use after the Schmeling model, tipical value 1e13
+      real, intent( inout ) :: mus, mub
+      real :: c1,c2, k1
+      
+      
+      k1=a1*(a2+alpha*(1-a2))
+      c1=b1*alpha/(1+b2*alpha**k3)
+      c2=4./3*alpha*c1**(-k2)*(c3*(1-alpha)+alpha)
+      
+
+      if (phi<phi_cut) then 
+        mus=mu00/mu0
+        mub=mu00*c2*(c1-phi_cut)**k2/phi_cut/mu0
+        ! print *,mus, mub
+      elseif (phi<(c1-phi_cut)) then 
+        mus=mu00*(1-phi/c1)**k1/mu0
+        mub=mu00*c2*(c1-phi)**k2/phi/mu0
+      else
+        mus=1.
+        mub=0.1
+      end if      
+      end subroutine calculate_viscosity_Schmeling
 
     end subroutine calculate_viscosity
 

@@ -117,7 +117,7 @@ contains
     type(coupling_term_coef), intent(in) :: coupling
     integer :: N  !number of items in the series
     integer :: index_fluid  !number of items in the series
-    real,  PARAMETER :: phi_min=1e-8, cap_suspension=0.8
+    real,  PARAMETER :: phi_min=1e-8, cap_suspension=0.6
     real :: scaling ! a temporal fix for the scaling difference between the viscosity in ICFERST and the models
     real :: suspension_scale=20.0   !HH
     scaling=1.0    ! the viscosity difference between ICFERST and the model
@@ -160,7 +160,7 @@ contains
     series(N)=series(N-1)
 
     index_fluid=int(cap_suspension*N)
-    series(index_fluid:N)=series(index_fluid)
+    if (high<1.0) series(index_fluid:N)=series(index_fluid)
   end subroutine magma_Coupling_generate
 
 
