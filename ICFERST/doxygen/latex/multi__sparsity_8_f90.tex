@@ -1,0 +1,54 @@
+\hypertarget{multi__sparsity_8_f90}{}\doxysection{/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/multi\+\_\+sparsity.F90 File Reference}
+\label{multi__sparsity_8_f90}\index{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/multi\_sparsity.F90@{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/multi\_sparsity.F90}}
+{\ttfamily \#include \char`\"{}fdebug.\+h\char`\"{}}\newline
+Include dependency graph for multi\+\_\+sparsity.\+F90\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=274pt]{multi__sparsity_8_f90__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Modules}
+\begin{DoxyCompactItemize}
+\item 
+module \mbox{\hyperlink{namespacesparsity__1d}{sparsity\+\_\+1d}}
+\item 
+module \mbox{\hyperlink{namespacesparsity__nd}{sparsity\+\_\+nd}}
+\item 
+module \mbox{\hyperlink{namespacespact}{spact}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine \mbox{\hyperlink{namespacesparsity__1d_ae6ef1904813ab1128a01a1311670976a}{sparsity\+\_\+1d\+::resize}} (A, n, copy)
+\item 
+subroutine \mbox{\hyperlink{namespacesparsity__1d_a71b686e37752d791fc7d1ee0ed8f2e99}{sparsity\+\_\+1d\+::def\+\_\+spar}} (S\+E\+M\+I\+\_\+\+B\+A\+N\+D\+\_\+\+W\+ID, N\+O\+N\+O\+DS, M\+X\+\_\+\+N\+C\+O\+LC, N\+C\+O\+LC, C\+E\+N\+TC, F\+I\+N\+DC, C\+O\+LC)
+\item 
+subroutine \mbox{\hyperlink{namespacesparsity__1d_aef815576501475f4594796f76cf24cd1}{sparsity\+\_\+1d\+::def\+\_\+spar\+\_\+ct\+\_\+dg}} (C\+V\+\_\+\+N\+O\+N\+O\+DS, M\+X\+\_\+\+N\+CT, N\+CT, F\+I\+N\+D\+CT, C\+O\+L\+CT, T\+O\+T\+E\+LE, C\+V\+\_\+\+N\+L\+OC, U\+\_\+\+N\+L\+OC, U\+\_\+\+N\+D\+G\+LN, C\+V\+\_\+\+N\+D\+G\+LN)
+\item 
+subroutine \mbox{\hyperlink{namespacesparsity__nd_ab7f1a80b18f9ece5f7e27a70d45b4123}{sparsity\+\_\+nd\+::getfinele}} (totele, nloc, snloc, nonods, ndglno, mx\+\_\+nface\+\_\+p1, mxnele, ncolele, finele, colele, midele)
+\item 
+subroutine \mbox{\hyperlink{namespacesparsity__nd_afd69d7ff0e0711f9339ea44001f52fa9}{sparsity\+\_\+nd\+::exten\+\_\+sparse\+\_\+multi\+\_\+phase\+\_\+old}} (nonods, mxnele, finm, colm, nphase, npha\+\_\+nonods, ncolm\+\_\+pha, finm\+\_\+pha, colm\+\_\+pha, midm\+\_\+pha)
+\item 
+subroutine \mbox{\hyperlink{namespacesparsity__nd_a153ed29261138396f681d34481052706}{sparsity\+\_\+nd\+::exten\+\_\+sparse\+\_\+multi\+\_\+phase}} (nonods, mxnele, finm, colm, nphase, npha\+\_\+nonods, ncolm\+\_\+pha, finm\+\_\+pha, colm\+\_\+pha, midm\+\_\+pha)
+\item 
+subroutine \mbox{\hyperlink{namespacesparsity__nd_ae461c112b56d8320a70df9e84a8e3cd9}{sparsity\+\_\+nd\+::form\+\_\+dgm\+\_\+pha\+\_\+sparsity}} (totele, nphase, u\+\_\+nloc, u\+\_\+pha\+\_\+nonods, ndim, mx\+\_\+ncoldgm\+\_\+pha, ncoldgm\+\_\+pha, coldgm\+\_\+pha, findgm\+\_\+pha, middgm\+\_\+pha, finele, colele, ncolele)
+\item 
+subroutine \mbox{\hyperlink{namespacesparsity__nd_abe3ffb7d8eabe9d7bea212a4ad5450af}{sparsity\+\_\+nd\+::pousinmc2}} (totele, nloc1, nonods2, nloc2, nimem, ndglno1, ndglno2, lencolm, findrm, colm, centrm)
+\item 
+subroutine \mbox{\hyperlink{namespacesparsity__nd_ad2675c1d6e4a4f583ae88aca4f1c0698}{sparsity\+\_\+nd\+::conv\+\_\+ct2c}} (cv\+\_\+nonods, nct, findct, colct, u\+\_\+nonods, mx\+\_\+nc, findc, colc)
+\item 
+subroutine \mbox{\hyperlink{namespacesparsity__nd_a353ce2dc64a8fd11e0a28b7935cdf7ae}{sparsity\+\_\+nd\+::poscmc}} (totele, nonods, nimem, nct, findct, colct, ncmc, fincmc, colcmc, midcmc, noinod, presym)
+\item 
+subroutine \mbox{\hyperlink{namespacesparsity__nd_a455ef657aa7fb1aaa3bff1b71aaa24a5}{sparsity\+\_\+nd\+::cv\+\_\+neighboor\+\_\+sparsity}} (Mdims, cv\+\_\+ele\+\_\+type, cv\+\_\+ndgln, x\+\_\+ndgln, ncolele, finele, colele, ncolm, mxnacv\+\_\+loc, findm, colm, ncolacv\+\_\+loc, finacv\+\_\+loc, colacv\+\_\+loc, midacv\+\_\+loc)
+\item 
+subroutine \mbox{\hyperlink{namespacespact_a6f9b1937afa54fae50f7dd86b942f3cb}{spact\+::defining\+\_\+maxlengths\+\_\+for\+\_\+sparsity\+\_\+matrices}} (ndim, nphase, totele, u\+\_\+nloc, cv\+\_\+nloc, ph\+\_\+nloc, cv\+\_\+nonods, mx\+\_\+nface\+\_\+p1, mxnele, mx\+\_\+nct, mx\+\_\+nc, mx\+\_\+ncolcmc, mx\+\_\+ncoldgm\+\_\+pha, mx\+\_\+ncolacv, mx\+\_\+ncolm, mx\+\_\+ncolph)
+\item 
+subroutine \mbox{\hyperlink{namespacespact_aeaf3853765a92827bf24c599fe79364e}{spact\+::get\+\_\+sparsity\+\_\+patterns}} (state, Mdims, Mspars, ndgln, Mdisopt, mx\+\_\+ncolacv, mx\+\_\+ncoldgm\+\_\+pha, mx\+\_\+nct, mx\+\_\+nc, mx\+\_\+ncolcmc, mx\+\_\+ncolm, mx\+\_\+ncolph, mx\+\_\+nface\+\_\+p1)
+\item 
+subroutine \mbox{\hyperlink{namespacespact_aaa6676a57a39f977170aba9c14e142d9}{spact\+::ct\+\_\+dg\+\_\+sparsity}} (mx\+\_\+nface\+\_\+p1, totele, cv\+\_\+nloc, u\+\_\+nloc, cv\+\_\+nonods, cv\+\_\+ndgln, u\+\_\+ndgln, ncolele, finele, colele, mx\+\_\+nct, nct, findct, colct)
+\item 
+subroutine \mbox{\hyperlink{namespacespact_a0924b7ed96a415d91f92dec1d27e306e}{spact\+::check\+\_\+sparsity}} (u\+\_\+pha\+\_\+nonods, cv\+\_\+pha\+\_\+nonods, u\+\_\+nonods, cv\+\_\+nonods, totele, mx\+\_\+ncolacv, ncolacv, finacv, colacv, midacv, mxnele, ncolele, midele, finele, colele, mx\+\_\+ncoldgm\+\_\+pha, ncoldgm\+\_\+pha, coldgm\+\_\+pha, findgm\+\_\+pha, middgm\+\_\+pha, mx\+\_\+nct, ncolct, findct, colct, mx\+\_\+nc, ncolc, findc, colc, mx\+\_\+ncolcmc, ncolcmc, findcmc, colcmc, midcmc, mx\+\_\+ncolm, ncolm, findm, colm, midm)
+\item 
+subroutine \mbox{\hyperlink{namespacespact_a5f2181b54a6a764030dc7d10bf49dd4f}{spact\+::checksparsity}} (option\+\_\+mid, unit, ncol2, nonods, ncol, find, mid, col)
+\end{DoxyCompactItemize}

@@ -1,0 +1,150 @@
+\hypertarget{namespaceshape__functions__linear__quadratic}{}\doxysection{shape\+\_\+functions\+\_\+linear\+\_\+quadratic Module Reference}
+\label{namespaceshape__functions__linear__quadratic}\index{shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}}
+\doxysubsection*{Data Types}
+\begin{DoxyCompactItemize}
+\item 
+interface \mbox{\hyperlink{interfaceshape__functions__linear__quadratic_1_1detnlxr}{detnlxr}}
+\begin{DoxyCompactList}\small\item\em \+: Calculates the derivatives of the shape functions \end{DoxyCompactList}\item 
+interface \mbox{\hyperlink{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac}{detnlxr\+\_\+invjac}}
+\begin{DoxyCompactList}\small\item\em \+: Computes the derivatives of the shape functions and the inverse of the Jacobian \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__linear__quadratic_a7da239d41bd2bc9cf80b2d50a0c00554}{re2dn4}} (lowqua, ngi, ngi\+\_\+l, nloc, mloc, m, weight, n, nlx, nly, sngi, snloc, sweigh, sn, snlx, l1, l2)
+\begin{DoxyCompactList}\small\item\em at the Gauss points. NB\+: We may need to define surface elements for p and (u,v,w) \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__linear__quadratic_a0e2b87ea8cbf64e6526d68831575f1d7}{re3dn8}} (lowqua, ngi, ngi\+\_\+l, nloc, mloc, m, weight, n, nlx, nly, nlz, sngi, snloc, sweigh, sn, snlx, snly, l1, l2, l3)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__linear__quadratic_ad903267339ffe53d619a566ab1451802}{re2dn9}} (lowqua, ngi, ngi\+\_\+l, nloc, mloc, m, weight, n, nlx, nly, l1, l2)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__linear__quadratic_a08898de4c8264828159cf3ab5a812db4}{re3d27}} (lowqua, ngi, ngi\+\_\+l, nloc, mloc, m, weight, n, nlx, nly, nlz, l1, l2, l3)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__linear__quadratic_ab0a560f1839836b5068d3fc8ddd5e544}{retrieve\+\_\+ngi\+\_\+old}} (ndim, cv\+\_\+ele\+\_\+type, cv\+\_\+nloc, u\+\_\+nloc, cv\+\_\+ngi, cv\+\_\+ngi\+\_\+short, scvngi, sbcvngi, nface, Q\+U\+A\+D\+\_\+\+O\+V\+E\+R\+\_\+\+W\+H\+O\+L\+E\+\_\+\+E\+LE)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__linear__quadratic_a523197b210811772a490d2fecb451771}{retrieve\+\_\+ngi}} (G\+Idims, Mdims, cv\+\_\+ele\+\_\+type, Q\+U\+A\+D\+\_\+\+O\+V\+E\+R\+\_\+\+W\+H\+O\+L\+E\+\_\+\+E\+LE, scalar\+\_\+nloc, vector\+\_\+nloc)
+\begin{DoxyCompactList}\small\item\em \+: Computes the number of Gauss integration points and all the necessary information \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__linear__quadratic_ae147a04f99e1302e92b663b54ea271db}{quad\+\_\+basis\+\_\+funs\+\_\+1d}} (sngi, snloc, sweigh, sn, snlx)
+\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+logical \mbox{\hyperlink{namespaceshape__functions__linear__quadratic_a6a481ea42dcf73636fc2ba700b1dd749}{new\+\_\+high\+\_\+order\+\_\+vol\+\_\+quadratic\+\_\+ele\+\_\+quadrature}} = .false.
+\item 
+logical \mbox{\hyperlink{namespaceshape__functions__linear__quadratic_a9c73030aac153e24a7dda144d9d7bf82}{new\+\_\+quadratic\+\_\+ele\+\_\+quadrature}} = .false.
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{namespaceshape__functions__linear__quadratic_ae147a04f99e1302e92b663b54ea271db}\label{namespaceshape__functions__linear__quadratic_ae147a04f99e1302e92b663b54ea271db}} 
+\index{shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}!quad\_basis\_funs\_1d@{quad\_basis\_funs\_1d}}
+\index{quad\_basis\_funs\_1d@{quad\_basis\_funs\_1d}!shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}}
+\doxysubsubsection{\texorpdfstring{quad\_basis\_funs\_1d()}{quad\_basis\_funs\_1d()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::quad\+\_\+basis\+\_\+funs\+\_\+1d (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{sngi,  }\item[{integer, intent(in)}]{snloc,  }\item[{real, dimension( \+: ), intent(inout)}]{sweigh,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sn,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{snlx }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__linear__quadratic_ae147a04f99e1302e92b663b54ea271db_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__linear__quadratic_a7da239d41bd2bc9cf80b2d50a0c00554}\label{namespaceshape__functions__linear__quadratic_a7da239d41bd2bc9cf80b2d50a0c00554}} 
+\index{shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}!re2dn4@{re2dn4}}
+\index{re2dn4@{re2dn4}!shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}}
+\doxysubsubsection{\texorpdfstring{re2dn4()}{re2dn4()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::re2dn4 (\begin{DoxyParamCaption}\item[{logical, intent(in)}]{lowqua,  }\item[{integer, intent(in)}]{ngi,  }\item[{integer, intent(in)}]{ngi\+\_\+l,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{mloc,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{m,  }\item[{real, dimension( \+: ), intent(inout)}]{weight,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{integer, intent(in)}]{sngi,  }\item[{integer, intent(in)}]{snloc,  }\item[{real, dimension( \+: ), intent(inout)}]{sweigh,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sn,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{snlx,  }\item[{real, dimension(\+: ), intent(in)}]{l1,  }\item[{real, dimension(\+: ), intent(in)}]{l2 }\end{DoxyParamCaption})}
+
+
+
+at the Gauss points. NB\+: We may need to define surface elements for p and (u,v,w) 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__linear__quadratic_a7da239d41bd2bc9cf80b2d50a0c00554_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__linear__quadratic_ad903267339ffe53d619a566ab1451802}\label{namespaceshape__functions__linear__quadratic_ad903267339ffe53d619a566ab1451802}} 
+\index{shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}!re2dn9@{re2dn9}}
+\index{re2dn9@{re2dn9}!shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}}
+\doxysubsubsection{\texorpdfstring{re2dn9()}{re2dn9()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::re2dn9 (\begin{DoxyParamCaption}\item[{logical, intent(in)}]{lowqua,  }\item[{integer, intent(in)}]{ngi,  }\item[{integer, intent(in)}]{ngi\+\_\+l,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{mloc,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{m,  }\item[{real, dimension( \+: ), intent(inout)}]{weight,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+: ), intent(in)}]{l1,  }\item[{real, dimension( \+: ), intent(in)}]{l2 }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__linear__quadratic_ad903267339ffe53d619a566ab1451802_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__linear__quadratic_a08898de4c8264828159cf3ab5a812db4}\label{namespaceshape__functions__linear__quadratic_a08898de4c8264828159cf3ab5a812db4}} 
+\index{shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}!re3d27@{re3d27}}
+\index{re3d27@{re3d27}!shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}}
+\doxysubsubsection{\texorpdfstring{re3d27()}{re3d27()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::re3d27 (\begin{DoxyParamCaption}\item[{logical, intent(in)}]{lowqua,  }\item[{integer, intent(in)}]{ngi,  }\item[{integer, intent(in)}]{ngi\+\_\+l,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{mloc,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{m,  }\item[{real, dimension( \+: ), intent(inout)}]{weight,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz,  }\item[{real, dimension( \+: ), intent(in)}]{l1,  }\item[{real, dimension( \+: ), intent(in)}]{l2,  }\item[{real, dimension( \+: ), intent(in)}]{l3 }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__linear__quadratic_a08898de4c8264828159cf3ab5a812db4_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__linear__quadratic_a0e2b87ea8cbf64e6526d68831575f1d7}\label{namespaceshape__functions__linear__quadratic_a0e2b87ea8cbf64e6526d68831575f1d7}} 
+\index{shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}!re3dn8@{re3dn8}}
+\index{re3dn8@{re3dn8}!shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}}
+\doxysubsubsection{\texorpdfstring{re3dn8()}{re3dn8()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::re3dn8 (\begin{DoxyParamCaption}\item[{logical, intent(in)}]{lowqua,  }\item[{integer, intent(in)}]{ngi,  }\item[{integer, intent(in)}]{ngi\+\_\+l,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{mloc,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{m,  }\item[{real, dimension( \+: ), intent(inout)}]{weight,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz,  }\item[{integer, intent(in)}]{sngi,  }\item[{integer, intent(in)}]{snloc,  }\item[{real, dimension( \+: ), intent(inout)}]{sweigh,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sn,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{snlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{snly,  }\item[{real, dimension( \+: ), intent(in)}]{l1,  }\item[{real, dimension( \+: ), intent(in)}]{l2,  }\item[{real, dimension( \+: ), intent(in)}]{l3 }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__linear__quadratic_a0e2b87ea8cbf64e6526d68831575f1d7_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__linear__quadratic_a0e2b87ea8cbf64e6526d68831575f1d7_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__linear__quadratic_a523197b210811772a490d2fecb451771}\label{namespaceshape__functions__linear__quadratic_a523197b210811772a490d2fecb451771}} 
+\index{shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}!retrieve\_ngi@{retrieve\_ngi}}
+\index{retrieve\_ngi@{retrieve\_ngi}!shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}}
+\doxysubsubsection{\texorpdfstring{retrieve\_ngi()}{retrieve\_ngi()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::retrieve\+\_\+ngi (\begin{DoxyParamCaption}\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}} ), intent(inout)}]{G\+Idims,  }\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}} ), intent(in)}]{Mdims,  }\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{logical, intent(in)}]{Q\+U\+A\+D\+\_\+\+O\+V\+E\+R\+\_\+\+W\+H\+O\+L\+E\+\_\+\+E\+LE,  }\item[{}]{scalar\+\_\+nloc,  }\item[{}]{vector\+\_\+nloc }\end{DoxyParamCaption})}
+
+
+
+\+: Computes the number of Gauss integration points and all the necessary information 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__linear__quadratic_a523197b210811772a490d2fecb451771_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__linear__quadratic_ab0a560f1839836b5068d3fc8ddd5e544}\label{namespaceshape__functions__linear__quadratic_ab0a560f1839836b5068d3fc8ddd5e544}} 
+\index{shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}!retrieve\_ngi\_old@{retrieve\_ngi\_old}}
+\index{retrieve\_ngi\_old@{retrieve\_ngi\_old}!shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}}
+\doxysubsubsection{\texorpdfstring{retrieve\_ngi\_old()}{retrieve\_ngi\_old()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::retrieve\+\_\+ngi\+\_\+old (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{u\+\_\+nloc,  }\item[{integer, intent(inout)}]{cv\+\_\+ngi,  }\item[{integer, intent(inout)}]{cv\+\_\+ngi\+\_\+short,  }\item[{integer, intent(inout)}]{scvngi,  }\item[{integer, intent(inout)}]{sbcvngi,  }\item[{integer, intent(inout)}]{nface,  }\item[{logical, intent(in)}]{Q\+U\+A\+D\+\_\+\+O\+V\+E\+R\+\_\+\+W\+H\+O\+L\+E\+\_\+\+E\+LE }\end{DoxyParamCaption})}
+
+
+
+\doxysubsection{Variable Documentation}
+\mbox{\Hypertarget{namespaceshape__functions__linear__quadratic_a6a481ea42dcf73636fc2ba700b1dd749}\label{namespaceshape__functions__linear__quadratic_a6a481ea42dcf73636fc2ba700b1dd749}} 
+\index{shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}!new\_high\_order\_vol\_quadratic\_ele\_quadrature@{new\_high\_order\_vol\_quadratic\_ele\_quadrature}}
+\index{new\_high\_order\_vol\_quadratic\_ele\_quadrature@{new\_high\_order\_vol\_quadratic\_ele\_quadrature}!shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}}
+\doxysubsubsection{\texorpdfstring{new\_high\_order\_vol\_quadratic\_ele\_quadrature}{new\_high\_order\_vol\_quadratic\_ele\_quadrature}}
+{\footnotesize\ttfamily logical shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::new\+\_\+high\+\_\+order\+\_\+vol\+\_\+quadratic\+\_\+ele\+\_\+quadrature = .false.}
+
+\mbox{\Hypertarget{namespaceshape__functions__linear__quadratic_a9c73030aac153e24a7dda144d9d7bf82}\label{namespaceshape__functions__linear__quadratic_a9c73030aac153e24a7dda144d9d7bf82}} 
+\index{shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}!new\_quadratic\_ele\_quadrature@{new\_quadratic\_ele\_quadrature}}
+\index{new\_quadratic\_ele\_quadrature@{new\_quadratic\_ele\_quadrature}!shape\_functions\_linear\_quadratic@{shape\_functions\_linear\_quadratic}}
+\doxysubsubsection{\texorpdfstring{new\_quadratic\_ele\_quadrature}{new\_quadratic\_ele\_quadrature}}
+{\footnotesize\ttfamily logical shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::new\+\_\+quadratic\+\_\+ele\+\_\+quadrature = .false.}
+

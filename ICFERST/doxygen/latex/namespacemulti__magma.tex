@@ -1,0 +1,243 @@
+\hypertarget{namespacemulti__magma}{}\doxysection{multi\+\_\+magma Module Reference}
+\label{namespacemulti__magma}\index{multi\_magma@{multi\_magma}}
+\doxysubsection*{Data Types}
+\begin{DoxyCompactItemize}
+\item 
+type \mbox{\hyperlink{structmulti__magma_1_1coupling__term__coef}{coupling\+\_\+term\+\_\+coef}}
+\begin{DoxyCompactList}\small\item\em The copling\+\_\+term follows the Darcy permeability law C=1/a/d$^\wedge$2$\ast$mu$\ast$phi$^\wedge$(2-\/b) for lower meltfraction and hindled settling C=1/d$^\wedge$2$\ast$mu$\ast$phi$^\wedge$(-\/5)$\ast$(1-\/phi). Here coefficients a, grain size d, coefficients b and the cutting between the two demains needs to be set. \end{DoxyCompactList}\item 
+type \mbox{\hyperlink{structmulti__magma_1_1magma__phase__diagram}{magma\+\_\+phase\+\_\+diagram}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine \mbox{\hyperlink{namespacemulti__magma_a2f6818fba70095c8af4076b7fca78d87}{initialize\+\_\+magma\+\_\+parameters}} (phase\+\_\+coef, coupling)
+\item 
+subroutine \mbox{\hyperlink{namespacemulti__magma_a8a8c0836b46804f1dda05b4b26ec30b7}{c\+\_\+generate}} (series, N, state, coupling)
+\item 
+subroutine \mbox{\hyperlink{namespacemulti__magma_a78ff03bd55bb9ad88dd69c71a88ee94e}{cal\+\_\+bulkcomposition}} (state, packed\+\_\+state, Mdims, Bulk\+Composition)
+\begin{DoxyCompactList}\small\item\em \+: Computes the bulk Composition for two phases \end{DoxyCompactList}\item 
+real function \mbox{\hyperlink{namespacemulti__magma_aefb26d70e8b257b31d4e41812f354af9}{get\+\_\+liquidus}} (Bulk\+\_\+comp, phase\+\_\+coef)
+\item 
+real function \mbox{\hyperlink{namespacemulti__magma_ab8db5540f23d971051523906f33880c1}{get\+\_\+solidus}} (Bulk\+\_\+comp, phase\+\_\+coef)
+\item 
+real function \mbox{\hyperlink{namespacemulti__magma_ae192f3dbea81b36501cea987d494a199}{get\+\_\+enthalpy\+\_\+liquidus}} (Bulk\+\_\+comp, Cp, rho, phase\+\_\+coef)
+\item 
+real function \mbox{\hyperlink{namespacemulti__magma_a3779ea126c4d3277a69d7d0faef5131e}{get\+\_\+enthalpy\+\_\+solidus}} (Bulk\+\_\+comp, Cp, rho, phase\+\_\+coef)
+\item 
+subroutine \mbox{\hyperlink{namespacemulti__magma_ad382ce18c512b86bf99518da8d17533a}{cal\+\_\+solidfluidcomposition}} (state, packed\+\_\+state, Mdims, phase\+\_\+coef)
+\item 
+subroutine \mbox{\hyperlink{namespacemulti__magma_a07e8fa12fe99c17e5d61d86af88b70e0}{enthalpy\+\_\+to\+\_\+temperature}} (Mdims, state, packed\+\_\+state, phase\+\_\+coef)
+\begin{DoxyCompactList}\small\item\em \+: Subroutine to obtain the temperature field for a given enthalpy field \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemulti__magma_a4c8b6f6e4cc744c0567a902d63580dd3}{temperature\+\_\+to\+\_\+enthalpy}} (Mdims, state, packed\+\_\+state, phase\+\_\+coef)
+\begin{DoxyCompactList}\small\item\em \+: Subroutine to obtain the enthalpy field for a given temperature field Important for the initialisation of the enthalpy, we need E\+Nthalpy\+Old to start! \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemulti__magma_a9db9a2ee1568a2626b341961c39ad5b2}{porossolve}} (state, packed\+\_\+state, Mdims, ndgln, phase\+\_\+coef)
+\begin{DoxyCompactList}\small\item\em \+: Compute porosity(\+Saturation) given an enthalpy field and a Bulk\+Composition \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemulti__magma_adc4c4c821c9d037834bffb7bcdb00583}{calculate\+\_\+magma\+\_\+absorption}} (Mdims, state, packed\+\_\+state, Magma\+\_\+absorp, ndgln, c\+\_\+phi\+\_\+series)
+\begin{DoxyCompactList}\small\item\em \+:This subroutine calculates the coupling term for the magma modelling and adds it to the absorptiont term to impose the coupling between phase N\+O\+TE\+: It gives for G\+R\+A\+N\+T\+ED that the memory type is 3!!!! (see \mbox{\hyperlink{namespacemulti__data__types}{multi\+\_\+data\+\_\+types}}) \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{namespacemulti__magma_a8a8c0836b46804f1dda05b4b26ec30b7}\label{namespacemulti__magma_a8a8c0836b46804f1dda05b4b26ec30b7}} 
+\index{multi\_magma@{multi\_magma}!c\_generate@{c\_generate}}
+\index{c\_generate@{c\_generate}!multi\_magma@{multi\_magma}}
+\doxysubsubsection{\texorpdfstring{c\_generate()}{c\_generate()}}
+{\footnotesize\ttfamily subroutine multi\+\_\+magma\+::c\+\_\+generate (\begin{DoxyParamCaption}\item[{real, dimension(\+:)}]{series,  }\item[{integer}]{N,  }\item[{type( state\+\_\+type ), dimension(\+:), intent(inout)}]{state,  }\item[{type(\mbox{\hyperlink{structmulti__magma_1_1coupling__term__coef}{coupling\+\_\+term\+\_\+coef}}), intent(in)}]{coupling }\end{DoxyParamCaption})}
+
+transition coefficient of the linking functionHere is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_a8a8c0836b46804f1dda05b4b26ec30b7_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__magma_a78ff03bd55bb9ad88dd69c71a88ee94e}\label{namespacemulti__magma_a78ff03bd55bb9ad88dd69c71a88ee94e}} 
+\index{multi\_magma@{multi\_magma}!cal\_bulkcomposition@{cal\_bulkcomposition}}
+\index{cal\_bulkcomposition@{cal\_bulkcomposition}!multi\_magma@{multi\_magma}}
+\doxysubsubsection{\texorpdfstring{cal\_bulkcomposition()}{cal\_bulkcomposition()}}
+{\footnotesize\ttfamily subroutine multi\+\_\+magma\+::cal\+\_\+bulkcomposition (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{real, dimension(\+:), intent(inout)}]{Bulk\+Composition }\end{DoxyParamCaption})}
+
+
+
+\+: Computes the bulk Composition for two phases 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_a78ff03bd55bb9ad88dd69c71a88ee94e_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__magma_ad382ce18c512b86bf99518da8d17533a}\label{namespacemulti__magma_ad382ce18c512b86bf99518da8d17533a}} 
+\index{multi\_magma@{multi\_magma}!cal\_solidfluidcomposition@{cal\_solidfluidcomposition}}
+\index{cal\_solidfluidcomposition@{cal\_solidfluidcomposition}!multi\_magma@{multi\_magma}}
+\doxysubsubsection{\texorpdfstring{cal\_solidfluidcomposition()}{cal\_solidfluidcomposition()}}
+{\footnotesize\ttfamily subroutine multi\+\_\+magma\+::cal\+\_\+solidfluidcomposition (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__magma_1_1magma__phase__diagram}{magma\+\_\+phase\+\_\+diagram}})}]{phase\+\_\+coef }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_ad382ce18c512b86bf99518da8d17533a_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_ad382ce18c512b86bf99518da8d17533a_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__magma_adc4c4c821c9d037834bffb7bcdb00583}\label{namespacemulti__magma_adc4c4c821c9d037834bffb7bcdb00583}} 
+\index{multi\_magma@{multi\_magma}!calculate\_magma\_absorption@{calculate\_magma\_absorption}}
+\index{calculate\_magma\_absorption@{calculate\_magma\_absorption}!multi\_magma@{multi\_magma}}
+\doxysubsubsection{\texorpdfstring{calculate\_magma\_absorption()}{calculate\_magma\_absorption()}}
+{\footnotesize\ttfamily subroutine multi\+\_\+magma\+::calculate\+\_\+magma\+\_\+absorption (\begin{DoxyParamCaption}\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}} ), intent(in)}]{Mdims,  }\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__field}{multi\+\_\+field}})}]{Magma\+\_\+absorp,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{real, dimension(\+:), intent(in)}]{c\+\_\+phi\+\_\+series }\end{DoxyParamCaption})}
+
+
+
+\+:This subroutine calculates the coupling term for the magma modelling and adds it to the absorptiont term to impose the coupling between phase N\+O\+TE\+: It gives for G\+R\+A\+N\+T\+ED that the memory type is 3!!!! (see \mbox{\hyperlink{namespacemulti__data__types}{multi\+\_\+data\+\_\+types}}) 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=305pt]{namespacemulti__magma_adc4c4c821c9d037834bffb7bcdb00583_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_adc4c4c821c9d037834bffb7bcdb00583_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__magma_a07e8fa12fe99c17e5d61d86af88b70e0}\label{namespacemulti__magma_a07e8fa12fe99c17e5d61d86af88b70e0}} 
+\index{multi\_magma@{multi\_magma}!enthalpy\_to\_temperature@{enthalpy\_to\_temperature}}
+\index{enthalpy\_to\_temperature@{enthalpy\_to\_temperature}!multi\_magma@{multi\_magma}}
+\doxysubsubsection{\texorpdfstring{enthalpy\_to\_temperature()}{enthalpy\_to\_temperature()}}
+{\footnotesize\ttfamily subroutine multi\+\_\+magma\+::enthalpy\+\_\+to\+\_\+temperature (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__magma_1_1magma__phase__diagram}{magma\+\_\+phase\+\_\+diagram}})}]{phase\+\_\+coef }\end{DoxyParamCaption})}
+
+
+
+\+: Subroutine to obtain the temperature field for a given enthalpy field 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_a07e8fa12fe99c17e5d61d86af88b70e0_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__magma_ae192f3dbea81b36501cea987d494a199}\label{namespacemulti__magma_ae192f3dbea81b36501cea987d494a199}} 
+\index{multi\_magma@{multi\_magma}!get\_enthalpy\_liquidus@{get\_enthalpy\_liquidus}}
+\index{get\_enthalpy\_liquidus@{get\_enthalpy\_liquidus}!multi\_magma@{multi\_magma}}
+\doxysubsubsection{\texorpdfstring{get\_enthalpy\_liquidus()}{get\_enthalpy\_liquidus()}}
+{\footnotesize\ttfamily real function multi\+\_\+magma\+::get\+\_\+enthalpy\+\_\+liquidus (\begin{DoxyParamCaption}\item[{real, intent(in)}]{Bulk\+\_\+comp,  }\item[{real, intent(in)}]{Cp,  }\item[{real, intent(in)}]{rho,  }\item[{type(\mbox{\hyperlink{structmulti__magma_1_1magma__phase__diagram}{magma\+\_\+phase\+\_\+diagram}})}]{phase\+\_\+coef }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_ae192f3dbea81b36501cea987d494a199_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_ae192f3dbea81b36501cea987d494a199_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__magma_a3779ea126c4d3277a69d7d0faef5131e}\label{namespacemulti__magma_a3779ea126c4d3277a69d7d0faef5131e}} 
+\index{multi\_magma@{multi\_magma}!get\_enthalpy\_solidus@{get\_enthalpy\_solidus}}
+\index{get\_enthalpy\_solidus@{get\_enthalpy\_solidus}!multi\_magma@{multi\_magma}}
+\doxysubsubsection{\texorpdfstring{get\_enthalpy\_solidus()}{get\_enthalpy\_solidus()}}
+{\footnotesize\ttfamily real function multi\+\_\+magma\+::get\+\_\+enthalpy\+\_\+solidus (\begin{DoxyParamCaption}\item[{real, intent(in)}]{Bulk\+\_\+comp,  }\item[{real, intent(in)}]{Cp,  }\item[{real, intent(in)}]{rho,  }\item[{type(\mbox{\hyperlink{structmulti__magma_1_1magma__phase__diagram}{magma\+\_\+phase\+\_\+diagram}})}]{phase\+\_\+coef }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_a3779ea126c4d3277a69d7d0faef5131e_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__magma_aefb26d70e8b257b31d4e41812f354af9}\label{namespacemulti__magma_aefb26d70e8b257b31d4e41812f354af9}} 
+\index{multi\_magma@{multi\_magma}!get\_liquidus@{get\_liquidus}}
+\index{get\_liquidus@{get\_liquidus}!multi\_magma@{multi\_magma}}
+\doxysubsubsection{\texorpdfstring{get\_liquidus()}{get\_liquidus()}}
+{\footnotesize\ttfamily real function multi\+\_\+magma\+::get\+\_\+liquidus (\begin{DoxyParamCaption}\item[{real, intent(in)}]{Bulk\+\_\+comp,  }\item[{type(\mbox{\hyperlink{structmulti__magma_1_1magma__phase__diagram}{magma\+\_\+phase\+\_\+diagram}})}]{phase\+\_\+coef }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_aefb26d70e8b257b31d4e41812f354af9_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__magma_ab8db5540f23d971051523906f33880c1}\label{namespacemulti__magma_ab8db5540f23d971051523906f33880c1}} 
+\index{multi\_magma@{multi\_magma}!get\_solidus@{get\_solidus}}
+\index{get\_solidus@{get\_solidus}!multi\_magma@{multi\_magma}}
+\doxysubsubsection{\texorpdfstring{get\_solidus()}{get\_solidus()}}
+{\footnotesize\ttfamily real function multi\+\_\+magma\+::get\+\_\+solidus (\begin{DoxyParamCaption}\item[{real, intent(in)}]{Bulk\+\_\+comp,  }\item[{type(\mbox{\hyperlink{structmulti__magma_1_1magma__phase__diagram}{magma\+\_\+phase\+\_\+diagram}})}]{phase\+\_\+coef }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{namespacemulti__magma_a2f6818fba70095c8af4076b7fca78d87}\label{namespacemulti__magma_a2f6818fba70095c8af4076b7fca78d87}} 
+\index{multi\_magma@{multi\_magma}!initialize\_magma\_parameters@{initialize\_magma\_parameters}}
+\index{initialize\_magma\_parameters@{initialize\_magma\_parameters}!multi\_magma@{multi\_magma}}
+\doxysubsubsection{\texorpdfstring{initialize\_magma\_parameters()}{initialize\_magma\_parameters()}}
+{\footnotesize\ttfamily subroutine multi\+\_\+magma\+::initialize\+\_\+magma\+\_\+parameters (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__magma_1_1magma__phase__diagram}{magma\+\_\+phase\+\_\+diagram}})}]{phase\+\_\+coef,  }\item[{type(\mbox{\hyperlink{structmulti__magma_1_1coupling__term__coef}{coupling\+\_\+term\+\_\+coef}})}]{coupling }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_a2f6818fba70095c8af4076b7fca78d87_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_a2f6818fba70095c8af4076b7fca78d87_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__magma_a9db9a2ee1568a2626b341961c39ad5b2}\label{namespacemulti__magma_a9db9a2ee1568a2626b341961c39ad5b2}} 
+\index{multi\_magma@{multi\_magma}!porossolve@{porossolve}}
+\index{porossolve@{porossolve}!multi\_magma@{multi\_magma}}
+\doxysubsubsection{\texorpdfstring{porossolve()}{porossolve()}}
+{\footnotesize\ttfamily subroutine multi\+\_\+magma\+::porossolve (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type(\mbox{\hyperlink{structmulti__magma_1_1magma__phase__diagram}{magma\+\_\+phase\+\_\+diagram}})}]{phase\+\_\+coef }\end{DoxyParamCaption})}
+
+
+
+\+: Compute porosity(\+Saturation) given an enthalpy field and a Bulk\+Composition 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_a9db9a2ee1568a2626b341961c39ad5b2_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_a9db9a2ee1568a2626b341961c39ad5b2_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__magma_a4c8b6f6e4cc744c0567a902d63580dd3}\label{namespacemulti__magma_a4c8b6f6e4cc744c0567a902d63580dd3}} 
+\index{multi\_magma@{multi\_magma}!temperature\_to\_enthalpy@{temperature\_to\_enthalpy}}
+\index{temperature\_to\_enthalpy@{temperature\_to\_enthalpy}!multi\_magma@{multi\_magma}}
+\doxysubsubsection{\texorpdfstring{temperature\_to\_enthalpy()}{temperature\_to\_enthalpy()}}
+{\footnotesize\ttfamily subroutine multi\+\_\+magma\+::temperature\+\_\+to\+\_\+enthalpy (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__magma_1_1magma__phase__diagram}{magma\+\_\+phase\+\_\+diagram}})}]{phase\+\_\+coef }\end{DoxyParamCaption})}
+
+
+
+\+: Subroutine to obtain the enthalpy field for a given temperature field Important for the initialisation of the enthalpy, we need E\+Nthalpy\+Old to start! 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__magma_a4c8b6f6e4cc744c0567a902d63580dd3_icgraph}
+\end{center}
+\end{figure}

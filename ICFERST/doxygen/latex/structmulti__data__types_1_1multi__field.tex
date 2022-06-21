@@ -1,0 +1,217 @@
+\hypertarget{structmulti__data__types_1_1multi__field}{}\doxysection{multi\+\_\+data\+\_\+types\+::multi\+\_\+field Type Reference}
+\label{structmulti__data__types_1_1multi__field}\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+real, dimension(\+:, \+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__field_a6ff70a0255db6c8865a37b29d808f49c}{val}} =$>$ null()
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__field_afbda5fff90b84f920e2b8e0f0559bd3d}{have\+\_\+field}} = .false.
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__field_a1a83bccea8fd0d29111d51a956f5d118}{do}}
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__field_a7b69f4163d39e36d4d3a22431c321a40}{we}}
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__field_ab80dd6c12a5911b23a8f0689343b0ec5}{need}}
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__field_abc014a79809023d3e81b0de355b390ac}{this}}
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__field_a3e1a1be4a0da477f9ef54fddfb4eb481}{field}}
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__field_ab21f9da778de450d9185e5639e917419}{for}}
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__field_a2a3d610a319eb21a2aaf6da981fdd258}{simulation}}
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__field_ad163ca73584d3bef80e81914aebd6f91}{is\+\_\+constant}} = .false.
+\item 
+logical, dimension(.true.) \mbox{\hyperlink{structmulti__data__types_1_1multi__field_a9dfcf88f49993d1bf0dc924bed144129}{if}}
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__field_ae96ef0387bbe77a1ad3110c3534feac1}{nonods}} = 1 \mbox{\hyperlink{structmulti__data__types_1_1multi__field_ab21f9da778de450d9185e5639e917419}{for}} what follows -\/ D\+E\+L\+E\+TE T\+H\+IS M\+A\+Y\+BE ???
+\item 
+integer \mbox{\hyperlink{structmulti__data__types_1_1multi__field_af13c20722a75cb9405c5799a03afdb74}{memory\+\_\+type}} = -\/1
+\item 
+integer \mbox{\hyperlink{structmulti__data__types_1_1multi__field_adc481e5b7c3b6aae79f0b57a3c2f4631}{isotropic}}
+\item 
+integer, dimension(1, 1, nphase, \mbox{\hyperlink{structmulti__data__types_1_1multi__field_ae96ef0387bbe77a1ad3110c3534feac1}{nonods}}) \mbox{\hyperlink{structmulti__data__types_1_1multi__field_ac06ee83f8a97f6dfc0b0f75dc97e2c31}{tensor}}
+\item 
+integer \mbox{\hyperlink{structmulti__data__types_1_1multi__field_a5a70204297bac456adc0e789f34b51f7}{this}}
+\item 
+integer \mbox{\hyperlink{structmulti__data__types_1_1multi__field_ad4cee951d3cc816dbb52efd9e193d5d7}{is}}
+\item 
+integer \mbox{\hyperlink{structmulti__data__types_1_1multi__field_a3503e292536556661c048b1cb46500c7}{unrolled}}
+\item 
+integer, dimension(ndim, ndim, nphase, \mbox{\hyperlink{structmulti__data__types_1_1multi__field_ae96ef0387bbe77a1ad3110c3534feac1}{nonods}}) \mbox{\hyperlink{structmulti__data__types_1_1multi__field_af7a215c8a8806f56d02a18f8e53c186e}{as}}
+\item 
+integer \mbox{\hyperlink{structmulti__data__types_1_1multi__field_af7f50c7e7763e3cfc480be82de347eae}{ndim1}} = -\/1
+\begin{DoxyCompactList}\small\item\em 1 Isotropic -\/ ( 1, 1, nphase, nonods ) -\/ diagonal 2 Anisotropic -\/ ( ndim, ndim, nphase, nonods ) 3 Isotropic coupled -\/ ( 1, nphase, nphase, nonods ) 4 Anisotropic coupled (aka Full Metal Jacket) -\/ ( 1, ndim x nphase, ndim x nphase, nonods ) 6 Isotropic coupled -\/ ( 1, ndim, nphase, nonods ) This is for porous media. We assume isotropic properties like permiability to be diagonal \end{DoxyCompactList}\item 
+integer \mbox{\hyperlink{structmulti__data__types_1_1multi__field_a356d69ed50a9feba2543c05f31f72ec2}{ndim2}} = -\/1
+\item 
+integer \mbox{\hyperlink{structmulti__data__types_1_1multi__field_a2d0a2f6e4f79ef9902b922531542ff6a}{ndim3}} = -\/1
+\item 
+integer \mbox{\hyperlink{structmulti__data__types_1_1multi__field_ad25dac24729ccb557c6758fa99d9778e}{dimensions}}
+\item 
+integer \mbox{\hyperlink{structmulti__data__types_1_1multi__field_a49962abf78cb11dfe3362cde419e841a}{of}}
+\item 
+integer \mbox{\hyperlink{structmulti__data__types_1_1multi__field_a2f5867c6c7953066265f7b6c7c7c4eb2}{field}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_af7a215c8a8806f56d02a18f8e53c186e}\label{structmulti__data__types_1_1multi__field_af7a215c8a8806f56d02a18f8e53c186e}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!as@{as}}
+\index{as@{as}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{as}{as}}
+{\footnotesize\ttfamily integer, dimension ( ndim, ndim, nphase, \mbox{\hyperlink{structmulti__data__types_1_1multi__field_ae96ef0387bbe77a1ad3110c3534feac1}{nonods}} ) multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::as}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_ad25dac24729ccb557c6758fa99d9778e}\label{structmulti__data__types_1_1multi__field_ad25dac24729ccb557c6758fa99d9778e}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!dimensions@{dimensions}}
+\index{dimensions@{dimensions}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{dimensions}{dimensions}}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::dimensions}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_a1a83bccea8fd0d29111d51a956f5d118}\label{structmulti__data__types_1_1multi__field_a1a83bccea8fd0d29111d51a956f5d118}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!do@{do}}
+\index{do@{do}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{do}{do}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::do}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_a3e1a1be4a0da477f9ef54fddfb4eb481}\label{structmulti__data__types_1_1multi__field_a3e1a1be4a0da477f9ef54fddfb4eb481}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!field@{field}}
+\index{field@{field}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{field}{field}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::field}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_a2f5867c6c7953066265f7b6c7c7c4eb2}\label{structmulti__data__types_1_1multi__field_a2f5867c6c7953066265f7b6c7c7c4eb2}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!field@{field}}
+\index{field@{field}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{field}{field}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::field}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_ab21f9da778de450d9185e5639e917419}\label{structmulti__data__types_1_1multi__field_ab21f9da778de450d9185e5639e917419}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!for@{for}}
+\index{for@{for}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{for}{for}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::for}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_afbda5fff90b84f920e2b8e0f0559bd3d}\label{structmulti__data__types_1_1multi__field_afbda5fff90b84f920e2b8e0f0559bd3d}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!have\_field@{have\_field}}
+\index{have\_field@{have\_field}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{have\_field}{have\_field}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::have\+\_\+field = .false.}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_a9dfcf88f49993d1bf0dc924bed144129}\label{structmulti__data__types_1_1multi__field_a9dfcf88f49993d1bf0dc924bed144129}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!if@{if}}
+\index{if@{if}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{if}{if}}
+{\footnotesize\ttfamily logical, dimension ( .true. ) multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::if}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_ad4cee951d3cc816dbb52efd9e193d5d7}\label{structmulti__data__types_1_1multi__field_ad4cee951d3cc816dbb52efd9e193d5d7}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!is@{is}}
+\index{is@{is}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{is}{is}}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::is}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_ad163ca73584d3bef80e81914aebd6f91}\label{structmulti__data__types_1_1multi__field_ad163ca73584d3bef80e81914aebd6f91}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!is\_constant@{is\_constant}}
+\index{is\_constant@{is\_constant}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{is\_constant}{is\_constant}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::is\+\_\+constant = .false.}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_adc481e5b7c3b6aae79f0b57a3c2f4631}\label{structmulti__data__types_1_1multi__field_adc481e5b7c3b6aae79f0b57a3c2f4631}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!isotropic@{isotropic}}
+\index{isotropic@{isotropic}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{isotropic}{isotropic}}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::isotropic}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_af13c20722a75cb9405c5799a03afdb74}\label{structmulti__data__types_1_1multi__field_af13c20722a75cb9405c5799a03afdb74}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!memory\_type@{memory\_type}}
+\index{memory\_type@{memory\_type}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{memory\_type}{memory\_type}}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::memory\+\_\+type = -\/1}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_af7f50c7e7763e3cfc480be82de347eae}\label{structmulti__data__types_1_1multi__field_af7f50c7e7763e3cfc480be82de347eae}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!ndim1@{ndim1}}
+\index{ndim1@{ndim1}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{ndim1}{ndim1}}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::ndim1 = -\/1}
+
+
+
+1 Isotropic -\/ ( 1, 1, nphase, nonods ) -\/ diagonal 2 Anisotropic -\/ ( ndim, ndim, nphase, nonods ) 3 Isotropic coupled -\/ ( 1, nphase, nphase, nonods ) 4 Anisotropic coupled (aka Full Metal Jacket) -\/ ( 1, ndim x nphase, ndim x nphase, nonods ) 6 Isotropic coupled -\/ ( 1, ndim, nphase, nonods ) This is for porous media. We assume isotropic properties like permiability to be diagonal 
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_a356d69ed50a9feba2543c05f31f72ec2}\label{structmulti__data__types_1_1multi__field_a356d69ed50a9feba2543c05f31f72ec2}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!ndim2@{ndim2}}
+\index{ndim2@{ndim2}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{ndim2}{ndim2}}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::ndim2 = -\/1}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_a2d0a2f6e4f79ef9902b922531542ff6a}\label{structmulti__data__types_1_1multi__field_a2d0a2f6e4f79ef9902b922531542ff6a}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!ndim3@{ndim3}}
+\index{ndim3@{ndim3}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{ndim3}{ndim3}}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::ndim3 = -\/1}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_ab80dd6c12a5911b23a8f0689343b0ec5}\label{structmulti__data__types_1_1multi__field_ab80dd6c12a5911b23a8f0689343b0ec5}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!need@{need}}
+\index{need@{need}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{need}{need}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::need}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_ae96ef0387bbe77a1ad3110c3534feac1}\label{structmulti__data__types_1_1multi__field_ae96ef0387bbe77a1ad3110c3534feac1}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!nonods@{nonods}}
+\index{nonods@{nonods}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{nonods}{nonods}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::nonods = 1 \mbox{\hyperlink{structmulti__data__types_1_1multi__field_ab21f9da778de450d9185e5639e917419}{for}} what follows -\/ D\+E\+L\+E\+TE T\+H\+IS M\+A\+Y\+BE ???}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_a49962abf78cb11dfe3362cde419e841a}\label{structmulti__data__types_1_1multi__field_a49962abf78cb11dfe3362cde419e841a}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!of@{of}}
+\index{of@{of}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{of}{of}}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::of}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_a2a3d610a319eb21a2aaf6da981fdd258}\label{structmulti__data__types_1_1multi__field_a2a3d610a319eb21a2aaf6da981fdd258}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!simulation@{simulation}}
+\index{simulation@{simulation}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{simulation}{simulation}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::simulation}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_ac06ee83f8a97f6dfc0b0f75dc97e2c31}\label{structmulti__data__types_1_1multi__field_ac06ee83f8a97f6dfc0b0f75dc97e2c31}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!tensor@{tensor}}
+\index{tensor@{tensor}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{tensor}{tensor}}
+{\footnotesize\ttfamily integer, dimension ( 1, 1, nphase, \mbox{\hyperlink{structmulti__data__types_1_1multi__field_ae96ef0387bbe77a1ad3110c3534feac1}{nonods}} ) multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::tensor}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_abc014a79809023d3e81b0de355b390ac}\label{structmulti__data__types_1_1multi__field_abc014a79809023d3e81b0de355b390ac}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!this@{this}}
+\index{this@{this}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{this}{this}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::this}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_a5a70204297bac456adc0e789f34b51f7}\label{structmulti__data__types_1_1multi__field_a5a70204297bac456adc0e789f34b51f7}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!this@{this}}
+\index{this@{this}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{this}{this}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::this}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_a3503e292536556661c048b1cb46500c7}\label{structmulti__data__types_1_1multi__field_a3503e292536556661c048b1cb46500c7}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!unrolled@{unrolled}}
+\index{unrolled@{unrolled}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{unrolled}{unrolled}}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::unrolled}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_a6ff70a0255db6c8865a37b29d808f49c}\label{structmulti__data__types_1_1multi__field_a6ff70a0255db6c8865a37b29d808f49c}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!val@{val}}
+\index{val@{val}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{val}{val}}
+{\footnotesize\ttfamily real, dimension( \+:, \+:, \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::val =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__field_a7b69f4163d39e36d4d3a22431c321a40}\label{structmulti__data__types_1_1multi__field_a7b69f4163d39e36d4d3a22431c321a40}} 
+\index{multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}!we@{we}}
+\index{we@{we}!multi\_data\_types::multi\_field@{multi\_data\_types::multi\_field}}
+\doxysubsubsection{\texorpdfstring{we}{we}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+field\+::we}
+
+
+
+The documentation for this type was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/\mbox{\hyperlink{multi__data__types_8_f90}{multi\+\_\+data\+\_\+types.\+F90}}\end{DoxyCompactItemize}

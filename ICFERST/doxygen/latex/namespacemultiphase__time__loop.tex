@@ -1,0 +1,53 @@
+\hypertarget{namespacemultiphase__time__loop}{}\doxysection{multiphase\+\_\+time\+\_\+loop Module Reference}
+\label{namespacemultiphase__time__loop}\index{multiphase\_time\_loop@{multiphase\_time\_loop}}
+
+
+Time-\/loop module of I\+C-\/\+F\+E\+R\+ST. This module contains the time-\/loop and the non-\/linear loop. The time-\/loop consists many steps\+: 1) Data initialisation including shape functions, memory allocation, sparsity, porous media properties, etc. 2) Initialisation of the actual time loop. 3) Non-\/linear loop. I\+C-\/\+F\+E\+R\+ST uses a modified Anderson-\/acceleration non-\/linear solver, which is based in a Picard iterative non-\/linear solver. In this way, the different equations are solved independently and coupled through the Anderson non-\/linear solver. First the momentum and continuity equations are assembled and solved for, next the different transport equations are solved, for example\+: saturation, temperature, concentration, etc. Active\+Tracers and Species are solved within the non-\/linear solver while Passive\+Tracers are solved outside the non-\/linear solver. 4) Once the non-\/linear solver has converged, we proceed to jump to the next time-\/level but first we check if we need to adapt the mesh and/or generate a vtu file. etc.  
+
+
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__time__loop_a04598d33bda1f46f9537570dbc0119bc}{multifluids\+\_\+solvetimeloop}} (state, dt, nonlinear\+\_\+iterations, dump\+\_\+no)
+\begin{DoxyCompactList}\small\item\em This is the main subroutine from which everything is called. It performs the time-\/loop and therefore calls all the necessary blocks to solve for the system of equations, adapt the mesh, etc. See Salinas et al. 2016 doi\+: 10.\+1002/fld.4357, for a description of the time-\/loop and non-\/linear solver. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Time-\/loop module of I\+C-\/\+F\+E\+R\+ST. This module contains the time-\/loop and the non-\/linear loop. The time-\/loop consists many steps\+: 1) Data initialisation including shape functions, memory allocation, sparsity, porous media properties, etc. 2) Initialisation of the actual time loop. 3) Non-\/linear loop. I\+C-\/\+F\+E\+R\+ST uses a modified Anderson-\/acceleration non-\/linear solver, which is based in a Picard iterative non-\/linear solver. In this way, the different equations are solved independently and coupled through the Anderson non-\/linear solver. First the momentum and continuity equations are assembled and solved for, next the different transport equations are solved, for example\+: saturation, temperature, concentration, etc. Active\+Tracers and Species are solved within the non-\/linear solver while Passive\+Tracers are solved outside the non-\/linear solver. 4) Once the non-\/linear solver has converged, we proceed to jump to the next time-\/level but first we check if we need to adapt the mesh and/or generate a vtu file. etc. 
+
+
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{namespacemultiphase__time__loop_a04598d33bda1f46f9537570dbc0119bc}\label{namespacemultiphase__time__loop_a04598d33bda1f46f9537570dbc0119bc}} 
+\index{multiphase\_time\_loop@{multiphase\_time\_loop}!multifluids\_solvetimeloop@{multifluids\_solvetimeloop}}
+\index{multifluids\_solvetimeloop@{multifluids\_solvetimeloop}!multiphase\_time\_loop@{multiphase\_time\_loop}}
+\doxysubsubsection{\texorpdfstring{multifluids\_solvetimeloop()}{multifluids\_solvetimeloop()}}
+{\footnotesize\ttfamily subroutine, public multiphase\+\_\+time\+\_\+loop\+::multifluids\+\_\+solvetimeloop (\begin{DoxyParamCaption}\item[{type(state\+\_\+type), dimension(\+:), intent(inout), pointer}]{state,  }\item[{real, intent(inout)}]{dt,  }\item[{integer, intent(inout)}]{nonlinear\+\_\+iterations,  }\item[{integer, intent(inout)}]{dump\+\_\+no }\end{DoxyParamCaption})}
+
+
+
+This is the main subroutine from which everything is called. It performs the time-\/loop and therefore calls all the necessary blocks to solve for the system of equations, adapt the mesh, etc. See Salinas et al. 2016 doi\+: 10.\+1002/fld.4357, for a description of the time-\/loop and non-\/linear solver. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em state.} & Linked list type of memory where all the fields following Fluidity standard are stored \\
+\hline
+{\em dump\+\_\+no.} & Specify the initial number of the vtu files, has to be zero \\
+\hline
+{\em nonlinear\+\_\+iterations.} & Non-\/linear value. This is required just in case we adapt before the first time-\/step \\
+\hline
+{\em dt.} & Time-\/step size \\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyRetVals}{Return values}
+{\em } & \\
+\hline
+\end{DoxyRetVals}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__time__loop_a04598d33bda1f46f9537570dbc0119bc_icgraph}
+\end{center}
+\end{figure}

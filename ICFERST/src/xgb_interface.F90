@@ -10,8 +10,8 @@ module xgb_interface
    implicit none
 
    interface
-   ! Create matrix content from dense matrix
-   ! Returns 0 when success, -1 when failure happens
+   !>@brief Create matrix content from dense matrix
+   !> Returns 0 when success, -1 when failure happens
       integer(c_int) function fortran_XGDMatrixCreateFromMat(data, nrow, ncol, missing, out) bind(c, name="XGDMatrixCreateFromMat")
          use iso_c_binding, only: c_int, c_ptr, c_float, c_int64_t
          ! Parameters
@@ -25,8 +25,8 @@ module xgb_interface
    end interface    
 
    interface
-   ! Create xgboost learner
-   ! Returns 0 when success, -1 when failure happens
+   !>@brief Create xgboost learner
+   !> Returns 0 when success, -1 when failure happens
       integer(c_int) function fortran_XGBoosterCreate(dmats, len, out) bind(c, name="XGBoosterCreate")
          use iso_c_binding, only: c_int, c_ptr, c_int64_t
          ! Parameters
@@ -38,8 +38,8 @@ module xgb_interface
    end interface   
    
    interface
-   ! Load model from existing file.
-   ! Returns 0 when success, -1 when failure happens
+   !>@brief Load model from existing file.
+   !> Returns 0 when success, -1 when failure happens
       integer(c_int) function fortran_XGBoosterLoadModel(handle, fname) bind(C, name="XGBoosterLoadModel")
          use iso_c_binding, only: c_int, c_char, c_ptr
          ! Parameters
@@ -51,8 +51,8 @@ module xgb_interface
 
    
    interface
-   ! Save model into existing file.
-   ! Returns 0 when success, -1 when failure happens
+   !>@brief Save model into existing file.
+   !> Returns 0 when success, -1 when failure happens
       integer(c_int) function fortran_XGBoosterSaveModel(handle, fname) bind(C, name="XGBoosterSaveModel")
          use iso_c_binding, only: c_int, c_ptr, c_char
          ! Parameters
@@ -63,8 +63,8 @@ module xgb_interface
    end interface
    
    interface
-   ! Make prediction based on dmatrix
-   ! Returns 0 when success, -1 when failure happens
+   !>@brief Make prediction based on dmatrix
+   !> Returns 0 when success, -1 when failure happens
       integer(c_int) function fortran_XGBoosterPredict(handle, dmat, option_mask, ntree_limit, training, out_len, out_result) bind(C, name="XGBoosterPredict")
          use iso_c_binding, only: c_int, c_ptr, c_int64_t
          ! Parameters
@@ -80,8 +80,8 @@ module xgb_interface
    end interface
    
    interface
-   ! Free obj in handle
-   ! Returns 0 when success, -1 when failure happens
+   !>@brief Free obj in handle
+   !> Returns 0 when success, -1 when failure happens
       integer(c_int) function fortran_XGBoosterFree(handle) bind(c, name="XGBoosterFree")
          use iso_c_binding, only: c_int, c_ptr
          ! Parameters
@@ -91,8 +91,8 @@ module xgb_interface
    end interface
 
    interface
-   ! Set Booster parameters
-   ! Returns 0 when success, -1 when failure happens
+   !>@brief Set Booster parameters
+   !> Returns 0 when success, -1 when failure happens
       integer(c_int) function fortran_XGBoosterSetParam(handle, name, value) bind(C, name="XGBoosterSetParam")
          use iso_c_binding, only: c_int, c_char, c_ptr
          ! Parameters

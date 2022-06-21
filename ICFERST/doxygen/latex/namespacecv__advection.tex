@@ -1,0 +1,691 @@
+\hypertarget{namespacecv__advection}{}\doxysection{cv\+\_\+advection Module Reference}
+\label{namespacecv__advection}\index{cv\_advection@{cv\_advection}}
+\doxysubsection*{Data Types}
+\begin{DoxyCompactItemize}
+\item 
+interface \mbox{\hyperlink{interfacecv__advection_1_1dg__derivs__all}{dg\+\_\+derivs\+\_\+all}}
+\item 
+interface \mbox{\hyperlink{interfacecv__advection_1_1pack__loc__all}{pack\+\_\+loc\+\_\+all}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine real, dimension(\+:), intent(inout), optional \mbox{\hyperlink{namespacecv__advection_a083e26c7f43d55723d9e316ef2069394}{cv\+\_\+assemb}} (state, packed\+\_\+state, final\+\_\+phase, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, tracer, velocity, density, multi\+\_\+absorp, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+ES, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+E\+S\+\_\+\+C\+O\+UP, I\+N\+V\+\_\+B, D\+E\+N\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+\_\+\+A\+LL, C\+V\+\_\+\+D\+I\+S\+O\+PT, C\+V\+\_\+\+D\+G\+\_\+\+V\+E\+L\+\_\+\+I\+N\+T\+\_\+\+O\+PT, DT, C\+V\+\_\+\+T\+H\+E\+TA, C\+V\+\_\+\+B\+E\+TA, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, D\+E\+R\+IV, C\+V\+\_\+P, S\+O\+U\+R\+C\+T\+\_\+\+A\+LL, A\+B\+S\+O\+R\+B\+T\+\_\+\+A\+LL, V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE, G\+E\+T\+C\+V\+\_\+\+D\+I\+SC, G\+E\+T\+CT, I\+G\+O\+T\+\_\+\+T2, I\+G\+O\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF, M\+E\+A\+N\+\_\+\+P\+O\+R\+E\+\_\+\+CV, M\+A\+S\+S\+\_\+\+M\+N\+\_\+\+P\+R\+ES, T\+H\+E\+R\+M\+AL, R\+E\+T\+R\+I\+E\+V\+E\+\_\+\+S\+O\+L\+I\+D\+\_\+\+C\+TY, got\+\_\+free\+\_\+surf, M\+A\+S\+S\+\_\+\+S\+UF, M\+A\+S\+S\+\_\+\+E\+L\+E\+\_\+\+T\+R\+A\+N\+SP, T\+D\+I\+F\+F\+U\+S\+I\+ON, saturation, V\+A\+D\+\_\+parameter, Phase\+\_\+with\+\_\+\+Pc, Courant\+\_\+number, Permeability\+\_\+tensor\+\_\+field, calculate\+\_\+mass\+\_\+delta, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, porous\+\_\+heat\+\_\+coef, porous\+\_\+heat\+\_\+coef\+\_\+old, outfluxes, solving\+\_\+compositional, nonlinear\+\_\+iteration, assemble\+\_\+collapsed\+\_\+to\+\_\+one\+\_\+phase, Latent\+\_\+heat)
+\begin{DoxyCompactList}\small\item\em Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for CV Pressure formulations. \end{DoxyCompactList}\item 
+pure subroutine \mbox{\hyperlink{namespacecv__advection_afc0d98d467a15c460d49668d0194344a}{onvdlim\+\_\+ano\+\_\+many}} (N\+F\+I\+E\+LD, T\+D\+L\+IM, T\+D\+C\+EN, I\+N\+C\+O\+ME, E\+T\+D\+N\+E\+W\+\_\+\+P\+E\+LE, E\+T\+D\+N\+E\+W\+\_\+\+P\+E\+L\+E\+OT, X\+I\+\_\+\+L\+I\+M\+IT, T\+U\+P\+W\+IN, T\+U\+P\+W\+I2, D\+E\+N\+O\+IN, C\+T\+I\+L\+IN, D\+E\+N\+O\+OU, C\+T\+I\+L\+OU, F\+T\+I\+L\+IN, F\+T\+I\+L\+OU)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a9146e672783ba218dd881ca49af8e590}{is\+\_\+field\+\_\+constant}} (I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+ST, I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+S\+T\+\_\+\+V\+A\+L\+UE, T\+\_\+\+A\+LL, C\+V\+\_\+\+N\+O\+N\+O\+DS)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_ad76059547a9ad0bf6e0fdac35af6d724}{pack\+\_\+loc}} (L\+O\+C\+\_\+F, T\+\_\+\+A\+LL, N\+P\+H\+A\+SE, I\+PT, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK)
+\begin{DoxyCompactList}\small\item\em Copies memory into the same large array to then perform a projection from CV to FE. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a8eaa2bdc0f6f2d32549f762ef9743c68}{unpack\+\_\+loc}} (L\+O\+C\+\_\+F, T\+\_\+\+A\+LL, N\+P\+H\+A\+SE, I\+PT, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+ST, I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+S\+T\+\_\+\+V\+A\+L\+UE)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a99c70da010b438be07a486366e552b5e}{pack\+\_\+or\+\_\+unpack\+\_\+loc}} (L\+O\+C\+\_\+F, T\+\_\+\+A\+LL, N\+P\+H\+A\+SE, N\+F\+I\+E\+LD, I\+PT, P\+A\+CK, S\+T\+O\+RE, I\+G\+O\+T\+\_\+T)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_ab7e6dd94e89bb340ff613a35190fab2f}{pack\+\_\+loc\+\_\+all1}} (L\+O\+C\+\_\+F, field1, oldfield1, field2, oldfield2, field3, oldfield3, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, use\+\_\+volume\+\_\+frac\+\_\+\+T2, nfield)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a91d158eadfcc686460e36465e8bb0632}{pack\+\_\+loc\+\_\+all2}} (L\+O\+C\+\_\+F, field1, oldfield1, field2, oldfield2, field3, oldfield3, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, use\+\_\+volume\+\_\+frac\+\_\+\+T2, start\+\_\+phase, final\+\_\+phase, nodi)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_ac44991cb894fd9bee43a5f71d0dddbb7}{pack\+\_\+loc\+\_\+all3}} (L\+O\+C\+\_\+F, field1, oldfield1, field2, oldfield2, field3, oldfield3, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, use\+\_\+volume\+\_\+frac\+\_\+\+T2, start\+\_\+phase, final\+\_\+phase, nodi)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_aba41799bc248d577965cfbb86f1d153f}{i\+\_\+pack\+\_\+loc}} (L\+O\+C\+\_\+F, T\+\_\+\+A\+LL, N\+P\+H\+A\+SE, I\+PT, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_ad714b20d018bf748c3ad080732b7c9cc}{unpack\+\_\+loc\+\_\+all}} (L\+O\+C\+\_\+F, field1, oldfield1, field2, oldfield2, field3, oldfield3, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+ST, I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+S\+T\+\_\+\+V\+A\+L\+UE, use\+\_\+volume\+\_\+frac\+\_\+\+T2, nfield)
+\item 
+integer function \mbox{\hyperlink{namespacecv__advection_ae1eba9d13ff146b1bf390a5de461d421}{cv\+\_\+count\+\_\+faces}} (Mdims, C\+V\+\_\+\+E\+L\+E\+\_\+\+T\+Y\+PE, C\+V\+\_\+\+G\+Idims)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a581f8fe3e0c643ca294adf375008b018}{find\+\_\+other\+\_\+side}} (C\+V\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, C\+V\+\_\+\+N\+L\+OC, U\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, U\+\_\+\+N\+L\+OC, M\+A\+T\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, I\+N\+T\+E\+G\+R\+A\+T\+\_\+\+A\+T\+\_\+\+GI, X\+\_\+\+N\+L\+OC, X\+U\+\_\+\+N\+L\+OC, X\+\_\+\+N\+D\+G\+LN, X\+U\+\_\+\+N\+D\+G\+LN, C\+V\+\_\+\+S\+N\+L\+OC, C\+V\+F\+E\+M\+\_\+\+O\+N\+\_\+\+F\+A\+CE, X\+\_\+\+S\+H\+A\+RE, E\+LE, E\+L\+E2, F\+I\+N\+E\+LE, C\+O\+L\+E\+LE, D\+I\+S\+T\+C\+O\+N\+T\+I\+N\+U\+O\+U\+S\+\_\+\+M\+E\+T\+H\+OD)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a33cb5d5dfd5eced81d2952c7dcd294d5}{proj\+\_\+cv\+\_\+to\+\_\+fem}} (packed\+\_\+state, fempsi, psi, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, igetct, X, mass\+\_\+ele, mass\+\_\+mn\+\_\+pres, tracer, psi\+\_\+ave, psi\+\_\+int, activate\+\_\+limiters)
+\begin{DoxyCompactList}\small\item\em Calls to generate the transport equation for the saturation. Embeded an F\+PI with backtracking method is uncluded Subroutine description\+: (1) determine F\+E\+MT (finite element wise) etc from T (control volume wise) (2) (optional) calculate psi\+\_\+int (area) and psi\+\_\+ave (barycentre) over each CV. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a3c6836760693b867362d87cf5f12c250}{dg\+\_\+derivs\+\_\+all1}} (F\+E\+MT, F\+E\+M\+T\+O\+LD, D\+T\+X\+\_\+\+E\+LE, D\+T\+O\+L\+D\+X\+\_\+\+E\+LE, N\+D\+IM, N\+P\+H\+A\+SE, N\+C\+O\+MP, T\+O\+T\+E\+LE, C\+V\+\_\+\+N\+D\+G\+LN, X\+C\+V\+\_\+\+N\+D\+G\+LN, X\+\_\+\+N\+L\+OC, X\+\_\+\+N\+D\+G\+LN, C\+V\+\_\+\+N\+GI, C\+V\+\_\+\+N\+L\+OC, C\+V\+W\+E\+I\+G\+HT, N, N\+LX, N\+LY, N\+LZ, X\+\_\+N, X\+\_\+\+N\+LX, X\+\_\+\+N\+LY, X\+\_\+\+N\+LZ, X\+\_\+\+N\+O\+N\+O\+DS, X, Y, Z, N\+F\+A\+CE, F\+A\+C\+E\+\_\+\+E\+LE, C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST, X\+\_\+\+S\+L\+O\+C\+L\+I\+ST, C\+V\+\_\+\+S\+N\+L\+OC, X\+\_\+\+S\+N\+L\+OC, W\+I\+C\+\_\+\+T\+\_\+\+BC, S\+U\+F\+\_\+\+T\+\_\+\+BC, S\+B\+C\+V\+N\+GI, S\+B\+C\+V\+F\+EN, S\+B\+W\+E\+I\+GH, X\+\_\+\+S\+B\+C\+V\+F\+EN, X\+\_\+\+S\+B\+C\+V\+F\+E\+N\+S\+LX, X\+\_\+\+S\+B\+C\+V\+F\+E\+N\+S\+LY, get\+\_\+gradU, state, P0\+Mesh)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a63eed68fe5bdec0b525e1fddf9e0d3f5}{dg\+\_\+derivs\+\_\+all2}} (F\+E\+MT, F\+E\+M\+T\+O\+LD, D\+T\+X\+\_\+\+E\+LE, D\+T\+O\+L\+D\+X\+\_\+\+E\+LE, N\+D\+IM, N\+P\+H\+A\+SE, T\+O\+T\+E\+LE, C\+V\+\_\+\+N\+D\+G\+LN, X\+C\+V\+\_\+\+N\+D\+G\+LN, X\+\_\+\+N\+L\+OC, X\+\_\+\+N\+D\+G\+LN, C\+V\+\_\+\+N\+GI, C\+V\+\_\+\+N\+L\+OC, C\+V\+W\+E\+I\+G\+HT, N, N\+LX, N\+LY, N\+LZ, X\+\_\+N, X\+\_\+\+N\+LX, X\+\_\+\+N\+LY, X\+\_\+\+N\+LZ, X\+\_\+\+N\+O\+N\+O\+DS, X, Y, Z, N\+F\+A\+CE, F\+A\+C\+E\+\_\+\+E\+LE, C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST, X\+\_\+\+S\+L\+O\+C\+L\+I\+ST, C\+V\+\_\+\+S\+N\+L\+OC, X\+\_\+\+S\+N\+L\+OC, W\+I\+C\+\_\+\+T\+\_\+\+BC, S\+U\+F\+\_\+\+T\+\_\+\+BC, S\+B\+C\+V\+N\+GI, S\+B\+C\+V\+F\+EN, S\+B\+W\+E\+I\+GH, X\+\_\+\+S\+B\+C\+V\+F\+EN, X\+\_\+\+S\+B\+C\+V\+F\+E\+N\+S\+LX, X\+\_\+\+S\+B\+C\+V\+F\+E\+N\+S\+LY, P0\+Mesh)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a3323eb4932694a86940d81127e40d9fe}{diffus\+\_\+cal\+\_\+coeff}} (D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX, D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX, C\+V\+\_\+\+N\+L\+OC, M\+A\+T\+\_\+\+N\+L\+OC, N\+P\+H\+A\+SE, M\+A\+T\+\_\+\+N\+D\+G\+LN, S\+M\+A\+T\+F\+EN, S\+C\+V\+F\+EN, GI, N\+D\+IM, T\+D\+I\+F\+F\+U\+S\+I\+ON, H\+DC, T\+\_\+\+C\+V\+\_\+\+N\+O\+DJ, T\+\_\+\+C\+V\+\_\+\+N\+O\+DI, T\+O\+L\+D\+\_\+\+C\+V\+\_\+\+N\+O\+DJ, T\+O\+L\+D\+\_\+\+C\+V\+\_\+\+N\+O\+DI, E\+LE, E\+L\+E2, C\+V\+N\+O\+R\+M\+X\+\_\+\+A\+LL, L\+O\+C\+\_\+\+D\+T\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, L\+O\+C\+\_\+\+D\+T\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, L\+O\+C2\+\_\+\+D\+T\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, L\+O\+C2\+\_\+\+D\+T\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, L\+O\+C\+\_\+\+W\+I\+C\+\_\+\+T\+\_\+\+BC, C\+V\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, M\+A\+T\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, C\+V\+\_\+\+S\+N\+L\+OC, C\+V\+\_\+\+S\+L\+O\+C2\+L\+OC, on\+\_\+domain\+\_\+boundary, between\+\_\+elements)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a3778683fc29bd4646b518eec834d1b2b}{linear\+\_\+high\+\_\+diffus\+\_\+cal\+\_\+coeff\+\_\+stress\+\_\+or\+\_\+tensor}} (S\+T\+R\+E\+S\+S\+\_\+\+I\+J\+\_\+\+E\+L\+E\+\_\+\+E\+XT, S\+\_\+\+I\+N\+V\+\_\+\+N\+N\+X\+\_\+\+M\+A\+T12, S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+RM, S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+R\+M\+\_\+\+S\+T\+AB, Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS, U\+\_\+\+S\+N\+L\+OC, U\+\_\+\+N\+L\+OC, C\+V\+\_\+\+S\+N\+L\+OC, N\+P\+H\+A\+SE, S\+B\+U\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED, S\+B\+C\+V\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED, S\+D\+E\+T\+W\+EI, S\+B\+C\+V\+N\+GI, N\+D\+IM, S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL, S\+L\+O\+C2\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, S\+L\+O\+C2\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL, D\+I\+F\+F\+\_\+\+G\+I\+\_\+\+A\+D\+D\+ED, O\+N\+\_\+\+B\+O\+U\+N\+D\+A\+RY, S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_aa3ef74a90808188963586069f9231675}{calc\+\_\+stress\+\_\+ten}} (S\+T\+R\+E\+S\+S\+\_\+\+IJ, Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS, N\+D\+IM, U\+F\+E\+N\+X\+\_\+\+I\+L\+OC, U\+F\+E\+N\+X\+\_\+\+J\+L\+OC, T\+E\+N\+\_\+\+XX, T\+E\+N\+\_\+\+V\+OL)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a6f557f5a7dfeffca4640671937d7e141}{calc\+\_\+stress\+\_\+ten\+\_\+reduce}} (S\+T\+R\+E\+S\+S\+\_\+\+IJ, Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS, N\+D\+IM, F\+E\+N\+\_\+\+T\+E\+N\+\_\+\+XX, F\+E\+N\+\_\+\+T\+E\+N\+\_\+\+V\+OL, U\+F\+E\+N\+X\+\_\+\+J\+L\+OC)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a339e8bc7d0ed41fd23b546168e2c7f5e}{cal\+\_\+lim\+\_\+vol\+\_\+adjust}} (T\+M\+I\+N\+\_\+\+S\+T\+O\+RE, T\+M\+IN, T, T\+M\+I\+N\+\_\+\+N\+OD, R\+E\+S\+E\+T\+\_\+\+S\+T\+O\+RE, M\+A\+S\+S\+\_\+\+CV, C\+V\+\_\+\+N\+O\+D\+I\+\_\+\+I\+P\+HA, C\+V\+\_\+\+N\+O\+D\+J\+\_\+\+I\+P\+HA, I\+P\+H\+A\+SE, C\+V\+\_\+\+N\+O\+N\+O\+DS, I\+N\+C\+O\+ME)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_aba06a5f3680d58e1db30e740119dd5dc}{dgsimplnorm\+\_\+all}} (N\+L\+OC, S\+N\+L\+OC, N\+D\+IM, X\+L\+\_\+\+A\+LL, X\+S\+L\+\_\+\+A\+LL, N\+O\+R\+M\+X\+\_\+\+A\+LL)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a59bf765f03106e474053c6af073fb1ae}{dgsimplnorm}} (E\+LE, S\+I\+L\+O\+C2\+I\+L\+OC, N\+L\+OC, S\+N\+L\+OC, X\+O\+N\+D\+GL, X, Y, Z, N\+O\+R\+MX, N\+O\+R\+MY, N\+O\+R\+MZ)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_ae629d3a52942059265356baccf02b919}{isotropic\+\_\+limiter\+\_\+all}} (T\+\_\+\+A\+LL, T\+O\+L\+D\+\_\+\+A\+LL, T2\+\_\+\+A\+LL, T2\+O\+L\+D\+\_\+\+A\+LL, D\+E\+N\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+\_\+\+A\+LL, I\+G\+O\+T\+\_\+\+T2, N\+P\+H\+A\+SE, C\+V\+\_\+\+N\+O\+N\+O\+DS, nsmall\+\_\+colm, S\+M\+A\+L\+L\+\_\+\+C\+E\+N\+T\+RM, S\+M\+A\+L\+L\+\_\+\+F\+I\+N\+D\+RM, S\+M\+A\+L\+L\+\_\+\+C\+O\+LM, S\+T\+O\+T\+EL, C\+V\+\_\+\+S\+N\+L\+OC, C\+V\+\_\+\+S\+N\+D\+G\+LN, S\+U\+F\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+T2\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+T2\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL, M\+A\+S\+S\+\_\+\+CV, T\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, T2\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, T\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, D\+E\+N\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, T2\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a9a0d23f536863720989376a298e7bfca}{calc\+\_\+sele}} (E\+LE, E\+L\+E3, S\+E\+LE, C\+V\+\_\+\+S\+I\+L\+OC, C\+V\+\_\+\+I\+L\+OC, U\+\_\+\+S\+L\+O\+C2\+L\+OC, C\+V\+\_\+\+S\+L\+O\+C2\+L\+OC, F\+A\+C\+E\+\_\+\+E\+LE, gi, C\+V\+\_\+funs, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+\+N\+D\+G\+LN, U\+\_\+\+N\+D\+G\+LN, C\+V\+\_\+\+S\+N\+D\+G\+LN, U\+\_\+\+S\+N\+D\+G\+LN)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a5c177e18f7b1275cc9b308000daaa788}{put\+\_\+in\+\_\+ct\+\_\+rhs}} (G\+E\+T\+\_\+\+C\+\_\+\+I\+N\+\_\+\+C\+V\+\_\+\+A\+D\+V\+D\+I\+F\+\_\+\+A\+N\+D\+\_\+\+C\+A\+L\+C\+\_\+\+C\+\_\+\+CV, ct\+\_\+rhs\+\_\+phase\+\_\+cv\+\_\+nodi, ct\+\_\+rhs\+\_\+phase\+\_\+cv\+\_\+nodj, final\+\_\+phase, Mdims, C\+V\+\_\+funs, ndgln, Mmat, GI, between\+\_\+elements, on\+\_\+domain\+\_\+boundary, E\+LE, E\+L\+E2, S\+E\+LE, H\+DC, M\+A\+S\+S\+\_\+\+E\+LE, J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC, J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2, I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC, I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2, C\+\_\+\+J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC, C\+\_\+\+J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2, C\+\_\+\+I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC, C\+\_\+\+I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2, U\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, U\+\_\+\+S\+L\+O\+C2\+L\+OC, C\+V\+\_\+\+S\+L\+O\+C2\+L\+OC, S\+C\+V\+D\+E\+T\+W\+EI, C\+V\+N\+O\+R\+M\+X\+\_\+\+A\+LL, D\+E\+N\+\_\+\+A\+LL, C\+V\+\_\+\+N\+O\+DI, C\+V\+\_\+\+N\+O\+DJ, W\+I\+C\+\_\+\+U\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL, U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E\+\_\+\+A\+LL, U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E2\+\_\+\+A\+LL, N\+D\+O\+TQ, N\+D\+O\+T\+Q\+O\+LD, L\+I\+MT, L\+I\+M\+DT, L\+I\+M\+D\+T\+O\+LD, L\+I\+M\+T\+\_\+\+H\+AT, N\+D\+O\+T\+Q\+\_\+\+H\+AT, F\+T\+H\+E\+T\+A\+\_\+\+T2, O\+N\+E\+\_\+\+M\+\_\+\+F\+T\+H\+E\+T\+A\+\_\+\+T2\+O\+LD, F\+T\+H\+E\+T\+A\+\_\+\+T2\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+F\+T\+H\+E\+T\+A\+\_\+\+T2\+O\+L\+D\+\_\+J, integrate\+\_\+other\+\_\+side\+\_\+and\+\_\+not\+\_\+boundary, R\+E\+T\+R\+I\+E\+V\+E\+\_\+\+S\+O\+L\+I\+D\+\_\+\+C\+TY, theta\+\_\+cty\+\_\+solid, loc\+\_\+u, T\+H\+E\+T\+A\+\_\+\+V\+EL, U\+D\+G\+I\+\_\+\+I\+M\+P\+\_\+\+A\+LL, R\+C\+ON, R\+C\+O\+N\+\_\+J, N\+D\+O\+T\+Q\+\_\+\+I\+MP, X\+\_\+\+A\+LL, S\+U\+F\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL, gravty)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a46d56280fc42d8db708b1658f9d4d6cb}{calc\+\_\+anisotrop\+\_\+lim}} (Mmat, T\+\_\+\+A\+LL, T\+O\+L\+D\+\_\+\+A\+LL, D\+E\+N\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+\_\+\+A\+LL, T2\+\_\+\+A\+LL, T2\+O\+L\+D\+\_\+\+A\+LL, F\+E\+M\+T\+\_\+\+A\+LL, F\+E\+M\+T\+O\+L\+D\+\_\+\+A\+LL, F\+E\+M\+D\+E\+N\+\_\+\+A\+LL, F\+E\+M\+D\+E\+N\+O\+L\+D\+\_\+\+A\+LL, F\+E\+M\+T2\+\_\+\+A\+LL, F\+E\+M\+T2\+O\+L\+D\+\_\+\+A\+LL, U\+S\+E\+\_\+\+F\+E\+MT, T\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, T\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, D\+E\+N\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, T2\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, T2\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, I\+G\+O\+T\+\_\+\+T2, N\+P\+H\+A\+SE, C\+V\+\_\+\+N\+O\+N\+O\+DS, C\+V\+\_\+\+N\+L\+OC, T\+O\+T\+E\+LE, C\+V\+\_\+\+N\+D\+G\+LN, S\+M\+A\+L\+L\+\_\+\+F\+I\+N\+D\+RM, S\+M\+A\+L\+L\+\_\+\+C\+E\+N\+T\+RM, S\+M\+A\+L\+L\+\_\+\+C\+O\+LM, N\+S\+M\+A\+L\+L\+\_\+\+C\+O\+LM, X\+\_\+\+N\+D\+G\+LN, X\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, X\+\_\+\+A\+LL, X\+C\+\_\+\+C\+V\+\_\+\+A\+LL, use\+\_\+reflect)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_aeb4c2b2bcca484786a8d6f3d1410c689}{triloccords}} (Xp, Yp, Zp, N1, N2, N3, N4, X1, Y1, Z1, X2, Y2, Z2, X3, Y3, Z3, X4, Y4, Z4)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a1a0899f179933a6d3cbc48431237aff7}{triloccords2d}} (Xp, Yp, N1, N2, N3, X1, Y1, X2, Y2, X3, Y3)
+\item 
+logical function \mbox{\hyperlink{namespacecv__advection_ae140305e60c328f17beabcae47d8aa6f}{shock\+\_\+front\+\_\+in\+\_\+ele}} (ele, Mdims, sat, ndgln, Imble\+\_\+frac)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a133a322640c972e4b8577bb3a2439357}{generate\+\_\+laplacian\+\_\+system}} (Mdims, packed\+\_\+state, ndgln, Mmat, Mspars, C\+V\+\_\+funs, C\+V\+\_\+\+G\+Idims, Sigma\+\_\+field, Solution, K\+\_\+fields, F\+\_\+fields, intface\+\_\+val\+\_\+type)
+\begin{DoxyCompactList}\small\item\em \+: In this method we assemble and solve the Laplacian system using at least P1 elements The equation solved is the following\+: Div sigma Grad X = -\/ S\+UM (Div K Grad F) with Neuman B\+Cs = 0 where K and F are passed down as a vector. Therefore for n entries the S\+UM will be performed over n fields Example\+: F = (3, nphase, cv\+\_\+nonods) would include three terms in the R\+HS and the same for K If harmonic average then we perform the harmonic average of sigma and K I\+M\+P\+O\+R\+T\+A\+NT\+: This subroutine requires the P\+Hsparsity to be generated Note that this method solves considering FE fields. If using CV you may incur in an small error. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a7a433d2f6b47e86ffdbc1fc4af1e7a05}{scvdetnx}} (Mdims, ndgln, X\+\_\+\+A\+LL, C\+V\+\_\+funs, C\+V\+\_\+\+G\+Idims, on\+\_\+domain\+\_\+boundary, between\+\_\+elements, E\+LE, GI, S\+C\+V\+D\+E\+T\+W\+EI, C\+V\+N\+O\+R\+M\+X\+\_\+\+A\+LL, X\+C\+\_\+\+A\+LL, X\+\_\+\+N\+OD, X\+\_\+\+N\+O\+DJ)
+\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a939c43361c098c807280c739e30b5370}{wic\+\_\+t\+\_\+bc\+\_\+dirichlet}} = 1
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a8f50cabe5b0bcd1018205e2d6f15f3ff}{wic\+\_\+t\+\_\+bc\+\_\+robin}} = 2
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a29adecab6c33872a56cf4775b4e1c3e3}{wic\+\_\+t\+\_\+bc\+\_\+diri\+\_\+adv\+\_\+and\+\_\+robin}} = 3
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_aa646dbddd6308ea78c1c05d5b51c4d22}{wic\+\_\+d\+\_\+bc\+\_\+dirichlet}} = 1
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a7ceb6fac2898be0cae2d603d5226f631}{wic\+\_\+u\+\_\+bc\+\_\+dirichlet}} = 1
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a6309cc2d2e0e51146784619230b6e70a}{wic\+\_\+u\+\_\+bc\+\_\+robin}} = 2
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_ab87709ec60fd78f0870ce18b9bbf7eb8}{wic\+\_\+u\+\_\+bc\+\_\+diri\+\_\+adv\+\_\+and\+\_\+robin}} = 3
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a03129ee41533b2c78d1ec116019892fa}{wic\+\_\+u\+\_\+bc\+\_\+dirichlet\+\_\+inout}} = 2
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a03647ce996f35f7512f2206c2a4bc8d4}{wic\+\_\+p\+\_\+bc\+\_\+dirichlet}} = 1
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a6d139b0bd7722182c16855e683657878}{wic\+\_\+p\+\_\+bc\+\_\+free}} = 2
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{namespacecv__advection_a339e8bc7d0ed41fd23b546168e2c7f5e}\label{namespacecv__advection_a339e8bc7d0ed41fd23b546168e2c7f5e}} 
+\index{cv\_advection@{cv\_advection}!cal\_lim\_vol\_adjust@{cal\_lim\_vol\_adjust}}
+\index{cal\_lim\_vol\_adjust@{cal\_lim\_vol\_adjust}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{cal\_lim\_vol\_adjust()}{cal\_lim\_vol\_adjust()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::cal\+\_\+lim\+\_\+vol\+\_\+adjust (\begin{DoxyParamCaption}\item[{real, intent(inout)}]{T\+M\+I\+N\+\_\+\+S\+T\+O\+RE,  }\item[{real, dimension( \+: ), intent(inout)}]{T\+M\+IN,  }\item[{real, dimension( \+: ), intent(in)}]{T,  }\item[{integer, dimension( \+: ), intent(in)}]{T\+M\+I\+N\+\_\+\+N\+OD,  }\item[{logical, intent(in)}]{R\+E\+S\+E\+T\+\_\+\+S\+T\+O\+RE,  }\item[{real, dimension( \+: ), intent(in)}]{M\+A\+S\+S\+\_\+\+CV,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+D\+I\+\_\+\+I\+P\+HA,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+D\+J\+\_\+\+I\+P\+HA,  }\item[{integer, intent(in)}]{I\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+N\+O\+DS,  }\item[{real, intent(in)}]{I\+N\+C\+O\+ME }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a339e8bc7d0ed41fd23b546168e2c7f5e_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a46d56280fc42d8db708b1658f9d4d6cb}\label{namespacecv__advection_a46d56280fc42d8db708b1658f9d4d6cb}} 
+\index{cv\_advection@{cv\_advection}!calc\_anisotrop\_lim@{calc\_anisotrop\_lim}}
+\index{calc\_anisotrop\_lim@{calc\_anisotrop\_lim}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{calc\_anisotrop\_lim()}{calc\_anisotrop\_lim()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::calc\+\_\+anisotrop\+\_\+lim (\begin{DoxyParamCaption}\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{T\+O\+L\+D\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+E\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+E\+N\+O\+L\+D\+\_\+\+A\+LL,  }\item[{real, dimension( \+:,\+:), intent(in), pointer}]{T2\+\_\+\+A\+LL,  }\item[{real, dimension( \+:,\+:), intent(in), pointer}]{T2\+O\+L\+D\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:), intent(in)}]{F\+E\+M\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:), intent(in)}]{F\+E\+M\+T\+O\+L\+D\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:), intent(in)}]{F\+E\+M\+D\+E\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:), intent(in)}]{F\+E\+M\+D\+E\+N\+O\+L\+D\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:), intent(in)}]{F\+E\+M\+T2\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:), intent(in)}]{F\+E\+M\+T2\+O\+L\+D\+\_\+\+A\+LL,  }\item[{logical, intent(in)}]{U\+S\+E\+\_\+\+F\+E\+MT,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T2\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T2\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{I\+G\+O\+T\+\_\+\+T2,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+V\+\_\+\+N\+D\+G\+LN,  }\item[{integer, dimension( \+: ), intent(in)}]{S\+M\+A\+L\+L\+\_\+\+F\+I\+N\+D\+RM,  }\item[{integer, dimension( \+: ), intent(in)}]{S\+M\+A\+L\+L\+\_\+\+C\+E\+N\+T\+RM,  }\item[{integer, dimension( \+: ), intent(in)}]{S\+M\+A\+L\+L\+\_\+\+C\+O\+LM,  }\item[{integer, intent(in)}]{N\+S\+M\+A\+L\+L\+\_\+\+C\+O\+LM,  }\item[{integer, dimension(\+: ), intent(in)}]{X\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{real, dimension( \+:,\+: ), intent(in)}]{X\+\_\+\+A\+LL,  }\item[{real, dimension( ndim, cv\+\_\+nonods), intent(in)}]{X\+C\+\_\+\+C\+V\+\_\+\+A\+LL,  }\item[{logical, intent(in)}]{use\+\_\+reflect }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a46d56280fc42d8db708b1658f9d4d6cb_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a46d56280fc42d8db708b1658f9d4d6cb_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a9a0d23f536863720989376a298e7bfca}\label{namespacecv__advection_a9a0d23f536863720989376a298e7bfca}} 
+\index{cv\_advection@{cv\_advection}!calc\_sele@{calc\_sele}}
+\index{calc\_sele@{calc\_sele}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{calc\_sele()}{calc\_sele()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::calc\+\_\+sele (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{E\+LE,  }\item[{integer, intent(inout)}]{E\+L\+E3,  }\item[{integer, intent(inout)}]{S\+E\+LE,  }\item[{integer, intent(inout)}]{C\+V\+\_\+\+S\+I\+L\+OC,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+I\+L\+OC,  }\item[{integer, dimension( \+: ), intent(inout)}]{U\+\_\+\+S\+L\+O\+C2\+L\+OC,  }\item[{integer, dimension( \+: ), intent(inout)}]{C\+V\+\_\+\+S\+L\+O\+C2\+L\+OC,  }\item[{integer, dimension( \+:, \+: ), intent(in)}]{F\+A\+C\+E\+\_\+\+E\+LE,  }\item[{integer, intent(in)}]{gi,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(in)}]{C\+V\+\_\+funs,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+V\+\_\+\+N\+D\+G\+LN,  }\item[{integer, dimension( \+: ), intent(in)}]{U\+\_\+\+N\+D\+G\+LN,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+V\+\_\+\+S\+N\+D\+G\+LN,  }\item[{integer, dimension( \+: ), intent(in)}]{U\+\_\+\+S\+N\+D\+G\+LN }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a9a0d23f536863720989376a298e7bfca_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_aa3ef74a90808188963586069f9231675}\label{namespacecv__advection_aa3ef74a90808188963586069f9231675}} 
+\index{cv\_advection@{cv\_advection}!calc\_stress\_ten@{calc\_stress\_ten}}
+\index{calc\_stress\_ten@{calc\_stress\_ten}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{calc\_stress\_ten()}{calc\_stress\_ten()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::calc\+\_\+stress\+\_\+ten (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+:  ), intent(inout)}]{S\+T\+R\+E\+S\+S\+\_\+\+IJ,  }\item[{real, intent(in)}]{Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{real, dimension( \+: ), intent(in)}]{U\+F\+E\+N\+X\+\_\+\+I\+L\+OC,  }\item[{real, dimension( \+: ), intent(in)}]{U\+F\+E\+N\+X\+\_\+\+J\+L\+OC,  }\item[{real, dimension( \+:,\+: ), intent(in)}]{T\+E\+N\+\_\+\+XX,  }\item[{real, intent(in)}]{T\+E\+N\+\_\+\+V\+OL }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_aa3ef74a90808188963586069f9231675_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a6f557f5a7dfeffca4640671937d7e141}\label{namespacecv__advection_a6f557f5a7dfeffca4640671937d7e141}} 
+\index{cv\_advection@{cv\_advection}!calc\_stress\_ten\_reduce@{calc\_stress\_ten\_reduce}}
+\index{calc\_stress\_ten\_reduce@{calc\_stress\_ten\_reduce}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{calc\_stress\_ten\_reduce()}{calc\_stress\_ten\_reduce()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::calc\+\_\+stress\+\_\+ten\+\_\+reduce (\begin{DoxyParamCaption}\item[{real, dimension( ndim, ndim  ), intent(inout)}]{S\+T\+R\+E\+S\+S\+\_\+\+IJ,  }\item[{real, intent(in)}]{Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{real, dimension( ndim, ndim ), intent(in)}]{F\+E\+N\+\_\+\+T\+E\+N\+\_\+\+XX,  }\item[{real, dimension( ndim ), intent(in)}]{F\+E\+N\+\_\+\+T\+E\+N\+\_\+\+V\+OL,  }\item[{real, dimension( ndim ), intent(in)}]{U\+F\+E\+N\+X\+\_\+\+J\+L\+OC }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a6f557f5a7dfeffca4640671937d7e141_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a083e26c7f43d55723d9e316ef2069394}\label{namespacecv__advection_a083e26c7f43d55723d9e316ef2069394}} 
+\index{cv\_advection@{cv\_advection}!cv\_assemb@{cv\_assemb}}
+\index{cv\_assemb@{cv\_assemb}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{cv\_assemb()}{cv\_assemb()}}
+{\footnotesize\ttfamily subroutine real, dimension(\+:), intent(inout), optional cv\+\_\+advection\+::cv\+\_\+assemb (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{integer, intent(in)}]{final\+\_\+phase,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(inout)}]{C\+V\+\_\+funs,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__discretization__opts}{multi\+\_\+discretization\+\_\+opts}})}]{Mdisopt,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1porous__adv__coefs}{porous\+\_\+adv\+\_\+coefs}}), intent(inout)}]{upwnd,  }\item[{real, dimension( \+:, \+:, \+:, \+: ), intent(in), optional, target}]{tracer,  }\item[{type(tensor\+\_\+field), intent(in)}]{velocity,  }\item[{real, dimension( \+:, \+: ), intent(in), target}]{density,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__absorption}{multi\+\_\+absorption}}), intent(inout)}]{multi\+\_\+absorp,  }\item[{real, dimension( \+:, \+: ), intent(inout), allocatable}]{D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+ES,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout), allocatable}]{D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+E\+S\+\_\+\+C\+O\+UP,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout), allocatable}]{I\+N\+V\+\_\+B,  }\item[{real, dimension( \+:, \+: ), intent(inout), target}]{D\+E\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+O\+L\+D\+\_\+\+A\+LL,  }\item[{real, dimension(\+:), intent(inout), optional}]{C\+V\+\_\+\+D\+I\+S\+O\+PT,  }\item[{real, dimension(\+:), intent(inout), optional}]{C\+V\+\_\+\+D\+G\+\_\+\+V\+E\+L\+\_\+\+I\+N\+T\+\_\+\+O\+PT,  }\item[{real, dimension(\+:), intent(inout), optional}]{DT,  }\item[{real, dimension(\+:), intent(inout), optional}]{C\+V\+\_\+\+T\+H\+E\+TA,  }\item[{real, dimension(\+:), intent(inout), optional}]{C\+V\+\_\+\+B\+E\+TA,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+E\+R\+IV,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{C\+V\+\_\+P,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{S\+O\+U\+R\+C\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in), pointer}]{A\+B\+S\+O\+R\+B\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE,  }\item[{real, dimension(\+:), intent(inout), optional}]{G\+E\+T\+C\+V\+\_\+\+D\+I\+SC,  }\item[{real, dimension(\+:), intent(inout), optional}]{G\+E\+T\+CT,  }\item[{integer, intent(in)}]{I\+G\+O\+T\+\_\+\+T2,  }\item[{integer, intent(in)}]{I\+G\+O\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{logical, intent(in)}]{G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{logical, intent(in)}]{U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:, \+: ), intent(inout), optional}]{T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:, \+: ), intent(inout), optional}]{O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:, \+: ), intent(inout), optional}]{T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J,  }\item[{real, dimension( \+:, \+: ), intent(inout), optional}]{O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{M\+E\+A\+N\+\_\+\+P\+O\+R\+E\+\_\+\+CV,  }\item[{real, dimension( \+: ), intent(inout)}]{M\+A\+S\+S\+\_\+\+M\+N\+\_\+\+P\+R\+ES,  }\item[{logical, intent(in)}]{T\+H\+E\+R\+M\+AL,  }\item[{logical, intent(in)}]{R\+E\+T\+R\+I\+E\+V\+E\+\_\+\+S\+O\+L\+I\+D\+\_\+\+C\+TY,  }\item[{logical, intent(in)}]{got\+\_\+free\+\_\+surf,  }\item[{real, dimension( \+: ), intent(inout)}]{M\+A\+S\+S\+\_\+\+S\+UF,  }\item[{real, dimension( \+: ), intent(inout), optional}]{M\+A\+S\+S\+\_\+\+E\+L\+E\+\_\+\+T\+R\+A\+N\+SP,  }\item[{real, dimension( \+:, \+:, \+:, \+: ), intent(in), optional}]{T\+D\+I\+F\+F\+U\+S\+I\+ON,  }\item[{type(tensor\+\_\+field), intent(in), optional, target}]{saturation,  }\item[{real, dimension(\+:), intent(in), optional}]{V\+A\+D\+\_\+parameter,  }\item[{integer, intent(in), optional}]{Phase\+\_\+with\+\_\+\+Pc,  }\item[{real, dimension(\+:), intent(inout), optional}]{Courant\+\_\+number,  }\item[{}]{Permeability\+\_\+tensor\+\_\+field,  }\item[{}]{calculate\+\_\+mass\+\_\+delta,  }\item[{}]{eles\+\_\+with\+\_\+pipe,  }\item[{}]{pipes\+\_\+aux,  }\item[{}]{porous\+\_\+heat\+\_\+coef,  }\item[{}]{porous\+\_\+heat\+\_\+coef\+\_\+old,  }\item[{}]{outfluxes,  }\item[{}]{solving\+\_\+compositional,  }\item[{}]{nonlinear\+\_\+iteration,  }\item[{}]{assemble\+\_\+collapsed\+\_\+to\+\_\+one\+\_\+phase,  }\item[{}]{Latent\+\_\+heat }\end{DoxyParamCaption})}
+
+
+
+Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for CV Pressure formulations. 
+
+\begin{DoxyAuthor}{Author}
+Chris Pain, Pablo Salinas 
+\end{DoxyAuthor}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=550pt]{namespacecv__advection_a083e26c7f43d55723d9e316ef2069394_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a083e26c7f43d55723d9e316ef2069394_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_ae1eba9d13ff146b1bf390a5de461d421}\label{namespacecv__advection_ae1eba9d13ff146b1bf390a5de461d421}} 
+\index{cv\_advection@{cv\_advection}!cv\_count\_faces@{cv\_count\_faces}}
+\index{cv\_count\_faces@{cv\_count\_faces}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{cv\_count\_faces()}{cv\_count\_faces()}}
+{\footnotesize\ttfamily integer function cv\+\_\+advection\+::cv\+\_\+count\+\_\+faces (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+E\+L\+E\+\_\+\+T\+Y\+PE,  }\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}} ), intent(in), optional}]{C\+V\+\_\+\+G\+Idims }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_ae1eba9d13ff146b1bf390a5de461d421_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_ae1eba9d13ff146b1bf390a5de461d421_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a3c6836760693b867362d87cf5f12c250}\label{namespacecv__advection_a3c6836760693b867362d87cf5f12c250}} 
+\index{cv\_advection@{cv\_advection}!dg\_derivs\_all1@{dg\_derivs\_all1}}
+\index{dg\_derivs\_all1@{dg\_derivs\_all1}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{dg\_derivs\_all1()}{dg\_derivs\_all1()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::dg\+\_\+derivs\+\_\+all1 (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{F\+E\+MT,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{F\+E\+M\+T\+O\+LD,  }\item[{real, dimension( \+:, \+:, \+:, \+:, \+: ), intent(inout)}]{D\+T\+X\+\_\+\+E\+LE,  }\item[{real, dimension( \+:, \+:, \+:, \+:, \+: ), intent(inout)}]{D\+T\+O\+L\+D\+X\+\_\+\+E\+LE,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{N\+C\+O\+MP,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+V\+\_\+\+N\+D\+G\+LN,  }\item[{integer, dimension( \+: ), intent(in)}]{X\+C\+V\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{X\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+GI,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+L\+OC,  }\item[{real, dimension( \+: ), intent(in)}]{C\+V\+W\+E\+I\+G\+HT,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{N,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{N\+LX,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{N\+LY,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{N\+LZ,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+N,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+N\+LX,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+N\+LY,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+N\+LZ,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+O\+N\+O\+DS,  }\item[{real, dimension( \+: ), intent(in)}]{X,  }\item[{real, dimension( \+: ), intent(in)}]{Y,  }\item[{real, dimension( \+: ), intent(in)}]{Z,  }\item[{integer, intent(in)}]{N\+F\+A\+CE,  }\item[{integer, dimension( \+:, \+: ), intent(in)}]{F\+A\+C\+E\+\_\+\+E\+LE,  }\item[{integer, dimension( \+:, \+: ), intent(in)}]{C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST,  }\item[{integer, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+S\+L\+O\+C\+L\+I\+ST,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+S\+N\+L\+OC,  }\item[{integer, intent(in)}]{X\+\_\+\+S\+N\+L\+OC,  }\item[{integer, dimension( \+:, \+:, \+: ), intent(in)}]{W\+I\+C\+\_\+\+T\+\_\+\+BC,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{S\+U\+F\+\_\+\+T\+\_\+\+BC,  }\item[{integer, intent(in)}]{S\+B\+C\+V\+N\+GI,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{S\+B\+C\+V\+F\+EN,  }\item[{real, dimension( \+: ), intent(in)}]{S\+B\+W\+E\+I\+GH,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+S\+B\+C\+V\+F\+EN,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+S\+B\+C\+V\+F\+E\+N\+S\+LX,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+S\+B\+C\+V\+F\+E\+N\+S\+LY,  }\item[{logical, intent(in)}]{get\+\_\+gradU,  }\item[{type( state\+\_\+type), dimension( \+: ), intent(inout)}]{state,  }\item[{logical, optional}]{P0\+Mesh }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a3c6836760693b867362d87cf5f12c250_cgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a63eed68fe5bdec0b525e1fddf9e0d3f5}\label{namespacecv__advection_a63eed68fe5bdec0b525e1fddf9e0d3f5}} 
+\index{cv\_advection@{cv\_advection}!dg\_derivs\_all2@{dg\_derivs\_all2}}
+\index{dg\_derivs\_all2@{dg\_derivs\_all2}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{dg\_derivs\_all2()}{dg\_derivs\_all2()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::dg\+\_\+derivs\+\_\+all2 (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+: ), intent(in)}]{F\+E\+MT,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{F\+E\+M\+T\+O\+LD,  }\item[{real, dimension( \+:, \+:, \+:, \+: ), intent(inout)}]{D\+T\+X\+\_\+\+E\+LE,  }\item[{real, dimension( \+:, \+:, \+:, \+: ), intent(inout)}]{D\+T\+O\+L\+D\+X\+\_\+\+E\+LE,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+V\+\_\+\+N\+D\+G\+LN,  }\item[{integer, dimension( \+: ), intent(in)}]{X\+C\+V\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{X\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+GI,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+L\+OC,  }\item[{real, dimension( \+: ), intent(in)}]{C\+V\+W\+E\+I\+G\+HT,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{N,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{N\+LX,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{N\+LY,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{N\+LZ,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+N,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+N\+LX,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+N\+LY,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+N\+LZ,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+O\+N\+O\+DS,  }\item[{real, dimension( \+: ), intent(in)}]{X,  }\item[{real, dimension( \+: ), intent(in)}]{Y,  }\item[{real, dimension( \+: ), intent(in)}]{Z,  }\item[{integer, intent(in)}]{N\+F\+A\+CE,  }\item[{integer, dimension( \+:, \+: ), intent(in)}]{F\+A\+C\+E\+\_\+\+E\+LE,  }\item[{integer, dimension( \+:, \+: ), intent(in)}]{C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST,  }\item[{integer, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+S\+L\+O\+C\+L\+I\+ST,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+S\+N\+L\+OC,  }\item[{integer, intent(in)}]{X\+\_\+\+S\+N\+L\+OC,  }\item[{integer, dimension( \+:,  \+:, \+: ), intent(in)}]{W\+I\+C\+\_\+\+T\+\_\+\+BC,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{S\+U\+F\+\_\+\+T\+\_\+\+BC,  }\item[{integer, intent(in)}]{S\+B\+C\+V\+N\+GI,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{S\+B\+C\+V\+F\+EN,  }\item[{real, dimension( \+: ), intent(in)}]{S\+B\+W\+E\+I\+GH,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+S\+B\+C\+V\+F\+EN,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+S\+B\+C\+V\+F\+E\+N\+S\+LX,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+S\+B\+C\+V\+F\+E\+N\+S\+LY,  }\item[{logical, optional}]{P0\+Mesh }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a63eed68fe5bdec0b525e1fddf9e0d3f5_cgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a59bf765f03106e474053c6af073fb1ae}\label{namespacecv__advection_a59bf765f03106e474053c6af073fb1ae}} 
+\index{cv\_advection@{cv\_advection}!dgsimplnorm@{dgsimplnorm}}
+\index{dgsimplnorm@{dgsimplnorm}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{dgsimplnorm()}{dgsimplnorm()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::dgsimplnorm (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{E\+LE,  }\item[{integer, dimension( \+: ), intent(in)}]{S\+I\+L\+O\+C2\+I\+L\+OC,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{S\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{X\+O\+N\+D\+GL,  }\item[{real, dimension( \+: ), intent(in)}]{X,  }\item[{real, dimension( \+: ), intent(in)}]{Y,  }\item[{real, dimension( \+: ), intent(in)}]{Z,  }\item[{real, intent(inout)}]{N\+O\+R\+MX,  }\item[{real, intent(inout)}]{N\+O\+R\+MY,  }\item[{real, intent(inout)}]{N\+O\+R\+MZ }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a59bf765f03106e474053c6af073fb1ae_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_aba06a5f3680d58e1db30e740119dd5dc}\label{namespacecv__advection_aba06a5f3680d58e1db30e740119dd5dc}} 
+\index{cv\_advection@{cv\_advection}!dgsimplnorm\_all@{dgsimplnorm\_all}}
+\index{dgsimplnorm\_all@{dgsimplnorm\_all}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{dgsimplnorm\_all()}{dgsimplnorm\_all()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::dgsimplnorm\+\_\+all (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{S\+N\+L\+OC,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{real, dimension( ndim, nloc ), intent(in)}]{X\+L\+\_\+\+A\+LL,  }\item[{real, dimension( ndim, snloc ), intent(in)}]{X\+S\+L\+\_\+\+A\+LL,  }\item[{real, dimension( ndim ), intent(inout)}]{N\+O\+R\+M\+X\+\_\+\+A\+LL }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_aba06a5f3680d58e1db30e740119dd5dc_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a3323eb4932694a86940d81127e40d9fe}\label{namespacecv__advection_a3323eb4932694a86940d81127e40d9fe}} 
+\index{cv\_advection@{cv\_advection}!diffus\_cal\_coeff@{diffus\_cal\_coeff}}
+\index{diffus\_cal\_coeff@{diffus\_cal\_coeff}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{diffus\_cal\_coeff()}{diffus\_cal\_coeff()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::diffus\+\_\+cal\+\_\+coeff (\begin{DoxyParamCaption}\item[{real, dimension( nphase ), intent(inout)}]{D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX,  }\item[{real, dimension( nphase ), intent(inout)}]{D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{M\+A\+T\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, dimension( \+: ), intent(in)}]{M\+A\+T\+\_\+\+N\+D\+G\+LN,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{S\+M\+A\+T\+F\+EN,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{S\+C\+V\+F\+EN,  }\item[{integer, intent(in)}]{GI,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{real, dimension( \+:, \+:, \+:, \+: ), intent(in)}]{T\+D\+I\+F\+F\+U\+S\+I\+ON,  }\item[{real, intent(in)}]{H\+DC,  }\item[{real, dimension( nphase ), intent(in)}]{T\+\_\+\+C\+V\+\_\+\+N\+O\+DJ,  }\item[{real, dimension( nphase ), intent(in)}]{T\+\_\+\+C\+V\+\_\+\+N\+O\+DI,  }\item[{real, dimension( nphase ), intent(in)}]{T\+O\+L\+D\+\_\+\+C\+V\+\_\+\+N\+O\+DJ,  }\item[{real, dimension( nphase ), intent(in)}]{T\+O\+L\+D\+\_\+\+C\+V\+\_\+\+N\+O\+DI,  }\item[{integer, intent(in)}]{E\+LE,  }\item[{integer, intent(in)}]{E\+L\+E2,  }\item[{real, dimension( \+: ), intent(in)}]{C\+V\+N\+O\+R\+M\+X\+\_\+\+A\+LL,  }\item[{real, dimension( ndim, nphase, cv\+\_\+nloc ), intent(in)}]{L\+O\+C\+\_\+\+D\+T\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{real, dimension( ndim, nphase, cv\+\_\+nloc ), intent(in)}]{L\+O\+C\+\_\+\+D\+T\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{real, dimension( ndim, nphase, cv\+\_\+nloc ), intent(in)}]{L\+O\+C2\+\_\+\+D\+T\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{real, dimension( ndim, nphase, cv\+\_\+nloc ), intent(in)}]{L\+O\+C2\+\_\+\+D\+T\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{integer, dimension( nphase ), intent(in)}]{L\+O\+C\+\_\+\+W\+I\+C\+\_\+\+T\+\_\+\+BC,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+V\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{M\+A\+T\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+S\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+V\+\_\+\+S\+L\+O\+C2\+L\+OC,  }\item[{logical, intent(in)}]{on\+\_\+domain\+\_\+boundary,  }\item[{logical, intent(in)}]{between\+\_\+elements }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a3323eb4932694a86940d81127e40d9fe_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a3323eb4932694a86940d81127e40d9fe_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a581f8fe3e0c643ca294adf375008b018}\label{namespacecv__advection_a581f8fe3e0c643ca294adf375008b018}} 
+\index{cv\_advection@{cv\_advection}!find\_other\_side@{find\_other\_side}}
+\index{find\_other\_side@{find\_other\_side}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{find\_other\_side()}{find\_other\_side()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::find\+\_\+other\+\_\+side (\begin{DoxyParamCaption}\item[{integer, dimension( \+: ), intent(inout)}]{C\+V\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(inout)}]{U\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(inout)}]{M\+A\+T\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC,  }\item[{logical, intent(inout)}]{I\+N\+T\+E\+G\+R\+A\+T\+\_\+\+A\+T\+\_\+\+GI,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{X\+U\+\_\+\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{X\+\_\+\+N\+D\+G\+LN,  }\item[{integer, dimension( \+: ), intent(in)}]{X\+U\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+S\+N\+L\+OC,  }\item[{logical, dimension( \+: ), intent(in)}]{C\+V\+F\+E\+M\+\_\+\+O\+N\+\_\+\+F\+A\+CE,  }\item[{logical, dimension( \+: ), intent(inout)}]{X\+\_\+\+S\+H\+A\+RE,  }\item[{integer, intent(in)}]{E\+LE,  }\item[{integer, intent(inout)}]{E\+L\+E2,  }\item[{integer, dimension( \+: ), intent(in)}]{F\+I\+N\+E\+LE,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+O\+L\+E\+LE,  }\item[{logical, intent(in)}]{D\+I\+S\+T\+C\+O\+N\+T\+I\+N\+U\+O\+U\+S\+\_\+\+M\+E\+T\+H\+OD }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a581f8fe3e0c643ca294adf375008b018_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a133a322640c972e4b8577bb3a2439357}\label{namespacecv__advection_a133a322640c972e4b8577bb3a2439357}} 
+\index{cv\_advection@{cv\_advection}!generate\_laplacian\_system@{generate\_laplacian\_system}}
+\index{generate\_laplacian\_system@{generate\_laplacian\_system}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{generate\_laplacian\_system()}{generate\_laplacian\_system()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::generate\+\_\+laplacian\+\_\+system (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(inout)}]{C\+V\+\_\+funs,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{real, dimension(\+:,\+:), intent(in)}]{Sigma\+\_\+field,  }\item[{type( scalar\+\_\+field ), intent(inout)}]{Solution,  }\item[{real, dimension(\+:,\+:,\+:), intent(in)}]{K\+\_\+fields,  }\item[{real, dimension(\+:,\+:,\+:), intent(in)}]{F\+\_\+fields,  }\item[{integer, intent(in)}]{intface\+\_\+val\+\_\+type }\end{DoxyParamCaption})}
+
+
+
+\+: In this method we assemble and solve the Laplacian system using at least P1 elements The equation solved is the following\+: Div sigma Grad X = -\/ S\+UM (Div K Grad F) with Neuman B\+Cs = 0 where K and F are passed down as a vector. Therefore for n entries the S\+UM will be performed over n fields Example\+: F = (3, nphase, cv\+\_\+nonods) would include three terms in the R\+HS and the same for K If harmonic average then we perform the harmonic average of sigma and K I\+M\+P\+O\+R\+T\+A\+NT\+: This subroutine requires the P\+Hsparsity to be generated Note that this method solves considering FE fields. If using CV you may incur in an small error. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a133a322640c972e4b8577bb3a2439357_cgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_aba41799bc248d577965cfbb86f1d153f}\label{namespacecv__advection_aba41799bc248d577965cfbb86f1d153f}} 
+\index{cv\_advection@{cv\_advection}!i\_pack\_loc@{i\_pack\_loc}}
+\index{i\_pack\_loc@{i\_pack\_loc}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{i\_pack\_loc()}{i\_pack\_loc()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::i\+\_\+pack\+\_\+loc (\begin{DoxyParamCaption}\item[{integer, dimension(\+:), intent(inout)}]{L\+O\+C\+\_\+F,  }\item[{integer, dimension(nphase), intent(in)}]{T\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(inout)}]{I\+PT,  }\item[{logical, dimension(nphase), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{namespacecv__advection_a9146e672783ba218dd881ca49af8e590}\label{namespacecv__advection_a9146e672783ba218dd881ca49af8e590}} 
+\index{cv\_advection@{cv\_advection}!is\_field\_constant@{is\_field\_constant}}
+\index{is\_field\_constant@{is\_field\_constant}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{is\_field\_constant()}{is\_field\_constant()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::is\+\_\+field\+\_\+constant (\begin{DoxyParamCaption}\item[{logical}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+ST,  }\item[{real}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+S\+T\+\_\+\+V\+A\+L\+UE,  }\item[{real, dimension(cv\+\_\+nonods)}]{T\+\_\+\+A\+LL,  }\item[{integer}]{C\+V\+\_\+\+N\+O\+N\+O\+DS }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{namespacecv__advection_ae629d3a52942059265356baccf02b919}\label{namespacecv__advection_ae629d3a52942059265356baccf02b919}} 
+\index{cv\_advection@{cv\_advection}!isotropic\_limiter\_all@{isotropic\_limiter\_all}}
+\index{isotropic\_limiter\_all@{isotropic\_limiter\_all}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{isotropic\_limiter\_all()}{isotropic\_limiter\_all()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::isotropic\+\_\+limiter\+\_\+all (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+: ), intent(in)}]{T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{T\+O\+L\+D\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{T2\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{T2\+O\+L\+D\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+E\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+E\+N\+O\+L\+D\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{I\+G\+O\+T\+\_\+\+T2,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{nsmall\+\_\+colm,  }\item[{integer, dimension( \+: ), intent(in)}]{S\+M\+A\+L\+L\+\_\+\+C\+E\+N\+T\+RM,  }\item[{integer, dimension( \+: ), intent(in)}]{S\+M\+A\+L\+L\+\_\+\+F\+I\+N\+D\+RM,  }\item[{integer, dimension( \+: ), intent(in)}]{S\+M\+A\+L\+L\+\_\+\+C\+O\+LM,  }\item[{integer, intent(in)}]{S\+T\+O\+T\+EL,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+S\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+V\+\_\+\+S\+N\+D\+G\+LN,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in), pointer}]{S\+U\+F\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in), pointer}]{S\+U\+F\+\_\+\+T2\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in), pointer}]{S\+U\+F\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:,\+:, \+: ), intent(in)}]{W\+I\+C\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:,\+:, \+: ), intent(in)}]{W\+I\+C\+\_\+\+T2\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:,\+:, \+: ), intent(in)}]{W\+I\+C\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{real, dimension( \+: ), intent(in)}]{M\+A\+S\+S\+\_\+\+CV,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T2\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T2\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_ae629d3a52942059265356baccf02b919_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_ae629d3a52942059265356baccf02b919_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a3778683fc29bd4646b518eec834d1b2b}\label{namespacecv__advection_a3778683fc29bd4646b518eec834d1b2b}} 
+\index{cv\_advection@{cv\_advection}!linear\_high\_diffus\_cal\_coeff\_stress\_or\_tensor@{linear\_high\_diffus\_cal\_coeff\_stress\_or\_tensor}}
+\index{linear\_high\_diffus\_cal\_coeff\_stress\_or\_tensor@{linear\_high\_diffus\_cal\_coeff\_stress\_or\_tensor}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{linear\_high\_diffus\_cal\_coeff\_stress\_or\_tensor()}{linear\_high\_diffus\_cal\_coeff\_stress\_or\_tensor()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::linear\+\_\+high\+\_\+diffus\+\_\+cal\+\_\+coeff\+\_\+stress\+\_\+or\+\_\+tensor (\begin{DoxyParamCaption}\item[{real, dimension( ndim, ndim, nphase, u\+\_\+snloc, 2$\ast$u\+\_\+nloc ), intent(inout)}]{S\+T\+R\+E\+S\+S\+\_\+\+I\+J\+\_\+\+E\+L\+E\+\_\+\+E\+XT,  }\item[{real, dimension( ndim, u\+\_\+snloc, 2$\ast$u\+\_\+nloc ), intent(inout)}]{S\+\_\+\+I\+N\+V\+\_\+\+N\+N\+X\+\_\+\+M\+A\+T12,  }\item[{logical, intent(in)}]{S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+RM,  }\item[{logical, intent(in)}]{S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+R\+M\+\_\+\+S\+T\+AB,  }\item[{real, intent(in)}]{Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS,  }\item[{integer, intent(in)}]{U\+\_\+\+S\+N\+L\+OC,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+S\+N\+L\+OC,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{real, dimension( sbcvngi, u\+\_\+snloc  ), intent(in)}]{S\+B\+U\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED,  }\item[{real, dimension( sbcvngi, cv\+\_\+snloc ), intent(in)}]{S\+B\+C\+V\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED,  }\item[{real, dimension( sbcvngi ), intent(in)}]{S\+D\+E\+T\+W\+EI,  }\item[{integer, intent(in)}]{S\+B\+C\+V\+N\+GI,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{real, dimension( ndim,ndim,nphase,cv\+\_\+snloc ), intent(in)}]{S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON,  }\item[{real, dimension( nphase,cv\+\_\+snloc ), intent(in)}]{S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL,  }\item[{real, dimension( ndim,ndim,nphase,cv\+\_\+snloc ), intent(in)}]{S\+L\+O\+C2\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON,  }\item[{real, dimension( nphase,cv\+\_\+snloc ), intent(in)}]{S\+L\+O\+C2\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL,  }\item[{real, dimension( ndim, ndim,ndim, nphase, sbcvngi), intent(in)}]{D\+I\+F\+F\+\_\+\+G\+I\+\_\+\+A\+D\+D\+ED,  }\item[{logical, intent(in)}]{O\+N\+\_\+\+B\+O\+U\+N\+D\+A\+RY,  }\item[{real, dimension( ndim, sbcvngi ), intent(in)}]{S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a3778683fc29bd4646b518eec834d1b2b_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a3778683fc29bd4646b518eec834d1b2b_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_afc0d98d467a15c460d49668d0194344a}\label{namespacecv__advection_afc0d98d467a15c460d49668d0194344a}} 
+\index{cv\_advection@{cv\_advection}!onvdlim\_ano\_many@{onvdlim\_ano\_many}}
+\index{onvdlim\_ano\_many@{onvdlim\_ano\_many}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{onvdlim\_ano\_many()}{onvdlim\_ano\_many()}}
+{\footnotesize\ttfamily pure subroutine cv\+\_\+advection\+::onvdlim\+\_\+ano\+\_\+many (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N\+F\+I\+E\+LD,  }\item[{real, dimension( nfield ), intent(inout)}]{T\+D\+L\+IM,  }\item[{real, dimension( nfield ), intent(in)}]{T\+D\+C\+EN,  }\item[{real, dimension( nfield ), intent(in)}]{I\+N\+C\+O\+ME,  }\item[{real, dimension( nfield ), intent(in)}]{E\+T\+D\+N\+E\+W\+\_\+\+P\+E\+LE,  }\item[{real, dimension( nfield ), intent(in)}]{E\+T\+D\+N\+E\+W\+\_\+\+P\+E\+L\+E\+OT,  }\item[{real, dimension( nfield ), intent(in)}]{X\+I\+\_\+\+L\+I\+M\+IT,  }\item[{real, dimension( nfield ), intent(in)}]{T\+U\+P\+W\+IN,  }\item[{real, dimension( nfield ), intent(in)}]{T\+U\+P\+W\+I2,  }\item[{real, dimension( nfield ), intent(inout)}]{D\+E\+N\+O\+IN,  }\item[{real, dimension( nfield ), intent(inout)}]{C\+T\+I\+L\+IN,  }\item[{real, dimension( nfield ), intent(inout)}]{D\+E\+N\+O\+OU,  }\item[{real, dimension( nfield ), intent(inout)}]{C\+T\+I\+L\+OU,  }\item[{real, dimension( nfield ), intent(inout)}]{F\+T\+I\+L\+IN,  }\item[{real, dimension( nfield ), intent(inout)}]{F\+T\+I\+L\+OU }\end{DoxyParamCaption})}
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em nfield} & T\+E\+X\+T\+IN \\
+\hline
+\end{DoxyParams}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_afc0d98d467a15c460d49668d0194344a_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_afc0d98d467a15c460d49668d0194344a_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_ad76059547a9ad0bf6e0fdac35af6d724}\label{namespacecv__advection_ad76059547a9ad0bf6e0fdac35af6d724}} 
+\index{cv\_advection@{cv\_advection}!pack\_loc@{pack\_loc}}
+\index{pack\_loc@{pack\_loc}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{pack\_loc()}{pack\_loc()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::pack\+\_\+loc (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{L\+O\+C\+\_\+F,  }\item[{real, dimension(\+:), intent(in)}]{T\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(inout)}]{I\+PT,  }\item[{logical, dimension(\+:), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK }\end{DoxyParamCaption})}
+
+
+
+Copies memory into the same large array to then perform a projection from CV to FE. 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_ad76059547a9ad0bf6e0fdac35af6d724_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_ab7e6dd94e89bb340ff613a35190fab2f}\label{namespacecv__advection_ab7e6dd94e89bb340ff613a35190fab2f}} 
+\index{cv\_advection@{cv\_advection}!pack\_loc\_all1@{pack\_loc\_all1}}
+\index{pack\_loc\_all1@{pack\_loc\_all1}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{pack\_loc\_all1()}{pack\_loc\_all1()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::pack\+\_\+loc\+\_\+all1 (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{L\+O\+C\+\_\+F,  }\item[{real, dimension(\+:), intent(in)}]{field1,  }\item[{real, dimension(\+:), intent(in)}]{oldfield1,  }\item[{real, dimension(\+:), intent(in)}]{field2,  }\item[{real, dimension(\+:), intent(in)}]{oldfield2,  }\item[{real, dimension(\+:), intent(in)}]{field3,  }\item[{real, dimension(\+:), intent(in)}]{oldfield3,  }\item[{logical, dimension(\+:,\+:), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK,  }\item[{logical, intent(in)}]{use\+\_\+volume\+\_\+frac\+\_\+\+T2,  }\item[{integer, intent(in)}]{nfield }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_ab7e6dd94e89bb340ff613a35190fab2f_cgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a91d158eadfcc686460e36465e8bb0632}\label{namespacecv__advection_a91d158eadfcc686460e36465e8bb0632}} 
+\index{cv\_advection@{cv\_advection}!pack\_loc\_all2@{pack\_loc\_all2}}
+\index{pack\_loc\_all2@{pack\_loc\_all2}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{pack\_loc\_all2()}{pack\_loc\_all2()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::pack\+\_\+loc\+\_\+all2 (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{L\+O\+C\+\_\+F,  }\item[{real, dimension(\+:,\+:), intent(in)}]{field1,  }\item[{real, dimension(\+:,\+:), intent(in)}]{oldfield1,  }\item[{real, dimension(\+:,\+:), intent(in)}]{field2,  }\item[{real, dimension(\+:,\+:), intent(in)}]{oldfield2,  }\item[{real, dimension(\+:,\+:), intent(in)}]{field3,  }\item[{real, dimension(\+:,\+:), intent(in)}]{oldfield3,  }\item[{logical, dimension(\+:,\+:), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK,  }\item[{logical, intent(in)}]{use\+\_\+volume\+\_\+frac\+\_\+\+T2,  }\item[{integer, intent(in)}]{start\+\_\+phase,  }\item[{integer, intent(in)}]{final\+\_\+phase,  }\item[{integer, intent(in)}]{nodi }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a91d158eadfcc686460e36465e8bb0632_cgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_ac44991cb894fd9bee43a5f71d0dddbb7}\label{namespacecv__advection_ac44991cb894fd9bee43a5f71d0dddbb7}} 
+\index{cv\_advection@{cv\_advection}!pack\_loc\_all3@{pack\_loc\_all3}}
+\index{pack\_loc\_all3@{pack\_loc\_all3}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{pack\_loc\_all3()}{pack\_loc\_all3()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::pack\+\_\+loc\+\_\+all3 (\begin{DoxyParamCaption}\item[{integer, dimension(\+:), intent(inout)}]{L\+O\+C\+\_\+F,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{field1,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{oldfield1,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{field2,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{oldfield2,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{field3,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{oldfield3,  }\item[{logical, dimension(\+:,\+:), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK,  }\item[{logical, intent(in)}]{use\+\_\+volume\+\_\+frac\+\_\+\+T2,  }\item[{integer, intent(in)}]{start\+\_\+phase,  }\item[{integer, intent(in)}]{final\+\_\+phase,  }\item[{integer, intent(in)}]{nodi }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=294pt]{namespacecv__advection_ac44991cb894fd9bee43a5f71d0dddbb7_cgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a99c70da010b438be07a486366e552b5e}\label{namespacecv__advection_a99c70da010b438be07a486366e552b5e}} 
+\index{cv\_advection@{cv\_advection}!pack\_or\_unpack\_loc@{pack\_or\_unpack\_loc}}
+\index{pack\_or\_unpack\_loc@{pack\_or\_unpack\_loc}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{pack\_or\_unpack\_loc()}{pack\_or\_unpack\_loc()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::pack\+\_\+or\+\_\+unpack\+\_\+loc (\begin{DoxyParamCaption}\item[{real, dimension(nfield), intent(inout)}]{L\+O\+C\+\_\+F,  }\item[{real, dimension(nphase), intent(inout)}]{T\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{N\+F\+I\+E\+LD,  }\item[{integer, intent(inout)}]{I\+PT,  }\item[{logical, intent(in)}]{P\+A\+CK,  }\item[{logical, intent(in)}]{S\+T\+O\+RE,  }\item[{integer, intent(in)}]{I\+G\+O\+T\+\_\+T }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{namespacecv__advection_a33cb5d5dfd5eced81d2952c7dcd294d5}\label{namespacecv__advection_a33cb5d5dfd5eced81d2952c7dcd294d5}} 
+\index{cv\_advection@{cv\_advection}!proj\_cv\_to\_fem@{proj\_cv\_to\_fem}}
+\index{proj\_cv\_to\_fem@{proj\_cv\_to\_fem}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{proj\_cv\_to\_fem()}{proj\_cv\_to\_fem()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::proj\+\_\+cv\+\_\+to\+\_\+fem (\begin{DoxyParamCaption}\item[{type(state\+\_\+type)}]{packed\+\_\+state,  }\item[{type(tensor\+\_\+field\+\_\+pointer), dimension(\+:), intent(inout)}]{fempsi,  }\item[{type(tensor\+\_\+field\+\_\+pointer), dimension(\+:), intent(inout)}]{psi,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(inout)}]{C\+V\+\_\+funs,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{integer, intent(in)}]{igetct,  }\item[{real, dimension(\+:,\+:), intent(in)}]{X,  }\item[{real, dimension(\+:), intent(inout)}]{mass\+\_\+ele,  }\item[{real, dimension(\+:), intent(inout)}]{mass\+\_\+mn\+\_\+pres,  }\item[{type(tensor\+\_\+field), intent(in)}]{tracer,  }\item[{type(vector\+\_\+field\+\_\+pointer), dimension(\+:), intent(inout)}]{psi\+\_\+ave,  }\item[{type(vector\+\_\+field\+\_\+pointer), dimension(\+:), intent(inout)}]{psi\+\_\+int,  }\item[{logical, intent(in), optional}]{activate\+\_\+limiters }\end{DoxyParamCaption})}
+
+
+
+Calls to generate the transport equation for the saturation. Embeded an F\+PI with backtracking method is uncluded Subroutine description\+: (1) determine F\+E\+MT (finite element wise) etc from T (control volume wise) (2) (optional) calculate psi\+\_\+int (area) and psi\+\_\+ave (barycentre) over each CV. 
+
+\begin{DoxyAuthor}{Author}
+Chris Pain, Pablo Salinas 
+\end{DoxyAuthor}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a33cb5d5dfd5eced81d2952c7dcd294d5_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a33cb5d5dfd5eced81d2952c7dcd294d5_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a5c177e18f7b1275cc9b308000daaa788}\label{namespacecv__advection_a5c177e18f7b1275cc9b308000daaa788}} 
+\index{cv\_advection@{cv\_advection}!put\_in\_ct\_rhs@{put\_in\_ct\_rhs}}
+\index{put\_in\_ct\_rhs@{put\_in\_ct\_rhs}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{put\_in\_ct\_rhs()}{put\_in\_ct\_rhs()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::put\+\_\+in\+\_\+ct\+\_\+rhs (\begin{DoxyParamCaption}\item[{logical, intent(in)}]{G\+E\+T\+\_\+\+C\+\_\+\+I\+N\+\_\+\+C\+V\+\_\+\+A\+D\+V\+D\+I\+F\+\_\+\+A\+N\+D\+\_\+\+C\+A\+L\+C\+\_\+\+C\+\_\+\+CV,  }\item[{real, dimension( \+: ), intent(inout)}]{ct\+\_\+rhs\+\_\+phase\+\_\+cv\+\_\+nodi,  }\item[{real, dimension( \+: ), intent(inout)}]{ct\+\_\+rhs\+\_\+phase\+\_\+cv\+\_\+nodj,  }\item[{integer, intent(in)}]{final\+\_\+phase,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(in)}]{C\+V\+\_\+funs,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{integer, intent(in)}]{GI,  }\item[{logical, intent(in)}]{between\+\_\+elements,  }\item[{logical, intent(in)}]{on\+\_\+domain\+\_\+boundary,  }\item[{integer, intent(in)}]{E\+LE,  }\item[{integer, intent(in)}]{E\+L\+E2,  }\item[{integer, intent(in)}]{S\+E\+LE,  }\item[{real, intent(in)}]{H\+DC,  }\item[{real, dimension( \+: ), intent(in)}]{M\+A\+S\+S\+\_\+\+E\+LE,  }\item[{integer, dimension( \+: ), intent(in)}]{J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2,  }\item[{integer, dimension( \+: ), intent(in)}]{I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+\_\+\+J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+\_\+\+J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+\_\+\+I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+\_\+\+I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2,  }\item[{integer, dimension( \+: ), intent(in)}]{U\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{U\+\_\+\+S\+L\+O\+C2\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+V\+\_\+\+S\+L\+O\+C2\+L\+OC,  }\item[{real, dimension( \+: ), intent(in)}]{S\+C\+V\+D\+E\+T\+W\+EI,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{C\+V\+N\+O\+R\+M\+X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+E\+N\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+DI,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+DJ,  }\item[{integer, dimension(\+:,\+:,\+:)}]{W\+I\+C\+\_\+\+U\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{integer, dimension(\+:,\+:,\+:)}]{W\+I\+C\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{S\+U\+F\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E2\+\_\+\+A\+LL,  }\item[{real, dimension( \+: ), intent(in)}]{N\+D\+O\+TQ,  }\item[{real, dimension( \+: ), intent(in)}]{N\+D\+O\+T\+Q\+O\+LD,  }\item[{real, dimension( \+: ), intent(in)}]{L\+I\+MT,  }\item[{real, dimension( \+: ), intent(in)}]{L\+I\+M\+DT,  }\item[{real, dimension( \+: ), intent(in)}]{L\+I\+M\+D\+T\+O\+LD,  }\item[{real, dimension( \+: ), intent(in)}]{L\+I\+M\+T\+\_\+\+H\+AT,  }\item[{real, intent(in)}]{N\+D\+O\+T\+Q\+\_\+\+H\+AT,  }\item[{real, dimension( \+: ), intent(in)}]{F\+T\+H\+E\+T\+A\+\_\+\+T2,  }\item[{real, dimension( \+: ), intent(in)}]{O\+N\+E\+\_\+\+M\+\_\+\+F\+T\+H\+E\+T\+A\+\_\+\+T2\+O\+LD,  }\item[{real, dimension( \+: ), intent(in)}]{F\+T\+H\+E\+T\+A\+\_\+\+T2\+\_\+J,  }\item[{real, dimension( \+: ), intent(in)}]{O\+N\+E\+\_\+\+M\+\_\+\+F\+T\+H\+E\+T\+A\+\_\+\+T2\+O\+L\+D\+\_\+J,  }\item[{logical, intent(in)}]{integrate\+\_\+other\+\_\+side\+\_\+and\+\_\+not\+\_\+boundary,  }\item[{logical, intent(in)}]{R\+E\+T\+R\+I\+E\+V\+E\+\_\+\+S\+O\+L\+I\+D\+\_\+\+C\+TY,  }\item[{real, intent(in)}]{theta\+\_\+cty\+\_\+solid,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{loc\+\_\+u,  }\item[{real, dimension( \+: ), intent(in)}]{T\+H\+E\+T\+A\+\_\+\+V\+EL,  }\item[{real, dimension( mdims\%ndim, final\+\_\+phase ), intent(inout)}]{U\+D\+G\+I\+\_\+\+I\+M\+P\+\_\+\+A\+LL,  }\item[{real, dimension( final\+\_\+phase ), intent(inout)}]{R\+C\+ON,  }\item[{real, dimension( final\+\_\+phase ), intent(inout)}]{R\+C\+O\+N\+\_\+J,  }\item[{real, dimension( final\+\_\+phase ), intent(inout)}]{N\+D\+O\+T\+Q\+\_\+\+I\+MP,  }\item[{real, dimension(\+:,\+:), pointer}]{X\+\_\+\+A\+LL,  }\item[{real, dimension(\+:,\+:,\+: ), pointer}]{S\+U\+F\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{real}]{gravty }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a5c177e18f7b1275cc9b308000daaa788_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a5c177e18f7b1275cc9b308000daaa788_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a7a433d2f6b47e86ffdbc1fc4af1e7a05}\label{namespacecv__advection_a7a433d2f6b47e86ffdbc1fc4af1e7a05}} 
+\index{cv\_advection@{cv\_advection}!scvdetnx@{scvdetnx}}
+\index{scvdetnx@{scvdetnx}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{scvdetnx()}{scvdetnx()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::scvdetnx (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{real, dimension(\+:,\+:)}]{X\+\_\+\+A\+LL,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(in)}]{C\+V\+\_\+funs,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{logical, intent(in)}]{on\+\_\+domain\+\_\+boundary,  }\item[{logical, intent(in)}]{between\+\_\+elements,  }\item[{integer, intent(in)}]{E\+LE,  }\item[{integer, intent(in)}]{GI,  }\item[{real, dimension( \+: ), intent(inout)}]{S\+C\+V\+D\+E\+T\+W\+EI,  }\item[{real, dimension( mdims\%ndim, cv\+\_\+gidims\%scvngi ), intent(inout)}]{C\+V\+N\+O\+R\+M\+X\+\_\+\+A\+LL,  }\item[{real, dimension( mdims\%ndim ), intent(in)}]{X\+C\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+OD,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+O\+DJ }\end{DoxyParamCaption})}
+
+\DoxyHorRuler{0}
+
+\begin{DoxyItemize}
+\item this subroutine computed the surface area at the Gi point (S\+C\+V\+D\+E\+T\+W\+EI)
+\item this subroutine calculates the control volume (CV)
+\item C\+V\+N\+O\+R\+MX, C\+V\+N\+O\+R\+MY, C\+V\+N\+O\+R\+MZ normals at the Gaussian
+\item integration points GI. N\+O\+DI = the current global
+\item node number for the co-\/ordinates.
+\item (XC,YC,ZC) is the centre of CV N\+O\+DI
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+ \hypertarget{namespacecv__advection_autotoc_md1}{}\doxysubsubsection{-\/ date last modified \+: 25/08/2020}\label{namespacecv__advection_autotoc_md1}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a7a433d2f6b47e86ffdbc1fc4af1e7a05_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a7a433d2f6b47e86ffdbc1fc4af1e7a05_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_ae140305e60c328f17beabcae47d8aa6f}\label{namespacecv__advection_ae140305e60c328f17beabcae47d8aa6f}} 
+\index{cv\_advection@{cv\_advection}!shock\_front\_in\_ele@{shock\_front\_in\_ele}}
+\index{shock\_front\_in\_ele@{shock\_front\_in\_ele}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{shock\_front\_in\_ele()}{shock\_front\_in\_ele()}}
+{\footnotesize\ttfamily logical function cv\+\_\+advection\+::shock\+\_\+front\+\_\+in\+\_\+ele (\begin{DoxyParamCaption}\item[{integer}]{ele,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{real, dimension(\+:,\+:), intent(in)}]{sat,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{real, dimension(\+:), intent(in)}]{Imble\+\_\+frac }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_ae140305e60c328f17beabcae47d8aa6f_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_aeb4c2b2bcca484786a8d6f3d1410c689}\label{namespacecv__advection_aeb4c2b2bcca484786a8d6f3d1410c689}} 
+\index{cv\_advection@{cv\_advection}!triloccords@{triloccords}}
+\index{triloccords@{triloccords}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{triloccords()}{triloccords()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::triloccords (\begin{DoxyParamCaption}\item[{real}]{Xp,  }\item[{real}]{Yp,  }\item[{real}]{Zp,  }\item[{real}]{N1,  }\item[{real}]{N2,  }\item[{real}]{N3,  }\item[{real}]{N4,  }\item[{real}]{X1,  }\item[{real}]{Y1,  }\item[{real}]{Z1,  }\item[{real}]{X2,  }\item[{real}]{Y2,  }\item[{real}]{Z2,  }\item[{real}]{X3,  }\item[{real}]{Y3,  }\item[{real}]{Z3,  }\item[{real}]{X4,  }\item[{real}]{Y4,  }\item[{real}]{Z4 }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_aeb4c2b2bcca484786a8d6f3d1410c689_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_aeb4c2b2bcca484786a8d6f3d1410c689_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a1a0899f179933a6d3cbc48431237aff7}\label{namespacecv__advection_a1a0899f179933a6d3cbc48431237aff7}} 
+\index{cv\_advection@{cv\_advection}!triloccords2d@{triloccords2d}}
+\index{triloccords2d@{triloccords2d}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{triloccords2d()}{triloccords2d()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::triloccords2d (\begin{DoxyParamCaption}\item[{real}]{Xp,  }\item[{real}]{Yp,  }\item[{real}]{N1,  }\item[{real}]{N2,  }\item[{real}]{N3,  }\item[{real}]{X1,  }\item[{real}]{Y1,  }\item[{real}]{X2,  }\item[{real}]{Y2,  }\item[{real}]{X3,  }\item[{real}]{Y3 }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a1a0899f179933a6d3cbc48431237aff7_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a1a0899f179933a6d3cbc48431237aff7_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_a8eaa2bdc0f6f2d32549f762ef9743c68}\label{namespacecv__advection_a8eaa2bdc0f6f2d32549f762ef9743c68}} 
+\index{cv\_advection@{cv\_advection}!unpack\_loc@{unpack\_loc}}
+\index{unpack\_loc@{unpack\_loc}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{unpack\_loc()}{unpack\_loc()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::unpack\+\_\+loc (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(in)}]{L\+O\+C\+\_\+F,  }\item[{real, dimension(nphase), intent(inout)}]{T\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(inout)}]{I\+PT,  }\item[{logical, dimension(nphase), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK,  }\item[{logical, dimension(nphase), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+ST,  }\item[{real, dimension(nphase), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+S\+T\+\_\+\+V\+A\+L\+UE }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_a8eaa2bdc0f6f2d32549f762ef9743c68_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacecv__advection_ad714b20d018bf748c3ad080732b7c9cc}\label{namespacecv__advection_ad714b20d018bf748c3ad080732b7c9cc}} 
+\index{cv\_advection@{cv\_advection}!unpack\_loc\_all@{unpack\_loc\_all}}
+\index{unpack\_loc\_all@{unpack\_loc\_all}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{unpack\_loc\_all()}{unpack\_loc\_all()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::unpack\+\_\+loc\+\_\+all (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(in)}]{L\+O\+C\+\_\+F,  }\item[{real, dimension(\+:), intent(inout)}]{field1,  }\item[{real, dimension(\+:), intent(inout)}]{oldfield1,  }\item[{real, dimension(\+:), intent(inout)}]{field2,  }\item[{real, dimension(\+:), intent(inout)}]{oldfield2,  }\item[{real, dimension(\+:), intent(inout)}]{field3,  }\item[{real, dimension(\+:), intent(inout)}]{oldfield3,  }\item[{logical, dimension(\+:,\+:), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK,  }\item[{logical, dimension(\+:,\+:), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+ST,  }\item[{real, dimension(\+:,\+:), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+S\+T\+\_\+\+V\+A\+L\+UE,  }\item[{logical, intent(in)}]{use\+\_\+volume\+\_\+frac\+\_\+\+T2,  }\item[{integer, intent(in)}]{nfield }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_ad714b20d018bf748c3ad080732b7c9cc_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacecv__advection_ad714b20d018bf748c3ad080732b7c9cc_icgraph}
+\end{center}
+\end{figure}
+
+
+\doxysubsection{Variable Documentation}
+\mbox{\Hypertarget{namespacecv__advection_aa646dbddd6308ea78c1c05d5b51c4d22}\label{namespacecv__advection_aa646dbddd6308ea78c1c05d5b51c4d22}} 
+\index{cv\_advection@{cv\_advection}!wic\_d\_bc\_dirichlet@{wic\_d\_bc\_dirichlet}}
+\index{wic\_d\_bc\_dirichlet@{wic\_d\_bc\_dirichlet}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{wic\_d\_bc\_dirichlet}{wic\_d\_bc\_dirichlet}}
+{\footnotesize\ttfamily integer, parameter cv\+\_\+advection\+::wic\+\_\+d\+\_\+bc\+\_\+dirichlet = 1}
+
+\mbox{\Hypertarget{namespacecv__advection_a03647ce996f35f7512f2206c2a4bc8d4}\label{namespacecv__advection_a03647ce996f35f7512f2206c2a4bc8d4}} 
+\index{cv\_advection@{cv\_advection}!wic\_p\_bc\_dirichlet@{wic\_p\_bc\_dirichlet}}
+\index{wic\_p\_bc\_dirichlet@{wic\_p\_bc\_dirichlet}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{wic\_p\_bc\_dirichlet}{wic\_p\_bc\_dirichlet}}
+{\footnotesize\ttfamily integer, parameter cv\+\_\+advection\+::wic\+\_\+p\+\_\+bc\+\_\+dirichlet = 1}
+
+\mbox{\Hypertarget{namespacecv__advection_a6d139b0bd7722182c16855e683657878}\label{namespacecv__advection_a6d139b0bd7722182c16855e683657878}} 
+\index{cv\_advection@{cv\_advection}!wic\_p\_bc\_free@{wic\_p\_bc\_free}}
+\index{wic\_p\_bc\_free@{wic\_p\_bc\_free}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{wic\_p\_bc\_free}{wic\_p\_bc\_free}}
+{\footnotesize\ttfamily integer, parameter cv\+\_\+advection\+::wic\+\_\+p\+\_\+bc\+\_\+free = 2}
+
+\mbox{\Hypertarget{namespacecv__advection_a29adecab6c33872a56cf4775b4e1c3e3}\label{namespacecv__advection_a29adecab6c33872a56cf4775b4e1c3e3}} 
+\index{cv\_advection@{cv\_advection}!wic\_t\_bc\_diri\_adv\_and\_robin@{wic\_t\_bc\_diri\_adv\_and\_robin}}
+\index{wic\_t\_bc\_diri\_adv\_and\_robin@{wic\_t\_bc\_diri\_adv\_and\_robin}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{wic\_t\_bc\_diri\_adv\_and\_robin}{wic\_t\_bc\_diri\_adv\_and\_robin}}
+{\footnotesize\ttfamily integer, parameter cv\+\_\+advection\+::wic\+\_\+t\+\_\+bc\+\_\+diri\+\_\+adv\+\_\+and\+\_\+robin = 3}
+
+\mbox{\Hypertarget{namespacecv__advection_a939c43361c098c807280c739e30b5370}\label{namespacecv__advection_a939c43361c098c807280c739e30b5370}} 
+\index{cv\_advection@{cv\_advection}!wic\_t\_bc\_dirichlet@{wic\_t\_bc\_dirichlet}}
+\index{wic\_t\_bc\_dirichlet@{wic\_t\_bc\_dirichlet}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{wic\_t\_bc\_dirichlet}{wic\_t\_bc\_dirichlet}}
+{\footnotesize\ttfamily integer, parameter cv\+\_\+advection\+::wic\+\_\+t\+\_\+bc\+\_\+dirichlet = 1}
+
+\mbox{\Hypertarget{namespacecv__advection_a8f50cabe5b0bcd1018205e2d6f15f3ff}\label{namespacecv__advection_a8f50cabe5b0bcd1018205e2d6f15f3ff}} 
+\index{cv\_advection@{cv\_advection}!wic\_t\_bc\_robin@{wic\_t\_bc\_robin}}
+\index{wic\_t\_bc\_robin@{wic\_t\_bc\_robin}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{wic\_t\_bc\_robin}{wic\_t\_bc\_robin}}
+{\footnotesize\ttfamily integer, parameter cv\+\_\+advection\+::wic\+\_\+t\+\_\+bc\+\_\+robin = 2}
+
+\mbox{\Hypertarget{namespacecv__advection_ab87709ec60fd78f0870ce18b9bbf7eb8}\label{namespacecv__advection_ab87709ec60fd78f0870ce18b9bbf7eb8}} 
+\index{cv\_advection@{cv\_advection}!wic\_u\_bc\_diri\_adv\_and\_robin@{wic\_u\_bc\_diri\_adv\_and\_robin}}
+\index{wic\_u\_bc\_diri\_adv\_and\_robin@{wic\_u\_bc\_diri\_adv\_and\_robin}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{wic\_u\_bc\_diri\_adv\_and\_robin}{wic\_u\_bc\_diri\_adv\_and\_robin}}
+{\footnotesize\ttfamily integer, parameter cv\+\_\+advection\+::wic\+\_\+u\+\_\+bc\+\_\+diri\+\_\+adv\+\_\+and\+\_\+robin = 3}
+
+\mbox{\Hypertarget{namespacecv__advection_a7ceb6fac2898be0cae2d603d5226f631}\label{namespacecv__advection_a7ceb6fac2898be0cae2d603d5226f631}} 
+\index{cv\_advection@{cv\_advection}!wic\_u\_bc\_dirichlet@{wic\_u\_bc\_dirichlet}}
+\index{wic\_u\_bc\_dirichlet@{wic\_u\_bc\_dirichlet}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{wic\_u\_bc\_dirichlet}{wic\_u\_bc\_dirichlet}}
+{\footnotesize\ttfamily integer, parameter cv\+\_\+advection\+::wic\+\_\+u\+\_\+bc\+\_\+dirichlet = 1}
+
+\mbox{\Hypertarget{namespacecv__advection_a03129ee41533b2c78d1ec116019892fa}\label{namespacecv__advection_a03129ee41533b2c78d1ec116019892fa}} 
+\index{cv\_advection@{cv\_advection}!wic\_u\_bc\_dirichlet\_inout@{wic\_u\_bc\_dirichlet\_inout}}
+\index{wic\_u\_bc\_dirichlet\_inout@{wic\_u\_bc\_dirichlet\_inout}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{wic\_u\_bc\_dirichlet\_inout}{wic\_u\_bc\_dirichlet\_inout}}
+{\footnotesize\ttfamily integer, parameter cv\+\_\+advection\+::wic\+\_\+u\+\_\+bc\+\_\+dirichlet\+\_\+inout = 2}
+
+\mbox{\Hypertarget{namespacecv__advection_a6309cc2d2e0e51146784619230b6e70a}\label{namespacecv__advection_a6309cc2d2e0e51146784619230b6e70a}} 
+\index{cv\_advection@{cv\_advection}!wic\_u\_bc\_robin@{wic\_u\_bc\_robin}}
+\index{wic\_u\_bc\_robin@{wic\_u\_bc\_robin}!cv\_advection@{cv\_advection}}
+\doxysubsubsection{\texorpdfstring{wic\_u\_bc\_robin}{wic\_u\_bc\_robin}}
+{\footnotesize\ttfamily integer, parameter cv\+\_\+advection\+::wic\+\_\+u\+\_\+bc\+\_\+robin = 2}
+

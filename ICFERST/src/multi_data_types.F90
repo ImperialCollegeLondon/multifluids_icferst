@@ -42,42 +42,74 @@ module multi_data_types
         module procedure allocate_multi_field2
     end interface
 
+    !> Data type storing all the dimensionrs describing the mesh, fields, nodes, etc. 
+    !>@param ndim       Number of dimensions
+    !>@param cv_nloc    Number of local control volumes
+    !>@param u_nloc     Number of local velocity nodes
+    !>@param cv_snloc   Number of local control volumes on the surface?
+    !>@param u_snloc    Number of local velocity nodes on the surface?
+    !>@param nstate     Number of states in state
+    !>@param ncomp      Number of components
+    !>@param xu_nloc    Number of local velocity nodes of the Continuous mesh
+    !>@param x_nloc     Number of local control volumes of the Continuous mesh
+    !>@param x_snloc    Number of local surface control volumes of the Continuous mesh
+    !>@param x_nloc_p1  ???
+    !>@param x_nonods_p1???
+    !>@param p_nloc     Number of local pressure nodes
+    !>@param p_snloc    Number of local pressure nodes on the surface?
+    !>@param mat_nloc   Number of local material nodes
+    !>@param totele     Total number of elements
+    !>@param stotel     Total number of surface elements?
+    !>@param cv_nonods  Total number of control volumes
+    !>@param p_nonods   Total number of pressure nodes
+    !>@param mat_nonods Total number of sub-control volumes
+    !>@param u_nonods   Total number of velocity nodes
+    !>@param xu_nonods  Total number of velocity nodes of the Continuous mesh
+    !>@param x_nonods   Total number of control volumes of the Continuous mesh
+    !>@param ph_nloc    Number of ????
+    !>@param ph_nonods  Total number of ????
+    !>@param nphase     Total number of phases (for wells this number is duplicated from real phases)
+    !>@param npres      Total number of pressure (2 for wells, otherwise 1)
+    !>@param n_in_pres  nphase/npres (i.e. real number of phases)
+    !>@param init_time  Initial time
     type multi_dimensions
-        integer :: ndim       !>Number of dimensions
-        integer :: cv_nloc    !>Number of local control volumes
-        integer :: u_nloc     !>Number of local velocity nodes
-        integer :: cv_snloc   !>Number of local control volumes on the surface?
-        integer :: u_snloc    !>Number of local velocity nodes on the surface?
-        integer :: nstate     !>Number of states in state
-        integer :: ncomp      !>Number of components
-        integer :: xu_nloc    !>Number of local velocity nodes of the Continuous mesh
-        integer :: x_nloc     !>Number of local control volumes of the Continuous mesh
-        integer :: x_snloc    !>Number of local surface control volumes of the Continuous mesh
-        integer :: x_nloc_p1  !>???
-        integer :: x_nonods_p1!>???
-        integer :: p_nloc     !>Number of local pressure nodes
-        integer :: p_snloc    !>Number of local pressure nodes on the surface?
-        integer :: mat_nloc   !>Number of local material nodes
-        integer :: totele     !>Total number of elements
-        integer :: stotel     !>Total number of surface elements?
-        integer :: cv_nonods  !>Total number of control volumes
-        integer :: p_nonods   !>Total number of pressure nodes
-        integer :: mat_nonods !>Total number of sub-control volumes
-        integer :: u_nonods   !>Total number of velocity nodes
-        integer :: xu_nonods  !>Total number of velocity nodes of the Continuous mesh
-        integer :: x_nonods   !>Total number of control volumes of the Continuous mesh
-        integer :: ph_nloc    !>Number of ????
-        integer :: ph_nonods  !>Total number of ????
-        integer :: nphase     !>Total number of phases
-        integer :: npres      !>Total number of pressure
-        integer :: n_in_pres  !>nphase/npres
-        real    :: init_time  !>Initial time
+        integer :: ndim       
+        integer :: cv_nloc    
+        integer :: u_nloc     
+        integer :: cv_snloc   
+        integer :: u_snloc    
+        integer :: nstate     
+        integer :: ncomp      
+        integer :: xu_nloc    
+        integer :: x_nloc     
+        integer :: x_snloc    
+        integer :: x_nloc_p1  
+        integer :: x_nonods_p1
+        integer :: p_nloc     
+        integer :: p_snloc    
+        integer :: mat_nloc   
+        integer :: totele     
+        integer :: stotel     
+        integer :: cv_nonods  
+        integer :: p_nonods   
+        integer :: mat_nonods 
+        integer :: u_nonods   
+        integer :: xu_nonods  
+        integer :: x_nonods   
+        integer :: ph_nloc    
+        integer :: ph_nonods  
+        integer :: nphase     
+        integer :: npres      
+        integer :: n_in_pres  
+        real    :: init_time  
 
     end type multi_dimensions
 
 
+    !>This type includes the necessary information to choose from the different discretization options available
+    !> They are a mistery even for the most advance wizards of the realm... hopefully they can be removed in the future
     type multi_discretization_opts
-        !This type includes the necessary information to choose from the different discretization options available
+        
         integer ::  cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type
         integer ::  t_disopt, v_disopt
         real ::     t_beta, v_beta, t_theta, v_theta, u_theta, u_beta, compcoeff, compoptval
@@ -87,43 +119,85 @@ module multi_data_types
                     comp_get_theta_flux, t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction, compopt
     end type multi_discretization_opts
 
+    !> Necessary information for perform gauss integration
+    !@param cv_ngi     Number of gauss integer points
+    !@param scvngi     Number of gauss integer points in the surface of a control volume
+    !@param sbcvngi    Number of gauss integer points in the surface boundary of a control volume
+    !@param nface      Number of faces per element
     type multi_gi_dimensions
-        integer :: cv_ngi     !>Number of gauss integer points
-        integer :: scvngi     !>Number of gauss integer points in the surface of a control volume
-        integer :: sbcvngi    !>Number of gauss integer points in the surface boundary of a control volume
-        integer :: nface      !>Number of faces per element
+        integer :: cv_ngi     
+        integer :: scvngi     
+        integer :: sbcvngi    
+        integer :: nface      
     end type multi_gi_dimensions
 
 
-    !Data structure to store all the shape functions to facilitate its movement throughtout the code
+    !>Data structure to store all the shape functions to facilitate its movement throughtout the code
+    !>@param cvn =>   Control volume shape function; dimension( cv_nloc, cv_ngi )
+    !>@param cvweight=>  Weigth of the control volume; dimension( cv_ngi )
+    !>@param cvfen=>  Finite element of the control volume; dimension( cv_nloc, cv_ngi )
+    !>@param cvfenlx_all=> Derivatives of the Control volume shape functions dimension( ndim, cv_nloc, cv_ngi )
+    !>@param ufen=>  Finite element of the element; dimension( u_nloc, cv_ngi )
+    !>@param ufenlx_all=>  Derivatives of the Finite element shape functions; dimension( ndim, u_nloc, cv_ngi )
+    !>@param cv_neiloc=>  Neighbour CV of a given GI point. dimension( cv_nloc, scvngi )
+    !>@param cv_on_face=>  CV on a given face?; dimension( cv_nloc, scvngi )
+    !>@param cvfem_on_face=> FE on a given face?; dimension( cv_nloc, scvngi )
+    !>@param scvfen Surface Control Volume Finite element (for CV fields converted to FE); dimension( cv_nloc, scvngi )
+    !>@param scvfenslx Derivative of the Surface Control Volume Finite element (for CV fields converted to FE); dimension( cv_nloc, scvngi )
+    !>@param scvfensly Derivative of the Surface Control Volume Finite element (for CV fields converted to FE); dimension( cv_nloc, scvngi )
+    !>@param scvfeweigh=>  Weights of the Surface Control Volume Finite element (for CV fields converted to FE); dimension( scvngi )
+    !>@param scvfenlx_all=> Derivative of the Surface Control Volume Finite element (for CV fields converted to FE); dimension( ndim, cv_nloc, scvngi )
+    !>@param sufen=> Surface finite element shape function; dimension( u_nloc, scvngi ) 
+    !>@param sufenslx=>  Derivative of the Surface finite element shape function; dimension( u_nloc, scvngi ) 
+    !>@param sufensly=>  Derivative of the Surface finite element shape function; dimension( u_nloc, scvngi ) 
+    !>@param sufenlx_all=> Derivative of the Surface finite element shape function; dimension( ndim, u_nloc, scvngi )
+    !>@param u_on_face=> Velocity node on a given face; dimension( u_nloc, scvngi )
+    !>@param ufem_on_face=> Finite element node on a given face; dimension( u_nloc, scvngi )
+    !>@param sbcvn=>  Surface boundary control volume shape function; dimension( cv_snloc, sbcvngi )
+    !>@param sbcvfen=>  Surface boundary control volume finite element shape function (for CV fields converted to FE); dimension( cv_snloc, sbcvngi )
+    !>@param sbcvfenslx=>  Derivatives of the Surface boundary control volume finite element shape function (for CV fields converted to FE); dimension( cv_snloc, sbcvngi )
+    !>@param sbcvfensly=>   Derivatives of the Surface boundary control volume finite element shape function (for CV fields converted to FE); dimension( cv_snloc, sbcvngi )
+    !>@param sbcvfeweigh=>  Weights of Surface boundary control volume finite element shape function (for CV fields converted to FE);dimension( sbcvngi )
+    !>@param sbcvfenlx_all=> Derivatives of the Surface boundary control volume finite element shape function (for CV fields converted to FE); dimension( ndim, cv_snloc, sbcvngi )
+    !>@param sbufen=>  Surface boundary shape function for velocity; dimension( u_snloc, sbcvngi )
+    !>@param sbufenslx=>  Derivatives of the Surface boundary shape function for velocity; dimension( u_snloc, sbcvngi )
+    !>@param sbufensly=>  Dervatives of the Surface boundary shape function for velocity; dimension( u_snloc, sbcvngi )
+    !>@param sbufenlx_all=>   Dervatives of the Surface boundary shape function for velocity;dimension( ndim, u_snloc, sbcvngi )
+    !>@param cv_sloclist=>  Control volume surface local list of neighbours; dimension( nface, cv_snloc )
+    !>@param u_sloclist=>  Finite element surface local list of neighbours;dimension( nface, u_snloc )
+    !>@param findgpts=>  Define the gauss points that lie on the surface of the control volume surrounding a given local node (iloc); dimension( cv_nloc + 1 )
+    !>@param colgpts=>  Define the gauss points that lie on the surface of the control volume surrounding a given local node (iloc); dimension( cv_nloc * scvngi )
+    !>@param ncolgpts=> Define the gauss points that lie on the surface of the control volume surrounding a given local node (iloc)
+    !>@param CV2FE Matrix to convert from CV to FE
+    !>@param FE2CV Matrix to convert from FE to CV
     type multi_shape_funs
-        real, pointer, dimension( : , : ) :: cvn => null()!> Control volume shape function; dimension( cv_nloc, cv_ngi )
-        real, pointer, dimension( : ) :: cvweight=> null()!>Weigth of the control volume; dimension( cv_ngi )
-        real, pointer, dimension(  : , : ) :: cvfen=> null()!>Finite element of the control volume; dimension( cv_nloc, cv_ngi )
-        real, pointer, dimension( : , : , :)  ::  cvfenlx_all=> null()!>dimension( ndim, cv_nloc, cv_ngi )
-        real, pointer, dimension(  : , : )  :: ufen=> null()!>Finite element of the element; dimension( u_nloc, cv_ngi )
-        real, pointer, dimension(  : , :,: )  :: ufenlx_all=> null()!>dimension( ndim, u_nloc, cv_ngi )
-        integer, pointer, dimension(  : , : )  :: cv_neiloc=> null()!>dimension( cv_nloc, scvngi )
-        logical, pointer, dimension(  : , : ) :: cv_on_face=> null(), cvfem_on_face=> null()!>dimension( cv_nloc, scvngi )
-        real, pointer, dimension(  : , : )  :: scvfen=> null(), scvfenslx=> null(), scvfensly=> null()!>dimension( cv_nloc, scvngi )
-        real, pointer, dimension( : )  :: scvfeweigh=> null()!>dimension( scvngi )
-        real, pointer, dimension(  : , : ,: )  :: scvfenlx_all=> null()!>dimension( ndim, cv_nloc, scvngi )
-        real, pointer, dimension(  : , : )  :: sufen=> null(), sufenslx=> null(), sufensly=> null()!>dimension( u_nloc, scvngi )
-        real, pointer, dimension(  : , :, : )  :: sufenlx_all=> null() !>dimension( ndim, u_nloc, scvngi )
-        logical, pointer, dimension(  : , : )  :: u_on_face=> null(), ufem_on_face=> null()!>dimension( u_nloc, scvngi )
-        real, pointer, dimension(  : , : )  :: sbcvn=> null()!>dimension( cv_snloc, sbcvngi )
-        real, pointer, dimension(  : , : )  :: sbcvfen=> null(), sbcvfenslx=> null(), sbcvfensly=> null()!> dimension( cv_snloc, sbcvngi )
-        real, pointer, dimension( : )  :: sbcvfeweigh=> null()!>dimension( sbcvngi )
-        real, pointer, dimension(  : , :, : )  :: sbcvfenlx_all=> null()!>dimension( ndim, cv_snloc, sbcvngi )
-        real, pointer, dimension(  : , : )  :: sbufen=> null(), sbufenslx=> null(), sbufensly=> null()!>dimension( u_snloc, sbcvngi )
-        real, pointer, dimension(  : , :,: )  :: sbufenlx_all=> null() !>dimension( ndim, u_snloc, sbcvngi )
-        integer, pointer, dimension(  : , : )  :: cv_sloclist=> null()!>dimension( nface, cv_snloc )
-        integer, pointer, dimension(  : , : )  :: u_sloclist=> null()!>dimension( nface, u_snloc )
-        integer, pointer, dimension( : )  :: findgpts=> null()!>dimension( cv_nloc + 1 )
-        integer, pointer, dimension( : )  :: colgpts=> null()!>dimension( cv_nloc * scvngi )
+        real, pointer, dimension( : , : ) :: cvn => null()
+        real, pointer, dimension( : ) :: cvweight=> null()
+        real, pointer, dimension(  : , : ) :: cvfen=> null()
+        real, pointer, dimension( : , : , :)  ::  cvfenlx_all=> null()
+        real, pointer, dimension(  : , : )  :: ufen=> null()
+        real, pointer, dimension(  : , :,: )  :: ufenlx_all=> null()
+        integer, pointer, dimension(  : , : )  :: cv_neiloc=> null()
+        logical, pointer, dimension(  : , : ) :: cv_on_face=> null(), cvfem_on_face=> null()
+        real, pointer, dimension(  : , : )  :: scvfen=> null(), scvfenslx=> null(), scvfensly=> null()
+        real, pointer, dimension( : )  :: scvfeweigh=> null()
+        real, pointer, dimension(  : , : ,: )  :: scvfenlx_all=> null()
+        real, pointer, dimension(  : , : )  :: sufen=> null(), sufenslx=> null(), sufensly=> null()
+        real, pointer, dimension(  : , :, : )  :: sufenlx_all=> null() 
+        logical, pointer, dimension(  : , : )  :: u_on_face=> null(), ufem_on_face=> null()
+        real, pointer, dimension(  : , : )  :: sbcvn=> null()
+        real, pointer, dimension(  : , : )  :: sbcvfen=> null(), sbcvfenslx=> null(), sbcvfensly=> null()
+        real, pointer, dimension( : )  :: sbcvfeweigh=> null()
+        real, pointer, dimension(  : , :, : )  :: sbcvfenlx_all=> null()
+        real, pointer, dimension(  : , : )  :: sbufen=> null(), sbufenslx=> null(), sbufensly=> null()
+        real, pointer, dimension(  : , :,: )  :: sbufenlx_all=> null() 
+        integer, pointer, dimension(  : , : )  :: cv_sloclist=> null()
+        integer, pointer, dimension(  : , : )  :: u_sloclist=> null()
+        integer, pointer, dimension( : )  :: findgpts=> null()
+        integer, pointer, dimension( : )  :: colgpts=> null()
         integer :: ncolgpts
-        type(petsc_csr_matrix) ::CV2FE !>Matrix to convert from CV to FE
-        type(petsc_csr_matrix) ::FE2CV !>Matrix to convert from FE to CV
+        type(petsc_csr_matrix) ::CV2FE 
+        type(petsc_csr_matrix) ::FE2CV 
 
     end type multi_shape_funs
 
@@ -251,19 +325,27 @@ module multi_data_types
         real, dimension( : ), pointer        :: mass_pipe2cvfem=> null()
         real, dimension( : ), pointer        :: mass_cvfem2pipe_true=> null()
         logical, dimension( : ), pointer     :: impose_strongBCs=> null()!> This flag is used to trigger the imposition of 
-                                                                            !>strong BCs for P0DG for wells, only necessary if gamma=0 at the BC
+                                                                            !strong BCs for P0DG for wells, only necessary if gamma=0 at the BC
     end type
 
+    
+    !>Contains variables to analyse the flux across the BCs that the user is interested
+    !>@param calculate_flux True if all the process related with this has to start or not
+    !>@param outlet_id ids the user wants
+    !>@param porevolume  for outfluxes.csv to calculate the pore volume injected
+    !>@param totout Total outflux for a given surface id (Mdims%nphase, size(outlet_id))
+    !>@param avgout Average outflux for a given surface id(fields, Mdims%nphase, size(outlet_id))
+    !>@param area_outlet Are of the surface id Mdins%nphase, size(outlet_id)
+    !>@param field_names  Name of the field Mdins%nphase, nfields: Store with the same ordering the field names
     type multi_outfluxes
-        !>Contains variables to analyse the flux across the BCs that the user is interested
-        logical :: calculate_flux !>True if all the process related with this has to start or not
-        integer, dimension(:), allocatable :: outlet_id !>ids the user wants
-        real :: porevolume !> for outfluxes.csv to calculate the pore volume injected
-        real, allocatable, dimension(:,:) :: totout!>(Mdims%nphase, size(outlet_id))
-        real, allocatable, dimension(:,:,:) :: avgout!>(fields, Mdims%nphase, size(outlet_id))
-        real, allocatable, dimension(:, :) :: area_outlet !> Mdins%nphase, size(outlet_id)
+        logical :: calculate_flux 
+        integer, dimension(:), allocatable :: outlet_id 
+        real :: porevolume 
+        real, allocatable, dimension(:,:) :: totout
+        real, allocatable, dimension(:,:,:) :: avgout
+        real, allocatable, dimension(:, :) :: area_outlet 
         real, dimension(:,:),  allocatable  :: intflux
-        character(len = FIELD_NAME_LEN), allocatable, dimension(:,:) :: field_names !> Mdins%nphase, nfields: Store with the same ordering the field names
+        character(len = FIELD_NAME_LEN), allocatable, dimension(:,:) :: field_names
 
     end type
 

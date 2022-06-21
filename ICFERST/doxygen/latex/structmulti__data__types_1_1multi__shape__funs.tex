@@ -1,0 +1,406 @@
+\hypertarget{structmulti__data__types_1_1multi__shape__funs}{}\doxysection{multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs Type Reference}
+\label{structmulti__data__types_1_1multi__shape__funs}\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+
+
+Data structure to store all the shape functions to facilitate its movement throughtout the code.  
+
+
+
+
+Collaboration diagram for multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=213pt]{structmulti__data__types_1_1multi__shape__funs__coll__graph}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+real, dimension(\+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_aa1d60d2d570387e8dc96fe6d229b3b31}{cvn}} =$>$ null()
+\item 
+real, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a01739de59211e799a8f31c2303da4e72}{cvweight}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_ac3275c698534d2736950cfda7e5c307a}{cvfen}} =$>$ null()
+\item 
+real, dimension(\+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a9b116917da826e7f2bf6f754a289da03}{cvfenlx\+\_\+all}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a9d04793e684d29aeb92349811bd35c32}{ufen}} =$>$ null()
+\item 
+real, dimension( \+:, \+:,\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a743c20c81e1087d348c06ebdf5e9359e}{ufenlx\+\_\+all}} =$>$ null()
+\item 
+integer, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_aeeab140f6bc411f3c4e927c8bf2cbbe3}{cv\+\_\+neiloc}} =$>$ null()
+\item 
+logical, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_afcb8963bd487bcdf9d99935e5ecb09a5}{cv\+\_\+on\+\_\+face}} =$>$ null()
+\item 
+logical, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a167a398e7962d6abfa43fc25f099f404}{cvfem\+\_\+on\+\_\+face}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a251d5c6c2aa1172c583764049e8ec41c}{scvfen}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_add980a533e1711660bb9a9ef8f548711}{scvfenslx}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a0af21d689bdbaa4d9631ab6f80adecef}{scvfensly}} =$>$ null()
+\item 
+real, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a7fc3e7236c6f76596a57b4a9f639900b}{scvfeweigh}} =$>$ null()
+\item 
+real, dimension( \+:, \+:,\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a0bf738a32b4d54326a14cba653c4100b}{scvfenlx\+\_\+all}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a94886866027e8f6296482e6f48b0c9b0}{sufen}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a44e8549f1d8e19665ab975821b2ded7f}{sufenslx}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a4fa38c2fb59d2ff525356133dfb47965}{sufensly}} =$>$ null()
+\item 
+real, dimension( \+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a1e1ebb78a2f747a645e3ea26e102bd75}{sufenlx\+\_\+all}} =$>$ null()
+\item 
+logical, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_ab6f48f212bec6ef8142d30e197c26316}{u\+\_\+on\+\_\+face}} =$>$ null()
+\item 
+logical, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_aaa5751333a00c212a5914c725ab55f86}{ufem\+\_\+on\+\_\+face}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_af089a94d5517b382aa552c15fc13ee97}{sbcvn}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a9f93a16e90b080928821780b442f88c1}{sbcvfen}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a0350fc41bc5d7b2a889024ed48d06b4c}{sbcvfenslx}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_af8232752f8876b5e05b81afc8e7750eb}{sbcvfensly}} =$>$ null()
+\item 
+real, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a22c25f7edb005f17e5d7e47a2f0a3a08}{sbcvfeweigh}} =$>$ null()
+\item 
+real, dimension( \+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_abaeedbafdf40a22f13e28e83a946ab7e}{sbcvfenlx\+\_\+all}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_ad43a2aca0d63a3b3c00b8f4b329eac2f}{sbufen}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a99778ed3caeb2db26eb5bebea9f9db9c}{sbufenslx}} =$>$ null()
+\item 
+real, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_afd08c166693161a5cec73b4d08bb7cbe}{sbufensly}} =$>$ null()
+\item 
+real, dimension( \+:, \+:,\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a4adb4437bfc9a74d628ee84b5cbe39f6}{sbufenlx\+\_\+all}} =$>$ null()
+\item 
+integer, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_afca71fefbbed2b59968f43c9a858bdf0}{cv\+\_\+sloclist}} =$>$ null()
+\item 
+integer, dimension( \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a84d850345659abba37075fdaa69fc0b4}{u\+\_\+sloclist}} =$>$ null()
+\item 
+integer, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_aca71146186348ae8362181f7813d7191}{findgpts}} =$>$ null()
+\item 
+integer, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_a42d336fd6b46d24b6f018b7c5f1a7b68}{colgpts}} =$>$ null()
+\item 
+integer \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_aef6787cdc3ee4c6ddd4fc59ecc9300b5}{ncolgpts}}
+\item 
+type(petsc\+\_\+csr\+\_\+matrix) \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_aaf64dc34ac1657b0ee58b8f295033fb3}{cv2fe}}
+\item 
+type(petsc\+\_\+csr\+\_\+matrix) \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs_addf063dcec90e0582dc142fa2c162403}{fe2cv}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Data structure to store all the shape functions to facilitate its movement throughtout the code. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em cvn} & =$>$ Control volume shape function; dimension( cv\+\_\+nloc, cv\+\_\+ngi ) \\
+\hline
+{\em cvweight=$>$} & Weigth of the control volume; dimension( cv\+\_\+ngi ) \\
+\hline
+{\em cvfen=$>$} & Finite element of the control volume; dimension( cv\+\_\+nloc, cv\+\_\+ngi ) \\
+\hline
+{\em cvfenlx\+\_\+all=$>$} & Derivatives of the Control volume shape functions dimension( ndim, cv\+\_\+nloc, cv\+\_\+ngi ) \\
+\hline
+{\em ufen=$>$} & Finite element of the element; dimension( u\+\_\+nloc, cv\+\_\+ngi ) \\
+\hline
+{\em ufenlx\+\_\+all=$>$} & Derivatives of the Finite element shape functions; dimension( ndim, u\+\_\+nloc, cv\+\_\+ngi ) \\
+\hline
+{\em cv\+\_\+neiloc=$>$} & Neighbour CV of a given GI point. dimension( cv\+\_\+nloc, scvngi ) \\
+\hline
+{\em cv\+\_\+on\+\_\+face=$>$} & CV on a given face?; dimension( cv\+\_\+nloc, scvngi ) \\
+\hline
+{\em cvfem\+\_\+on\+\_\+face=$>$} & FE on a given face?; dimension( cv\+\_\+nloc, scvngi ) \\
+\hline
+{\em scvfen} & Surface Control Volume Finite element (for CV fields converted to FE); dimension( cv\+\_\+nloc, scvngi ) \\
+\hline
+{\em scvfenslx} & Derivative of the Surface Control Volume Finite element (for CV fields converted to FE); dimension( cv\+\_\+nloc, scvngi ) \\
+\hline
+{\em scvfensly} & Derivative of the Surface Control Volume Finite element (for CV fields converted to FE); dimension( cv\+\_\+nloc, scvngi ) \\
+\hline
+{\em scvfeweigh=$>$} & Weights of the Surface Control Volume Finite element (for CV fields converted to FE); dimension( scvngi ) \\
+\hline
+{\em scvfenlx\+\_\+all=$>$} & Derivative of the Surface Control Volume Finite element (for CV fields converted to FE); dimension( ndim, cv\+\_\+nloc, scvngi ) \\
+\hline
+{\em sufen=$>$} & Surface finite element shape function; dimension( u\+\_\+nloc, scvngi ) \\
+\hline
+{\em sufenslx=$>$} & Derivative of the Surface finite element shape function; dimension( u\+\_\+nloc, scvngi ) \\
+\hline
+{\em sufensly=$>$} & Derivative of the Surface finite element shape function; dimension( u\+\_\+nloc, scvngi ) \\
+\hline
+{\em sufenlx\+\_\+all=$>$} & Derivative of the Surface finite element shape function; dimension( ndim, u\+\_\+nloc, scvngi ) \\
+\hline
+{\em u\+\_\+on\+\_\+face=$>$} & Velocity node on a given face; dimension( u\+\_\+nloc, scvngi ) \\
+\hline
+{\em ufem\+\_\+on\+\_\+face=$>$} & Finite element node on a given face; dimension( u\+\_\+nloc, scvngi ) \\
+\hline
+{\em sbcvn=$>$} & Surface boundary control volume shape function; dimension( cv\+\_\+snloc, sbcvngi ) \\
+\hline
+{\em sbcvfen=$>$} & Surface boundary control volume finite element shape function (for CV fields converted to FE); dimension( cv\+\_\+snloc, sbcvngi ) \\
+\hline
+{\em sbcvfenslx=$>$} & Derivatives of the Surface boundary control volume finite element shape function (for CV fields converted to FE); dimension( cv\+\_\+snloc, sbcvngi ) \\
+\hline
+{\em sbcvfensly=$>$} & Derivatives of the Surface boundary control volume finite element shape function (for CV fields converted to FE); dimension( cv\+\_\+snloc, sbcvngi ) \\
+\hline
+{\em sbcvfeweigh=$>$} & Weights of Surface boundary control volume finite element shape function (for CV fields converted to FE);dimension( sbcvngi ) \\
+\hline
+{\em sbcvfenlx\+\_\+all=$>$} & Derivatives of the Surface boundary control volume finite element shape function (for CV fields converted to FE); dimension( ndim, cv\+\_\+snloc, sbcvngi ) \\
+\hline
+{\em sbufen=$>$} & Surface boundary shape function for velocity; dimension( u\+\_\+snloc, sbcvngi ) \\
+\hline
+{\em sbufenslx=$>$} & Derivatives of the Surface boundary shape function for velocity; dimension( u\+\_\+snloc, sbcvngi ) \\
+\hline
+{\em sbufensly=$>$} & Dervatives of the Surface boundary shape function for velocity; dimension( u\+\_\+snloc, sbcvngi ) \\
+\hline
+{\em sbufenlx\+\_\+all=$>$} & Dervatives of the Surface boundary shape function for velocity;dimension( ndim, u\+\_\+snloc, sbcvngi ) \\
+\hline
+{\em cv\+\_\+sloclist=$>$} & Control volume surface local list of neighbours; dimension( nface, cv\+\_\+snloc ) \\
+\hline
+{\em u\+\_\+sloclist=$>$} & Finite element surface local list of neighbours;dimension( nface, u\+\_\+snloc ) \\
+\hline
+{\em findgpts=$>$} & Define the gauss points that lie on the surface of the control volume surrounding a given local node (iloc); dimension( cv\+\_\+nloc + 1 ) \\
+\hline
+{\em colgpts=$>$} & Define the gauss points that lie on the surface of the control volume surrounding a given local node (iloc); dimension( cv\+\_\+nloc $\ast$ scvngi ) \\
+\hline
+{\em ncolgpts=$>$} & Define the gauss points that lie on the surface of the control volume surrounding a given local node (iloc) \\
+\hline
+{\em C\+V2\+FE} & Matrix to convert from CV to FE \\
+\hline
+{\em F\+E2\+CV} & Matrix to convert from FE to CV \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a42d336fd6b46d24b6f018b7c5f1a7b68}\label{structmulti__data__types_1_1multi__shape__funs_a42d336fd6b46d24b6f018b7c5f1a7b68}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!colgpts@{colgpts}}
+\index{colgpts@{colgpts}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{colgpts}{colgpts}}
+{\footnotesize\ttfamily integer, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::colgpts =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_aaf64dc34ac1657b0ee58b8f295033fb3}\label{structmulti__data__types_1_1multi__shape__funs_aaf64dc34ac1657b0ee58b8f295033fb3}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!cv2fe@{cv2fe}}
+\index{cv2fe@{cv2fe}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{cv2fe}{cv2fe}}
+{\footnotesize\ttfamily type(petsc\+\_\+csr\+\_\+matrix) multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::cv2fe}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_aeeab140f6bc411f3c4e927c8bf2cbbe3}\label{structmulti__data__types_1_1multi__shape__funs_aeeab140f6bc411f3c4e927c8bf2cbbe3}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!cv\_neiloc@{cv\_neiloc}}
+\index{cv\_neiloc@{cv\_neiloc}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{cv\_neiloc}{cv\_neiloc}}
+{\footnotesize\ttfamily integer, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::cv\+\_\+neiloc =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_afcb8963bd487bcdf9d99935e5ecb09a5}\label{structmulti__data__types_1_1multi__shape__funs_afcb8963bd487bcdf9d99935e5ecb09a5}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!cv\_on\_face@{cv\_on\_face}}
+\index{cv\_on\_face@{cv\_on\_face}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{cv\_on\_face}{cv\_on\_face}}
+{\footnotesize\ttfamily logical, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::cv\+\_\+on\+\_\+face =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_afca71fefbbed2b59968f43c9a858bdf0}\label{structmulti__data__types_1_1multi__shape__funs_afca71fefbbed2b59968f43c9a858bdf0}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!cv\_sloclist@{cv\_sloclist}}
+\index{cv\_sloclist@{cv\_sloclist}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{cv\_sloclist}{cv\_sloclist}}
+{\footnotesize\ttfamily integer, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::cv\+\_\+sloclist =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a167a398e7962d6abfa43fc25f099f404}\label{structmulti__data__types_1_1multi__shape__funs_a167a398e7962d6abfa43fc25f099f404}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!cvfem\_on\_face@{cvfem\_on\_face}}
+\index{cvfem\_on\_face@{cvfem\_on\_face}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{cvfem\_on\_face}{cvfem\_on\_face}}
+{\footnotesize\ttfamily logical, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::cvfem\+\_\+on\+\_\+face =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_ac3275c698534d2736950cfda7e5c307a}\label{structmulti__data__types_1_1multi__shape__funs_ac3275c698534d2736950cfda7e5c307a}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!cvfen@{cvfen}}
+\index{cvfen@{cvfen}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{cvfen}{cvfen}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::cvfen =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a9b116917da826e7f2bf6f754a289da03}\label{structmulti__data__types_1_1multi__shape__funs_a9b116917da826e7f2bf6f754a289da03}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!cvfenlx\_all@{cvfenlx\_all}}
+\index{cvfenlx\_all@{cvfenlx\_all}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{cvfenlx\_all}{cvfenlx\_all}}
+{\footnotesize\ttfamily real, dimension( \+: , \+: , \+:), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::cvfenlx\+\_\+all =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_aa1d60d2d570387e8dc96fe6d229b3b31}\label{structmulti__data__types_1_1multi__shape__funs_aa1d60d2d570387e8dc96fe6d229b3b31}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!cvn@{cvn}}
+\index{cvn@{cvn}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{cvn}{cvn}}
+{\footnotesize\ttfamily real, dimension( \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::cvn =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a01739de59211e799a8f31c2303da4e72}\label{structmulti__data__types_1_1multi__shape__funs_a01739de59211e799a8f31c2303da4e72}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!cvweight@{cvweight}}
+\index{cvweight@{cvweight}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{cvweight}{cvweight}}
+{\footnotesize\ttfamily real, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::cvweight =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_addf063dcec90e0582dc142fa2c162403}\label{structmulti__data__types_1_1multi__shape__funs_addf063dcec90e0582dc142fa2c162403}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!fe2cv@{fe2cv}}
+\index{fe2cv@{fe2cv}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{fe2cv}{fe2cv}}
+{\footnotesize\ttfamily type(petsc\+\_\+csr\+\_\+matrix) multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::fe2cv}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_aca71146186348ae8362181f7813d7191}\label{structmulti__data__types_1_1multi__shape__funs_aca71146186348ae8362181f7813d7191}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!findgpts@{findgpts}}
+\index{findgpts@{findgpts}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{findgpts}{findgpts}}
+{\footnotesize\ttfamily integer, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::findgpts =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_aef6787cdc3ee4c6ddd4fc59ecc9300b5}\label{structmulti__data__types_1_1multi__shape__funs_aef6787cdc3ee4c6ddd4fc59ecc9300b5}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!ncolgpts@{ncolgpts}}
+\index{ncolgpts@{ncolgpts}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{ncolgpts}{ncolgpts}}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::ncolgpts}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a9f93a16e90b080928821780b442f88c1}\label{structmulti__data__types_1_1multi__shape__funs_a9f93a16e90b080928821780b442f88c1}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sbcvfen@{sbcvfen}}
+\index{sbcvfen@{sbcvfen}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sbcvfen}{sbcvfen}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sbcvfen =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_abaeedbafdf40a22f13e28e83a946ab7e}\label{structmulti__data__types_1_1multi__shape__funs_abaeedbafdf40a22f13e28e83a946ab7e}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sbcvfenlx\_all@{sbcvfenlx\_all}}
+\index{sbcvfenlx\_all@{sbcvfenlx\_all}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sbcvfenlx\_all}{sbcvfenlx\_all}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sbcvfenlx\+\_\+all =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a0350fc41bc5d7b2a889024ed48d06b4c}\label{structmulti__data__types_1_1multi__shape__funs_a0350fc41bc5d7b2a889024ed48d06b4c}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sbcvfenslx@{sbcvfenslx}}
+\index{sbcvfenslx@{sbcvfenslx}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sbcvfenslx}{sbcvfenslx}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sbcvfenslx =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_af8232752f8876b5e05b81afc8e7750eb}\label{structmulti__data__types_1_1multi__shape__funs_af8232752f8876b5e05b81afc8e7750eb}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sbcvfensly@{sbcvfensly}}
+\index{sbcvfensly@{sbcvfensly}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sbcvfensly}{sbcvfensly}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sbcvfensly =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a22c25f7edb005f17e5d7e47a2f0a3a08}\label{structmulti__data__types_1_1multi__shape__funs_a22c25f7edb005f17e5d7e47a2f0a3a08}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sbcvfeweigh@{sbcvfeweigh}}
+\index{sbcvfeweigh@{sbcvfeweigh}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sbcvfeweigh}{sbcvfeweigh}}
+{\footnotesize\ttfamily real, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sbcvfeweigh =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_af089a94d5517b382aa552c15fc13ee97}\label{structmulti__data__types_1_1multi__shape__funs_af089a94d5517b382aa552c15fc13ee97}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sbcvn@{sbcvn}}
+\index{sbcvn@{sbcvn}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sbcvn}{sbcvn}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sbcvn =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_ad43a2aca0d63a3b3c00b8f4b329eac2f}\label{structmulti__data__types_1_1multi__shape__funs_ad43a2aca0d63a3b3c00b8f4b329eac2f}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sbufen@{sbufen}}
+\index{sbufen@{sbufen}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sbufen}{sbufen}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sbufen =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a4adb4437bfc9a74d628ee84b5cbe39f6}\label{structmulti__data__types_1_1multi__shape__funs_a4adb4437bfc9a74d628ee84b5cbe39f6}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sbufenlx\_all@{sbufenlx\_all}}
+\index{sbufenlx\_all@{sbufenlx\_all}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sbufenlx\_all}{sbufenlx\_all}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+:,\+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sbufenlx\+\_\+all =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a99778ed3caeb2db26eb5bebea9f9db9c}\label{structmulti__data__types_1_1multi__shape__funs_a99778ed3caeb2db26eb5bebea9f9db9c}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sbufenslx@{sbufenslx}}
+\index{sbufenslx@{sbufenslx}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sbufenslx}{sbufenslx}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sbufenslx =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_afd08c166693161a5cec73b4d08bb7cbe}\label{structmulti__data__types_1_1multi__shape__funs_afd08c166693161a5cec73b4d08bb7cbe}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sbufensly@{sbufensly}}
+\index{sbufensly@{sbufensly}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sbufensly}{sbufensly}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sbufensly =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a251d5c6c2aa1172c583764049e8ec41c}\label{structmulti__data__types_1_1multi__shape__funs_a251d5c6c2aa1172c583764049e8ec41c}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!scvfen@{scvfen}}
+\index{scvfen@{scvfen}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{scvfen}{scvfen}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::scvfen =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a0bf738a32b4d54326a14cba653c4100b}\label{structmulti__data__types_1_1multi__shape__funs_a0bf738a32b4d54326a14cba653c4100b}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!scvfenlx\_all@{scvfenlx\_all}}
+\index{scvfenlx\_all@{scvfenlx\_all}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{scvfenlx\_all}{scvfenlx\_all}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ,\+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::scvfenlx\+\_\+all =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_add980a533e1711660bb9a9ef8f548711}\label{structmulti__data__types_1_1multi__shape__funs_add980a533e1711660bb9a9ef8f548711}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!scvfenslx@{scvfenslx}}
+\index{scvfenslx@{scvfenslx}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{scvfenslx}{scvfenslx}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::scvfenslx =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a0af21d689bdbaa4d9631ab6f80adecef}\label{structmulti__data__types_1_1multi__shape__funs_a0af21d689bdbaa4d9631ab6f80adecef}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!scvfensly@{scvfensly}}
+\index{scvfensly@{scvfensly}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{scvfensly}{scvfensly}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::scvfensly =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a7fc3e7236c6f76596a57b4a9f639900b}\label{structmulti__data__types_1_1multi__shape__funs_a7fc3e7236c6f76596a57b4a9f639900b}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!scvfeweigh@{scvfeweigh}}
+\index{scvfeweigh@{scvfeweigh}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{scvfeweigh}{scvfeweigh}}
+{\footnotesize\ttfamily real, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::scvfeweigh =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a94886866027e8f6296482e6f48b0c9b0}\label{structmulti__data__types_1_1multi__shape__funs_a94886866027e8f6296482e6f48b0c9b0}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sufen@{sufen}}
+\index{sufen@{sufen}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sufen}{sufen}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sufen =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a1e1ebb78a2f747a645e3ea26e102bd75}\label{structmulti__data__types_1_1multi__shape__funs_a1e1ebb78a2f747a645e3ea26e102bd75}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sufenlx\_all@{sufenlx\_all}}
+\index{sufenlx\_all@{sufenlx\_all}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sufenlx\_all}{sufenlx\_all}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sufenlx\+\_\+all =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a44e8549f1d8e19665ab975821b2ded7f}\label{structmulti__data__types_1_1multi__shape__funs_a44e8549f1d8e19665ab975821b2ded7f}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sufenslx@{sufenslx}}
+\index{sufenslx@{sufenslx}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sufenslx}{sufenslx}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sufenslx =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a4fa38c2fb59d2ff525356133dfb47965}\label{structmulti__data__types_1_1multi__shape__funs_a4fa38c2fb59d2ff525356133dfb47965}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!sufensly@{sufensly}}
+\index{sufensly@{sufensly}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{sufensly}{sufensly}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::sufensly =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_ab6f48f212bec6ef8142d30e197c26316}\label{structmulti__data__types_1_1multi__shape__funs_ab6f48f212bec6ef8142d30e197c26316}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!u\_on\_face@{u\_on\_face}}
+\index{u\_on\_face@{u\_on\_face}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{u\_on\_face}{u\_on\_face}}
+{\footnotesize\ttfamily logical, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::u\+\_\+on\+\_\+face =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a84d850345659abba37075fdaa69fc0b4}\label{structmulti__data__types_1_1multi__shape__funs_a84d850345659abba37075fdaa69fc0b4}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!u\_sloclist@{u\_sloclist}}
+\index{u\_sloclist@{u\_sloclist}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{u\_sloclist}{u\_sloclist}}
+{\footnotesize\ttfamily integer, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::u\+\_\+sloclist =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_aaa5751333a00c212a5914c725ab55f86}\label{structmulti__data__types_1_1multi__shape__funs_aaa5751333a00c212a5914c725ab55f86}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!ufem\_on\_face@{ufem\_on\_face}}
+\index{ufem\_on\_face@{ufem\_on\_face}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{ufem\_on\_face}{ufem\_on\_face}}
+{\footnotesize\ttfamily logical, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::ufem\+\_\+on\+\_\+face =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a9d04793e684d29aeb92349811bd35c32}\label{structmulti__data__types_1_1multi__shape__funs_a9d04793e684d29aeb92349811bd35c32}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!ufen@{ufen}}
+\index{ufen@{ufen}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{ufen}{ufen}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::ufen =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__shape__funs_a743c20c81e1087d348c06ebdf5e9359e}\label{structmulti__data__types_1_1multi__shape__funs_a743c20c81e1087d348c06ebdf5e9359e}} 
+\index{multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}!ufenlx\_all@{ufenlx\_all}}
+\index{ufenlx\_all@{ufenlx\_all}!multi\_data\_types::multi\_shape\_funs@{multi\_data\_types::multi\_shape\_funs}}
+\doxysubsubsection{\texorpdfstring{ufenlx\_all}{ufenlx\_all}}
+{\footnotesize\ttfamily real, dimension(  \+: , \+:,\+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs\+::ufenlx\+\_\+all =$>$ null()}
+
+
+
+The documentation for this type was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/\mbox{\hyperlink{multi__data__types_8_f90}{multi\+\_\+data\+\_\+types.\+F90}}\end{DoxyCompactItemize}

@@ -1,0 +1,630 @@
+\hypertarget{namespacemultiphase__eos}{}\doxysection{multiphase\+\_\+eos Module Reference}
+\label{namespacemultiphase__eos}\index{multiphase\_eos@{multiphase\_eos}}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_ab16c45da0af88c69945beac4e3334349}{calculate\+\_\+all\+\_\+rhos}} (state, packed\+\_\+state, Mdims, get\+\_\+\+Rho\+Cp)
+\begin{DoxyCompactList}\small\item\em \+: Computes the density for the phases and the derivatives of the density \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_aa45791df12ab50edf07b075fc8c83335}{cap\+\_\+bulk\+\_\+rho}} (state, ncomp, nphase, cv\+\_\+nonods, Density\+\_\+\+Component, Density, Density\+\_\+\+Cp, compute\+\_\+rho\+CP)
+\begin{DoxyCompactList}\small\item\em \+: Computes the bulk density for components and the derivatives of the density \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_a3c4f57d9c50b3421a8059d73fb260dd5}{calculate\+\_\+component\+\_\+rho}} (state, packed\+\_\+state, Mdims)
+\begin{DoxyCompactList}\small\item\em \+: Computes the density for the components and the derivatives of the density This is were the action is actually done, the other calculate rhos are wrappers \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_a3f6a1c7227872bf2073b960ddfabedee}{calculate\+\_\+rho\+\_\+drhodp}} (state, packed\+\_\+state, iphase, icomp, nphase, ncomp, eos\+\_\+option\+\_\+path, rho, drhodp)
+\begin{DoxyCompactList}\small\item\em \+: Computes the density and the derivative of the density \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_ab548da6c93ce257b9cec9b1c27a9390a}{calculate\+\_\+porous\+\_\+rho\+\_\+drhop}} (state, packed\+\_\+state, Mdims, cv\+\_\+ndgln, drhodp\+\_\+porous)
+\begin{DoxyCompactList}\small\item\em In this subroutine we calculate and update the density of the porous media based on the compressibility given in Diamond (ele-\/wise). We also calculate the drho/dp term for the porous media which then goes into the D\+E\+R\+IV term in the continuity equation (cv-\/wise). \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_a44aebb6e29a5271abb6ec2b04f213b56}{density\+\_\+polynomial}} (eos\+\_\+coefs, pressure, temperature, Density\+\_\+\+Field)
+\begin{DoxyCompactList}\small\item\em \+: Define de density as a polynomial \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_ac13395594592fe917fc20b7c3c2b7a5d}{assign\+\_\+equation\+\_\+of\+\_\+state}} (eos\+\_\+option\+\_\+path\+\_\+out)
+\begin{DoxyCompactList}\small\item\em \+: Read from diamond and decide which sort of density representation do we have \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_a1d4a7655cae6c58eae3fc141d80d5639}{calculate\+\_\+porousmedia\+\_\+absorptionterms}} (nphase, state, packed\+\_\+state, Porous\+Media\+\_\+absorp, Mdims, C\+V\+\_\+funs, C\+V\+\_\+\+G\+Idims, Mspars, ndgln, upwnd, suf\+\_\+sig\+\_\+diagten\+\_\+bc)
+\begin{DoxyCompactList}\small\item\em \+: Here we compute the absorption for porous media This is the sigma term defined in the papers and contains The permeability, the relative permeability, the viscosity and the saturation \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_a659427fd61af753266767259b441a345}{calculate\+\_\+absorption2}} (nphase, packed\+\_\+state, Porous\+Media\+\_\+absorp, Mdims, ndgln, S\+A\+T\+U\+RA, viscosities, inv\+\_\+\+Porous\+Media\+\_\+absorp)
+\begin{DoxyCompactList}\small\item\em \+: Subroutine where the absorption for the porous media is actually computed \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_af235dd0c336c71b8afbfb65399766c10}{get\+\_\+material\+\_\+absorption}} (nphase, iphase, material\+\_\+absorption, sat, visc, C\+V\+\_\+\+Immobile\+\_\+fract, Corey\+\_\+exponent, Endpoint\+\_\+relperm)
+\begin{DoxyCompactList}\small\item\em \+:Calculates the relative permeability for 1, 2 (Brooks-\/corey) or 3 (stone\textquotesingle{}s model) phases \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_afa5bc056e9d4cafeb1706afca8e780c1}{get\+\_\+relperm}} (nphase, iphase, sat, C\+V\+\_\+\+Immobile\+\_\+fract, Corey\+\_\+exponent, Endpoint\+\_\+relperm, Kr)
+\begin{DoxyCompactList}\small\item\em \+:Calculates the relative permeability for 1, 2 (Brooks-\/corey) or 3 (stone\textquotesingle{}s model) phases \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_add6fbcd53b92e8dd346a9ac6fbc30055}{calculate\+\_\+capillary\+\_\+pressure}} (packed\+\_\+state, N\+D\+G\+LN, totele, cv\+\_\+nloc, C\+V\+\_\+funs)
+\begin{DoxyCompactList}\small\item\em \+: In this subroutine the capilalry pressure is computed based on the saturation and the formula used \end{DoxyCompactList}\item 
+real function \mbox{\hyperlink{namespacemultiphase__eos_a7dfd3eac29921ca66854cebaa01162f9}{get\+\_\+devcappressure}} (sat, Pe, a, C\+V\+\_\+\+Immobile\+\_\+\+Fraction, iphase, nphase)
+\begin{DoxyCompactList}\small\item\em \+:This functions returns the derivative of the capillary pressure with respect to the saturation \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_ac21530a3f76ed685a2ce5fcb0bb11bd0}{calculate\+\_\+u\+\_\+source\+\_\+cv}} (Mdims, state, packed\+\_\+state, den, u\+\_\+source\+\_\+cv)
+\begin{DoxyCompactList}\small\item\em \+: This subroutine computed the gravity effect, i.\+e. rho $\ast$ g \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_aa7fff87db23a4e3474815ee4a821e1cd}{calculate\+\_\+diffusivity}} (state, packed\+\_\+state, Mdims, ndgln, Scalar\+Advection\+Field\+\_\+\+Diffusion, Tracer\+Name, divide\+\_\+by\+\_\+rho\+\_\+\+CP)
+\begin{DoxyCompactList}\small\item\em \+: Here we compute component/solute/thermal diffusion coefficient \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_ae417127536bdb365fbdde3951524a9d6}{calculate\+\_\+solute\+\_\+dispersity}} (state, packed\+\_\+state, Mdims, ndgln, density, Solute\+Dispersion)
+\begin{DoxyCompactList}\small\item\em \+: Dispersion for porous media For thermal, the field density needs to be passed down, which ensures that even for boussinesq a reference density is still used \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef}{calculate\+\_\+viscosity}} (state, Mdims, ndgln, Momentum\+\_\+\+Diffusion, Momentum\+\_\+\+Diffusion2)
+\begin{DoxyCompactList}\small\item\em \+: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_a15a1f78f9f889b58b7b9f45de20d5a48}{update\+\_\+velocity\+\_\+absorption}} (states, ndim, nphase, velocity\+\_\+absorption)
+\begin{DoxyCompactList}\small\item\em \+:Computes velocity absorption from diamond information \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_a98927879ae36867eabec1a9e6a5f22d8}{update\+\_\+velocity\+\_\+absorption\+\_\+coriolis}} (states, ndim, nphase, velocity\+\_\+absorption)
+\begin{DoxyCompactList}\small\item\em \+:Computes velocity absorption from diamond information \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_a8f7f68ee8d294089b9077c480795eb9c}{update\+\_\+velocity\+\_\+source}} (states, Mdims, u\+\_\+source)
+\begin{DoxyCompactList}\small\item\em \+:Computes velocity source from diamond information \end{DoxyCompactList}\item 
+real function \mbox{\hyperlink{namespacemultiphase__eos_a2591de41e9c67340b83129722447923b}{saturation\+\_\+temperature}} (pressure)
+\begin{DoxyCompactList}\small\item\em \+: ???? \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_aeb644e3565a7e33c61f0e40e73a3c990}{get\+\_\+rockfluidprop}} (state, packed\+\_\+state, Mdims, ndgln, current\+\_\+time, update\+\_\+only)
+\begin{DoxyCompactList}\small\item\em \+:Gets the relperm max, the relperm exponent and the immobile fractions and stores them into packed state By index this is\+: 1) immobile fraction, 2) relperm max, 3)relperm exponent 4)Capillary entry pressure 5) Capillary exponent 6) Capillary imbition term The effective inmobile fraction is the min(inmobile,saturation\+\_\+flipping formula), being the saturation the value after a succesful non-\/linear solver convergence! This N\+E\+E\+DS to be called after a succesful non-\/linear solver (with update\+\_\+only) \end{DoxyCompactList}\item 
+real function \mbox{\hyperlink{namespacemultiphase__eos_ac01c010ab184f242b5ca90a44d40affa}{jwl}} (A, B, w, R1, R2, E0, p, roe, ro)
+\item 
+real function \mbox{\hyperlink{namespacemultiphase__eos_a7870c763c81a10948617345c3d0ca219}{diffjwl}} (A, B, w, R1, R2, E0, roe, ro)
+\item 
+real function, dimension(jwln) \mbox{\hyperlink{namespacemultiphase__eos_a8585fdea6dd3d2ca6508cf37236a7cc0}{jwldensity}} (eos\+\_\+coefs, pressure, ro0, J\+W\+Ln)
+\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_a3f5f7836734b85fb788ba57a2793eda7}{initialise\+\_\+porous\+\_\+media}} (Mdims, ndgln, packed\+\_\+state, state, exit\+\_\+initialise\+\_\+porous\+\_\+media)
+\begin{DoxyCompactList}\small\item\em \+: Initialising porous media models \begin{quote}
+Given a free water level (F\+WL) we simulate capillary gravity equilibration, control volumes below F\+WL is kept at residual lighter phase saturation This subroutine is called after each timestep and saturations overidden below F\+WL with the heavier phase \end{quote}
+\end{DoxyCompactList}\item 
+real function \mbox{\hyperlink{namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c}{retrieve\+\_\+reference\+\_\+density}} (state, packed\+\_\+state, iphase, icomp, nphase)
+\begin{DoxyCompactList}\small\item\em \+: For boussinesq porous media we need the reference density to ensure consistency when mixing with the porous density/\+Cp etc. \begin{quote}
+In this subroutine we retrieve the value given a phase, component. \end{quote}
+\end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__eos_a439637e5906b37a16646c186d7fc0daf}{flash\+\_\+gas\+\_\+dissolution}} (state, packed\+\_\+state, Mdims, ndgln)
+\begin{DoxyCompactList}\small\item\em \+: subroutine to dissolv phase2 into phase1. Currently only for system for phase 1 = water, phase 2 = gas Dissolve instantaneously the amount introduced in diamond in mol/m3 for C\+O2 a reference number is 38 mol/m3. Requires the first phase to have a concentration field \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+real, parameter \mbox{\hyperlink{namespacemultiphase__eos_ae1ce91e74714b2c125d7a764aaa79ff3}{flooding\+\_\+hmin}} = 1e-\/5
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{namespacemultiphase__eos_ac13395594592fe917fc20b7c3c2b7a5d}\label{namespacemultiphase__eos_ac13395594592fe917fc20b7c3c2b7a5d}} 
+\index{multiphase\_eos@{multiphase\_eos}!assign\_equation\_of\_state@{assign\_equation\_of\_state}}
+\index{assign\_equation\_of\_state@{assign\_equation\_of\_state}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{assign\_equation\_of\_state()}{assign\_equation\_of\_state()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::assign\+\_\+equation\+\_\+of\+\_\+state (\begin{DoxyParamCaption}\item[{character( len = option\+\_\+path\+\_\+len ), intent(inout)}]{eos\+\_\+option\+\_\+path\+\_\+out }\end{DoxyParamCaption})}
+
+
+
+\+: Read from diamond and decide which sort of density representation do we have 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_ac13395594592fe917fc20b7c3c2b7a5d_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a659427fd61af753266767259b441a345}\label{namespacemultiphase__eos_a659427fd61af753266767259b441a345}} 
+\index{multiphase\_eos@{multiphase\_eos}!calculate\_absorption2@{calculate\_absorption2}}
+\index{calculate\_absorption2@{calculate\_absorption2}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{calculate\_absorption2()}{calculate\_absorption2()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::calculate\+\_\+absorption2 (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{nphase,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type (multi\+\_\+field)}]{Porous\+Media\+\_\+absorp,  }\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type(multi\+\_\+ndgln), intent(in)}]{ndgln,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{S\+A\+T\+U\+RA,  }\item[{real, dimension(\+:,\+:), intent(in)}]{viscosities,  }\item[{real, dimension(\+:,\+:,\+:), intent(inout), optional}]{inv\+\_\+\+Porous\+Media\+\_\+absorp }\end{DoxyParamCaption})}
+
+
+
+\+: Subroutine where the absorption for the porous media is actually computed 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a659427fd61af753266767259b441a345_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a659427fd61af753266767259b441a345_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_ab16c45da0af88c69945beac4e3334349}\label{namespacemultiphase__eos_ab16c45da0af88c69945beac4e3334349}} 
+\index{multiphase\_eos@{multiphase\_eos}!calculate\_all\_rhos@{calculate\_all\_rhos}}
+\index{calculate\_all\_rhos@{calculate\_all\_rhos}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{calculate\_all\_rhos()}{calculate\_all\_rhos()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::calculate\+\_\+all\+\_\+rhos (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{logical, intent(in), optional}]{get\+\_\+\+Rho\+Cp }\end{DoxyParamCaption})}
+
+
+
+\+: Computes the density for the phases and the derivatives of the density 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_ab16c45da0af88c69945beac4e3334349_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_ab16c45da0af88c69945beac4e3334349_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_add6fbcd53b92e8dd346a9ac6fbc30055}\label{namespacemultiphase__eos_add6fbcd53b92e8dd346a9ac6fbc30055}} 
+\index{multiphase\_eos@{multiphase\_eos}!calculate\_capillary\_pressure@{calculate\_capillary\_pressure}}
+\index{calculate\_capillary\_pressure@{calculate\_capillary\_pressure}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{calculate\_capillary\_pressure()}{calculate\_capillary\_pressure()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::calculate\+\_\+capillary\+\_\+pressure (\begin{DoxyParamCaption}\item[{type(state\+\_\+type), intent(inout)}]{packed\+\_\+state,  }\item[{type(multi\+\_\+ndgln), intent(in)}]{N\+D\+G\+LN,  }\item[{integer, intent(in)}]{totele,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{type(multi\+\_\+shape\+\_\+funs)}]{C\+V\+\_\+funs }\end{DoxyParamCaption})}
+
+
+
+\+: In this subroutine the capilalry pressure is computed based on the saturation and the formula used 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_add6fbcd53b92e8dd346a9ac6fbc30055_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_add6fbcd53b92e8dd346a9ac6fbc30055_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a3c4f57d9c50b3421a8059d73fb260dd5}\label{namespacemultiphase__eos_a3c4f57d9c50b3421a8059d73fb260dd5}} 
+\index{multiphase\_eos@{multiphase\_eos}!calculate\_component\_rho@{calculate\_component\_rho}}
+\index{calculate\_component\_rho@{calculate\_component\_rho}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{calculate\_component\_rho()}{calculate\_component\_rho()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::calculate\+\_\+component\+\_\+rho (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type( multi\+\_\+dimensions ), intent(in)}]{Mdims }\end{DoxyParamCaption})}
+
+
+
+\+: Computes the density for the components and the derivatives of the density This is were the action is actually done, the other calculate rhos are wrappers 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a3c4f57d9c50b3421a8059d73fb260dd5_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a3c4f57d9c50b3421a8059d73fb260dd5_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_aa7fff87db23a4e3474815ee4a821e1cd}\label{namespacemultiphase__eos_aa7fff87db23a4e3474815ee4a821e1cd}} 
+\index{multiphase\_eos@{multiphase\_eos}!calculate\_diffusivity@{calculate\_diffusivity}}
+\index{calculate\_diffusivity@{calculate\_diffusivity}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{calculate\_diffusivity()}{calculate\_diffusivity()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::calculate\+\_\+diffusivity (\begin{DoxyParamCaption}\item[{type(state\+\_\+type), dimension(\+:), intent(in)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type(multi\+\_\+ndgln), intent(in)}]{ndgln,  }\item[{real, dimension(\+:, \+:, \+:, \+:), intent(inout)}]{Scalar\+Advection\+Field\+\_\+\+Diffusion,  }\item[{character(len=$\ast$), intent(in), optional}]{Tracer\+Name,  }\item[{logical, intent(in), optional}]{divide\+\_\+by\+\_\+rho\+\_\+\+CP }\end{DoxyParamCaption})}
+
+
+
+\+: Here we compute component/solute/thermal diffusion coefficient 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_aa7fff87db23a4e3474815ee4a821e1cd_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_ab548da6c93ce257b9cec9b1c27a9390a}\label{namespacemultiphase__eos_ab548da6c93ce257b9cec9b1c27a9390a}} 
+\index{multiphase\_eos@{multiphase\_eos}!calculate\_porous\_rho\_drhop@{calculate\_porous\_rho\_drhop}}
+\index{calculate\_porous\_rho\_drhop@{calculate\_porous\_rho\_drhop}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{calculate\_porous\_rho\_drhop()}{calculate\_porous\_rho\_drhop()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::calculate\+\_\+porous\+\_\+rho\+\_\+drhop (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{integer, dimension( \+: ), intent(in)}]{cv\+\_\+ndgln,  }\item[{real, dimension( \+: ), intent(inout)}]{drhodp\+\_\+porous }\end{DoxyParamCaption})}
+
+
+
+In this subroutine we calculate and update the density of the porous media based on the compressibility given in Diamond (ele-\/wise). We also calculate the drho/dp term for the porous media which then goes into the D\+E\+R\+IV term in the continuity equation (cv-\/wise). 
+
+\begin{DoxyAuthor}{Author}
+Geraldine Regnier 
+\end{DoxyAuthor}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_ab548da6c93ce257b9cec9b1c27a9390a_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a1d4a7655cae6c58eae3fc141d80d5639}\label{namespacemultiphase__eos_a1d4a7655cae6c58eae3fc141d80d5639}} 
+\index{multiphase\_eos@{multiphase\_eos}!calculate\_porousmedia\_absorptionterms@{calculate\_porousmedia\_absorptionterms}}
+\index{calculate\_porousmedia\_absorptionterms@{calculate\_porousmedia\_absorptionterms}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{calculate\_porousmedia\_absorptionterms()}{calculate\_porousmedia\_absorptionterms()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::calculate\+\_\+porousmedia\+\_\+absorptionterms (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{nphase,  }\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type (multi\+\_\+field)}]{Porous\+Media\+\_\+absorp,  }\item[{type( multi\+\_\+dimensions ), intent(in)}]{Mdims,  }\item[{type(multi\+\_\+shape\+\_\+funs), intent(inout)}]{C\+V\+\_\+funs,  }\item[{type( multi\+\_\+gi\+\_\+dimensions ), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{type (multi\+\_\+sparsities), intent(in)}]{Mspars,  }\item[{type(multi\+\_\+ndgln), intent(in)}]{ndgln,  }\item[{type (porous\+\_\+adv\+\_\+coefs), intent(inout)}]{upwnd,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{suf\+\_\+sig\+\_\+diagten\+\_\+bc }\end{DoxyParamCaption})}
+
+
+
+\+: Here we compute the absorption for porous media This is the sigma term defined in the papers and contains The permeability, the relative permeability, the viscosity and the saturation 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a1d4a7655cae6c58eae3fc141d80d5639_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a1d4a7655cae6c58eae3fc141d80d5639_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a3f6a1c7227872bf2073b960ddfabedee}\label{namespacemultiphase__eos_a3f6a1c7227872bf2073b960ddfabedee}} 
+\index{multiphase\_eos@{multiphase\_eos}!calculate\_rho\_drhodp@{calculate\_rho\_drhodp}}
+\index{calculate\_rho\_drhodp@{calculate\_rho\_drhodp}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{calculate\_rho\_drhodp()}{calculate\_rho\_drhodp()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::calculate\+\_\+rho\+\_\+drhodp (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{integer, intent(in)}]{iphase,  }\item[{integer, intent(in)}]{icomp,  }\item[{integer, intent(in)}]{nphase,  }\item[{integer, intent(in)}]{ncomp,  }\item[{character( len = option\+\_\+path\+\_\+len ), intent(in)}]{eos\+\_\+option\+\_\+path,  }\item[{real, dimension( \+: ), intent(inout)}]{rho,  }\item[{real, dimension( \+: ), intent(inout)}]{drhodp }\end{DoxyParamCaption})}
+
+
+
+\+: Computes the density and the derivative of the density 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a3f6a1c7227872bf2073b960ddfabedee_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a3f6a1c7227872bf2073b960ddfabedee_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_ae417127536bdb365fbdde3951524a9d6}\label{namespacemultiphase__eos_ae417127536bdb365fbdde3951524a9d6}} 
+\index{multiphase\_eos@{multiphase\_eos}!calculate\_solute\_dispersity@{calculate\_solute\_dispersity}}
+\index{calculate\_solute\_dispersity@{calculate\_solute\_dispersity}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{calculate\_solute\_dispersity()}{calculate\_solute\_dispersity()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::calculate\+\_\+solute\+\_\+dispersity (\begin{DoxyParamCaption}\item[{type(state\+\_\+type), dimension(\+:), intent(in)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type(multi\+\_\+ndgln), intent(in)}]{ndgln,  }\item[{real, dimension(\+:,\+:), intent(in), target}]{density,  }\item[{real, dimension(\+:, \+:, \+:, \+:), intent(inout)}]{Solute\+Dispersion }\end{DoxyParamCaption})}
+
+
+
+\+: Dispersion for porous media For thermal, the field density needs to be passed down, which ensures that even for boussinesq a reference density is still used 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_ae417127536bdb365fbdde3951524a9d6_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_ac21530a3f76ed685a2ce5fcb0bb11bd0}\label{namespacemultiphase__eos_ac21530a3f76ed685a2ce5fcb0bb11bd0}} 
+\index{multiphase\_eos@{multiphase\_eos}!calculate\_u\_source\_cv@{calculate\_u\_source\_cv}}
+\index{calculate\_u\_source\_cv@{calculate\_u\_source\_cv}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{calculate\_u\_source\_cv()}{calculate\_u\_source\_cv()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::calculate\+\_\+u\+\_\+source\+\_\+cv (\begin{DoxyParamCaption}\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type(state\+\_\+type), dimension(\+:), intent(in)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{real, dimension(\+:,\+:), intent(in)}]{den,  }\item[{real, dimension(\+:,\+:,\+:), intent(inout)}]{u\+\_\+source\+\_\+cv }\end{DoxyParamCaption})}
+
+
+
+\+: This subroutine computed the gravity effect, i.\+e. rho $\ast$ g 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_ac21530a3f76ed685a2ce5fcb0bb11bd0_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_ac21530a3f76ed685a2ce5fcb0bb11bd0_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef}\label{namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef}} 
+\index{multiphase\_eos@{multiphase\_eos}!calculate\_viscosity@{calculate\_viscosity}}
+\index{calculate\_viscosity@{calculate\_viscosity}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{calculate\_viscosity()}{calculate\_viscosity()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::calculate\+\_\+viscosity (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(in)}]{state,  }\item[{type( multi\+\_\+dimensions ), intent(in)}]{Mdims,  }\item[{type( multi\+\_\+ndgln ), intent(in)}]{ndgln,  }\item[{real, dimension( \+:, \+:, \+:, \+: ), intent(inout)}]{Momentum\+\_\+\+Diffusion,  }\item[{type( multi\+\_\+field ), intent(inout)}]{Momentum\+\_\+\+Diffusion2 }\end{DoxyParamCaption})}
+
+
+
+\+: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=298pt]{namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_aa45791df12ab50edf07b075fc8c83335}\label{namespacemultiphase__eos_aa45791df12ab50edf07b075fc8c83335}} 
+\index{multiphase\_eos@{multiphase\_eos}!cap\_bulk\_rho@{cap\_bulk\_rho}}
+\index{cap\_bulk\_rho@{cap\_bulk\_rho}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{cap\_bulk\_rho()}{cap\_bulk\_rho()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::cap\+\_\+bulk\+\_\+rho (\begin{DoxyParamCaption}\item[{type(state\+\_\+type), dimension( \+: )}]{state,  }\item[{integer, intent(in)}]{ncomp,  }\item[{integer, intent(in)}]{nphase,  }\item[{integer, intent(in)}]{cv\+\_\+nonods,  }\item[{real, dimension( cv\+\_\+nonods $\ast$ nphase $\ast$ ncomp ), intent(in)}]{Density\+\_\+\+Component,  }\item[{real, dimension( cv\+\_\+nonods $\ast$ nphase ), intent(inout)}]{Density,  }\item[{real, dimension( cv\+\_\+nonods $\ast$ nphase ), intent(inout)}]{Density\+\_\+\+Cp,  }\item[{logical, intent(in)}]{compute\+\_\+rho\+CP }\end{DoxyParamCaption})}
+
+
+
+\+: Computes the bulk density for components and the derivatives of the density 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_aa45791df12ab50edf07b075fc8c83335_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a44aebb6e29a5271abb6ec2b04f213b56}\label{namespacemultiphase__eos_a44aebb6e29a5271abb6ec2b04f213b56}} 
+\index{multiphase\_eos@{multiphase\_eos}!density\_polynomial@{density\_polynomial}}
+\index{density\_polynomial@{density\_polynomial}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{density\_polynomial()}{density\_polynomial()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::density\+\_\+polynomial (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(in)}]{eos\+\_\+coefs,  }\item[{real, dimension( \+: ), intent(in)}]{pressure,  }\item[{real, dimension( \+: ), intent(in)}]{temperature,  }\item[{real, dimension( \+: ), intent(inout)}]{Density\+\_\+\+Field }\end{DoxyParamCaption})}
+
+
+
+\+: Define de density as a polynomial 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a44aebb6e29a5271abb6ec2b04f213b56_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a7870c763c81a10948617345c3d0ca219}\label{namespacemultiphase__eos_a7870c763c81a10948617345c3d0ca219}} 
+\index{multiphase\_eos@{multiphase\_eos}!diffjwl@{diffjwl}}
+\index{diffjwl@{diffjwl}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{diffjwl()}{diffjwl()}}
+{\footnotesize\ttfamily real function multiphase\+\_\+eos\+::diffjwl (\begin{DoxyParamCaption}\item[{real, intent(in)}]{A,  }\item[{real, intent(in)}]{B,  }\item[{real, intent(in)}]{w,  }\item[{real, intent(in)}]{R1,  }\item[{real, intent(in)}]{R2,  }\item[{real, intent(in)}]{E0,  }\item[{real, intent(in)}]{roe,  }\item[{real, intent(in)}]{ro }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a7870c763c81a10948617345c3d0ca219_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a439637e5906b37a16646c186d7fc0daf}\label{namespacemultiphase__eos_a439637e5906b37a16646c186d7fc0daf}} 
+\index{multiphase\_eos@{multiphase\_eos}!flash\_gas\_dissolution@{flash\_gas\_dissolution}}
+\index{flash\_gas\_dissolution@{flash\_gas\_dissolution}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{flash\_gas\_dissolution()}{flash\_gas\_dissolution()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::flash\+\_\+gas\+\_\+dissolution (\begin{DoxyParamCaption}\item[{type(state\+\_\+type), dimension(\+:), intent(inout)}]{state,  }\item[{type(state\+\_\+type), intent(inout)}]{packed\+\_\+state,  }\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type(multi\+\_\+ndgln), intent(in)}]{ndgln }\end{DoxyParamCaption})}
+
+
+
+\+: subroutine to dissolv phase2 into phase1. Currently only for system for phase 1 = water, phase 2 = gas Dissolve instantaneously the amount introduced in diamond in mol/m3 for C\+O2 a reference number is 38 mol/m3. Requires the first phase to have a concentration field 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a439637e5906b37a16646c186d7fc0daf_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a7dfd3eac29921ca66854cebaa01162f9}\label{namespacemultiphase__eos_a7dfd3eac29921ca66854cebaa01162f9}} 
+\index{multiphase\_eos@{multiphase\_eos}!get\_devcappressure@{get\_devcappressure}}
+\index{get\_devcappressure@{get\_devcappressure}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{get\_devcappressure()}{get\_devcappressure()}}
+{\footnotesize\ttfamily real function multiphase\+\_\+eos\+::get\+\_\+devcappressure (\begin{DoxyParamCaption}\item[{real, intent(in)}]{sat,  }\item[{real, intent(in)}]{Pe,  }\item[{real, intent(in)}]{a,  }\item[{real, dimension(\+:), intent(in)}]{C\+V\+\_\+\+Immobile\+\_\+\+Fraction,  }\item[{integer, intent(in)}]{iphase,  }\item[{integer, intent(in)}]{nphase }\end{DoxyParamCaption})}
+
+
+
+\+:This functions returns the derivative of the capillary pressure with respect to the saturation 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a7dfd3eac29921ca66854cebaa01162f9_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_af235dd0c336c71b8afbfb65399766c10}\label{namespacemultiphase__eos_af235dd0c336c71b8afbfb65399766c10}} 
+\index{multiphase\_eos@{multiphase\_eos}!get\_material\_absorption@{get\_material\_absorption}}
+\index{get\_material\_absorption@{get\_material\_absorption}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{get\_material\_absorption()}{get\_material\_absorption()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::get\+\_\+material\+\_\+absorption (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{nphase,  }\item[{integer, intent(in)}]{iphase,  }\item[{real, intent(inout)}]{material\+\_\+absorption,  }\item[{real, dimension(\+:), intent(in)}]{sat,  }\item[{real, dimension(\+:), intent(in)}]{visc,  }\item[{real, dimension(\+:), intent(in)}]{C\+V\+\_\+\+Immobile\+\_\+fract,  }\item[{real, dimension(\+:), intent(in)}]{Corey\+\_\+exponent,  }\item[{real, dimension(\+:), intent(in)}]{Endpoint\+\_\+relperm }\end{DoxyParamCaption})}
+
+
+
+\+:Calculates the relative permeability for 1, 2 (Brooks-\/corey) or 3 (stone\textquotesingle{}s model) phases 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_af235dd0c336c71b8afbfb65399766c10_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_af235dd0c336c71b8afbfb65399766c10_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_afa5bc056e9d4cafeb1706afca8e780c1}\label{namespacemultiphase__eos_afa5bc056e9d4cafeb1706afca8e780c1}} 
+\index{multiphase\_eos@{multiphase\_eos}!get\_relperm@{get\_relperm}}
+\index{get\_relperm@{get\_relperm}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{get\_relperm()}{get\_relperm()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::get\+\_\+relperm (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{nphase,  }\item[{integer, intent(in)}]{iphase,  }\item[{real, dimension(\+:), intent(in)}]{sat,  }\item[{real, dimension(\+:), intent(in)}]{C\+V\+\_\+\+Immobile\+\_\+fract,  }\item[{real, dimension(\+:), intent(in)}]{Corey\+\_\+exponent,  }\item[{real, dimension(\+:), intent(in)}]{Endpoint\+\_\+relperm,  }\item[{real, intent(inout)}]{Kr }\end{DoxyParamCaption})}
+
+
+
+\+:Calculates the relative permeability for 1, 2 (Brooks-\/corey) or 3 (stone\textquotesingle{}s model) phases 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_afa5bc056e9d4cafeb1706afca8e780c1_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_afa5bc056e9d4cafeb1706afca8e780c1_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_aeb644e3565a7e33c61f0e40e73a3c990}\label{namespacemultiphase__eos_aeb644e3565a7e33c61f0e40e73a3c990}} 
+\index{multiphase\_eos@{multiphase\_eos}!get\_rockfluidprop@{get\_rockfluidprop}}
+\index{get\_rockfluidprop@{get\_rockfluidprop}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{get\_rockfluidprop()}{get\_rockfluidprop()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::get\+\_\+rockfluidprop (\begin{DoxyParamCaption}\item[{type(state\+\_\+type), dimension(\+:), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type( multi\+\_\+dimensions ), intent(in)}]{Mdims,  }\item[{type( multi\+\_\+ndgln ), intent(in)}]{ndgln,  }\item[{real, intent(in), optional}]{current\+\_\+time,  }\item[{logical, intent(in), optional}]{update\+\_\+only }\end{DoxyParamCaption})}
+
+
+
+\+:Gets the relperm max, the relperm exponent and the immobile fractions and stores them into packed state By index this is\+: 1) immobile fraction, 2) relperm max, 3)relperm exponent 4)Capillary entry pressure 5) Capillary exponent 6) Capillary imbition term The effective inmobile fraction is the min(inmobile,saturation\+\_\+flipping formula), being the saturation the value after a succesful non-\/linear solver convergence! This N\+E\+E\+DS to be called after a succesful non-\/linear solver (with update\+\_\+only) 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_aeb644e3565a7e33c61f0e40e73a3c990_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_aeb644e3565a7e33c61f0e40e73a3c990_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a3f5f7836734b85fb788ba57a2793eda7}\label{namespacemultiphase__eos_a3f5f7836734b85fb788ba57a2793eda7}} 
+\index{multiphase\_eos@{multiphase\_eos}!initialise\_porous\_media@{initialise\_porous\_media}}
+\index{initialise\_porous\_media@{initialise\_porous\_media}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{initialise\_porous\_media()}{initialise\_porous\_media()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::initialise\+\_\+porous\+\_\+media (\begin{DoxyParamCaption}\item[{type(multi\+\_\+dimensions), optional}]{Mdims,  }\item[{type(multi\+\_\+ndgln), optional}]{ndgln,  }\item[{type(state\+\_\+type), optional}]{packed\+\_\+state,  }\item[{type(state\+\_\+type), dimension(\+:), optional}]{state,  }\item[{logical, intent(inout)}]{exit\+\_\+initialise\+\_\+porous\+\_\+media }\end{DoxyParamCaption})}
+
+
+
+\+: Initialising porous media models \begin{quote}
+Given a free water level (F\+WL) we simulate capillary gravity equilibration, control volumes below F\+WL is kept at residual lighter phase saturation This subroutine is called after each timestep and saturations overidden below F\+WL with the heavier phase \end{quote}
+
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a3f5f7836734b85fb788ba57a2793eda7_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_ac01c010ab184f242b5ca90a44d40affa}\label{namespacemultiphase__eos_ac01c010ab184f242b5ca90a44d40affa}} 
+\index{multiphase\_eos@{multiphase\_eos}!jwl@{jwl}}
+\index{jwl@{jwl}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{jwl()}{jwl()}}
+{\footnotesize\ttfamily real function multiphase\+\_\+eos\+::jwl (\begin{DoxyParamCaption}\item[{real, intent(in)}]{A,  }\item[{real, intent(in)}]{B,  }\item[{real, intent(in)}]{w,  }\item[{real, intent(in)}]{R1,  }\item[{real, intent(in)}]{R2,  }\item[{real, intent(in)}]{E0,  }\item[{real, intent(in)}]{p,  }\item[{real, intent(in)}]{roe,  }\item[{real, intent(in)}]{ro }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_ac01c010ab184f242b5ca90a44d40affa_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a8585fdea6dd3d2ca6508cf37236a7cc0}\label{namespacemultiphase__eos_a8585fdea6dd3d2ca6508cf37236a7cc0}} 
+\index{multiphase\_eos@{multiphase\_eos}!jwldensity@{jwldensity}}
+\index{jwldensity@{jwldensity}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{jwldensity()}{jwldensity()}}
+{\footnotesize\ttfamily real function, dimension( jwln ) multiphase\+\_\+eos\+::jwldensity (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(in)}]{eos\+\_\+coefs,  }\item[{real, dimension( \+: ), intent(in)}]{pressure,  }\item[{real, dimension( \+: ), intent(in)}]{ro0,  }\item[{integer, intent(in)}]{J\+W\+Ln }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a8585fdea6dd3d2ca6508cf37236a7cc0_cgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c}\label{namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c}} 
+\index{multiphase\_eos@{multiphase\_eos}!retrieve\_reference\_density@{retrieve\_reference\_density}}
+\index{retrieve\_reference\_density@{retrieve\_reference\_density}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{retrieve\_reference\_density()}{retrieve\_reference\_density()}}
+{\footnotesize\ttfamily real function multiphase\+\_\+eos\+::retrieve\+\_\+reference\+\_\+density (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(in)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{integer, intent(in)}]{iphase,  }\item[{integer, intent(in)}]{icomp,  }\item[{integer, intent(in)}]{nphase }\end{DoxyParamCaption})}
+
+
+
+\+: For boussinesq porous media we need the reference density to ensure consistency when mixing with the porous density/\+Cp etc. \begin{quote}
+In this subroutine we retrieve the value given a phase, component. \end{quote}
+
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a2591de41e9c67340b83129722447923b}\label{namespacemultiphase__eos_a2591de41e9c67340b83129722447923b}} 
+\index{multiphase\_eos@{multiphase\_eos}!saturation\_temperature@{saturation\_temperature}}
+\index{saturation\_temperature@{saturation\_temperature}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{saturation\_temperature()}{saturation\_temperature()}}
+{\footnotesize\ttfamily real function multiphase\+\_\+eos\+::saturation\+\_\+temperature (\begin{DoxyParamCaption}\item[{real}]{pressure }\end{DoxyParamCaption})}
+
+
+
+\+: ???? 
+
+\mbox{\Hypertarget{namespacemultiphase__eos_a15a1f78f9f889b58b7b9f45de20d5a48}\label{namespacemultiphase__eos_a15a1f78f9f889b58b7b9f45de20d5a48}} 
+\index{multiphase\_eos@{multiphase\_eos}!update\_velocity\_absorption@{update\_velocity\_absorption}}
+\index{update\_velocity\_absorption@{update\_velocity\_absorption}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{update\_velocity\_absorption()}{update\_velocity\_absorption()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::update\+\_\+velocity\+\_\+absorption (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(in)}]{states,  }\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{nphase,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{velocity\+\_\+absorption }\end{DoxyParamCaption})}
+
+
+
+\+:Computes velocity absorption from diamond information 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a15a1f78f9f889b58b7b9f45de20d5a48_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a98927879ae36867eabec1a9e6a5f22d8}\label{namespacemultiphase__eos_a98927879ae36867eabec1a9e6a5f22d8}} 
+\index{multiphase\_eos@{multiphase\_eos}!update\_velocity\_absorption\_coriolis@{update\_velocity\_absorption\_coriolis}}
+\index{update\_velocity\_absorption\_coriolis@{update\_velocity\_absorption\_coriolis}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{update\_velocity\_absorption\_coriolis()}{update\_velocity\_absorption\_coriolis()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::update\+\_\+velocity\+\_\+absorption\+\_\+coriolis (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(in)}]{states,  }\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{nphase,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{velocity\+\_\+absorption }\end{DoxyParamCaption})}
+
+
+
+\+:Computes velocity absorption from diamond information 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a98927879ae36867eabec1a9e6a5f22d8_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__eos_a8f7f68ee8d294089b9077c480795eb9c}\label{namespacemultiphase__eos_a8f7f68ee8d294089b9077c480795eb9c}} 
+\index{multiphase\_eos@{multiphase\_eos}!update\_velocity\_source@{update\_velocity\_source}}
+\index{update\_velocity\_source@{update\_velocity\_source}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{update\_velocity\_source()}{update\_velocity\_source()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+eos\+::update\+\_\+velocity\+\_\+source (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(in)}]{states,  }\item[{type( multi\+\_\+dimensions ), intent(in)}]{Mdims,  }\item[{type ( multi\+\_\+field ), intent(inout)}]{u\+\_\+source }\end{DoxyParamCaption})}
+
+
+
+\+:Computes velocity source from diamond information 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__eos_a8f7f68ee8d294089b9077c480795eb9c_icgraph}
+\end{center}
+\end{figure}
+
+
+\doxysubsection{Variable Documentation}
+\mbox{\Hypertarget{namespacemultiphase__eos_ae1ce91e74714b2c125d7a764aaa79ff3}\label{namespacemultiphase__eos_ae1ce91e74714b2c125d7a764aaa79ff3}} 
+\index{multiphase\_eos@{multiphase\_eos}!flooding\_hmin@{flooding\_hmin}}
+\index{flooding\_hmin@{flooding\_hmin}!multiphase\_eos@{multiphase\_eos}}
+\doxysubsubsection{\texorpdfstring{flooding\_hmin}{flooding\_hmin}}
+{\footnotesize\ttfamily real, parameter multiphase\+\_\+eos\+::flooding\+\_\+hmin = 1e-\/5}
+

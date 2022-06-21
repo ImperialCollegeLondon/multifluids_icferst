@@ -1,0 +1,225 @@
+\hypertarget{namespacesolvers__module}{}\doxysection{solvers\+\_\+module Module Reference}
+\label{namespacesolvers__module}\index{solvers\_module@{solvers\_module}}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine, public \mbox{\hyperlink{namespacesolvers__module_adef72e22883fb36304a2da0099927175}{boundedsolutioncorrections}} (state, packed\+\_\+state, Mdims, C\+V\+\_\+funs, small\+\_\+findrm, small\+\_\+colm, Field\+\_\+name, for\+\_\+sat, min\+\_\+max\+\_\+limits)
+\begin{DoxyCompactList}\small\item\em The sparcity of the local CV connectivity is in\+: small\+\_\+findrm, small\+\_\+colm. ngl\+\_\+its=max no of global iterations e.\+g. 100. error\+\_\+tol = tolerance on the iterations. \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c}{fpi\+\_\+backtracking}} (nphase, Mdims, ndgln, state, packed\+\_\+state, sat\+\_\+bak, backtrack\+\_\+sat, backtrack\+\_\+par\+\_\+from\+\_\+schema, Previous\+\_\+convergence, satisfactory\+\_\+convergence, new\+\_\+backtrack\+\_\+par, Max\+\_\+sat\+\_\+its, its, nonlinear\+\_\+iteration, useful\+\_\+sats, res, res\+\_\+ratio, first\+\_\+res)
+\begin{DoxyCompactList}\small\item\em this idea is based on the paper S\+P\+E-\/173267-\/\+MS. The method ensures convergence \char`\"{}independent\char`\"{} of the time step. \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacesolvers__module_a9bba1ef1495c1a4a47a7eea3f2c17719}{set\+\_\+saturation\+\_\+to\+\_\+sum\+\_\+one}} (mdims, packed\+\_\+state, state, do\+\_\+not\+\_\+update\+\_\+halos)
+\begin{DoxyCompactList}\small\item\em certain tolerance and also sets the saturation to be between bounds \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c}{non\+\_\+porous\+\_\+ensure\+\_\+sum\+\_\+to\+\_\+one}} (Mdims, packed\+\_\+state, do\+\_\+not\+\_\+update\+\_\+halos)
+\begin{DoxyCompactList}\small\item\em certain tolerance and also sets the saturation to be between bounds \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacesolvers__module_a85646e595797edceed6d3be72173ef7f}{initialise\+\_\+saturation\+\_\+sums\+\_\+one}} (mdims, packed\+\_\+state, find\+\_\+scapegoat\+\_\+phase)
+\begin{DoxyCompactList}\small\item\em all the error is compensated in the scapegoat\+\_\+phase. Normally the last \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacesolvers__module_a4e86e8d68a22dcc9e670af385d938bf4}{auto\+\_\+backtracking}} (Mdims, backtrack\+\_\+par\+\_\+factor, courant\+\_\+number\+\_\+in, first\+\_\+time\+\_\+step, nonlinear\+\_\+iteration, I\+\_\+am\+\_\+temperature)
+\item 
+subroutine, public \mbox{\hyperlink{namespacesolvers__module_a119325e40cdcd54b1766472b55920364}{get\+\_\+anderson\+\_\+acceleration\+\_\+new\+\_\+guess}} (N, M, New\+Field, History\+\_\+field, stored\+\_\+residuals, max\+\_\+its, prev\+\_\+small\+\_\+matrix, restart\+\_\+now)
+\begin{DoxyCompactList}\small\item\em This subroutine provides a new guess based on previous updates and residuals. Use this subroutine to speed up any system being solved by looping. A new guess is computed and returned Method explained in D\+O\+I.\+10.\+1137/10078356X. \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacesolvers__module_af233b921efdba4e01b5920ccf509ef29}{scale\+\_\+petsc\+\_\+matrix}} (Mat\+\_\+petsc)
+\begin{DoxyCompactList}\small\item\em In this subroutine the matrix is re-\/scaled based on the formula D$^\wedge$-\/0.5 $\ast$ A $\ast$ D$^\wedge$-\/0.5 X\textquotesingle{}= D$^\wedge$-\/0.5 b; and next X = D$^\wedge$-\/0.5 $\ast$ X\textquotesingle{}; I\+M\+P\+O\+R\+T\+A\+NT\+: the step X = D$^\wedge$-\/0.5 $\ast$ X\textquotesingle{} needs to be done elsewhere store the diagonal before calling this This should allow to deal with high ranges of viscosity ratio for example A is-\/written. \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacesolvers__module_a76231fdbfc56035f797b1c21675c02ed}{duplicate\+\_\+petsc\+\_\+matrix}} (M\+A\+T\+\_\+A, M\+A\+T\+\_\+B)
+\item 
+subroutine, public \mbox{\hyperlink{namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa}{petsc\+\_\+stokes\+\_\+solver}} (packed\+\_\+state, Mdims, Mmat, ndgln, Mspars, final\+\_\+phase, pmat, P\+\_\+all, deltaP, rhs\+\_\+p, solver\+\_\+option\+\_\+path, Dmat)
+\begin{DoxyCompactList}\small\item\em In this subroutine the Schur complement is generated and solved using P\+E\+T\+Sc to update the pressure field Matrices need to be in petsc format and pmat is the preconditioned matrix, i.\+e. pmat = A11-\/ A10(Aprox\+A00$^\wedge$-\/1)A01. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacesolvers__module_aad076a468a68cdb44f63a6290e9c8159}{convert\+\_\+c\+\_\+and\+\_\+ct\+\_\+mat\+\_\+to\+\_\+petsc\+\_\+format}} (packed\+\_\+state, Mdims, Mmat, ndgln, Mspars, N\+P\+H\+A\+SE)
+\begin{DoxyCompactList}\small\item\em \+: This subroutine converts the C (gradient) and CT (Divergence) matrices into P\+E\+T\+Sc format Mainly devoted to be used by the P\+E\+T\+Sc stokes schur solver \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{namespacesolvers__module_a4e86e8d68a22dcc9e670af385d938bf4}\label{namespacesolvers__module_a4e86e8d68a22dcc9e670af385d938bf4}} 
+\index{solvers\_module@{solvers\_module}!auto\_backtracking@{auto\_backtracking}}
+\index{auto\_backtracking@{auto\_backtracking}!solvers\_module@{solvers\_module}}
+\doxysubsubsection{\texorpdfstring{auto\_backtracking()}{auto\_backtracking()}}
+{\footnotesize\ttfamily subroutine, public solvers\+\_\+module\+::auto\+\_\+backtracking (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{real, intent(inout)}]{backtrack\+\_\+par\+\_\+factor,  }\item[{real, dimension(\+:), intent(inout)}]{courant\+\_\+number\+\_\+in,  }\item[{logical, intent(in)}]{first\+\_\+time\+\_\+step,  }\item[{integer, intent(in)}]{nonlinear\+\_\+iteration,  }\item[{logical, intent(in), optional}]{I\+\_\+am\+\_\+temperature }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesolvers__module_a4e86e8d68a22dcc9e670af385d938bf4_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacesolvers__module_adef72e22883fb36304a2da0099927175}\label{namespacesolvers__module_adef72e22883fb36304a2da0099927175}} 
+\index{solvers\_module@{solvers\_module}!boundedsolutioncorrections@{boundedsolutioncorrections}}
+\index{boundedsolutioncorrections@{boundedsolutioncorrections}!solvers\_module@{solvers\_module}}
+\doxysubsubsection{\texorpdfstring{boundedsolutioncorrections()}{boundedsolutioncorrections()}}
+{\footnotesize\ttfamily subroutine, public solvers\+\_\+module\+::boundedsolutioncorrections (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(in)}]{C\+V\+\_\+funs,  }\item[{integer, dimension( \+: ), intent(in)}]{small\+\_\+findrm,  }\item[{integer, dimension( \+: ), intent(in)}]{small\+\_\+colm,  }\item[{character( len=$\ast$ ), intent(in)}]{Field\+\_\+name,  }\item[{logical, intent(in), optional}]{for\+\_\+sat,  }\item[{real, dimension(2), optional}]{min\+\_\+max\+\_\+limits }\end{DoxyParamCaption})}
+
+
+
+The sparcity of the local CV connectivity is in\+: small\+\_\+findrm, small\+\_\+colm. ngl\+\_\+its=max no of global iterations e.\+g. 100. error\+\_\+tol = tolerance on the iterations. 
+
+nloc\+\_\+its\+: This iteration is very good at avoiding spreading the modifications too far -\/ however it can stagnate. nloc\+\_\+its2\+: This iteration is very good at avoiding stagnating but does spread the modifcations far. us a single iteration because of this as default... nits\+\_\+nod\+: iterations at a nod -\/ this iteration is very good at avoiding spreading the modifications too far -\/ however it can stagnate. Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesolvers__module_adef72e22883fb36304a2da0099927175_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesolvers__module_adef72e22883fb36304a2da0099927175_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacesolvers__module_aad076a468a68cdb44f63a6290e9c8159}\label{namespacesolvers__module_aad076a468a68cdb44f63a6290e9c8159}} 
+\index{solvers\_module@{solvers\_module}!convert\_c\_and\_ct\_mat\_to\_petsc\_format@{convert\_c\_and\_ct\_mat\_to\_petsc\_format}}
+\index{convert\_c\_and\_ct\_mat\_to\_petsc\_format@{convert\_c\_and\_ct\_mat\_to\_petsc\_format}!solvers\_module@{solvers\_module}}
+\doxysubsubsection{\texorpdfstring{convert\_c\_and\_ct\_mat\_to\_petsc\_format()}{convert\_c\_and\_ct\_mat\_to\_petsc\_format()}}
+{\footnotesize\ttfamily subroutine solvers\+\_\+module\+::convert\+\_\+c\+\_\+and\+\_\+ct\+\_\+mat\+\_\+to\+\_\+petsc\+\_\+format (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE }\end{DoxyParamCaption})}
+
+
+
+\+: This subroutine converts the C (gradient) and CT (Divergence) matrices into P\+E\+T\+Sc format Mainly devoted to be used by the P\+E\+T\+Sc stokes schur solver 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesolvers__module_aad076a468a68cdb44f63a6290e9c8159_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacesolvers__module_a76231fdbfc56035f797b1c21675c02ed}\label{namespacesolvers__module_a76231fdbfc56035f797b1c21675c02ed}} 
+\index{solvers\_module@{solvers\_module}!duplicate\_petsc\_matrix@{duplicate\_petsc\_matrix}}
+\index{duplicate\_petsc\_matrix@{duplicate\_petsc\_matrix}!solvers\_module@{solvers\_module}}
+\doxysubsubsection{\texorpdfstring{duplicate\_petsc\_matrix()}{duplicate\_petsc\_matrix()}}
+{\footnotesize\ttfamily subroutine, public solvers\+\_\+module\+::duplicate\+\_\+petsc\+\_\+matrix (\begin{DoxyParamCaption}\item[{type(petsc\+\_\+csr\+\_\+matrix), intent(in)}]{M\+A\+T\+\_\+A,  }\item[{type(petsc\+\_\+csr\+\_\+matrix), intent(inout)}]{M\+A\+T\+\_\+B }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c}\label{namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c}} 
+\index{solvers\_module@{solvers\_module}!fpi\_backtracking@{fpi\_backtracking}}
+\index{fpi\_backtracking@{fpi\_backtracking}!solvers\_module@{solvers\_module}}
+\doxysubsubsection{\texorpdfstring{fpi\_backtracking()}{fpi\_backtracking()}}
+{\footnotesize\ttfamily subroutine, public solvers\+\_\+module\+::fpi\+\_\+backtracking (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{nphase,  }\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}} ), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type( state\+\_\+type ), dimension( \+: ), intent(in)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{real, dimension(\+:, \+:), intent(in)}]{sat\+\_\+bak,  }\item[{real, dimension(\+:, \+:), intent(in)}]{backtrack\+\_\+sat,  }\item[{real, intent(in)}]{backtrack\+\_\+par\+\_\+from\+\_\+schema,  }\item[{real, intent(inout)}]{Previous\+\_\+convergence,  }\item[{logical, intent(inout)}]{satisfactory\+\_\+convergence,  }\item[{real, intent(inout)}]{new\+\_\+backtrack\+\_\+par,  }\item[{integer, intent(in)}]{Max\+\_\+sat\+\_\+its,  }\item[{integer, intent(in)}]{its,  }\item[{integer, intent(in)}]{nonlinear\+\_\+iteration,  }\item[{integer, intent(inout)}]{useful\+\_\+sats,  }\item[{real, intent(in)}]{res,  }\item[{real, intent(in)}]{res\+\_\+ratio,  }\item[{real, intent(in)}]{first\+\_\+res }\end{DoxyParamCaption})}
+
+
+
+this idea is based on the paper S\+P\+E-\/173267-\/\+MS. The method ensures convergence \char`\"{}independent\char`\"{} of the time step. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacesolvers__module_a119325e40cdcd54b1766472b55920364}\label{namespacesolvers__module_a119325e40cdcd54b1766472b55920364}} 
+\index{solvers\_module@{solvers\_module}!get\_anderson\_acceleration\_new\_guess@{get\_anderson\_acceleration\_new\_guess}}
+\index{get\_anderson\_acceleration\_new\_guess@{get\_anderson\_acceleration\_new\_guess}!solvers\_module@{solvers\_module}}
+\doxysubsubsection{\texorpdfstring{get\_anderson\_acceleration\_new\_guess()}{get\_anderson\_acceleration\_new\_guess()}}
+{\footnotesize\ttfamily subroutine, public solvers\+\_\+module\+::get\+\_\+anderson\+\_\+acceleration\+\_\+new\+\_\+guess (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N,  }\item[{integer, intent(in)}]{M,  }\item[{real, dimension(n), intent(out)}]{New\+Field,  }\item[{real, dimension(n, m+2), intent(inout)}]{History\+\_\+field,  }\item[{real, dimension(n, m+1), intent(inout)}]{stored\+\_\+residuals,  }\item[{integer, optional}]{max\+\_\+its,  }\item[{real, dimension(\+:,\+:), intent(inout), optional, allocatable}]{prev\+\_\+small\+\_\+matrix,  }\item[{}]{restart\+\_\+now }\end{DoxyParamCaption})}
+
+
+
+This subroutine provides a new guess based on previous updates and residuals. Use this subroutine to speed up any system being solved by looping. A new guess is computed and returned Method explained in D\+O\+I.\+10.\+1137/10078356X. 
+
+\begin{DoxyAuthor}{Author}
+Pablo Salinas 
+\end{DoxyAuthor}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesolvers__module_a119325e40cdcd54b1766472b55920364_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacesolvers__module_a85646e595797edceed6d3be72173ef7f}\label{namespacesolvers__module_a85646e595797edceed6d3be72173ef7f}} 
+\index{solvers\_module@{solvers\_module}!initialise\_saturation\_sums\_one@{initialise\_saturation\_sums\_one}}
+\index{initialise\_saturation\_sums\_one@{initialise\_saturation\_sums\_one}!solvers\_module@{solvers\_module}}
+\doxysubsubsection{\texorpdfstring{initialise\_saturation\_sums\_one()}{initialise\_saturation\_sums\_one()}}
+{\footnotesize\ttfamily subroutine, public solvers\+\_\+module\+::initialise\+\_\+saturation\+\_\+sums\+\_\+one (\begin{DoxyParamCaption}\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}} ), intent(in)}]{mdims,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{logical, intent(in), optional}]{find\+\_\+scapegoat\+\_\+phase }\end{DoxyParamCaption})}
+
+
+
+all the error is compensated in the scapegoat\+\_\+phase. Normally the last 
+
+\mbox{\Hypertarget{namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c}\label{namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c}} 
+\index{solvers\_module@{solvers\_module}!non\_porous\_ensure\_sum\_to\_one@{non\_porous\_ensure\_sum\_to\_one}}
+\index{non\_porous\_ensure\_sum\_to\_one@{non\_porous\_ensure\_sum\_to\_one}!solvers\_module@{solvers\_module}}
+\doxysubsubsection{\texorpdfstring{non\_porous\_ensure\_sum\_to\_one()}{non\_porous\_ensure\_sum\_to\_one()}}
+{\footnotesize\ttfamily subroutine, public solvers\+\_\+module\+::non\+\_\+porous\+\_\+ensure\+\_\+sum\+\_\+to\+\_\+one (\begin{DoxyParamCaption}\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}} ), intent(in)}]{Mdims,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{logical, intent(in), optional}]{do\+\_\+not\+\_\+update\+\_\+halos }\end{DoxyParamCaption})}
+
+
+
+certain tolerance and also sets the saturation to be between bounds 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa}\label{namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa}} 
+\index{solvers\_module@{solvers\_module}!petsc\_stokes\_solver@{petsc\_stokes\_solver}}
+\index{petsc\_stokes\_solver@{petsc\_stokes\_solver}!solvers\_module@{solvers\_module}}
+\doxysubsubsection{\texorpdfstring{petsc\_stokes\_solver()}{petsc\_stokes\_solver()}}
+{\footnotesize\ttfamily subroutine, public solvers\+\_\+module\+::petsc\+\_\+stokes\+\_\+solver (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{integer, intent(in)}]{final\+\_\+phase,  }\item[{type(petsc\+\_\+csr\+\_\+matrix), intent(inout)}]{pmat,  }\item[{type( tensor\+\_\+field ), intent(inout)}]{P\+\_\+all,  }\item[{type( vector\+\_\+field ), intent(inout)}]{deltaP,  }\item[{type( vector\+\_\+field ), intent(in)}]{rhs\+\_\+p,  }\item[{character(len=option\+\_\+path\+\_\+len), intent(in)}]{solver\+\_\+option\+\_\+path,  }\item[{type(petsc\+\_\+csr\+\_\+matrix), intent(inout), optional}]{Dmat }\end{DoxyParamCaption})}
+
+
+
+In this subroutine the Schur complement is generated and solved using P\+E\+T\+Sc to update the pressure field Matrices need to be in petsc format and pmat is the preconditioned matrix, i.\+e. pmat = A11-\/ A10(Aprox\+A00$^\wedge$-\/1)A01. 
+
+\begin{DoxyAuthor}{Author}
+Pablo Salinas 
+\end{DoxyAuthor}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacesolvers__module_af233b921efdba4e01b5920ccf509ef29}\label{namespacesolvers__module_af233b921efdba4e01b5920ccf509ef29}} 
+\index{solvers\_module@{solvers\_module}!scale\_petsc\_matrix@{scale\_petsc\_matrix}}
+\index{scale\_petsc\_matrix@{scale\_petsc\_matrix}!solvers\_module@{solvers\_module}}
+\doxysubsubsection{\texorpdfstring{scale\_petsc\_matrix()}{scale\_petsc\_matrix()}}
+{\footnotesize\ttfamily subroutine, public solvers\+\_\+module\+::scale\+\_\+petsc\+\_\+matrix (\begin{DoxyParamCaption}\item[{type(petsc\+\_\+csr\+\_\+matrix), intent(inout)}]{Mat\+\_\+petsc }\end{DoxyParamCaption})}
+
+
+
+In this subroutine the matrix is re-\/scaled based on the formula D$^\wedge$-\/0.5 $\ast$ A $\ast$ D$^\wedge$-\/0.5 X\textquotesingle{}= D$^\wedge$-\/0.5 b; and next X = D$^\wedge$-\/0.5 $\ast$ X\textquotesingle{}; I\+M\+P\+O\+R\+T\+A\+NT\+: the step X = D$^\wedge$-\/0.5 $\ast$ X\textquotesingle{} needs to be done elsewhere store the diagonal before calling this This should allow to deal with high ranges of viscosity ratio for example A is-\/written. 
+
+\begin{DoxyAuthor}{Author}
+Pablo Salinas 
+\end{DoxyAuthor}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesolvers__module_af233b921efdba4e01b5920ccf509ef29_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacesolvers__module_a9bba1ef1495c1a4a47a7eea3f2c17719}\label{namespacesolvers__module_a9bba1ef1495c1a4a47a7eea3f2c17719}} 
+\index{solvers\_module@{solvers\_module}!set\_saturation\_to\_sum\_one@{set\_saturation\_to\_sum\_one}}
+\index{set\_saturation\_to\_sum\_one@{set\_saturation\_to\_sum\_one}!solvers\_module@{solvers\_module}}
+\doxysubsubsection{\texorpdfstring{set\_saturation\_to\_sum\_one()}{set\_saturation\_to\_sum\_one()}}
+{\footnotesize\ttfamily subroutine, public solvers\+\_\+module\+::set\+\_\+saturation\+\_\+to\+\_\+sum\+\_\+one (\begin{DoxyParamCaption}\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}} ), intent(in)}]{mdims,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type( state\+\_\+type ), dimension(\+:), intent(in)}]{state,  }\item[{logical, intent(in), optional}]{do\+\_\+not\+\_\+update\+\_\+halos }\end{DoxyParamCaption})}
+
+
+
+certain tolerance and also sets the saturation to be between bounds 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesolvers__module_a9bba1ef1495c1a4a47a7eea3f2c17719_icgraph}
+\end{center}
+\end{figure}

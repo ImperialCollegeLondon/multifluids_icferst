@@ -1,0 +1,34 @@
+\hypertarget{multi__compositional_8_f90}{}\doxysection{/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/multi\+\_\+compositional.F90 File Reference}
+\label{multi__compositional_8_f90}\index{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/multi\_compositional.F90@{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/multi\_compositional.F90}}
+{\ttfamily \#include \char`\"{}fdebug.\+h\char`\"{}}\newline
+Include dependency graph for multi\+\_\+compositional.\+F90\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=306pt]{multi__compositional_8_f90__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Modules}
+\begin{DoxyCompactItemize}
+\item 
+module \mbox{\hyperlink{namespacecompositional__terms}{compositional\+\_\+terms}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine \mbox{\hyperlink{namespacecompositional__terms_ad2f5aa04b8878cd5cd9b0c4c23608bea}{compositional\+\_\+terms\+::calculate\+\_\+componentabsorptionterm}} (packed\+\_\+state, icomp, cv\+\_\+ndgln, Mdims, denold, volfra\+\_\+pore, mass\+\_\+ele, comp\+\_\+absorb)
+\item 
+subroutine \mbox{\hyperlink{namespacecompositional__terms_a5854731522b8b3e1b37deb7cfe6814c2}{compositional\+\_\+terms\+::calculate\+\_\+componentdiffusionterm}} (packed\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, mat\+\_\+ndgln, u\+\_\+ndgln, x\+\_\+ndgln, ncomp\+\_\+diff\+\_\+coef, comp\+\_\+diffusion\+\_\+opt, comp\+\_\+diff\+\_\+coef, comp\+\_\+diffusion)
+\item 
+subroutine \mbox{\hyperlink{namespacecompositional__terms_ad493264ab6df90982606d40e8b794a2e}{compositional\+\_\+terms\+::proj\+\_\+u2mat}} (C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+O\+PT, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+U\+S\+I\+ON, N\+C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+\_\+\+C\+O\+EF, C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+\_\+\+C\+O\+EF, X\+\_\+\+A\+LL, NU, NV, NW, M\+A\+T\+\_\+\+N\+D\+G\+LN, U\+\_\+\+N\+D\+G\+LN, X\+\_\+\+N\+D\+G\+LN, M\+A\+T\+\_\+U)
+\item 
+subroutine \mbox{\hyperlink{namespacecompositional__terms_a747fbf8752c32e5d741465ea409d6319}{compositional\+\_\+terms\+::calc\+\_\+comp\+\_\+dif\+\_\+ten}} (N\+D\+IM, UD, D\+I\+F\+F\+\_\+molecular, D\+I\+F\+F\+\_\+longitudinal, D\+I\+F\+F\+\_\+transverse, D\+I\+F\+F\+\_\+\+T\+EN)
+\item 
+subroutine \mbox{\hyperlink{namespacecompositional__terms_a8d067de83d2c706f165e514f8a9ca1c8}{compositional\+\_\+terms\+::calc\+\_\+kcomp2}} (cv\+\_\+nonods, nphase, icomp, K\+Comp\+\_\+\+Sigmoid, Satura, K\+\_\+\+Comp, max\+\_\+k, min\+\_\+k, K\+\_\+\+Comp2)
+\item 
+real function \mbox{\hyperlink{namespacecompositional__terms_a84fea13095aadece40e1765da26a2297}{compositional\+\_\+terms\+::sigmoid\+\_\+function}} (Y, Y0, Width, Low\+Mag, Up\+Mag)
+\item 
+real function \mbox{\hyperlink{namespacecompositional__terms_a9787ef666c2210caa4c2b67176eedb13}{compositional\+\_\+terms\+::exprep}} (M)
+\item 
+subroutine \mbox{\hyperlink{namespacecompositional__terms_ab7087656dea2acf341899e4e7a7f8eca}{compositional\+\_\+terms\+::cal\+\_\+comp\+\_\+sum2one\+\_\+sou}} (packed\+\_\+state, Mdims)
+\end{DoxyCompactItemize}

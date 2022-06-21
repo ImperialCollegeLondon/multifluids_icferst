@@ -1,0 +1,20 @@
+\hypertarget{multi__self__potential_8_f90}{}\doxysection{/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/multi\+\_\+self\+\_\+potential.F90 File Reference}
+\label{multi__self__potential_8_f90}\index{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/multi\_self\_potential.F90@{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/multi\_self\_potential.F90}}
+{\ttfamily \#include \char`\"{}fdebug.\+h\char`\"{}}\newline
+Include dependency graph for multi\+\_\+self\+\_\+potential.\+F90\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=234pt]{multi__self__potential_8_f90__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Modules}
+\begin{DoxyCompactItemize}
+\item 
+module \mbox{\hyperlink{namespacemulti__sp}{multi\+\_\+sp}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine, public \mbox{\hyperlink{namespacemulti__sp_a3761caa03a0d114b25c395685b965a73}{multi\+\_\+sp\+::assemble\+\_\+and\+\_\+solve\+\_\+sp}} (Mdims, state, packed\+\_\+state, ndgln, Mmat, Mspars, C\+V\+\_\+funs, C\+V\+\_\+\+G\+Idims)
+\begin{DoxyCompactList}\small\item\em \+: This subroutine computes the saturated rock conductivity based on Tiab and Donaldson, 2004 formula. and also includes the temperature/concentration dependency detailed in Sen and Goode, 1992 I\+M\+P\+O\+R\+T\+A\+NT\+: Water needs to be phase 1! T\+O\+DO Maybe add a R\+E\+M\+I\+N\+D\+ER when running with SP solver and to run with Kelvin, maybe this for all the temperature cases T\+O\+DO include the option to project to FE using P\+R\+O\+J\+\_\+\+C\+V\+\_\+\+T\+O\+\_\+\+F\+EM \end{DoxyCompactList}\end{DoxyCompactItemize}

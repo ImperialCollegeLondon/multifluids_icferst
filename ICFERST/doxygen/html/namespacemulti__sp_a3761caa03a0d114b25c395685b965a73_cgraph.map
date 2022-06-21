@@ -1,0 +1,6 @@
+<map id="multi_sp::assemble_and_solve_sp" name="multi_sp::assemble_and_solve_sp">
+<area shape="rect" id="node1" title=": This subroutine computes the saturated rock conductivity based on Tiab and Donaldson,..." alt="" coords="5,86,155,127"/>
+<area shape="rect" id="node2" href="$namespacemultiphase__1d__engine.html#aeef4ba493db104704c886272f75f1f34" title=": In this method we assemble and solve the Laplacian system using at least P1 elements The equation s..." alt="" coords="209,5,378,61"/>
+<area shape="rect" id="node3" href="$namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b" title="@DEPRECATED: Gets memory from packed state" alt="" coords="203,86,384,127"/>
+<area shape="rect" id="node4" href="$namespacemulti__tools.html#ab412a6b9d80984d5739ef227590a9e8d" title=": This subroutine uses python run string to run the python_scalar_diagnostic to read a field the only..." alt="" coords="206,151,381,193"/>
+</map>

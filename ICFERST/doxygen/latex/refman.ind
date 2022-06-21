@@ -1,0 +1,446 @@
+\begin{theindex}
+
+  \item {allocate\_multi\_field1}
+    \subitem {multi\_data\_types::allocate\_multi\_field}, 
+		\hyperpage{111}
+
+  \indexspace
+
+  \item {cv\_advection::dg\_derivs\_all}, \hyperpage{115}
+  \item {cv\_advection::pack\_loc\_all}, \hyperpage{133}
+
+  \indexspace
+
+  \item {multi\_data\_types::allocate\_multi\_dev\_shape\_funs}, 
+		\hyperpage{111}
+  \item {multi\_data\_types::allocate\_multi\_field}, \hyperpage{111}
+    \subitem {allocate\_multi\_field1}, \hyperpage{111}
+  \item {multi\_data\_types::multi\_absorption}, \hyperpage{118}
+  \item {multi\_data\_types::multi\_dev\_shape\_funs}, \hyperpage{119}
+  \item {multi\_data\_types::multi\_dimensions}, \hyperpage{119}
+  \item {multi\_data\_types::multi\_discretization\_opts}, 
+		\hyperpage{121}
+  \item {multi\_data\_types::multi\_field}, \hyperpage{122}
+  \item {multi\_data\_types::multi\_gi\_dimensions}, \hyperpage{122}
+  \item {multi\_data\_types::multi\_matrices}, \hyperpage{123}
+  \item {multi\_data\_types::multi\_ndgln}, \hyperpage{126}
+  \item {multi\_data\_types::multi\_outfluxes}, \hyperpage{126}
+  \item {multi\_data\_types::multi\_pipe\_package}, \hyperpage{128}
+  \item {multi\_data\_types::multi\_shape\_funs}, \hyperpage{128}
+  \item {multi\_data\_types::multi\_sparsities}, \hyperpage{130}
+  \item {multi\_data\_types::multi\_sparsity}, \hyperpage{131}
+  \item {multi\_data\_types::multi\_transport\_scalar}, \hyperpage{132}
+  \item {multi\_data\_types::pipe\_coords}, \hyperpage{133}
+  \item {multi\_data\_types::porous\_adv\_coefs}, \hyperpage{133}
+  \item {multi\_machine\_learning}, \hyperpage{5}
+    \subitem {test\_xgboost}, \hyperpage{5}
+    \subitem {xgboost\_free\_model}, \hyperpage{6}
+    \subitem {xgboost\_load\_model}, \hyperpage{6}
+    \subitem {xgboost\_predict}, \hyperpage{6}
+  \item {multi\_magma::coupling\_term\_coef}, \hyperpage{113}
+  \item {multi\_magma::magma\_phase\_diagram}, \hyperpage{117}
+  \item {multi\_tools::bad\_elements}, \hyperpage{112}
+  \item {multifluids\_solvetimeloop}
+    \subitem {multiphase\_time\_loop}, \hyperpage{7}
+  \item {multiphase\_time\_loop}, \hyperpage{7}
+    \subitem {multifluids\_solvetimeloop}, \hyperpage{7}
+
+  \indexspace
+
+  \item {phreeqcrm}, \hyperpage{7}
+    \subitem {rm\_abort}, \hyperpage{18}
+    \subitem {rm\_closefiles}, \hyperpage{18}
+    \subitem {rm\_concentrations2utility}, \hyperpage{19}
+    \subitem {rm\_create}, \hyperpage{20}
+    \subitem {rm\_createmapping}, \hyperpage{20}
+    \subitem {rm\_decodeerror}, \hyperpage{21}
+    \subitem {rm\_destroy}, \hyperpage{22}
+    \subitem {rm\_dumpmodule}, \hyperpage{22}
+    \subitem {rm\_errormessage}, \hyperpage{23}
+    \subitem {rm\_findcomponents}, \hyperpage{24}
+    \subitem {rm\_getbackwardmapping}, \hyperpage{25}
+    \subitem {rm\_getchemistrycellcount}, \hyperpage{26}
+    \subitem {rm\_getcomponent}, \hyperpage{26}
+    \subitem {rm\_getcomponentcount}, \hyperpage{27}
+    \subitem {rm\_getconcentrations}, \hyperpage{28}
+    \subitem {rm\_getdensity}, \hyperpage{28}
+    \subitem {rm\_getendcell}, \hyperpage{29}
+    \subitem {rm\_getequilibriumphasescount}, \hyperpage{30}
+    \subitem {rm\_getequilibriumphasesname}, \hyperpage{30}
+    \subitem {rm\_geterrorstring}, \hyperpage{31}
+    \subitem {rm\_geterrorstringlength}, \hyperpage{32}
+    \subitem {rm\_getexchangename}, \hyperpage{32}
+    \subitem {rm\_getexchangespeciescount}, \hyperpage{33}
+    \subitem {rm\_getexchangespeciesname}, \hyperpage{34}
+    \subitem {rm\_getfileprefix}, \hyperpage{34}
+    \subitem {rm\_getgascompmoles}, \hyperpage{36}
+    \subitem {rm\_getgascomponentscount}, \hyperpage{37}
+    \subitem {rm\_getgascomponentsname}, \hyperpage{37}
+    \subitem {rm\_getgascompphi}, \hyperpage{38}
+    \subitem {rm\_getgascomppressures}, \hyperpage{39}
+    \subitem {rm\_getgasphasevolume}, \hyperpage{39}
+    \subitem {rm\_getgfw}, \hyperpage{40}
+    \subitem {rm\_getgridcellcount}, \hyperpage{41}
+    \subitem {rm\_getiphreeqcid}, \hyperpage{41}
+    \subitem {rm\_getkineticreactionscount}, \hyperpage{42}
+    \subitem {rm\_getkineticreactionsname}, \hyperpage{43}
+    \subitem {rm\_getmpimyself}, \hyperpage{44}
+    \subitem {rm\_getmpitasks}, \hyperpage{44}
+    \subitem {rm\_getnthselectedoutputusernumber}, \hyperpage{45}
+    \subitem {rm\_getsaturation}, \hyperpage{46}
+    \subitem {rm\_getselectedoutput}, \hyperpage{47}
+    \subitem {rm\_getselectedoutputcolumncount}, \hyperpage{47}
+    \subitem {rm\_getselectedoutputcount}, \hyperpage{48}
+    \subitem {rm\_getselectedoutputheading}, \hyperpage{49}
+    \subitem {rm\_getselectedoutputrowcount}, \hyperpage{49}
+    \subitem {rm\_getsicount}, \hyperpage{51}
+    \subitem {rm\_getsiname}, \hyperpage{52}
+    \subitem {rm\_getsolidsolutioncomponentscount}, \hyperpage{52}
+    \subitem {rm\_getsolidsolutioncomponentsname}, \hyperpage{53}
+    \subitem {rm\_getsolidsolutionname}, \hyperpage{54}
+    \subitem {rm\_getsolutionvolume}, \hyperpage{55}
+    \subitem {rm\_getspeciesconcentrations}, \hyperpage{55}
+    \subitem {rm\_getspeciescount}, \hyperpage{56}
+    \subitem {rm\_getspeciesd25}, \hyperpage{57}
+    \subitem {rm\_getspecieslog10gammas}, \hyperpage{58}
+    \subitem {rm\_getspecieslog10molalities}, \hyperpage{59}
+    \subitem {rm\_getspeciesname}, \hyperpage{59}
+    \subitem {rm\_getspeciessaveon}, \hyperpage{61}
+    \subitem {rm\_getspeciesz}, \hyperpage{62}
+    \subitem {rm\_getstartcell}, \hyperpage{62}
+    \subitem {rm\_getsurfacename}, \hyperpage{63}
+    \subitem {rm\_getsurfacespeciescount}, \hyperpage{64}
+    \subitem {rm\_getsurfacespeciesname}, \hyperpage{64}
+    \subitem {rm\_getsurfacetype}, \hyperpage{65}
+    \subitem {rm\_getthreadcount}, \hyperpage{66}
+    \subitem {rm\_gettime}, \hyperpage{67}
+    \subitem {rm\_gettimeconversion}, \hyperpage{67}
+    \subitem {rm\_gettimestep}, \hyperpage{68}
+    \subitem {rm\_initialphreeqc2concentrations}, \hyperpage{69}
+    \subitem {rm\_initialphreeqc2module}, \hyperpage{69}
+    \subitem {rm\_initialphreeqc2speciesconcentrations}, \hyperpage{70}
+    \subitem {rm\_initialphreeqccell2module}, \hyperpage{71}
+    \subitem {rm\_loaddatabase}, \hyperpage{72}
+    \subitem {rm\_logmessage}, \hyperpage{73}
+    \subitem {rm\_mpiworker}, \hyperpage{74}
+    \subitem {rm\_mpiworkerbreak}, \hyperpage{74}
+    \subitem {rm\_openfiles}, \hyperpage{75}
+    \subitem {rm\_outputmessage}, \hyperpage{76}
+    \subitem {rm\_runcells}, \hyperpage{76}
+    \subitem {rm\_runfile}, \hyperpage{77}
+    \subitem {rm\_runstring}, \hyperpage{78}
+    \subitem {rm\_screenmessage}, \hyperpage{79}
+    \subitem {rm\_setcomponenth2o}, \hyperpage{79}
+    \subitem {rm\_setconcentrations}, \hyperpage{80}
+    \subitem {rm\_setcurrentselectedoutputusernumber}, \hyperpage{81}
+    \subitem {rm\_setdensity}, \hyperpage{82}
+    \subitem {rm\_setdumpfilename}, \hyperpage{82}
+    \subitem {rm\_seterrorhandlermode}, \hyperpage{83}
+    \subitem {rm\_seterroron}, \hyperpage{84}
+    \subitem {rm\_setfileprefix}, \hyperpage{84}
+    \subitem {rm\_setgascompmoles}, \hyperpage{85}
+    \subitem {rm\_setgasphasevolume}, \hyperpage{86}
+    \subitem {rm\_setmpiworkercallback}, \hyperpage{87}
+    \subitem {rm\_setpartitionuzsolids}, \hyperpage{88}
+    \subitem {rm\_setporosity}, \hyperpage{88}
+    \subitem {rm\_setpressure}, \hyperpage{90}
+    \subitem {rm\_setprintchemistrymask}, \hyperpage{91}
+    \subitem {rm\_setprintchemistryon}, \hyperpage{91}
+    \subitem {rm\_setrebalancebycell}, \hyperpage{92}
+    \subitem {rm\_setrebalancefraction}, \hyperpage{93}
+    \subitem {rm\_setrepresentativevolume}, \hyperpage{94}
+    \subitem {rm\_setsaturation}, \hyperpage{94}
+    \subitem {rm\_setscreenon}, \hyperpage{95}
+    \subitem {rm\_setselectedoutputon}, \hyperpage{96}
+    \subitem {rm\_setspeciessaveon}, \hyperpage{97}
+    \subitem {rm\_settemperature}, \hyperpage{97}
+    \subitem {rm\_settime}, \hyperpage{98}
+    \subitem {rm\_settimeconversion}, \hyperpage{99}
+    \subitem {rm\_settimestep}, \hyperpage{99}
+    \subitem {rm\_setunitsexchange}, \hyperpage{100}
+    \subitem {rm\_setunitsgasphase}, \hyperpage{101}
+    \subitem {rm\_setunitskinetics}, \hyperpage{102}
+    \subitem {rm\_setunitsppassemblage}, \hyperpage{103}
+    \subitem {rm\_setunitssolution}, \hyperpage{104}
+    \subitem {rm\_setunitsssassemblage}, \hyperpage{105}
+    \subitem {rm\_setunitssurface}, \hyperpage{106}
+    \subitem {rm\_speciesconcentrations2module}, \hyperpage{107}
+    \subitem {rm\_usesolutiondensityvolume}, \hyperpage{107}
+    \subitem {rm\_warningmessage}, \hyperpage{108}
+
+  \indexspace
+
+  \item {rm\_abort}
+    \subitem {phreeqcrm}, \hyperpage{18}
+  \item {rm\_closefiles}
+    \subitem {phreeqcrm}, \hyperpage{18}
+  \item {rm\_concentrations2utility}
+    \subitem {phreeqcrm}, \hyperpage{19}
+  \item {rm\_create}
+    \subitem {phreeqcrm}, \hyperpage{20}
+  \item {rm\_createmapping}
+    \subitem {phreeqcrm}, \hyperpage{20}
+  \item {rm\_decodeerror}
+    \subitem {phreeqcrm}, \hyperpage{21}
+  \item {rm\_destroy}
+    \subitem {phreeqcrm}, \hyperpage{22}
+  \item {rm\_dumpmodule}
+    \subitem {phreeqcrm}, \hyperpage{22}
+  \item {rm\_errormessage}
+    \subitem {phreeqcrm}, \hyperpage{23}
+  \item {rm\_findcomponents}
+    \subitem {phreeqcrm}, \hyperpage{24}
+  \item {rm\_getbackwardmapping}
+    \subitem {phreeqcrm}, \hyperpage{25}
+  \item {rm\_getchemistrycellcount}
+    \subitem {phreeqcrm}, \hyperpage{26}
+  \item {rm\_getcomponent}
+    \subitem {phreeqcrm}, \hyperpage{26}
+  \item {rm\_getcomponentcount}
+    \subitem {phreeqcrm}, \hyperpage{27}
+  \item {rm\_getconcentrations}
+    \subitem {phreeqcrm}, \hyperpage{28}
+  \item {rm\_getdensity}
+    \subitem {phreeqcrm}, \hyperpage{28}
+  \item {rm\_getendcell}
+    \subitem {phreeqcrm}, \hyperpage{29}
+  \item {rm\_getequilibriumphasescount}
+    \subitem {phreeqcrm}, \hyperpage{30}
+  \item {rm\_getequilibriumphasesname}
+    \subitem {phreeqcrm}, \hyperpage{30}
+  \item {rm\_geterrorstring}
+    \subitem {phreeqcrm}, \hyperpage{31}
+  \item {rm\_geterrorstringlength}
+    \subitem {phreeqcrm}, \hyperpage{32}
+  \item {rm\_getexchangename}
+    \subitem {phreeqcrm}, \hyperpage{32}
+  \item {rm\_getexchangespeciescount}
+    \subitem {phreeqcrm}, \hyperpage{33}
+  \item {rm\_getexchangespeciesname}
+    \subitem {phreeqcrm}, \hyperpage{34}
+  \item {rm\_getfileprefix}
+    \subitem {phreeqcrm}, \hyperpage{34}
+  \item {rm\_getgascompmoles}
+    \subitem {phreeqcrm}, \hyperpage{36}
+  \item {rm\_getgascomponentscount}
+    \subitem {phreeqcrm}, \hyperpage{37}
+  \item {rm\_getgascomponentsname}
+    \subitem {phreeqcrm}, \hyperpage{37}
+  \item {rm\_getgascompphi}
+    \subitem {phreeqcrm}, \hyperpage{38}
+  \item {rm\_getgascomppressures}
+    \subitem {phreeqcrm}, \hyperpage{39}
+  \item {rm\_getgasphasevolume}
+    \subitem {phreeqcrm}, \hyperpage{39}
+  \item {rm\_getgfw}
+    \subitem {phreeqcrm}, \hyperpage{40}
+  \item {rm\_getgridcellcount}
+    \subitem {phreeqcrm}, \hyperpage{41}
+  \item {rm\_getiphreeqcid}
+    \subitem {phreeqcrm}, \hyperpage{41}
+  \item {rm\_getkineticreactionscount}
+    \subitem {phreeqcrm}, \hyperpage{42}
+  \item {rm\_getkineticreactionsname}
+    \subitem {phreeqcrm}, \hyperpage{43}
+  \item {rm\_getmpimyself}
+    \subitem {phreeqcrm}, \hyperpage{44}
+  \item {rm\_getmpitasks}
+    \subitem {phreeqcrm}, \hyperpage{44}
+  \item {rm\_getnthselectedoutputusernumber}
+    \subitem {phreeqcrm}, \hyperpage{45}
+  \item {rm\_getsaturation}
+    \subitem {phreeqcrm}, \hyperpage{46}
+  \item {rm\_getselectedoutput}
+    \subitem {phreeqcrm}, \hyperpage{47}
+  \item {rm\_getselectedoutputcolumncount}
+    \subitem {phreeqcrm}, \hyperpage{47}
+  \item {rm\_getselectedoutputcount}
+    \subitem {phreeqcrm}, \hyperpage{48}
+  \item {rm\_getselectedoutputheading}
+    \subitem {phreeqcrm}, \hyperpage{49}
+  \item {rm\_getselectedoutputrowcount}
+    \subitem {phreeqcrm}, \hyperpage{49}
+  \item {rm\_getsicount}
+    \subitem {phreeqcrm}, \hyperpage{51}
+  \item {rm\_getsiname}
+    \subitem {phreeqcrm}, \hyperpage{52}
+  \item {rm\_getsolidsolutioncomponentscount}
+    \subitem {phreeqcrm}, \hyperpage{52}
+  \item {rm\_getsolidsolutioncomponentsname}
+    \subitem {phreeqcrm}, \hyperpage{53}
+  \item {rm\_getsolidsolutionname}
+    \subitem {phreeqcrm}, \hyperpage{54}
+  \item {rm\_getsolutionvolume}
+    \subitem {phreeqcrm}, \hyperpage{55}
+  \item {rm\_getspeciesconcentrations}
+    \subitem {phreeqcrm}, \hyperpage{55}
+  \item {rm\_getspeciescount}
+    \subitem {phreeqcrm}, \hyperpage{56}
+  \item {rm\_getspeciesd25}
+    \subitem {phreeqcrm}, \hyperpage{57}
+  \item {rm\_getspecieslog10gammas}
+    \subitem {phreeqcrm}, \hyperpage{58}
+  \item {rm\_getspecieslog10molalities}
+    \subitem {phreeqcrm}, \hyperpage{59}
+  \item {rm\_getspeciesname}
+    \subitem {phreeqcrm}, \hyperpage{59}
+  \item {rm\_getspeciessaveon}
+    \subitem {phreeqcrm}, \hyperpage{61}
+  \item {rm\_getspeciesz}
+    \subitem {phreeqcrm}, \hyperpage{62}
+  \item {rm\_getstartcell}
+    \subitem {phreeqcrm}, \hyperpage{62}
+  \item {rm\_getsurfacename}
+    \subitem {phreeqcrm}, \hyperpage{63}
+  \item {rm\_getsurfacespeciescount}
+    \subitem {phreeqcrm}, \hyperpage{64}
+  \item {rm\_getsurfacespeciesname}
+    \subitem {phreeqcrm}, \hyperpage{64}
+  \item {rm\_getsurfacetype}
+    \subitem {phreeqcrm}, \hyperpage{65}
+  \item {rm\_getthreadcount}
+    \subitem {phreeqcrm}, \hyperpage{66}
+  \item {rm\_gettime}
+    \subitem {phreeqcrm}, \hyperpage{67}
+  \item {rm\_gettimeconversion}
+    \subitem {phreeqcrm}, \hyperpage{67}
+  \item {rm\_gettimestep}
+    \subitem {phreeqcrm}, \hyperpage{68}
+  \item {rm\_initialphreeqc2concentrations}
+    \subitem {phreeqcrm}, \hyperpage{69}
+  \item {rm\_initialphreeqc2module}
+    \subitem {phreeqcrm}, \hyperpage{69}
+  \item {rm\_initialphreeqc2speciesconcentrations}
+    \subitem {phreeqcrm}, \hyperpage{70}
+  \item {rm\_initialphreeqccell2module}
+    \subitem {phreeqcrm}, \hyperpage{71}
+  \item {rm\_loaddatabase}
+    \subitem {phreeqcrm}, \hyperpage{72}
+  \item {rm\_logmessage}
+    \subitem {phreeqcrm}, \hyperpage{73}
+  \item {rm\_mpiworker}
+    \subitem {phreeqcrm}, \hyperpage{74}
+  \item {rm\_mpiworkerbreak}
+    \subitem {phreeqcrm}, \hyperpage{74}
+  \item {rm\_openfiles}
+    \subitem {phreeqcrm}, \hyperpage{75}
+  \item {rm\_outputmessage}
+    \subitem {phreeqcrm}, \hyperpage{76}
+  \item {rm\_runcells}
+    \subitem {phreeqcrm}, \hyperpage{76}
+  \item {rm\_runfile}
+    \subitem {phreeqcrm}, \hyperpage{77}
+  \item {rm\_runstring}
+    \subitem {phreeqcrm}, \hyperpage{78}
+  \item {rm\_screenmessage}
+    \subitem {phreeqcrm}, \hyperpage{79}
+  \item {rm\_setcomponenth2o}
+    \subitem {phreeqcrm}, \hyperpage{79}
+  \item {rm\_setconcentrations}
+    \subitem {phreeqcrm}, \hyperpage{80}
+  \item {rm\_setcurrentselectedoutputusernumber}
+    \subitem {phreeqcrm}, \hyperpage{81}
+  \item {rm\_setdensity}
+    \subitem {phreeqcrm}, \hyperpage{82}
+  \item {rm\_setdumpfilename}
+    \subitem {phreeqcrm}, \hyperpage{82}
+  \item {rm\_seterrorhandlermode}
+    \subitem {phreeqcrm}, \hyperpage{83}
+  \item {rm\_seterroron}
+    \subitem {phreeqcrm}, \hyperpage{84}
+  \item {rm\_setfileprefix}
+    \subitem {phreeqcrm}, \hyperpage{84}
+  \item {rm\_setgascompmoles}
+    \subitem {phreeqcrm}, \hyperpage{85}
+  \item {rm\_setgasphasevolume}
+    \subitem {phreeqcrm}, \hyperpage{86}
+  \item {rm\_setmpiworkercallback}
+    \subitem {phreeqcrm}, \hyperpage{87}
+  \item {rm\_setpartitionuzsolids}
+    \subitem {phreeqcrm}, \hyperpage{88}
+  \item {rm\_setporosity}
+    \subitem {phreeqcrm}, \hyperpage{88}
+  \item {rm\_setpressure}
+    \subitem {phreeqcrm}, \hyperpage{90}
+  \item {rm\_setprintchemistrymask}
+    \subitem {phreeqcrm}, \hyperpage{91}
+  \item {rm\_setprintchemistryon}
+    \subitem {phreeqcrm}, \hyperpage{91}
+  \item {rm\_setrebalancebycell}
+    \subitem {phreeqcrm}, \hyperpage{92}
+  \item {rm\_setrebalancefraction}
+    \subitem {phreeqcrm}, \hyperpage{93}
+  \item {rm\_setrepresentativevolume}
+    \subitem {phreeqcrm}, \hyperpage{94}
+  \item {rm\_setsaturation}
+    \subitem {phreeqcrm}, \hyperpage{94}
+  \item {rm\_setscreenon}
+    \subitem {phreeqcrm}, \hyperpage{95}
+  \item {rm\_setselectedoutputon}
+    \subitem {phreeqcrm}, \hyperpage{96}
+  \item {rm\_setspeciessaveon}
+    \subitem {phreeqcrm}, \hyperpage{97}
+  \item {rm\_settemperature}
+    \subitem {phreeqcrm}, \hyperpage{97}
+  \item {rm\_settime}
+    \subitem {phreeqcrm}, \hyperpage{98}
+  \item {rm\_settimeconversion}
+    \subitem {phreeqcrm}, \hyperpage{99}
+  \item {rm\_settimestep}
+    \subitem {phreeqcrm}, \hyperpage{99}
+  \item {rm\_setunitsexchange}
+    \subitem {phreeqcrm}, \hyperpage{100}
+  \item {rm\_setunitsgasphase}
+    \subitem {phreeqcrm}, \hyperpage{101}
+  \item {rm\_setunitskinetics}
+    \subitem {phreeqcrm}, \hyperpage{102}
+  \item {rm\_setunitsppassemblage}
+    \subitem {phreeqcrm}, \hyperpage{103}
+  \item {rm\_setunitssolution}
+    \subitem {phreeqcrm}, \hyperpage{104}
+  \item {rm\_setunitsssassemblage}
+    \subitem {phreeqcrm}, \hyperpage{105}
+  \item {rm\_setunitssurface}
+    \subitem {phreeqcrm}, \hyperpage{106}
+  \item {rm\_speciesconcentrations2module}
+    \subitem {phreeqcrm}, \hyperpage{107}
+  \item {rm\_usesolutiondensityvolume}
+    \subitem {phreeqcrm}, \hyperpage{107}
+  \item {rm\_warningmessage}
+    \subitem {phreeqcrm}, \hyperpage{108}
+
+  \indexspace
+
+  \item {SetBasicFortranCallbackF}, \hyperpage{134}
+  \item {setbasicfortrancallbackf::fcn}, \hyperpage{115}
+  \item {shape\_functions\_linear\_quadratic::detnlxr}, \hyperpage{113}
+  \item {shape\_functions\_linear\_quadratic::detnlxr\_invjac}, 
+		\hyperpage{114}
+  \item {shape\_functions\_ndim::xprod}, \hyperpage{134}
+  \item {shape\_functions\_prototype::detnlxr\_plus\_u}, 
+		\hyperpage{114}
+
+  \indexspace
+
+  \item {test\_xgboost}
+    \subitem {multi\_machine\_learning}, \hyperpage{5}
+
+  \indexspace
+
+  \item {xgb\_interface}, \hyperpage{109}
+  \item {xgb\_interface::fortran\_XGBoosterCreate}, \hyperpage{115}
+  \item {xgb\_interface::fortran\_XGBoosterFree}, \hyperpage{115}
+  \item {xgb\_interface::fortran\_XGBoosterLoadModel}, \hyperpage{116}
+  \item {xgb\_interface::fortran\_XGBoosterPredict}, \hyperpage{116}
+  \item {xgb\_interface::fortran\_XGBoosterSaveModel}, \hyperpage{116}
+  \item {xgb\_interface::fortran\_XGBoosterSetParam}, \hyperpage{116}
+  \item {xgb\_interface::fortran\_XGDMatrixCreateFromMat}, 
+		\hyperpage{117}
+  \item {xgboost\_free\_model}
+    \subitem {multi\_machine\_learning}, \hyperpage{6}
+  \item {xgboost\_load\_model}
+    \subitem {multi\_machine\_learning}, \hyperpage{6}
+  \item {xgboost\_predict}
+    \subitem {multi\_machine\_learning}, \hyperpage{6}
+
+\end{theindex}

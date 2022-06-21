@@ -1,0 +1,534 @@
+\hypertarget{namespacemultiphase__1d__engine}{}\doxysection{multiphase\+\_\+1d\+\_\+engine Module Reference}
+\label{namespacemultiphase__1d__engine}\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__1d__engine_a98e757b51a04b55df8d38e36470e0b96}{intenerge\+\_\+assem\+\_\+solve}} (state, packed\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, tracer, velocity, density, multi\+\_\+absorp, DT, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE, I\+G\+O\+T\+\_\+\+T2, igot\+\_\+theta\+\_\+flux, G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, option\+\_\+path, mass\+\_\+ele\+\_\+transp, thermal, T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, icomp, saturation, Permeability\+\_\+tensor\+\_\+field, nonlinear\+\_\+iteration)
+\begin{DoxyCompactList}\small\item\em Calls to generate the transport equation for the transport of energy/temperature and to solve the transport of components. \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__1d__engine_af9aedf8b67f5b7198eb4b67601a7fab0}{enthalpy\+\_\+assem\+\_\+solve}} (state, packed\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, tracer, velocity, density, multi\+\_\+absorp, DT, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE, I\+G\+O\+T\+\_\+\+T2, igot\+\_\+theta\+\_\+flux, G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, option\+\_\+path, mass\+\_\+ele\+\_\+transp, thermal, T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, icomp, saturation, Permeability\+\_\+tensor\+\_\+field, nonlinear\+\_\+iteration, magma\+\_\+phase\+\_\+coefficients)
+\begin{DoxyCompactList}\small\item\em Calls to generate the transport equation for the enthalpy equation. This is efectively the temperature equation but making the enthalpy implicit by substituting the temperature by its linear relationship with enthalpy\+: H = rho Cp Temp + rho Lf phi; Where Lf is the latent heat and phi is the amount of liquid fluid phase. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a86c48c7bcc5921e6764217e562a7b5d6}{force\+\_\+min\+\_\+max\+\_\+principle}} (Mdims, entrance, tracer, nonlinear\+\_\+iteration, totally\+\_\+min\+\_\+max)
+\begin{DoxyCompactList}\small\item\em \+: To help the stability of the system,if there are no sources/sinks it is known that the temperature must fulfill the min max principle, therefore here values outside this rank are capped. \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__1d__engine_aa5819c18b57b8144faa1885776a2cc8b}{tracer\+\_\+assemble\+\_\+solve}} (Tracer\+\_\+name, state, packed\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, tracer, velocity, density, multi\+\_\+absorp, DT, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE, I\+G\+O\+T\+\_\+\+T2, igot\+\_\+theta\+\_\+flux, G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, mass\+\_\+ele\+\_\+transp, T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, icomp, saturation, Permeability\+\_\+tensor\+\_\+field, nonlinear\+\_\+iteration)
+\begin{DoxyCompactList}\small\item\em Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passive\+\_\+\+Tracer\+\_\+N Where N is an integer which is continuous starting from 1 A boussinesq approximation is enforced on these tracers as the are totally I\+N\+E\+RT C\+U\+R\+R\+E\+N\+T\+LY NO D\+I\+F\+F\+U\+S\+I\+ON. \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__1d__engine_ad29606c63b241238edd97827aa4564d7}{volumefraction\+\_\+assemble\+\_\+solve}} (state, packed\+\_\+state, multicomponent\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, multi\+\_\+absorp, upwnd, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, DT, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, V\+\_\+\+S\+O\+U\+R\+CE, V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE, igot\+\_\+theta\+\_\+flux, mass\+\_\+ele\+\_\+transp, nonlinear\+\_\+iteration, time\+\_\+step, S\+F\+P\+I\+\_\+taken, S\+F\+P\+I\+\_\+its, Courant\+\_\+number, T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J)
+\begin{DoxyCompactList}\small\item\em Calls to generate the transport equation for the saturation. Embeded an F\+PI with backtracking method is uncluded. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a871f4ede396b430a5194023196511192}{compositional\+\_\+assemble\+\_\+solve}} (state, packed\+\_\+state, multicomponent\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, multi\+\_\+absorp, DT, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, mass\+\_\+ele, sum\+\_\+theta\+\_\+flux, sum\+\_\+one\+\_\+m\+\_\+theta\+\_\+flux, sum\+\_\+theta\+\_\+flux\+\_\+j, sum\+\_\+one\+\_\+m\+\_\+theta\+\_\+flux\+\_\+j)
+\begin{DoxyCompactList}\small\item\em \+:In this subroutine the components are solved for all the phases. Systems for each component are assembled and solved by calling I\+N\+T\+E\+N\+E\+R\+G\+E\+\_\+\+A\+S\+S\+E\+M\+\_\+\+S\+O\+L\+VE \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__1d__engine_ae5be4b78c1796fac4008d398a7cdd0aa}{force\+\_\+bal\+\_\+cty\+\_\+assem\+\_\+solve}} (state, packed\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, F\+E\+\_\+\+G\+Idims, C\+V\+\_\+funs, F\+E\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, multi\+\_\+absorp, upwnd, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, velocity, pressure, DT, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, V\+\_\+\+S\+O\+U\+R\+CE, V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE, I\+G\+O\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, calculate\+\_\+mass\+\_\+delta, outfluxes, pres\+\_\+its\+\_\+taken, nonlinear\+\_\+its, Courant\+\_\+number)
+\begin{DoxyCompactList}\small\item\em Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix Once these matrices (and corresponding R\+H\+Ss) are generated the system of equations is solved. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_af5917482b2dae4c57c6e06a839682e42}{dg\+\_\+visc\+\_\+lin}} (S\+\_\+\+I\+N\+V\+\_\+\+N\+N\+X\+\_\+\+M\+A\+T12, N\+N\+X\+\_\+\+M\+AT, N\+N\+X\+\_\+\+M\+A\+T2, N\+N\+\_\+\+M\+AT, N\+N\+\_\+\+M\+A\+T2, U\+\_\+\+S\+N\+L\+OC, U\+\_\+\+N\+L\+OC, S\+B\+U\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED, S\+D\+E\+T\+WE, S\+B\+C\+V\+N\+GI, S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL, N\+D\+IM, U\+\_\+\+S\+L\+O\+C2\+L\+OC, U\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, U\+\_\+\+N\+L\+O\+C\+\_\+\+E\+XT, O\+N\+\_\+\+B\+O\+U\+N\+D\+A\+RY)
+\begin{DoxyCompactList}\small\item\em \+: This sub calculates S\+\_\+\+I\+N\+V\+\_\+\+N\+N\+X\+\_\+\+M\+A\+T12 which contains N\+D\+IM matricies that are used to form the inter element coupling for the viscocity discretization. N\+N\+X\+\_\+\+M\+AT, N\+N\+X\+\_\+\+M\+A\+T2 contain matricies of first derivative times basis function for current element and neightbouring element. Similarly N\+N\+\_\+\+M\+AT, N\+N\+\_\+\+M\+A\+T2, contain the element-\/wise mass matrices. Only call this sub if element not next to the boundary... \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_afcedae35a0a37c9b033248d85bb9ad86}{viscocity\+\_\+tensor\+\_\+les\+\_\+calc}} (L\+E\+S\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, L\+E\+S\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL, D\+U\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, N\+D\+IM, N\+P\+H\+A\+SE, U\+\_\+\+N\+L\+OC, X\+\_\+\+N\+L\+OC, T\+O\+T\+E\+LE, X\+\_\+\+N\+O\+N\+O\+DS, X\+\_\+\+A\+LL, X\+\_\+\+N\+D\+G\+LN, M\+A\+T\+\_\+\+N\+O\+N\+O\+DS, M\+A\+T\+\_\+\+N\+L\+OC, M\+A\+T\+\_\+\+N\+D\+G\+LN, L\+E\+S\+\_\+\+D\+I\+S\+O\+PT, L\+E\+S\+\_\+\+CS, U\+D\+EN, C\+V\+\_\+\+N\+O\+N\+O\+DS, C\+V\+\_\+\+N\+D\+G\+LN, U\+\_\+\+N\+D\+G\+LN, U\+\_\+\+N\+O\+N\+O\+DS, U\+\_\+\+A\+LL, D\+E\+R\+IV)
+\begin{DoxyCompactList}\small\item\em \+: This subroutine calculates a tensor of viscocity L\+E\+S\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, L\+E\+S\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a92d78676878788b54916f9a7e0bc894a}{comb\+\_\+vel\+\_\+matrix\+\_\+diag\+\_\+dist}} (D\+I\+A\+G\+\_\+\+B\+I\+G\+M\+\_\+\+C\+ON, B\+I\+G\+M\+\_\+\+C\+ON, D\+G\+M\+\_\+\+P\+E\+T\+SC, F\+I\+N\+E\+LE, C\+O\+L\+E\+LE, N\+D\+IM, N\+P\+H\+A\+SE, U\+\_\+\+N\+L\+OC, T\+O\+T\+E\+LE, velocity, pressure, Mmat)
+\begin{DoxyCompactList}\small\item\em \+: This subroutine combines the distributed and block diagonal for an element into the matrix D\+G\+M\+\_\+\+P\+HA. For stokes also the diagonal of the matrix is introduced in the mass matrix \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_af8e1dabacd438da77f8e97f5234e6e3e}{comb\+\_\+vel\+\_\+matrix\+\_\+diag\+\_\+dist\+\_\+lump}} (D\+I\+A\+G\+\_\+\+B\+I\+G\+M\+\_\+\+C\+ON, B\+I\+G\+M\+\_\+\+C\+ON, D\+G\+M\+\_\+\+P\+E\+T\+SC, F\+I\+N\+E\+LE, C\+O\+L\+E\+LE, N\+D\+IM, N\+P\+H\+A\+SE, U\+\_\+\+N\+L\+OC, T\+O\+T\+E\+LE, velocity, pressure)
+\begin{DoxyCompactList}\small\item\em \+: This subroutine combines the distributed and block diagonal for an element into the matrix D\+G\+M\+\_\+\+P\+HA. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a8e2d722ec8283f1e4d87f7b6d7e427a5}{use\+\_\+posinmat\+\_\+c\+\_\+store}} (C\+O\+U\+NT, U\+\_\+\+I\+N\+OD, P\+\_\+\+J\+N\+OD, U\+\_\+\+N\+O\+N\+O\+DS, F\+I\+N\+DC, C\+O\+LC, N\+C\+O\+LC, I\+D\+O\+\_\+\+S\+T\+O\+R\+E\+\_\+\+A\+C\+\_\+\+S\+P\+A\+R\+\_\+\+PT, S\+T\+O\+R\+E\+D\+\_\+\+A\+C\+\_\+\+S\+P\+A\+R\+\_\+\+PT, P\+O\+S\+I\+N\+M\+A\+T\+\_\+\+C\+\_\+\+S\+T\+O\+RE, E\+LE, U\+\_\+\+I\+L\+OC, P\+\_\+\+J\+L\+OC, T\+O\+T\+E\+LE, U\+\_\+\+N\+L\+OC, P\+\_\+\+N\+L\+OC)
+\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a25c88bda5ea4082016d39781e111d445}{use\+\_\+posinmat\+\_\+c\+\_\+store\+\_\+suf\+\_\+dg}} (C\+O\+U\+NT, U\+\_\+\+I\+N\+OD, P\+\_\+\+J\+N\+OD, U\+\_\+\+N\+O\+N\+O\+DS, F\+I\+N\+DC, C\+O\+LC, N\+C\+O\+LC, I\+D\+O\+\_\+\+S\+T\+O\+R\+E\+\_\+\+A\+C\+\_\+\+S\+P\+A\+R\+\_\+\+PT, S\+T\+O\+R\+E\+D\+\_\+\+A\+C\+\_\+\+S\+P\+A\+R\+\_\+\+PT, P\+O\+S\+I\+N\+M\+A\+T\+\_\+\+C\+\_\+\+S\+T\+O\+R\+E\+\_\+\+S\+U\+F\+\_\+\+DG, E\+LE, I\+F\+A\+CE, U\+\_\+\+S\+I\+L\+OC, P\+\_\+\+S\+J\+L\+OC, T\+O\+T\+E\+LE, N\+F\+A\+CE, U\+\_\+\+S\+N\+L\+OC, P\+\_\+\+S\+N\+L\+OC)
+\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a8917356adde1eb2aedccd0320529a6c5}{linearise\+\_\+field}} (field\+\_\+in, field\+\_\+out)
+\begin{DoxyCompactList}\small\item\em \+: This sub will linearise a p2 field \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a03c49a0f1a67a464bbb77115775ae4d1}{introduce\+\_\+grad\+\_\+rhs\+\_\+field\+\_\+term}} (packed\+\_\+state, Mdims, Mmat, R\+H\+S\+\_\+field, F\+E\+\_\+funs, Devfuns, X\+\_\+\+A\+LL, L\+O\+C\+\_\+\+U\+\_\+\+R\+HS, ele, cv\+\_\+ndgln, x\+\_\+ndgln, ele2, iface, sdetwe, S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL, U\+\_\+\+S\+L\+O\+C2\+L\+OC, C\+V\+\_\+\+S\+L\+O\+C2\+L\+OC, M\+A\+T\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC)
+\begin{DoxyCompactList}\small\item\em \+: This subroutine performs and introduces the gradient of a R\+HS field (Capillary pressure for example) for the momentum equation. The inout field is R\+H\+S\+\_\+field For capillary pressure\+: The capillary pressure is a term introduced as a R\+HS which affects the effective velocity \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_acad594ff5e1d219a2e1c7e5fe2a51605}{getoverrelaxation\+\_\+parameter}} (state, packed\+\_\+state, Mdims, ndgln, Overrelaxation, Phase\+\_\+with\+\_\+\+Pc, totally\+\_\+min\+\_\+max, for\+\_\+transport)
+\begin{DoxyCompactList}\small\item\em Overrelaxation has to be alocate before calling this subroutine its size is cv\+\_\+nonods For more information read\+: doi.\+org/10.1016/j.\+cma.\+2019.\+07.\+004. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a7a01c78d922871a74af7e6e4a3228868}{high\+\_\+order\+\_\+pressure\+\_\+solve}} (Mdims, ndgln, u\+\_\+rhs, state, packed\+\_\+state, nphase, u\+\_\+absorbin)
+\begin{DoxyCompactList}\small\item\em \+: Instead of including the gravity in the R\+HS normally, here a system based on a Laplacian is created and solved that accounts for the gravity effect in the system. Next, this is introduced as a R\+HS in the momemtum equation This allows for higher precision for the gravity effect. \end{DoxyCompactList}\item 
+real function \mbox{\hyperlink{namespacemultiphase__1d__engine_a75a4fb88f761b81639c9b81628eddc95}{dg\+\_\+oscilat\+\_\+detect}} (S\+N\+D\+O\+T\+Q\+\_\+\+K\+E\+EP, S\+N\+D\+O\+T\+Q2\+\_\+\+K\+E\+EP, N\+\_\+\+D\+O\+T\+\_\+\+DU, N\+\_\+\+D\+O\+T\+\_\+\+D\+U2, S\+I\+N\+C\+O\+ME, M\+A\+S\+S\+\_\+\+E\+LE, M\+A\+S\+S\+\_\+\+E\+L\+E2)
+\begin{DoxyCompactList}\small\item\em \+: Determine if we have an oscillation in the normal direction... dg\+\_\+oscilat\+\_\+detect=1.\+0-\/ C\+E\+N\+T\+R\+AL S\+C\+H\+E\+ME. dg\+\_\+oscilat\+\_\+detect=0.\+0-\/ U\+P\+W\+I\+ND S\+C\+H\+E\+ME. \end{DoxyCompactList}\item 
+real function \mbox{\hyperlink{namespacemultiphase__1d__engine_a34cd5ba5d5dfec039fa896b5fdc14e9f}{p0\+\_\+dg\+\_\+oscilat\+\_\+detect}} (S\+N\+D\+O\+T\+Q\+\_\+\+K\+E\+EP, S\+N\+D\+O\+T\+Q2\+\_\+\+K\+E\+EP, N\+\_\+\+D\+O\+T\+\_\+\+DU, N\+\_\+\+D\+O\+T\+\_\+\+D\+U2, S\+I\+N\+C\+O\+ME, M\+A\+S\+S\+\_\+\+E\+LE, M\+A\+S\+S\+\_\+\+E\+L\+E2)
+\begin{DoxyCompactList}\small\item\em \+: Determine if we have an oscillation in the normal direction... dg\+\_\+oscilat\+\_\+detect=1.\+0-\/ C\+E\+N\+T\+R\+AL S\+C\+H\+E\+ME. dg\+\_\+oscilat\+\_\+detect=0.\+0-\/ U\+P\+W\+I\+ND S\+C\+H\+E\+ME. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a44c487b15ec28694d3d4e75dd952d27f}{diffus\+\_\+cal\+\_\+coeff\+\_\+stress\+\_\+or\+\_\+tensor}} (Mdims, D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX, D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX, S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+RM, S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+R\+M\+\_\+\+S\+T\+AB, Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS, S\+B\+U\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED, S\+B\+C\+V\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED, S\+B\+C\+V\+N\+GI, S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL, S\+L\+O\+C2\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, S\+L\+O\+C2\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL, D\+I\+F\+F\+\_\+\+G\+I\+\_\+\+A\+D\+D\+ED, H\+DC, U\+\_\+\+C\+V\+\_\+\+N\+O\+D\+J\+\_\+\+I\+P\+H\+A\+\_\+\+A\+LL, U\+\_\+\+C\+V\+\_\+\+N\+O\+D\+I\+\_\+\+I\+P\+H\+A\+\_\+\+A\+LL, U\+O\+L\+D\+\_\+\+C\+V\+\_\+\+N\+O\+D\+J\+\_\+\+I\+P\+H\+A\+\_\+\+A\+LL, U\+O\+L\+D\+\_\+\+C\+V\+\_\+\+N\+O\+D\+I\+\_\+\+I\+P\+H\+A\+\_\+\+A\+LL, E\+LE, E\+L\+E2, S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL, S\+L\+O\+C\+\_\+\+D\+U\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, S\+L\+O\+C2\+\_\+\+D\+U\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, S\+L\+O\+C\+\_\+\+D\+U\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, S\+L\+O\+C2\+\_\+\+D\+U\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, S\+E\+LE, W\+I\+C\+\_\+\+U\+\_\+\+BC, W\+I\+C\+\_\+\+U\+\_\+\+B\+C\+\_\+\+D\+I\+R\+I\+C\+H\+L\+ET, S\+I\+M\+P\+L\+E\+\_\+\+D\+I\+F\+F\+\_\+\+C\+A\+LC, D\+I\+F\+F\+\_\+\+M\+I\+N\+\_\+\+F\+R\+AC, D\+I\+F\+F\+\_\+\+M\+A\+X\+\_\+\+F\+R\+AC)
+\begin{DoxyCompactList}\small\item\em \+: This sub calculates the effective diffusion coefficientd D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX,D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX based on a non-\/linear method and a non-\/oscillating scheme. This implements the stress and tensor form of diffusion and calculates a jump conidition. which is in D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX, D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX The coefficient are in N\+\_\+\+D\+O\+T\+\_\+\+D\+K\+DU, N\+\_\+\+D\+O\+T\+\_\+\+D\+K\+D\+U\+O\+LD. look at the manual DG treatment of viscocity. \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__1d__engine_aeef4ba493db104704c886272f75f1f34}{generate\+\_\+and\+\_\+solve\+\_\+laplacian\+\_\+system}} (Mdims, state, packed\+\_\+state, ndgln, Mmat, Mspars, C\+V\+\_\+funs, C\+V\+\_\+\+G\+Idims, Sigma\+\_\+field, field\+\_\+name, K\+\_\+fields, F\+\_\+fields, intface\+\_\+val\+\_\+type, solver\+\_\+path)
+\begin{DoxyCompactList}\small\item\em \+: In this method we assemble and solve the Laplacian system using at least P1 elements The equation solved is the following\+: Div sigma Grad X = -\/ S\+UM (Div K Grad F) with Neuman B\+Cs = 0 where K and F are passed down as a vector. Therefore for n entries the S\+UM will be performed over n fields Example\+: F = (3, nphase, cv\+\_\+nonods) would include three terms in the R\+HS and the same for K If harmonic average then we perform the harmonic average of sigma and K I\+M\+P\+O\+R\+T\+A\+NT\+: This subroutine requires the P\+Hsparsity to be generated Note that this method solves considering FE fields. If using CV you may incur in an small error. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_ac978f4c53e089cee150a4c15b117eee5}{impose\+\_\+strong\+\_\+bcs\+\_\+wells}} (state, pipes\+\_\+aux, Mdims, Mmat, ndgln, C\+M\+C\+\_\+petsc, pressure, rhs\+\_\+p)
+\begin{DoxyCompactList}\small\item\em \+: In this subroutine, we modify the C\+MC matrix and the R\+HS for the pressure to strongly impose the pressure boundary conditions for wells O\+N\+LY. This is required only when using P0\+D\+G-\/\+P1 If not imposing strong pressure B\+Cs and using P0\+D\+G-\/\+P1, the formulation for weak pressure B\+Cs leads to a 0 in the diagonal of the C\+MC matrix, therefore strong B\+Cs are required. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_a92d78676878788b54916f9a7e0bc894a}\label{namespacemultiphase__1d__engine_a92d78676878788b54916f9a7e0bc894a}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!comb\_vel\_matrix\_diag\_dist@{comb\_vel\_matrix\_diag\_dist}}
+\index{comb\_vel\_matrix\_diag\_dist@{comb\_vel\_matrix\_diag\_dist}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{comb\_vel\_matrix\_diag\_dist()}{comb\_vel\_matrix\_diag\_dist()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::comb\+\_\+vel\+\_\+matrix\+\_\+diag\+\_\+dist (\begin{DoxyParamCaption}\item[{real, dimension( \+:,\+:,\+:, \+:,\+:,\+:, \+: ), intent(in)}]{D\+I\+A\+G\+\_\+\+B\+I\+G\+M\+\_\+\+C\+ON,  }\item[{real, dimension( \+:,\+:,\+:, \+:,\+:,\+:, \+: ), intent(in)}]{B\+I\+G\+M\+\_\+\+C\+ON,  }\item[{type( petsc\+\_\+csr\+\_\+matrix ), intent(inout)}]{D\+G\+M\+\_\+\+P\+E\+T\+SC,  }\item[{integer, dimension(\+: ), intent(in)}]{F\+I\+N\+E\+LE,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+O\+L\+E\+LE,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{type( tensor\+\_\+field )}]{velocity,  }\item[{type( tensor\+\_\+field )}]{pressure,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat }\end{DoxyParamCaption})}
+
+
+
+\+: This subroutine combines the distributed and block diagonal for an element into the matrix D\+G\+M\+\_\+\+P\+HA. For stokes also the diagonal of the matrix is introduced in the mass matrix 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a92d78676878788b54916f9a7e0bc894a_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_af8e1dabacd438da77f8e97f5234e6e3e}\label{namespacemultiphase__1d__engine_af8e1dabacd438da77f8e97f5234e6e3e}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!comb\_vel\_matrix\_diag\_dist\_lump@{comb\_vel\_matrix\_diag\_dist\_lump}}
+\index{comb\_vel\_matrix\_diag\_dist\_lump@{comb\_vel\_matrix\_diag\_dist\_lump}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{comb\_vel\_matrix\_diag\_dist\_lump()}{comb\_vel\_matrix\_diag\_dist\_lump()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::comb\+\_\+vel\+\_\+matrix\+\_\+diag\+\_\+dist\+\_\+lump (\begin{DoxyParamCaption}\item[{real, dimension( \+:,\+:,\+:, \+:,\+:,\+:, \+: ), intent(in)}]{D\+I\+A\+G\+\_\+\+B\+I\+G\+M\+\_\+\+C\+ON,  }\item[{real, dimension( \+:,\+:,\+:, \+:,\+:,\+:, \+: ), intent(in)}]{B\+I\+G\+M\+\_\+\+C\+ON,  }\item[{type( petsc\+\_\+csr\+\_\+matrix ), intent(inout)}]{D\+G\+M\+\_\+\+P\+E\+T\+SC,  }\item[{integer, dimension(\+: ), intent(in)}]{F\+I\+N\+E\+LE,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+O\+L\+E\+LE,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{type( tensor\+\_\+field )}]{velocity,  }\item[{type( tensor\+\_\+field )}]{pressure }\end{DoxyParamCaption})}
+
+
+
+\+: This subroutine combines the distributed and block diagonal for an element into the matrix D\+G\+M\+\_\+\+P\+HA. 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_af8e1dabacd438da77f8e97f5234e6e3e_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_a871f4ede396b430a5194023196511192}\label{namespacemultiphase__1d__engine_a871f4ede396b430a5194023196511192}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!compositional\_assemble\_solve@{compositional\_assemble\_solve}}
+\index{compositional\_assemble\_solve@{compositional\_assemble\_solve}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{compositional\_assemble\_solve()}{compositional\_assemble\_solve()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::compositional\+\_\+assemble\+\_\+solve (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{multicomponent\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(inout)}]{C\+V\+\_\+funs,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__discretization__opts}{multi\+\_\+discretization\+\_\+opts}})}]{Mdisopt,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1porous__adv__coefs}{porous\+\_\+adv\+\_\+coefs}}), intent(inout)}]{upwnd,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__absorption}{multi\+\_\+absorption}}), intent(inout)}]{multi\+\_\+absorp,  }\item[{real, intent(in)}]{DT,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC,  }\item[{logical, intent(in)}]{G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{logical, intent(in)}]{U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1pipe__coords}{pipe\+\_\+coords}}), dimension(\+:), intent(in)}]{eles\+\_\+with\+\_\+pipe,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package}{multi\+\_\+pipe\+\_\+package}}), intent(in)}]{pipes\+\_\+aux,  }\item[{real, dimension(\+:), intent(in)}]{mass\+\_\+ele,  }\item[{real, dimension( \+:,\+: ), intent(inout)}]{sum\+\_\+theta\+\_\+flux,  }\item[{real, dimension( \+:,\+: ), intent(inout)}]{sum\+\_\+one\+\_\+m\+\_\+theta\+\_\+flux,  }\item[{real, dimension( \+:,\+: ), intent(inout)}]{sum\+\_\+theta\+\_\+flux\+\_\+j,  }\item[{real, dimension( \+:,\+: ), intent(inout)}]{sum\+\_\+one\+\_\+m\+\_\+theta\+\_\+flux\+\_\+j }\end{DoxyParamCaption})}
+
+
+
+\+:In this subroutine the components are solved for all the phases. Systems for each component are assembled and solved by calling I\+N\+T\+E\+N\+E\+R\+G\+E\+\_\+\+A\+S\+S\+E\+M\+\_\+\+S\+O\+L\+VE 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a871f4ede396b430a5194023196511192_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a871f4ede396b430a5194023196511192_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_a75a4fb88f761b81639c9b81628eddc95}\label{namespacemultiphase__1d__engine_a75a4fb88f761b81639c9b81628eddc95}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!dg\_oscilat\_detect@{dg\_oscilat\_detect}}
+\index{dg\_oscilat\_detect@{dg\_oscilat\_detect}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{dg\_oscilat\_detect()}{dg\_oscilat\_detect()}}
+{\footnotesize\ttfamily real function multiphase\+\_\+1d\+\_\+engine\+::dg\+\_\+oscilat\+\_\+detect (\begin{DoxyParamCaption}\item[{real}]{S\+N\+D\+O\+T\+Q\+\_\+\+K\+E\+EP,  }\item[{real}]{S\+N\+D\+O\+T\+Q2\+\_\+\+K\+E\+EP,  }\item[{real}]{N\+\_\+\+D\+O\+T\+\_\+\+DU,  }\item[{real}]{N\+\_\+\+D\+O\+T\+\_\+\+D\+U2,  }\item[{real}]{S\+I\+N\+C\+O\+ME,  }\item[{real}]{M\+A\+S\+S\+\_\+\+E\+LE,  }\item[{real}]{M\+A\+S\+S\+\_\+\+E\+L\+E2 }\end{DoxyParamCaption})}
+
+
+
+\+: Determine if we have an oscillation in the normal direction... dg\+\_\+oscilat\+\_\+detect=1.\+0-\/ C\+E\+N\+T\+R\+AL S\+C\+H\+E\+ME. dg\+\_\+oscilat\+\_\+detect=0.\+0-\/ U\+P\+W\+I\+ND S\+C\+H\+E\+ME. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=349pt]{namespacemultiphase__1d__engine_a75a4fb88f761b81639c9b81628eddc95_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a75a4fb88f761b81639c9b81628eddc95_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_af5917482b2dae4c57c6e06a839682e42}\label{namespacemultiphase__1d__engine_af5917482b2dae4c57c6e06a839682e42}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!dg\_visc\_lin@{dg\_visc\_lin}}
+\index{dg\_visc\_lin@{dg\_visc\_lin}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{dg\_visc\_lin()}{dg\_visc\_lin()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::dg\+\_\+visc\+\_\+lin (\begin{DoxyParamCaption}\item[{real, dimension( ndim, u\+\_\+snloc, 2$\ast$u\+\_\+nloc ), intent(inout)}]{S\+\_\+\+I\+N\+V\+\_\+\+N\+N\+X\+\_\+\+M\+A\+T12,  }\item[{real, dimension( ndim, u\+\_\+nloc, u\+\_\+nloc  ), intent(in)}]{N\+N\+X\+\_\+\+M\+AT,  }\item[{real, dimension( ndim, u\+\_\+nloc, u\+\_\+nloc  ), intent(in)}]{N\+N\+X\+\_\+\+M\+A\+T2,  }\item[{real, dimension( u\+\_\+nloc, u\+\_\+nloc  ), intent(in)}]{N\+N\+\_\+\+M\+AT,  }\item[{real, dimension( u\+\_\+nloc, u\+\_\+nloc  ), intent(in)}]{N\+N\+\_\+\+M\+A\+T2,  }\item[{integer, intent(in)}]{U\+\_\+\+S\+N\+L\+OC,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{real, dimension( sbcvngi,  u\+\_\+snloc ), intent(in)}]{S\+B\+U\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED,  }\item[{real, dimension( sbcvngi ), intent(in)}]{S\+D\+E\+T\+WE,  }\item[{integer, intent(in)}]{S\+B\+C\+V\+N\+GI,  }\item[{real, dimension( ndim, sbcvngi  ), intent(in)}]{S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, dimension( u\+\_\+snloc ), intent(in)}]{U\+\_\+\+S\+L\+O\+C2\+L\+OC,  }\item[{integer, dimension( u\+\_\+nloc ), intent(in)}]{U\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+O\+C\+\_\+\+E\+XT,  }\item[{logical, intent(in)}]{O\+N\+\_\+\+B\+O\+U\+N\+D\+A\+RY }\end{DoxyParamCaption})}
+
+
+
+\+: This sub calculates S\+\_\+\+I\+N\+V\+\_\+\+N\+N\+X\+\_\+\+M\+A\+T12 which contains N\+D\+IM matricies that are used to form the inter element coupling for the viscocity discretization. N\+N\+X\+\_\+\+M\+AT, N\+N\+X\+\_\+\+M\+A\+T2 contain matricies of first derivative times basis function for current element and neightbouring element. Similarly N\+N\+\_\+\+M\+AT, N\+N\+\_\+\+M\+A\+T2, contain the element-\/wise mass matrices. Only call this sub if element not next to the boundary... 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_af5917482b2dae4c57c6e06a839682e42_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_a44c487b15ec28694d3d4e75dd952d27f}\label{namespacemultiphase__1d__engine_a44c487b15ec28694d3d4e75dd952d27f}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!diffus\_cal\_coeff\_stress\_or\_tensor@{diffus\_cal\_coeff\_stress\_or\_tensor}}
+\index{diffus\_cal\_coeff\_stress\_or\_tensor@{diffus\_cal\_coeff\_stress\_or\_tensor}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{diffus\_cal\_coeff\_stress\_or\_tensor()}{diffus\_cal\_coeff\_stress\_or\_tensor()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::diffus\+\_\+cal\+\_\+coeff\+\_\+stress\+\_\+or\+\_\+tensor (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{real, dimension( mdims\%ndim,mdims\%nphase,sbcvngi ), intent(inout)}]{D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX,  }\item[{real, dimension( mdims\%ndim,mdims\%nphase,sbcvngi ), intent(inout)}]{D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX,  }\item[{logical, intent(in)}]{S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+RM,  }\item[{logical, intent(in)}]{S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+R\+M\+\_\+\+S\+T\+AB,  }\item[{real, intent(in)}]{Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS,  }\item[{real, dimension( sbcvngi, mdims\%u\+\_\+snloc ), intent(in)}]{S\+B\+U\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED,  }\item[{real, dimension(  sbcvngi, mdims\%cv\+\_\+snloc ), intent(in)}]{S\+B\+C\+V\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED,  }\item[{integer, intent(in)}]{S\+B\+C\+V\+N\+GI,  }\item[{real, dimension( mdims\%ndim,mdims\%ndim,mdims\%nphase,mdims\%cv\+\_\+snloc ), intent(in)}]{S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON,  }\item[{real, dimension( mdims\%nphase,mdims\%cv\+\_\+snloc ), intent(in)}]{S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL,  }\item[{real, dimension( mdims\%ndim,mdims\%ndim,mdims\%nphase,mdims\%cv\+\_\+snloc ), intent(in)}]{S\+L\+O\+C2\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON,  }\item[{real, dimension( mdims\%nphase,mdims\%cv\+\_\+snloc ), intent(in)}]{S\+L\+O\+C2\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL,  }\item[{real, dimension( mdims\%ndim, mdims\%ndim,mdims\%ndim, mdims\%nphase, sbcvngi), intent(in)}]{D\+I\+F\+F\+\_\+\+G\+I\+\_\+\+A\+D\+D\+ED,  }\item[{real, intent(in)}]{H\+DC,  }\item[{real, dimension(mdims\%ndim,mdims\%nphase,sbcvngi), intent(in)}]{U\+\_\+\+C\+V\+\_\+\+N\+O\+D\+J\+\_\+\+I\+P\+H\+A\+\_\+\+A\+LL,  }\item[{real, dimension(mdims\%ndim,mdims\%nphase,sbcvngi), intent(in)}]{U\+\_\+\+C\+V\+\_\+\+N\+O\+D\+I\+\_\+\+I\+P\+H\+A\+\_\+\+A\+LL,  }\item[{real, dimension(mdims\%ndim,mdims\%nphase,sbcvngi), intent(in)}]{U\+O\+L\+D\+\_\+\+C\+V\+\_\+\+N\+O\+D\+J\+\_\+\+I\+P\+H\+A\+\_\+\+A\+LL,  }\item[{real, dimension(mdims\%ndim,mdims\%nphase,sbcvngi), intent(in)}]{U\+O\+L\+D\+\_\+\+C\+V\+\_\+\+N\+O\+D\+I\+\_\+\+I\+P\+H\+A\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{E\+LE,  }\item[{integer, intent(in)}]{E\+L\+E2,  }\item[{real, dimension( mdims\%ndim, sbcvngi ), intent(in)}]{S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL,  }\item[{real, dimension( mdims\%ndim, mdims\%ndim , mdims\%nphase, mdims\%u\+\_\+snloc ), intent(in)}]{S\+L\+O\+C\+\_\+\+D\+U\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{real, dimension( mdims\%ndim, mdims\%ndim , mdims\%nphase, mdims\%u\+\_\+snloc ), intent(in)}]{S\+L\+O\+C2\+\_\+\+D\+U\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{real, dimension( mdims\%ndim, mdims\%ndim , mdims\%nphase, mdims\%u\+\_\+snloc ), intent(in)}]{S\+L\+O\+C\+\_\+\+D\+U\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{real, dimension( mdims\%ndim, mdims\%ndim , mdims\%nphase, mdims\%u\+\_\+snloc ), intent(in)}]{S\+L\+O\+C2\+\_\+\+D\+U\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{S\+E\+LE,  }\item[{integer, dimension( mdims\%ndim,mdims\%nphase,mdims\%stotel ), intent(in)}]{W\+I\+C\+\_\+\+U\+\_\+\+BC,  }\item[{integer, intent(in)}]{W\+I\+C\+\_\+\+U\+\_\+\+B\+C\+\_\+\+D\+I\+R\+I\+C\+H\+L\+ET,  }\item[{logical, intent(in)}]{S\+I\+M\+P\+L\+E\+\_\+\+D\+I\+F\+F\+\_\+\+C\+A\+LC,  }\item[{real, intent(in)}]{D\+I\+F\+F\+\_\+\+M\+I\+N\+\_\+\+F\+R\+AC,  }\item[{real, intent(in)}]{D\+I\+F\+F\+\_\+\+M\+A\+X\+\_\+\+F\+R\+AC }\end{DoxyParamCaption})}
+
+
+
+\+: This sub calculates the effective diffusion coefficientd D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX,D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX based on a non-\/linear method and a non-\/oscillating scheme. This implements the stress and tensor form of diffusion and calculates a jump conidition. which is in D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX, D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX The coefficient are in N\+\_\+\+D\+O\+T\+\_\+\+D\+K\+DU, N\+\_\+\+D\+O\+T\+\_\+\+D\+K\+D\+U\+O\+LD. look at the manual DG treatment of viscocity. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a44c487b15ec28694d3d4e75dd952d27f_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a44c487b15ec28694d3d4e75dd952d27f_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_af9aedf8b67f5b7198eb4b67601a7fab0}\label{namespacemultiphase__1d__engine_af9aedf8b67f5b7198eb4b67601a7fab0}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!enthalpy\_assem\_solve@{enthalpy\_assem\_solve}}
+\index{enthalpy\_assem\_solve@{enthalpy\_assem\_solve}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{enthalpy\_assem\_solve()}{enthalpy\_assem\_solve()}}
+{\footnotesize\ttfamily subroutine, public multiphase\+\_\+1d\+\_\+engine\+::enthalpy\+\_\+assem\+\_\+solve (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(inout)}]{C\+V\+\_\+funs,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__discretization__opts}{multi\+\_\+discretization\+\_\+opts}})}]{Mdisopt,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1porous__adv__coefs}{porous\+\_\+adv\+\_\+coefs}}), intent(inout)}]{upwnd,  }\item[{type(tensor\+\_\+field), intent(inout)}]{tracer,  }\item[{type(tensor\+\_\+field), intent(in)}]{velocity,  }\item[{type(tensor\+\_\+field), intent(in)}]{density,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__absorption}{multi\+\_\+absorption}}), intent(inout)}]{multi\+\_\+absorp,  }\item[{real, intent(in)}]{DT,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE,  }\item[{integer, intent(in)}]{I\+G\+O\+T\+\_\+\+T2,  }\item[{integer, intent(in)}]{igot\+\_\+theta\+\_\+flux,  }\item[{logical, intent(in)}]{G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{logical, intent(in)}]{U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1pipe__coords}{pipe\+\_\+coords}}), dimension(\+:), intent(in)}]{eles\+\_\+with\+\_\+pipe,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package}{multi\+\_\+pipe\+\_\+package}}), intent(in)}]{pipes\+\_\+aux,  }\item[{character( len = $\ast$ ), intent(in), optional}]{option\+\_\+path,  }\item[{real, dimension( \+: ), intent(inout), optional}]{mass\+\_\+ele\+\_\+transp,  }\item[{logical, intent(in), optional}]{thermal,  }\item[{real, dimension( \+:,\+: ), intent(inout), optional}]{T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:,\+: ), intent(inout), optional}]{O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:,\+: ), intent(inout), optional}]{T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J,  }\item[{real, dimension( \+:,\+: ), intent(inout), optional}]{O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J,  }\item[{integer, optional}]{icomp,  }\item[{type(tensor\+\_\+field), intent(in), optional}]{saturation,  }\item[{type( tensor\+\_\+field ), intent(in), optional, pointer}]{Permeability\+\_\+tensor\+\_\+field,  }\item[{integer, optional}]{nonlinear\+\_\+iteration,  }\item[{type(\mbox{\hyperlink{structmulti__magma_1_1magma__phase__diagram}{magma\+\_\+phase\+\_\+diagram}})}]{magma\+\_\+phase\+\_\+coefficients }\end{DoxyParamCaption})}
+
+
+
+Calls to generate the transport equation for the enthalpy equation. This is efectively the temperature equation but making the enthalpy implicit by substituting the temperature by its linear relationship with enthalpy\+: H = rho Cp Temp + rho Lf phi; Where Lf is the latent heat and phi is the amount of liquid fluid phase. 
+
+\begin{DoxyAuthor}{Author}
+Chris Pain, Pablo Salinas, Haiyang Hu 
+\end{DoxyAuthor}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=550pt]{namespacemultiphase__1d__engine_af9aedf8b67f5b7198eb4b67601a7fab0_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_af9aedf8b67f5b7198eb4b67601a7fab0_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_ae5be4b78c1796fac4008d398a7cdd0aa}\label{namespacemultiphase__1d__engine_ae5be4b78c1796fac4008d398a7cdd0aa}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!force\_bal\_cty\_assem\_solve@{force\_bal\_cty\_assem\_solve}}
+\index{force\_bal\_cty\_assem\_solve@{force\_bal\_cty\_assem\_solve}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{force\_bal\_cty\_assem\_solve()}{force\_bal\_cty\_assem\_solve()}}
+{\footnotesize\ttfamily subroutine, public multiphase\+\_\+1d\+\_\+engine\+::force\+\_\+bal\+\_\+cty\+\_\+assem\+\_\+solve (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{F\+E\+\_\+\+G\+Idims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(inout)}]{C\+V\+\_\+funs,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(in)}]{F\+E\+\_\+funs,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__discretization__opts}{multi\+\_\+discretization\+\_\+opts}})}]{Mdisopt,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__absorption}{multi\+\_\+absorption}}), intent(inout)}]{multi\+\_\+absorp,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1porous__adv__coefs}{porous\+\_\+adv\+\_\+coefs}}), intent(inout)}]{upwnd,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1pipe__coords}{pipe\+\_\+coords}}), dimension(\+:), intent(in)}]{eles\+\_\+with\+\_\+pipe,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package}{multi\+\_\+pipe\+\_\+package}}), intent(in)}]{pipes\+\_\+aux,  }\item[{type( tensor\+\_\+field ), intent(inout)}]{velocity,  }\item[{type( tensor\+\_\+field ), intent(inout)}]{pressure,  }\item[{real, intent(in)}]{DT,  }\item[{real, dimension(  \+: , \+:  ), intent(in)}]{S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC,  }\item[{real, dimension(  \+:, \+:  ), intent(in)}]{V\+\_\+\+S\+O\+U\+R\+CE,  }\item[{real, dimension(  \+:, \+:  ), intent(in)}]{V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE,  }\item[{integer, intent(in)}]{I\+G\+O\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+: ,  \+:  ), intent(inout)}]{T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+: ,  \+:  ), intent(inout)}]{O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+: ,  \+:  ), intent(inout)}]{T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J,  }\item[{real, dimension( \+: ,  \+:  ), intent(inout)}]{O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{calculate\+\_\+mass\+\_\+delta,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__outfluxes}{multi\+\_\+outfluxes}}), intent(inout)}]{outfluxes,  }\item[{integer, intent(inout)}]{pres\+\_\+its\+\_\+taken,  }\item[{integer, intent(in)}]{nonlinear\+\_\+its,  }\item[{real, dimension(\+:), intent(inout)}]{Courant\+\_\+number }\end{DoxyParamCaption})}
+
+
+
+Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix Once these matrices (and corresponding R\+H\+Ss) are generated the system of equations is solved. 
+
+\begin{DoxyAuthor}{Author}
+Chris Pain, Pablo Salinas, Asiri Obeysekara 
+\end{DoxyAuthor}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=550pt]{namespacemultiphase__1d__engine_ae5be4b78c1796fac4008d398a7cdd0aa_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_ae5be4b78c1796fac4008d398a7cdd0aa_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_a86c48c7bcc5921e6764217e562a7b5d6}\label{namespacemultiphase__1d__engine_a86c48c7bcc5921e6764217e562a7b5d6}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!force\_min\_max\_principle@{force\_min\_max\_principle}}
+\index{force\_min\_max\_principle@{force\_min\_max\_principle}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{force\_min\_max\_principle()}{force\_min\_max\_principle()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::force\+\_\+min\+\_\+max\+\_\+principle (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{integer, intent(in)}]{entrance,  }\item[{type(tensor\+\_\+field), intent(inout)}]{tracer,  }\item[{integer, intent(in)}]{nonlinear\+\_\+iteration,  }\item[{real, dimension(2), intent(inout)}]{totally\+\_\+min\+\_\+max }\end{DoxyParamCaption})}
+
+
+
+\+: To help the stability of the system,if there are no sources/sinks it is known that the temperature must fulfill the min max principle, therefore here values outside this rank are capped. 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a86c48c7bcc5921e6764217e562a7b5d6_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_aeef4ba493db104704c886272f75f1f34}\label{namespacemultiphase__1d__engine_aeef4ba493db104704c886272f75f1f34}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!generate\_and\_solve\_laplacian\_system@{generate\_and\_solve\_laplacian\_system}}
+\index{generate\_and\_solve\_laplacian\_system@{generate\_and\_solve\_laplacian\_system}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{generate\_and\_solve\_laplacian\_system()}{generate\_and\_solve\_laplacian\_system()}}
+{\footnotesize\ttfamily subroutine, public multiphase\+\_\+1d\+\_\+engine\+::generate\+\_\+and\+\_\+solve\+\_\+laplacian\+\_\+system (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type( state\+\_\+type ), dimension(\+:), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(inout)}]{C\+V\+\_\+funs,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{real, dimension(\+:,\+:), intent(in)}]{Sigma\+\_\+field,  }\item[{character( len = $\ast$ ), intent(in), optional}]{field\+\_\+name,  }\item[{real, dimension(\+:,\+:,\+:), intent(in)}]{K\+\_\+fields,  }\item[{real, dimension(\+:,\+:,\+:), intent(in)}]{F\+\_\+fields,  }\item[{integer, intent(in)}]{intface\+\_\+val\+\_\+type,  }\item[{character(len=option\+\_\+path\+\_\+len), intent(in), optional}]{solver\+\_\+path }\end{DoxyParamCaption})}
+
+
+
+\+: In this method we assemble and solve the Laplacian system using at least P1 elements The equation solved is the following\+: Div sigma Grad X = -\/ S\+UM (Div K Grad F) with Neuman B\+Cs = 0 where K and F are passed down as a vector. Therefore for n entries the S\+UM will be performed over n fields Example\+: F = (3, nphase, cv\+\_\+nonods) would include three terms in the R\+HS and the same for K If harmonic average then we perform the harmonic average of sigma and K I\+M\+P\+O\+R\+T\+A\+NT\+: This subroutine requires the P\+Hsparsity to be generated Note that this method solves considering FE fields. If using CV you may incur in an small error. 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_aeef4ba493db104704c886272f75f1f34_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_acad594ff5e1d219a2e1c7e5fe2a51605}\label{namespacemultiphase__1d__engine_acad594ff5e1d219a2e1c7e5fe2a51605}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!getoverrelaxation\_parameter@{getoverrelaxation\_parameter}}
+\index{getoverrelaxation\_parameter@{getoverrelaxation\_parameter}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{getoverrelaxation\_parameter()}{getoverrelaxation\_parameter()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::getoverrelaxation\+\_\+parameter (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{real, dimension(\+:), intent(inout)}]{Overrelaxation,  }\item[{integer, intent(inout)}]{Phase\+\_\+with\+\_\+\+Pc,  }\item[{real, dimension(\+:), optional}]{totally\+\_\+min\+\_\+max,  }\item[{logical, intent(in), optional}]{for\+\_\+transport }\end{DoxyParamCaption})}
+
+
+
+Overrelaxation has to be alocate before calling this subroutine its size is cv\+\_\+nonods For more information read\+: doi.\+org/10.1016/j.\+cma.\+2019.\+07.\+004. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_acad594ff5e1d219a2e1c7e5fe2a51605_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_acad594ff5e1d219a2e1c7e5fe2a51605_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_a7a01c78d922871a74af7e6e4a3228868}\label{namespacemultiphase__1d__engine_a7a01c78d922871a74af7e6e4a3228868}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!high\_order\_pressure\_solve@{high\_order\_pressure\_solve}}
+\index{high\_order\_pressure\_solve@{high\_order\_pressure\_solve}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{high\_order\_pressure\_solve()}{high\_order\_pressure\_solve()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::high\+\_\+order\+\_\+pressure\+\_\+solve (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{u\+\_\+rhs,  }\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{integer, intent(in)}]{nphase,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{u\+\_\+absorbin }\end{DoxyParamCaption})}
+
+
+
+\+: Instead of including the gravity in the R\+HS normally, here a system based on a Laplacian is created and solved that accounts for the gravity effect in the system. Next, this is introduced as a R\+HS in the momemtum equation This allows for higher precision for the gravity effect. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a7a01c78d922871a74af7e6e4a3228868_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a7a01c78d922871a74af7e6e4a3228868_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_ac978f4c53e089cee150a4c15b117eee5}\label{namespacemultiphase__1d__engine_ac978f4c53e089cee150a4c15b117eee5}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!impose\_strong\_bcs\_wells@{impose\_strong\_bcs\_wells}}
+\index{impose\_strong\_bcs\_wells@{impose\_strong\_bcs\_wells}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{impose\_strong\_bcs\_wells()}{impose\_strong\_bcs\_wells()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::impose\+\_\+strong\+\_\+bcs\+\_\+wells (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension(\+:), intent(in)}]{state,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package}{multi\+\_\+pipe\+\_\+package}}), intent(in)}]{pipes\+\_\+aux,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(in)}]{Mmat,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type(petsc\+\_\+csr\+\_\+matrix), intent(inout)}]{C\+M\+C\+\_\+petsc,  }\item[{type( tensor\+\_\+field ), intent(in)}]{pressure,  }\item[{real, dimension (\+:,\+:), intent(inout)}]{rhs\+\_\+p }\end{DoxyParamCaption})}
+
+
+
+\+: In this subroutine, we modify the C\+MC matrix and the R\+HS for the pressure to strongly impose the pressure boundary conditions for wells O\+N\+LY. This is required only when using P0\+D\+G-\/\+P1 If not imposing strong pressure B\+Cs and using P0\+D\+G-\/\+P1, the formulation for weak pressure B\+Cs leads to a 0 in the diagonal of the C\+MC matrix, therefore strong B\+Cs are required. 
+
+\begin{DoxyAuthor}{Author}
+Pablo Salinas, Geraldine Regnier 
+\end{DoxyAuthor}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_ac978f4c53e089cee150a4c15b117eee5_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_a98e757b51a04b55df8d38e36470e0b96}\label{namespacemultiphase__1d__engine_a98e757b51a04b55df8d38e36470e0b96}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!intenerge\_assem\_solve@{intenerge\_assem\_solve}}
+\index{intenerge\_assem\_solve@{intenerge\_assem\_solve}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{intenerge\_assem\_solve()}{intenerge\_assem\_solve()}}
+{\footnotesize\ttfamily subroutine, public multiphase\+\_\+1d\+\_\+engine\+::intenerge\+\_\+assem\+\_\+solve (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(inout)}]{C\+V\+\_\+funs,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__discretization__opts}{multi\+\_\+discretization\+\_\+opts}})}]{Mdisopt,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1porous__adv__coefs}{porous\+\_\+adv\+\_\+coefs}}), intent(inout)}]{upwnd,  }\item[{type(tensor\+\_\+field), intent(inout)}]{tracer,  }\item[{type(tensor\+\_\+field), intent(in)}]{velocity,  }\item[{type(tensor\+\_\+field), intent(in)}]{density,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__absorption}{multi\+\_\+absorption}}), intent(inout)}]{multi\+\_\+absorp,  }\item[{real, intent(in)}]{DT,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE,  }\item[{integer, intent(in)}]{I\+G\+O\+T\+\_\+\+T2,  }\item[{integer, intent(in)}]{igot\+\_\+theta\+\_\+flux,  }\item[{logical, intent(in)}]{G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{logical, intent(in)}]{U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1pipe__coords}{pipe\+\_\+coords}}), dimension(\+:), intent(in)}]{eles\+\_\+with\+\_\+pipe,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package}{multi\+\_\+pipe\+\_\+package}}), intent(in)}]{pipes\+\_\+aux,  }\item[{character( len = $\ast$ ), intent(in), optional}]{option\+\_\+path,  }\item[{real, dimension( \+: ), intent(inout), optional}]{mass\+\_\+ele\+\_\+transp,  }\item[{logical, intent(in), optional}]{thermal,  }\item[{real, dimension( \+:,\+: ), intent(inout), optional}]{T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:,\+: ), intent(inout), optional}]{O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:,\+: ), intent(inout), optional}]{T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J,  }\item[{real, dimension( \+:,\+: ), intent(inout), optional}]{O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J,  }\item[{integer, optional}]{icomp,  }\item[{type(tensor\+\_\+field), intent(in), optional}]{saturation,  }\item[{type( tensor\+\_\+field ), intent(in), optional, pointer}]{Permeability\+\_\+tensor\+\_\+field,  }\item[{integer, optional}]{nonlinear\+\_\+iteration }\end{DoxyParamCaption})}
+
+
+
+Calls to generate the transport equation for the transport of energy/temperature and to solve the transport of components. 
+
+\begin{DoxyAuthor}{Author}
+Chris Pain, Pablo Salinas 
+\end{DoxyAuthor}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=550pt]{namespacemultiphase__1d__engine_a98e757b51a04b55df8d38e36470e0b96_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a98e757b51a04b55df8d38e36470e0b96_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_a03c49a0f1a67a464bbb77115775ae4d1}\label{namespacemultiphase__1d__engine_a03c49a0f1a67a464bbb77115775ae4d1}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!introduce\_grad\_rhs\_field\_term@{introduce\_grad\_rhs\_field\_term}}
+\index{introduce\_grad\_rhs\_field\_term@{introduce\_grad\_rhs\_field\_term}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{introduce\_grad\_rhs\_field\_term()}{introduce\_grad\_rhs\_field\_term()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::introduce\+\_\+grad\+\_\+rhs\+\_\+field\+\_\+term (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{real, dimension(\+:,\+:,\+:), intent(in)}]{R\+H\+S\+\_\+field,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(in)}]{F\+E\+\_\+funs,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dev__shape__funs}{multi\+\_\+dev\+\_\+shape\+\_\+funs}}), intent(inout)}]{Devfuns,  }\item[{real, dimension(\+:,\+:)}]{X\+\_\+\+A\+LL,  }\item[{real, dimension ( \+:, \+:, \+: ), intent(inout)}]{L\+O\+C\+\_\+\+U\+\_\+\+R\+HS,  }\item[{integer, intent(in)}]{ele,  }\item[{integer, dimension(\+:), intent(in)}]{cv\+\_\+ndgln,  }\item[{integer, dimension(\+:), intent(in)}]{x\+\_\+ndgln,  }\item[{integer, intent(in)}]{ele2,  }\item[{integer, intent(in)}]{iface,  }\item[{real, dimension(\+:), intent(in)}]{sdetwe,  }\item[{real, dimension(\+:,\+:), intent(in)}]{S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL,  }\item[{integer, dimension(\+:), intent(in)}]{U\+\_\+\+S\+L\+O\+C2\+L\+OC,  }\item[{integer, dimension(\+:), intent(in)}]{C\+V\+\_\+\+S\+L\+O\+C2\+L\+OC,  }\item[{integer, dimension(\+:), intent(in)}]{M\+A\+T\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC }\end{DoxyParamCaption})}
+
+
+
+\+: This subroutine performs and introduces the gradient of a R\+HS field (Capillary pressure for example) for the momentum equation. The inout field is R\+H\+S\+\_\+field For capillary pressure\+: The capillary pressure is a term introduced as a R\+HS which affects the effective velocity 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a03c49a0f1a67a464bbb77115775ae4d1_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_a8917356adde1eb2aedccd0320529a6c5}\label{namespacemultiphase__1d__engine_a8917356adde1eb2aedccd0320529a6c5}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!linearise\_field@{linearise\_field}}
+\index{linearise\_field@{linearise\_field}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{linearise\_field()}{linearise\_field()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::linearise\+\_\+field (\begin{DoxyParamCaption}\item[{type( tensor\+\_\+field ), intent(in)}]{field\+\_\+in,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{field\+\_\+out }\end{DoxyParamCaption})}
+
+
+
+\+: This sub will linearise a p2 field 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a8917356adde1eb2aedccd0320529a6c5_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_a34cd5ba5d5dfec039fa896b5fdc14e9f}\label{namespacemultiphase__1d__engine_a34cd5ba5d5dfec039fa896b5fdc14e9f}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!p0\_dg\_oscilat\_detect@{p0\_dg\_oscilat\_detect}}
+\index{p0\_dg\_oscilat\_detect@{p0\_dg\_oscilat\_detect}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{p0\_dg\_oscilat\_detect()}{p0\_dg\_oscilat\_detect()}}
+{\footnotesize\ttfamily real function multiphase\+\_\+1d\+\_\+engine\+::p0\+\_\+dg\+\_\+oscilat\+\_\+detect (\begin{DoxyParamCaption}\item[{real, intent(in)}]{S\+N\+D\+O\+T\+Q\+\_\+\+K\+E\+EP,  }\item[{real, intent(in)}]{S\+N\+D\+O\+T\+Q2\+\_\+\+K\+E\+EP,  }\item[{real, intent(in)}]{N\+\_\+\+D\+O\+T\+\_\+\+DU,  }\item[{real, intent(in)}]{N\+\_\+\+D\+O\+T\+\_\+\+D\+U2,  }\item[{real, intent(in)}]{S\+I\+N\+C\+O\+ME,  }\item[{real, intent(in)}]{M\+A\+S\+S\+\_\+\+E\+LE,  }\item[{real, intent(in)}]{M\+A\+S\+S\+\_\+\+E\+L\+E2 }\end{DoxyParamCaption})}
+
+
+
+\+: Determine if we have an oscillation in the normal direction... dg\+\_\+oscilat\+\_\+detect=1.\+0-\/ C\+E\+N\+T\+R\+AL S\+C\+H\+E\+ME. dg\+\_\+oscilat\+\_\+detect=0.\+0-\/ U\+P\+W\+I\+ND S\+C\+H\+E\+ME. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=349pt]{namespacemultiphase__1d__engine_a34cd5ba5d5dfec039fa896b5fdc14e9f_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a34cd5ba5d5dfec039fa896b5fdc14e9f_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_aa5819c18b57b8144faa1885776a2cc8b}\label{namespacemultiphase__1d__engine_aa5819c18b57b8144faa1885776a2cc8b}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!tracer\_assemble\_solve@{tracer\_assemble\_solve}}
+\index{tracer\_assemble\_solve@{tracer\_assemble\_solve}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{tracer\_assemble\_solve()}{tracer\_assemble\_solve()}}
+{\footnotesize\ttfamily subroutine, public multiphase\+\_\+1d\+\_\+engine\+::tracer\+\_\+assemble\+\_\+solve (\begin{DoxyParamCaption}\item[{character(len=$\ast$), intent(in)}]{Tracer\+\_\+name,  }\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(inout)}]{C\+V\+\_\+funs,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__discretization__opts}{multi\+\_\+discretization\+\_\+opts}})}]{Mdisopt,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1porous__adv__coefs}{porous\+\_\+adv\+\_\+coefs}}), intent(inout)}]{upwnd,  }\item[{integer, intent(inout)}]{tracer,  }\item[{type(tensor\+\_\+field), intent(in)}]{velocity,  }\item[{type(tensor\+\_\+field), intent(in)}]{density,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__absorption}{multi\+\_\+absorption}}), intent(inout)}]{multi\+\_\+absorp,  }\item[{real, intent(in)}]{DT,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE,  }\item[{integer, intent(in)}]{I\+G\+O\+T\+\_\+\+T2,  }\item[{integer, intent(in)}]{igot\+\_\+theta\+\_\+flux,  }\item[{logical, intent(in)}]{G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{logical, intent(in)}]{U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1pipe__coords}{pipe\+\_\+coords}}), dimension(\+:), intent(in)}]{eles\+\_\+with\+\_\+pipe,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package}{multi\+\_\+pipe\+\_\+package}}), intent(in)}]{pipes\+\_\+aux,  }\item[{real, dimension( \+: ), intent(inout), optional}]{mass\+\_\+ele\+\_\+transp,  }\item[{real, dimension( \+:,\+: ), intent(inout), optional}]{T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:,\+: ), intent(inout), optional}]{O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:,\+: ), intent(inout), optional}]{T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J,  }\item[{real, dimension( \+:,\+: ), intent(inout), optional}]{O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J,  }\item[{integer, optional}]{icomp,  }\item[{type(tensor\+\_\+field), intent(in), optional}]{saturation,  }\item[{type( tensor\+\_\+field ), intent(in), optional, pointer}]{Permeability\+\_\+tensor\+\_\+field,  }\item[{integer, optional}]{nonlinear\+\_\+iteration }\end{DoxyParamCaption})}
+
+
+
+Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passive\+\_\+\+Tracer\+\_\+N Where N is an integer which is continuous starting from 1 A boussinesq approximation is enforced on these tracers as the are totally I\+N\+E\+RT C\+U\+R\+R\+E\+N\+T\+LY NO D\+I\+F\+F\+U\+S\+I\+ON. 
+
+\begin{DoxyAuthor}{Author}
+Chris Pain, Pablo Salinas 
+\end{DoxyAuthor}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=550pt]{namespacemultiphase__1d__engine_aa5819c18b57b8144faa1885776a2cc8b_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_aa5819c18b57b8144faa1885776a2cc8b_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_a8e2d722ec8283f1e4d87f7b6d7e427a5}\label{namespacemultiphase__1d__engine_a8e2d722ec8283f1e4d87f7b6d7e427a5}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!use\_posinmat\_c\_store@{use\_posinmat\_c\_store}}
+\index{use\_posinmat\_c\_store@{use\_posinmat\_c\_store}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{use\_posinmat\_c\_store()}{use\_posinmat\_c\_store()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::use\+\_\+posinmat\+\_\+c\+\_\+store (\begin{DoxyParamCaption}\item[{integer, intent(inout)}]{C\+O\+U\+NT,  }\item[{integer, intent(in)}]{U\+\_\+\+I\+N\+OD,  }\item[{integer, intent(in)}]{P\+\_\+\+J\+N\+OD,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, dimension( u\+\_\+nonods + 1), intent(in)}]{F\+I\+N\+DC,  }\item[{integer, dimension( ncolc), intent(in)}]{C\+O\+LC,  }\item[{integer, intent(in)}]{N\+C\+O\+LC,  }\item[{integer, intent(in)}]{I\+D\+O\+\_\+\+S\+T\+O\+R\+E\+\_\+\+A\+C\+\_\+\+S\+P\+A\+R\+\_\+\+PT,  }\item[{logical, intent(in)}]{S\+T\+O\+R\+E\+D\+\_\+\+A\+C\+\_\+\+S\+P\+A\+R\+\_\+\+PT,  }\item[{integer, dimension( u\+\_\+nloc,p\+\_\+nloc, totele$\ast$ido\+\_\+store\+\_\+ac\+\_\+spar\+\_\+pt), intent(inout)}]{P\+O\+S\+I\+N\+M\+A\+T\+\_\+\+C\+\_\+\+S\+T\+O\+RE,  }\item[{integer, intent(in)}]{E\+LE,  }\item[{integer, intent(in)}]{U\+\_\+\+I\+L\+OC,  }\item[{integer, intent(in)}]{P\+\_\+\+J\+L\+OC,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{P\+\_\+\+N\+L\+OC }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a8e2d722ec8283f1e4d87f7b6d7e427a5_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a8e2d722ec8283f1e4d87f7b6d7e427a5_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_a25c88bda5ea4082016d39781e111d445}\label{namespacemultiphase__1d__engine_a25c88bda5ea4082016d39781e111d445}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!use\_posinmat\_c\_store\_suf\_dg@{use\_posinmat\_c\_store\_suf\_dg}}
+\index{use\_posinmat\_c\_store\_suf\_dg@{use\_posinmat\_c\_store\_suf\_dg}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{use\_posinmat\_c\_store\_suf\_dg()}{use\_posinmat\_c\_store\_suf\_dg()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::use\+\_\+posinmat\+\_\+c\+\_\+store\+\_\+suf\+\_\+dg (\begin{DoxyParamCaption}\item[{integer, intent(inout)}]{C\+O\+U\+NT,  }\item[{integer, intent(in)}]{U\+\_\+\+I\+N\+OD,  }\item[{integer, intent(in)}]{P\+\_\+\+J\+N\+OD,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, dimension( u\+\_\+nonods + 1), intent(in)}]{F\+I\+N\+DC,  }\item[{integer, dimension( ncolc), intent(in)}]{C\+O\+LC,  }\item[{integer, intent(in)}]{N\+C\+O\+LC,  }\item[{integer, intent(in)}]{I\+D\+O\+\_\+\+S\+T\+O\+R\+E\+\_\+\+A\+C\+\_\+\+S\+P\+A\+R\+\_\+\+PT,  }\item[{logical, intent(in)}]{S\+T\+O\+R\+E\+D\+\_\+\+A\+C\+\_\+\+S\+P\+A\+R\+\_\+\+PT,  }\item[{integer, dimension( u\+\_\+snloc,p\+\_\+snloc,nface,totele$\ast$ido\+\_\+store\+\_\+ac\+\_\+spar\+\_\+pt ), intent(inout)}]{P\+O\+S\+I\+N\+M\+A\+T\+\_\+\+C\+\_\+\+S\+T\+O\+R\+E\+\_\+\+S\+U\+F\+\_\+\+DG,  }\item[{integer, intent(in)}]{E\+LE,  }\item[{integer, intent(in)}]{I\+F\+A\+CE,  }\item[{integer, intent(in)}]{U\+\_\+\+S\+I\+L\+OC,  }\item[{integer, intent(in)}]{P\+\_\+\+S\+J\+L\+OC,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, intent(in)}]{N\+F\+A\+CE,  }\item[{integer, intent(in)}]{U\+\_\+\+S\+N\+L\+OC,  }\item[{integer, intent(in)}]{P\+\_\+\+S\+N\+L\+OC }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a25c88bda5ea4082016d39781e111d445_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_a25c88bda5ea4082016d39781e111d445_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_afcedae35a0a37c9b033248d85bb9ad86}\label{namespacemultiphase__1d__engine_afcedae35a0a37c9b033248d85bb9ad86}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!viscocity\_tensor\_les\_calc@{viscocity\_tensor\_les\_calc}}
+\index{viscocity\_tensor\_les\_calc@{viscocity\_tensor\_les\_calc}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{viscocity\_tensor\_les\_calc()}{viscocity\_tensor\_les\_calc()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+1d\+\_\+engine\+::viscocity\+\_\+tensor\+\_\+les\+\_\+calc (\begin{DoxyParamCaption}\item[{real, dimension( ndim, ndim, nphase, mat\+\_\+nonods  ), intent(inout)}]{L\+E\+S\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON,  }\item[{real, dimension( nphase, mat\+\_\+nonods  ), intent(inout)}]{L\+E\+S\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL,  }\item[{real, dimension( ndim, ndim, nphase, u\+\_\+nloc, totele  ), intent(in)}]{D\+U\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+O\+N\+O\+DS,  }\item[{real, dimension( ndim, x\+\_\+nonods  ), intent(in)}]{X\+\_\+\+A\+LL,  }\item[{integer, dimension( x\+\_\+nloc $\ast$ totele  ), intent(in)}]{X\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{M\+A\+T\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{M\+A\+T\+\_\+\+N\+L\+OC,  }\item[{integer, dimension( mat\+\_\+nloc $\ast$ totele  ), intent(in)}]{M\+A\+T\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{L\+E\+S\+\_\+\+D\+I\+S\+O\+PT,  }\item[{real, intent(in)}]{L\+E\+S\+\_\+\+CS,  }\item[{real, dimension( nphase, cv\+\_\+nonods ), intent(in)}]{U\+D\+EN,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, dimension( mat\+\_\+nloc $\ast$ totele  ), intent(in)}]{C\+V\+\_\+\+N\+D\+G\+LN,  }\item[{integer, dimension( u\+\_\+nloc $\ast$ totele  ), intent(in)}]{U\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{real, dimension( ndim, nphase, u\+\_\+nonods  ), intent(in)}]{U\+\_\+\+A\+LL,  }\item[{real, dimension( nphase, cv\+\_\+nonods ), intent(in)}]{D\+E\+R\+IV }\end{DoxyParamCaption})}
+
+
+
+\+: This subroutine calculates a tensor of viscocity L\+E\+S\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, L\+E\+S\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_afcedae35a0a37c9b033248d85bb9ad86_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_afcedae35a0a37c9b033248d85bb9ad86_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemultiphase__1d__engine_ad29606c63b241238edd97827aa4564d7}\label{namespacemultiphase__1d__engine_ad29606c63b241238edd97827aa4564d7}} 
+\index{multiphase\_1d\_engine@{multiphase\_1d\_engine}!volumefraction\_assemble\_solve@{volumefraction\_assemble\_solve}}
+\index{volumefraction\_assemble\_solve@{volumefraction\_assemble\_solve}!multiphase\_1d\_engine@{multiphase\_1d\_engine}}
+\doxysubsubsection{\texorpdfstring{volumefraction\_assemble\_solve()}{volumefraction\_assemble\_solve()}}
+{\footnotesize\ttfamily subroutine, public multiphase\+\_\+1d\+\_\+engine\+::volumefraction\+\_\+assemble\+\_\+solve (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type )}]{packed\+\_\+state,  }\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{multicomponent\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(inout)}]{C\+V\+\_\+funs,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__discretization__opts}{multi\+\_\+discretization\+\_\+opts}})}]{Mdisopt,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__absorption}{multi\+\_\+absorption}}), intent(inout)}]{multi\+\_\+absorp,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1porous__adv__coefs}{porous\+\_\+adv\+\_\+coefs}}), intent(inout)}]{upwnd,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1pipe__coords}{pipe\+\_\+coords}}), dimension(\+:), intent(in)}]{eles\+\_\+with\+\_\+pipe,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package}{multi\+\_\+pipe\+\_\+package}}), intent(in)}]{pipes\+\_\+aux,  }\item[{real, intent(in)}]{DT,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{V\+\_\+\+S\+O\+U\+R\+CE,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE,  }\item[{integer, intent(in)}]{igot\+\_\+theta\+\_\+flux,  }\item[{real, dimension( \+: ), intent(inout)}]{mass\+\_\+ele\+\_\+transp,  }\item[{integer, intent(in)}]{nonlinear\+\_\+iteration,  }\item[{integer, intent(in)}]{time\+\_\+step,  }\item[{integer, intent(inout)}]{S\+F\+P\+I\+\_\+taken,  }\item[{integer, intent(inout)}]{S\+F\+P\+I\+\_\+its,  }\item[{real, dimension(\+:), intent(inout)}]{Courant\+\_\+number,  }\item[{real, dimension( \+:, \+:), intent(inout)}]{T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:, \+:), intent(inout)}]{O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX,  }\item[{real, dimension( \+:, \+:), intent(inout)}]{T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J,  }\item[{real, dimension( \+:, \+:), intent(inout)}]{O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J }\end{DoxyParamCaption})}
+
+
+
+Calls to generate the transport equation for the saturation. Embeded an F\+PI with backtracking method is uncluded. 
+
+\begin{DoxyAuthor}{Author}
+Chris Pain, Pablo Salinas 
+\end{DoxyAuthor}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=550pt]{namespacemultiphase__1d__engine_ad29606c63b241238edd97827aa4564d7_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemultiphase__1d__engine_ad29606c63b241238edd97827aa4564d7_icgraph}
+\end{center}
+\end{figure}

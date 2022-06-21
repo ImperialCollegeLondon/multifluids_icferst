@@ -1,0 +1,8 @@
+<map id="compositional_terms::calculate_componentdiffusionterm" name="compositional_terms::calculate_componentdiffusionterm">
+<area shape="rect" id="node1" title=" " alt="" coords="5,39,263,80"/>
+<area shape="rect" id="node2" href="$namespacecompositional__terms.html#a747fbf8752c32e5d741465ea409d6319" title=" " alt="" coords="311,5,469,47"/>
+<area shape="rect" id="node3" href="$namespacecompositional__terms.html#ad493264ab6df90982606d40e8b794a2e" title=" " alt="" coords="311,71,469,112"/>
+<area shape="rect" id="node4" href="$namespacemulti__data__types.html#a5641f05bcbbf1c56b952f99ed0cd1f67" title=" " alt="" coords="517,37,728,79"/>
+<area shape="rect" id="node5" href="$namespacematrix__operations.html#a11255cf3f07959a2d3e20dd8705755fe" title=" " alt="" coords="548,103,697,144"/>
+<area shape="rect" id="node6" href="$namespacematrix__operations.html#a3795359fc116fe5770ad11a89bbccc00" title=": This sub finds the inverse of the matrix A and puts it back in A. MAT, MAT2, X and B are working ve..." alt="" coords="776,103,925,144"/>
+</map>

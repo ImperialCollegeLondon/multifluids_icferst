@@ -1,0 +1,14 @@
+<map id="matrix_operations::color_get_cmc_pha" name="matrix_operations::color_get_cmc_pha">
+<area shape="rect" id="node1" title=":Initialize the momentum equation (CMC) and introduces the corresponding values in it...." alt="" coords="5,275,155,316"/>
+<area shape="rect" id="node2" href="$multi__matrix__operations_8_f90.html#a1d78ca7eba32c498b8004c8e140321b7" title=": form pressure matrix CMC using a colouring approach, requires more memory" alt="" coords="205,143,384,170"/>
+<area shape="rect" id="node7" href="$multi__matrix__operations_8_f90.html#aabf6daa1fc142c4f465b692f6399ee5b" title=": form pressure matrix CMC using a colouring approach" alt="" coords="203,387,387,414"/>
+<area shape="rect" id="node3" href="$namespacematrix__operations.html#a963a038e3ea8bafb851ab3f5225a5300" title=": CDP=C*DP" alt="" coords="457,5,607,47"/>
+<area shape="rect" id="node4" href="$namespacematrix__operations.html#ad30d6b55adc62a3c43912ecbfbdb7e58" title=": CV_RHS = CT * U" alt="" coords="457,71,607,112"/>
+<area shape="rect" id="node5" href="$namespacematrix__operations.html#ae03adef605e7047d7fbafecd36d39c0e" title=": DP = (C)^T U_LONG" alt="" coords="450,136,614,177"/>
+<area shape="rect" id="node6" href="$namespacematrix__operations.html#a1fe0d2f2c00d0e6b52d0121904447542" title=": U = BLOCK_MAT * CDP The difference with PHA_BLOCK_MAT_VEC_MANY is that the input CDP is overwritten..." alt="" coords="435,202,629,258"/>
+<area shape="rect" id="node8" href="$namespacematrix__operations.html#a895e0f98ecb17a8541be87879adf8876" title=": CDP=C*DP" alt="" coords="457,283,607,324"/>
+<area shape="rect" id="node9" href="$namespacematrix__operations.html#ac262416a51bbee2f70aa2ed9408be200" title=": CV_RHS=CT*U" alt="" coords="457,348,607,389"/>
+<area shape="rect" id="node10" href="$namespacematrix__operations.html#adab9184c4050e9ba8576cde63fa99b5a" title=": DP = (C)^T U_LONG" alt="" coords="457,413,607,455"/>
+<area shape="rect" id="node11" href="$namespacematrix__operations.html#a803a8d54cfb386b1ba07fc131910114c" title=": performs U = BLOCK_MAT * CDP, where block_mat" alt="" coords="457,479,607,520"/>
+<area shape="rect" id="node12" href="$namespacematrix__operations.html#af1abd4988e547cc7cd5f59bf7ccbfff9" title=" " alt="" coords="457,544,607,585"/>
+</map>

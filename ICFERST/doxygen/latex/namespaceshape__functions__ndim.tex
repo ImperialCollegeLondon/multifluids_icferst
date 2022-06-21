@@ -1,0 +1,1307 @@
+\hypertarget{namespaceshape__functions__ndim}{}\doxysection{shape\+\_\+functions\+\_\+ndim Module Reference}
+\label{namespaceshape__functions__ndim}\index{shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsection*{Data Types}
+\begin{DoxyCompactItemize}
+\item 
+interface \mbox{\hyperlink{interfaceshape__functions__ndim_1_1xprod}{xprod}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ab0d45b5cca739d6579a00f6a5ac41de7}{quad\+\_\+1d\+\_\+shape}} (cv\+\_\+ngi, cv\+\_\+nloc, u\+\_\+nloc, cvn, cvweigh, n, nlx, un, unlx)
+\begin{DoxyCompactList}\small\item\em \+: For quadratic elements. Shape functions associated with volume integration using both CV basis functions C\+VN as well as F\+EM basis functions N (and its derivatives N\+LX, N\+LY, N\+LZ) \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a7124edf2219f0df3e3bdbfc9148bac65}{quad\+\_\+nd\+\_\+shape}} (ndim, cv\+\_\+ele\+\_\+type, cv\+\_\+ngi, cv\+\_\+nloc, u\+\_\+nloc, cvn, cvweigh, n, nlx, nly, nlz, un, unlx, unly, unlz)
+\begin{DoxyCompactList}\small\item\em \+: For quadratic elements\+: Shape functions associated with volume integration using both CV (C\+VN) and F\+EM (N and its derivatives N\+L\+X/\+Y/Z) basis functions. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aa8a65df277c132b8c748fc53634ded22}{quad\+\_\+nd\+\_\+shape\+\_\+n}} (cv\+\_\+ele\+\_\+type, ndim, cv\+\_\+ngi, cv\+\_\+nloc, cvn, cvweigh, n, nlx, nly, nlz, cv\+\_\+ngi\+\_\+1d, cv\+\_\+nloc\+\_\+1d, cvn\+\_\+1d, cvweigh\+\_\+1d, n\+\_\+1d, nlx\+\_\+1d)
+\begin{DoxyCompactList}\small\item\em \+: For quadatic elements -- shape functions associated with volume integration using both CV basis functions C\+VN as well as F\+EM basis functions N (and its derivatives N\+LX, N\+LY, N\+LZ) \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a62013afe2af3b6eb9358b519e41313b8}{vol\+\_\+cv\+\_\+tri\+\_\+tet\+\_\+shape}} (cv\+\_\+ele\+\_\+type, ndim, cv\+\_\+ngi, cv\+\_\+nloc, u\+\_\+nloc, cvn, cvweigh, n, nlx, nly, nlz, un, unlx, unly, unlz)
+\begin{DoxyCompactList}\small\item\em \+: Compute shape functions N, UN etc for linear trianles. Shape functions associated with volume integration using both CV basis functions C\+VN, as well as F\+EM basis functions N (and its derivatives N\+LX, N\+LY, N\+LZ). Also for velocity basis functions UN, U\+N\+LX, U\+N\+LY, U\+N\+LZ. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a6aa37d81c26106c0d55a961df42387f0}{new\+\_\+pt\+\_\+qua\+\_\+vol\+\_\+cv\+\_\+tri\+\_\+tet\+\_\+shape}} (cv\+\_\+ele\+\_\+type, ndim, cv\+\_\+ngi, cv\+\_\+nloc, u\+\_\+nloc, cvn, cvweigh, n, nlx, nly, nlz, un, unlx, unly, unlz)
+\begin{DoxyCompactList}\small\item\em \+: new 1 or 4 pt quadrature set on each CV of a quadratic tetrahedra ..... Compute shape functions N, UN etc for linear trianles. Shape functions associated with volume integration using both CV basis functions C\+VN, as well as F\+EM basis functions N (and its derivatives N\+LX, N\+LY, N\+LZ). Also for velocity basis functions UN, U\+N\+LX, U\+N\+LY, U\+N\+LZ. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a8e252b424608e006409cf9419a7e2500}{test\+\_\+quad\+\_\+tet}} (cv\+\_\+nloc, cv\+\_\+ngi, cvn, n, nlx, nly, nlz, cvweight, x, y, z, x\+\_\+nonods, x\+\_\+ndgln2, totele)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a18ed715c7c19cc301ca5152fe8293ef2}{compute\+\_\+xndgln\+\_\+tritetquadhex}} (cv\+\_\+ele\+\_\+type, max\+\_\+totele, max\+\_\+x\+\_\+nonods, quad\+\_\+cv\+\_\+nloc, totele, x\+\_\+nonods, x\+\_\+ndgln, lx, ly, lz, x, y, z, fem\+\_\+nod, x\+\_\+ideal, y\+\_\+ideal, z\+\_\+ideal, x\+\_\+ndgln\+\_\+ideal)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a26392ba54127e829f1661b9f8a2a9d53}{suf\+\_\+cv\+\_\+tri\+\_\+tet\+\_\+shape}} (cv\+\_\+ele\+\_\+type, ndim, scvngi, cv\+\_\+nloc, u\+\_\+nloc, scvfeweigh, scvfen, scvfenlx, scvfenly, scvfenlz, scvfenslx, scvfensly, sufen, sufenlx, sufenly, sufenlz, sufenslx, sufensly, cv\+\_\+neiloc, cvfem\+\_\+neiloc, ufem\+\_\+neiloc)
+\begin{DoxyCompactList}\small\item\em \+: Compute shape functions N, UN etc for linear triangles. Shape functions associated with volume integration using both CV basis functions C\+VN, as well as F\+EM basis functions SN (and its derivatives S\+N\+LX, S\+N\+LY, S\+N\+LZ). Also for velocity basis functions S\+UN, S\+U\+N\+LX, S\+U\+N\+LY, S\+U\+N\+LZ. Also the derivatives along the CV faces\+: sufnlx, sufnly, sufunlx, sufunly \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a7f9befc07f9850d9db51f96c4e6a0cd4}{james\+\_\+quadrature\+\_\+quad\+\_\+tet}} (l1, l2, l3, l4, normx, normy, normz, sarea, X\+\_\+\+L\+OC, Y\+\_\+\+L\+OC, Z\+\_\+\+L\+OC, C\+V\+\_\+\+N\+E\+I\+L\+OC, cv\+\_\+nloc, scvngi)
+\begin{DoxyCompactList}\small\item\em \+: the surface quadrature pts in local coord are l1, l2, l3, l4, and the associated normals normx, normy, normz and the surface area is sarea The position of the nodes of the tet are\+: (X\+\_\+\+L\+OC, Y\+\_\+\+L\+OC, Z\+\_\+\+L\+OC) Calculate cv\+\_\+neiloc\+: To get the neighbouring node for node I\+L\+OC and surface quadrature point S\+GI C\+V\+\_\+\+J\+L\+OC = C\+V\+\_\+\+N\+E\+I\+L\+O\+C( C\+V\+\_\+\+I\+L\+O\+C, S\+G\+I ) The number of quadrature points is 24 = 4 x 6 exterior faces (and quadrature points) and 36 = 4x6 + 6x4/2 = 60 pts. @\+W\+A\+R\+N\+I\+NG\+: Disabled because it introduces errors \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ad2181d02562ea0e3e97902500a65524c}{get\+\_\+tang\+\_\+binorm}} (NX, NY, NZ, T1X, T1Y, T1Z, T2X, T2Y, T2Z, N\+N\+O\+D\+RO)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_abb29324e9e7ed1c60a8ac2d2dbe93b55}{compute\+\_\+surfaceshapefunctions\+\_\+triangle\+\_\+tetrahedron}} (cv\+\_\+nloc\+\_\+cells, cv\+\_\+ele\+\_\+type\+\_\+cells, cv\+\_\+ele\+\_\+type, ndim, totele, cv\+\_\+nloc, scvngi, x\+\_\+nonods, quad\+\_\+cv\+\_\+nloc, x\+\_\+ndgln, x, y, z, lx, ly, lz, fem\+\_\+nod, sn, snlx, snly, snlz, sufnlx, sufnly, scvweigh, cv\+\_\+neiloc\+\_\+cells, cvfem\+\_\+neiloc)
+\begin{DoxyCompactList}\small\item\em \+: this subroutine calculates shape functions sn, snlx, snly, snlz, sufnlx, sufnly, their weights scvweigh and local connectivity cv\+\_\+neiloc\+\_\+cells, cvfem\+\_\+neiloc on the boundaries of the cv\+\_\+nloc\+\_\+cells control volumes. The control volume types are defines using cv\+\_\+ele\+\_\+type\+\_\+cells. cv\+\_\+neiloc\+\_\+cells is associated with the CV cells cvfem\+\_\+neiloc is associated with the F\+EM basis SN etc. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a6ae6fe2f9e2d9806b94a4953dc6a12f4}{dummy\+\_\+tri\+\_\+tet}} (d1, d3, quad\+\_\+cv\+\_\+ngi, quad\+\_\+cv\+\_\+nloc, dummy\+\_\+sngi, dummy\+\_\+snloc, nwicel, cv\+\_\+nloc, cv\+\_\+sngi, totele, quad\+\_\+u\+\_\+loc\+\_\+dummy, mloc, dummy\+\_\+smloc, lowqua, npoly, npoly\+\_\+ngi)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a8e1483fa07acac02ed8dcdcd5355f922}{shape\+\_\+tri\+\_\+tet}} (cv\+\_\+ele\+\_\+type\+\_\+cells, cv\+\_\+nloc\+\_\+cells, cv\+\_\+ele\+\_\+type, ndim, totele, cv\+\_\+nloc, cv\+\_\+ngi, x\+\_\+nonods, quad\+\_\+cv\+\_\+nloc, x\+\_\+ndgln, x, y, z, lx, ly, lz, n, nlx, nly, nlz, cvweigh)
+\begin{DoxyCompactList}\small\item\em \+: Determine the volume shape functions n, nlx, nly, nlz and weights cvweigh for the cv\+\_\+nloc\+\_\+cells CV cells. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ae55e4b96c1fd166b0c386e93ddf53196}{shatri\+\_\+hex}} (l1, l2, l3, l4, weight, d3, nloc, ngi, n, nlx, nly, nlz, tri\+\_\+tet)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_abb4ec02f375fe02820f1bf733d8fb031}{shatri}} (l1, l2, l3, l4, weight, d3, nloc, ngi, n, nlx, nly, nlz)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ac67c2ff971dd5f7bbfd22a1c1d22eacc}{shape\+\_\+triangle\+\_\+cubic}} (l1, l2, l3, l4, weight, d3, nloc, ngi, n, nlx, nly, nlz)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a91a5940ae1f635a9dbf21cc341de9d56}{base\+\_\+order\+\_\+tri}} (n, nloc, ngi)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a37c95193cd7ac8186d5e2a9359793013}{base\+\_\+order\+\_\+tet}} (n, nloc, ngi)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a01db78dad28836c230edae9db5ce2b49}{calc\+\_\+cvn\+\_\+tritetquadhex}} (cv\+\_\+ele\+\_\+type, totele, cv\+\_\+nloc, cv\+\_\+ngi, x\+\_\+nonods, quad\+\_\+cv\+\_\+nloc, x\+\_\+ndgln, fem\+\_\+nod, cvn)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aec7c06f0cf1ffd44899b31601d1c0835}{shape\+\_\+l\+\_\+q\+\_\+quad}} (lowqua, ngi, nloc, mloc, sngi, snloc, smloc, m, mlx, mly, mlz, weight, n, nlx, nly, nlz, sweigh, sn, snlx, snly, sm, smlx, smly, nwicel, d3)
+\item 
+real function \mbox{\hyperlink{namespaceshape__functions__ndim_a3a845aa5e30651da7fb65786056f5591}{volume\+\_\+quad\+\_\+map}} (cv\+\_\+iloc, xgi, ygi, zgi, lx, ly, lz)
+\item 
+real function \mbox{\hyperlink{namespaceshape__functions__ndim_a257f57afe346a4a6cf4c30b4fb20ca11}{area\+\_\+quad\+\_\+map}} (cv\+\_\+iloc, xgi, ygi, lx, ly)
+\item 
+real function \mbox{\hyperlink{namespaceshape__functions__ndim_a2cb290bece46a6733c9af01aec40d451}{tet\+\_\+vol}} (a, b, c, d)
+\item 
+real function \mbox{\hyperlink{namespaceshape__functions__ndim_ab9b13716183e460cfa60142194035eb1}{triareaf}} (x1, y1, x2, y2, x3, y3)
+\item 
+real function \mbox{\hyperlink{namespaceshape__functions__ndim_af4782b913aba9aef1af79d9db7c1739a}{triareaf\+\_\+sign}} (x1, y1, x2, y2, x3, y3)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a7dbb03fa7fa657a2db86576f41ef2aa4}{crossproduct}} (n, cp, a, b)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aa05fda8a8f1d9b22a192009519e0ce27}{printoutfunmat}} (n, m, a)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a279dc82b53707b674ea9b70360e7e258}{dgsdetnxloc2}} (S\+N\+L\+OC, S\+N\+GI, X\+SL, Y\+SL, Z\+SL, SN, S\+N\+LX, S\+N\+LY, S\+W\+E\+I\+GH, S\+D\+E\+T\+WE, S\+A\+R\+EA, D1, D3, D\+C\+YL, N\+O\+R\+M\+XN, N\+O\+R\+M\+YN, N\+O\+R\+M\+ZN, N\+O\+R\+MX, N\+O\+R\+MY, N\+O\+R\+MZ)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a29b95710b57b76fd0d961ec749a71304}{dgsdetnxloc2\+\_\+all}} (S\+N\+L\+OC, S\+N\+GI, N\+D\+IM, X\+S\+L\+\_\+\+A\+LL, SN, S\+N\+LX, S\+N\+LY, S\+W\+E\+I\+GH, S\+D\+E\+T\+WE, S\+A\+R\+EA, N\+O\+R\+M\+X\+N\+\_\+\+A\+LL, N\+O\+R\+M\+X\+\_\+\+A\+LL)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a915ed0656cc376f20e85f62cd9cec4de}{normgi}} (N\+O\+R\+M\+XN, N\+O\+R\+M\+YN, N\+O\+R\+M\+ZN, D\+X\+D\+LX, D\+Y\+D\+LX, D\+Z\+D\+LX, D\+X\+D\+LY, D\+Y\+D\+LY, D\+Z\+D\+LY, N\+O\+R\+MX, N\+O\+R\+MY, N\+O\+R\+MZ)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a0ac4f189eee385c652c399464f0df5fe}{xprod1}} (AX, AY, AZ, BX, BY, BZ, CX, CY, CZ)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aa91a970575f1acc9e70afdc8a9b3e115}{xprod2}} (A, B, C)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ab33172e32fe449b773531887a2da7894}{make\+\_\+qtri}} (totele, x\+\_\+nloc, max\+\_\+x\+\_\+nonods, x\+\_\+nonods, x\+\_\+ndgln, lx, ly, x, y, fem\+\_\+nod)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a01d02ecba87b89d63ca89bd4dbd2ba5f}{computing\+\_\+small\+\_\+qtriangles}} (ele\+\_\+big, x\+\_\+nloc\+\_\+big, totele\+\_\+big, x\+\_\+nonods\+\_\+big, increment\+\_\+ele\+\_\+big, x\+\_\+ndgln\+\_\+big, x\+\_\+big, y\+\_\+big)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_abf3e8d526261cc682f08371ccc3ce0f4}{remaping\+\_\+fields\+\_\+qtriangles}} (ele\+\_\+big, x\+\_\+nloc\+\_\+big, totele\+\_\+big, x\+\_\+nonods\+\_\+big, x\+\_\+ndgln\+\_\+big, x\+\_\+big, y\+\_\+big, x\+\_\+nonods, x\+\_\+nloc, totele, x\+\_\+ndgln, ele\+\_\+ref, x, y)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a4dd3483ae5799dbe0861987109e37542}{eliminating\+\_\+repetitive\+\_\+nodes}} (totele, x\+\_\+nloc, x\+\_\+nonods, over\+\_\+all, x\+\_\+ndgln, x, y)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_acc329705b056aef8e675c19d3d92e3fb}{eliminating\+\_\+repetitive\+\_\+nodes\+\_\+all}} (totele, x\+\_\+nloc, x\+\_\+nonods, mx\+\_\+x\+\_\+nonods, x\+\_\+ndgln, x, y, z)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aa318c626f7781274b73f49dc1805900a}{adding\+\_\+extra\+\_\+parametric\+\_\+nodes}} (totele, x\+\_\+nloc, mx\+\_\+x\+\_\+nonods, x\+\_\+ndgln, x, y)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a364b3f7243c9e7b46dbcd0d3bffe5f6b}{make\+\_\+qtets}} (totele, quad\+\_\+cv\+\_\+nloc, x\+\_\+nloc, max\+\_\+x\+\_\+nonods, x\+\_\+nonods, x\+\_\+ndgln\+\_\+real, lx, ly, lz, x, y, z, fem\+\_\+nod, xp2, yp2, zp2, x\+\_\+ndgln\+\_\+p2)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a5dff129de3cfdb87cd666a114c2b56a2}{make\+\_\+linear\+\_\+tetrahedron}} (ele, quad\+\_\+cv\+\_\+nloc, x\+\_\+nloc, x\+\_\+nonods, number\+\_\+of\+\_\+hexs, xp2, yp2, zp2, x, y, z, x\+\_\+ndgln\+\_\+p2, x\+\_\+ndgln)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ab2cdb212a9a26a4101f281d6a3281f48}{make\+\_\+bilinear\+\_\+hexahedra}} (totele, number\+\_\+of\+\_\+hexs, quad\+\_\+cv\+\_\+nloc, x\+\_\+nonods, x, y, z, x\+\_\+ndgln)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a29ad83f0f46784a98dfe1604e624eb53}{adding\+\_\+parametric\+\_\+nodes\+\_\+hex}} (ele, ele\+\_\+hex, totele, number\+\_\+of\+\_\+hexs, quad\+\_\+cv\+\_\+nloc, x\+\_\+nonods, x, y, z, x\+\_\+ndgln)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a9c978f9224bd7a912e1ea02ced195e5d}{shape\+\_\+one\+\_\+ele2}} (ndim, cv\+\_\+ele\+\_\+type, cv\+\_\+ngi, cv\+\_\+nloc, u\+\_\+nloc, cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, ufen, ufenlx, ufenly, ufenlz, sbcvngi, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbufen, sbufenslx, sbufensly, nface, cv\+\_\+sloclist, u\+\_\+sloclist, cv\+\_\+snloc, u\+\_\+snloc)
+\begin{DoxyCompactList}\small\item\em \+: This subrt defines the sub-\/control volume and F\+EM shape functions. Shape functions associated with volume integration using both CV basis functions C\+VN as well as F\+EM basis functions C\+V\+F\+EN (and its derivatives C\+V\+F\+E\+N\+LX, C\+V\+F\+E\+N\+LY, C\+V\+F\+E\+N\+LZ) \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a54aa7c2f3b52f8fb9e403339ac85c10b}{shape}} (L\+O\+W\+Q\+UA, N\+GI, N\+L\+OC, M\+L\+OC, S\+N\+GI, S\+N\+L\+OC, S\+M\+L\+OC, M, M\+LX, M\+LY, M\+LZ, W\+E\+I\+G\+HT, N, N\+LX, N\+LY, N\+LZ, S\+W\+E\+I\+GH, SN, S\+N\+LX, S\+N\+LY, SM, S\+M\+LX, S\+M\+LY, N\+W\+I\+C\+EL, D3)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a25072ca7508393d73b9e91c2e80ebc6f}{tr2or3dqu}} (N\+GI, N\+L\+OC, M\+L\+OC, M, M\+LX, M\+LY, M\+LZ, W\+E\+I\+G\+HT, N, N\+LX, N\+LY, N\+LZ, S\+N\+GI, S\+N\+L\+OC, S\+W\+E\+I\+GH, SN, S\+N\+LX, S\+N\+LY, S\+M\+L\+OC, SM, S\+M\+LX, S\+M\+LY, D3)
+\begin{DoxyCompactList}\small\item\em \+:This subroutine defines the shape functions M and N and their derivatives at the Gauss points for quadratic elements. For 3-\/D F\+L\+OW. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a5be4219a7d19d9f283b7c1a851130cfc}{tr2d}} (L\+O\+W\+Q\+UA, N\+GI, N\+L\+OC, M\+L\+OC, M, W\+E\+I\+G\+HT, N, N\+LX, N\+LY, S\+N\+GI, S\+N\+L\+OC, S\+W\+E\+I\+GH, SN, S\+N\+LX)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a54075c9b51cd6e9659058c8327612bbb}{shatrinew}} (L1, L2, L3, L4, W\+E\+I\+G\+HT, N\+L\+OC, N\+GI, N, N\+L\+X\+\_\+\+A\+LL)
+\begin{DoxyCompactList}\small\item\em \+: Work out the shape functions and their derivatives... \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a445a3bd2cb68d70b3e9cd86febb890db}{shatriold}} (L1, L2, L3, L4, W\+E\+I\+G\+HT, D3, N\+L\+OC, N\+GI, N, N\+LX, N\+LY, N\+LZ)
+\begin{DoxyCompactList}\small\item\em \+: Work out the shape functions and their derivatives... \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ad8bb7dc236ed2a0b994488d081ee70f4}{triquaold}} (L1, L2, L3, L4, W\+E\+I\+G\+HT, D3, N\+GI)
+\begin{DoxyCompactList}\small\item\em \+: This sub calculates the local corrds L1, L2, L3, L4 and weights at the quadrature points. If D3 it does this for 3Dtetrahedra elements else triangular elements. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a8fe09e952cf3b4ee2627342abc216d66}{spectr}} (N\+GI, N\+L\+OC, M\+L\+OC, M, W\+E\+I\+G\+HT, N, N\+LX, N\+LY, N\+LZ, D3, D2, I\+P\+O\+LY, I\+Q\+A\+D\+RA)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a62d482e48ef37a99c81efcdd8e273644}{gtroot}} (I\+P\+O\+LY, I\+Q\+A\+D\+RA, W\+E\+IT, N\+O\+D\+P\+OS, Q\+U\+A\+P\+OS, N\+D\+GI, N\+D\+N\+OD)
+\item 
+real function \mbox{\hyperlink{namespaceshape__functions__ndim_afc7053552eace6af239edcd5d1b99cb3}{specfu}} (D\+I\+FF, L\+X\+GP, I\+N\+OD, N\+D\+N\+OD, I\+P\+O\+LY, N\+O\+D\+P\+OS)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a287190f2e4c6ec0425a18bc9d5ab56b2}{cherot}} (W\+E\+IT, Q\+U\+A\+P\+OS, N\+D\+GI, G\+E\+T\+N\+DP)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a465010bbab3913a160a668f64191ba31}{legrot}} (W\+E\+IT, Q\+U\+A\+P\+OS, N\+D\+GI, G\+E\+T\+N\+DP)
+\item 
+real function \mbox{\hyperlink{namespaceshape__functions__ndim_a9a01d935ddfe5ea36a29ffe505dbf73e}{plegen}} (LX, K)
+\item 
+real function \mbox{\hyperlink{namespaceshape__functions__ndim_ae03154693b140919ff0c589df8e58f89}{binomial\+\_\+coefficient}} (K, L)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aa001da7c1c2a50e7cd0b182f17f6bd1f}{lroots}} (Q\+U\+A\+P\+OS, N\+D\+GI)
+\item 
+real function \mbox{\hyperlink{namespaceshape__functions__ndim_afcdd60fa5c35faed86afbc64194f32f5}{cheby1}} (D\+I\+FF, LX, I\+N\+OD, N\+D\+N\+OD, N\+O\+D\+P\+OS)
+\item 
+real function \mbox{\hyperlink{namespaceshape__functions__ndim_af8259d92f168acab30360351113dd84a}{cheby2}} (D\+I\+FF, LX, I\+N\+OD, N\+D\+N\+OD, N\+O\+D\+P\+OS)
+\item 
+real function \mbox{\hyperlink{namespaceshape__functions__ndim_ab7a1f6dd86d185746575caf1b293c45f}{tcheb}} (N, X\+PT, D\+I\+FF, D\+I\+F\+F2)
+\item 
+recursive integer function \mbox{\hyperlink{namespaceshape__functions__ndim_a7cc3628b1dbcd982fcef188b9d1493f2}{factorial}} (n)
+\item 
+real function \mbox{\hyperlink{namespaceshape__functions__ndim_a647388b8d7683edf0e0f203e5bcad3b6}{legend}} (D\+I\+FF, LX, I\+N\+OD, N\+D\+N\+OD, N\+O\+D\+P\+OS)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aaaf113a1f2b0b1043b46f700358de0e8}{determin\+\_\+sloclist}} (C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST, C\+V\+\_\+\+N\+L\+OC, C\+V\+\_\+\+S\+N\+L\+OC, N\+F\+A\+CE, ndim, cv\+\_\+ele\+\_\+type)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ab137b075bc778e2a27a0c1810a49b492}{jacobl}} (N, A\+L\+P\+HA, B\+E\+TA, X\+J\+AC)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a09da641d2526c3de68637ac538d3aabd}{jacobf}} (N, P\+O\+LY, P\+D\+ER, P\+O\+L\+Y\+M1, P\+D\+E\+R\+M1, P\+O\+L\+Y\+M2, P\+D\+E\+R\+M2, X)
+\item 
+real function \mbox{\hyperlink{namespaceshape__functions__ndim_a0baef8de3aad5dd6c661809fdd333369}{volume\+\_\+tethex}} (hexs, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4)
+\item 
+subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aaff7f00bac7c3daa6a967b61e83e0a84}{get\+\_\+cvn\+\_\+compact\+\_\+overlapping}} (cv\+\_\+ele\+\_\+type, ndim, cv\+\_\+ngi, cv\+\_\+nloc, cvn, cvweigh)
+\begin{DoxyCompactList}\small\item\em This subroutine is specially created to be used with compact\+\_\+overlapping. \end{DoxyCompactList}\item 
+integer function \mbox{\hyperlink{namespaceshape__functions__ndim_a334b2cc04802a89c38ad64fbb302f22d}{get\+\_\+nwicel}} (d3, nloc)
+\begin{DoxyCompactList}\small\item\em \+: Provides a number defining the type of element we are dealing with 4,5 Linear tetrahedra, 10 quadratic tetrahedra; 3,4 Linear triangle, 5 quadratic triangle \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_aa318c626f7781274b73f49dc1805900a}\label{namespaceshape__functions__ndim_aa318c626f7781274b73f49dc1805900a}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!adding\_extra\_parametric\_nodes@{adding\_extra\_parametric\_nodes}}
+\index{adding\_extra\_parametric\_nodes@{adding\_extra\_parametric\_nodes}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{adding\_extra\_parametric\_nodes()}{adding\_extra\_parametric\_nodes()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::adding\+\_\+extra\+\_\+parametric\+\_\+nodes (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{totele,  }\item[{integer, intent(in)}]{x\+\_\+nloc,  }\item[{integer, intent(in)}]{mx\+\_\+x\+\_\+nonods,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln,  }\item[{real, dimension( \+: ), intent(inout)}]{x,  }\item[{real, dimension( \+: ), intent(inout)}]{y }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_aa318c626f7781274b73f49dc1805900a_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a29ad83f0f46784a98dfe1604e624eb53}\label{namespaceshape__functions__ndim_a29ad83f0f46784a98dfe1604e624eb53}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!adding\_parametric\_nodes\_hex@{adding\_parametric\_nodes\_hex}}
+\index{adding\_parametric\_nodes\_hex@{adding\_parametric\_nodes\_hex}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{adding\_parametric\_nodes\_hex()}{adding\_parametric\_nodes\_hex()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::adding\+\_\+parametric\+\_\+nodes\+\_\+hex (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{ele,  }\item[{integer, intent(in)}]{ele\+\_\+hex,  }\item[{integer, intent(in)}]{totele,  }\item[{integer, intent(in)}]{number\+\_\+of\+\_\+hexs,  }\item[{integer, intent(in)}]{quad\+\_\+cv\+\_\+nloc,  }\item[{integer, intent(in)}]{x\+\_\+nonods,  }\item[{real, dimension( \+: ), intent(inout)}]{x,  }\item[{real, dimension( \+: ), intent(inout)}]{y,  }\item[{real, dimension( \+: ), intent(inout)}]{z,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a29ad83f0f46784a98dfe1604e624eb53_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a257f57afe346a4a6cf4c30b4fb20ca11}\label{namespaceshape__functions__ndim_a257f57afe346a4a6cf4c30b4fb20ca11}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!area\_quad\_map@{area\_quad\_map}}
+\index{area\_quad\_map@{area\_quad\_map}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{area\_quad\_map()}{area\_quad\_map()}}
+{\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::area\+\_\+quad\+\_\+map (\begin{DoxyParamCaption}\item[{integer}]{cv\+\_\+iloc,  }\item[{real}]{xgi,  }\item[{real}]{ygi,  }\item[{real, dimension( \+: )}]{lx,  }\item[{real, dimension( \+: )}]{ly }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a257f57afe346a4a6cf4c30b4fb20ca11_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a257f57afe346a4a6cf4c30b4fb20ca11_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a37c95193cd7ac8186d5e2a9359793013}\label{namespaceshape__functions__ndim_a37c95193cd7ac8186d5e2a9359793013}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!base\_order\_tet@{base\_order\_tet}}
+\index{base\_order\_tet@{base\_order\_tet}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{base\_order\_tet()}{base\_order\_tet()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::base\+\_\+order\+\_\+tet (\begin{DoxyParamCaption}\item[{real, dimension( nloc, ngi ), intent(inout)}]{n,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{ngi }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a37c95193cd7ac8186d5e2a9359793013_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a91a5940ae1f635a9dbf21cc341de9d56}\label{namespaceshape__functions__ndim_a91a5940ae1f635a9dbf21cc341de9d56}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!base\_order\_tri@{base\_order\_tri}}
+\index{base\_order\_tri@{base\_order\_tri}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{base\_order\_tri()}{base\_order\_tri()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::base\+\_\+order\+\_\+tri (\begin{DoxyParamCaption}\item[{real, dimension( nloc, ngi ), intent(inout)}]{n,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{ngi }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a91a5940ae1f635a9dbf21cc341de9d56_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_ae03154693b140919ff0c589df8e58f89}\label{namespaceshape__functions__ndim_ae03154693b140919ff0c589df8e58f89}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!binomial\_coefficient@{binomial\_coefficient}}
+\index{binomial\_coefficient@{binomial\_coefficient}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{binomial\_coefficient()}{binomial\_coefficient()}}
+{\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::binomial\+\_\+coefficient (\begin{DoxyParamCaption}\item[{integer}]{K,  }\item[{integer}]{L }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ae03154693b140919ff0c589df8e58f89_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ae03154693b140919ff0c589df8e58f89_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a01db78dad28836c230edae9db5ce2b49}\label{namespaceshape__functions__ndim_a01db78dad28836c230edae9db5ce2b49}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!calc\_cvn\_tritetquadhex@{calc\_cvn\_tritetquadhex}}
+\index{calc\_cvn\_tritetquadhex@{calc\_cvn\_tritetquadhex}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{calc\_cvn\_tritetquadhex()}{calc\_cvn\_tritetquadhex()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::calc\+\_\+cvn\+\_\+tritetquadhex (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{totele,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{cv\+\_\+ngi,  }\item[{integer, intent(in)}]{x\+\_\+nonods,  }\item[{integer, intent(in)}]{quad\+\_\+cv\+\_\+nloc,  }\item[{integer, dimension( \+: ), intent(in)}]{x\+\_\+ndgln,  }\item[{integer, dimension( \+: ), intent(in)}]{fem\+\_\+nod,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{cvn }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a01db78dad28836c230edae9db5ce2b49_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_afcdd60fa5c35faed86afbc64194f32f5}\label{namespaceshape__functions__ndim_afcdd60fa5c35faed86afbc64194f32f5}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!cheby1@{cheby1}}
+\index{cheby1@{cheby1}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{cheby1()}{cheby1()}}
+{\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::cheby1 (\begin{DoxyParamCaption}\item[{logical, intent(inout)}]{D\+I\+FF,  }\item[{real, intent(inout)}]{LX,  }\item[{integer, intent(inout)}]{I\+N\+OD,  }\item[{integer, intent(inout)}]{N\+D\+N\+OD,  }\item[{real, dimension(\+:), intent(inout)}]{N\+O\+D\+P\+OS }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_afcdd60fa5c35faed86afbc64194f32f5_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_afcdd60fa5c35faed86afbc64194f32f5_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_af8259d92f168acab30360351113dd84a}\label{namespaceshape__functions__ndim_af8259d92f168acab30360351113dd84a}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!cheby2@{cheby2}}
+\index{cheby2@{cheby2}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{cheby2()}{cheby2()}}
+{\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::cheby2 (\begin{DoxyParamCaption}\item[{logical, intent(inout)}]{D\+I\+FF,  }\item[{real, intent(inout)}]{LX,  }\item[{integer, intent(inout)}]{I\+N\+OD,  }\item[{integer, intent(inout)}]{N\+D\+N\+OD,  }\item[{real, dimension(\+:), intent(inout)}]{N\+O\+D\+P\+OS }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_af8259d92f168acab30360351113dd84a_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_af8259d92f168acab30360351113dd84a_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a287190f2e4c6ec0425a18bc9d5ab56b2}\label{namespaceshape__functions__ndim_a287190f2e4c6ec0425a18bc9d5ab56b2}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!cherot@{cherot}}
+\index{cherot@{cherot}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{cherot()}{cherot()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::cherot (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{W\+E\+IT,  }\item[{real, dimension(\+:), intent(inout)}]{Q\+U\+A\+P\+OS,  }\item[{integer, intent(inout)}]{N\+D\+GI,  }\item[{logical, intent(inout)}]{G\+E\+T\+N\+DP }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a287190f2e4c6ec0425a18bc9d5ab56b2_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_abb29324e9e7ed1c60a8ac2d2dbe93b55}\label{namespaceshape__functions__ndim_abb29324e9e7ed1c60a8ac2d2dbe93b55}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!compute\_surfaceshapefunctions\_triangle\_tetrahedron@{compute\_surfaceshapefunctions\_triangle\_tetrahedron}}
+\index{compute\_surfaceshapefunctions\_triangle\_tetrahedron@{compute\_surfaceshapefunctions\_triangle\_tetrahedron}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{compute\_surfaceshapefunctions\_triangle\_tetrahedron()}{compute\_surfaceshapefunctions\_triangle\_tetrahedron()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::compute\+\_\+surfaceshapefunctions\+\_\+triangle\+\_\+tetrahedron (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+nloc\+\_\+cells,  }\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type\+\_\+cells,  }\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{totele,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{scvngi,  }\item[{integer, intent(in)}]{x\+\_\+nonods,  }\item[{integer, intent(in)}]{quad\+\_\+cv\+\_\+nloc,  }\item[{integer, dimension( \+: ), intent(in)}]{x\+\_\+ndgln,  }\item[{real, dimension( \+: ), intent(in)}]{x,  }\item[{real, dimension( \+: ), intent(in)}]{y,  }\item[{real, dimension( \+: ), intent(in)}]{z,  }\item[{real, dimension( \+: ), intent(in)}]{lx,  }\item[{real, dimension( \+: ), intent(in)}]{ly,  }\item[{real, dimension( \+: ), intent(in)}]{lz,  }\item[{integer, dimension( \+: ), intent(in)}]{fem\+\_\+nod,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sn,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{snlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{snly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{snlz,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sufnlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sufnly,  }\item[{real, dimension( \+: ), intent(inout)}]{scvweigh,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{cv\+\_\+neiloc\+\_\+cells,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{cvfem\+\_\+neiloc }\end{DoxyParamCaption})}
+
+
+
+\+: this subroutine calculates shape functions sn, snlx, snly, snlz, sufnlx, sufnly, their weights scvweigh and local connectivity cv\+\_\+neiloc\+\_\+cells, cvfem\+\_\+neiloc on the boundaries of the cv\+\_\+nloc\+\_\+cells control volumes. The control volume types are defines using cv\+\_\+ele\+\_\+type\+\_\+cells. cv\+\_\+neiloc\+\_\+cells is associated with the CV cells cvfem\+\_\+neiloc is associated with the F\+EM basis SN etc. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_abb29324e9e7ed1c60a8ac2d2dbe93b55_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_abb29324e9e7ed1c60a8ac2d2dbe93b55_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a18ed715c7c19cc301ca5152fe8293ef2}\label{namespaceshape__functions__ndim_a18ed715c7c19cc301ca5152fe8293ef2}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!compute\_xndgln\_tritetquadhex@{compute\_xndgln\_tritetquadhex}}
+\index{compute\_xndgln\_tritetquadhex@{compute\_xndgln\_tritetquadhex}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{compute\_xndgln\_tritetquadhex()}{compute\_xndgln\_tritetquadhex()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::compute\+\_\+xndgln\+\_\+tritetquadhex (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{max\+\_\+totele,  }\item[{integer, intent(in)}]{max\+\_\+x\+\_\+nonods,  }\item[{integer, intent(in)}]{quad\+\_\+cv\+\_\+nloc,  }\item[{integer, intent(inout)}]{totele,  }\item[{integer, intent(inout)}]{x\+\_\+nonods,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln,  }\item[{real, dimension( \+: ), intent(inout)}]{lx,  }\item[{real, dimension( \+: ), intent(inout)}]{ly,  }\item[{real, dimension( \+: ), intent(inout)}]{lz,  }\item[{real, dimension( \+: ), intent(inout)}]{x,  }\item[{real, dimension( \+: ), intent(inout)}]{y,  }\item[{real, dimension( \+: ), intent(inout)}]{z,  }\item[{integer, dimension( \+: ), intent(inout)}]{fem\+\_\+nod,  }\item[{real, dimension( \+: ), intent(inout)}]{x\+\_\+ideal,  }\item[{real, dimension( \+: ), intent(inout)}]{y\+\_\+ideal,  }\item[{real, dimension( \+: ), intent(inout)}]{z\+\_\+ideal,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln\+\_\+ideal }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a18ed715c7c19cc301ca5152fe8293ef2_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a18ed715c7c19cc301ca5152fe8293ef2_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a01d02ecba87b89d63ca89bd4dbd2ba5f}\label{namespaceshape__functions__ndim_a01d02ecba87b89d63ca89bd4dbd2ba5f}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!computing\_small\_qtriangles@{computing\_small\_qtriangles}}
+\index{computing\_small\_qtriangles@{computing\_small\_qtriangles}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{computing\_small\_qtriangles()}{computing\_small\_qtriangles()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::computing\+\_\+small\+\_\+qtriangles (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{ele\+\_\+big,  }\item[{integer, intent(in)}]{x\+\_\+nloc\+\_\+big,  }\item[{integer, intent(in)}]{totele\+\_\+big,  }\item[{integer, intent(in)}]{x\+\_\+nonods\+\_\+big,  }\item[{integer, intent(inout)}]{increment\+\_\+ele\+\_\+big,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln\+\_\+big,  }\item[{real, dimension( \+: ), intent(inout)}]{x\+\_\+big,  }\item[{real, dimension( \+: ), intent(inout)}]{y\+\_\+big }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a01d02ecba87b89d63ca89bd4dbd2ba5f_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a7dbb03fa7fa657a2db86576f41ef2aa4}\label{namespaceshape__functions__ndim_a7dbb03fa7fa657a2db86576f41ef2aa4}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!crossproduct@{crossproduct}}
+\index{crossproduct@{crossproduct}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{crossproduct()}{crossproduct()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::crossproduct (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{n,  }\item[{real, dimension( \+: ), intent(inout)}]{cp,  }\item[{real, dimension( \+: ), intent(in)}]{a,  }\item[{real, dimension( \+: ), intent(in)}]{b }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a7dbb03fa7fa657a2db86576f41ef2aa4_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_aaaf113a1f2b0b1043b46f700358de0e8}\label{namespaceshape__functions__ndim_aaaf113a1f2b0b1043b46f700358de0e8}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!determin\_sloclist@{determin\_sloclist}}
+\index{determin\_sloclist@{determin\_sloclist}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{determin\_sloclist()}{determin\_sloclist()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::determin\+\_\+sloclist (\begin{DoxyParamCaption}\item[{integer, dimension( \+:, \+: ), intent(inout)}]{C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+S\+N\+L\+OC,  }\item[{integer, intent(in)}]{N\+F\+A\+CE,  }\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_aaaf113a1f2b0b1043b46f700358de0e8_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a279dc82b53707b674ea9b70360e7e258}\label{namespaceshape__functions__ndim_a279dc82b53707b674ea9b70360e7e258}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!dgsdetnxloc2@{dgsdetnxloc2}}
+\index{dgsdetnxloc2@{dgsdetnxloc2}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{dgsdetnxloc2()}{dgsdetnxloc2()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::dgsdetnxloc2 (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{S\+N\+L\+OC,  }\item[{integer, intent(in)}]{S\+N\+GI,  }\item[{real, dimension( \+: ), intent(in)}]{X\+SL,  }\item[{real, dimension( \+: ), intent(in)}]{Y\+SL,  }\item[{real, dimension( \+: ), intent(in)}]{Z\+SL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{SN,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{S\+N\+LX,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{S\+N\+LY,  }\item[{real, dimension( \+: ), intent(in)}]{S\+W\+E\+I\+GH,  }\item[{real, dimension( \+: ), intent(inout)}]{S\+D\+E\+T\+WE,  }\item[{real, intent(inout)}]{S\+A\+R\+EA,  }\item[{logical, intent(in)}]{D1,  }\item[{logical, intent(in)}]{D3,  }\item[{logical, intent(in)}]{D\+C\+YL,  }\item[{real, dimension( \+: ), intent(inout)}]{N\+O\+R\+M\+XN,  }\item[{real, dimension( \+: ), intent(inout)}]{N\+O\+R\+M\+YN,  }\item[{real, dimension( \+: ), intent(inout)}]{N\+O\+R\+M\+ZN,  }\item[{real, intent(in)}]{N\+O\+R\+MX,  }\item[{real, intent(in)}]{N\+O\+R\+MY,  }\item[{real, intent(in)}]{N\+O\+R\+MZ }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a279dc82b53707b674ea9b70360e7e258_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a279dc82b53707b674ea9b70360e7e258_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a29b95710b57b76fd0d961ec749a71304}\label{namespaceshape__functions__ndim_a29b95710b57b76fd0d961ec749a71304}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!dgsdetnxloc2\_all@{dgsdetnxloc2\_all}}
+\index{dgsdetnxloc2\_all@{dgsdetnxloc2\_all}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{dgsdetnxloc2\_all()}{dgsdetnxloc2\_all()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::dgsdetnxloc2\+\_\+all (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{S\+N\+L\+OC,  }\item[{integer, intent(in)}]{S\+N\+GI,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{real, dimension( ndim, snloc ), intent(in)}]{X\+S\+L\+\_\+\+A\+LL,  }\item[{real, dimension( snloc, sngi ), intent(in)}]{SN,  }\item[{real, dimension( snloc, sngi ), intent(in)}]{S\+N\+LX,  }\item[{real, dimension( snloc, sngi ), intent(in)}]{S\+N\+LY,  }\item[{real, dimension( sngi ), intent(in)}]{S\+W\+E\+I\+GH,  }\item[{real, dimension( sngi ), intent(inout)}]{S\+D\+E\+T\+WE,  }\item[{real, intent(inout)}]{S\+A\+R\+EA,  }\item[{real, dimension( ndim, sngi ), intent(inout)}]{N\+O\+R\+M\+X\+N\+\_\+\+A\+LL,  }\item[{real, dimension( ndim ), intent(in)}]{N\+O\+R\+M\+X\+\_\+\+A\+LL }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a29b95710b57b76fd0d961ec749a71304_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a29b95710b57b76fd0d961ec749a71304_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a6ae6fe2f9e2d9806b94a4953dc6a12f4}\label{namespaceshape__functions__ndim_a6ae6fe2f9e2d9806b94a4953dc6a12f4}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!dummy\_tri\_tet@{dummy\_tri\_tet}}
+\index{dummy\_tri\_tet@{dummy\_tri\_tet}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{dummy\_tri\_tet()}{dummy\_tri\_tet()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::dummy\+\_\+tri\+\_\+tet (\begin{DoxyParamCaption}\item[{logical, intent(in)}]{d1,  }\item[{logical, intent(in)}]{d3,  }\item[{integer, intent(inout)}]{quad\+\_\+cv\+\_\+ngi,  }\item[{integer, intent(in)}]{quad\+\_\+cv\+\_\+nloc,  }\item[{integer, intent(inout)}]{dummy\+\_\+sngi,  }\item[{integer, intent(inout)}]{dummy\+\_\+snloc,  }\item[{integer, intent(inout)}]{nwicel,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{cv\+\_\+sngi,  }\item[{integer, intent(in)}]{totele,  }\item[{integer, intent(inout)}]{quad\+\_\+u\+\_\+loc\+\_\+dummy,  }\item[{integer, intent(inout)}]{mloc,  }\item[{integer, intent(inout)}]{dummy\+\_\+smloc,  }\item[{logical, intent(inout)}]{lowqua,  }\item[{integer, intent(inout)}]{npoly,  }\item[{integer, intent(inout)}]{npoly\+\_\+ngi }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a6ae6fe2f9e2d9806b94a4953dc6a12f4_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a4dd3483ae5799dbe0861987109e37542}\label{namespaceshape__functions__ndim_a4dd3483ae5799dbe0861987109e37542}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!eliminating\_repetitive\_nodes@{eliminating\_repetitive\_nodes}}
+\index{eliminating\_repetitive\_nodes@{eliminating\_repetitive\_nodes}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{eliminating\_repetitive\_nodes()}{eliminating\_repetitive\_nodes()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::eliminating\+\_\+repetitive\+\_\+nodes (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{totele,  }\item[{integer, intent(in)}]{x\+\_\+nloc,  }\item[{integer, intent(in)}]{x\+\_\+nonods,  }\item[{logical, intent(in)}]{over\+\_\+all,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln,  }\item[{real, dimension( \+: ), intent(in)}]{x,  }\item[{real, dimension( \+: ), intent(in)}]{y }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a4dd3483ae5799dbe0861987109e37542_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_acc329705b056aef8e675c19d3d92e3fb}\label{namespaceshape__functions__ndim_acc329705b056aef8e675c19d3d92e3fb}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!eliminating\_repetitive\_nodes\_all@{eliminating\_repetitive\_nodes\_all}}
+\index{eliminating\_repetitive\_nodes\_all@{eliminating\_repetitive\_nodes\_all}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{eliminating\_repetitive\_nodes\_all()}{eliminating\_repetitive\_nodes\_all()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::eliminating\+\_\+repetitive\+\_\+nodes\+\_\+all (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{totele,  }\item[{integer, intent(in)}]{x\+\_\+nloc,  }\item[{integer, intent(inout)}]{x\+\_\+nonods,  }\item[{integer, intent(in)}]{mx\+\_\+x\+\_\+nonods,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln,  }\item[{real, dimension( \+: ), intent(inout)}]{x,  }\item[{real, dimension( \+: ), intent(inout)}]{y,  }\item[{real, dimension( \+: ), intent(inout), optional}]{z }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_acc329705b056aef8e675c19d3d92e3fb_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a7cc3628b1dbcd982fcef188b9d1493f2}\label{namespaceshape__functions__ndim_a7cc3628b1dbcd982fcef188b9d1493f2}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!factorial@{factorial}}
+\index{factorial@{factorial}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{factorial()}{factorial()}}
+{\footnotesize\ttfamily recursive integer function shape\+\_\+functions\+\_\+ndim\+::factorial (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{n }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a7cc3628b1dbcd982fcef188b9d1493f2_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_aaff7f00bac7c3daa6a967b61e83e0a84}\label{namespaceshape__functions__ndim_aaff7f00bac7c3daa6a967b61e83e0a84}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!get\_cvn\_compact\_overlapping@{get\_cvn\_compact\_overlapping}}
+\index{get\_cvn\_compact\_overlapping@{get\_cvn\_compact\_overlapping}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{get\_cvn\_compact\_overlapping()}{get\_cvn\_compact\_overlapping()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::get\+\_\+cvn\+\_\+compact\+\_\+overlapping (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{cv\+\_\+ngi,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{cvn,  }\item[{real, dimension( \+: ), intent(inout)}]{cvweigh }\end{DoxyParamCaption})}
+
+
+
+This subroutine is specially created to be used with compact\+\_\+overlapping. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_aaff7f00bac7c3daa6a967b61e83e0a84_cgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a334b2cc04802a89c38ad64fbb302f22d}\label{namespaceshape__functions__ndim_a334b2cc04802a89c38ad64fbb302f22d}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!get\_nwicel@{get\_nwicel}}
+\index{get\_nwicel@{get\_nwicel}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{get\_nwicel()}{get\_nwicel()}}
+{\footnotesize\ttfamily integer function shape\+\_\+functions\+\_\+ndim\+::get\+\_\+nwicel (\begin{DoxyParamCaption}\item[{logical}]{d3,  }\item[{integer}]{nloc }\end{DoxyParamCaption})}
+
+
+
+\+: Provides a number defining the type of element we are dealing with 4,5 Linear tetrahedra, 10 quadratic tetrahedra; 3,4 Linear triangle, 5 quadratic triangle 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a334b2cc04802a89c38ad64fbb302f22d_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_ad2181d02562ea0e3e97902500a65524c}\label{namespaceshape__functions__ndim_ad2181d02562ea0e3e97902500a65524c}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!get\_tang\_binorm@{get\_tang\_binorm}}
+\index{get\_tang\_binorm@{get\_tang\_binorm}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{get\_tang\_binorm()}{get\_tang\_binorm()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::get\+\_\+tang\+\_\+binorm (\begin{DoxyParamCaption}\item[{real, dimension( nnodro ), intent(in)}]{NX,  }\item[{real, dimension( nnodro ), intent(in)}]{NY,  }\item[{real, dimension( nnodro ), intent(in)}]{NZ,  }\item[{real, dimension( nnodro ), intent(inout)}]{T1X,  }\item[{real, dimension( nnodro ), intent(inout)}]{T1Y,  }\item[{real, dimension( nnodro ), intent(inout)}]{T1Z,  }\item[{real, dimension( nnodro ), intent(inout)}]{T2X,  }\item[{real, dimension( nnodro ), intent(inout)}]{T2Y,  }\item[{real, dimension( nnodro ), intent(inout)}]{T2Z,  }\item[{integer, intent(in)}]{N\+N\+O\+D\+RO }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ad2181d02562ea0e3e97902500a65524c_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a62d482e48ef37a99c81efcdd8e273644}\label{namespaceshape__functions__ndim_a62d482e48ef37a99c81efcdd8e273644}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!gtroot@{gtroot}}
+\index{gtroot@{gtroot}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{gtroot()}{gtroot()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::gtroot (\begin{DoxyParamCaption}\item[{integer, intent(inout)}]{I\+P\+O\+LY,  }\item[{integer, intent(inout)}]{I\+Q\+A\+D\+RA,  }\item[{real, dimension(\+:), intent(inout)}]{W\+E\+IT,  }\item[{real, dimension(\+:), intent(inout)}]{N\+O\+D\+P\+OS,  }\item[{real, dimension(\+:), intent(inout)}]{Q\+U\+A\+P\+OS,  }\item[{integer, intent(inout)}]{N\+D\+GI,  }\item[{integer, intent(inout)}]{N\+D\+N\+OD }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a62d482e48ef37a99c81efcdd8e273644_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a62d482e48ef37a99c81efcdd8e273644_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a09da641d2526c3de68637ac538d3aabd}\label{namespaceshape__functions__ndim_a09da641d2526c3de68637ac538d3aabd}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!jacobf@{jacobf}}
+\index{jacobf@{jacobf}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{jacobf()}{jacobf()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::jacobf (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N,  }\item[{real, intent(inout)}]{P\+O\+LY,  }\item[{real, intent(inout)}]{P\+D\+ER,  }\item[{real, intent(inout)}]{P\+O\+L\+Y\+M1,  }\item[{real, intent(inout)}]{P\+D\+E\+R\+M1,  }\item[{real, intent(inout)}]{P\+O\+L\+Y\+M2,  }\item[{real, intent(inout)}]{P\+D\+E\+R\+M2,  }\item[{real, intent(in)}]{X }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a09da641d2526c3de68637ac538d3aabd_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_ab137b075bc778e2a27a0c1810a49b492}\label{namespaceshape__functions__ndim_ab137b075bc778e2a27a0c1810a49b492}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!jacobl@{jacobl}}
+\index{jacobl@{jacobl}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{jacobl()}{jacobl()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::jacobl (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N,  }\item[{real, intent(inout)}]{A\+L\+P\+HA,  }\item[{real, intent(inout)}]{B\+E\+TA,  }\item[{real, dimension(\+: )}]{X\+J\+AC }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ab137b075bc778e2a27a0c1810a49b492_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ab137b075bc778e2a27a0c1810a49b492_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a7f9befc07f9850d9db51f96c4e6a0cd4}\label{namespaceshape__functions__ndim_a7f9befc07f9850d9db51f96c4e6a0cd4}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!james\_quadrature\_quad\_tet@{james\_quadrature\_quad\_tet}}
+\index{james\_quadrature\_quad\_tet@{james\_quadrature\_quad\_tet}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{james\_quadrature\_quad\_tet()}{james\_quadrature\_quad\_tet()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::james\+\_\+quadrature\+\_\+quad\+\_\+tet (\begin{DoxyParamCaption}\item[{real, dimension( scvngi ), intent(inout)}]{l1,  }\item[{real, dimension( scvngi ), intent(inout)}]{l2,  }\item[{real, dimension( scvngi ), intent(inout)}]{l3,  }\item[{real, dimension( scvngi ), intent(inout)}]{l4,  }\item[{real, dimension( scvngi ), intent(inout)}]{normx,  }\item[{real, dimension( scvngi ), intent(inout)}]{normy,  }\item[{real, dimension( scvngi ), intent(inout)}]{normz,  }\item[{real, dimension( scvngi ), intent(inout)}]{sarea,  }\item[{real, dimension( cv\+\_\+nloc ), intent(inout)}]{X\+\_\+\+L\+OC,  }\item[{real, dimension( cv\+\_\+nloc ), intent(inout)}]{Y\+\_\+\+L\+OC,  }\item[{real, dimension( cv\+\_\+nloc ), intent(inout)}]{Z\+\_\+\+L\+OC,  }\item[{integer, dimension( cv\+\_\+nloc, scvngi ), intent(inout)}]{C\+V\+\_\+\+N\+E\+I\+L\+OC,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{scvngi }\end{DoxyParamCaption})}
+
+
+
+\+: the surface quadrature pts in local coord are l1, l2, l3, l4, and the associated normals normx, normy, normz and the surface area is sarea The position of the nodes of the tet are\+: (X\+\_\+\+L\+OC, Y\+\_\+\+L\+OC, Z\+\_\+\+L\+OC) Calculate cv\+\_\+neiloc\+: To get the neighbouring node for node I\+L\+OC and surface quadrature point S\+GI C\+V\+\_\+\+J\+L\+OC = C\+V\+\_\+\+N\+E\+I\+L\+O\+C( C\+V\+\_\+\+I\+L\+O\+C, S\+G\+I ) The number of quadrature points is 24 = 4 x 6 exterior faces (and quadrature points) and 36 = 4x6 + 6x4/2 = 60 pts. @\+W\+A\+R\+N\+I\+NG\+: Disabled because it introduces errors 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a7f9befc07f9850d9db51f96c4e6a0cd4_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a7f9befc07f9850d9db51f96c4e6a0cd4_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a647388b8d7683edf0e0f203e5bcad3b6}\label{namespaceshape__functions__ndim_a647388b8d7683edf0e0f203e5bcad3b6}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!legend@{legend}}
+\index{legend@{legend}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{legend()}{legend()}}
+{\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::legend (\begin{DoxyParamCaption}\item[{logical, intent(inout)}]{D\+I\+FF,  }\item[{real, intent(inout)}]{LX,  }\item[{integer, intent(inout)}]{I\+N\+OD,  }\item[{integer, intent(inout)}]{N\+D\+N\+OD,  }\item[{real, dimension(\+:), intent(inout)}]{N\+O\+D\+P\+OS }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a647388b8d7683edf0e0f203e5bcad3b6_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a465010bbab3913a160a668f64191ba31}\label{namespaceshape__functions__ndim_a465010bbab3913a160a668f64191ba31}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!legrot@{legrot}}
+\index{legrot@{legrot}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{legrot()}{legrot()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::legrot (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{W\+E\+IT,  }\item[{real, dimension(\+:), intent(inout)}]{Q\+U\+A\+P\+OS,  }\item[{integer, intent(inout)}]{N\+D\+GI,  }\item[{logical, intent(inout)}]{G\+E\+T\+N\+DP }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a465010bbab3913a160a668f64191ba31_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a465010bbab3913a160a668f64191ba31_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_aa001da7c1c2a50e7cd0b182f17f6bd1f}\label{namespaceshape__functions__ndim_aa001da7c1c2a50e7cd0b182f17f6bd1f}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!lroots@{lroots}}
+\index{lroots@{lroots}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{lroots()}{lroots()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::lroots (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{Q\+U\+A\+P\+OS,  }\item[{integer}]{N\+D\+GI }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_aa001da7c1c2a50e7cd0b182f17f6bd1f_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_aa001da7c1c2a50e7cd0b182f17f6bd1f_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_ab2cdb212a9a26a4101f281d6a3281f48}\label{namespaceshape__functions__ndim_ab2cdb212a9a26a4101f281d6a3281f48}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!make\_bilinear\_hexahedra@{make\_bilinear\_hexahedra}}
+\index{make\_bilinear\_hexahedra@{make\_bilinear\_hexahedra}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{make\_bilinear\_hexahedra()}{make\_bilinear\_hexahedra()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::make\+\_\+bilinear\+\_\+hexahedra (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{totele,  }\item[{integer, intent(in)}]{number\+\_\+of\+\_\+hexs,  }\item[{integer, intent(in)}]{quad\+\_\+cv\+\_\+nloc,  }\item[{integer, intent(inout)}]{x\+\_\+nonods,  }\item[{real, dimension( \+: ), intent(inout)}]{x,  }\item[{real, dimension( \+: ), intent(inout)}]{y,  }\item[{real, dimension( \+: ), intent(inout)}]{z,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ab2cdb212a9a26a4101f281d6a3281f48_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ab2cdb212a9a26a4101f281d6a3281f48_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a5dff129de3cfdb87cd666a114c2b56a2}\label{namespaceshape__functions__ndim_a5dff129de3cfdb87cd666a114c2b56a2}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!make\_linear\_tetrahedron@{make\_linear\_tetrahedron}}
+\index{make\_linear\_tetrahedron@{make\_linear\_tetrahedron}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{make\_linear\_tetrahedron()}{make\_linear\_tetrahedron()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::make\+\_\+linear\+\_\+tetrahedron (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{ele,  }\item[{integer, intent(in)}]{quad\+\_\+cv\+\_\+nloc,  }\item[{integer, intent(in)}]{x\+\_\+nloc,  }\item[{integer, intent(in)}]{x\+\_\+nonods,  }\item[{integer, intent(in)}]{number\+\_\+of\+\_\+hexs,  }\item[{real, dimension( 10 ), intent(in)}]{xp2,  }\item[{real, dimension( 10 ), intent(in)}]{yp2,  }\item[{real, dimension( 10 ), intent(in)}]{zp2,  }\item[{real, dimension( \+: ), intent(inout)}]{x,  }\item[{real, dimension( \+: ), intent(inout)}]{y,  }\item[{real, dimension( \+: ), intent(inout)}]{z,  }\item[{integer, dimension( \+: ), intent(in)}]{x\+\_\+ndgln\+\_\+p2,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a5dff129de3cfdb87cd666a114c2b56a2_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a364b3f7243c9e7b46dbcd0d3bffe5f6b}\label{namespaceshape__functions__ndim_a364b3f7243c9e7b46dbcd0d3bffe5f6b}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!make\_qtets@{make\_qtets}}
+\index{make\_qtets@{make\_qtets}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{make\_qtets()}{make\_qtets()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::make\+\_\+qtets (\begin{DoxyParamCaption}\item[{integer, intent(inout)}]{totele,  }\item[{integer, intent(in)}]{quad\+\_\+cv\+\_\+nloc,  }\item[{integer, intent(in)}]{x\+\_\+nloc,  }\item[{integer, intent(in)}]{max\+\_\+x\+\_\+nonods,  }\item[{integer, intent(inout)}]{x\+\_\+nonods,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln\+\_\+real,  }\item[{real, dimension( \+: ), intent(inout)}]{lx,  }\item[{real, dimension( \+: ), intent(inout)}]{ly,  }\item[{real, dimension( \+: ), intent(inout)}]{lz,  }\item[{real, dimension( \+: ), intent(inout)}]{x,  }\item[{real, dimension( \+: ), intent(inout)}]{y,  }\item[{real, dimension( \+: ), intent(inout)}]{z,  }\item[{integer, dimension( \+: ), intent(inout)}]{fem\+\_\+nod,  }\item[{real, dimension( \+: ), intent(inout)}]{xp2,  }\item[{real, dimension( \+: ), intent(inout)}]{yp2,  }\item[{real, dimension( \+: ), intent(inout)}]{zp2,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln\+\_\+p2 }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a364b3f7243c9e7b46dbcd0d3bffe5f6b_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a364b3f7243c9e7b46dbcd0d3bffe5f6b_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_ab33172e32fe449b773531887a2da7894}\label{namespaceshape__functions__ndim_ab33172e32fe449b773531887a2da7894}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!make\_qtri@{make\_qtri}}
+\index{make\_qtri@{make\_qtri}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{make\_qtri()}{make\_qtri()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::make\+\_\+qtri (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{totele,  }\item[{integer, intent(in)}]{x\+\_\+nloc,  }\item[{integer, intent(in)}]{max\+\_\+x\+\_\+nonods,  }\item[{integer, intent(inout)}]{x\+\_\+nonods,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln,  }\item[{real, dimension( \+: ), intent(inout)}]{lx,  }\item[{real, dimension( \+: ), intent(inout)}]{ly,  }\item[{real, dimension( \+: ), intent(inout)}]{x,  }\item[{real, dimension( \+: ), intent(inout)}]{y,  }\item[{integer, dimension( \+: ), intent(inout)}]{fem\+\_\+nod }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ab33172e32fe449b773531887a2da7894_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ab33172e32fe449b773531887a2da7894_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a6aa37d81c26106c0d55a961df42387f0}\label{namespaceshape__functions__ndim_a6aa37d81c26106c0d55a961df42387f0}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!new\_pt\_qua\_vol\_cv\_tri\_tet\_shape@{new\_pt\_qua\_vol\_cv\_tri\_tet\_shape}}
+\index{new\_pt\_qua\_vol\_cv\_tri\_tet\_shape@{new\_pt\_qua\_vol\_cv\_tri\_tet\_shape}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{new\_pt\_qua\_vol\_cv\_tri\_tet\_shape()}{new\_pt\_qua\_vol\_cv\_tri\_tet\_shape()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::new\+\_\+pt\+\_\+qua\+\_\+vol\+\_\+cv\+\_\+tri\+\_\+tet\+\_\+shape (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{cv\+\_\+ngi,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{u\+\_\+nloc,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{cvn,  }\item[{real, dimension( \+: ), intent(inout)}]{cvweigh,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{un,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{unlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{unly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{unlz }\end{DoxyParamCaption})}
+
+
+
+\+: new 1 or 4 pt quadrature set on each CV of a quadratic tetrahedra ..... Compute shape functions N, UN etc for linear trianles. Shape functions associated with volume integration using both CV basis functions C\+VN, as well as F\+EM basis functions N (and its derivatives N\+LX, N\+LY, N\+LZ). Also for velocity basis functions UN, U\+N\+LX, U\+N\+LY, U\+N\+LZ. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a6aa37d81c26106c0d55a961df42387f0_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a6aa37d81c26106c0d55a961df42387f0_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a915ed0656cc376f20e85f62cd9cec4de}\label{namespaceshape__functions__ndim_a915ed0656cc376f20e85f62cd9cec4de}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!normgi@{normgi}}
+\index{normgi@{normgi}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{normgi()}{normgi()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::normgi (\begin{DoxyParamCaption}\item[{real, intent(inout)}]{N\+O\+R\+M\+XN,  }\item[{real, intent(inout)}]{N\+O\+R\+M\+YN,  }\item[{real, intent(inout)}]{N\+O\+R\+M\+ZN,  }\item[{real, intent(in)}]{D\+X\+D\+LX,  }\item[{real, intent(in)}]{D\+Y\+D\+LX,  }\item[{real, intent(in)}]{D\+Z\+D\+LX,  }\item[{real, intent(in)}]{D\+X\+D\+LY,  }\item[{real, intent(in)}]{D\+Y\+D\+LY,  }\item[{real, intent(in)}]{D\+Z\+D\+LY,  }\item[{real, intent(in)}]{N\+O\+R\+MX,  }\item[{real, intent(in)}]{N\+O\+R\+MY,  }\item[{real, intent(in)}]{N\+O\+R\+MZ }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a915ed0656cc376f20e85f62cd9cec4de_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a9a01d935ddfe5ea36a29ffe505dbf73e}\label{namespaceshape__functions__ndim_a9a01d935ddfe5ea36a29ffe505dbf73e}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!plegen@{plegen}}
+\index{plegen@{plegen}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{plegen()}{plegen()}}
+{\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::plegen (\begin{DoxyParamCaption}\item[{real, intent(in)}]{LX,  }\item[{integer, intent(in)}]{K }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a9a01d935ddfe5ea36a29ffe505dbf73e_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a9a01d935ddfe5ea36a29ffe505dbf73e_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_aa05fda8a8f1d9b22a192009519e0ce27}\label{namespaceshape__functions__ndim_aa05fda8a8f1d9b22a192009519e0ce27}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!printoutfunmat@{printoutfunmat}}
+\index{printoutfunmat@{printoutfunmat}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{printoutfunmat()}{printoutfunmat()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::printoutfunmat (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{n,  }\item[{integer, intent(in)}]{m,  }\item[{real, dimension( \+:,\+: ), intent(in)}]{a }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{namespaceshape__functions__ndim_ab0d45b5cca739d6579a00f6a5ac41de7}\label{namespaceshape__functions__ndim_ab0d45b5cca739d6579a00f6a5ac41de7}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!quad\_1d\_shape@{quad\_1d\_shape}}
+\index{quad\_1d\_shape@{quad\_1d\_shape}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{quad\_1d\_shape()}{quad\_1d\_shape()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::quad\+\_\+1d\+\_\+shape (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+ngi,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{u\+\_\+nloc,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{cvn,  }\item[{real, dimension( \+: ), intent(inout)}]{cvweigh,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{un,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{unlx }\end{DoxyParamCaption})}
+
+
+
+\+: For quadratic elements. Shape functions associated with volume integration using both CV basis functions C\+VN as well as F\+EM basis functions N (and its derivatives N\+LX, N\+LY, N\+LZ) 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ab0d45b5cca739d6579a00f6a5ac41de7_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a7124edf2219f0df3e3bdbfc9148bac65}\label{namespaceshape__functions__ndim_a7124edf2219f0df3e3bdbfc9148bac65}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!quad\_nd\_shape@{quad\_nd\_shape}}
+\index{quad\_nd\_shape@{quad\_nd\_shape}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{quad\_nd\_shape()}{quad\_nd\_shape()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::quad\+\_\+nd\+\_\+shape (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{cv\+\_\+ngi,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{u\+\_\+nloc,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{cvn,  }\item[{real, dimension( \+: ), intent(inout)}]{cvweigh,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{un,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{unlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{unly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{unlz }\end{DoxyParamCaption})}
+
+
+
+\+: For quadratic elements\+: Shape functions associated with volume integration using both CV (C\+VN) and F\+EM (N and its derivatives N\+L\+X/\+Y/Z) basis functions. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a7124edf2219f0df3e3bdbfc9148bac65_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a7124edf2219f0df3e3bdbfc9148bac65_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_aa8a65df277c132b8c748fc53634ded22}\label{namespaceshape__functions__ndim_aa8a65df277c132b8c748fc53634ded22}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!quad\_nd\_shape\_n@{quad\_nd\_shape\_n}}
+\index{quad\_nd\_shape\_n@{quad\_nd\_shape\_n}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{quad\_nd\_shape\_n()}{quad\_nd\_shape\_n()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::quad\+\_\+nd\+\_\+shape\+\_\+n (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{cv\+\_\+ngi,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{cvn,  }\item[{real, dimension( \+: ), intent(inout)}]{cvweigh,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz,  }\item[{integer, intent(in)}]{cv\+\_\+ngi\+\_\+1d,  }\item[{integer, intent(in)}]{cv\+\_\+nloc\+\_\+1d,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{cvn\+\_\+1d,  }\item[{real, dimension( \+: ), intent(in)}]{cvweigh\+\_\+1d,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{n\+\_\+1d,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{nlx\+\_\+1d }\end{DoxyParamCaption})}
+
+
+
+\+: For quadatic elements -- shape functions associated with volume integration using both CV basis functions C\+VN as well as F\+EM basis functions N (and its derivatives N\+LX, N\+LY, N\+LZ) 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_aa8a65df277c132b8c748fc53634ded22_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_abf3e8d526261cc682f08371ccc3ce0f4}\label{namespaceshape__functions__ndim_abf3e8d526261cc682f08371ccc3ce0f4}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!remaping\_fields\_qtriangles@{remaping\_fields\_qtriangles}}
+\index{remaping\_fields\_qtriangles@{remaping\_fields\_qtriangles}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{remaping\_fields\_qtriangles()}{remaping\_fields\_qtriangles()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::remaping\+\_\+fields\+\_\+qtriangles (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{ele\+\_\+big,  }\item[{integer, intent(in)}]{x\+\_\+nloc\+\_\+big,  }\item[{integer, intent(in)}]{totele\+\_\+big,  }\item[{integer, intent(in)}]{x\+\_\+nonods\+\_\+big,  }\item[{integer, dimension(\+: ), intent(in)}]{x\+\_\+ndgln\+\_\+big,  }\item[{real, dimension( \+: ), intent(in)}]{x\+\_\+big,  }\item[{real, dimension( \+: ), intent(in)}]{y\+\_\+big,  }\item[{integer, intent(in)}]{x\+\_\+nonods,  }\item[{integer, intent(in)}]{x\+\_\+nloc,  }\item[{integer, intent(in)}]{totele,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln,  }\item[{integer, intent(inout)}]{ele\+\_\+ref,  }\item[{real, dimension( \+: ), intent(inout)}]{x,  }\item[{real, dimension( \+: ), intent(inout)}]{y }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_abf3e8d526261cc682f08371ccc3ce0f4_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a54aa7c2f3b52f8fb9e403339ac85c10b}\label{namespaceshape__functions__ndim_a54aa7c2f3b52f8fb9e403339ac85c10b}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!shape@{shape}}
+\index{shape@{shape}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{shape()}{shape()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::shape (\begin{DoxyParamCaption}\item[{logical, intent(in)}]{L\+O\+W\+Q\+UA,  }\item[{integer, intent(in)}]{N\+GI,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{M\+L\+OC,  }\item[{integer, intent(in)}]{S\+N\+GI,  }\item[{integer, intent(in)}]{S\+N\+L\+OC,  }\item[{integer, intent(in)}]{S\+M\+L\+OC,  }\item[{real, dimension(\+:,\+:), intent(out)}]{M,  }\item[{real, dimension(\+:,\+:), intent(out)}]{M\+LX,  }\item[{real, dimension(\+:,\+:), intent(out)}]{M\+LY,  }\item[{real, dimension(\+:,\+:), intent(out)}]{M\+LZ,  }\item[{real, dimension(\+:), intent(out)}]{W\+E\+I\+G\+HT,  }\item[{real, dimension(\+:,\+:), intent(out)}]{N,  }\item[{real, dimension(\+:,\+:), intent(out)}]{N\+LX,  }\item[{real, dimension(\+:,\+:), intent(out)}]{N\+LY,  }\item[{real, dimension(\+:,\+:), intent(out)}]{N\+LZ,  }\item[{real, dimension(\+:), intent(out)}]{S\+W\+E\+I\+GH,  }\item[{real, dimension(\+:,\+:), intent(out)}]{SN,  }\item[{real, dimension(\+:,\+:), intent(out)}]{S\+N\+LX,  }\item[{real, dimension(\+:,\+:), intent(out)}]{S\+N\+LY,  }\item[{real, dimension(\+:,\+:), intent(out)}]{SM,  }\item[{real, dimension(\+:,\+:), intent(out)}]{S\+M\+LX,  }\item[{real, dimension(\+:,\+:), intent(out)}]{S\+M\+LY,  }\item[{integer, intent(in)}]{N\+W\+I\+C\+EL,  }\item[{logical, intent(in)}]{D3 }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a54aa7c2f3b52f8fb9e403339ac85c10b_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a54aa7c2f3b52f8fb9e403339ac85c10b_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_aec7c06f0cf1ffd44899b31601d1c0835}\label{namespaceshape__functions__ndim_aec7c06f0cf1ffd44899b31601d1c0835}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!shape\_l\_q\_quad@{shape\_l\_q\_quad}}
+\index{shape\_l\_q\_quad@{shape\_l\_q\_quad}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{shape\_l\_q\_quad()}{shape\_l\_q\_quad()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::shape\+\_\+l\+\_\+q\+\_\+quad (\begin{DoxyParamCaption}\item[{logical, intent(in)}]{lowqua,  }\item[{integer, intent(in)}]{ngi,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{mloc,  }\item[{integer, intent(in)}]{sngi,  }\item[{integer, intent(in)}]{snloc,  }\item[{integer, intent(in)}]{smloc,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{m,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{mlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{mly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{mlz,  }\item[{real, dimension( \+: ), intent(inout)}]{weight,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz,  }\item[{real, dimension( \+: ), intent(inout)}]{sweigh,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sn,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{snlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{snly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sm,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{smlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{smly,  }\item[{integer, intent(in)}]{nwicel,  }\item[{logical, intent(in)}]{d3 }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_aec7c06f0cf1ffd44899b31601d1c0835_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_aec7c06f0cf1ffd44899b31601d1c0835_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a9c978f9224bd7a912e1ea02ced195e5d}\label{namespaceshape__functions__ndim_a9c978f9224bd7a912e1ea02ced195e5d}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!shape\_one\_ele2@{shape\_one\_ele2}}
+\index{shape\_one\_ele2@{shape\_one\_ele2}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{shape\_one\_ele2()}{shape\_one\_ele2()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::shape\+\_\+one\+\_\+ele2 (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{cv\+\_\+ngi,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{u\+\_\+nloc,  }\item[{real, dimension( \+: ), intent(inout)}]{cvweight,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{cvfen,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{cvfenlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{cvfenly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{cvfenlz,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{ufen,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{ufenlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{ufenly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{ufenlz,  }\item[{integer, intent(in)}]{sbcvngi,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sbcvfen,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sbcvfenslx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sbcvfensly,  }\item[{real, dimension( \+: ), intent(inout)}]{sbcvfeweigh,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sbufen,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sbufenslx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sbufensly,  }\item[{integer, intent(in)}]{nface,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{cv\+\_\+sloclist,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{u\+\_\+sloclist,  }\item[{integer, intent(in)}]{cv\+\_\+snloc,  }\item[{integer, intent(in)}]{u\+\_\+snloc }\end{DoxyParamCaption})}
+
+
+
+\+: This subrt defines the sub-\/control volume and F\+EM shape functions. Shape functions associated with volume integration using both CV basis functions C\+VN as well as F\+EM basis functions C\+V\+F\+EN (and its derivatives C\+V\+F\+E\+N\+LX, C\+V\+F\+E\+N\+LY, C\+V\+F\+E\+N\+LZ) 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a9c978f9224bd7a912e1ea02ced195e5d_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a9c978f9224bd7a912e1ea02ced195e5d_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a8e1483fa07acac02ed8dcdcd5355f922}\label{namespaceshape__functions__ndim_a8e1483fa07acac02ed8dcdcd5355f922}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!shape\_tri\_tet@{shape\_tri\_tet}}
+\index{shape\_tri\_tet@{shape\_tri\_tet}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{shape\_tri\_tet()}{shape\_tri\_tet()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::shape\+\_\+tri\+\_\+tet (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type\+\_\+cells,  }\item[{integer, intent(in)}]{cv\+\_\+nloc\+\_\+cells,  }\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{totele,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{cv\+\_\+ngi,  }\item[{integer, intent(in)}]{x\+\_\+nonods,  }\item[{integer, intent(in)}]{quad\+\_\+cv\+\_\+nloc,  }\item[{integer, dimension( \+: ), intent(in)}]{x\+\_\+ndgln,  }\item[{real, dimension( \+: ), intent(in)}]{x,  }\item[{real, dimension( \+: ), intent(in)}]{y,  }\item[{real, dimension( \+: ), intent(in)}]{z,  }\item[{real, dimension( \+: ), intent(in)}]{lx,  }\item[{real, dimension( \+: ), intent(in)}]{ly,  }\item[{real, dimension( \+: ), intent(in)}]{lz,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz,  }\item[{real, dimension( \+: ), intent(inout)}]{cvweigh }\end{DoxyParamCaption})}
+
+
+
+\+: Determine the volume shape functions n, nlx, nly, nlz and weights cvweigh for the cv\+\_\+nloc\+\_\+cells CV cells. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a8e1483fa07acac02ed8dcdcd5355f922_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a8e1483fa07acac02ed8dcdcd5355f922_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_ac67c2ff971dd5f7bbfd22a1c1d22eacc}\label{namespaceshape__functions__ndim_ac67c2ff971dd5f7bbfd22a1c1d22eacc}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!shape\_triangle\_cubic@{shape\_triangle\_cubic}}
+\index{shape\_triangle\_cubic@{shape\_triangle\_cubic}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{shape\_triangle\_cubic()}{shape\_triangle\_cubic()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::shape\+\_\+triangle\+\_\+cubic (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(in)}]{l1,  }\item[{real, dimension( \+: ), intent(in)}]{l2,  }\item[{real, dimension( \+: ), intent(in)}]{l3,  }\item[{real, dimension( \+: ), intent(in)}]{l4,  }\item[{real, dimension( \+: ), intent(in)}]{weight,  }\item[{logical, intent(in)}]{d3,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{ngi,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ac67c2ff971dd5f7bbfd22a1c1d22eacc_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_abb4ec02f375fe02820f1bf733d8fb031}\label{namespaceshape__functions__ndim_abb4ec02f375fe02820f1bf733d8fb031}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!shatri@{shatri}}
+\index{shatri@{shatri}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{shatri()}{shatri()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::shatri (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(in)}]{l1,  }\item[{real, dimension( \+: ), intent(in)}]{l2,  }\item[{real, dimension( \+: ), intent(in)}]{l3,  }\item[{real, dimension( \+: ), intent(in)}]{l4,  }\item[{real, dimension( \+: ), intent(in)}]{weight,  }\item[{logical, intent(in)}]{d3,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{ngi,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_abb4ec02f375fe02820f1bf733d8fb031_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_abb4ec02f375fe02820f1bf733d8fb031_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_ae55e4b96c1fd166b0c386e93ddf53196}\label{namespaceshape__functions__ndim_ae55e4b96c1fd166b0c386e93ddf53196}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!shatri\_hex@{shatri\_hex}}
+\index{shatri\_hex@{shatri\_hex}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{shatri\_hex()}{shatri\_hex()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::shatri\+\_\+hex (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(in)}]{l1,  }\item[{real, dimension( \+: ), intent(in)}]{l2,  }\item[{real, dimension( \+: ), intent(in)}]{l3,  }\item[{real, dimension( \+: ), intent(in)}]{l4,  }\item[{real, dimension( \+: ), intent(inout)}]{weight,  }\item[{logical, intent(in)}]{d3,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{ngi,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz,  }\item[{logical, intent(in)}]{tri\+\_\+tet }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ae55e4b96c1fd166b0c386e93ddf53196_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ae55e4b96c1fd166b0c386e93ddf53196_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a54075c9b51cd6e9659058c8327612bbb}\label{namespaceshape__functions__ndim_a54075c9b51cd6e9659058c8327612bbb}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!shatrinew@{shatrinew}}
+\index{shatrinew@{shatrinew}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{shatrinew()}{shatrinew()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::shatrinew (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(in)}]{L1,  }\item[{real, dimension(\+:), intent(in)}]{L2,  }\item[{real, dimension(\+:), intent(in)}]{L3,  }\item[{real, dimension(\+:), intent(in)}]{L4,  }\item[{real, dimension(\+:), intent(inout)}]{W\+E\+I\+G\+HT,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{N\+GI,  }\item[{real, dimension(\+:, \+: ), intent(inout)}]{N,  }\item[{real, dimension (\+:,\+:,\+:), intent(inout)}]{N\+L\+X\+\_\+\+A\+LL }\end{DoxyParamCaption})}
+
+
+
+\+: Work out the shape functions and their derivatives... 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a54075c9b51cd6e9659058c8327612bbb_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a54075c9b51cd6e9659058c8327612bbb_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a445a3bd2cb68d70b3e9cd86febb890db}\label{namespaceshape__functions__ndim_a445a3bd2cb68d70b3e9cd86febb890db}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!shatriold@{shatriold}}
+\index{shatriold@{shatriold}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{shatriold()}{shatriold()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::shatriold (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(in)}]{L1,  }\item[{real, dimension(\+:), intent(in)}]{L2,  }\item[{real, dimension(\+:), intent(in)}]{L3,  }\item[{real, dimension(\+:), intent(in)}]{L4,  }\item[{real, dimension(\+:), intent(inout)}]{W\+E\+I\+G\+HT,  }\item[{logical, intent(in)}]{D3,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{N\+GI,  }\item[{real, dimension(\+:, \+: ), intent(inout)}]{N,  }\item[{real, dimension(\+:, \+: ), intent(inout)}]{N\+LX,  }\item[{real, dimension(\+:, \+: ), intent(inout)}]{N\+LY,  }\item[{real, dimension(\+:, \+: ), intent(inout)}]{N\+LZ }\end{DoxyParamCaption})}
+
+
+
+\+: Work out the shape functions and their derivatives... 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a445a3bd2cb68d70b3e9cd86febb890db_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a445a3bd2cb68d70b3e9cd86febb890db_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_afc7053552eace6af239edcd5d1b99cb3}\label{namespaceshape__functions__ndim_afc7053552eace6af239edcd5d1b99cb3}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!specfu@{specfu}}
+\index{specfu@{specfu}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{specfu()}{specfu()}}
+{\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::specfu (\begin{DoxyParamCaption}\item[{logical}]{D\+I\+FF,  }\item[{real}]{L\+X\+GP,  }\item[{integer}]{I\+N\+OD,  }\item[{integer}]{N\+D\+N\+OD,  }\item[{integer}]{I\+P\+O\+LY,  }\item[{real, dimension(\+:)}]{N\+O\+D\+P\+OS }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_afc7053552eace6af239edcd5d1b99cb3_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_afc7053552eace6af239edcd5d1b99cb3_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a8fe09e952cf3b4ee2627342abc216d66}\label{namespaceshape__functions__ndim_a8fe09e952cf3b4ee2627342abc216d66}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!spectr@{spectr}}
+\index{spectr@{spectr}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{spectr()}{spectr()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::spectr (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N\+GI,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{M\+L\+OC,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{M,  }\item[{real, dimension(\+:), intent(inout)}]{W\+E\+I\+G\+HT,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N\+LX,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N\+LY,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N\+LZ,  }\item[{logical}]{D3,  }\item[{logical}]{D2,  }\item[{integer, intent(inout)}]{I\+P\+O\+LY,  }\item[{integer, intent(inout)}]{I\+Q\+A\+D\+RA }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a8fe09e952cf3b4ee2627342abc216d66_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a8fe09e952cf3b4ee2627342abc216d66_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a26392ba54127e829f1661b9f8a2a9d53}\label{namespaceshape__functions__ndim_a26392ba54127e829f1661b9f8a2a9d53}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!suf\_cv\_tri\_tet\_shape@{suf\_cv\_tri\_tet\_shape}}
+\index{suf\_cv\_tri\_tet\_shape@{suf\_cv\_tri\_tet\_shape}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{suf\_cv\_tri\_tet\_shape()}{suf\_cv\_tri\_tet\_shape()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::suf\+\_\+cv\+\_\+tri\+\_\+tet\+\_\+shape (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{scvngi,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{u\+\_\+nloc,  }\item[{real, dimension( \+: ), intent(inout)}]{scvfeweigh,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{scvfen,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{scvfenlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{scvfenly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{scvfenlz,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{scvfenslx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{scvfensly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sufen,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sufenlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sufenly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sufenlz,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sufenslx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sufensly,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{cv\+\_\+neiloc,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{cvfem\+\_\+neiloc,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{ufem\+\_\+neiloc }\end{DoxyParamCaption})}
+
+
+
+\+: Compute shape functions N, UN etc for linear triangles. Shape functions associated with volume integration using both CV basis functions C\+VN, as well as F\+EM basis functions SN (and its derivatives S\+N\+LX, S\+N\+LY, S\+N\+LZ). Also for velocity basis functions S\+UN, S\+U\+N\+LX, S\+U\+N\+LY, S\+U\+N\+LZ. Also the derivatives along the CV faces\+: sufnlx, sufnly, sufunlx, sufunly 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a26392ba54127e829f1661b9f8a2a9d53_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a26392ba54127e829f1661b9f8a2a9d53_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_ab7a1f6dd86d185746575caf1b293c45f}\label{namespaceshape__functions__ndim_ab7a1f6dd86d185746575caf1b293c45f}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!tcheb@{tcheb}}
+\index{tcheb@{tcheb}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{tcheb()}{tcheb()}}
+{\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::tcheb (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N,  }\item[{real, intent(in)}]{X\+PT,  }\item[{logical, intent(in)}]{D\+I\+FF,  }\item[{logical, intent(in)}]{D\+I\+F\+F2 }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ab7a1f6dd86d185746575caf1b293c45f_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ab7a1f6dd86d185746575caf1b293c45f_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a8e252b424608e006409cf9419a7e2500}\label{namespaceshape__functions__ndim_a8e252b424608e006409cf9419a7e2500}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!test\_quad\_tet@{test\_quad\_tet}}
+\index{test\_quad\_tet@{test\_quad\_tet}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{test\_quad\_tet()}{test\_quad\_tet()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::test\+\_\+quad\+\_\+tet (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{cv\+\_\+ngi,  }\item[{real, dimension( \+:,\+: ), intent(in)}]{cvn,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{nlz,  }\item[{real, dimension( \+: ), intent(in)}]{cvweight,  }\item[{real, dimension( \+: ), intent(in)}]{x,  }\item[{real, dimension( \+: ), intent(in)}]{y,  }\item[{real, dimension( \+: ), intent(in)}]{z,  }\item[{integer, intent(in)}]{x\+\_\+nonods,  }\item[{integer, dimension( \+: ), intent(in)}]{x\+\_\+ndgln2,  }\item[{integer, intent(in)}]{totele }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a2cb290bece46a6733c9af01aec40d451}\label{namespaceshape__functions__ndim_a2cb290bece46a6733c9af01aec40d451}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!tet\_vol@{tet\_vol}}
+\index{tet\_vol@{tet\_vol}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{tet\_vol()}{tet\_vol()}}
+{\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::tet\+\_\+vol (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(in)}]{a,  }\item[{real, dimension( \+: ), intent(in)}]{b,  }\item[{real, dimension( \+: ), intent(in)}]{c,  }\item[{real, dimension( \+: ), intent(in)}]{d }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a2cb290bece46a6733c9af01aec40d451_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a2cb290bece46a6733c9af01aec40d451_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a5be4219a7d19d9f283b7c1a851130cfc}\label{namespaceshape__functions__ndim_a5be4219a7d19d9f283b7c1a851130cfc}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!tr2d@{tr2d}}
+\index{tr2d@{tr2d}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{tr2d()}{tr2d()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::tr2d (\begin{DoxyParamCaption}\item[{logical}]{L\+O\+W\+Q\+UA,  }\item[{integer, intent(in)}]{N\+GI,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{M\+L\+OC,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{M,  }\item[{real, dimension(\+:), intent(inout)}]{W\+E\+I\+G\+HT,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N\+LX,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N\+LY,  }\item[{integer, intent(in)}]{S\+N\+GI,  }\item[{integer, intent(in)}]{S\+N\+L\+OC,  }\item[{real, dimension(\+:), intent(inout)}]{S\+W\+E\+I\+GH,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{SN,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{S\+N\+LX }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a25072ca7508393d73b9e91c2e80ebc6f}\label{namespaceshape__functions__ndim_a25072ca7508393d73b9e91c2e80ebc6f}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!tr2or3dqu@{tr2or3dqu}}
+\index{tr2or3dqu@{tr2or3dqu}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{tr2or3dqu()}{tr2or3dqu()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::tr2or3dqu (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N\+GI,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{M\+L\+OC,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{M,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{M\+LX,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{M\+LY,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{M\+LZ,  }\item[{real, dimension(\+:), intent(inout)}]{W\+E\+I\+G\+HT,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N\+LX,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N\+LY,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N\+LZ,  }\item[{integer, intent(in)}]{S\+N\+GI,  }\item[{integer, intent(in)}]{S\+N\+L\+OC,  }\item[{real, dimension(\+:), intent(inout)}]{S\+W\+E\+I\+GH,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{SN,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{S\+N\+LX,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{S\+N\+LY,  }\item[{integer, intent(in)}]{S\+M\+L\+OC,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{SM,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{S\+M\+LX,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{S\+M\+LY,  }\item[{logical, intent(in)}]{D3 }\end{DoxyParamCaption})}
+
+
+
+\+:This subroutine defines the shape functions M and N and their derivatives at the Gauss points for quadratic elements. For 3-\/D F\+L\+OW. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a25072ca7508393d73b9e91c2e80ebc6f_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a25072ca7508393d73b9e91c2e80ebc6f_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_ab9b13716183e460cfa60142194035eb1}\label{namespaceshape__functions__ndim_ab9b13716183e460cfa60142194035eb1}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!triareaf@{triareaf}}
+\index{triareaf@{triareaf}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{triareaf()}{triareaf()}}
+{\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::triareaf (\begin{DoxyParamCaption}\item[{real, intent(in)}]{x1,  }\item[{real, intent(in)}]{y1,  }\item[{real, intent(in)}]{x2,  }\item[{real, intent(in)}]{y2,  }\item[{real, intent(in)}]{x3,  }\item[{real, intent(in)}]{y3 }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ab9b13716183e460cfa60142194035eb1_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_af4782b913aba9aef1af79d9db7c1739a}\label{namespaceshape__functions__ndim_af4782b913aba9aef1af79d9db7c1739a}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!triareaf\_sign@{triareaf\_sign}}
+\index{triareaf\_sign@{triareaf\_sign}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{triareaf\_sign()}{triareaf\_sign()}}
+{\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::triareaf\+\_\+sign (\begin{DoxyParamCaption}\item[{real}]{x1,  }\item[{real}]{y1,  }\item[{real}]{x2,  }\item[{real}]{y2,  }\item[{real}]{x3,  }\item[{real}]{y3 }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_af4782b913aba9aef1af79d9db7c1739a_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_ad8bb7dc236ed2a0b994488d081ee70f4}\label{namespaceshape__functions__ndim_ad8bb7dc236ed2a0b994488d081ee70f4}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!triquaold@{triquaold}}
+\index{triquaold@{triquaold}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{triquaold()}{triquaold()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::triquaold (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{L1,  }\item[{real, dimension(\+:), intent(inout)}]{L2,  }\item[{real, dimension(\+:), intent(inout)}]{L3,  }\item[{real, dimension(\+:), intent(inout)}]{L4,  }\item[{real, dimension(\+:), intent(inout)}]{W\+E\+I\+G\+HT,  }\item[{logical, intent(in)}]{D3,  }\item[{integer, intent(in)}]{N\+GI }\end{DoxyParamCaption})}
+
+
+
+\+: This sub calculates the local corrds L1, L2, L3, L4 and weights at the quadrature points. If D3 it does this for 3Dtetrahedra elements else triangular elements. 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ad8bb7dc236ed2a0b994488d081ee70f4_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a62013afe2af3b6eb9358b519e41313b8}\label{namespaceshape__functions__ndim_a62013afe2af3b6eb9358b519e41313b8}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!vol\_cv\_tri\_tet\_shape@{vol\_cv\_tri\_tet\_shape}}
+\index{vol\_cv\_tri\_tet\_shape@{vol\_cv\_tri\_tet\_shape}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{vol\_cv\_tri\_tet\_shape()}{vol\_cv\_tri\_tet\_shape()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::vol\+\_\+cv\+\_\+tri\+\_\+tet\+\_\+shape (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{cv\+\_\+ngi,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{u\+\_\+nloc,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{cvn,  }\item[{real, dimension( \+: ), intent(inout)}]{cvweigh,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{un,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{unlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{unly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{unlz }\end{DoxyParamCaption})}
+
+
+
+\+: Compute shape functions N, UN etc for linear trianles. Shape functions associated with volume integration using both CV basis functions C\+VN, as well as F\+EM basis functions N (and its derivatives N\+LX, N\+LY, N\+LZ). Also for velocity basis functions UN, U\+N\+LX, U\+N\+LY, U\+N\+LZ. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a62013afe2af3b6eb9358b519e41313b8_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a62013afe2af3b6eb9358b519e41313b8_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a3a845aa5e30651da7fb65786056f5591}\label{namespaceshape__functions__ndim_a3a845aa5e30651da7fb65786056f5591}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!volume\_quad\_map@{volume\_quad\_map}}
+\index{volume\_quad\_map@{volume\_quad\_map}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{volume\_quad\_map()}{volume\_quad\_map()}}
+{\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::volume\+\_\+quad\+\_\+map (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+iloc,  }\item[{real, intent(in)}]{xgi,  }\item[{real, intent(in)}]{ygi,  }\item[{real, intent(in)}]{zgi,  }\item[{real, dimension( \+: ), intent(in)}]{lx,  }\item[{real, dimension( \+: ), intent(in)}]{ly,  }\item[{real, dimension( \+: ), intent(in)}]{lz }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a3a845aa5e30651da7fb65786056f5591_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a3a845aa5e30651da7fb65786056f5591_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a0baef8de3aad5dd6c661809fdd333369}\label{namespaceshape__functions__ndim_a0baef8de3aad5dd6c661809fdd333369}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!volume\_tethex@{volume\_tethex}}
+\index{volume\_tethex@{volume\_tethex}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{volume\_tethex()}{volume\_tethex()}}
+{\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::volume\+\_\+tethex (\begin{DoxyParamCaption}\item[{logical, intent(in)}]{hexs,  }\item[{real, intent(in)}]{x1,  }\item[{real, intent(in)}]{x2,  }\item[{real, intent(in)}]{x3,  }\item[{real, intent(in)}]{x4,  }\item[{real, intent(in)}]{y1,  }\item[{real, intent(in)}]{y2,  }\item[{real, intent(in)}]{y3,  }\item[{real, intent(in)}]{y4,  }\item[{real, intent(in)}]{z1,  }\item[{real, intent(in)}]{z2,  }\item[{real, intent(in)}]{z3,  }\item[{real, intent(in)}]{z4 }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_a0baef8de3aad5dd6c661809fdd333369_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespaceshape__functions__ndim_a0ac4f189eee385c652c399464f0df5fe}\label{namespaceshape__functions__ndim_a0ac4f189eee385c652c399464f0df5fe}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!xprod1@{xprod1}}
+\index{xprod1@{xprod1}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{xprod1()}{xprod1()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::xprod1 (\begin{DoxyParamCaption}\item[{real, intent(inout)}]{AX,  }\item[{real, intent(inout)}]{AY,  }\item[{real, intent(inout)}]{AZ,  }\item[{real, intent(in)}]{BX,  }\item[{real, intent(in)}]{BY,  }\item[{real, intent(in)}]{BZ,  }\item[{real, intent(in)}]{CX,  }\item[{real, intent(in)}]{CY,  }\item[{real, intent(in)}]{CZ }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{namespaceshape__functions__ndim_aa91a970575f1acc9e70afdc8a9b3e115}\label{namespaceshape__functions__ndim_aa91a970575f1acc9e70afdc8a9b3e115}} 
+\index{shape\_functions\_ndim@{shape\_functions\_ndim}!xprod2@{xprod2}}
+\index{xprod2@{xprod2}!shape\_functions\_ndim@{shape\_functions\_ndim}}
+\doxysubsubsection{\texorpdfstring{xprod2()}{xprod2()}}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::xprod2 (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{A,  }\item[{real, dimension(\+:), intent(in)}]{B,  }\item[{real, dimension(\+:), intent(in)}]{C }\end{DoxyParamCaption})}
+

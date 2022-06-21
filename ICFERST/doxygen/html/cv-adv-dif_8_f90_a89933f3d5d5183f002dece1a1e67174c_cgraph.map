@@ -1,0 +1,6 @@
+<map id="get_int_vel_porous_vel" name="get_int_vel_porous_vel">
+<area shape="rect" id="node1" title="Computes the flux between CVs for porous media. NDOTQNEW contains the fluxes for a given gauss integr..." alt="" coords="5,42,177,69"/>
+<area shape="rect" id="node2" href="$namespacecv__advection.html#afc0d98d467a15c460d49668d0194344a" title=" " alt="" coords="225,5,395,47"/>
+<area shape="rect" id="node4" href="$namespacemulti__tools.html#ad2dc4462bad46ef99ca0057cb3c91262" title=" " alt="" coords="235,71,385,98"/>
+<area shape="rect" id="node3" href="$namespacemulti__tools.html#aeab4bf302bd943e5acf2e70c93cb55cf" title=": The function computes NVDFUNNEW, the normalised value of the advected variable on the face of the c..." alt="" coords="443,13,661,39"/>
+</map>
