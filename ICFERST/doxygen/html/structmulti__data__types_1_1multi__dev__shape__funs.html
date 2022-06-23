@@ -25,7 +25,7 @@
    <div id="projectname">ICFERST
    &#160;<span id="projectnumber">22_06</span>
    </div>
-   <div id="projectbrief">Reservoir simulator</div>
+   <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
  </tr>
  </tbody>
@@ -75,6 +75,9 @@ $(function() {
 <div class="title">multi_data_types::multi_dev_shape_funs Type Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>Data structure to store the derivatives of the shape functions and conversors from reference element to local.  
+ <a href="structmulti__data__types_1_1multi__dev__shape__funs.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -131,7 +134,21 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:af46d7a46abb7cb0fdfbbd582466d66e0"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__dev__shape__funs.html#af46d7a46abb7cb0fdfbbd582466d66e0">matrix</a></td></tr>
 <tr class="separator:af46d7a46abb7cb0fdfbbd582466d66e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Data Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Data structure to store the derivatives of the shape functions and conversors from reference element to local. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">volume</td><td>Volume of the local element </td></tr>
+    <tr><td class="paramname">detwei=&gt;</td><td>null() Determinant times weigth (i.e: conversor from reference element to local element) </td></tr>
+    <tr><td class="paramname">ra</td><td>=&gt; null() ??? </td></tr>
+    <tr><td class="paramname">:</td><td>cvfenx_all=&gt; null() Space derivatives of the pressure (CV) shape functions </td></tr>
+    <tr><td class="paramname">:</td><td>ufenx_all=&gt; null() Space derivatives of the velocity (FE) shape functions </td></tr>
+    <tr><td class="paramname">:</td><td>nx_all =&gt; null() Space derivatives of a generic field. </td></tr>
+    <tr><td class="paramname">:</td><td>inv_jac =&gt; null() Inverse of the Jacobian matrix </td></tr>
+  </table>
+  </dd>
+</dl>
+</div><h2 class="groupheader">Member Data Documentation</h2>
 <a id="a258679f6e6e7befd218c432cddda8a2c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a258679f6e6e7befd218c432cddda8a2c">&#9670;&nbsp;</a></span>a</h2>
 

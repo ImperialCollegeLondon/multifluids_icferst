@@ -1,4 +1,4 @@
 <map id="shape_functions_ndim::tcheb" name="shape_functions_ndim::tcheb">
-<area shape="rect" id="node1" title=" " alt="" coords="5,5,173,47"/>
-<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title=" " alt="" coords="221,5,389,47"/>
+<area shape="rect" id="node1" title="If DIFF then return the n&#39;th Chebyshef polynomial differentiated w.r.t x. If DIFF2 then form the 2&#39;nd..." alt="" coords="5,5,173,47"/>
+<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title="Calculate n!" alt="" coords="221,5,389,47"/>
 </map>

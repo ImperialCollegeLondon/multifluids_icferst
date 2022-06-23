@@ -1,16 +1,16 @@
 <map id="get_massmatrix" name="get_massmatrix">
 <area shape="rect" id="node1" title="Here no homogenisation can be performed. NOTE: FOR THE TIME BEING ONLY ROW_SUM IS ACTIVATED HERE,..." alt="" coords="5,516,133,543"/>
 <area shape="rect" id="node2" href="$namespacemulti__tools.html#aedaed2b29fa348112b4f347045e75ab6" title=": Calculate FACE_ELE &#45; the list of elements surrounding an element and referenced with a face &#45;ve val..." alt="" coords="199,5,389,32"/>
-<area shape="rect" id="node3" href="$namespacecv__advection.html#aa3ef74a90808188963586069f9231675" title=" " alt="" coords="467,353,610,394"/>
-<area shape="rect" id="node4" href="$namespacemulti__data__types.html#a5641f05bcbbf1c56b952f99ed0cd1f67" title=" " alt="" coords="189,122,399,163"/>
+<area shape="rect" id="node3" href="$namespacecv__advection.html#aa3ef74a90808188963586069f9231675" title="determine stress form of viscocity..." alt="" coords="467,353,610,394"/>
+<area shape="rect" id="node4" href="$namespacemulti__data__types.html#a5641f05bcbbf1c56b952f99ed0cd1f67" title="Deallocates the required memory to store the derivatives of the shape functions." alt="" coords="189,122,399,163"/>
 <area shape="rect" id="node5" href="$namespacemultiphase__1d__engine.html#a75a4fb88f761b81639c9b81628eddc95" title=": Determine if we have an oscillation in the normal direction... dg_oscilat_detect=1...." alt="" coords="209,647,379,689"/>
 <area shape="rect" id="node7" href="$namespacemultiphase__1d__engine.html#af5917482b2dae4c57c6e06a839682e42" title=": This sub calculates S_INV_NNX_MAT12 which contains NDIM matricies that are used to form the inter e..." alt="" coords="209,269,379,310"/>
 <area shape="rect" id="node8" href="$namespaceshape__functions__ndim.html#a29b95710b57b76fd0d961ec749a71304" title=" " alt="" coords="210,57,378,98"/>
-<area shape="rect" id="node10" href="$namespacecv__advection.html#aba06a5f3680d58e1db30e740119dd5dc" title=" " alt="" coords="181,385,407,412"/>
+<area shape="rect" id="node10" href="$namespacecv__advection.html#aba06a5f3680d58e1db30e740119dd5dc" title="Form approximate surface normal (NORMX_ALL(1),NORMX_ALL(2),NORMX_ALL(3))" alt="" coords="181,385,407,412"/>
 <area shape="rect" id="node11" href="$namespacemultiphase__1d__engine.html#a44c487b15ec28694d3d4e75dd952d27f" title=": This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX,DIFF_COEFOLD_DIVDX based o..." alt="" coords="205,188,383,244"/>
 <area shape="rect" id="node13" href="$multi__dyncore__dg_8_f90.html#ae2e637a6ef27761363d224b3d7869c6a" title="WARNING****this is under testing****." alt="" coords="205,516,383,543"/>
 <area shape="rect" id="node14" href="$namespacemultiphase__1d__engine.html#a03c49a0f1a67a464bbb77115775ae4d1" title=": This subroutine performs and introduces the gradient of a RHS field (Capillary pressure for example..." alt="" coords="209,567,379,623"/>
-<area shape="rect" id="node15" href="$namespacecv__advection.html#a3778683fc29bd4646b518eec834d1b2b" title=" " alt="" coords="211,436,377,492"/>
+<area shape="rect" id="node15" href="$namespacecv__advection.html#a3778683fc29bd4646b518eec834d1b2b" title="This sub calculates the effective diffusion coefficientd STRESS_IJ_ELE_EXT it only works for between ..." alt="" coords="211,436,377,492"/>
 <area shape="rect" id="node17" href="$namespacematrix__operations.html#a11255cf3f07959a2d3e20dd8705755fe" title=" " alt="" coords="219,778,369,819"/>
 <area shape="rect" id="node19" href="$namespacemultiphase__1d__engine.html#a34cd5ba5d5dfec039fa896b5fdc14e9f" title=": Determine if we have an oscillation in the normal direction... dg_oscilat_detect=1...." alt="" coords="209,713,379,754"/>
 <area shape="rect" id="node20" href="$multi__dyncore__dg_8_f90.html#a24c9e30f49053a0f6dfe4ad7f5f73de9" title=": Computes a limited velocity when using a P0DG velocity discretisation" alt="" coords="250,844,338,871"/>
@@ -18,9 +18,9 @@
 <area shape="rect" id="node23" href="$namespacemultiphase__1d__engine.html#a25c88bda5ea4082016d39781e111d445" title=" " alt="" coords="207,895,381,951"/>
 <area shape="rect" id="node24" href="$namespacemultiphase__1d__engine.html#afcedae35a0a37c9b033248d85bb9ad86" title=": This subroutine calculates a tensor of viscocity LES_UDIFFUSION, LES_UDIFFUSION_VOL" alt="" coords="197,1041,391,1082"/>
 <area shape="rect" id="node6" href="$namespacemulti__tools.html#a9bc979224e98f447e412133da3464728" title=":This function is a tolerance function for a value which is used as a denominator...." alt="" coords="468,688,609,715"/>
-<area shape="rect" id="node9" href="$namespaceshape__functions__ndim.html#a915ed0656cc376f20e85f62cd9cec4de" title=" " alt="" coords="455,57,623,98"/>
+<area shape="rect" id="node9" href="$namespaceshape__functions__ndim.html#a915ed0656cc376f20e85f62cd9cec4de" title="Calculate the normal at the Gauss pts Perform x&#45;product. N=T1 x T2." alt="" coords="455,57,623,98"/>
 <area shape="rect" id="node12" href="$multi__dyncore__dg_8_f90.html#a15505780dc171eceae929e55d7951913" title="This implements the stress and tensor form of diffusion and calculates a jump conidition...." alt="" coords="456,203,621,229"/>
-<area shape="rect" id="node16" href="$namespacecv__advection.html#a6f557f5a7dfeffca4640671937d7e141" title=" " alt="" coords="465,443,612,485"/>
+<area shape="rect" id="node16" href="$namespacecv__advection.html#a6f557f5a7dfeffca4640671937d7e141" title="determine stress form of viscocity..." alt="" coords="465,443,612,485"/>
 <area shape="rect" id="node18" href="$namespacematrix__operations.html#a3795359fc116fe5770ad11a89bbccc00" title=": This sub finds the inverse of the matrix A and puts it back in A. MAT, MAT2, X and B are working ve..." alt="" coords="464,778,613,819"/>
 <area shape="rect" id="node22" href="$namespacematrix__operations.html#ae6b8bf3fc8ca7e4a1b4a1ea3b639d75e" title=": Find position in matrix POSMAT which has column GLOBJ" alt="" coords="464,939,613,981"/>
 <area shape="rect" id="node25" href="$multi__dyncore__dg_8_f90.html#aac4e80d22e26450266e054deedd13fc9" title=" " alt="" coords="461,1041,616,1082"/>

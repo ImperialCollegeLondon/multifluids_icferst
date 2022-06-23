@@ -25,7 +25,7 @@
    <div id="projectname">ICFERST
    &#160;<span id="projectnumber">22_06</span>
    </div>
-   <div id="projectbrief">Reservoir simulator</div>
+   <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
  </tr>
  </tbody>
@@ -75,11 +75,13 @@ $(function() {
 <div class="title">multi_data_types::multi_pipe_package Type Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>Contains all the information required to model pipes. Many of these fields are unnecessary or even undesired...  
+ <a href="structmulti__data__types_1_1multi__pipe__package.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:ad98ff6dd591945455fd7f55fed9b8adb"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__pipe__package.html#ad98ff6dd591945455fd7f55fed9b8adb">gamma_pres_abs</a> =&gt; null()</td></tr>
-<tr class="memdesc:ad98ff6dd591945455fd7f55fed9b8adb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Contains all the information required to model pipes.  <a href="structmulti__data__types_1_1multi__pipe__package.html#ad98ff6dd591945455fd7f55fed9b8adb">More...</a><br /></td></tr>
 <tr class="separator:ad98ff6dd591945455fd7f55fed9b8adb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3e2734fd9332da9ea9b2de4cfefa4df8"><td class="memItemLeft" align="right" valign="top">real, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__pipe__package.html#a3e2734fd9332da9ea9b2de4cfefa4df8">mass_pipe</a> =&gt; null()</td></tr>
 <tr class="separator:a3e2734fd9332da9ea9b2de4cfefa4df8"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -91,40 +93,21 @@ Public Attributes</h2></td></tr>
 <tr class="separator:ae793b2fc6271cec7987ddde9af51b3ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa989974cbeb9bfa769eb1858308d8302"><td class="memItemLeft" align="right" valign="top">logical, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__pipe__package.html#aa989974cbeb9bfa769eb1858308d8302">impose_strongbcs</a> =&gt; null()</td></tr>
 <tr class="separator:aa989974cbeb9bfa769eb1858308d8302"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a975223a24e1018e20cbf9d74ac287af8"><td class="memItemLeft" align="right" valign="top">logical, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__pipe__package.html#a975223a24e1018e20cbf9d74ac287af8">this</a></td></tr>
-<tr class="separator:a975223a24e1018e20cbf9d74ac287af8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a36650a6e7d7c7a76dc886b5ba7b3e8bc"><td class="memItemLeft" align="right" valign="top">logical, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__pipe__package.html#a36650a6e7d7c7a76dc886b5ba7b3e8bc">flag</a></td></tr>
-<tr class="separator:a36650a6e7d7c7a76dc886b5ba7b3e8bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a04a743acd44c36489e5bea74089b5363"><td class="memItemLeft" align="right" valign="top">logical, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__pipe__package.html#a04a743acd44c36489e5bea74089b5363">is</a></td></tr>
-<tr class="separator:a04a743acd44c36489e5bea74089b5363"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac8e41768aa53d30d0c47d47ce0227645"><td class="memItemLeft" align="right" valign="top">logical, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__pipe__package.html#ac8e41768aa53d30d0c47d47ce0227645">used</a></td></tr>
-<tr class="separator:ac8e41768aa53d30d0c47d47ce0227645"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7a5f34146596dbbd60f4ce580e5e3236"><td class="memItemLeft" align="right" valign="top">logical, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__pipe__package.html#a7a5f34146596dbbd60f4ce580e5e3236">to</a></td></tr>
-<tr class="separator:a7a5f34146596dbbd60f4ce580e5e3236"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a93d1feb4558ca93f72479315b8f53902"><td class="memItemLeft" align="right" valign="top">logical, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__pipe__package.html#a93d1feb4558ca93f72479315b8f53902">trigger</a></td></tr>
-<tr class="separator:a93d1feb4558ca93f72479315b8f53902"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4f81e825ac056a97204dcbce1e5d7584"><td class="memItemLeft" align="right" valign="top">logical, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__pipe__package.html#a4f81e825ac056a97204dcbce1e5d7584">the</a></td></tr>
-<tr class="separator:a4f81e825ac056a97204dcbce1e5d7584"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a841745c4c1c26233649c543b0819dbfe"><td class="memItemLeft" align="right" valign="top">logical, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__pipe__package.html#a841745c4c1c26233649c543b0819dbfe">imposition</a></td></tr>
-<tr class="separator:a841745c4c1c26233649c543b0819dbfe"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a59963aae2c84fbd78f87286bf2554af9"><td class="memItemLeft" align="right" valign="top">logical, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__pipe__package.html#a59963aae2c84fbd78f87286bf2554af9">of</a></td></tr>
-<tr class="separator:a59963aae2c84fbd78f87286bf2554af9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Data Documentation</h2>
-<a id="a36650a6e7d7c7a76dc886b5ba7b3e8bc"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a36650a6e7d7c7a76dc886b5ba7b3e8bc">&#9670;&nbsp;</a></span>flag</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension( : ), pointer multi_data_types::multi_pipe_package::flag</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Contains all the information required to model pipes. Many of these fields are unnecessary or even undesired... </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">gamma_pres_abs</td><td>Specifies the apperture of the well, normally 1 or 0 </td></tr>
+    <tr><td class="paramname">mass_pipe</td><td>Volume of the pipe/well </td></tr>
+    <tr><td class="paramname">mass_cvfem2pipe</td><td>Mass of the wells in CV format </td></tr>
+    <tr><td class="paramname">mass_pipe2cvfem</td><td>Mass of the wells in CV format </td></tr>
+    <tr><td class="paramname">mass_cvfem2pipe_true</td><td>Whether to computer mass_cvfem2pipe or not </td></tr>
+    <tr><td class="paramname">impose_strongBCs</td><td>This flag is used to trigger the imposition of strong BCs for P0DG for wells, only necessary if gamma=0 at the BC </td></tr>
+  </table>
+  </dd>
+</dl>
+</div><h2 class="groupheader">Member Data Documentation</h2>
 <a id="ad98ff6dd591945455fd7f55fed9b8adb"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ad98ff6dd591945455fd7f55fed9b8adb">&#9670;&nbsp;</a></span>gamma_pres_abs</h2>
 
@@ -137,8 +120,6 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Contains all the information required to model pipes. </p>
-
 </div>
 </div>
 <a id="aa989974cbeb9bfa769eb1858308d8302"></a>
@@ -149,34 +130,6 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">logical, dimension( : ), pointer multi_data_types::multi_pipe_package::impose_strongbcs =&gt; null()</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a841745c4c1c26233649c543b0819dbfe"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a841745c4c1c26233649c543b0819dbfe">&#9670;&nbsp;</a></span>imposition</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension( : ), pointer multi_data_types::multi_pipe_package::imposition</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a04a743acd44c36489e5bea74089b5363"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a04a743acd44c36489e5bea74089b5363">&#9670;&nbsp;</a></span>is</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension( : ), pointer multi_data_types::multi_pipe_package::is</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -233,90 +186,6 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">real, dimension( : ), pointer multi_data_types::multi_pipe_package::mass_pipe2cvfem =&gt; null()</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a59963aae2c84fbd78f87286bf2554af9"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a59963aae2c84fbd78f87286bf2554af9">&#9670;&nbsp;</a></span>of</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension( : ), pointer multi_data_types::multi_pipe_package::of</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a4f81e825ac056a97204dcbce1e5d7584"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a4f81e825ac056a97204dcbce1e5d7584">&#9670;&nbsp;</a></span>the</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension( : ), pointer multi_data_types::multi_pipe_package::the</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a975223a24e1018e20cbf9d74ac287af8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a975223a24e1018e20cbf9d74ac287af8">&#9670;&nbsp;</a></span>this</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension( : ), pointer multi_data_types::multi_pipe_package::this</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a7a5f34146596dbbd60f4ce580e5e3236"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7a5f34146596dbbd60f4ce580e5e3236">&#9670;&nbsp;</a></span>to</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension( : ), pointer multi_data_types::multi_pipe_package::to</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a93d1feb4558ca93f72479315b8f53902"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a93d1feb4558ca93f72479315b8f53902">&#9670;&nbsp;</a></span>trigger</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension( : ), pointer multi_data_types::multi_pipe_package::trigger</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ac8e41768aa53d30d0c47d47ce0227645"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac8e41768aa53d30d0c47d47ce0227645">&#9670;&nbsp;</a></span>used</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension( : ), pointer multi_data_types::multi_pipe_package::used</td>
         </tr>
       </table>
 </div><div class="memdoc">

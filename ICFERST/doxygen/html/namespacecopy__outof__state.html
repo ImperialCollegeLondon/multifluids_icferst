@@ -25,7 +25,7 @@
    <div id="projectname">ICFERST
    &#160;<span id="projectnumber">22_06</span>
    </div>
-   <div id="projectbrief">Reservoir simulator</div>
+   <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
  </tr>
  </tbody>
@@ -71,6 +71,9 @@ $(function() {
 <div class="title">copy_outof_state Module Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>This module enables the multiphase prototype code to interact with state by copying everything required from state to ICFERST.  
+<a href="namespacecopy__outof__state.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions/Subroutines</h2></td></tr>
@@ -78,7 +81,7 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memdesc:ab5c876f8f241119d1dedc0bffa8fa159"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine extracts all primary variables associated with the mesh from state, and associated them with the variables used in the MultiFluids model.  <a href="namespacecopy__outof__state.html#ab5c876f8f241119d1dedc0bffa8fa159">More...</a><br /></td></tr>
 <tr class="separator:ab5c876f8f241119d1dedc0bffa8fa159"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abba0b467480d0b56c11d18f70e8c680e"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#abba0b467480d0b56c11d18f70e8c680e">compute_node_global_numbers</a> (state, ndgln)</td></tr>
-<tr class="memdesc:abba0b467480d0b56c11d18f70e8c680e"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine calculates the global node numbers requested to operates in the MP-space.  <a href="namespacecopy__outof__state.html#abba0b467480d0b56c11d18f70e8c680e">More...</a><br /></td></tr>
+<tr class="memdesc:abba0b467480d0b56c11d18f70e8c680e"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine calculates the global node numbers requested to operates in ICFERST.  <a href="namespacecopy__outof__state.html#abba0b467480d0b56c11d18f70e8c680e">More...</a><br /></td></tr>
 <tr class="separator:abba0b467480d0b56c11d18f70e8c680e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a25e9236f15044530da105400e0e3e3f4"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a25e9236f15044530da105400e0e3e3f4">get_ele_type</a> (x_nloc, cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type)</td></tr>
 <tr class="memdesc:a25e9236f15044530da105400e0e3e3f4"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Obtain the type of element u_ele_type = cv_ele_type = p_ele_type will flag the dimension and type of element: = 1 or 2: 1D (linear and quadratic, respectively) -NOT SUPPORTED- = 3 or 4: triangle (linear or quadratic, respectively) = 5 or 6: quadrilateral (bi-linear or tri-linear, respectively)-NOT SUPPORTED- = 7 or 8: tetrahedron (linear or quadratic, respectively) = 9 or 10: hexahedron (bi-linear or tri-linear, respectively) -NOT SUPPORTED-  <a href="namespacecopy__outof__state.html#a25e9236f15044530da105400e0e3e3f4">More...</a><br /></td></tr>
@@ -90,7 +93,7 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memdesc:add060a0a644c1d8db9c718a82d89c852"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This subroutine extract all discretisation options from the schema DISOPT Options: =0 1st order in space Theta=specified UNIVERSAL =1 1st order in space Theta=non-linear UNIVERSAL =2 Trapezoidal rule in space Theta=specified UNIVERSAL =2 if isotropic limiter then FEM-quadratic &amp; stratification adjust. Theta=non-linear =3 Trapezoidal rule in space Theta=non-linear UNIVERSAL =4 Finite elements in space Theta=specified UNIVERSAL =5 Finite elements in space Theta=non-linear UNIVERSAL =6 Finite elements in space Theta=specified NONE =7 Finite elements in space Theta=non-linear NONE =8 Finite elements in space Theta=specified DOWNWIND+INTERFACE TRACKING =9 Finite elements in space Theta=non-linear DOWNWIND+INTERFACE TRACKING  <a href="namespacecopy__outof__state.html#add060a0a644c1d8db9c718a82d89c852">More...</a><br /></td></tr>
 <tr class="separator:add060a0a644c1d8db9c718a82d89c852"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab4280b302a2f45375be2df118ed6d100"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#ab4280b302a2f45375be2df118ed6d100">update_boundary_conditions</a> (state, stotel, cv_snloc, nphase, suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)</td></tr>
-<tr class="memdesc:ab4280b302a2f45375be2df118ed6d100"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Sets the boundary condition, if the time has advance and the BCs changed, here they are set to the new time-level  <a href="namespacecopy__outof__state.html#ab4280b302a2f45375be2df118ed6d100">More...</a><br /></td></tr>
+<tr class="memdesc:ab4280b302a2f45375be2df118ed6d100"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Sets the boundary condition, if the time has advanced and the BCs changed, here they are set to the new time-level  <a href="namespacecopy__outof__state.html#ab4280b302a2f45375be2df118ed6d100">More...</a><br /></td></tr>
 <tr class="separator:ab4280b302a2f45375be2df118ed6d100"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afca89971343f6586b89f1cddda00b2c8"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#afca89971343f6586b89f1cddda00b2c8">pack_multistate</a> (npres, state, packed_state, multiphase_state, multicomponent_state, pmulti_state)</td></tr>
 <tr class="memdesc:afca89971343f6586b89f1cddda00b2c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This subroutine creates packed_state from state(:) and links the appropiate memory so it is acessible from both states. This subroutine also introduces fields not used by fludity but required by IC-FERST  <a href="namespacecopy__outof__state.html#afca89971343f6586b89f1cddda00b2c8">More...</a><br /></td></tr>
@@ -111,13 +114,13 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memdesc:a577c504f5230ff200ee711334eebe54a"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonlinear iterations are going and depending on that increase the timestep or decreases the timestep and repeats that timestep  <a href="namespacecopy__outof__state.html#a577c504f5230ff200ee711334eebe54a">More...</a><br /></td></tr>
 <tr class="separator:a577c504f5230ff200ee711334eebe54a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad775c010bade229fba0416002e6928a6"><td class="memItemLeft" align="right" valign="top">real function, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#ad775c010bade229fba0416002e6928a6">inf_norm_scalar_normalised</a> (tracer, reference_tracer, dumping, totally_min_max)</td></tr>
-<tr class="memdesc:ad775c010bade229fba0416002e6928a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Calculate the inf norm of the normalised field, so the field goes from 0 to 1.  <a href="namespacecopy__outof__state.html#ad775c010bade229fba0416002e6928a6">More...</a><br /></td></tr>
+<tr class="memdesc:ad775c010bade229fba0416002e6928a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs the tracer to be used and the reference tracer to normallise, the dumping to be set to 1.0 and totally_min_max which includes the min max values of the field across all processors also for normalisation.  <a href="namespacecopy__outof__state.html#ad775c010bade229fba0416002e6928a6">More...</a><br /></td></tr>
 <tr class="separator:ad775c010bade229fba0416002e6928a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7d6957a54cc1cc0a38a4a7a90bca1f89"><td class="memItemLeft" align="right" valign="top">real function, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a7d6957a54cc1cc0a38a4a7a90bca1f89">get_convergence_functional</a> (phasevolumefraction, reference_sat, dumping, its)</td></tr>
 <tr class="memdesc:a7d6957a54cc1cc0a38a4a7a90bca1f89"><td class="mdescLeft">&#160;</td><td class="mdescRight">: We create a potential to optimize F = sum (f**2), so the solution is when this potential reaches a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8 f = (NewSat-OldSat)/Number of nodes; this is the typical approach for algebraic non linear systems  <a href="namespacecopy__outof__state.html#a7d6957a54cc1cc0a38a4a7a90bca1f89">More...</a><br /></td></tr>
 <tr class="separator:a7d6957a54cc1cc0a38a4a7a90bca1f89"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0520a99d915a669f52eadab9a438194b"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b">get_var_from_packed_state</a> (packed_state, FEDensity, OldFEDensity, IteratedFEDensity, Density, OldDensity, IteratedDensity, PhaseVolumeFraction, OldPhaseVolumeFraction, IteratedPhaseVolumeFraction, Velocity, OldVelocity, IteratedVelocity, FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, NonlinearVelocity, OldNonlinearVelocity, IteratedNonlinearVelocity, ComponentDensity, OldComponentDensity, IteratedComponentDensity, ComponentMassFraction, OldComponentMassFraction, Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature, IteratedComponentMassFraction, FEComponentDensity, OldFEComponentDensity, IteratedFEComponentDensity, FEComponentMassFraction, OldFEComponentMassFraction, IteratedFEComponentMassFraction, Pressure, FEPressure, OldFEPressure, CVPressure, OldCVPressure, CV_Immobile_Fraction, Coordinate, VelocityCoordinate, PressureCoordinate, MaterialCoordinate, CapPressure, Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term, Concentration, OldConcentration, IteratedConcentration, FEConcentration, OldFEConcentration, IteratedFEConcentration, Enthalpy, OldEnthalpy, IteratedEnthalpy, FEEnthalpy, OldFEEnthalpy, IteratedFEEnthalpy)</td></tr>
-<tr class="memdesc:a0520a99d915a669f52eadab9a438194b"><td class="mdescLeft">&#160;</td><td class="mdescRight">@DEPRECATED: Gets memory from packed state  <a href="namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b">More...</a><br /></td></tr>
+<tr class="memdesc:a0520a99d915a669f52eadab9a438194b"><td class="mdescLeft">&#160;</td><td class="mdescRight">@DEPRECATED: Gets memory from packed state This subroutine returns a pointer to the desired values of a variable stored in packed state All the input variables (but packed_stated) are pointers following the structure of the *_ALL variables and also all of them are optional, hence you can obtaine whichever you want  <a href="namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b">More...</a><br /></td></tr>
 <tr class="separator:a0520a99d915a669f52eadab9a438194b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5fa62e07eab3607bcf414b67abe1148a"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a5fa62e07eab3607bcf414b67abe1148a">printcsrmatrix</a> (Matrix, find, col, dim_same_row)</td></tr>
 <tr class="memdesc:a5fa62e07eab3607bcf414b67abe1148a"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Subroutine to print CSR matrix by (row, column) Dimensions and phases are printed in different rows So for example Matrix(2,2,10) with two rows would be presented as a matrix ( 8 x 10)  <a href="namespacecopy__outof__state.html#a5fa62e07eab3607bcf414b67abe1148a">More...</a><br /></td></tr>
@@ -138,22 +141,24 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memdesc:acea2acdccf9091776be013ade24bcd97"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Subroutine to check whether an option is true for any phase in diamond, if any is true it returns true. The path must be the part of the path inside the phase, i.e. /multiphase_properties/capillary_pressure  <a href="namespacecopy__outof__state.html#acea2acdccf9091776be013ade24bcd97">More...</a><br /></td></tr>
 <tr class="separator:acea2acdccf9091776be013ade24bcd97"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2a2f72be9cad756d2151473988566c8d"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a2a2f72be9cad756d2151473988566c8d">get_darcyvelocity</a> (Mdims, ndgln, state, packed_state, upwnd)</td></tr>
-<tr class="memdesc:a2a2f72be9cad756d2151473988566c8d"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This subroutine calculates the actual Darcy velocity, but with P0DG precision  <a href="namespacecopy__outof__state.html#a2a2f72be9cad756d2151473988566c8d">More...</a><br /></td></tr>
+<tr class="memdesc:a2a2f72be9cad756d2151473988566c8d"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This subroutine calculates the actual Darcy velocity, but with P0DG precision only!  <a href="namespacecopy__outof__state.html#a2a2f72be9cad756d2151473988566c8d">More...</a><br /></td></tr>
 <tr class="separator:a2a2f72be9cad756d2151473988566c8d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adbfe914b0d919d92535a188ab7c0e384"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#adbfe914b0d919d92535a188ab7c0e384">dump_outflux</a> (current_time, itime, outfluxes)</td></tr>
 <tr class="memdesc:adbfe914b0d919d92535a188ab7c0e384"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file called 'simulation_name_outfluxes.csv'. In addition, the time integrated flux up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids. (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they wish to integrate over).  <a href="namespacecopy__outof__state.html#adbfe914b0d919d92535a188ab7c0e384">More...</a><br /></td></tr>
 <tr class="separator:adbfe914b0d919d92535a188ab7c0e384"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3e466dfb76c8c3e30de12d2f7d36d3bb"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a3e466dfb76c8c3e30de12d2f7d36d3bb">update_outfluxes</a> (bcs_outfluxes, outfluxes, sele, cv_nodi, suf_area, Vol_flux, Mass_flux, tracer, outfluxes_fields, start_phase, end_phase)</td></tr>
-<tr class="memdesc:a3e466dfb76c8c3e30de12d2f7d36d3bb"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a given GI point in a certain element This subroutine should only be called if SELE is on the BOUNDARY Example of Mass_flux: ndotq(iphase) * SdevFunsDETWEI(gi) * LIMDT(iphase) Example of Vol_flux: ndotq(iphase) * SdevFunsDETWEI(gi) * LIMDT(iphase)  <a href="namespacecopy__outof__state.html#a3e466dfb76c8c3e30de12d2f7d36d3bb">More...</a><br /></td></tr>
+<tr class="memdesc:a3e466dfb76c8c3e30de12d2f7d36d3bb"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a given GI point in a certain element This subroutine should only be called if SELE is on the BOUNDARY Example of Mass_flux: ndotq(iphase) * SdevFunsDETWEI(gi) * LIMT(iphase) Example of Vol_flux: ndotq(iphase) * SdevFunsDETWEI(gi) * LIMDT(iphase)  <a href="namespacecopy__outof__state.html#a3e466dfb76c8c3e30de12d2f7d36d3bb">More...</a><br /></td></tr>
 <tr class="separator:a3e466dfb76c8c3e30de12d2f7d36d3bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6c5000c06758c4e42744252542c849cb"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a6c5000c06758c4e42744252542c849cb">enterforcebalanceequation</a> (EnterSolve, its, itime, acctim, t_adapt_threshold, after_adapt, after_adapt_itime, PVF_cfl)</td></tr>
 <tr class="memdesc:a6c5000c06758c4e42744252542c849cb"><td class="mdescLeft">&#160;</td><td class="mdescRight">:&ndash;A Subroutine that returns a Logical, either to Enter the Force Balance Eqs or Not = given a requested_cfl_pressure it will skip the ForceBalanceEquation that many times = while if I have adaptive mesh it will solve the ForceBalanceEquation after each adapt_time_steps = The Subroutive also account for delaying adaptivity and swich between cfl_pressure and after_adapt=  <a href="namespacecopy__outof__state.html#a6c5000c06758c4e42744252542c849cb">More...</a><br /></td></tr>
 <tr class="separator:a6c5000c06758c4e42744252542c849cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a52b4659aa8636bb70d12b05923bc58b8"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a52b4659aa8636bb70d12b05923bc58b8">impose_connected_bcs</a> (outfluxes, packed_state, Mdims, acctime)</td></tr>
-<tr class="memdesc:a52b4659aa8636bb70d12b05923bc58b8"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Using the outfluxes values, it imposes as BC the averaged value of another BC(from within the domain) It is a basic method to get this functionality but it will work in parallel. However, it does not guarantee mass conservation as it uses the value from the previous time-step although it can still be used for many cases such as ATES, or ventilation. Overwrites the dirichlet BC values.  <a href="namespacecopy__outof__state.html#a52b4659aa8636bb70d12b05923bc58b8">More...</a><br /></td></tr>
+<tr class="memdesc:a52b4659aa8636bb70d12b05923bc58b8"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Using the outfluxes values, it imposes as BC the averaged value of another BC(from within the domain) It is a basic method to get this functionality but it will work in parallel. However, it does not guarantee mass conservation as it uses the value from the previous time-step although it can still be used for many cases such as ATES, or ventilation. Overwrites the dirichlet BC values. Currently it uses the information from outfluxes so it is MANDATORY to use and request outfluxes for those BCs  <a href="namespacecopy__outof__state.html#a52b4659aa8636bb70d12b05923bc58b8">More...</a><br /></td></tr>
 <tr class="separator:a52b4659aa8636bb70d12b05923bc58b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Function/Subroutine Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>This module enables the multiphase prototype code to interact with state by copying everything required from state to ICFERST. </p>
+</div><h2 class="groupheader">Function/Subroutine Documentation</h2>
 <a id="a577c504f5230ff200ee711334eebe54a"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a577c504f5230ff200ee711334eebe54a">&#9670;&nbsp;</a></span>adaptive_nonlinear()</h2>
 
@@ -260,6 +265,22 @@ Functions/Subroutines</h2></td></tr>
 
 <p>: This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonlinear iterations are going and depending on that increase the timestep or decreases the timestep and repeats that timestep </p>
 <dl class="section author"><dt>Author</dt><dd>: Pablo Salinas </dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">Mdims</td><td>Dimensions of the model </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list with the fields for ICFERST </td></tr>
+    <tr><td class="paramname">reference_field</td><td>Field stored at the beginning of the non-linear loop to check convergence </td></tr>
+    <tr><td class="paramname">old_acctim</td><td>Previous actual time </td></tr>
+    <tr><td class="paramname">Repeat_time_step,ExitNonLinearLoop</td><td></td></tr>
+    <tr><td class="paramname">its</td><td>Non-linear time iteration WARNING: not to be modified unless VERY sure </td></tr>
+    <tr><td class="paramname">nonLinearAdaptTs</td><td>Flag controlling if we have adaptive time-step or not </td></tr>
+    <tr><td class="paramname">order</td><td>Flag controlling what are we doing. 1)Store or get from backup; 2)Calculate and store reference_field; </td></tr>
+    <tr><td class="paramname">adapt_mesh_in_FPI,first_time_step</td><td></td></tr>
+    <tr><td class="paramname">Accum_Courant,Courant_tol,Current_Courant</td><td></td></tr>
+    <tr><td class="paramname">calculate_mass_delta</td><td>1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
@@ -267,8 +288,8 @@ Here is the call graph for this function:</div>
 <map name="namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a_cgraph" id="namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a_cgraph">
 <area shape="rect" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="5,104,204,145"/>
 <area shape="rect" href="namespacecopy__outof__state.html#a7d6957a54cc1cc0a38a4a7a90bca1f89" title=": We create a potential to optimize F = sum (f**2), so the solution is when this potential reaches a ..." alt="" coords="255,5,439,47"/>
-<area shape="rect" href="namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b" title="@DEPRECATED: Gets memory from packed state" alt="" coords="256,71,437,112"/>
-<area shape="rect" href="namespacecopy__outof__state.html#ad775c010bade229fba0416002e6928a6" title="Calculate the inf norm of the normalised field, so the field goes from 0 to 1." alt="" coords="252,136,441,177"/>
+<area shape="rect" href="namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b" title="@DEPRECATED: Gets memory from packed state This subroutine returns a pointer to the desired values of..." alt="" coords="256,71,437,112"/>
+<area shape="rect" href="namespacecopy__outof__state.html#ad775c010bade229fba0416002e6928a6" title="Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs t..." alt="" coords="252,136,441,177"/>
 <area shape="rect" href="namespacemulti__tools.html#a1ab322da5f344e1d042fb429ebce3637" title=": Returns true if the input name is an Active Tracer type, Tracer, Species, Concentration or any othe..." alt="" coords="266,201,427,243"/>
 </map>
 </div>
@@ -398,6 +419,23 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: Subroutine to calculate the integrated mass inside the domain </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">packed_state</td><td></td></tr>
+    <tr><td class="paramname">Mdims</td><td></td></tr>
+    <tr><td class="paramname">mass_ele</td><td>volume of the element, split into cv_nloc equally sized pieces (barycenter) </td></tr>
+    <tr><td class="paramname">cv_ndgln</td><td>local to global of the CV mesh only </td></tr>
+    <tr><td class="paramname">DEN_ALL</td><td>density of the field </td></tr>
+    <tr><td class="paramname">eles_with_pipe</td><td>list of element that contain a well/pipe </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="retval"><dt>Return values</dt><dd>
+  <table class="retval">
+    <tr><td class="paramname">calculate_mass</td><td>Output field containing all the mass within the domain </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
@@ -405,7 +443,7 @@ Here is the caller graph for this function:</div>
 <map name="namespacecopy__outof__state_a1394fdd5e9adcc149eb319739c07f854_icgraph" id="namespacecopy__outof__state_a1394fdd5e9adcc149eb319739c07f854_icgraph">
 <area shape="rect" title=": Subroutine to calculate the integrated mass inside the domain" alt="" coords="1517,125,1719,167"/>
 <area shape="rect" href="cv-adv-dif_8_f90.html#a77201531d5bc443a857dce86befbb61e" title=" " alt="" coords="1276,125,1469,167"/>
-<area shape="rect" href="namespacecv__advection.html#a083e26c7f43d55723d9e316ef2069394" title="Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for..." alt="" coords="1039,133,1228,159"/>
+<area shape="rect" href="namespacecv__advection.html#a4c9c5c3afe6e6355fcf8bfefbaa3211a" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1039,133,1228,159"/>
 <area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="778,75,962,102"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#af9aedf8b67f5b7198eb4b67601a7fab0" title="Calls to generate the transport equation for the enthalpy equation. This is efectively the temperatur..." alt="" coords="495,125,673,167"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="778,249,962,291"/>
@@ -447,13 +485,13 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
-<p>This subroutine calculates the global node numbers requested to operates in the MP-space. </p>
+<p>This subroutine calculates the global node numbers requested to operates in ICFERST. </p>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_cgraph.png" border="0" usemap="#namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_cgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_cgraph" id="namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_cgraph">
-<area shape="rect" title="This subroutine calculates the global node numbers requested to operates in the MP&#45;space." alt="" coords="5,5,204,47"/>
+<area shape="rect" title="This subroutine calculates the global node numbers requested to operates in ICFERST." alt="" coords="5,5,204,47"/>
 <area shape="rect" href="namespacemulti__tools.html#a29b23492be133b01a7eb9bce13adbdfb" title=" " alt="" coords="252,13,427,39"/>
 </map>
 </div>
@@ -462,7 +500,7 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_icgraph.png" border="0" usemap="#namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_icgraph" id="namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_icgraph">
-<area shape="rect" title="This subroutine calculates the global node numbers requested to operates in the MP&#45;space." alt="" coords="467,27,665,69"/>
+<area shape="rect" title="This subroutine calculates the global node numbers requested to operates in ICFERST." alt="" coords="467,27,665,69"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
@@ -504,6 +542,14 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file called 'simulation_name_outfluxes.csv'. In addition, the time integrated flux up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids. (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they wish to integrate over). </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">current_time</td><td>actual time </td></tr>
+    <tr><td class="paramname">itime</td><td>time-level in integer format </td></tr>
+    <tr><td class="paramname">outfluxes</td><td>multi_outfluxes field containing the data required to create the output csv file </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
@@ -729,13 +775,13 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
-<p>: This subroutine calculates the actual Darcy velocity, but with P0DG precision </p>
+<p>: This subroutine calculates the actual Darcy velocity, but with P0DG precision only! </p>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_a2a2f72be9cad756d2151473988566c8d_icgraph.png" border="0" usemap="#namespacecopy__outof__state_a2a2f72be9cad756d2151473988566c8d_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_a2a2f72be9cad756d2151473988566c8d_icgraph" id="namespacecopy__outof__state_a2a2f72be9cad756d2151473988566c8d_icgraph">
-<area shape="rect" title=": This subroutine calculates the actual Darcy velocity, but with P0DG precision" alt="" coords="467,5,629,47"/>
+<area shape="rect" title=": This subroutine calculates the actual Darcy velocity, but with P0DG precision only!" alt="" coords="467,5,629,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -1349,18 +1395,21 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
-<p>@DEPRECATED: Gets memory from packed state </p>
+<p>@DEPRECATED: Gets memory from packed state This subroutine returns a pointer to the desired values of a variable stored in packed state All the input variables (but packed_stated) are pointers following the structure of the *_ALL variables and also all of them are optional, hence you can obtaine whichever you want </p>
+<h6>################EXAMPLE OF USAGE OF THIS SUBROUTINE:</h6>
+<p>If we want to get the velocity and the phasevolumefraction one should proceed this way: Define variables: real, dimension(:,:,:), pointer :: Velocity_pointer real, dimension(:,:), pointer :: PhaseVolumeFraction_pointer Assign the pointers call get_var_from_packed_state(packed_state, Velocity = Velocity_pointer, PhaseVolumeFraction = PhaseVolumeFraction_pointer)</p>
+<p>In this way we only have to introduce the name of the variables we want to get from packed_state </p>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_a0520a99d915a669f52eadab9a438194b_icgraph.png" border="0" usemap="#namespacecopy__outof__state_a0520a99d915a669f52eadab9a438194b_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_a0520a99d915a669f52eadab9a438194b_icgraph" id="namespacecopy__outof__state_a0520a99d915a669f52eadab9a438194b_icgraph">
-<area shape="rect" title="@DEPRECATED: Gets memory from packed state" alt="" coords="1400,129,1581,171"/>
+<area shape="rect" title="@DEPRECATED: Gets memory from packed state This subroutine returns a pointer to the desired values of..." alt="" coords="1400,129,1581,171"/>
 <area shape="rect" href="namespacecopy__outof__state.html#a577c504f5230ff200ee711334eebe54a" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="485,5,683,47"/>
 <area shape="rect" href="namespacemulti__sp.html#a3761caa03a0d114b25c395685b965a73" title=": This subroutine computes the saturated rock conductivity based on Tiab and Donaldson,..." alt="" coords="795,64,945,105"/>
 <area shape="rect" href="namespacesolvers__module.html#adef72e22883fb36304a2da0099927175" title="The sparcity of the local CV connectivity is in: small_findrm, small_colm. ngl_its=max no of global i..." alt="" coords="1039,137,1352,163"/>
 <area shape="rect" href="namespacecompositional__terms.html#ab7087656dea2acf341899e4e7a7f8eca" title=" " alt="" coords="1101,417,1290,459"/>
-<area shape="rect" href="namespacecv__advection.html#a083e26c7f43d55723d9e316ef2069394" title="Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for..." alt="" coords="1101,286,1290,313"/>
+<area shape="rect" href="namespacecv__advection.html#a4c9c5c3afe6e6355fcf8bfefbaa3211a" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1101,286,1290,313"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,257,419,299"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,257,171,299"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="501,122,667,149"/>
@@ -1401,7 +1450,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacecopy__outof__state_ac1305d6f3dc1c1ec92a4135ea55947b9_icgraph.png" border="0" usemap="#namespacecopy__outof__state_ac1305d6f3dc1c1ec92a4135ea55947b9_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_ac1305d6f3dc1c1ec92a4135ea55947b9_icgraph" id="namespacecopy__outof__state_ac1305d6f3dc1c1ec92a4135ea55947b9_icgraph">
 <area shape="rect" title=": For a given field, retrieve the associated finite element field name" alt="" coords="1276,133,1503,159"/>
-<area shape="rect" href="namespacecv__advection.html#a083e26c7f43d55723d9e316ef2069394" title="Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for..." alt="" coords="1039,133,1228,159"/>
+<area shape="rect" href="namespacecv__advection.html#a4c9c5c3afe6e6355fcf8bfefbaa3211a" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1039,133,1228,159"/>
 <area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="778,75,962,102"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#af9aedf8b67f5b7198eb4b67601a7fab0" title="Calls to generate the transport equation for the enthalpy equation. This is efectively the temperatur..." alt="" coords="495,125,673,167"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="778,249,962,291"/>
@@ -1440,7 +1489,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacecopy__outof__state_abc850cced2fb9b525f015e758e4b45da_icgraph.png" border="0" usemap="#namespacecopy__outof__state_abc850cced2fb9b525f015e758e4b45da_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_abc850cced2fb9b525f015e758e4b45da_icgraph" id="namespacecopy__outof__state_abc850cced2fb9b525f015e758e4b45da_icgraph">
 <area shape="rect" title=": For a given field, retrieve the associated old field name" alt="" coords="1276,133,1496,159"/>
-<area shape="rect" href="namespacecv__advection.html#a083e26c7f43d55723d9e316ef2069394" title="Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for..." alt="" coords="1039,133,1228,159"/>
+<area shape="rect" href="namespacecv__advection.html#a4c9c5c3afe6e6355fcf8bfefbaa3211a" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1039,133,1228,159"/>
 <area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="778,75,962,102"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#af9aedf8b67f5b7198eb4b67601a7fab0" title="Calls to generate the transport equation for the enthalpy equation. This is efectively the temperatur..." alt="" coords="495,125,673,167"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="778,249,962,291"/>
@@ -1536,7 +1585,7 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
-<p>: Using the outfluxes values, it imposes as BC the averaged value of another BC(from within the domain) It is a basic method to get this functionality but it will work in parallel. However, it does not guarantee mass conservation as it uses the value from the previous time-step although it can still be used for many cases such as ATES, or ventilation. Overwrites the dirichlet BC values. </p>
+<p>: Using the outfluxes values, it imposes as BC the averaged value of another BC(from within the domain) It is a basic method to get this functionality but it will work in parallel. However, it does not guarantee mass conservation as it uses the value from the previous time-step although it can still be used for many cases such as ATES, or ventilation. Overwrites the dirichlet BC values. Currently it uses the information from outfluxes so it is MANDATORY to use and request outfluxes for those BCs </p>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
@@ -1588,13 +1637,13 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
-<p>Calculate the inf norm of the normalised field, so the field goes from 0 to 1. </p>
+<p>Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs the tracer to be used and the reference tracer to normallise, the dumping to be set to 1.0 and totally_min_max which includes the min max values of the field across all processors also for normalisation. </p>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_ad775c010bade229fba0416002e6928a6_icgraph.png" border="0" usemap="#namespacecopy__outof__state_ad775c010bade229fba0416002e6928a6_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_ad775c010bade229fba0416002e6928a6_icgraph" id="namespacecopy__outof__state_ad775c010bade229fba0416002e6928a6_icgraph">
-<area shape="rect" title="Calculate the inf norm of the normalised field, so the field goes from 0 to 1." alt="" coords="713,5,903,47"/>
+<area shape="rect" title="Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs t..." alt="" coords="713,5,903,47"/>
 <area shape="rect" href="namespacecopy__outof__state.html#a577c504f5230ff200ee711334eebe54a" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="467,5,665,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
@@ -1626,7 +1675,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacecopy__outof__state_ab7c981b328d9950b1c375aaacaa3cda0_icgraph.png" border="0" usemap="#namespacecopy__outof__state_ab7c981b328d9950b1c375aaacaa3cda0_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_ab7c981b328d9950b1c375aaacaa3cda0_icgraph" id="namespacecopy__outof__state_ab7c981b328d9950b1c375aaacaa3cda0_icgraph">
 <area shape="rect" title=": Checks whether a field is constant or not" alt="" coords="1276,108,1429,150"/>
-<area shape="rect" href="namespacecv__advection.html#a083e26c7f43d55723d9e316ef2069394" title="Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for..." alt="" coords="1039,145,1228,172"/>
+<area shape="rect" href="namespacecv__advection.html#a4c9c5c3afe6e6355fcf8bfefbaa3211a" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1039,145,1228,172"/>
 <area shape="rect" href="namespacemultiphase__fractures__3d.html#aaa6b152432f8f9fcbfac8f68df833154" title=" " alt="" coords="1053,35,1213,76"/>
 <area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="778,121,962,148"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#af9aedf8b67f5b7198eb4b67601a7fab0" title="Calls to generate the transport equation for the enthalpy equation. This is efectively the temperatur..." alt="" coords="495,167,673,208"/>
@@ -1704,27 +1753,27 @@ Here is the call graph for this function:</div>
 <area shape="rect" href="namespacecopy__outof__state.html#acea2acdccf9091776be013ade24bcd97" title=": Subroutine to check whether an option is true for any phase in diamond, if any is true it returns t..." alt="" coords="227,57,401,99"/>
 <area shape="rect" href="namespacemulti__tools.html#a88fe8456a6aab41a0c9aeff3b0a4f2ec" title=": Returns true if the input name is a Tracer type:PassiveTracer, Tracer, Species, Concentration or an..." alt="" coords="235,123,393,164"/>
 <area shape="rect" href="namespaceshape__functions__ndim.html#a54aa7c2f3b52f8fb9e403339ac85c10b" title=" " alt="" coords="230,188,398,229"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a8fe09e952cf3b4ee2627342abc216d66" title=" " alt="" coords="665,119,833,160"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a8fe09e952cf3b4ee2627342abc216d66" title="This subroutine defines a spectal element. IPOLY defines the element type and IQADRA the quadrature...." alt="" coords="665,119,833,160"/>
 <area shape="rect" href="namespaceshape__functions__ndim.html#a25072ca7508393d73b9e91c2e80ebc6f" title=":This subroutine defines the shape functions M and N and their derivatives at the Gauss points for qu..." alt="" coords="449,217,617,259"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a62d482e48ef37a99c81efcdd8e273644" title=" " alt="" coords="881,71,1049,112"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#afc7053552eace6af239edcd5d1b99cb3" title=" " alt="" coords="881,168,1049,209"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a287190f2e4c6ec0425a18bc9d5ab56b2" title=" " alt="" coords="1097,5,1265,47"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a465010bbab3913a160a668f64191ba31" title=" " alt="" coords="1097,71,1265,112"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#aa001da7c1c2a50e7cd0b182f17f6bd1f" title=" " alt="" coords="1313,39,1481,80"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a62d482e48ef37a99c81efcdd8e273644" title="This sub returns the weights WEIT the quadrature points QUAPOS and the node points NODPOS...." alt="" coords="881,71,1049,112"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#afc7053552eace6af239edcd5d1b99cb3" title="INOD contains the node at which the polynomial is associated with LXGP is the position at which the p..." alt="" coords="881,168,1049,209"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a287190f2e4c6ec0425a18bc9d5ab56b2" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 67 of:Spectral M..." alt="" coords="1097,5,1265,47"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a465010bbab3913a160a668f64191ba31" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 69 of:Spectral M..." alt="" coords="1097,71,1265,112"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#aa001da7c1c2a50e7cd0b182f17f6bd1f" title="This sub works out the Gauss&#45;Lobatto&#45;Legendre roots." alt="" coords="1313,39,1481,80"/>
 <area shape="rect" href="namespaceshape__functions__ndim.html#a9a01d935ddfe5ea36a29ffe505dbf73e" title=" " alt="" coords="1313,104,1481,145"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#ab137b075bc778e2a27a0c1810a49b492" title=" " alt="" coords="1529,39,1697,80"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a09da641d2526c3de68637ac538d3aabd" title=" " alt="" coords="1745,39,1913,80"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#ae03154693b140919ff0c589df8e58f89" title=" " alt="" coords="1529,105,1697,147"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title=" " alt="" coords="1745,133,1913,175"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#afcdd60fa5c35faed86afbc64194f32f5" title=" " alt="" coords="1097,136,1265,177"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#af8259d92f168acab30360351113dd84a" title=" " alt="" coords="1097,201,1265,243"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a647388b8d7683edf0e0f203e5bcad3b6" title=" " alt="" coords="1097,267,1265,308"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#ab7a1f6dd86d185746575caf1b293c45f" title=" " alt="" coords="1313,169,1481,211"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a37c95193cd7ac8186d5e2a9359793013" title=" " alt="" coords="665,184,833,225"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a91a5940ae1f635a9dbf21cc341de9d56" title=" " alt="" coords="665,249,833,291"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#ab137b075bc778e2a27a0c1810a49b492" title="COMPUTES THE GAUSS&#45;LOBATTO COLLOCATION POINTS FOR JACOBI POLYNOMIALS." alt="" coords="1529,39,1697,80"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a09da641d2526c3de68637ac538d3aabd" title="COMPUTES THE JACOBI POLYNOMIAL (POLY) AND ITS DERIVATIVE (PDER) OF DEGREE N AT X." alt="" coords="1745,39,1913,80"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#ae03154693b140919ff0c589df8e58f89" title="Calculate binomial coefficients." alt="" coords="1529,105,1697,147"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title="Calculate n!" alt="" coords="1745,133,1913,175"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#afcdd60fa5c35faed86afbc64194f32f5" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="1097,136,1265,177"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#af8259d92f168acab30360351113dd84a" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="1097,201,1265,243"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a647388b8d7683edf0e0f203e5bcad3b6" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="1097,267,1265,308"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#ab7a1f6dd86d185746575caf1b293c45f" title="If DIFF then return the n&#39;th Chebyshef polynomial differentiated w.r.t x. If DIFF2 then form the 2&#39;nd..." alt="" coords="1313,169,1481,211"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a37c95193cd7ac8186d5e2a9359793013" title="order so that the 1st nodes are on the base of tet for a quadratic tet..." alt="" coords="665,184,833,225"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a91a5940ae1f635a9dbf21cc341de9d56" title="order so that the 1st nodes are on the base for a quadratic triangle..." alt="" coords="665,249,833,291"/>
 <area shape="rect" href="namespaceshape__functions__ndim.html#a445a3bd2cb68d70b3e9cd86febb890db" title=": Work out the shape functions and their derivatives..." alt="" coords="665,315,833,356"/>
 <area shape="rect" href="namespaceshape__functions__ndim.html#ad8bb7dc236ed2a0b994488d081ee70f4" title=": This sub calculates the local corrds L1, L2, L3, L4 and weights at the quadrature points...." alt="" coords="665,380,833,421"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#ac67c2ff971dd5f7bbfd22a1c1d22eacc" title=" " alt="" coords="881,315,1049,356"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#ac67c2ff971dd5f7bbfd22a1c1d22eacc" title="Generates the shape functions of a cubic triangle." alt="" coords="881,315,1049,356"/>
 </map>
 </div>
 <div class="dynheader">
@@ -1780,8 +1829,8 @@ Here is the call graph for this function:</div>
 <div class="center"><img src="namespacecopy__outof__state_adba75f9a3f64d519ecf58b2b9159d629_cgraph.png" border="0" usemap="#namespacecopy__outof__state_adba75f9a3f64d519ecf58b2b9159d629_cgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_adba75f9a3f64d519ecf58b2b9159d629_cgraph" id="namespacecopy__outof__state_adba75f9a3f64d519ecf58b2b9159d629_cgraph">
 <area shape="rect" title=": Prepares the memory to compute absorption fields" alt="" coords="5,5,197,47"/>
-<area shape="rect" href="namespacemulti__data__types.html#aacf7345cba9f7c9760a4f8e1c68ee0ca" title=" " alt="" coords="245,5,456,47"/>
-<area shape="rect" href="namespacemulti__data__types.html#a65dde4f9748cb3dd200c328f99304c4e" title=" " alt="" coords="504,5,715,47"/>
+<area shape="rect" href="namespacemulti__data__types.html#aacf7345cba9f7c9760a4f8e1c68ee0ca" title="Deallocation of all of the multi field types within multi_absorp." alt="" coords="245,5,456,47"/>
+<area shape="rect" href="namespacemulti__data__types.html#a65dde4f9748cb3dd200c328f99304c4e" title="Deallocation of a multi field type." alt="" coords="504,5,715,47"/>
 </map>
 </div>
 <div class="dynheader">
@@ -1902,14 +1951,14 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
-<p>: Sets the boundary condition, if the time has advance and the BCs changed, here they are set to the new time-level </p>
+<p>: Sets the boundary condition, if the time has advanced and the BCs changed, here they are set to the new time-level </p>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_ab4280b302a2f45375be2df118ed6d100_icgraph.png" border="0" usemap="#namespacecopy__outof__state_ab4280b302a2f45375be2df118ed6d100_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_ab4280b302a2f45375be2df118ed6d100_icgraph" id="namespacecopy__outof__state_ab4280b302a2f45375be2df118ed6d100_icgraph">
-<area shape="rect" title=": Sets the boundary condition, if the time has advance and the BCs changed, here they are set to the ..." alt="" coords="1276,125,1463,167"/>
-<area shape="rect" href="namespacecv__advection.html#a083e26c7f43d55723d9e316ef2069394" title="Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for..." alt="" coords="1039,133,1228,159"/>
+<area shape="rect" title=": Sets the boundary condition, if the time has advanced and the BCs changed, here they are set to the..." alt="" coords="1276,125,1463,167"/>
+<area shape="rect" href="namespacecv__advection.html#a4c9c5c3afe6e6355fcf8bfefbaa3211a" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1039,133,1228,159"/>
 <area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="778,75,962,102"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#af9aedf8b67f5b7198eb4b67601a7fab0" title="Calls to generate the transport equation for the enthalpy equation. This is efectively the temperatur..." alt="" coords="495,125,673,167"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="778,249,962,291"/>
@@ -2005,14 +2054,29 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
-<p>: Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a given GI point in a certain element This subroutine should only be called if SELE is on the BOUNDARY Example of Mass_flux: ndotq(iphase) * SdevFunsDETWEI(gi) * LIMDT(iphase) Example of Vol_flux: ndotq(iphase) * SdevFunsDETWEI(gi) * LIMDT(iphase) </p>
+<p>: Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a given GI point in a certain element This subroutine should only be called if SELE is on the BOUNDARY Example of Mass_flux: ndotq(iphase) * SdevFunsDETWEI(gi) * LIMT(iphase) Example of Vol_flux: ndotq(iphase) * SdevFunsDETWEI(gi) * LIMDT(iphase) </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">bcs_outfluxes</td><td>the total mass entering the domain is captured by 'bcs_outfluxes' </td></tr>
+    <tr><td class="paramname">outfluxes</td><td>multi_outfluxes field containing the data required to create the output csv file </td></tr>
+    <tr><td class="paramname">sele</td><td>current surface element </td></tr>
+    <tr><td class="paramname">cv_nodi</td><td>current control volume </td></tr>
+    <tr><td class="paramname">suf_area</td><td>surface area </td></tr>
+    <tr><td class="paramname">Vol_flux</td><td>ndotq(iphase) * SdevFunsDETWEI(gi) * LIMT(iphase) </td></tr>
+    <tr><td class="paramname">Mass_flux</td><td>ndotq(iphase) * SdevFunsDETWEI(gi) * LIMDT(iphase) (includes tracer and density!) </td></tr>
+    <tr><td class="paramname">tracer</td><td>field being transported/computed </td></tr>
+    <tr><td class="paramname">outfluxes_fields</td><td>to extract also from active/passive tracers </td></tr>
+    <tr><td class="paramname">start_phase,end_phase</td><td>Initial and final phase to be considered here </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_a3e466dfb76c8c3e30de12d2f7d36d3bb_icgraph.png" border="0" usemap="#namespacecopy__outof__state_a3e466dfb76c8c3e30de12d2f7d36d3bb_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_a3e466dfb76c8c3e30de12d2f7d36d3bb_icgraph" id="namespacecopy__outof__state_a3e466dfb76c8c3e30de12d2f7d36d3bb_icgraph">
 <area shape="rect" title=": Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a g..." alt="" coords="1276,125,1463,167"/>
-<area shape="rect" href="namespacecv__advection.html#a083e26c7f43d55723d9e316ef2069394" title="Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for..." alt="" coords="1039,133,1228,159"/>
+<area shape="rect" href="namespacecv__advection.html#a4c9c5c3afe6e6355fcf8bfefbaa3211a" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1039,133,1228,159"/>
 <area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="778,75,962,102"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#af9aedf8b67f5b7198eb4b67601a7fab0" title="Calls to generate the transport equation for the enthalpy equation. This is efectively the temperatur..." alt="" coords="495,125,673,167"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="778,249,962,291"/>

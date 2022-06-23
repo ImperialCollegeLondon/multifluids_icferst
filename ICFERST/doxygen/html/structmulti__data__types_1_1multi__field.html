@@ -25,7 +25,7 @@
    <div id="projectname">ICFERST
    &#160;<span id="projectnumber">22_06</span>
    </div>
-   <div id="projectbrief">Reservoir simulator</div>
+   <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
  </tr>
  </tbody>
@@ -75,6 +75,9 @@ $(function() {
 <div class="title">multi_data_types::multi_field Type Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>Type created to store absorption terms in a compacted way associated subroutines where created to be used with these fields.  
+ <a href="structmulti__data__types_1_1multi__field.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -82,139 +85,33 @@ Public Attributes</h2></td></tr>
 <tr class="separator:a6ff70a0255db6c8865a37b29d808f49c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afbda5fff90b84f920e2b8e0f0559bd3d"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#afbda5fff90b84f920e2b8e0f0559bd3d">have_field</a> = .false.</td></tr>
 <tr class="separator:afbda5fff90b84f920e2b8e0f0559bd3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1a83bccea8fd0d29111d51a956f5d118"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#a1a83bccea8fd0d29111d51a956f5d118">do</a></td></tr>
-<tr class="separator:a1a83bccea8fd0d29111d51a956f5d118"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7b69f4163d39e36d4d3a22431c321a40"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#a7b69f4163d39e36d4d3a22431c321a40">we</a></td></tr>
-<tr class="separator:a7b69f4163d39e36d4d3a22431c321a40"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab80dd6c12a5911b23a8f0689343b0ec5"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#ab80dd6c12a5911b23a8f0689343b0ec5">need</a></td></tr>
-<tr class="separator:ab80dd6c12a5911b23a8f0689343b0ec5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abc014a79809023d3e81b0de355b390ac"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#abc014a79809023d3e81b0de355b390ac">this</a></td></tr>
-<tr class="separator:abc014a79809023d3e81b0de355b390ac"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3e1a1be4a0da477f9ef54fddfb4eb481"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#a3e1a1be4a0da477f9ef54fddfb4eb481">field</a></td></tr>
-<tr class="separator:a3e1a1be4a0da477f9ef54fddfb4eb481"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab21f9da778de450d9185e5639e917419"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#ab21f9da778de450d9185e5639e917419">for</a></td></tr>
-<tr class="separator:ab21f9da778de450d9185e5639e917419"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2a3d610a319eb21a2aaf6da981fdd258"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#a2a3d610a319eb21a2aaf6da981fdd258">simulation</a></td></tr>
-<tr class="separator:a2a3d610a319eb21a2aaf6da981fdd258"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad163ca73584d3bef80e81914aebd6f91"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#ad163ca73584d3bef80e81914aebd6f91">is_constant</a> = .false.</td></tr>
 <tr class="separator:ad163ca73584d3bef80e81914aebd6f91"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9dfcf88f49993d1bf0dc924bed144129"><td class="memItemLeft" align="right" valign="top">logical, dimension(.true.)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#a9dfcf88f49993d1bf0dc924bed144129">if</a></td></tr>
-<tr class="separator:a9dfcf88f49993d1bf0dc924bed144129"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae96ef0387bbe77a1ad3110c3534feac1"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#ae96ef0387bbe77a1ad3110c3534feac1">nonods</a> = 1 <a class="el" href="structmulti__data__types_1_1multi__field.html#ab21f9da778de450d9185e5639e917419">for</a> what follows - DELETE THIS MAYBE ???</td></tr>
-<tr class="separator:ae96ef0387bbe77a1ad3110c3534feac1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af13c20722a75cb9405c5799a03afdb74"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#af13c20722a75cb9405c5799a03afdb74">memory_type</a> = -1</td></tr>
 <tr class="separator:af13c20722a75cb9405c5799a03afdb74"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adc481e5b7c3b6aae79f0b57a3c2f4631"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#adc481e5b7c3b6aae79f0b57a3c2f4631">isotropic</a></td></tr>
-<tr class="separator:adc481e5b7c3b6aae79f0b57a3c2f4631"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac06ee83f8a97f6dfc0b0f75dc97e2c31"><td class="memItemLeft" align="right" valign="top">integer, dimension(1, 1, nphase, <a class="el" href="structmulti__data__types_1_1multi__field.html#ae96ef0387bbe77a1ad3110c3534feac1">nonods</a>)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#ac06ee83f8a97f6dfc0b0f75dc97e2c31">tensor</a></td></tr>
-<tr class="separator:ac06ee83f8a97f6dfc0b0f75dc97e2c31"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5a70204297bac456adc0e789f34b51f7"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#a5a70204297bac456adc0e789f34b51f7">this</a></td></tr>
-<tr class="separator:a5a70204297bac456adc0e789f34b51f7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad4cee951d3cc816dbb52efd9e193d5d7"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#ad4cee951d3cc816dbb52efd9e193d5d7">is</a></td></tr>
-<tr class="separator:ad4cee951d3cc816dbb52efd9e193d5d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3503e292536556661c048b1cb46500c7"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#a3503e292536556661c048b1cb46500c7">unrolled</a></td></tr>
-<tr class="separator:a3503e292536556661c048b1cb46500c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af7a215c8a8806f56d02a18f8e53c186e"><td class="memItemLeft" align="right" valign="top">integer, dimension(ndim, ndim, nphase, <a class="el" href="structmulti__data__types_1_1multi__field.html#ae96ef0387bbe77a1ad3110c3534feac1">nonods</a>)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#af7a215c8a8806f56d02a18f8e53c186e">as</a></td></tr>
-<tr class="separator:af7a215c8a8806f56d02a18f8e53c186e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af7f50c7e7763e3cfc480be82de347eae"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#af7f50c7e7763e3cfc480be82de347eae">ndim1</a> = -1</td></tr>
-<tr class="memdesc:af7f50c7e7763e3cfc480be82de347eae"><td class="mdescLeft">&#160;</td><td class="mdescRight">1 Isotropic - ( 1, 1, nphase, nonods ) - diagonal 2 Anisotropic - ( ndim, ndim, nphase, nonods ) 3 Isotropic coupled - ( 1, nphase, nphase, nonods ) 4 Anisotropic coupled (aka Full Metal Jacket) - ( 1, ndim x nphase, ndim x nphase, nonods ) 6 Isotropic coupled - ( 1, ndim, nphase, nonods ) This is for porous media. We assume isotropic properties like permiability to be diagonal  <a href="structmulti__data__types_1_1multi__field.html#af7f50c7e7763e3cfc480be82de347eae">More...</a><br /></td></tr>
 <tr class="separator:af7f50c7e7763e3cfc480be82de347eae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a356d69ed50a9feba2543c05f31f72ec2"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#a356d69ed50a9feba2543c05f31f72ec2">ndim2</a> = -1</td></tr>
 <tr class="separator:a356d69ed50a9feba2543c05f31f72ec2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2d0a2f6e4f79ef9902b922531542ff6a"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#a2d0a2f6e4f79ef9902b922531542ff6a">ndim3</a> = -1</td></tr>
 <tr class="separator:a2d0a2f6e4f79ef9902b922531542ff6a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad25dac24729ccb557c6758fa99d9778e"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#ad25dac24729ccb557c6758fa99d9778e">dimensions</a></td></tr>
-<tr class="separator:ad25dac24729ccb557c6758fa99d9778e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a49962abf78cb11dfe3362cde419e841a"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#a49962abf78cb11dfe3362cde419e841a">of</a></td></tr>
-<tr class="separator:a49962abf78cb11dfe3362cde419e841a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2f5867c6c7953066265f7b6c7c7c4eb2"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html#a2f5867c6c7953066265f7b6c7c7c4eb2">field</a></td></tr>
-<tr class="separator:a2f5867c6c7953066265f7b6c7c7c4eb2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Data Documentation</h2>
-<a id="af7a215c8a8806f56d02a18f8e53c186e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af7a215c8a8806f56d02a18f8e53c186e">&#9670;&nbsp;</a></span>as</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension ( ndim, ndim, nphase, <a class="el" href="structmulti__data__types_1_1multi__field.html#ae96ef0387bbe77a1ad3110c3534feac1">nonods</a> ) multi_data_types::multi_field::as</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ad25dac24729ccb557c6758fa99d9778e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad25dac24729ccb557c6758fa99d9778e">&#9670;&nbsp;</a></span>dimensions</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer multi_data_types::multi_field::dimensions</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a1a83bccea8fd0d29111d51a956f5d118"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1a83bccea8fd0d29111d51a956f5d118">&#9670;&nbsp;</a></span>do</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_field::do</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a3e1a1be4a0da477f9ef54fddfb4eb481"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3e1a1be4a0da477f9ef54fddfb4eb481">&#9670;&nbsp;</a></span>field <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_field::field</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a2f5867c6c7953066265f7b6c7c7c4eb2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2f5867c6c7953066265f7b6c7c7c4eb2">&#9670;&nbsp;</a></span>field <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer multi_data_types::multi_field::field</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ab21f9da778de450d9185e5639e917419"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab21f9da778de450d9185e5639e917419">&#9670;&nbsp;</a></span>for</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_field::for</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Type created to store absorption terms in a compacted way associated subroutines where created to be used with these fields. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">val</td><td>Pointer with the values of the field stored </td></tr>
+    <tr><td class="paramname">have_field</td><td>do we need this field for this simulation? </td></tr>
+    <tr><td class="paramname">is_constant</td><td>if ( .true. ) nonods = 1 for what follows - DELETE THIS MAYBE ??? </td></tr>
+    <tr><td class="paramname">memory_type</td><td>0 Isotropic tensor - ( 1, 1, nphase, nonods ) - this is unrolled as ( ndim, ndim, nphase, nonods ); 1 Isotropic - ( 1, 1, nphase, nonods ) - diagonal; 2 Anisotropic - ( ndim, ndim, nphase, nonods ); 3 Isotropic coupled - ( 1, nphase, nphase, nonods ); 4 Anisotropic coupled (aka Full Metal Jacket) - ( 1, ndim x nphase, ndim x nphase, nonods ); 6 Isotropic coupled - ( 1, ndim, nphase, nonods ); This is for porous media. We assume isotropic properties like permiability to be diagonal </td></tr>
+    <tr><td class="paramname">ndim1</td><td>dimensions of field </td></tr>
+    <tr><td class="paramname">ndim2</td><td>dimensions of field </td></tr>
+    <tr><td class="paramname">ndim3</td><td>dimensions of field</td></tr>
+  </table>
+  </dd>
+</dl>
+<p><a class="el" href="interfacemulti__data__types_1_1allocate__multi__field.html">allocate_multi_field</a> <a class="el" href="namespacemulti__data__types.html#a65dde4f9748cb3dd200c328f99304c4e">deallocate_multi_field</a> <a class="el" href="namespacemulti__data__types.html#a36d244e9bb0eedbf7f6c59965276deee">add_array_to_multi_field</a> <a class="el" href="namespacemulti__data__types.html#af7028748dfa3e370ed4bfd1db524c87b">add_multi_field_to_array</a> <a class="el" href="namespacemulti__data__types.html#ace4fd339964323bf541889bce3d7e2c2">mult_multi_field_by_array</a> <a class="el" href="namespacemulti__data__types.html#af96ed78df65b67796e0370367c693fa5">mult_multi_field_by_array_on_array</a> <a class="el" href="namespacemulti__data__types.html#a8d152fd675b70364be1965770f607e2f">scale_multi_field</a> <a class="el" href="namespacemulti__data__types.html#abc9ae53d6f6cb1baec1d2d80c70b13db">print_multi_field</a> <a class="el" href="namespacemulti__data__types.html#a32813b11701ed7f6c59dbab150ac21e2">get_multi_field_inverse</a> </p>
+</div><h2 class="groupheader">Member Data Documentation</h2>
 <a id="afbda5fff90b84f920e2b8e0f0559bd3d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#afbda5fff90b84f920e2b8e0f0559bd3d">&#9670;&nbsp;</a></span>have_field</h2>
 
@@ -229,34 +126,6 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a9dfcf88f49993d1bf0dc924bed144129"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9dfcf88f49993d1bf0dc924bed144129">&#9670;&nbsp;</a></span>if</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension ( .true. ) multi_data_types::multi_field::if</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ad4cee951d3cc816dbb52efd9e193d5d7"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad4cee951d3cc816dbb52efd9e193d5d7">&#9670;&nbsp;</a></span>is</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer multi_data_types::multi_field::is</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="ad163ca73584d3bef80e81914aebd6f91"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ad163ca73584d3bef80e81914aebd6f91">&#9670;&nbsp;</a></span>is_constant</h2>
 
@@ -265,20 +134,6 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">logical multi_data_types::multi_field::is_constant = .false.</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="adc481e5b7c3b6aae79f0b57a3c2f4631"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#adc481e5b7c3b6aae79f0b57a3c2f4631">&#9670;&nbsp;</a></span>isotropic</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer multi_data_types::multi_field::isotropic</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -311,8 +166,6 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>1 Isotropic - ( 1, 1, nphase, nonods ) - diagonal 2 Anisotropic - ( ndim, ndim, nphase, nonods ) 3 Isotropic coupled - ( 1, nphase, nphase, nonods ) 4 Anisotropic coupled (aka Full Metal Jacket) - ( 1, ndim x nphase, ndim x nphase, nonods ) 6 Isotropic coupled - ( 1, ndim, nphase, nonods ) This is for porous media. We assume isotropic properties like permiability to be diagonal </p>
-
 </div>
 </div>
 <a id="a356d69ed50a9feba2543c05f31f72ec2"></a>
@@ -343,118 +196,6 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="ab80dd6c12a5911b23a8f0689343b0ec5"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab80dd6c12a5911b23a8f0689343b0ec5">&#9670;&nbsp;</a></span>need</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_field::need</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ae96ef0387bbe77a1ad3110c3534feac1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae96ef0387bbe77a1ad3110c3534feac1">&#9670;&nbsp;</a></span>nonods</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_field::nonods = 1 <a class="el" href="structmulti__data__types_1_1multi__field.html#ab21f9da778de450d9185e5639e917419">for</a> what follows - DELETE THIS MAYBE ???</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a49962abf78cb11dfe3362cde419e841a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a49962abf78cb11dfe3362cde419e841a">&#9670;&nbsp;</a></span>of</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer multi_data_types::multi_field::of</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a2a3d610a319eb21a2aaf6da981fdd258"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2a3d610a319eb21a2aaf6da981fdd258">&#9670;&nbsp;</a></span>simulation</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_field::simulation</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ac06ee83f8a97f6dfc0b0f75dc97e2c31"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac06ee83f8a97f6dfc0b0f75dc97e2c31">&#9670;&nbsp;</a></span>tensor</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension ( 1, 1, nphase, <a class="el" href="structmulti__data__types_1_1multi__field.html#ae96ef0387bbe77a1ad3110c3534feac1">nonods</a> ) multi_data_types::multi_field::tensor</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="abc014a79809023d3e81b0de355b390ac"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#abc014a79809023d3e81b0de355b390ac">&#9670;&nbsp;</a></span>this <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_field::this</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a5a70204297bac456adc0e789f34b51f7"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5a70204297bac456adc0e789f34b51f7">&#9670;&nbsp;</a></span>this <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer multi_data_types::multi_field::this</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a3503e292536556661c048b1cb46500c7"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3503e292536556661c048b1cb46500c7">&#9670;&nbsp;</a></span>unrolled</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer multi_data_types::multi_field::unrolled</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="a6ff70a0255db6c8865a37b29d808f49c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a6ff70a0255db6c8865a37b29d808f49c">&#9670;&nbsp;</a></span>val</h2>
 
@@ -463,20 +204,6 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">real, dimension( :, :, :, : ), pointer multi_data_types::multi_field::val =&gt; null()</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a7b69f4163d39e36d4d3a22431c321a40"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7b69f4163d39e36d4d3a22431c321a40">&#9670;&nbsp;</a></span>we</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_field::we</td>
         </tr>
       </table>
 </div><div class="memdoc">

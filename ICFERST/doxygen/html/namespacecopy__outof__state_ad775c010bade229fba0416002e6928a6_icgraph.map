@@ -1,5 +1,5 @@
 <map id="copy_outof_state::inf_norm_scalar_normalised" name="copy_outof_state::inf_norm_scalar_normalised">
-<area shape="rect" id="node1" title="Calculate the inf norm of the normalised field, so the field goes from 0 to 1." alt="" coords="713,5,903,47"/>
+<area shape="rect" id="node1" title="Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs t..." alt="" coords="713,5,903,47"/>
 <area shape="rect" id="node2" href="$namespacecopy__outof__state.html#a577c504f5230ff200ee711334eebe54a" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="467,5,665,47"/>
 <area shape="rect" id="node3" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" id="node4" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>

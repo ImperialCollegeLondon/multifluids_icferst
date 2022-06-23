@@ -1,9 +1,9 @@
 <map id="shape_functions_ndim::legrot" name="shape_functions_ndim::legrot">
-<area shape="rect" id="node1" title=" " alt="" coords="5,39,173,80"/>
-<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#aa001da7c1c2a50e7cd0b182f17f6bd1f" title=" " alt="" coords="221,5,389,47"/>
+<area shape="rect" id="node1" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 69 of:Spectral M..." alt="" coords="5,39,173,80"/>
+<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#aa001da7c1c2a50e7cd0b182f17f6bd1f" title="This sub works out the Gauss&#45;Lobatto&#45;Legendre roots." alt="" coords="221,5,389,47"/>
 <area shape="rect" id="node5" href="$namespaceshape__functions__ndim.html#a9a01d935ddfe5ea36a29ffe505dbf73e" title=" " alt="" coords="221,71,389,112"/>
-<area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#ab137b075bc778e2a27a0c1810a49b492" title=" " alt="" coords="437,5,605,47"/>
-<area shape="rect" id="node4" href="$namespaceshape__functions__ndim.html#a09da641d2526c3de68637ac538d3aabd" title=" " alt="" coords="653,5,821,47"/>
-<area shape="rect" id="node6" href="$namespaceshape__functions__ndim.html#ae03154693b140919ff0c589df8e58f89" title=" " alt="" coords="437,71,605,112"/>
-<area shape="rect" id="node7" href="$namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title=" " alt="" coords="653,71,821,112"/>
+<area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#ab137b075bc778e2a27a0c1810a49b492" title="COMPUTES THE GAUSS&#45;LOBATTO COLLOCATION POINTS FOR JACOBI POLYNOMIALS." alt="" coords="437,5,605,47"/>
+<area shape="rect" id="node4" href="$namespaceshape__functions__ndim.html#a09da641d2526c3de68637ac538d3aabd" title="COMPUTES THE JACOBI POLYNOMIAL (POLY) AND ITS DERIVATIVE (PDER) OF DEGREE N AT X." alt="" coords="653,5,821,47"/>
+<area shape="rect" id="node6" href="$namespaceshape__functions__ndim.html#ae03154693b140919ff0c589df8e58f89" title="Calculate binomial coefficients." alt="" coords="437,71,605,112"/>
+<area shape="rect" id="node7" href="$namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title="Calculate n!" alt="" coords="653,71,821,112"/>
 </map>

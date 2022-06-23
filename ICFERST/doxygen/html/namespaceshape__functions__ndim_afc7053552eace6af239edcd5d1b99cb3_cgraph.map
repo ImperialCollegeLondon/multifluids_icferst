@@ -1,8 +1,8 @@
 <map id="shape_functions_ndim::specfu" name="shape_functions_ndim::specfu">
-<area shape="rect" id="node1" title=" " alt="" coords="5,71,173,112"/>
-<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#afcdd60fa5c35faed86afbc64194f32f5" title=" " alt="" coords="221,5,389,47"/>
-<area shape="rect" id="node5" href="$namespaceshape__functions__ndim.html#af8259d92f168acab30360351113dd84a" title=" " alt="" coords="221,71,389,112"/>
-<area shape="rect" id="node6" href="$namespaceshape__functions__ndim.html#a647388b8d7683edf0e0f203e5bcad3b6" title=" " alt="" coords="221,136,389,177"/>
-<area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#ab7a1f6dd86d185746575caf1b293c45f" title=" " alt="" coords="437,39,605,80"/>
-<area shape="rect" id="node4" href="$namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title=" " alt="" coords="653,39,821,80"/>
+<area shape="rect" id="node1" title="INOD contains the node at which the polynomial is associated with LXGP is the position at which the p..." alt="" coords="5,71,173,112"/>
+<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#afcdd60fa5c35faed86afbc64194f32f5" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="221,5,389,47"/>
+<area shape="rect" id="node5" href="$namespaceshape__functions__ndim.html#af8259d92f168acab30360351113dd84a" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="221,71,389,112"/>
+<area shape="rect" id="node6" href="$namespaceshape__functions__ndim.html#a647388b8d7683edf0e0f203e5bcad3b6" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="221,136,389,177"/>
+<area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#ab7a1f6dd86d185746575caf1b293c45f" title="If DIFF then return the n&#39;th Chebyshef polynomial differentiated w.r.t x. If DIFF2 then form the 2&#39;nd..." alt="" coords="437,39,605,80"/>
+<area shape="rect" id="node4" href="$namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title="Calculate n!" alt="" coords="653,39,821,80"/>
 </map>

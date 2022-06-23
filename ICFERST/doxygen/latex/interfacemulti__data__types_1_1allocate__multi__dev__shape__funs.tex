@@ -1,15 +1,23 @@
 \hypertarget{interfacemulti__data__types_1_1allocate__multi__dev__shape__funs}{}\doxysection{multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+dev\+\_\+shape\+\_\+funs Interface Reference}
 \label{interfacemulti__data__types_1_1allocate__multi__dev__shape__funs}\index{multi\_data\_types::allocate\_multi\_dev\_shape\_funs@{multi\_data\_types::allocate\_multi\_dev\_shape\_funs}}
+
+
+Allocates the required memory to store the derivatives of the shape functions.  
+
+
 \doxysubsection*{Public Member Functions}
 \begin{DoxyCompactItemize}
 \item 
 subroutine \mbox{\hyperlink{interfacemulti__data__types_1_1allocate__multi__dev__shape__funs_a4f20ccf7fcfcdac87426338696ed8666}{allocate\+\_\+multi\+\_\+dev\+\_\+shape\+\_\+funs1}} (funs, Dev\+Funs, nx\+\_\+all\+\_\+\+F\+E\+\_\+size)
-\item 
+\begin{DoxyCompactList}\small\item\em Allocates the required memory to store the derivatives of the shape functions. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{interfacemulti__data__types_1_1allocate__multi__dev__shape__funs_adbcbc35f4a9305e9d4cbce9cc27f3484}{allocate\+\_\+multi\+\_\+dev\+\_\+shape\+\_\+funs2}} (Mdims, G\+Idims, Dev\+Funs, nx\+\_\+all\+\_\+\+F\+E\+\_\+size)
-\item 
+\begin{DoxyCompactList}\small\item\em Allocates the required memory to store the derivatives of the shape functions. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{interfacemulti__data__types_1_1allocate__multi__dev__shape__funs_a27fb5f2ffe75097649a82db4047accdf}{allocate\+\_\+multi\+\_\+dev\+\_\+shape\+\_\+funs3}} (cvfenlx\+\_\+all, ufenlx\+\_\+all, Dev\+Funs, nx\+\_\+all\+\_\+\+F\+E\+\_\+size)
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em Allocates the required memory to store the derivatives of the shape functions. \end{DoxyCompactList}\end{DoxyCompactItemize}
 
+
+\doxysubsection{Detailed Description}
+Allocates the required memory to store the derivatives of the shape functions. 
 
 \doxysubsection{Member Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{interfacemulti__data__types_1_1allocate__multi__dev__shape__funs_a4f20ccf7fcfcdac87426338696ed8666}\label{interfacemulti__data__types_1_1allocate__multi__dev__shape__funs_a4f20ccf7fcfcdac87426338696ed8666}} 
@@ -18,18 +26,59 @@ subroutine \mbox{\hyperlink{interfacemulti__data__types_1_1allocate__multi__dev_
 \doxysubsubsection{\texorpdfstring{allocate\_multi\_dev\_shape\_funs1()}{allocate\_multi\_dev\_shape\_funs1()}}
 {\footnotesize\ttfamily subroutine multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+dev\+\_\+shape\+\_\+funs\+::allocate\+\_\+multi\+\_\+dev\+\_\+shape\+\_\+funs1 (\begin{DoxyParamCaption}\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(in)}]{funs,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__dev__shape__funs}{multi\+\_\+dev\+\_\+shape\+\_\+funs}}), intent(inout)}]{Dev\+Funs,  }\item[{logical, intent(in), optional}]{nx\+\_\+all\+\_\+\+F\+E\+\_\+size }\end{DoxyParamCaption})}
 
+
+
+Allocates the required memory to store the derivatives of the shape functions. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em funs} & shape functions, are used to indentified the required memory \\
+\hline
+{\em Dev\+Funs} & output field with the memory allocated \\
+\hline
+{\em nx\+\_\+all\+\_\+\+F\+E\+\_\+size} & If true then the size of the generic nx\+\_\+all is set like ufenlx\+\_\+all, otherwise, like cvfenlx\+\_\+all \\
+\hline
+\end{DoxyParams}
 \mbox{\Hypertarget{interfacemulti__data__types_1_1allocate__multi__dev__shape__funs_adbcbc35f4a9305e9d4cbce9cc27f3484}\label{interfacemulti__data__types_1_1allocate__multi__dev__shape__funs_adbcbc35f4a9305e9d4cbce9cc27f3484}} 
 \index{multi\_data\_types::allocate\_multi\_dev\_shape\_funs@{multi\_data\_types::allocate\_multi\_dev\_shape\_funs}!allocate\_multi\_dev\_shape\_funs2@{allocate\_multi\_dev\_shape\_funs2}}
 \index{allocate\_multi\_dev\_shape\_funs2@{allocate\_multi\_dev\_shape\_funs2}!multi\_data\_types::allocate\_multi\_dev\_shape\_funs@{multi\_data\_types::allocate\_multi\_dev\_shape\_funs}}
 \doxysubsubsection{\texorpdfstring{allocate\_multi\_dev\_shape\_funs2()}{allocate\_multi\_dev\_shape\_funs2()}}
 {\footnotesize\ttfamily subroutine multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+dev\+\_\+shape\+\_\+funs\+::allocate\+\_\+multi\+\_\+dev\+\_\+shape\+\_\+funs2 (\begin{DoxyParamCaption}\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{G\+Idims,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__dev__shape__funs}{multi\+\_\+dev\+\_\+shape\+\_\+funs}}), intent(inout)}]{Dev\+Funs,  }\item[{logical, intent(in), optional}]{nx\+\_\+all\+\_\+\+F\+E\+\_\+size }\end{DoxyParamCaption})}
 
+
+
+Allocates the required memory to store the derivatives of the shape functions. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em G\+Idims} & Gauss integration data, used to indentified the required memory \\
+\hline
+{\em Dev\+Funs} & output field with the memory allocated \\
+\hline
+{\em nx\+\_\+all\+\_\+\+F\+E\+\_\+size} & If true then the size of the generic nx\+\_\+all is set like ufenlx\+\_\+all, otherwise, like cvfenlx\+\_\+all \\
+\hline
+\end{DoxyParams}
 \mbox{\Hypertarget{interfacemulti__data__types_1_1allocate__multi__dev__shape__funs_a27fb5f2ffe75097649a82db4047accdf}\label{interfacemulti__data__types_1_1allocate__multi__dev__shape__funs_a27fb5f2ffe75097649a82db4047accdf}} 
 \index{multi\_data\_types::allocate\_multi\_dev\_shape\_funs@{multi\_data\_types::allocate\_multi\_dev\_shape\_funs}!allocate\_multi\_dev\_shape\_funs3@{allocate\_multi\_dev\_shape\_funs3}}
 \index{allocate\_multi\_dev\_shape\_funs3@{allocate\_multi\_dev\_shape\_funs3}!multi\_data\_types::allocate\_multi\_dev\_shape\_funs@{multi\_data\_types::allocate\_multi\_dev\_shape\_funs}}
 \doxysubsubsection{\texorpdfstring{allocate\_multi\_dev\_shape\_funs3()}{allocate\_multi\_dev\_shape\_funs3()}}
 {\footnotesize\ttfamily subroutine multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+dev\+\_\+shape\+\_\+funs\+::allocate\+\_\+multi\+\_\+dev\+\_\+shape\+\_\+funs3 (\begin{DoxyParamCaption}\item[{real, dimension(\+:,\+:,\+:), intent(in)}]{cvfenlx\+\_\+all,  }\item[{real, dimension(\+:,\+:,\+:), intent(in)}]{ufenlx\+\_\+all,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__dev__shape__funs}{multi\+\_\+dev\+\_\+shape\+\_\+funs}}), intent(inout)}]{Dev\+Funs,  }\item[{logical, intent(in), optional}]{nx\+\_\+all\+\_\+\+F\+E\+\_\+size }\end{DoxyParamCaption})}
 
+
+
+Allocates the required memory to store the derivatives of the shape functions. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em cvfenlx\+\_\+all} & array used to indentified the required memory \\
+\hline
+{\em ufenlx\+\_\+all} & array used to indentified the required memory \\
+\hline
+{\em Dev\+Funs} & output field with the memory allocated \\
+\hline
+{\em nx\+\_\+all\+\_\+\+F\+E\+\_\+size} & If true then the size of the generic nx\+\_\+all is set like ufenlx\+\_\+all, otherwise, like cvfenlx\+\_\+all \\
+\hline
+\end{DoxyParams}
 
 
 The documentation for this interface was generated from the following file\+:\begin{DoxyCompactItemize}

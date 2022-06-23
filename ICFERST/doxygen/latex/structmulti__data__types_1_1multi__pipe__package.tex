@@ -1,10 +1,15 @@
 \hypertarget{structmulti__data__types_1_1multi__pipe__package}{}\doxysection{multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package Type Reference}
 \label{structmulti__data__types_1_1multi__pipe__package}\index{multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}}
+
+
+Contains all the information required to model pipes. Many of these fields are unnecessary or even undesired...  
+
+
 \doxysubsection*{Public Attributes}
 \begin{DoxyCompactItemize}
 \item 
 real, dimension(\+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_ad98ff6dd591945455fd7f55fed9b8adb}{gamma\+\_\+pres\+\_\+abs}} =$>$ null()
-\begin{DoxyCompactList}\small\item\em Contains all the information required to model pipes. \end{DoxyCompactList}\item 
+\item 
 real, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_a3e2734fd9332da9ea9b2de4cfefa4df8}{mass\+\_\+pipe}} =$>$ null()
 \item 
 real, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_a072418db8c589b718eb1aec58893264c}{mass\+\_\+cvfem2pipe}} =$>$ null()
@@ -14,61 +19,41 @@ real, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi
 real, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_ae793b2fc6271cec7987ddde9af51b3ee}{mass\+\_\+cvfem2pipe\+\_\+true}} =$>$ null()
 \item 
 logical, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_aa989974cbeb9bfa769eb1858308d8302}{impose\+\_\+strongbcs}} =$>$ null()
-\item 
-logical, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_a975223a24e1018e20cbf9d74ac287af8}{this}}
-\item 
-logical, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_a36650a6e7d7c7a76dc886b5ba7b3e8bc}{flag}}
-\item 
-logical, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_a04a743acd44c36489e5bea74089b5363}{is}}
-\item 
-logical, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_ac8e41768aa53d30d0c47d47ce0227645}{used}}
-\item 
-logical, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_a7a5f34146596dbbd60f4ce580e5e3236}{to}}
-\item 
-logical, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_a93d1feb4558ca93f72479315b8f53902}{trigger}}
-\item 
-logical, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_a4f81e825ac056a97204dcbce1e5d7584}{the}}
-\item 
-logical, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_a841745c4c1c26233649c543b0819dbfe}{imposition}}
-\item 
-logical, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package_a59963aae2c84fbd78f87286bf2554af9}{of}}
 \end{DoxyCompactItemize}
 
 
-\doxysubsection{Member Data Documentation}
-\mbox{\Hypertarget{structmulti__data__types_1_1multi__pipe__package_a36650a6e7d7c7a76dc886b5ba7b3e8bc}\label{structmulti__data__types_1_1multi__pipe__package_a36650a6e7d7c7a76dc886b5ba7b3e8bc}} 
-\index{multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}!flag@{flag}}
-\index{flag@{flag}!multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}}
-\doxysubsubsection{\texorpdfstring{flag}{flag}}
-{\footnotesize\ttfamily logical, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package\+::flag}
+\doxysubsection{Detailed Description}
+Contains all the information required to model pipes. Many of these fields are unnecessary or even undesired... 
 
+
+\begin{DoxyParams}{Parameters}
+{\em gamma\+\_\+pres\+\_\+abs} & Specifies the apperture of the well, normally 1 or 0 \\
+\hline
+{\em mass\+\_\+pipe} & Volume of the pipe/well \\
+\hline
+{\em mass\+\_\+cvfem2pipe} & Mass of the wells in CV format \\
+\hline
+{\em mass\+\_\+pipe2cvfem} & Mass of the wells in CV format \\
+\hline
+{\em mass\+\_\+cvfem2pipe\+\_\+true} & Whether to computer mass\+\_\+cvfem2pipe or not \\
+\hline
+{\em impose\+\_\+strong\+B\+Cs} & This flag is used to trigger the imposition of strong B\+Cs for P0\+DG for wells, only necessary if gamma=0 at the BC \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsection{Member Data Documentation}
 \mbox{\Hypertarget{structmulti__data__types_1_1multi__pipe__package_ad98ff6dd591945455fd7f55fed9b8adb}\label{structmulti__data__types_1_1multi__pipe__package_ad98ff6dd591945455fd7f55fed9b8adb}} 
 \index{multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}!gamma\_pres\_abs@{gamma\_pres\_abs}}
 \index{gamma\_pres\_abs@{gamma\_pres\_abs}!multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}}
 \doxysubsubsection{\texorpdfstring{gamma\_pres\_abs}{gamma\_pres\_abs}}
 {\footnotesize\ttfamily real, dimension( \+:, \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package\+::gamma\+\_\+pres\+\_\+abs =$>$ null()}
 
-
-
-Contains all the information required to model pipes. 
-
 \mbox{\Hypertarget{structmulti__data__types_1_1multi__pipe__package_aa989974cbeb9bfa769eb1858308d8302}\label{structmulti__data__types_1_1multi__pipe__package_aa989974cbeb9bfa769eb1858308d8302}} 
 \index{multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}!impose\_strongbcs@{impose\_strongbcs}}
 \index{impose\_strongbcs@{impose\_strongbcs}!multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}}
 \doxysubsubsection{\texorpdfstring{impose\_strongbcs}{impose\_strongbcs}}
 {\footnotesize\ttfamily logical, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package\+::impose\+\_\+strongbcs =$>$ null()}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1multi__pipe__package_a841745c4c1c26233649c543b0819dbfe}\label{structmulti__data__types_1_1multi__pipe__package_a841745c4c1c26233649c543b0819dbfe}} 
-\index{multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}!imposition@{imposition}}
-\index{imposition@{imposition}!multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}}
-\doxysubsubsection{\texorpdfstring{imposition}{imposition}}
-{\footnotesize\ttfamily logical, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package\+::imposition}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1multi__pipe__package_a04a743acd44c36489e5bea74089b5363}\label{structmulti__data__types_1_1multi__pipe__package_a04a743acd44c36489e5bea74089b5363}} 
-\index{multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}!is@{is}}
-\index{is@{is}!multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}}
-\doxysubsubsection{\texorpdfstring{is}{is}}
-{\footnotesize\ttfamily logical, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package\+::is}
 
 \mbox{\Hypertarget{structmulti__data__types_1_1multi__pipe__package_a072418db8c589b718eb1aec58893264c}\label{structmulti__data__types_1_1multi__pipe__package_a072418db8c589b718eb1aec58893264c}} 
 \index{multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}!mass\_cvfem2pipe@{mass\_cvfem2pipe}}
@@ -93,42 +78,6 @@ Contains all the information required to model pipes.
 \index{mass\_pipe2cvfem@{mass\_pipe2cvfem}!multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}}
 \doxysubsubsection{\texorpdfstring{mass\_pipe2cvfem}{mass\_pipe2cvfem}}
 {\footnotesize\ttfamily real, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package\+::mass\+\_\+pipe2cvfem =$>$ null()}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1multi__pipe__package_a59963aae2c84fbd78f87286bf2554af9}\label{structmulti__data__types_1_1multi__pipe__package_a59963aae2c84fbd78f87286bf2554af9}} 
-\index{multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}!of@{of}}
-\index{of@{of}!multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}}
-\doxysubsubsection{\texorpdfstring{of}{of}}
-{\footnotesize\ttfamily logical, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package\+::of}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1multi__pipe__package_a4f81e825ac056a97204dcbce1e5d7584}\label{structmulti__data__types_1_1multi__pipe__package_a4f81e825ac056a97204dcbce1e5d7584}} 
-\index{multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}!the@{the}}
-\index{the@{the}!multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}}
-\doxysubsubsection{\texorpdfstring{the}{the}}
-{\footnotesize\ttfamily logical, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package\+::the}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1multi__pipe__package_a975223a24e1018e20cbf9d74ac287af8}\label{structmulti__data__types_1_1multi__pipe__package_a975223a24e1018e20cbf9d74ac287af8}} 
-\index{multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}!this@{this}}
-\index{this@{this}!multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}}
-\doxysubsubsection{\texorpdfstring{this}{this}}
-{\footnotesize\ttfamily logical, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package\+::this}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1multi__pipe__package_a7a5f34146596dbbd60f4ce580e5e3236}\label{structmulti__data__types_1_1multi__pipe__package_a7a5f34146596dbbd60f4ce580e5e3236}} 
-\index{multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}!to@{to}}
-\index{to@{to}!multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}}
-\doxysubsubsection{\texorpdfstring{to}{to}}
-{\footnotesize\ttfamily logical, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package\+::to}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1multi__pipe__package_a93d1feb4558ca93f72479315b8f53902}\label{structmulti__data__types_1_1multi__pipe__package_a93d1feb4558ca93f72479315b8f53902}} 
-\index{multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}!trigger@{trigger}}
-\index{trigger@{trigger}!multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}}
-\doxysubsubsection{\texorpdfstring{trigger}{trigger}}
-{\footnotesize\ttfamily logical, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package\+::trigger}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1multi__pipe__package_ac8e41768aa53d30d0c47d47ce0227645}\label{structmulti__data__types_1_1multi__pipe__package_ac8e41768aa53d30d0c47d47ce0227645}} 
-\index{multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}!used@{used}}
-\index{used@{used}!multi\_data\_types::multi\_pipe\_package@{multi\_data\_types::multi\_pipe\_package}}
-\doxysubsubsection{\texorpdfstring{used}{used}}
-{\footnotesize\ttfamily logical, dimension( \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package\+::used}
 
 
 

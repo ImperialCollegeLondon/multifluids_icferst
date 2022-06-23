@@ -12,41 +12,41 @@ Include dependency graph for multi\+\_\+data\+\_\+types.\+F90\+:\nopagebreak
 \begin{DoxyCompactItemize}
 \item 
 interface \mbox{\hyperlink{interfacemulti__data__types_1_1allocate__multi__dev__shape__funs}{multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+dev\+\_\+shape\+\_\+funs}}
-\item 
+\begin{DoxyCompactList}\small\item\em Allocates the required memory to store the derivatives of the shape functions. \end{DoxyCompactList}\item 
 interface \mbox{\hyperlink{interfacemulti__data__types_1_1allocate__multi__field}{multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+field}}
-\item 
+\begin{DoxyCompactList}\small\item\em Allocated a multi field type based on field name. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+data\+\_\+types\+::multi\+\_\+dimensions}}
 \begin{DoxyCompactList}\small\item\em Data type storing all the dimensionrs describing the mesh, fields, nodes, etc. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__discretization__opts}{multi\+\_\+data\+\_\+types\+::multi\+\_\+discretization\+\_\+opts}}
-\begin{DoxyCompactList}\small\item\em This type includes the necessary information to choose from the different discretization options available They are a mistery even for the most advance wizards of the realm... hopefully they can be removed in the future. \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em This type includes the necessary information to choose from the different discretization options available They are a mistery even for the most advanced wizards of the realm... hopefully they can be removed in the future These parameters represent the degree of discretisation used, they are in general hardcoded based on the precision requested by the user so as said, to be removed in the future hopefully. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+data\+\_\+types\+::multi\+\_\+gi\+\_\+dimensions}}
 \begin{DoxyCompactList}\small\item\em Necessary information for perform gauss integration. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+data\+\_\+types\+::multi\+\_\+shape\+\_\+funs}}
 \begin{DoxyCompactList}\small\item\em Data structure to store all the shape functions to facilitate its movement throughtout the code. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__dev__shape__funs}{multi\+\_\+data\+\_\+types\+::multi\+\_\+dev\+\_\+shape\+\_\+funs}}
-\item 
+\begin{DoxyCompactList}\small\item\em Data structure to store the derivatives of the shape functions and conversors from reference element to local. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__sparsity}{multi\+\_\+data\+\_\+types\+::multi\+\_\+sparsity}}
-\item 
+\begin{DoxyCompactList}\small\item\em This type comprises the necessary variables to represent matrices using a C\+SR structure. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+data\+\_\+types\+::multi\+\_\+sparsities}}
-\item 
+\begin{DoxyCompactList}\small\item\em This data type contains all the sparsities necessary in the multiphase prototype code. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+data\+\_\+types\+::multi\+\_\+ndgln}}
-\item 
+\begin{DoxyCompactList}\small\item\em This type contains all the local to global conversors for the different fields we have. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices}}
-\item 
+\begin{DoxyCompactList}\small\item\em This type contains all the necessary information to solve =systems, matrices, R\+HS, limiters, colouring and also flags to decide which sort of matrices are generated. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1porous__adv__coefs}{multi\+\_\+data\+\_\+types\+::porous\+\_\+adv\+\_\+coefs}}
-\item 
+\begin{DoxyCompactList}\small\item\em Required values to compute the fluxes for porous media. Effectively the sigma terms from the papers Currently they are oversized since apart from the permeability they are not tensors, this should be changed! \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__field}{multi\+\_\+data\+\_\+types\+::multi\+\_\+field}}
-\item 
+\begin{DoxyCompactList}\small\item\em Type created to store absorption terms in a compacted way associated subroutines where created to be used with these fields. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__absorption}{multi\+\_\+data\+\_\+types\+::multi\+\_\+absorption}}
-\item 
+\begin{DoxyCompactList}\small\item\em Comprises all the absorption terms that migth be required. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__transport__scalar}{multi\+\_\+data\+\_\+types\+::multi\+\_\+transport\+\_\+scalar}}
-\item 
+\begin{DoxyCompactList}\small\item\em Contains all the information for generic scalar fields to solve for. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package}{multi\+\_\+data\+\_\+types\+::multi\+\_\+pipe\+\_\+package}}
-\item 
+\begin{DoxyCompactList}\small\item\em Contains all the information required to model pipes. Many of these fields are unnecessary or even undesired... \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1multi__outfluxes}{multi\+\_\+data\+\_\+types\+::multi\+\_\+outfluxes}}
 \begin{DoxyCompactList}\small\item\em Contains variables to analyse the flux across the B\+Cs that the user is interested. \end{DoxyCompactList}\item 
 type \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords}{multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords}}
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em Type containing everything required to indentify and store which nodes contain a well/pipe. \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsection*{Modules}
 \begin{DoxyCompactItemize}
 \item 
@@ -56,56 +56,56 @@ module \mbox{\hyperlink{namespacemulti__data__types}{multi\+\_\+data\+\_\+types}
 \begin{DoxyCompactItemize}
 \item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a65dde4f9748cb3dd200c328f99304c4e}{multi\+\_\+data\+\_\+types\+::deallocate\+\_\+multi\+\_\+field}} (mfield, and\+\_\+destroy)
-\item 
+\begin{DoxyCompactList}\small\item\em Deallocation of a multi field type. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_aacf7345cba9f7c9760a4f8e1c68ee0ca}{multi\+\_\+data\+\_\+types\+::deallocate\+\_\+multi\+\_\+absorption}} (multi\+\_\+absorp, and\+\_\+destroy)
-\item 
+\begin{DoxyCompactList}\small\item\em Deallocation of all of the multi field types within multi\+\_\+absorp. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_adcc8a0b282940a98fceb6a046f1bda1e}{multi\+\_\+data\+\_\+types\+::get\+\_\+multi\+\_\+field}} (mfield, inode\+\_\+in, output)
-\item 
+\begin{DoxyCompactList}\small\item\em Given a multi field returns an array with its values at inode\+\_\+in. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a32813b11701ed7f6c59dbab150ac21e2}{multi\+\_\+data\+\_\+types\+::get\+\_\+multi\+\_\+field\+\_\+inverse}} (mfield, inode\+\_\+in, output)
-\item 
+\begin{DoxyCompactList}\small\item\em Given a multi field returns the inverse as an array with its values at inode\+\_\+in. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_abc9ae53d6f6cb1baec1d2d80c70b13db}{multi\+\_\+data\+\_\+types\+::print\+\_\+multi\+\_\+field}} (mfield, inode\+\_\+in, dimension)
-\item 
+\begin{DoxyCompactList}\small\item\em Given a multi field returns prints its values at inode\+\_\+in. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a36d244e9bb0eedbf7f6c59965276deee}{multi\+\_\+data\+\_\+types\+::add\+\_\+array\+\_\+to\+\_\+multi\+\_\+field}} (mfield, b, xpos, ypos, inode)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine performs the addition of an array and a multifield and returns the multifield mfield = mfield + b xpos and ypos are the starting positions for a full matrix they have to be one. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_af7028748dfa3e370ed4bfd1db524c87b}{multi\+\_\+data\+\_\+types\+::add\+\_\+multi\+\_\+field\+\_\+to\+\_\+array}} (mfield, b, xpos, ypos, inode, a\+\_\+in)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine performs the addition of an array and a multifield and returns the array b = b + a $\ast$ mfield xpos and ypos are the starting positions for a full matrix they have to be one. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_ace4fd339964323bf541889bce3d7e2c2}{multi\+\_\+data\+\_\+types\+::mult\+\_\+multi\+\_\+field\+\_\+by\+\_\+array}} (mfield, b, inode)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine performs the multiplication of an array and a multifield and returns the multifield mfield = mfield $\ast$ b. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_af96ed78df65b67796e0370367c693fa5}{multi\+\_\+data\+\_\+types\+::mult\+\_\+multi\+\_\+field\+\_\+by\+\_\+array\+\_\+on\+\_\+array}} (mfield, b, inode)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine performs the multiplication of an array and a multifield and returns the array b = mfield $\ast$ b. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a8d152fd675b70364be1965770f607e2f}{multi\+\_\+data\+\_\+types\+::scale\+\_\+multi\+\_\+field}} (mfield, a, inode)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine rescales a multifield mfield = a $\ast$ mfield. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a331bf7ce0c5156d2bde6c0ab82309e4c}{multi\+\_\+data\+\_\+types\+::linearise\+\_\+multi\+\_\+field}} (mfield, Mdims, ndgln)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine linearises a multifield. i.\+e. takes it from P2 to P1. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a0a02226803b07ac9bb8cbf05f9d0ab6a}{multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+shape\+\_\+funs}} (shape\+\_\+fun, Mdims, G\+Idims)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine allocates and initialises to zero all the arrays in a \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}} data type It uses the Dimensions of the model and the gauss integration to be used to allocate the necessary shape functions. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_ab256dfeac442756797e748a252de6ea0}{multi\+\_\+data\+\_\+types\+::deallocate\+\_\+multi\+\_\+shape\+\_\+funs}} (shape\+\_\+fun)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine deallocates and nullifies all the fields inside \mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_abf63a6f60bfdf10af1503d0cb8787096}{multi\+\_\+data\+\_\+types\+::deallocate\+\_\+projection\+\_\+matrices}} (shape\+\_\+fun)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine deallocates projection matrices C\+V2\+FE \& F\+E2\+CV stored in shape\+\_\+fun. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a99a3adeb20eae3cd7f9c1ee1760473c3}{multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+sparsities}} (Mspars, Mdims, mx\+\_\+ncolacv, mx\+\_\+ncoldgm\+\_\+pha, mx\+\_\+nct, mx\+\_\+nc, mx\+\_\+ncolm, mx\+\_\+ncolph)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine allocates part of the memory inside Mspars, i.\+e. sparsities of the different matrices I\+M\+P\+O\+R\+T\+A\+NT\+: Despite this subroutine can be called by itself it is highly recommended to be called O\+N\+LY through multi\+\_\+sparsity/\+Get\+\_\+\+Sparsity\+\_\+\+Patterns. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a3137e48a49f7bb16cf337ff1834703b6}{multi\+\_\+data\+\_\+types\+::deallocate\+\_\+multi\+\_\+sparsities}} (Mspars)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine deallocates all the memory inside Mspars. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_add33a9072dfc14b1ee94cf90d53c030a}{multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+ndgln}} (ndgln, Mdims)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine allocates the global to local conversors. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a5ea8066a0ecf9104dd8ca9d9f18e11c9}{multi\+\_\+data\+\_\+types\+::deallocate\+\_\+multi\+\_\+ndgln}} (ndgln)
-\item 
+\begin{DoxyCompactList}\small\item\em Deallocates Global to local fields N\+O\+TE that Only deallocates suf\+\_\+cv, suf\+\_\+p and suf\+\_\+u since the others are pointers to state. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a0b85017f5919b415d7e7ec8cc29bdc6b}{multi\+\_\+data\+\_\+types\+::destroy\+\_\+multi\+\_\+matrices}} (Mmat)
-\item 
+\begin{DoxyCompactList}\small\item\em Deallocates and nullifies the memory generated for the matrices, it is to be used after adapting the mesh. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a5641f05bcbbf1c56b952f99ed0cd1f67}{multi\+\_\+data\+\_\+types\+::deallocate\+\_\+multi\+\_\+dev\+\_\+shape\+\_\+funs}} (Dev\+Funs)
-\item 
+\begin{DoxyCompactList}\small\item\em Deallocates the required memory to store the derivatives of the shape functions. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a086d82f299fc3e1148cd44350b8cff0e}{multi\+\_\+data\+\_\+types\+::allocate\+\_\+porous\+\_\+adv\+\_\+coefs}} (Mdims, upwnd)
-\item 
+\begin{DoxyCompactList}\small\item\em Allocates the memory for the advection coefficients for porous media. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a30f2b1810cafa7b1e675ca9c08eb12c7}{multi\+\_\+data\+\_\+types\+::deallocate\+\_\+porous\+\_\+adv\+\_\+coefs}} (upwnd)
-\item 
+\begin{DoxyCompactList}\small\item\em Deallocates the memory for the advection coefficients for porous media. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a4ac5449d11858991ac53447f439013ee}{multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+pipe\+\_\+package}} (pipes, Mdims, Mspars)
-\item 
+\begin{DoxyCompactList}\small\item\em Allocates the necessary memory for \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package}{multi\+\_\+pipe\+\_\+package}}. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a8d4980a0b1c7eaa7e55faa42e636eebe}{multi\+\_\+data\+\_\+types\+::deallocate\+\_\+multi\+\_\+pipe\+\_\+package}} (pipes)
-\item 
+\begin{DoxyCompactList}\small\item\em Deallocates the necessary memory for \mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package}{multi\+\_\+pipe\+\_\+package}}. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_aa99e43604028836507ef0ebc746beafa}{multi\+\_\+data\+\_\+types\+::initialize\+\_\+multi\+\_\+outfluxes}} (outfluxes)
-\item 
+\begin{DoxyCompactList}\small\item\em Read in the surface I\+Ds of the boundaries (if any) that you wish to integrate over into the (integer vector) variable outfluxesoutlet\+\_\+id and stores them into the \mbox{\hyperlink{structmulti__data__types_1_1multi__outfluxes}{multi\+\_\+outfluxes}} field. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a3787e0ea3c345050de943087334bd991}{multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+outfluxes}} (Mdims, outfluxes)
-\item 
+\begin{DoxyCompactList}\small\item\em Initialises memory for outfluxes. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__data__types_a50fca54e8f260338c4a4ad1187640ef2}{multi\+\_\+data\+\_\+types\+::destroy\+\_\+multi\+\_\+outfluxes}} (outfluxes)
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em Deallocates the \mbox{\hyperlink{structmulti__data__types_1_1multi__outfluxes}{multi\+\_\+outfluxes}} field. \end{DoxyCompactList}\end{DoxyCompactItemize}

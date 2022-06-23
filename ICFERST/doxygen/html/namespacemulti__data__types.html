@@ -25,7 +25,7 @@
    <div id="projectname">ICFERST
    &#160;<span id="projectnumber">22_06</span>
    </div>
-   <div id="projectbrief">Reservoir simulator</div>
+   <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
  </tr>
  </tbody>
@@ -75,102 +75,142 @@ $(function() {
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Data Types</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">interface &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacemulti__data__types_1_1allocate__multi__dev__shape__funs.html">allocate_multi_dev_shape_funs</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocates the required memory to store the derivatives of the shape functions.  <a href="interfacemulti__data__types_1_1allocate__multi__dev__shape__funs.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">interface &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacemulti__data__types_1_1allocate__multi__field.html">allocate_multi_field</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocated a multi field type based on field name.  <a href="interfacemulti__data__types_1_1allocate__multi__field.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__absorption.html">multi_absorption</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Comprises all the absorption terms that migth be required.  <a href="structmulti__data__types_1_1multi__absorption.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__dev__shape__funs.html">multi_dev_shape_funs</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Data structure to store the derivatives of the shape functions and conversors from reference element to local.  <a href="structmulti__data__types_1_1multi__dev__shape__funs.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__dimensions.html">multi_dimensions</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Data type storing all the dimensionrs describing the mesh, fields, nodes, etc.  <a href="structmulti__data__types_1_1multi__dimensions.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__discretization__opts.html">multi_discretization_opts</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">This type includes the necessary information to choose from the different discretization options available They are a mistery even for the most advance wizards of the realm... hopefully they can be removed in the future.  <a href="structmulti__data__types_1_1multi__discretization__opts.html#details">More...</a><br /></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">This type includes the necessary information to choose from the different discretization options available They are a mistery even for the most advanced wizards of the realm... hopefully they can be removed in the future These parameters represent the degree of discretisation used, they are in general hardcoded based on the precision requested by the user so as said, to be removed in the future hopefully.  <a href="structmulti__data__types_1_1multi__discretization__opts.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__field.html">multi_field</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type created to store absorption terms in a compacted way associated subroutines where created to be used with these fields.  <a href="structmulti__data__types_1_1multi__field.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__gi__dimensions.html">multi_gi_dimensions</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Necessary information for perform gauss integration.  <a href="structmulti__data__types_1_1multi__gi__dimensions.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html">multi_matrices</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">This type contains all the necessary information to solve =systems, matrices, RHS, limiters, colouring and also flags to decide which sort of matrices are generated.  <a href="structmulti__data__types_1_1multi__matrices.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html">multi_ndgln</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">This type contains all the local to global conversors for the different fields we have.  <a href="structmulti__data__types_1_1multi__ndgln.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__outfluxes.html">multi_outfluxes</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Contains variables to analyse the flux across the BCs that the user is interested.  <a href="structmulti__data__types_1_1multi__outfluxes.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__pipe__package.html">multi_pipe_package</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Contains all the information required to model pipes. Many of these fields are unnecessary or even undesired...  <a href="structmulti__data__types_1_1multi__pipe__package.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__shape__funs.html">multi_shape_funs</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Data structure to store all the shape functions to facilitate its movement throughtout the code.  <a href="structmulti__data__types_1_1multi__shape__funs.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__sparsities.html">multi_sparsities</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">This data type contains all the sparsities necessary in the multiphase prototype code.  <a href="structmulti__data__types_1_1multi__sparsities.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__sparsity.html">multi_sparsity</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">This type comprises the necessary variables to represent matrices using a CSR structure.  <a href="structmulti__data__types_1_1multi__sparsity.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__transport__scalar.html">multi_transport_scalar</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Contains all the information for generic scalar fields to solve for.  <a href="structmulti__data__types_1_1multi__transport__scalar.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1pipe__coords.html">pipe_coords</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type containing everything required to indentify and store which nodes contain a well/pipe.  <a href="structmulti__data__types_1_1pipe__coords.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">type &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html">porous_adv_coefs</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Required values to compute the fluxes for porous media. Effectively the sigma terms from the papers Currently they are oversized since apart from the permeability they are not tensors, this should be changed!  <a href="structmulti__data__types_1_1porous__adv__coefs.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a65dde4f9748cb3dd200c328f99304c4e"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a65dde4f9748cb3dd200c328f99304c4e">deallocate_multi_field</a> (mfield, and_destroy)</td></tr>
+<tr class="memdesc:a65dde4f9748cb3dd200c328f99304c4e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deallocation of a multi field type.  <a href="namespacemulti__data__types.html#a65dde4f9748cb3dd200c328f99304c4e">More...</a><br /></td></tr>
 <tr class="separator:a65dde4f9748cb3dd200c328f99304c4e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aacf7345cba9f7c9760a4f8e1c68ee0ca"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#aacf7345cba9f7c9760a4f8e1c68ee0ca">deallocate_multi_absorption</a> (multi_absorp, and_destroy)</td></tr>
+<tr class="memdesc:aacf7345cba9f7c9760a4f8e1c68ee0ca"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deallocation of all of the multi field types within multi_absorp.  <a href="namespacemulti__data__types.html#aacf7345cba9f7c9760a4f8e1c68ee0ca">More...</a><br /></td></tr>
 <tr class="separator:aacf7345cba9f7c9760a4f8e1c68ee0ca"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adcc8a0b282940a98fceb6a046f1bda1e"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#adcc8a0b282940a98fceb6a046f1bda1e">get_multi_field</a> (mfield, inode_in, output)</td></tr>
+<tr class="memdesc:adcc8a0b282940a98fceb6a046f1bda1e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Given a multi field returns an array with its values at inode_in.  <a href="namespacemulti__data__types.html#adcc8a0b282940a98fceb6a046f1bda1e">More...</a><br /></td></tr>
 <tr class="separator:adcc8a0b282940a98fceb6a046f1bda1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a32813b11701ed7f6c59dbab150ac21e2"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a32813b11701ed7f6c59dbab150ac21e2">get_multi_field_inverse</a> (mfield, inode_in, output)</td></tr>
+<tr class="memdesc:a32813b11701ed7f6c59dbab150ac21e2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Given a multi field returns the inverse as an array with its values at inode_in.  <a href="namespacemulti__data__types.html#a32813b11701ed7f6c59dbab150ac21e2">More...</a><br /></td></tr>
 <tr class="separator:a32813b11701ed7f6c59dbab150ac21e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abc9ae53d6f6cb1baec1d2d80c70b13db"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#abc9ae53d6f6cb1baec1d2d80c70b13db">print_multi_field</a> (mfield, inode_in, dimension)</td></tr>
+<tr class="memdesc:abc9ae53d6f6cb1baec1d2d80c70b13db"><td class="mdescLeft">&#160;</td><td class="mdescRight">Given a multi field returns prints its values at inode_in.  <a href="namespacemulti__data__types.html#abc9ae53d6f6cb1baec1d2d80c70b13db">More...</a><br /></td></tr>
 <tr class="separator:abc9ae53d6f6cb1baec1d2d80c70b13db"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a36d244e9bb0eedbf7f6c59965276deee"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a36d244e9bb0eedbf7f6c59965276deee">add_array_to_multi_field</a> (mfield, b, xpos, ypos, inode)</td></tr>
+<tr class="memdesc:a36d244e9bb0eedbf7f6c59965276deee"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine performs the addition of an array and a multifield and returns the multifield mfield = mfield + b xpos and ypos are the starting positions for a full matrix they have to be one.  <a href="namespacemulti__data__types.html#a36d244e9bb0eedbf7f6c59965276deee">More...</a><br /></td></tr>
 <tr class="separator:a36d244e9bb0eedbf7f6c59965276deee"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af7028748dfa3e370ed4bfd1db524c87b"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#af7028748dfa3e370ed4bfd1db524c87b">add_multi_field_to_array</a> (mfield, b, xpos, ypos, inode, a_in)</td></tr>
+<tr class="memdesc:af7028748dfa3e370ed4bfd1db524c87b"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine performs the addition of an array and a multifield and returns the array b = b + a * mfield xpos and ypos are the starting positions for a full matrix they have to be one.  <a href="namespacemulti__data__types.html#af7028748dfa3e370ed4bfd1db524c87b">More...</a><br /></td></tr>
 <tr class="separator:af7028748dfa3e370ed4bfd1db524c87b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ace4fd339964323bf541889bce3d7e2c2"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#ace4fd339964323bf541889bce3d7e2c2">mult_multi_field_by_array</a> (mfield, b, inode)</td></tr>
+<tr class="memdesc:ace4fd339964323bf541889bce3d7e2c2"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine performs the multiplication of an array and a multifield and returns the multifield mfield = mfield * b.  <a href="namespacemulti__data__types.html#ace4fd339964323bf541889bce3d7e2c2">More...</a><br /></td></tr>
 <tr class="separator:ace4fd339964323bf541889bce3d7e2c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af96ed78df65b67796e0370367c693fa5"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#af96ed78df65b67796e0370367c693fa5">mult_multi_field_by_array_on_array</a> (mfield, b, inode)</td></tr>
+<tr class="memdesc:af96ed78df65b67796e0370367c693fa5"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine performs the multiplication of an array and a multifield and returns the array b = mfield * b.  <a href="namespacemulti__data__types.html#af96ed78df65b67796e0370367c693fa5">More...</a><br /></td></tr>
 <tr class="separator:af96ed78df65b67796e0370367c693fa5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8d152fd675b70364be1965770f607e2f"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a8d152fd675b70364be1965770f607e2f">scale_multi_field</a> (mfield, a, inode)</td></tr>
+<tr class="memdesc:a8d152fd675b70364be1965770f607e2f"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine rescales a multifield mfield = a * mfield.  <a href="namespacemulti__data__types.html#a8d152fd675b70364be1965770f607e2f">More...</a><br /></td></tr>
 <tr class="separator:a8d152fd675b70364be1965770f607e2f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a331bf7ce0c5156d2bde6c0ab82309e4c"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a331bf7ce0c5156d2bde6c0ab82309e4c">linearise_multi_field</a> (mfield, Mdims, ndgln)</td></tr>
+<tr class="memdesc:a331bf7ce0c5156d2bde6c0ab82309e4c"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine linearises a multifield. i.e. takes it from P2 to P1.  <a href="namespacemulti__data__types.html#a331bf7ce0c5156d2bde6c0ab82309e4c">More...</a><br /></td></tr>
 <tr class="separator:a331bf7ce0c5156d2bde6c0ab82309e4c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0a02226803b07ac9bb8cbf05f9d0ab6a"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a0a02226803b07ac9bb8cbf05f9d0ab6a">allocate_multi_shape_funs</a> (shape_fun, Mdims, GIdims)</td></tr>
+<tr class="memdesc:a0a02226803b07ac9bb8cbf05f9d0ab6a"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine allocates and initialises to zero all the arrays in a <a class="el" href="structmulti__data__types_1_1multi__shape__funs.html" title="Data structure to store all the shape functions to facilitate its movement throughtout the code.">multi_shape_funs</a> data type It uses the Dimensions of the model and the gauss integration to be used to allocate the necessary shape functions.  <a href="namespacemulti__data__types.html#a0a02226803b07ac9bb8cbf05f9d0ab6a">More...</a><br /></td></tr>
 <tr class="separator:a0a02226803b07ac9bb8cbf05f9d0ab6a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab256dfeac442756797e748a252de6ea0"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#ab256dfeac442756797e748a252de6ea0">deallocate_multi_shape_funs</a> (shape_fun)</td></tr>
+<tr class="memdesc:ab256dfeac442756797e748a252de6ea0"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine deallocates and nullifies all the fields inside <a class="el" href="structmulti__data__types_1_1multi__shape__funs.html" title="Data structure to store all the shape functions to facilitate its movement throughtout the code.">multi_shape_funs</a>.  <a href="namespacemulti__data__types.html#ab256dfeac442756797e748a252de6ea0">More...</a><br /></td></tr>
 <tr class="separator:ab256dfeac442756797e748a252de6ea0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abf63a6f60bfdf10af1503d0cb8787096"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#abf63a6f60bfdf10af1503d0cb8787096">deallocate_projection_matrices</a> (shape_fun)</td></tr>
+<tr class="memdesc:abf63a6f60bfdf10af1503d0cb8787096"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine deallocates projection matrices CV2FE &amp; FE2CV stored in shape_fun.  <a href="namespacemulti__data__types.html#abf63a6f60bfdf10af1503d0cb8787096">More...</a><br /></td></tr>
 <tr class="separator:abf63a6f60bfdf10af1503d0cb8787096"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a99a3adeb20eae3cd7f9c1ee1760473c3"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a99a3adeb20eae3cd7f9c1ee1760473c3">allocate_multi_sparsities</a> (Mspars, Mdims, mx_ncolacv, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)</td></tr>
+<tr class="memdesc:a99a3adeb20eae3cd7f9c1ee1760473c3"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine allocates part of the memory inside Mspars, i.e. sparsities of the different matrices IMPORTANT: Despite this subroutine can be called by itself it is highly recommended to be called ONLY through multi_sparsity/Get_Sparsity_Patterns.  <a href="namespacemulti__data__types.html#a99a3adeb20eae3cd7f9c1ee1760473c3">More...</a><br /></td></tr>
 <tr class="separator:a99a3adeb20eae3cd7f9c1ee1760473c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3137e48a49f7bb16cf337ff1834703b6"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a3137e48a49f7bb16cf337ff1834703b6">deallocate_multi_sparsities</a> (Mspars)</td></tr>
+<tr class="memdesc:a3137e48a49f7bb16cf337ff1834703b6"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine deallocates all the memory inside Mspars.  <a href="namespacemulti__data__types.html#a3137e48a49f7bb16cf337ff1834703b6">More...</a><br /></td></tr>
 <tr class="separator:a3137e48a49f7bb16cf337ff1834703b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:add33a9072dfc14b1ee94cf90d53c030a"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#add33a9072dfc14b1ee94cf90d53c030a">allocate_multi_ndgln</a> (ndgln, Mdims)</td></tr>
+<tr class="memdesc:add33a9072dfc14b1ee94cf90d53c030a"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine allocates the global to local conversors.  <a href="namespacemulti__data__types.html#add33a9072dfc14b1ee94cf90d53c030a">More...</a><br /></td></tr>
 <tr class="separator:add33a9072dfc14b1ee94cf90d53c030a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5ea8066a0ecf9104dd8ca9d9f18e11c9"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a5ea8066a0ecf9104dd8ca9d9f18e11c9">deallocate_multi_ndgln</a> (ndgln)</td></tr>
+<tr class="memdesc:a5ea8066a0ecf9104dd8ca9d9f18e11c9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deallocates Global to local fields NOTE that Only deallocates suf_cv, suf_p and suf_u since the others are pointers to state.  <a href="namespacemulti__data__types.html#a5ea8066a0ecf9104dd8ca9d9f18e11c9">More...</a><br /></td></tr>
 <tr class="separator:a5ea8066a0ecf9104dd8ca9d9f18e11c9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0b85017f5919b415d7e7ec8cc29bdc6b"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a0b85017f5919b415d7e7ec8cc29bdc6b">destroy_multi_matrices</a> (Mmat)</td></tr>
+<tr class="memdesc:a0b85017f5919b415d7e7ec8cc29bdc6b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deallocates and nullifies the memory generated for the matrices, it is to be used after adapting the mesh.  <a href="namespacemulti__data__types.html#a0b85017f5919b415d7e7ec8cc29bdc6b">More...</a><br /></td></tr>
 <tr class="separator:a0b85017f5919b415d7e7ec8cc29bdc6b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5641f05bcbbf1c56b952f99ed0cd1f67"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a5641f05bcbbf1c56b952f99ed0cd1f67">deallocate_multi_dev_shape_funs</a> (DevFuns)</td></tr>
+<tr class="memdesc:a5641f05bcbbf1c56b952f99ed0cd1f67"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deallocates the required memory to store the derivatives of the shape functions.  <a href="namespacemulti__data__types.html#a5641f05bcbbf1c56b952f99ed0cd1f67">More...</a><br /></td></tr>
 <tr class="separator:a5641f05bcbbf1c56b952f99ed0cd1f67"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a086d82f299fc3e1148cd44350b8cff0e"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a086d82f299fc3e1148cd44350b8cff0e">allocate_porous_adv_coefs</a> (Mdims, upwnd)</td></tr>
+<tr class="memdesc:a086d82f299fc3e1148cd44350b8cff0e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocates the memory for the advection coefficients for porous media.  <a href="namespacemulti__data__types.html#a086d82f299fc3e1148cd44350b8cff0e">More...</a><br /></td></tr>
 <tr class="separator:a086d82f299fc3e1148cd44350b8cff0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a30f2b1810cafa7b1e675ca9c08eb12c7"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a30f2b1810cafa7b1e675ca9c08eb12c7">deallocate_porous_adv_coefs</a> (upwnd)</td></tr>
+<tr class="memdesc:a30f2b1810cafa7b1e675ca9c08eb12c7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deallocates the memory for the advection coefficients for porous media.  <a href="namespacemulti__data__types.html#a30f2b1810cafa7b1e675ca9c08eb12c7">More...</a><br /></td></tr>
 <tr class="separator:a30f2b1810cafa7b1e675ca9c08eb12c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4ac5449d11858991ac53447f439013ee"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a4ac5449d11858991ac53447f439013ee">allocate_multi_pipe_package</a> (pipes, Mdims, Mspars)</td></tr>
+<tr class="memdesc:a4ac5449d11858991ac53447f439013ee"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocates the necessary memory for <a class="el" href="structmulti__data__types_1_1multi__pipe__package.html" title="Contains all the information required to model pipes. Many of these fields are unnecessary or even un...">multi_pipe_package</a>.  <a href="namespacemulti__data__types.html#a4ac5449d11858991ac53447f439013ee">More...</a><br /></td></tr>
 <tr class="separator:a4ac5449d11858991ac53447f439013ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8d4980a0b1c7eaa7e55faa42e636eebe"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a8d4980a0b1c7eaa7e55faa42e636eebe">deallocate_multi_pipe_package</a> (pipes)</td></tr>
+<tr class="memdesc:a8d4980a0b1c7eaa7e55faa42e636eebe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deallocates the necessary memory for <a class="el" href="structmulti__data__types_1_1multi__pipe__package.html" title="Contains all the information required to model pipes. Many of these fields are unnecessary or even un...">multi_pipe_package</a>.  <a href="namespacemulti__data__types.html#a8d4980a0b1c7eaa7e55faa42e636eebe">More...</a><br /></td></tr>
 <tr class="separator:a8d4980a0b1c7eaa7e55faa42e636eebe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa99e43604028836507ef0ebc746beafa"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#aa99e43604028836507ef0ebc746beafa">initialize_multi_outfluxes</a> (outfluxes)</td></tr>
+<tr class="memdesc:aa99e43604028836507ef0ebc746beafa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer vector) variable outfluxesoutlet_id and stores them into the <a class="el" href="structmulti__data__types_1_1multi__outfluxes.html" title="Contains variables to analyse the flux across the BCs that the user is interested.">multi_outfluxes</a> field.  <a href="namespacemulti__data__types.html#aa99e43604028836507ef0ebc746beafa">More...</a><br /></td></tr>
 <tr class="separator:aa99e43604028836507ef0ebc746beafa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3787e0ea3c345050de943087334bd991"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a3787e0ea3c345050de943087334bd991">allocate_multi_outfluxes</a> (Mdims, outfluxes)</td></tr>
+<tr class="memdesc:a3787e0ea3c345050de943087334bd991"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initialises memory for outfluxes.  <a href="namespacemulti__data__types.html#a3787e0ea3c345050de943087334bd991">More...</a><br /></td></tr>
 <tr class="separator:a3787e0ea3c345050de943087334bd991"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a50fca54e8f260338c4a4ad1187640ef2"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__data__types.html#a50fca54e8f260338c4a4ad1187640ef2">destroy_multi_outfluxes</a> (outfluxes)</td></tr>
+<tr class="memdesc:a50fca54e8f260338c4a4ad1187640ef2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deallocates the <a class="el" href="structmulti__data__types_1_1multi__outfluxes.html" title="Contains variables to analyse the flux across the BCs that the user is interested.">multi_outfluxes</a> field.  <a href="namespacemulti__data__types.html#a50fca54e8f260338c4a4ad1187640ef2">More...</a><br /></td></tr>
 <tr class="separator:a50fca54e8f260338c4a4ad1187640ef2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Function/Subroutine Documentation</h2>
@@ -217,6 +257,24 @@ Functions/Subroutines</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>This subroutine performs the addition of an array and a multifield and returns the multifield mfield = mfield + b xpos and ypos are the starting positions for a full matrix they have to be one. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">mfield</td><td>multifield to be multiplied </td></tr>
+    <tr><td class="paramname">b</td><td>the array to add </td></tr>
+    <tr><td class="paramname">xpos</td><td>starting positions </td></tr>
+    <tr><td class="paramname">ypos</td><td>starting positions </td></tr>
+    <tr><td class="paramname">inode</td><td>position to be retrieved </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="retval"><dt>Return values</dt><dd>
+  <table class="retval">
+    <tr><td class="paramname">same</td><td>input mfield with added b </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -269,12 +327,31 @@ Functions/Subroutines</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>This subroutine performs the addition of an array and a multifield and returns the array b = b + a * mfield xpos and ypos are the starting positions for a full matrix they have to be one. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">mfield</td><td>multifield to be multiplied </td></tr>
+    <tr><td class="paramname">b</td><td>the array to add </td></tr>
+    <tr><td class="paramname">xpos</td><td>starting positions </td></tr>
+    <tr><td class="paramname">ypos</td><td>starting positions </td></tr>
+    <tr><td class="paramname">inode</td><td>position to be retrieved </td></tr>
+    <tr><td class="paramname">a_in</td><td>multiplier of mfield </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="retval"><dt>Return values</dt><dd>
+  <table class="retval">
+    <tr><td class="paramname">same</td><td>input array with added mfield </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_af7028748dfa3e370ed4bfd1db524c87b_icgraph.png" border="0" usemap="#namespacemulti__data__types_af7028748dfa3e370ed4bfd1db524c87b_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_af7028748dfa3e370ed4bfd1db524c87b_icgraph" id="namespacemulti__data__types_af7028748dfa3e370ed4bfd1db524c87b_icgraph">
-<area shape="rect" title=" " alt="" coords="724,5,891,47"/>
+<area shape="rect" title="This subroutine performs the addition of an array and a multifield and returns the array b = b + a * ..." alt="" coords="724,5,891,47"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
@@ -308,12 +385,21 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>This subroutine allocates the global to local conversors. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ndgln</td><td>Global to local field </td></tr>
+    <tr><td class="paramname">Mdims</td><td>dimensions of the model </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_add33a9072dfc14b1ee94cf90d53c030a_icgraph.png" border="0" usemap="#namespacemulti__data__types_add33a9072dfc14b1ee94cf90d53c030a_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_add33a9072dfc14b1ee94cf90d53c030a_icgraph" id="namespacemulti__data__types_add33a9072dfc14b1ee94cf90d53c030a_icgraph">
-<area shape="rect" title=" " alt="" coords="467,27,661,69"/>
+<area shape="rect" title="This subroutine allocates the global to local conversors." alt="" coords="467,27,661,69"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
@@ -347,12 +433,21 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Initialises memory for outfluxes. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">Mdims</td><td>dimensions of the model </td></tr>
+    <tr><td class="paramname">outfluxes</td><td>the <a class="el" href="structmulti__data__types_1_1multi__outfluxes.html" title="Contains variables to analyse the flux across the BCs that the user is interested.">multi_outfluxes</a> field </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_a3787e0ea3c345050de943087334bd991_icgraph.png" border="0" usemap="#namespacemulti__data__types_a3787e0ea3c345050de943087334bd991_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_a3787e0ea3c345050de943087334bd991_icgraph" id="namespacemulti__data__types_a3787e0ea3c345050de943087334bd991_icgraph">
-<area shape="rect" title=" " alt="" coords="467,5,661,47"/>
+<area shape="rect" title="Initialises memory for outfluxes." alt="" coords="467,5,661,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -392,6 +487,16 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
+<p>Allocates the necessary memory for <a class="el" href="structmulti__data__types_1_1multi__pipe__package.html" title="Contains all the information required to model pipes. Many of these fields are unnecessary or even un...">multi_pipe_package</a>. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">pipes</td><td>output the <a class="el" href="structmulti__data__types_1_1multi__pipe__package.html" title="Contains all the information required to model pipes. Many of these fields are unnecessary or even un...">multi_pipe_package</a> field with memory allocated </td></tr>
+    <tr><td class="paramname">Mdims</td><td>dimensions of the model </td></tr>
+    <tr><td class="paramname">Mspars</td><td><a class="el" href="structmulti__data__types_1_1multi__sparsities.html" title="This data type contains all the sparsities necessary in the multiphase prototype code.">multi_sparsities</a> of the model </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="a0a02226803b07ac9bb8cbf05f9d0ab6a"></a>
@@ -425,13 +530,23 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>This subroutine allocates and initialises to zero all the arrays in a <a class="el" href="structmulti__data__types_1_1multi__shape__funs.html" title="Data structure to store all the shape functions to facilitate its movement throughtout the code.">multi_shape_funs</a> data type It uses the Dimensions of the model and the gauss integration to be used to allocate the necessary shape functions. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">shape_fun</td><td>Shape functions for a given type of mesh, pressure or velocity </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Dimensions of the model </td></tr>
+    <tr><td class="paramname">GIdims</td><td>GI dimensions to be used, consistent with the mesh used for shape_fun </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_a0a02226803b07ac9bb8cbf05f9d0ab6a_icgraph.png" border="0" usemap="#namespacemulti__data__types_a0a02226803b07ac9bb8cbf05f9d0ab6a_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_a0a02226803b07ac9bb8cbf05f9d0ab6a_icgraph" id="namespacemulti__data__types_a0a02226803b07ac9bb8cbf05f9d0ab6a_icgraph">
-<area shape="rect" title=" " alt="" coords="1313,212,1508,253"/>
-<area shape="rect" href="namespacecv__advection.html#a083e26c7f43d55723d9e316ef2069394" title="Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for..." alt="" coords="1057,219,1247,246"/>
+<area shape="rect" title="This subroutine allocates and initialises to zero all the arrays in a multi_shape_funs data type It u..." alt="" coords="1313,212,1508,253"/>
+<area shape="rect" href="namespacecv__advection.html#a4c9c5c3afe6e6355fcf8bfefbaa3211a" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1057,219,1247,246"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,241,419,283"/>
 <area shape="rect" href="namespacesparsity__nd.html#a455ef657aa7fb1aaa3bff1b71aaa24a5" title=" " alt="" coords="1056,329,1248,371"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#a7a01c78d922871a74af7e6e4a3228868" title=": Instead of including the gravity in the RHS normally, here a system based on a Laplacian is created..." alt="" coords="1050,5,1254,47"/>
@@ -514,12 +629,14 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>This subroutine allocates part of the memory inside Mspars, i.e. sparsities of the different matrices IMPORTANT: Despite this subroutine can be called by itself it is highly recommended to be called ONLY through multi_sparsity/Get_Sparsity_Patterns. </p>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_a99a3adeb20eae3cd7f9c1ee1760473c3_icgraph.png" border="0" usemap="#namespacemulti__data__types_a99a3adeb20eae3cd7f9c1ee1760473c3_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_a99a3adeb20eae3cd7f9c1ee1760473c3_icgraph" id="namespacemulti__data__types_a99a3adeb20eae3cd7f9c1ee1760473c3_icgraph">
-<area shape="rect" title=" " alt="" coords="660,27,855,69"/>
+<area shape="rect" title="This subroutine allocates part of the memory inside Mspars, i.e. sparsities of the different matrices..." alt="" coords="660,27,855,69"/>
 <area shape="rect" href="namespacespact.html#aeaf3853765a92827bf24c599fe79364e" title=" " alt="" coords="467,27,612,69"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
@@ -554,12 +671,21 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Allocates the memory for the advection coefficients for porous media. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">Mdims-</td><td>dimensions of the model </td></tr>
+    <tr><td class="paramname">upwnd</td><td><a class="el" href="structmulti__data__types_1_1multi__dimensions.html" title="Data type storing all the dimensionrs describing the mesh, fields, nodes, etc.">multi_dimensions</a> field </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_a086d82f299fc3e1148cd44350b8cff0e_icgraph.png" border="0" usemap="#namespacemulti__data__types_a086d82f299fc3e1148cd44350b8cff0e_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_a086d82f299fc3e1148cd44350b8cff0e_icgraph" id="namespacemulti__data__types_a086d82f299fc3e1148cd44350b8cff0e_icgraph">
-<area shape="rect" title=" " alt="" coords="467,27,661,69"/>
+<area shape="rect" title="Allocates the memory for the advection coefficients for porous media." alt="" coords="467,27,661,69"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
@@ -593,13 +719,22 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Deallocation of all of the multi field types within multi_absorp. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">multi_absorp</td><td>all multifields within multi_absorp are deallocated </td></tr>
+    <tr><td class="paramname">and_destroy</td><td>if not and_destroy then only the pointer is nullified, otherwise the field is deallocated </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_aacf7345cba9f7c9760a4f8e1c68ee0ca_cgraph.png" border="0" usemap="#namespacemulti__data__types_aacf7345cba9f7c9760a4f8e1c68ee0ca_cgraph" alt=""/></div>
 <map name="namespacemulti__data__types_aacf7345cba9f7c9760a4f8e1c68ee0ca_cgraph" id="namespacemulti__data__types_aacf7345cba9f7c9760a4f8e1c68ee0ca_cgraph">
-<area shape="rect" title=" " alt="" coords="5,5,216,47"/>
-<area shape="rect" href="namespacemulti__data__types.html#a65dde4f9748cb3dd200c328f99304c4e" title=" " alt="" coords="264,5,475,47"/>
+<area shape="rect" title="Deallocation of all of the multi field types within multi_absorp." alt="" coords="5,5,216,47"/>
+<area shape="rect" href="namespacemulti__data__types.html#a65dde4f9748cb3dd200c328f99304c4e" title="Deallocation of a multi field type." alt="" coords="264,5,475,47"/>
 </map>
 </div>
 <div class="dynheader">
@@ -607,7 +742,7 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_aacf7345cba9f7c9760a4f8e1c68ee0ca_icgraph.png" border="0" usemap="#namespacemulti__data__types_aacf7345cba9f7c9760a4f8e1c68ee0ca_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_aacf7345cba9f7c9760a4f8e1c68ee0ca_icgraph" id="namespacemulti__data__types_aacf7345cba9f7c9760a4f8e1c68ee0ca_icgraph">
-<area shape="rect" title=" " alt="" coords="707,35,917,76"/>
+<area shape="rect" title="Deallocation of all of the multi field types within multi_absorp." alt="" coords="707,35,917,76"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="namespacecopy__outof__state.html#adba75f9a3f64d519ecf58b2b9159d629" title=": Prepares the memory to compute absorption fields" alt="" coords="467,64,659,105"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
@@ -632,14 +767,22 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Deallocates the required memory to store the derivatives of the shape functions. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">DevFuns</td><td>output field with the memory deallocated and pointers nullified </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_a5641f05bcbbf1c56b952f99ed0cd1f67_icgraph.png" border="0" usemap="#namespacemulti__data__types_a5641f05bcbbf1c56b952f99ed0cd1f67_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_a5641f05bcbbf1c56b952f99ed0cd1f67_icgraph" id="namespacemulti__data__types_a5641f05bcbbf1c56b952f99ed0cd1f67_icgraph">
-<area shape="rect" title=" " alt="" coords="1705,224,1916,265"/>
+<area shape="rect" title="Deallocates the required memory to store the derivatives of the shape functions." alt="" coords="1705,224,1916,265"/>
 <area shape="rect" href="namespacesolvers__module.html#adef72e22883fb36304a2da0099927175" title="The sparcity of the local CV connectivity is in: small_findrm, small_colm. ngl_its=max no of global i..." alt="" coords="1344,13,1657,39"/>
-<area shape="rect" href="namespacecv__advection.html#a083e26c7f43d55723d9e316ef2069394" title="Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for..." alt="" coords="1073,211,1262,238"/>
+<area shape="rect" href="namespacecv__advection.html#a4c9c5c3afe6e6355fcf8bfefbaa3211a" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1073,211,1262,238"/>
 <area shape="rect" href="namespacecv__advection.html#a133a322640c972e4b8577bb3a2439357" title=": In this method we assemble and solve the Laplacian system using at least P1 elements The equation s..." alt="" coords="1413,129,1588,171"/>
 <area shape="rect" href="multi__dyncore__dg_8_f90.html#a6a7f0d36d29011eddc120ea33cb763db" title="Here no homogenisation can be performed. NOTE: FOR THE TIME BEING ONLY ROW_SUM IS ACTIVATED HERE,..." alt="" coords="1437,362,1565,389"/>
 <area shape="rect" href="multi__dyncore__dg_8_f90.html#aa2eb04d27443c785084566c701903207" title="and faster to compute than for Navier&#45;Stokes. Therefore, here the RHS and the Mass matrix are compute..." alt="" coords="1072,322,1263,349"/>
@@ -690,13 +833,22 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Deallocation of a multi field type. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">mfield</td><td>multifield to be deallocated </td></tr>
+    <tr><td class="paramname">and_destroy</td><td>if not and_destroy then only the pointer is nullified, otherwise the field is deallocated </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_a65dde4f9748cb3dd200c328f99304c4e_icgraph.png" border="0" usemap="#namespacemulti__data__types_a65dde4f9748cb3dd200c328f99304c4e_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_a65dde4f9748cb3dd200c328f99304c4e_icgraph" id="namespacemulti__data__types_a65dde4f9748cb3dd200c328f99304c4e_icgraph">
-<area shape="rect" title=" " alt="" coords="983,93,1193,135"/>
-<area shape="rect" href="namespacemulti__data__types.html#aacf7345cba9f7c9760a4f8e1c68ee0ca" title=" " alt="" coords="724,64,935,105"/>
+<area shape="rect" title="Deallocation of a multi field type." alt="" coords="983,93,1193,135"/>
+<area shape="rect" href="namespacemulti__data__types.html#aacf7345cba9f7c9760a4f8e1c68ee0ca" title="Deallocation of all of the multi field types within multi_absorp." alt="" coords="724,64,935,105"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,123,676,164"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,64,419,105"/>
 <area shape="rect" href="namespacecopy__outof__state.html#adba75f9a3f64d519ecf58b2b9159d629" title=": Prepares the memory to compute absorption fields" alt="" coords="475,5,667,47"/>
@@ -722,12 +874,20 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Deallocates Global to local fields NOTE that Only deallocates suf_cv, suf_p and suf_u since the others are pointers to state. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ndgln</td><td>Global to local field </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_a5ea8066a0ecf9104dd8ca9d9f18e11c9_icgraph.png" border="0" usemap="#namespacemulti__data__types_a5ea8066a0ecf9104dd8ca9d9f18e11c9_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_a5ea8066a0ecf9104dd8ca9d9f18e11c9_icgraph" id="namespacemulti__data__types_a5ea8066a0ecf9104dd8ca9d9f18e11c9_icgraph">
-<area shape="rect" title=" " alt="" coords="467,27,677,69"/>
+<area shape="rect" title="Deallocates Global to local fields NOTE that Only deallocates suf_cv, suf_p and suf_u since the other..." alt="" coords="467,27,677,69"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
@@ -751,12 +911,20 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Deallocates the necessary memory for <a class="el" href="structmulti__data__types_1_1multi__pipe__package.html" title="Contains all the information required to model pipes. Many of these fields are unnecessary or even un...">multi_pipe_package</a>. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">pipes</td><td>output the <a class="el" href="structmulti__data__types_1_1multi__pipe__package.html" title="Contains all the information required to model pipes. Many of these fields are unnecessary or even un...">multi_pipe_package</a> field with memory deallocated </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_a8d4980a0b1c7eaa7e55faa42e636eebe_icgraph.png" border="0" usemap="#namespacemulti__data__types_a8d4980a0b1c7eaa7e55faa42e636eebe_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_a8d4980a0b1c7eaa7e55faa42e636eebe_icgraph" id="namespacemulti__data__types_a8d4980a0b1c7eaa7e55faa42e636eebe_icgraph">
-<area shape="rect" title=" " alt="" coords="467,27,677,69"/>
+<area shape="rect" title="Deallocates the necessary memory for multi_pipe_package." alt="" coords="467,27,677,69"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
@@ -780,13 +948,21 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>This subroutine deallocates and nullifies all the fields inside <a class="el" href="structmulti__data__types_1_1multi__shape__funs.html" title="Data structure to store all the shape functions to facilitate its movement throughtout the code.">multi_shape_funs</a>. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">shape_fun</td><td>Shape functions for a given type of mesh, pressure or velocity </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_ab256dfeac442756797e748a252de6ea0_icgraph.png" border="0" usemap="#namespacemulti__data__types_ab256dfeac442756797e748a252de6ea0_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_ab256dfeac442756797e748a252de6ea0_icgraph" id="namespacemulti__data__types_ab256dfeac442756797e748a252de6ea0_icgraph">
-<area shape="rect" title=" " alt="" coords="1313,212,1524,253"/>
-<area shape="rect" href="namespacecv__advection.html#a083e26c7f43d55723d9e316ef2069394" title="Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for..." alt="" coords="1057,219,1247,246"/>
+<area shape="rect" title="This subroutine deallocates and nullifies all the fields inside multi_shape_funs." alt="" coords="1313,212,1524,253"/>
+<area shape="rect" href="namespacecv__advection.html#a4c9c5c3afe6e6355fcf8bfefbaa3211a" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1057,219,1247,246"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,241,419,283"/>
 <area shape="rect" href="namespacesparsity__nd.html#a455ef657aa7fb1aaa3bff1b71aaa24a5" title=" " alt="" coords="1056,329,1248,371"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#a7a01c78d922871a74af7e6e4a3228868" title=": Instead of including the gravity in the RHS normally, here a system based on a Laplacian is created..." alt="" coords="1050,5,1254,47"/>
@@ -823,12 +999,20 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>This subroutine deallocates all the memory inside Mspars. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">Mspars</td><td>Multi_sparsities field </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_a3137e48a49f7bb16cf337ff1834703b6_icgraph.png" border="0" usemap="#namespacemulti__data__types_a3137e48a49f7bb16cf337ff1834703b6_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_a3137e48a49f7bb16cf337ff1834703b6_icgraph" id="namespacemulti__data__types_a3137e48a49f7bb16cf337ff1834703b6_icgraph">
-<area shape="rect" title=" " alt="" coords="660,42,871,83"/>
+<area shape="rect" title="This subroutine deallocates all the memory inside Mspars." alt="" coords="660,42,871,83"/>
 <area shape="rect" href="namespacespact.html#aeaf3853765a92827bf24c599fe79364e" title=" " alt="" coords="467,42,612,83"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,71,419,113"/>
@@ -853,12 +1037,20 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Deallocates the memory for the advection coefficients for porous media. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">upwnd</td><td><a class="el" href="structmulti__data__types_1_1multi__dimensions.html" title="Data type storing all the dimensionrs describing the mesh, fields, nodes, etc.">multi_dimensions</a> field </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_a30f2b1810cafa7b1e675ca9c08eb12c7_icgraph.png" border="0" usemap="#namespacemulti__data__types_a30f2b1810cafa7b1e675ca9c08eb12c7_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_a30f2b1810cafa7b1e675ca9c08eb12c7_icgraph" id="namespacemulti__data__types_a30f2b1810cafa7b1e675ca9c08eb12c7_icgraph">
-<area shape="rect" title=" " alt="" coords="467,27,677,69"/>
+<area shape="rect" title="Deallocates the memory for the advection coefficients for porous media." alt="" coords="467,27,677,69"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
@@ -882,12 +1074,20 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>This subroutine deallocates projection matrices CV2FE &amp; FE2CV stored in shape_fun. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">shape_fun</td><td>Shape functions for a given type of mesh, pressure or velocity </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_abf63a6f60bfdf10af1503d0cb8787096_icgraph.png" border="0" usemap="#namespacemulti__data__types_abf63a6f60bfdf10af1503d0cb8787096_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_abf63a6f60bfdf10af1503d0cb8787096_icgraph" id="namespacemulti__data__types_abf63a6f60bfdf10af1503d0cb8787096_icgraph">
-<area shape="rect" title=" " alt="" coords="219,5,429,47"/>
+<area shape="rect" title="This subroutine deallocates projection matrices CV2FE &amp; FE2CV stored in shape_fun." alt="" coords="219,5,429,47"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="5,13,171,39"/>
 </map>
 </div>
@@ -909,12 +1109,20 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Deallocates and nullifies the memory generated for the matrices, it is to be used after adapting the mesh. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">Mmat</td><td><a class="el" href="structmulti__data__types_1_1multi__matrices.html" title="This type contains all the necessary information to solve =systems, matrices, RHS,...">multi_matrices</a> containing the memory used to solve for the different fields </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_a0b85017f5919b415d7e7ec8cc29bdc6b_icgraph.png" border="0" usemap="#namespacemulti__data__types_a0b85017f5919b415d7e7ec8cc29bdc6b_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_a0b85017f5919b415d7e7ec8cc29bdc6b_icgraph" id="namespacemulti__data__types_a0b85017f5919b415d7e7ec8cc29bdc6b_icgraph">
-<area shape="rect" title=" " alt="" coords="467,27,659,69"/>
+<area shape="rect" title="Deallocates and nullifies the memory generated for the matrices, it is to be used after adapting the ..." alt="" coords="467,27,659,69"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
@@ -938,12 +1146,20 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Deallocates the <a class="el" href="structmulti__data__types_1_1multi__outfluxes.html" title="Contains variables to analyse the flux across the BCs that the user is interested.">multi_outfluxes</a> field. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">outfluxes</td><td>the <a class="el" href="structmulti__data__types_1_1multi__outfluxes.html" title="Contains variables to analyse the flux across the BCs that the user is interested.">multi_outfluxes</a> field </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_a50fca54e8f260338c4a4ad1187640ef2_icgraph.png" border="0" usemap="#namespacemulti__data__types_a50fca54e8f260338c4a4ad1187640ef2_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_a50fca54e8f260338c4a4ad1187640ef2_icgraph" id="namespacemulti__data__types_a50fca54e8f260338c4a4ad1187640ef2_icgraph">
-<area shape="rect" title=" " alt="" coords="467,5,659,47"/>
+<area shape="rect" title="Deallocates the multi_outfluxes field." alt="" coords="467,5,659,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -982,13 +1198,28 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Given a multi field returns an array with its values at inode_in. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">mfield</td><td>multifield to be copied into an array </td></tr>
+    <tr><td class="paramname">inode_in</td><td>position to be retrieved </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="retval"><dt>Return values</dt><dd>
+  <table class="retval">
+    <tr><td class="paramname">output</td><td>array of size (ndim*nphase, ndim*nphase) containing the mfield at inode_in </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_adcc8a0b282940a98fceb6a046f1bda1e_icgraph.png" border="0" usemap="#namespacemulti__data__types_adcc8a0b282940a98fceb6a046f1bda1e_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_adcc8a0b282940a98fceb6a046f1bda1e_icgraph" id="namespacemulti__data__types_adcc8a0b282940a98fceb6a046f1bda1e_icgraph">
-<area shape="rect" title=" " alt="" coords="227,5,391,47"/>
-<area shape="rect" href="namespacemulti__data__types.html#abc9ae53d6f6cb1baec1d2d80c70b13db" title=" " alt="" coords="5,5,179,47"/>
+<area shape="rect" title="Given a multi field returns an array with its values at inode_in." alt="" coords="227,5,391,47"/>
+<area shape="rect" href="namespacemulti__data__types.html#abc9ae53d6f6cb1baec1d2d80c70b13db" title="Given a multi field returns prints its values at inode_in." alt="" coords="5,5,179,47"/>
 </map>
 </div>
 
@@ -1026,6 +1257,21 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
+<p>Given a multi field returns the inverse as an array with its values at inode_in. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">mfield</td><td>multifield to be copied into an array </td></tr>
+    <tr><td class="paramname">inode_in</td><td>position to be retrieved </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="retval"><dt>Return values</dt><dd>
+  <table class="retval">
+    <tr><td class="paramname">output</td><td>array of size (ndim*nphase, ndim*nphase) containing the inverse of mfield at inode_in </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="aa99e43604028836507ef0ebc746beafa"></a>
@@ -1043,12 +1289,20 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer vector) variable outfluxesoutlet_id and stores them into the <a class="el" href="structmulti__data__types_1_1multi__outfluxes.html" title="Contains variables to analyse the flux across the BCs that the user is interested.">multi_outfluxes</a> field. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">outfluxes</td><td>the <a class="el" href="structmulti__data__types_1_1multi__outfluxes.html" title="Contains variables to analyse the flux across the BCs that the user is interested.">multi_outfluxes</a> field </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_aa99e43604028836507ef0ebc746beafa_icgraph.png" border="0" usemap="#namespacemulti__data__types_aa99e43604028836507ef0ebc746beafa_icgraph" alt=""/></div>
 <map name="namespacemulti__data__types_aa99e43604028836507ef0ebc746beafa_icgraph" id="namespacemulti__data__types_aa99e43604028836507ef0ebc746beafa_icgraph">
-<area shape="rect" title=" " alt="" coords="467,27,665,69"/>
+<area shape="rect" title="Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer ..." alt="" coords="467,27,665,69"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
@@ -1089,6 +1343,22 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
+<p>This subroutine linearises a multifield. i.e. takes it from P2 to P1. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">mfield</td><td>multifield to be rescaled </td></tr>
+    <tr><td class="paramname">Mdims</td><td>dimensions of the model </td></tr>
+    <tr><td class="paramname">ndgln</td><td>global to local numbering </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="retval"><dt>Return values</dt><dd>
+  <table class="retval">
+    <tr><td class="paramname">same</td><td>input mfield linearised </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="ace4fd339964323bf541889bce3d7e2c2"></a>
@@ -1122,6 +1392,22 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>This subroutine performs the multiplication of an array and a multifield and returns the multifield mfield = mfield * b. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">mfield</td><td>multifield to be multiplied </td></tr>
+    <tr><td class="paramname">b</td><td>the array to multiply </td></tr>
+    <tr><td class="paramname">inode</td><td>position to be retrieved </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="retval"><dt>Return values</dt><dd>
+  <table class="retval">
+    <tr><td class="paramname">same</td><td>input mfield times b </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -1157,6 +1443,22 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
+<p>This subroutine performs the multiplication of an array and a multifield and returns the array b = mfield * b. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">mfield</td><td>multifield to be multiplied </td></tr>
+    <tr><td class="paramname">b</td><td>the array to multiply </td></tr>
+    <tr><td class="paramname">inode</td><td>position to be retrieved </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="retval"><dt>Return values</dt><dd>
+  <table class="retval">
+    <tr><td class="paramname">same</td><td>input mfield times b </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="abc9ae53d6f6cb1baec1d2d80c70b13db"></a>
@@ -1190,13 +1492,23 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Given a multi field returns prints its values at inode_in. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">mfield</td><td>multifield to be copied into an array </td></tr>
+    <tr><td class="paramname">inode_in</td><td>position to be retrieved </td></tr>
+    <tr><td class="paramname">dimension</td><td>must have size(ndim*nphase, ndim*nphase) </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__data__types_abc9ae53d6f6cb1baec1d2d80c70b13db_cgraph.png" border="0" usemap="#namespacemulti__data__types_abc9ae53d6f6cb1baec1d2d80c70b13db_cgraph" alt=""/></div>
 <map name="namespacemulti__data__types_abc9ae53d6f6cb1baec1d2d80c70b13db_cgraph" id="namespacemulti__data__types_abc9ae53d6f6cb1baec1d2d80c70b13db_cgraph">
-<area shape="rect" title=" " alt="" coords="5,35,179,76"/>
-<area shape="rect" href="namespacemulti__data__types.html#adcc8a0b282940a98fceb6a046f1bda1e" title=" " alt="" coords="233,5,397,47"/>
+<area shape="rect" title="Given a multi field returns prints its values at inode_in." alt="" coords="5,35,179,76"/>
+<area shape="rect" href="namespacemulti__data__types.html#adcc8a0b282940a98fceb6a046f1bda1e" title="Given a multi field returns an array with its values at inode_in." alt="" coords="233,5,397,47"/>
 <area shape="rect" href="namespacemulti__tools.html#ad0e757bf71fd38690cf03c4bb28ebc9c" title=":Subroutine to print Arrays by (columns,rows) Matrix = 2D Array" alt="" coords="227,71,403,98"/>
 </map>
 </div>
@@ -1234,6 +1546,22 @@ Here is the call graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>This subroutine rescales a multifield mfield = a * mfield. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">mfield</td><td>multifield to be rescaled </td></tr>
+    <tr><td class="paramname">a</td><td>the scaling real </td></tr>
+    <tr><td class="paramname">inode</td><td>position to be retrieved </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="retval"><dt>Return values</dt><dd>
+  <table class="retval">
+    <tr><td class="paramname">same</td><td>input mfield times a </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>

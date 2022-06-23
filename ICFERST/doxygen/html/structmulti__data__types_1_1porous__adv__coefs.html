@@ -25,7 +25,7 @@
    <div id="projectname">ICFERST
    &#160;<span id="projectnumber">22_06</span>
    </div>
-   <div id="projectbrief">Reservoir simulator</div>
+   <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
  </tr>
  </tbody>
@@ -75,39 +75,33 @@ $(function() {
 <div class="title">multi_data_types::porous_adv_coefs Type Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>Required values to compute the fluxes for porous media. Effectively the sigma terms from the papers Currently they are oversized since apart from the permeability they are not tensors, this should be changed!  
+ <a href="structmulti__data__types_1_1porous__adv__coefs.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a7dfe3f6172db8a9567e3ddc8224454fa"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#a7dfe3f6172db8a9567e3ddc8224454fa">adv_coef</a> =&gt; null()</td></tr>
 <tr class="separator:a7dfe3f6172db8a9567e3ddc8224454fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af4efb17fd87edcc8a116ab61f6622b54"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#af4efb17fd87edcc8a116ab61f6622b54">sigmas</a></td></tr>
-<tr class="separator:af4efb17fd87edcc8a116ab61f6622b54"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ade79cb61194e7f993e5157edb8b25f7b"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#ade79cb61194e7f993e5157edb8b25f7b">at</a></td></tr>
-<tr class="separator:ade79cb61194e7f993e5157edb8b25f7b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7004b235808234f1c5f91f62a7e88e6a"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#a7004b235808234f1c5f91f62a7e88e6a">the</a></td></tr>
-<tr class="separator:a7004b235808234f1c5f91f62a7e88e6a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a114d2cbc2bd6fff5e94844d99e436a67"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#a114d2cbc2bd6fff5e94844d99e436a67">boundary</a></td></tr>
-<tr class="separator:a114d2cbc2bd6fff5e94844d99e436a67"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae9dc6f1ae814147ebdb2d14c8008ac94"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#ae9dc6f1ae814147ebdb2d14c8008ac94">to</a></td></tr>
-<tr class="separator:ae9dc6f1ae814147ebdb2d14c8008ac94"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4409aae04a9a272fd3ca09e0f7e2ed2a"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#a4409aae04a9a272fd3ca09e0f7e2ed2a">calculate</a></td></tr>
-<tr class="separator:a4409aae04a9a272fd3ca09e0f7e2ed2a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa451c2dd13ac6333fd8f4e2efcfa4df3"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#aa451c2dd13ac6333fd8f4e2efcfa4df3">fluxes</a></td></tr>
-<tr class="separator:aa451c2dd13ac6333fd8f4e2efcfa4df3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:add52cedca92232c0d06b577474b4e3a8"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#add52cedca92232c0d06b577474b4e3a8">inv_adv_coef</a> =&gt; null()</td></tr>
 <tr class="separator:add52cedca92232c0d06b577474b4e3a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a59c691aee9249047ecdf3c4c240b9b19"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#a59c691aee9249047ecdf3c4c240b9b19">inverse</a></td></tr>
-<tr class="separator:a59c691aee9249047ecdf3c4c240b9b19"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad48b90a323e5bf053075a597f0c4bc2f"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#ad48b90a323e5bf053075a597f0c4bc2f">of</a></td></tr>
-<tr class="separator:ad48b90a323e5bf053075a597f0c4bc2f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adfcceabfbe5ca89e3dc81710be1fa6f4"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#adfcceabfbe5ca89e3dc81710be1fa6f4">adv_coef_grad</a> =&gt; null()</td></tr>
 <tr class="separator:adfcceabfbe5ca89e3dc81710be1fa6f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adcde8f2522c5febfd9b2e1fad07447de"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#adcde8f2522c5febfd9b2e1fad07447de">gradient</a></td></tr>
-<tr class="separator:adcde8f2522c5febfd9b2e1fad07447de"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa78a22a9bdf2c3325b1eea2980ad14da"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#aa78a22a9bdf2c3325b1eea2980ad14da">inv_permeability</a> =&gt; null()</td></tr>
 <tr class="separator:aa78a22a9bdf2c3325b1eea2980ad14da"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Data Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Required values to compute the fluxes for porous media. Effectively the sigma terms from the papers Currently they are oversized since apart from the permeability they are not tensors, this should be changed! </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">adv_coef</td><td>=&gt; null() Sigmas at the boundary to calculate fluxes </td></tr>
+    <tr><td class="paramname">inv_adv_coef</td><td>=&gt; null() Inverse of sigmas at the boundary to calculate fluxes </td></tr>
+    <tr><td class="paramname">adv_coef_grad</td><td>=&gt; null() Gradient of the sigmas at the boundary to calculate fluxes </td></tr>
+    <tr><td class="paramname">inv_permeability</td><td>=&gt; null() Gradient of the sigmas at the boundary to calculate fluxes </td></tr>
+  </table>
+  </dd>
+</dl>
+</div><h2 class="groupheader">Member Data Documentation</h2>
 <a id="a7dfe3f6172db8a9567e3ddc8224454fa"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a7dfe3f6172db8a9567e3ddc8224454fa">&#9670;&nbsp;</a></span>adv_coef</h2>
 
@@ -136,76 +130,6 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="ade79cb61194e7f993e5157edb8b25f7b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ade79cb61194e7f993e5157edb8b25f7b">&#9670;&nbsp;</a></span>at</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::porous_adv_coefs::at</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a114d2cbc2bd6fff5e94844d99e436a67"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a114d2cbc2bd6fff5e94844d99e436a67">&#9670;&nbsp;</a></span>boundary</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::porous_adv_coefs::boundary</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a4409aae04a9a272fd3ca09e0f7e2ed2a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a4409aae04a9a272fd3ca09e0f7e2ed2a">&#9670;&nbsp;</a></span>calculate</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::porous_adv_coefs::calculate</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aa451c2dd13ac6333fd8f4e2efcfa4df3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa451c2dd13ac6333fd8f4e2efcfa4df3">&#9670;&nbsp;</a></span>fluxes</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::porous_adv_coefs::fluxes</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="adcde8f2522c5febfd9b2e1fad07447de"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#adcde8f2522c5febfd9b2e1fad07447de">&#9670;&nbsp;</a></span>gradient</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::porous_adv_coefs::gradient</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="add52cedca92232c0d06b577474b4e3a8"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#add52cedca92232c0d06b577474b4e3a8">&#9670;&nbsp;</a></span>inv_adv_coef</h2>
 
@@ -228,76 +152,6 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::porous_adv_coefs::inv_permeability =&gt; null()</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a59c691aee9249047ecdf3c4c240b9b19"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a59c691aee9249047ecdf3c4c240b9b19">&#9670;&nbsp;</a></span>inverse</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, :, : ), pointer multi_data_types::porous_adv_coefs::inverse</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ad48b90a323e5bf053075a597f0c4bc2f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad48b90a323e5bf053075a597f0c4bc2f">&#9670;&nbsp;</a></span>of</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::porous_adv_coefs::of</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="af4efb17fd87edcc8a116ab61f6622b54"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af4efb17fd87edcc8a116ab61f6622b54">&#9670;&nbsp;</a></span>sigmas</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::porous_adv_coefs::sigmas</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a7004b235808234f1c5f91f62a7e88e6a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7004b235808234f1c5f91f62a7e88e6a">&#9670;&nbsp;</a></span>the</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::porous_adv_coefs::the</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ae9dc6f1ae814147ebdb2d14c8008ac94"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae9dc6f1ae814147ebdb2d14c8008ac94">&#9670;&nbsp;</a></span>to</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::porous_adv_coefs::to</td>
         </tr>
       </table>
 </div><div class="memdoc">

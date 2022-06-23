@@ -1,52 +1,52 @@
 <map id="calc_cvpres_from_fepres" name="calc_cvpres_from_fepres">
 <area shape="rect" id="node1" title=" " alt="" coords="5,1533,189,1560"/>
-<area shape="rect" id="node2" href="$namespacecv__advection.html#a083e26c7f43d55723d9e316ef2069394" title="Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for..." alt="" coords="238,980,427,1007"/>
+<area shape="rect" id="node2" href="$namespacecv__advection.html#a4c9c5c3afe6e6355fcf8bfefbaa3211a" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="238,980,427,1007"/>
 <area shape="rect" id="node46" href="$multi__dyncore__dg_8_f90.html#aa2eb04d27443c785084566c701903207" title="and faster to compute than for Navier&#45;Stokes. Therefore, here the RHS and the Mass matrix are compute..." alt="" coords="237,2053,428,2080"/>
-<area shape="rect" id="node3" href="$namespacemulti__data__types.html#a0a02226803b07ac9bb8cbf05f9d0ab6a" title=" " alt="" coords="492,1070,687,1111"/>
+<area shape="rect" id="node3" href="$namespacemulti__data__types.html#a0a02226803b07ac9bb8cbf05f9d0ab6a" title="This subroutine allocates and initialises to zero all the arrays in a multi_shape_funs data type It u..." alt="" coords="492,1070,687,1111"/>
 <area shape="rect" id="node4" href="$cv-adv-dif_8_f90.html#aaff0fabb63f42671a6a051512b761705" title=" " alt="" coords="531,392,647,419"/>
 <area shape="rect" id="node5" href="$namespacecv__advection.html#ad76059547a9ad0bf6e0fdac35af6d724" title="Copies memory into the same large array to then perform a projection from CV to FE." alt="" coords="777,289,950,316"/>
 <area shape="rect" id="node9" href="$namespacemulti__pipes.html#a7cfd75b337f007460a86d927e152004e" title=": This sub modifies either MmatCT or the Advection&#45;diffusion equation for 1D pipe modelling NOTE fina..." alt="" coords="499,1253,680,1294"/>
-<area shape="rect" id="node10" href="$namespacecv__advection.html#a46d56280fc42d8db708b1658f9d4d6cb" title=" " alt="" coords="518,626,661,667"/>
+<area shape="rect" id="node10" href="$namespacecv__advection.html#a46d56280fc42d8db708b1658f9d4d6cb" title="For the anisotropic limiting scheme we find the upwind values by interpolation using the subroutine F..." alt="" coords="518,626,661,667"/>
 <area shape="rect" id="node12" href="$namespacemulti__tools.html#aedaed2b29fa348112b4f347045e75ab6" title=": Calculate FACE_ELE &#45; the list of elements surrounding an element and referenced with a face &#45;ve val..." alt="" coords="768,2003,959,2029"/>
-<area shape="rect" id="node13" href="$namespacecv__advection.html#a9a0d23f536863720989376a298e7bfca" title=" " alt="" coords="501,1435,677,1461"/>
+<area shape="rect" id="node13" href="$namespacecv__advection.html#a9a0d23f536863720989376a298e7bfca" title="Calculate surface element, surface control volume: SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC for a face..." alt="" coords="501,1435,677,1461"/>
 <area shape="rect" id="node14" href="$namespaceshape__functions__prototype.html#ae23b2b5b8e264b0e1b498f4e28f1c18d" title=" " alt="" coords="490,1135,689,1177"/>
-<area shape="rect" id="node16" href="$namespacemulti__data__types.html#a5641f05bcbbf1c56b952f99ed0cd1f67" title=" " alt="" coords="758,1827,969,1869"/>
-<area shape="rect" id="node17" href="$namespacemulti__data__types.html#ab256dfeac442756797e748a252de6ea0" title=" " alt="" coords="484,1602,695,1643"/>
-<area shape="rect" id="node18" href="$namespacecv__advection.html#a3323eb4932694a86940d81127e40d9fe" title=" " alt="" coords="513,1318,666,1359"/>
+<area shape="rect" id="node16" href="$namespacemulti__data__types.html#a5641f05bcbbf1c56b952f99ed0cd1f67" title="Deallocates the required memory to store the derivatives of the shape functions." alt="" coords="758,1827,969,1869"/>
+<area shape="rect" id="node17" href="$namespacemulti__data__types.html#ab256dfeac442756797e748a252de6ea0" title="This subroutine deallocates and nullifies all the fields inside multi_shape_funs." alt="" coords="484,1602,695,1643"/>
+<area shape="rect" id="node18" href="$namespacecv__advection.html#a3323eb4932694a86940d81127e40d9fe" title="This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX based on..." alt="" coords="513,1318,666,1359"/>
 <area shape="rect" id="node20" href="$cv-adv-dif_8_f90.html#afb4e96858b9341a76e72da5321bb4562" title=" " alt="" coords="522,1201,657,1228"/>
-<area shape="rect" id="node21" href="$namespacecv__advection.html#a581f8fe3e0c643ca294adf375008b018" title=" " alt="" coords="519,1785,660,1826"/>
+<area shape="rect" id="node21" href="$namespacecv__advection.html#a581f8fe3e0c643ca294adf375008b018" title="We are on the boundary or next to another element. Determine CV_OTHER_LOC, U_OTHER_LOC...." alt="" coords="519,1785,660,1826"/>
 <area shape="rect" id="node22" href="$cv-adv-dif_8_f90.html#a427571cc398104aab11b15662262c017" title="Computes the flux between CVs." alt="" coords="517,1384,661,1411"/>
 <area shape="rect" id="node26" href="$cv-adv-dif_8_f90.html#a721d9557da90724f09df1b2086a97119" title="Computes the flux between CVs." alt="" coords="509,1851,669,1877"/>
 <area shape="rect" id="node27" href="$cv-adv-dif_8_f90.html#a89933f3d5d5183f002dece1a1e67174c" title="Computes the flux between CVs for porous media. NDOTQNEW contains the fluxes for a given gauss integr..." alt="" coords="503,1485,675,1512"/>
 <area shape="rect" id="node28" href="$cv-adv-dif_8_f90.html#a613230535e80cb2894e9b6447ce613e9" title=" " alt="" coords="509,5,670,32"/>
-<area shape="rect" id="node29" href="$namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b" title="@DEPRECATED: Gets memory from packed state" alt="" coords="499,57,680,98"/>
+<area shape="rect" id="node29" href="$namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b" title="@DEPRECATED: Gets memory from packed state This subroutine returns a pointer to the desired values of..." alt="" coords="499,57,680,98"/>
 <area shape="rect" id="node30" href="$namespacecopy__outof__state.html#ac1305d6f3dc1c1ec92a4135ea55947b9" title=": For a given field, retrieve the associated finite element field name" alt="" coords="476,123,703,149"/>
 <area shape="rect" id="node31" href="$namespacecopy__outof__state.html#abc850cced2fb9b525f015e758e4b45da" title=": For a given field, retrieve the associated old field name" alt="" coords="479,173,699,200"/>
-<area shape="rect" id="node32" href="$cv-adv-dif_8_f90.html#a7c45215f7bff94897216c155967c06e4" title=" " alt="" coords="544,224,635,251"/>
+<area shape="rect" id="node32" href="$cv-adv-dif_8_f90.html#a7c45215f7bff94897216c155967c06e4" title="If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage." alt="" coords="544,224,635,251"/>
 <area shape="rect" id="node33" href="$namespacecopy__outof__state.html#ab7c981b328d9950b1c375aaacaa3cda0" title=": Checks whether a field is constant or not" alt="" coords="513,326,666,367"/>
-<area shape="rect" id="node34" href="$namespacecv__advection.html#ae629d3a52942059265356baccf02b919" title=" " alt="" coords="503,1537,675,1578"/>
+<area shape="rect" id="node34" href="$namespacecv__advection.html#ae629d3a52942059265356baccf02b919" title="Computes the limited values at the interface, not as generic as the anisotropic one and never used ac..." alt="" coords="503,1537,675,1578"/>
 <area shape="rect" id="node36" href="$cv-adv-dif_8_f90.html#a77201531d5bc443a857dce86befbb61e" title=" " alt="" coords="493,443,686,485"/>
 <area shape="rect" id="node37" href="$namespacecv__advection.html#a33cb5d5dfd5eced81d2952c7dcd294d5" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="519,1719,660,1761"/>
-<area shape="rect" id="node38" href="$namespacecv__advection.html#a5c177e18f7b1275cc9b308000daaa788" title=" " alt="" coords="511,509,667,550"/>
+<area shape="rect" id="node38" href="$namespacecv__advection.html#a5c177e18f7b1275cc9b308000daaa788" title="This subroutine caculates the discretised cty eqn acting on the velocities i.e. MmatCT,..." alt="" coords="511,509,667,550"/>
 <area shape="rect" id="node39" href="$namespacemulti__tools.html#a225d95bb84187e3f0fcee8a3bd08b221" title=" " alt="" coords="514,575,665,601"/>
 <area shape="rect" id="node40" href="$namespaceshape__functions__linear__quadratic.html#a523197b210811772a490d2fecb451771" title=": Computes the number of Gauss integration points and all the necessary information" alt="" coords="501,691,677,733"/>
 <area shape="rect" id="node41" href="$namespacecv__advection.html#a7a433d2f6b47e86ffdbc1fc4af1e7a05" title=" " alt="" coords="502,757,677,784"/>
-<area shape="rect" id="node42" href="$namespacecv__advection.html#ae140305e60c328f17beabcae47d8aa6f" title=" " alt="" coords="512,809,667,850"/>
-<area shape="rect" id="node43" href="$namespacecv__advection.html#ad714b20d018bf748c3ad080732b7c9cc" title=" " alt="" coords="508,874,671,915"/>
-<area shape="rect" id="node44" href="$namespacecopy__outof__state.html#ab4280b302a2f45375be2df118ed6d100" title=": Sets the boundary condition, if the time has advance and the BCs changed, here they are set to the ..." alt="" coords="496,939,683,981"/>
+<area shape="rect" id="node42" href="$namespacecv__advection.html#ae140305e60c328f17beabcae47d8aa6f" title="Detects whether the element has a shockfront or not." alt="" coords="512,809,667,850"/>
+<area shape="rect" id="node43" href="$namespacecv__advection.html#ad714b20d018bf748c3ad080732b7c9cc" title="If PACK then UNpack loc_f into T_ALL as long at IGOT_T==1 and STORE and not already in storage...." alt="" coords="508,874,671,915"/>
+<area shape="rect" id="node44" href="$namespacecopy__outof__state.html#ab4280b302a2f45375be2df118ed6d100" title=": Sets the boundary condition, if the time has advanced and the BCs changed, here they are set to the..." alt="" coords="496,939,683,981"/>
 <area shape="rect" id="node45" href="$namespacecopy__outof__state.html#a3e466dfb76c8c3e30de12d2f7d36d3bb" title=": Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a g..." alt="" coords="496,1005,683,1046"/>
-<area shape="rect" id="node6" href="$namespaceshape__functions__ndim.html#abb4ec02f375fe02820f1bf733d8fb031" title=" " alt="" coords="779,370,947,411"/>
+<area shape="rect" id="node6" href="$namespaceshape__functions__ndim.html#abb4ec02f375fe02820f1bf733d8fb031" title="get the shape functions for a triangle/tetrahedron" alt="" coords="779,370,947,411"/>
 <area shape="rect" id="node7" href="$namespacemulti__tools.html#a9bc979224e98f447e412133da3464728" title=":This function is a tolerance function for a value which is used as a denominator...." alt="" coords="793,1300,934,1327"/>
 <area shape="rect" id="node8" href="$cv-adv-dif_8_f90.html#aad25281c21796ab5cdd1ecf160cdad8f" title=" " alt="" coords="802,436,925,463"/>
 <area shape="rect" id="node11" href="$cv-adv-dif_8_f90.html#a6b4e2b7cd1b1214a242258cc6f8b753a" title=" " alt="" coords="774,633,953,660"/>
 <area shape="rect" id="node15" href="$multi__shape__fct_8_f90.html#a3ac481479452947a759fbb6c9cf743e9" title=" " alt="" coords="774,1143,953,1169"/>
 <area shape="rect" id="node19" href="$namespacemulti__tools.html#a4f90f9b3033bd34d8d52d140a8b6d8cf" title=" " alt="" coords="771,1233,956,1260"/>
-<area shape="rect" id="node23" href="$namespacecv__advection.html#afc0d98d467a15c460d49668d0194344a" title=" " alt="" coords="779,1419,948,1461"/>
+<area shape="rect" id="node23" href="$namespacecv__advection.html#afc0d98d467a15c460d49668d0194344a" title="This sub calculates the limited face values TDADJ(1...SNGI) from the central difference face values T..." alt="" coords="779,1419,948,1461"/>
 <area shape="rect" id="node24" href="$namespacemulti__tools.html#a00bc5585e5ce49ad92386eb4acca54ff" title=":This function is a tolerance function for strictly positive values used as a denominator...." alt="" coords="789,1368,938,1395"/>
 <area shape="rect" id="node25" href="$namespacemulti__tools.html#ad2dc4462bad46ef99ca0057cb3c91262" title=" " alt="" coords="789,1485,938,1512"/>
-<area shape="rect" id="node35" href="$cv-adv-dif_8_f90.html#a5c58181433ef3d6296d003eccb780c6d" title=" " alt="" coords="762,1544,965,1571"/>
+<area shape="rect" id="node35" href="$cv-adv-dif_8_f90.html#a5c58181433ef3d6296d003eccb780c6d" title="Populate limiting matrix based on max and min values For each node, find the largest and smallest val..." alt="" coords="762,1544,965,1571"/>
 <area shape="rect" id="node47" href="$namespaceshape__functions__ndim.html#a29b95710b57b76fd0d961ec749a71304" title=" " alt="" coords="779,2057,947,2098"/>
-<area shape="rect" id="node48" href="$namespacecv__advection.html#aba06a5f3680d58e1db30e740119dd5dc" title=" " alt="" coords="751,2128,976,2155"/>
+<area shape="rect" id="node48" href="$namespacecv__advection.html#aba06a5f3680d58e1db30e740119dd5dc" title="Form approximate surface normal (NORMX_ALL(1),NORMX_ALL(2),NORMX_ALL(3))" alt="" coords="751,2128,976,2155"/>
 <area shape="rect" id="node49" href="$multi__dyncore__dg_8_f90.html#a6a7f0d36d29011eddc120ea33cb763db" title="Here no homogenisation can be performed. NOTE: FOR THE TIME BEING ONLY ROW_SUM IS ACTIVATED HERE,..." alt="" coords="525,2104,653,2131"/>
 <area shape="rect" id="node50" href="$namespacemultiphase__1d__engine.html#a03c49a0f1a67a464bbb77115775ae4d1" title=": This subroutine performs and introduces the gradient of a RHS field (Capillary pressure for example..." alt="" coords="779,2188,948,2244"/>
 </map>

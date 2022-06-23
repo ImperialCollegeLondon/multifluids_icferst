@@ -1,22 +1,13 @@
 var searchData=
 [
-  ['w_5fdg_5fvel_5fint_5fopt_2220',['w_dg_vel_int_opt',['../structmulti__data__types_1_1multi__discretization__opts.html#ad7d1e8bbb8f2fda4b275a821217fa84f',1,'multi_data_types::multi_discretization_opts']]],
-  ['we_2221',['we',['../structmulti__data__types_1_1multi__field.html#a7b69f4163d39e36d4d3a22431c321a40',1,'multi_data_types::multi_field']]],
-  ['weights_2222',['weights',['../structmulti__data__types_1_1multi__matrices.html#aaeaa10f0aa2bf5a5b296e948d67acd10',1,'multi_data_types::multi_matrices']]],
-  ['weigth_2223',['weigth',['../structmulti__data__types_1_1multi__dev__shape__funs.html#ab127d77e174f0900c53fb987a63e795e',1,'multi_data_types::multi_dev_shape_funs']]],
-  ['when_2224',['when',['../structmulti__data__types_1_1multi__matrices.html#a7692954cd85b77a551c85558a55b6650',1,'multi_data_types::multi_matrices']]],
-  ['whether_2225',['whether',['../structmulti__data__types_1_1multi__matrices.html#a03082808d466636f7f101bed970bc38b',1,'multi_data_types::multi_matrices']]],
-  ['which_2226',['which',['../structmulti__magma_1_1coupling__term__coef.html#af7320802c11e56ea79486218a1f305f0',1,'multi_magma::coupling_term_coef']]],
-  ['wic_5fd_5fbc_5fdirichlet_2227',['wic_d_bc_dirichlet',['../namespacecv__advection.html#aa646dbddd6308ea78c1c05d5b51c4d22',1,'cv_advection']]],
-  ['wic_5fflip_5fp_5fvel_5fbcs_2228',['wic_flip_p_vel_bcs',['../structmulti__data__types_1_1multi__matrices.html#a0e52a852be17e8357388e82fe7d49ba3',1,'multi_data_types::multi_matrices']]],
-  ['wic_5fp_5fbc_5fdirichlet_2229',['wic_p_bc_dirichlet',['../namespacecv__advection.html#a03647ce996f35f7512f2206c2a4bc8d4',1,'cv_advection']]],
-  ['wic_5fp_5fbc_5ffree_2230',['wic_p_bc_free',['../namespacecv__advection.html#a6d139b0bd7722182c16855e683657878',1,'cv_advection']]],
-  ['wic_5ft_5fbc_5fdiri_5fadv_5fand_5frobin_2231',['wic_t_bc_diri_adv_and_robin',['../namespacecv__advection.html#a29adecab6c33872a56cf4775b4e1c3e3',1,'cv_advection']]],
-  ['wic_5ft_5fbc_5fdirichlet_2232',['wic_t_bc_dirichlet',['../namespacecv__advection.html#a939c43361c098c807280c739e30b5370',1,'cv_advection']]],
-  ['wic_5ft_5fbc_5frobin_2233',['wic_t_bc_robin',['../namespacecv__advection.html#a8f50cabe5b0bcd1018205e2d6f15f3ff',1,'cv_advection']]],
-  ['wic_5fu_5fbc_5fdiri_5fadv_5fand_5frobin_2234',['wic_u_bc_diri_adv_and_robin',['../namespacecv__advection.html#ab87709ec60fd78f0870ce18b9bbf7eb8',1,'cv_advection']]],
-  ['wic_5fu_5fbc_5fdirichlet_2235',['wic_u_bc_dirichlet',['../namespacecv__advection.html#a7ceb6fac2898be0cae2d603d5226f631',1,'cv_advection']]],
-  ['wic_5fu_5fbc_5fdirichlet_5finout_2236',['wic_u_bc_dirichlet_inout',['../namespacecv__advection.html#a03129ee41533b2c78d1ec116019892fa',1,'cv_advection']]],
-  ['wic_5fu_5fbc_5frobin_2237',['wic_u_bc_robin',['../namespacecv__advection.html#a6309cc2d2e0e51146784619230b6e70a',1,'cv_advection']]],
-  ['with_2238',['with',['../structmulti__data__types_1_1pipe__coords.html#ab3c99f5447d977ea157577313d817375',1,'multi_data_types::pipe_coords']]]
+  ['x_2042',['x',['../structmulti__data__types_1_1multi__ndgln.html#a1942bb72e5267ebb937bdeb10ff50ab3',1,'multi_data_types::multi_ndgln']]],
+  ['x_5fnloc_2043',['x_nloc',['../structmulti__data__types_1_1multi__dimensions.html#a11c0bfb8d9337ac9cff29d74a6cdf227',1,'multi_data_types::multi_dimensions']]],
+  ['x_5fnloc_5fp1_2044',['x_nloc_p1',['../structmulti__data__types_1_1multi__dimensions.html#ab65fcc204333374d1527877b1a71df3c',1,'multi_data_types::multi_dimensions']]],
+  ['x_5fnonods_2045',['x_nonods',['../structmulti__data__types_1_1multi__dimensions.html#a40cab245d1ddf18c8a5578ba2c522e17',1,'multi_data_types::multi_dimensions']]],
+  ['x_5fnonods_5fp1_2046',['x_nonods_p1',['../structmulti__data__types_1_1multi__dimensions.html#a5b828c6296d47bf959c210a7d614e05b',1,'multi_data_types::multi_dimensions']]],
+  ['x_5fp1_2047',['x_p1',['../structmulti__data__types_1_1multi__ndgln.html#a0c473d1b0918af2448b64e36eb93e23b',1,'multi_data_types::multi_ndgln']]],
+  ['x_5fsnloc_2048',['x_snloc',['../structmulti__data__types_1_1multi__dimensions.html#abcf20727a16ac35f2930d30f9c5a699f',1,'multi_data_types::multi_dimensions']]],
+  ['xu_2049',['xu',['../structmulti__data__types_1_1multi__ndgln.html#a8b6b06159b0796b7f34ede9273a66a85',1,'multi_data_types::multi_ndgln']]],
+  ['xu_5fnloc_2050',['xu_nloc',['../structmulti__data__types_1_1multi__dimensions.html#a2428fe815fabc37c84fd8e057f79b611',1,'multi_data_types::multi_dimensions']]],
+  ['xu_5fnonods_2051',['xu_nonods',['../structmulti__data__types_1_1multi__dimensions.html#ae89fc48bf3805ded86fa531630f2da87',1,'multi_data_types::multi_dimensions']]]
 ];

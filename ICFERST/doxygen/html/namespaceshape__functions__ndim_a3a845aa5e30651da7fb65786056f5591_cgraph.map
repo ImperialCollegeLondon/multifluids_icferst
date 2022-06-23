@@ -1,5 +1,5 @@
 <map id="shape_functions_ndim::volume_quad_map" name="shape_functions_ndim::volume_quad_map">
-<area shape="rect" id="node1" title=" " alt="" coords="5,5,173,47"/>
+<area shape="rect" id="node1" title="Compute the cv_iloc^{th} shape function value at point (xgi, ygi, zgi)" alt="" coords="5,5,173,47"/>
 <area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#a2cb290bece46a6733c9af01aec40d451" title=" " alt="" coords="221,5,389,47"/>
 <area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#a7dbb03fa7fa657a2db86576f41ef2aa4" title=" " alt="" coords="437,5,605,47"/>
 </map>

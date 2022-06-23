@@ -25,7 +25,7 @@
    <div id="projectname">ICFERST
    &#160;<span id="projectnumber">22_06</span>
    </div>
-   <div id="projectbrief">Reservoir simulator</div>
+   <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
  </tr>
  </tbody>
@@ -81,55 +81,341 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ac29f3696d98ed62d5748070bf1330a12"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac.html#ac29f3696d98ed62d5748070bf1330a12">detnlxr_invjac1</a></td></tr>
-<tr class="separator:ac29f3696d98ed62d5748070bf1330a12"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab5b946113962b343ed04eda395332723"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac.html#ab5b946113962b343ed04eda395332723">detnlxr_invjac2</a></td></tr>
-<tr class="separator:ab5b946113962b343ed04eda395332723"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac668dd394d017757f279ab0a4baf940d"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac.html#ac668dd394d017757f279ab0a4baf940d">detnlxr_invjac3</a></td></tr>
-<tr class="separator:ac668dd394d017757f279ab0a4baf940d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3e30eee35d33fc65ce854417e4de3f3e"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac.html#a3e30eee35d33fc65ce854417e4de3f3e">detnlxr_invjac1</a> (ELE, X_ALL, XONDGL, weight, nshape, nshapelx, DevFuns)</td></tr>
+<tr class="memdesc:a3e30eee35d33fc65ce854417e4de3f3e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the inverse of the Jacobian of a Finite element Example of calling this:  <a href="interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac.html#a3e30eee35d33fc65ce854417e4de3f3e">More...</a><br /></td></tr>
+<tr class="separator:a3e30eee35d33fc65ce854417e4de3f3e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae978520e2d438141cc47edbb959f69f0"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac.html#ae978520e2d438141cc47edbb959f69f0">detnlxr_invjac2</a> (ELE, X_ALL, Mdims, XONDGL, N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, NX_ALL, INV_JAC)</td></tr>
+<tr class="memdesc:ae978520e2d438141cc47edbb959f69f0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the inverse of the Jacobian of a Finite element.  <a href="interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac.html#ae978520e2d438141cc47edbb959f69f0">More...</a><br /></td></tr>
+<tr class="separator:ae978520e2d438141cc47edbb959f69f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a50c870ef62d3fa58696df9bd66f95cf9"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac.html#a50c870ef62d3fa58696df9bd66f95cf9">detnlxr_invjac3</a> (ELE, X, Y, Z, XONDGL, TOTELE, NONODS, NLOC, NGI, N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, NX, NY, NZ, NDIM, INV_JAC)</td></tr>
+<tr class="memdesc:a50c870ef62d3fa58696df9bd66f95cf9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the inverse of the Jacobian of a Finite element.  <a href="interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac.html#a50c870ef62d3fa58696df9bd66f95cf9">More...</a><br /></td></tr>
+<tr class="separator:a50c870ef62d3fa58696df9bd66f95cf9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>: Computes the derivatives of the shape functions and the inverse of the Jacobian </p>
 </div><h2 class="groupheader">Member Function/Subroutine Documentation</h2>
-<a id="ac29f3696d98ed62d5748070bf1330a12"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac29f3696d98ed62d5748070bf1330a12">&#9670;&nbsp;</a></span>detnlxr_invjac1()</h2>
+<a id="a3e30eee35d33fc65ce854417e4de3f3e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3e30eee35d33fc65ce854417e4de3f3e">&#9670;&nbsp;</a></span>detnlxr_invjac1()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">shape_functions_linear_quadratic::detnlxr_invjac::detnlxr_invjac1</td>
+          <td class="memname">subroutine shape_functions_linear_quadratic::detnlxr_invjac::detnlxr_invjac1 </td>
+          <td>(</td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>ELE</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension(:,:), intent(in)&#160;</td>
+          <td class="paramname"><em>X_ALL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, dimension( : ), intent(in)&#160;</td>
+          <td class="paramname"><em>XONDGL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension(:), intent(in)&#160;</td>
+          <td class="paramname"><em>weight</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension(:,:), intent(in)&#160;</td>
+          <td class="paramname"><em>nshape</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension(:,:,:), intent(in)&#160;</td>
+          <td class="paramname"><em>nshapelx</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type (<a class="el" href="structmulti__data__types_1_1multi__dev__shape__funs.html">multi_dev_shape_funs</a>)&#160;</td>
+          <td class="paramname"><em>DevFuns</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
 
+<p>Computes the inverse of the Jacobian of a Finite element Example of calling this: </p>
+<p>Calculate DETWEI, RA, NX, NY, NZ for element ELE call DETNLXR_INVJAC( ELE, X_ALL, ndglnx, CV_funsscvfeweigh, CV_funsscvfen, CV_funsscvfenlx_all, SdevFuns) </p>
+
 </div>
 </div>
-<a id="ab5b946113962b343ed04eda395332723"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab5b946113962b343ed04eda395332723">&#9670;&nbsp;</a></span>detnlxr_invjac2()</h2>
+<a id="ae978520e2d438141cc47edbb959f69f0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae978520e2d438141cc47edbb959f69f0">&#9670;&nbsp;</a></span>detnlxr_invjac2()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">shape_functions_linear_quadratic::detnlxr_invjac::detnlxr_invjac2</td>
+          <td class="memname">subroutine shape_functions_linear_quadratic::detnlxr_invjac::detnlxr_invjac2 </td>
+          <td>(</td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>ELE</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>X_ALL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(<a class="el" href="structmulti__data__types_1_1multi__dimensions.html">multi_dimensions</a>), intent(in)&#160;</td>
+          <td class="paramname"><em>Mdims</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, dimension( : )&#160;</td>
+          <td class="paramname"><em>XONDGL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>N</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>NLX_ALL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(in)&#160;</td>
+          <td class="paramname"><em>WEIGHT</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>DETWEI</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>RA</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, intent(inout)&#160;</td>
+          <td class="paramname"><em>VOLUME</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">logical, intent(in)&#160;</td>
+          <td class="paramname"><em>DCYL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, :, : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>NX_ALL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :,:, : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>INV_JAC</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
 
+<p>Computes the inverse of the Jacobian of a Finite element. </p>
+
 </div>
 </div>
-<a id="ac668dd394d017757f279ab0a4baf940d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac668dd394d017757f279ab0a4baf940d">&#9670;&nbsp;</a></span>detnlxr_invjac3()</h2>
+<a id="a50c870ef62d3fa58696df9bd66f95cf9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a50c870ef62d3fa58696df9bd66f95cf9">&#9670;&nbsp;</a></span>detnlxr_invjac3()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">shape_functions_linear_quadratic::detnlxr_invjac::detnlxr_invjac3</td>
+          <td class="memname">subroutine shape_functions_linear_quadratic::detnlxr_invjac::detnlxr_invjac3 </td>
+          <td>(</td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>ELE</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(in)&#160;</td>
+          <td class="paramname"><em>X</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(in)&#160;</td>
+          <td class="paramname"><em>Y</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(in)&#160;</td>
+          <td class="paramname"><em>Z</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, dimension( : )&#160;</td>
+          <td class="paramname"><em>XONDGL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>TOTELE</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>NONODS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>NLOC</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>NGI</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>N</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>NLX</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>NLY</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>NLZ</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(in)&#160;</td>
+          <td class="paramname"><em>WEIGHT</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>DETWEI</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>RA</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, intent(inout)&#160;</td>
+          <td class="paramname"><em>VOLUME</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">logical, intent(in)&#160;</td>
+          <td class="paramname"><em>D1</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">logical, intent(in)&#160;</td>
+          <td class="paramname"><em>D3</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">logical, intent(in)&#160;</td>
+          <td class="paramname"><em>DCYL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>NX</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>NY</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>NZ</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>NDIM</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :,:, : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>INV_JAC</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Computes the inverse of the Jacobian of a Finite element. </p>
 
 </div>
 </div>

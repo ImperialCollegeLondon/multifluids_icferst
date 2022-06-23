@@ -1,12 +1,17 @@
 \hypertarget{namespacecopy__outof__state}{}\doxysection{copy\+\_\+outof\+\_\+state Module Reference}
 \label{namespacecopy__outof__state}\index{copy\_outof\_state@{copy\_outof\_state}}
+
+
+This module enables the multiphase prototype code to interact with state by copying everything required from state to I\+C\+F\+E\+R\+ST.  
+
+
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_ab5c876f8f241119d1dedc0bffa8fa159}{get\+\_\+primary\+\_\+scalars\+\_\+new}} (state, Mdims)
 \begin{DoxyCompactList}\small\item\em This subroutine extracts all primary variables associated with the mesh from state, and associated them with the variables used in the Multi\+Fluids model. \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e}{compute\+\_\+node\+\_\+global\+\_\+numbers}} (state, ndgln)
-\begin{DoxyCompactList}\small\item\em This subroutine calculates the global node numbers requested to operates in the M\+P-\/space. \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em This subroutine calculates the global node numbers requested to operates in I\+C\+F\+E\+R\+ST. \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_a25e9236f15044530da105400e0e3e3f4}{get\+\_\+ele\+\_\+type}} (x\+\_\+nloc, cv\+\_\+ele\+\_\+type, p\+\_\+ele\+\_\+type, u\+\_\+ele\+\_\+type, mat\+\_\+ele\+\_\+type, u\+\_\+sele\+\_\+type, cv\+\_\+sele\+\_\+type)
 \begin{DoxyCompactList}\small\item\em \+: Obtain the type of element u\+\_\+ele\+\_\+type = cv\+\_\+ele\+\_\+type = p\+\_\+ele\+\_\+type will flag the dimension and type of element\+: = 1 or 2\+: 1D (linear and quadratic, respectively) -\/N\+OT S\+U\+P\+P\+O\+R\+T\+E\+D-\/ = 3 or 4\+: triangle (linear or quadratic, respectively) = 5 or 6\+: quadrilateral (bi-\/linear or tri-\/linear, respectively)-\/N\+OT S\+U\+P\+P\+O\+R\+T\+E\+D-\/ = 7 or 8\+: tetrahedron (linear or quadratic, respectively) = 9 or 10\+: hexahedron (bi-\/linear or tri-\/linear, respectively) -\/N\+OT S\+U\+P\+P\+O\+R\+T\+E\+D-\/ \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_aed2618045311aa635b4b0bd2599ab609}{get\+\_\+ele\+\_\+type\+\_\+new}} (Mdims, Mdisopt)
@@ -14,7 +19,7 @@ subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_aed2618045311aa6
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_add060a0a644c1d8db9c718a82d89c852}{get\+\_\+discretisation\+\_\+options}} (state, Mdims, Mdisopt)
 \begin{DoxyCompactList}\small\item\em \+: This subroutine extract all discretisation options from the schema D\+I\+S\+O\+PT Options\+: =0 1st order in space Theta=specified U\+N\+I\+V\+E\+R\+S\+AL =1 1st order in space Theta=non-\/linear U\+N\+I\+V\+E\+R\+S\+AL =2 Trapezoidal rule in space Theta=specified U\+N\+I\+V\+E\+R\+S\+AL =2 if isotropic limiter then F\+E\+M-\/quadratic \& stratification adjust. Theta=non-\/linear =3 Trapezoidal rule in space Theta=non-\/linear U\+N\+I\+V\+E\+R\+S\+AL =4 Finite elements in space Theta=specified U\+N\+I\+V\+E\+R\+S\+AL =5 Finite elements in space Theta=non-\/linear U\+N\+I\+V\+E\+R\+S\+AL =6 Finite elements in space Theta=specified N\+O\+NE =7 Finite elements in space Theta=non-\/linear N\+O\+NE =8 Finite elements in space Theta=specified D\+O\+W\+N\+W\+I\+N\+D+\+I\+N\+T\+E\+R\+F\+A\+CE T\+R\+A\+C\+K\+I\+NG =9 Finite elements in space Theta=non-\/linear D\+O\+W\+N\+W\+I\+N\+D+\+I\+N\+T\+E\+R\+F\+A\+CE T\+R\+A\+C\+K\+I\+NG \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_ab4280b302a2f45375be2df118ed6d100}{update\+\_\+boundary\+\_\+conditions}} (state, stotel, cv\+\_\+snloc, nphase, suf\+\_\+t\+\_\+bc, suf\+\_\+t\+\_\+bc\+\_\+rob1, suf\+\_\+t\+\_\+bc\+\_\+rob2, tracer)
-\begin{DoxyCompactList}\small\item\em \+: Sets the boundary condition, if the time has advance and the B\+Cs changed, here they are set to the new time-\/level \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em \+: Sets the boundary condition, if the time has advanced and the B\+Cs changed, here they are set to the new time-\/level \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_afca89971343f6586b89f1cddda00b2c8}{pack\+\_\+multistate}} (npres, state, packed\+\_\+state, multiphase\+\_\+state, multicomponent\+\_\+state, pmulti\+\_\+state)
 \begin{DoxyCompactList}\small\item\em \+: This subroutine creates packed\+\_\+state from state(\+:) and links the appropiate memory so it is acessible from both states. This subroutine also introduces fields not used by fludity but required by I\+C-\/\+F\+E\+R\+ST \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_adba75f9a3f64d519ecf58b2b9159d629}{prepare\+\_\+absorptions}} (state, Mdims, multi\+\_\+absorp)
@@ -28,11 +33,11 @@ subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_a60ec84623fb5827
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a}{adaptive\+\_\+nonlinear}} (Mdims, packed\+\_\+state, reference\+\_\+field, its, Repeat\+\_\+time\+\_\+step, Exit\+Non\+Linear\+Loop, non\+Linear\+Adapt\+Ts, old\+\_\+acctim, order, calculate\+\_\+mass\+\_\+delta, adapt\+\_\+mesh\+\_\+in\+\_\+\+F\+PI, Accum\+\_\+\+Courant, Courant\+\_\+tol, Current\+\_\+\+Courant, first\+\_\+time\+\_\+step)
 \begin{DoxyCompactList}\small\item\em \+: This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonlinear iterations are going and depending on that increase the timestep or decreases the timestep and repeats that timestep \end{DoxyCompactList}\item 
 real function, public \mbox{\hyperlink{namespacecopy__outof__state_ad775c010bade229fba0416002e6928a6}{inf\+\_\+norm\+\_\+scalar\+\_\+normalised}} (tracer, reference\+\_\+tracer, dumping, totally\+\_\+min\+\_\+max)
-\begin{DoxyCompactList}\small\item\em Calculate the inf norm of the normalised field, so the field goes from 0 to 1. \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs the tracer to be used and the reference tracer to normallise, the dumping to be set to 1.\+0 and totally\+\_\+min\+\_\+max which includes the min max values of the field across all processors also for normalisation. \end{DoxyCompactList}\item 
 real function, public \mbox{\hyperlink{namespacecopy__outof__state_a7d6957a54cc1cc0a38a4a7a90bca1f89}{get\+\_\+convergence\+\_\+functional}} (phasevolumefraction, reference\+\_\+sat, dumping, its)
 \begin{DoxyCompactList}\small\item\em \+: We create a potential to optimize F = sum (f$\ast$$\ast$2), so the solution is when this potential reaches a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.\+e. 10$^\wedge$-\/8 f = (New\+Sat-\/\+Old\+Sat)/\+Number of nodes; this is the typical approach for algebraic non linear systems \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_a0520a99d915a669f52eadab9a438194b}{get\+\_\+var\+\_\+from\+\_\+packed\+\_\+state}} (packed\+\_\+state, F\+E\+Density, Old\+F\+E\+Density, Iterated\+F\+E\+Density, Density, Old\+Density, Iterated\+Density, Phase\+Volume\+Fraction, Old\+Phase\+Volume\+Fraction, Iterated\+Phase\+Volume\+Fraction, Velocity, Old\+Velocity, Iterated\+Velocity, F\+E\+Phase\+Volume\+Fraction, Old\+F\+E\+Phase\+Volume\+Fraction, Iterated\+F\+E\+Phase\+Volume\+Fraction, Nonlinear\+Velocity, Old\+Nonlinear\+Velocity, Iterated\+Nonlinear\+Velocity, Component\+Density, Old\+Component\+Density, Iterated\+Component\+Density, Component\+Mass\+Fraction, Old\+Component\+Mass\+Fraction, Temperature, Old\+Temperature, Iterated\+Temperature, F\+E\+Temperature, Old\+F\+E\+Temperature, Iterated\+F\+E\+Temperature, Iterated\+Component\+Mass\+Fraction, F\+E\+Component\+Density, Old\+F\+E\+Component\+Density, Iterated\+F\+E\+Component\+Density, F\+E\+Component\+Mass\+Fraction, Old\+F\+E\+Component\+Mass\+Fraction, Iterated\+F\+E\+Component\+Mass\+Fraction, Pressure, F\+E\+Pressure, Old\+F\+E\+Pressure, C\+V\+Pressure, Old\+C\+V\+Pressure, C\+V\+\_\+\+Immobile\+\_\+\+Fraction, Coordinate, Velocity\+Coordinate, Pressure\+Coordinate, Material\+Coordinate, Cap\+Pressure, Immobile\+\_\+fraction, End\+Point\+Relperm, Relperm\+Exponent, Cap\+\_\+entry\+\_\+pressure, Cap\+\_\+exponent, Imbibition\+\_\+term, Concentration, Old\+Concentration, Iterated\+Concentration, F\+E\+Concentration, Old\+F\+E\+Concentration, Iterated\+F\+E\+Concentration, Enthalpy, Old\+Enthalpy, Iterated\+Enthalpy, F\+E\+Enthalpy, Old\+F\+E\+Enthalpy, Iterated\+F\+E\+Enthalpy)
-\begin{DoxyCompactList}\small\item\em @\+D\+E\+P\+R\+E\+C\+A\+T\+ED\+: Gets memory from packed state \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em @\+D\+E\+P\+R\+E\+C\+A\+T\+ED\+: Gets memory from packed state This subroutine returns a pointer to the desired values of a variable stored in packed state All the input variables (but packed\+\_\+stated) are pointers following the structure of the $\ast$\+\_\+\+A\+LL variables and also all of them are optional, hence you can obtaine whichever you want \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_a5fa62e07eab3607bcf414b67abe1148a}{printcsrmatrix}} (Matrix, find, col, dim\+\_\+same\+\_\+row)
 \begin{DoxyCompactList}\small\item\em \+: Subroutine to print C\+SR matrix by (row, column) Dimensions and phases are printed in different rows So for example Matrix(2,2,10) with two rows would be presented as a matrix ( 8 x 10) \end{DoxyCompactList}\item 
 logical function, public \mbox{\hyperlink{namespacecopy__outof__state_ab7c981b328d9950b1c375aaacaa3cda0}{is\+\_\+constant}} (tfield)
@@ -46,16 +51,19 @@ subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_a1394fdd5e9adcc1
 logical function, public \mbox{\hyperlink{namespacecopy__outof__state_acea2acdccf9091776be013ade24bcd97}{have\+\_\+option\+\_\+for\+\_\+any\+\_\+phase}} (path, nphase)
 \begin{DoxyCompactList}\small\item\em \+: Subroutine to check whether an option is true for any phase in diamond, if any is true it returns true. The path must be the part of the path inside the phase, i.\+e. /multiphase\+\_\+properties/capillary\+\_\+pressure \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_a2a2f72be9cad756d2151473988566c8d}{get\+\_\+darcyvelocity}} (Mdims, ndgln, state, packed\+\_\+state, upwnd)
-\begin{DoxyCompactList}\small\item\em \+: This subroutine calculates the actual Darcy velocity, but with P0\+DG precision \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em \+: This subroutine calculates the actual Darcy velocity, but with P0\+DG precision only! \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_adbfe914b0d919d92535a188ab7c0e384}{dump\+\_\+outflux}} (current\+\_\+time, itime, outfluxes)
 \begin{DoxyCompactList}\small\item\em \+: Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file called \textquotesingle{}simulation\+\_\+name\+\_\+outfluxes.\+csv\textquotesingle{}. In addition, the time integrated flux up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface\+\_\+ids. (In diamond this option can be found under \char`\"{}/io/dump\+\_\+boundaryflux/surface\+\_\+ids\char`\"{} and the user should specify an integer array containing the I\+Ds of every boundary they wish to integrate over). \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_a3e466dfb76c8c3e30de12d2f7d36d3bb}{update\+\_\+outfluxes}} (bcs\+\_\+outfluxes, outfluxes, sele, cv\+\_\+nodi, suf\+\_\+area, Vol\+\_\+flux, Mass\+\_\+flux, tracer, outfluxes\+\_\+fields, start\+\_\+phase, end\+\_\+phase)
-\begin{DoxyCompactList}\small\item\em \+: Updates the outfluxes information based on N\+D\+O\+T\+Q\+N\+EW, shape functions and transported fields for a given GI point in a certain element This subroutine should only be called if S\+E\+LE is on the B\+O\+U\+N\+D\+A\+RY Example of Mass\+\_\+flux\+: ndotq(iphase) $\ast$ Sdev\+FunsD\+E\+T\+W\+EI(gi) $\ast$ L\+I\+M\+D\+T(iphase) Example of Vol\+\_\+flux\+: ndotq(iphase) $\ast$ Sdev\+FunsD\+E\+T\+W\+EI(gi) $\ast$ L\+I\+M\+D\+T(iphase) \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em \+: Updates the outfluxes information based on N\+D\+O\+T\+Q\+N\+EW, shape functions and transported fields for a given GI point in a certain element This subroutine should only be called if S\+E\+LE is on the B\+O\+U\+N\+D\+A\+RY Example of Mass\+\_\+flux\+: ndotq(iphase) $\ast$ Sdev\+FunsD\+E\+T\+W\+EI(gi) $\ast$ L\+I\+M\+T(iphase) Example of Vol\+\_\+flux\+: ndotq(iphase) $\ast$ Sdev\+FunsD\+E\+T\+W\+EI(gi) $\ast$ L\+I\+M\+D\+T(iphase) \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_a6c5000c06758c4e42744252542c849cb}{enterforcebalanceequation}} (Enter\+Solve, its, itime, acctim, t\+\_\+adapt\+\_\+threshold, after\+\_\+adapt, after\+\_\+adapt\+\_\+itime, P\+V\+F\+\_\+cfl)
 \begin{DoxyCompactList}\small\item\em \+:--A Subroutine that returns a Logical, either to Enter the Force Balance Eqs or Not = given a requested\+\_\+cfl\+\_\+pressure it will skip the Force\+Balance\+Equation that many times = while if I have adaptive mesh it will solve the Force\+Balance\+Equation after each adapt\+\_\+time\+\_\+steps = The Subroutive also account for delaying adaptivity and swich between cfl\+\_\+pressure and after\+\_\+adapt= \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_a52b4659aa8636bb70d12b05923bc58b8}{impose\+\_\+connected\+\_\+bcs}} (outfluxes, packed\+\_\+state, Mdims, acctime)
-\begin{DoxyCompactList}\small\item\em \+: Using the outfluxes values, it imposes as BC the averaged value of another B\+C(from within the domain) It is a basic method to get this functionality but it will work in parallel. However, it does not guarantee mass conservation as it uses the value from the previous time-\/step although it can still be used for many cases such as A\+T\+ES, or ventilation. Overwrites the dirichlet BC values. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em \+: Using the outfluxes values, it imposes as BC the averaged value of another B\+C(from within the domain) It is a basic method to get this functionality but it will work in parallel. However, it does not guarantee mass conservation as it uses the value from the previous time-\/step although it can still be used for many cases such as A\+T\+ES, or ventilation. Overwrites the dirichlet BC values. Currently it uses the information from outfluxes so it is M\+A\+N\+D\+A\+T\+O\+RY to use and request outfluxes for those B\+Cs \end{DoxyCompactList}\end{DoxyCompactItemize}
 
+
+\doxysubsection{Detailed Description}
+This module enables the multiphase prototype code to interact with state by copying everything required from state to I\+C\+F\+E\+R\+ST. 
 
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a}\label{namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a}} 
@@ -71,6 +79,31 @@ subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_a52b4659aa8636bb
 \begin{DoxyAuthor}{Author}
 \+: Pablo Salinas 
 \end{DoxyAuthor}
+
+\begin{DoxyParams}{Parameters}
+{\em Mdims} & Dimensions of the model \\
+\hline
+{\em packed\+\_\+state} & Linked list with the fields for I\+C\+F\+E\+R\+ST \\
+\hline
+{\em reference\+\_\+field} & Field stored at the beginning of the non-\/linear loop to check convergence \\
+\hline
+{\em old\+\_\+acctim} & Previous actual time \\
+\hline
+{\em Repeat\+\_\+time\+\_\+step,Exit\+Non\+Linear\+Loop} & \\
+\hline
+{\em its} & Non-\/linear time iteration W\+A\+R\+N\+I\+NG\+: not to be modified unless V\+E\+RY sure \\
+\hline
+{\em non\+Linear\+Adapt\+Ts} & Flag controlling if we have adaptive time-\/step or not \\
+\hline
+{\em order} & Flag controlling what are we doing. 1)Store or get from backup; 2)Calculate and store reference\+\_\+field; \\
+\hline
+{\em adapt\+\_\+mesh\+\_\+in\+\_\+\+F\+PI,first\+\_\+time\+\_\+step} & \\
+\hline
+{\em Accum\+\_\+\+Courant,Courant\+\_\+tol,Current\+\_\+\+Courant} & \\
+\hline
+{\em calculate\+\_\+mass\+\_\+delta} & 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current F\+PI and 1st item \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -115,6 +148,26 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: Subroutine to calculate the integrated mass inside the domain 
 
+
+\begin{DoxyParams}{Parameters}
+{\em packed\+\_\+state} & \\
+\hline
+{\em Mdims} & \\
+\hline
+{\em mass\+\_\+ele} & volume of the element, split into cv\+\_\+nloc equally sized pieces (barycenter) \\
+\hline
+{\em cv\+\_\+ndgln} & local to global of the CV mesh only \\
+\hline
+{\em D\+E\+N\+\_\+\+A\+LL} & density of the field \\
+\hline
+{\em eles\+\_\+with\+\_\+pipe} & list of element that contain a well/pipe \\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyRetVals}{Return values}
+{\em calculate\+\_\+mass} & Output field containing all the mass within the domain \\
+\hline
+\end{DoxyRetVals}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -130,7 +183,7 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-This subroutine calculates the global node numbers requested to operates in the M\+P-\/space. 
+This subroutine calculates the global node numbers requested to operates in I\+C\+F\+E\+R\+ST. 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -156,6 +209,15 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file called \textquotesingle{}simulation\+\_\+name\+\_\+outfluxes.\+csv\textquotesingle{}. In addition, the time integrated flux up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface\+\_\+ids. (In diamond this option can be found under \char`\"{}/io/dump\+\_\+boundaryflux/surface\+\_\+ids\char`\"{} and the user should specify an integer array containing the I\+Ds of every boundary they wish to integrate over). 
 
+
+\begin{DoxyParams}{Parameters}
+{\em current\+\_\+time} & actual time \\
+\hline
+{\em itime} & time-\/level in integer format \\
+\hline
+{\em outfluxes} & multi\+\_\+outfluxes field containing the data required to create the output csv file \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -215,7 +277,7 @@ The convergence is independent of the dumping parameter and measures how the pre
 
 
 
-\+: This subroutine calculates the actual Darcy velocity, but with P0\+DG precision 
+\+: This subroutine calculates the actual Darcy velocity, but with P0\+DG precision only! 
 
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -300,9 +362,13 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-@\+D\+E\+P\+R\+E\+C\+A\+T\+ED\+: Gets memory from packed state 
+@\+D\+E\+P\+R\+E\+C\+A\+T\+ED\+: Gets memory from packed state This subroutine returns a pointer to the desired values of a variable stored in packed state All the input variables (but packed\+\_\+stated) are pointers following the structure of the $\ast$\+\_\+\+A\+LL variables and also all of them are optional, hence you can obtaine whichever you want 
 
-Here is the caller graph for this function\+:\nopagebreak
+\doxysubparagraph*{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\+E\+X\+A\+M\+P\+LE OF U\+S\+A\+GE OF T\+H\+IS S\+U\+B\+R\+O\+U\+T\+I\+NE\+:}
+
+If we want to get the velocity and the phasevolumefraction one should proceed this way\+: Define variables\+: real, dimension(\+:,\+:,\+:), pointer \+:: Velocity\+\_\+pointer real, dimension(\+:,\+:), pointer \+:: Phase\+Volume\+Fraction\+\_\+pointer Assign the pointers call get\+\_\+var\+\_\+from\+\_\+packed\+\_\+state(packed\+\_\+state, Velocity = Velocity\+\_\+pointer, Phase\+Volume\+Fraction = Phase\+Volume\+Fraction\+\_\+pointer)
+
+In this way we only have to introduce the name of the variables we want to get from packed\+\_\+state Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
 \leavevmode
@@ -368,7 +434,7 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-\+: Using the outfluxes values, it imposes as BC the averaged value of another B\+C(from within the domain) It is a basic method to get this functionality but it will work in parallel. However, it does not guarantee mass conservation as it uses the value from the previous time-\/step although it can still be used for many cases such as A\+T\+ES, or ventilation. Overwrites the dirichlet BC values. 
+\+: Using the outfluxes values, it imposes as BC the averaged value of another B\+C(from within the domain) It is a basic method to get this functionality but it will work in parallel. However, it does not guarantee mass conservation as it uses the value from the previous time-\/step although it can still be used for many cases such as A\+T\+ES, or ventilation. Overwrites the dirichlet BC values. Currently it uses the information from outfluxes so it is M\+A\+N\+D\+A\+T\+O\+RY to use and request outfluxes for those B\+Cs 
 
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -385,7 +451,7 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-Calculate the inf norm of the normalised field, so the field goes from 0 to 1. 
+Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs the tracer to be used and the reference tracer to normallise, the dumping to be set to 1.\+0 and totally\+\_\+min\+\_\+max which includes the min max values of the field across all processors also for normalisation. 
 
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -477,7 +543,7 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-\+: Sets the boundary condition, if the time has advance and the B\+Cs changed, here they are set to the new time-\/level 
+\+: Sets the boundary condition, if the time has advanced and the B\+Cs changed, here they are set to the new time-\/level 
 
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -494,8 +560,31 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-\+: Updates the outfluxes information based on N\+D\+O\+T\+Q\+N\+EW, shape functions and transported fields for a given GI point in a certain element This subroutine should only be called if S\+E\+LE is on the B\+O\+U\+N\+D\+A\+RY Example of Mass\+\_\+flux\+: ndotq(iphase) $\ast$ Sdev\+FunsD\+E\+T\+W\+EI(gi) $\ast$ L\+I\+M\+D\+T(iphase) Example of Vol\+\_\+flux\+: ndotq(iphase) $\ast$ Sdev\+FunsD\+E\+T\+W\+EI(gi) $\ast$ L\+I\+M\+D\+T(iphase) 
+\+: Updates the outfluxes information based on N\+D\+O\+T\+Q\+N\+EW, shape functions and transported fields for a given GI point in a certain element This subroutine should only be called if S\+E\+LE is on the B\+O\+U\+N\+D\+A\+RY Example of Mass\+\_\+flux\+: ndotq(iphase) $\ast$ Sdev\+FunsD\+E\+T\+W\+EI(gi) $\ast$ L\+I\+M\+T(iphase) Example of Vol\+\_\+flux\+: ndotq(iphase) $\ast$ Sdev\+FunsD\+E\+T\+W\+EI(gi) $\ast$ L\+I\+M\+D\+T(iphase) 
 
+
+\begin{DoxyParams}{Parameters}
+{\em bcs\+\_\+outfluxes} & the total mass entering the domain is captured by \textquotesingle{}bcs\+\_\+outfluxes\textquotesingle{} \\
+\hline
+{\em outfluxes} & multi\+\_\+outfluxes field containing the data required to create the output csv file \\
+\hline
+{\em sele} & current surface element \\
+\hline
+{\em cv\+\_\+nodi} & current control volume \\
+\hline
+{\em suf\+\_\+area} & surface area \\
+\hline
+{\em Vol\+\_\+flux} & ndotq(iphase) $\ast$ Sdev\+FunsD\+E\+T\+W\+EI(gi) $\ast$ L\+I\+M\+T(iphase) \\
+\hline
+{\em Mass\+\_\+flux} & ndotq(iphase) $\ast$ Sdev\+FunsD\+E\+T\+W\+EI(gi) $\ast$ L\+I\+M\+D\+T(iphase) (includes tracer and density!) \\
+\hline
+{\em tracer} & field being transported/computed \\
+\hline
+{\em outfluxes\+\_\+fields} & to extract also from active/passive tracers \\
+\hline
+{\em start\+\_\+phase,end\+\_\+phase} & Initial and final phase to be considered here \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}

@@ -1,4 +1,4 @@
 <map id="cv_advection::cv_count_faces" name="cv_advection::cv_count_faces">
-<area shape="rect" id="node1" title=" " alt="" coords="5,5,180,47"/>
+<area shape="rect" id="node1" title="This subroutine counts then number of faces in the control volume space." alt="" coords="5,5,180,47"/>
 <area shape="rect" id="node2" href="$namespaceshape__functions__linear__quadratic.html#a523197b210811772a490d2fecb451771" title=": Computes the number of Gauss integration points and all the necessary information" alt="" coords="228,5,404,47"/>
 </map>

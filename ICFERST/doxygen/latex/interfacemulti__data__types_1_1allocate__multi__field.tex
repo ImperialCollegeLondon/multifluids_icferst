@@ -1,13 +1,21 @@
 \hypertarget{interfacemulti__data__types_1_1allocate__multi__field}{}\doxysection{multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+field Interface Reference}
 \label{interfacemulti__data__types_1_1allocate__multi__field}\index{multi\_data\_types::allocate\_multi\_field@{multi\_data\_types::allocate\_multi\_field}}
+
+
+Allocated a multi field type based on field name.  
+
+
 \doxysubsection*{Public Member Functions}
 \begin{DoxyCompactItemize}
 \item 
 subroutine \mbox{\hyperlink{interfacemulti__data__types_1_1allocate__multi__field_a3cc63da4958556b4100e23da04c42573}{allocate\+\_\+multi\+\_\+field1}} (state, Mdims, field\+\_\+name, mfield)
-\item 
+\begin{DoxyCompactList}\small\item\em Allocated a multi field type based on field name. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{interfacemulti__data__types_1_1allocate__multi__field_a6383e2645665b3b9cb805ece97fea1dd}{allocate\+\_\+multi\+\_\+field2}} (Mdims, mfield, nonods\+\_\+in, field\+\_\+name)
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em Allocated a multi field type based on field name. \end{DoxyCompactList}\end{DoxyCompactItemize}
 
+
+\doxysubsection{Detailed Description}
+Allocated a multi field type based on field name. 
 
 \doxysubsection{Member Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{interfacemulti__data__types_1_1allocate__multi__field_a3cc63da4958556b4100e23da04c42573}\label{interfacemulti__data__types_1_1allocate__multi__field_a3cc63da4958556b4100e23da04c42573}} 
@@ -16,6 +24,24 @@ subroutine \mbox{\hyperlink{interfacemulti__data__types_1_1allocate__multi__fiel
 \doxysubsubsection{\texorpdfstring{allocate\_multi\_field1()}{allocate\_multi\_field1()}}
 {\footnotesize\ttfamily subroutine multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+field\+::allocate\+\_\+multi\+\_\+field1 (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), intent(in)}]{state,  }\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}} ), intent(in)}]{Mdims,  }\item[{character( len = $\ast$ ), intent(in)}]{field\+\_\+name,  }\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__field}{multi\+\_\+field}} ), intent(inout)}]{mfield }\end{DoxyParamCaption})}
 
+
+
+Allocated a multi field type based on field name. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Liked list containing the fluidity fields \\
+\hline
+{\em Mdims} & Field containing the dimensions of the model \\
+\hline
+{\em field\+\_\+name} & Name of the field in fluidity format \\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyRetVals}{Return values}
+{\em mfield} & Multi field allocated given its name \\
+\hline
+\end{DoxyRetVals}
 
 \begin{DoxyParams}[1]{Parameters}
 \mbox{\texttt{ in}}  & {\em state} & $\ast$$\ast$$\ast$$\ast$$\ast$$\ast$$\ast$$\ast$$\ast$\+U\+N\+T\+E\+S\+T\+E\+D$\ast$$\ast$$\ast$$\ast$$\ast$$\ast$$\ast$$\ast$$\ast$ \\
@@ -27,6 +53,27 @@ subroutine \mbox{\hyperlink{interfacemulti__data__types_1_1allocate__multi__fiel
 \doxysubsubsection{\texorpdfstring{allocate\_multi\_field2()}{allocate\_multi\_field2()}}
 {\footnotesize\ttfamily subroutine multi\+\_\+data\+\_\+types\+::allocate\+\_\+multi\+\_\+field\+::allocate\+\_\+multi\+\_\+field2 (\begin{DoxyParamCaption}\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}} ), intent(in)}]{Mdims,  }\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__field}{multi\+\_\+field}} ), intent(inout)}]{mfield,  }\item[{integer, intent(in)}]{nonods\+\_\+in,  }\item[{character( len = $\ast$ ), intent(in), optional}]{field\+\_\+name }\end{DoxyParamCaption})}
 
+
+
+Allocated a multi field type based on field name. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Mdims} & Field containing the dimensions of the model \\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyRetVals}{Return values}
+{\em mfield} & Multi field allocated given its name \\
+\hline
+\end{DoxyRetVals}
+
+\begin{DoxyParams}{Parameters}
+{\em nonods\+\_\+in} & number of nodes of the field \\
+\hline
+{\em field\+\_\+name} & Name of the field in fluidity format \\
+\hline
+\end{DoxyParams}
 
 
 The documentation for this interface was generated from the following file\+:\begin{DoxyCompactItemize}

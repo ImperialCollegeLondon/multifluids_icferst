@@ -1,6 +1,6 @@
 <map id="shape_functions_ndim::compute_xndgln_tritetquadhex" name="shape_functions_ndim::compute_xndgln_tritetquadhex">
-<area shape="rect" id="node1" title=" " alt="" coords="5,227,239,268"/>
-<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#a364b3f7243c9e7b46dbcd0d3bffe5f6b" title=" " alt="" coords="287,104,455,145"/>
+<area shape="rect" id="node1" title="Get the x_ndgln for the nodes of triangles or tetrahedra." alt="" coords="5,227,239,268"/>
+<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#a364b3f7243c9e7b46dbcd0d3bffe5f6b" title="This subrt creates the local coordinates and node points for: (a) quadratic tetrahedra of unit volume..." alt="" coords="287,104,455,145"/>
 <area shape="rect" id="node8" href="$namespaceshape__functions__ndim.html#ab33172e32fe449b773531887a2da7894" title=" " alt="" coords="287,285,455,327"/>
 <area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#ab2cdb212a9a26a4101f281d6a3281f48" title=" " alt="" coords="523,5,721,47"/>
 <area shape="rect" id="node6" href="$namespaceshape__functions__ndim.html#a5dff129de3cfdb87cd666a114c2b56a2" title=" " alt="" coords="525,71,719,112"/>

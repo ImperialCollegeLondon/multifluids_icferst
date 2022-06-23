@@ -1,10 +1,15 @@
 \hypertarget{namespaceshape__functions__ndim}{}\doxysection{shape\+\_\+functions\+\_\+ndim Module Reference}
 \label{namespaceshape__functions__ndim}\index{shape\_functions\_ndim@{shape\_functions\_ndim}}
+
+
+This module contains subroutines to generate the shape functions for multi dimensions.  
+
+
 \doxysubsection*{Data Types}
 \begin{DoxyCompactItemize}
 \item 
 interface \mbox{\hyperlink{interfaceshape__functions__ndim_1_1xprod}{xprod}}
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em Performs the cross product of two vectors. \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
@@ -19,9 +24,9 @@ subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a62013afe2af3b6eb935
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a6aa37d81c26106c0d55a961df42387f0}{new\+\_\+pt\+\_\+qua\+\_\+vol\+\_\+cv\+\_\+tri\+\_\+tet\+\_\+shape}} (cv\+\_\+ele\+\_\+type, ndim, cv\+\_\+ngi, cv\+\_\+nloc, u\+\_\+nloc, cvn, cvweigh, n, nlx, nly, nlz, un, unlx, unly, unlz)
 \begin{DoxyCompactList}\small\item\em \+: new 1 or 4 pt quadrature set on each CV of a quadratic tetrahedra ..... Compute shape functions N, UN etc for linear trianles. Shape functions associated with volume integration using both CV basis functions C\+VN, as well as F\+EM basis functions N (and its derivatives N\+LX, N\+LY, N\+LZ). Also for velocity basis functions UN, U\+N\+LX, U\+N\+LY, U\+N\+LZ. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a8e252b424608e006409cf9419a7e2500}{test\+\_\+quad\+\_\+tet}} (cv\+\_\+nloc, cv\+\_\+ngi, cvn, n, nlx, nly, nlz, cvweight, x, y, z, x\+\_\+nonods, x\+\_\+ndgln2, totele)
-\item 
+\begin{DoxyCompactList}\small\item\em test the volumes of idealised triangle \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a18ed715c7c19cc301ca5152fe8293ef2}{compute\+\_\+xndgln\+\_\+tritetquadhex}} (cv\+\_\+ele\+\_\+type, max\+\_\+totele, max\+\_\+x\+\_\+nonods, quad\+\_\+cv\+\_\+nloc, totele, x\+\_\+nonods, x\+\_\+ndgln, lx, ly, lz, x, y, z, fem\+\_\+nod, x\+\_\+ideal, y\+\_\+ideal, z\+\_\+ideal, x\+\_\+ndgln\+\_\+ideal)
-\item 
+\begin{DoxyCompactList}\small\item\em Get the x\+\_\+ndgln for the nodes of triangles or tetrahedra. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a26392ba54127e829f1661b9f8a2a9d53}{suf\+\_\+cv\+\_\+tri\+\_\+tet\+\_\+shape}} (cv\+\_\+ele\+\_\+type, ndim, scvngi, cv\+\_\+nloc, u\+\_\+nloc, scvfeweigh, scvfen, scvfenlx, scvfenly, scvfenlz, scvfenslx, scvfensly, sufen, sufenlx, sufenly, sufenlz, sufenslx, sufensly, cv\+\_\+neiloc, cvfem\+\_\+neiloc, ufem\+\_\+neiloc)
 \begin{DoxyCompactList}\small\item\em \+: Compute shape functions N, UN etc for linear triangles. Shape functions associated with volume integration using both CV basis functions C\+VN, as well as F\+EM basis functions SN (and its derivatives S\+N\+LX, S\+N\+LY, S\+N\+LZ). Also for velocity basis functions S\+UN, S\+U\+N\+LX, S\+U\+N\+LY, S\+U\+N\+LZ. Also the derivatives along the CV faces\+: sufnlx, sufnly, sufunlx, sufunly \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a7f9befc07f9850d9db51f96c4e6a0cd4}{james\+\_\+quadrature\+\_\+quad\+\_\+tet}} (l1, l2, l3, l4, normx, normy, normz, sarea, X\+\_\+\+L\+OC, Y\+\_\+\+L\+OC, Z\+\_\+\+L\+OC, C\+V\+\_\+\+N\+E\+I\+L\+OC, cv\+\_\+nloc, scvngi)
@@ -31,25 +36,25 @@ subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ad2181d02562ea0e3e97
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_abb29324e9e7ed1c60a8ac2d2dbe93b55}{compute\+\_\+surfaceshapefunctions\+\_\+triangle\+\_\+tetrahedron}} (cv\+\_\+nloc\+\_\+cells, cv\+\_\+ele\+\_\+type\+\_\+cells, cv\+\_\+ele\+\_\+type, ndim, totele, cv\+\_\+nloc, scvngi, x\+\_\+nonods, quad\+\_\+cv\+\_\+nloc, x\+\_\+ndgln, x, y, z, lx, ly, lz, fem\+\_\+nod, sn, snlx, snly, snlz, sufnlx, sufnly, scvweigh, cv\+\_\+neiloc\+\_\+cells, cvfem\+\_\+neiloc)
 \begin{DoxyCompactList}\small\item\em \+: this subroutine calculates shape functions sn, snlx, snly, snlz, sufnlx, sufnly, their weights scvweigh and local connectivity cv\+\_\+neiloc\+\_\+cells, cvfem\+\_\+neiloc on the boundaries of the cv\+\_\+nloc\+\_\+cells control volumes. The control volume types are defines using cv\+\_\+ele\+\_\+type\+\_\+cells. cv\+\_\+neiloc\+\_\+cells is associated with the CV cells cvfem\+\_\+neiloc is associated with the F\+EM basis SN etc. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a6ae6fe2f9e2d9806b94a4953dc6a12f4}{dummy\+\_\+tri\+\_\+tet}} (d1, d3, quad\+\_\+cv\+\_\+ngi, quad\+\_\+cv\+\_\+nloc, dummy\+\_\+sngi, dummy\+\_\+snloc, nwicel, cv\+\_\+nloc, cv\+\_\+sngi, totele, quad\+\_\+u\+\_\+loc\+\_\+dummy, mloc, dummy\+\_\+smloc, lowqua, npoly, npoly\+\_\+ngi)
-\item 
+\begin{DoxyCompactList}\small\item\em Compute some local variables for suf\+\_\+shape\+\_\+tri\+\_\+tet. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a8e1483fa07acac02ed8dcdcd5355f922}{shape\+\_\+tri\+\_\+tet}} (cv\+\_\+ele\+\_\+type\+\_\+cells, cv\+\_\+nloc\+\_\+cells, cv\+\_\+ele\+\_\+type, ndim, totele, cv\+\_\+nloc, cv\+\_\+ngi, x\+\_\+nonods, quad\+\_\+cv\+\_\+nloc, x\+\_\+ndgln, x, y, z, lx, ly, lz, n, nlx, nly, nlz, cvweigh)
 \begin{DoxyCompactList}\small\item\em \+: Determine the volume shape functions n, nlx, nly, nlz and weights cvweigh for the cv\+\_\+nloc\+\_\+cells CV cells. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ae55e4b96c1fd166b0c386e93ddf53196}{shatri\+\_\+hex}} (l1, l2, l3, l4, weight, d3, nloc, ngi, n, nlx, nly, nlz, tri\+\_\+tet)
-\item 
+\begin{DoxyCompactList}\small\item\em Get the shape functions on lines (in 2D) and quadrilateral surfaces in 3D. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_abb4ec02f375fe02820f1bf733d8fb031}{shatri}} (l1, l2, l3, l4, weight, d3, nloc, ngi, n, nlx, nly, nlz)
-\item 
+\begin{DoxyCompactList}\small\item\em get the shape functions for a triangle/tetrahedron \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ac67c2ff971dd5f7bbfd22a1c1d22eacc}{shape\+\_\+triangle\+\_\+cubic}} (l1, l2, l3, l4, weight, d3, nloc, ngi, n, nlx, nly, nlz)
-\item 
+\begin{DoxyCompactList}\small\item\em Generates the shape functions of a cubic triangle. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a91a5940ae1f635a9dbf21cc341de9d56}{base\+\_\+order\+\_\+tri}} (n, nloc, ngi)
-\item 
+\begin{DoxyCompactList}\small\item\em order so that the 1st nodes are on the base for a quadratic triangle... \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a37c95193cd7ac8186d5e2a9359793013}{base\+\_\+order\+\_\+tet}} (n, nloc, ngi)
-\item 
+\begin{DoxyCompactList}\small\item\em order so that the 1st nodes are on the base of tet for a quadratic tet... \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a01db78dad28836c230edae9db5ce2b49}{calc\+\_\+cvn\+\_\+tritetquadhex}} (cv\+\_\+ele\+\_\+type, totele, cv\+\_\+nloc, cv\+\_\+ngi, x\+\_\+nonods, quad\+\_\+cv\+\_\+nloc, x\+\_\+ndgln, fem\+\_\+nod, cvn)
-\item 
+\begin{DoxyCompactList}\small\item\em Compute C\+VN (CV basis function) for triangles, tetrahedra, quadrilaterals and hexahedra. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aec7c06f0cf1ffd44899b31601d1c0835}{shape\+\_\+l\+\_\+q\+\_\+quad}} (lowqua, ngi, nloc, mloc, sngi, snloc, smloc, m, mlx, mly, mlz, weight, n, nlx, nly, nlz, sweigh, sn, snlx, snly, sm, smlx, smly, nwicel, d3)
-\item 
+\begin{DoxyCompactList}\small\item\em This subrt computes shape functions. For now, let\textquotesingle{}s just define for one element type. NB\+: N may overwrite M if we are not solving for pressure. \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespaceshape__functions__ndim_a3a845aa5e30651da7fb65786056f5591}{volume\+\_\+quad\+\_\+map}} (cv\+\_\+iloc, xgi, ygi, zgi, lx, ly, lz)
-\item 
+\begin{DoxyCompactList}\small\item\em Compute the cv\+\_\+iloc$^\wedge$\{th\} shape function value at point (xgi, ygi, zgi) \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespaceshape__functions__ndim_a257f57afe346a4a6cf4c30b4fb20ca11}{area\+\_\+quad\+\_\+map}} (cv\+\_\+iloc, xgi, ygi, lx, ly)
 \item 
 real function \mbox{\hyperlink{namespaceshape__functions__ndim_a2cb290bece46a6733c9af01aec40d451}{tet\+\_\+vol}} (a, b, c, d)
@@ -67,11 +72,11 @@ subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a279dc82b53707b674ea
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a29b95710b57b76fd0d961ec749a71304}{dgsdetnxloc2\+\_\+all}} (S\+N\+L\+OC, S\+N\+GI, N\+D\+IM, X\+S\+L\+\_\+\+A\+LL, SN, S\+N\+LX, S\+N\+LY, S\+W\+E\+I\+GH, S\+D\+E\+T\+WE, S\+A\+R\+EA, N\+O\+R\+M\+X\+N\+\_\+\+A\+LL, N\+O\+R\+M\+X\+\_\+\+A\+LL)
 \item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a915ed0656cc376f20e85f62cd9cec4de}{normgi}} (N\+O\+R\+M\+XN, N\+O\+R\+M\+YN, N\+O\+R\+M\+ZN, D\+X\+D\+LX, D\+Y\+D\+LX, D\+Z\+D\+LX, D\+X\+D\+LY, D\+Y\+D\+LY, D\+Z\+D\+LY, N\+O\+R\+MX, N\+O\+R\+MY, N\+O\+R\+MZ)
-\item 
+\begin{DoxyCompactList}\small\item\em Calculate the normal at the Gauss pts Perform x-\/product. N=T1 x T2. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a0ac4f189eee385c652c399464f0df5fe}{xprod1}} (AX, AY, AZ, BX, BY, BZ, CX, CY, CZ)
-\item 
+\begin{DoxyCompactList}\small\item\em Perform the cross product of two vectors. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aa91a970575f1acc9e70afdc8a9b3e115}{xprod2}} (A, B, C)
-\item 
+\begin{DoxyCompactList}\small\item\em Perform the cross product of two vectors. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ab33172e32fe449b773531887a2da7894}{make\+\_\+qtri}} (totele, x\+\_\+nloc, max\+\_\+x\+\_\+nonods, x\+\_\+nonods, x\+\_\+ndgln, lx, ly, x, y, fem\+\_\+nod)
 \item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a01d02ecba87b89d63ca89bd4dbd2ba5f}{computing\+\_\+small\+\_\+qtriangles}} (ele\+\_\+big, x\+\_\+nloc\+\_\+big, totele\+\_\+big, x\+\_\+nonods\+\_\+big, increment\+\_\+ele\+\_\+big, x\+\_\+ndgln\+\_\+big, x\+\_\+big, y\+\_\+big)
@@ -85,7 +90,7 @@ subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_acc329705b056aef8e67
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aa318c626f7781274b73f49dc1805900a}{adding\+\_\+extra\+\_\+parametric\+\_\+nodes}} (totele, x\+\_\+nloc, mx\+\_\+x\+\_\+nonods, x\+\_\+ndgln, x, y)
 \item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a364b3f7243c9e7b46dbcd0d3bffe5f6b}{make\+\_\+qtets}} (totele, quad\+\_\+cv\+\_\+nloc, x\+\_\+nloc, max\+\_\+x\+\_\+nonods, x\+\_\+nonods, x\+\_\+ndgln\+\_\+real, lx, ly, lz, x, y, z, fem\+\_\+nod, xp2, yp2, zp2, x\+\_\+ndgln\+\_\+p2)
-\item 
+\begin{DoxyCompactList}\small\item\em This subrt creates the local coordinates and node points for\+: (a) quadratic tetrahedra of unit volume and (b) 27 points of the 8 hexahedra within the 8 linear tetrahedra. F\+E\+M\+\_\+\+N\+OD is the local numbering of the F\+EM representation of the unit volume quadratic tetrahedron. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a5dff129de3cfdb87cd666a114c2b56a2}{make\+\_\+linear\+\_\+tetrahedron}} (ele, quad\+\_\+cv\+\_\+nloc, x\+\_\+nloc, x\+\_\+nonods, number\+\_\+of\+\_\+hexs, xp2, yp2, zp2, x, y, z, x\+\_\+ndgln\+\_\+p2, x\+\_\+ndgln)
 \item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ab2cdb212a9a26a4101f281d6a3281f48}{make\+\_\+bilinear\+\_\+hexahedra}} (totele, number\+\_\+of\+\_\+hexs, quad\+\_\+cv\+\_\+nloc, x\+\_\+nonods, x, y, z, x\+\_\+ndgln)
@@ -99,7 +104,7 @@ subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a54aa7c2f3b52f8fb9e4
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a25072ca7508393d73b9e91c2e80ebc6f}{tr2or3dqu}} (N\+GI, N\+L\+OC, M\+L\+OC, M, M\+LX, M\+LY, M\+LZ, W\+E\+I\+G\+HT, N, N\+LX, N\+LY, N\+LZ, S\+N\+GI, S\+N\+L\+OC, S\+W\+E\+I\+GH, SN, S\+N\+LX, S\+N\+LY, S\+M\+L\+OC, SM, S\+M\+LX, S\+M\+LY, D3)
 \begin{DoxyCompactList}\small\item\em \+:This subroutine defines the shape functions M and N and their derivatives at the Gauss points for quadratic elements. For 3-\/D F\+L\+OW. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a5be4219a7d19d9f283b7c1a851130cfc}{tr2d}} (L\+O\+W\+Q\+UA, N\+GI, N\+L\+OC, M\+L\+OC, M, W\+E\+I\+G\+HT, N, N\+LX, N\+LY, S\+N\+GI, S\+N\+L\+OC, S\+W\+E\+I\+GH, SN, S\+N\+LX)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine defines the shape functions M and N and their derivatives at the Gauss points For 3-\/D F\+L\+OW. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a54075c9b51cd6e9659058c8327612bbb}{shatrinew}} (L1, L2, L3, L4, W\+E\+I\+G\+HT, N\+L\+OC, N\+GI, N, N\+L\+X\+\_\+\+A\+LL)
 \begin{DoxyCompactList}\small\item\em \+: Work out the shape functions and their derivatives... \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a445a3bd2cb68d70b3e9cd86febb890db}{shatriold}} (L1, L2, L3, L4, W\+E\+I\+G\+HT, D3, N\+L\+OC, N\+GI, N, N\+LX, N\+LY, N\+LZ)
@@ -107,44 +112,47 @@ subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a445a3bd2cb68d70b3e9
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ad8bb7dc236ed2a0b994488d081ee70f4}{triquaold}} (L1, L2, L3, L4, W\+E\+I\+G\+HT, D3, N\+GI)
 \begin{DoxyCompactList}\small\item\em \+: This sub calculates the local corrds L1, L2, L3, L4 and weights at the quadrature points. If D3 it does this for 3Dtetrahedra elements else triangular elements. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a8fe09e952cf3b4ee2627342abc216d66}{spectr}} (N\+GI, N\+L\+OC, M\+L\+OC, M, W\+E\+I\+G\+HT, N, N\+LX, N\+LY, N\+LZ, D3, D2, I\+P\+O\+LY, I\+Q\+A\+D\+RA)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine defines a spectal element. I\+P\+O\+LY defines the element type and I\+Q\+A\+D\+RA the quadrature. In 2-\/D the spectral local node numbering is as.. 7 8 9 4 5 6 1 2 3 For 3-\/D... lz=-\/1 3 4 1 2 and for lz=1 7 8 5 6. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a62d482e48ef37a99c81efcdd8e273644}{gtroot}} (I\+P\+O\+LY, I\+Q\+A\+D\+RA, W\+E\+IT, N\+O\+D\+P\+OS, Q\+U\+A\+P\+OS, N\+D\+GI, N\+D\+N\+OD)
-\item 
+\begin{DoxyCompactList}\small\item\em This sub returns the weights W\+E\+IT the quadrature points Q\+U\+A\+P\+OS and the node points N\+O\+D\+P\+OS. N\+O\+D\+AL P\+O\+I\+S\+T\+I\+O\+NS $\ast$$\ast$$\ast$$\ast$$\ast$$\ast$ NB if G\+E\+T\+N\+DP then find the nodal positions. \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespaceshape__functions__ndim_afc7053552eace6af239edcd5d1b99cb3}{specfu}} (D\+I\+FF, L\+X\+GP, I\+N\+OD, N\+D\+N\+OD, I\+P\+O\+LY, N\+O\+D\+P\+OS)
-\item 
+\begin{DoxyCompactList}\small\item\em I\+N\+OD contains the node at which the polynomial is associated with L\+X\+GP is the position at which the polynomial is to be avaluated.\textbackslash{} If(\+D\+I\+F\+F) then find the D poly/\+DX. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a287190f2e4c6ec0425a18bc9d5ab56b2}{cherot}} (W\+E\+IT, Q\+U\+A\+P\+OS, N\+D\+GI, G\+E\+T\+N\+DP)
-\item 
+\begin{DoxyCompactList}\small\item\em This computes the weight and points for Chebyshev-\/\+Gauss-\/\+Lobatto quadrature. See page 67 of\+:Spectral Methods in Fluid Dynamics, C.\+Canuto I\+F(\+G\+E\+T\+N\+D\+P) then get the P\+O\+S\+I\+T\+I\+ON OF T\+HE N\+O\+D\+ES A\+ND D\+O\+NT B\+O\+T\+H\+ER W\+I\+TH T\+HE W\+E\+I\+TS. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a465010bbab3913a160a668f64191ba31}{legrot}} (W\+E\+IT, Q\+U\+A\+P\+OS, N\+D\+GI, G\+E\+T\+N\+DP)
-\item 
+\begin{DoxyCompactList}\small\item\em This computes the weight and points for Chebyshev-\/\+Gauss-\/\+Lobatto quadrature. See page 69 of\+:Spectral Methods in Fluid Dynamics, C.\+Canuto I\+F(\+G\+E\+T\+N\+D\+P) then get the P\+O\+S\+I\+T\+I\+ON OF T\+HE N\+O\+D\+ES A\+ND D\+O\+NT B\+O\+T\+H\+ER W\+I\+TH T\+HE W\+E\+I\+TS. \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespaceshape__functions__ndim_a9a01d935ddfe5ea36a29ffe505dbf73e}{plegen}} (LX, K)
 \item 
 real function \mbox{\hyperlink{namespaceshape__functions__ndim_ae03154693b140919ff0c589df8e58f89}{binomial\+\_\+coefficient}} (K, L)
-\item 
+\begin{DoxyCompactList}\small\item\em Calculate binomial coefficients. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aa001da7c1c2a50e7cd0b182f17f6bd1f}{lroots}} (Q\+U\+A\+P\+OS, N\+D\+GI)
-\item 
+\begin{DoxyCompactList}\small\item\em This sub works out the Gauss-\/\+Lobatto-\/\+Legendre roots. \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespaceshape__functions__ndim_afcdd60fa5c35faed86afbc64194f32f5}{cheby1}} (D\+I\+FF, LX, I\+N\+OD, N\+D\+N\+OD, N\+O\+D\+P\+OS)
-\item 
+\begin{DoxyCompactList}\small\item\em If D\+I\+FF then returns the spectral function D\+I\+F\+F\+E\+R\+E\+N\+T\+I\+A\+T\+ED W.\+R.\+T X associated. This function returns the spectral function associated with node I\+N\+OD at P\+O\+I\+NT LX N\+D\+N\+OD=no of nodes in 1-\/D. N\+D\+GI=no of Gauss pts in 1-\/D. NB The nodes are at the points C\+OS(pie$\ast$\+J/2.) j=0,..,ndgi-\/1. \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespaceshape__functions__ndim_af8259d92f168acab30360351113dd84a}{cheby2}} (D\+I\+FF, LX, I\+N\+OD, N\+D\+N\+OD, N\+O\+D\+P\+OS)
-\item 
+\begin{DoxyCompactList}\small\item\em If D\+I\+FF then returns the spectral function D\+I\+F\+F\+E\+R\+E\+N\+T\+I\+A\+T\+ED W.\+R.\+T X associated. This function returns the spectral function associated with node I\+N\+OD at P\+O\+I\+NT LX N\+D\+N\+OD=no of nodes in 1-\/D. N\+D\+GI=no of Gauss pts in 1-\/D. NB The nodes are at the points C\+OS(pie$\ast$\+J/2.) j=0,..,ndgi-\/1. \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespaceshape__functions__ndim_ab7a1f6dd86d185746575caf1b293c45f}{tcheb}} (N, X\+PT, D\+I\+FF, D\+I\+F\+F2)
-\item 
+\begin{DoxyCompactList}\small\item\em If D\+I\+FF then return the n\textquotesingle{}th Chebyshef polynomial differentiated w.\+r.\+t x. If D\+I\+F\+F2 then form the 2\textquotesingle{}nd derivative. This sub returns the value of the K\textquotesingle{}th Chebyshef polynomial at a point X\+PT. \end{DoxyCompactList}\item 
 recursive integer function \mbox{\hyperlink{namespaceshape__functions__ndim_a7cc3628b1dbcd982fcef188b9d1493f2}{factorial}} (n)
-\item 
+\begin{DoxyCompactList}\small\item\em Calculate n! \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespaceshape__functions__ndim_a647388b8d7683edf0e0f203e5bcad3b6}{legend}} (D\+I\+FF, LX, I\+N\+OD, N\+D\+N\+OD, N\+O\+D\+P\+OS)
-\item 
+\begin{DoxyCompactList}\small\item\em If D\+I\+FF then returns the spectral function D\+I\+F\+F\+E\+R\+E\+N\+T\+I\+A\+T\+ED W.\+R.\+T X associated. This function returns the spectral function associated with node I\+N\+OD at P\+O\+I\+NT LX N\+D\+N\+OD=no of nodes in 1-\/D. N\+D\+GI=no of Gauss pts in 1-\/D. NB The nodes are at the points C\+OS(pie$\ast$\+J/2.) j=0,..,ndgi-\/1. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aaaf113a1f2b0b1043b46f700358de0e8}{determin\+\_\+sloclist}} (C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST, C\+V\+\_\+\+N\+L\+OC, C\+V\+\_\+\+S\+N\+L\+OC, N\+F\+A\+CE, ndim, cv\+\_\+ele\+\_\+type)
-\item 
+\begin{DoxyCompactList}\small\item\em determine C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_ab137b075bc778e2a27a0c1810a49b492}{jacobl}} (N, A\+L\+P\+HA, B\+E\+TA, X\+J\+AC)
-\item 
+\begin{DoxyCompactList}\small\item\em C\+O\+M\+P\+U\+T\+ES T\+HE G\+A\+U\+S\+S-\/\+L\+O\+B\+A\+T\+TO C\+O\+L\+L\+O\+C\+A\+T\+I\+ON P\+O\+I\+N\+TS F\+OR J\+A\+C\+O\+BI P\+O\+L\+Y\+N\+O\+M\+I\+A\+LS. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_a09da641d2526c3de68637ac538d3aabd}{jacobf}} (N, P\+O\+LY, P\+D\+ER, P\+O\+L\+Y\+M1, P\+D\+E\+R\+M1, P\+O\+L\+Y\+M2, P\+D\+E\+R\+M2, X)
-\item 
+\begin{DoxyCompactList}\small\item\em C\+O\+M\+P\+U\+T\+ES T\+HE J\+A\+C\+O\+BI P\+O\+L\+Y\+N\+O\+M\+I\+AL (P\+O\+LY) A\+ND I\+TS D\+E\+R\+I\+V\+A\+T\+I\+VE (P\+D\+ER) OF D\+E\+G\+R\+EE N AT X. \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespaceshape__functions__ndim_a0baef8de3aad5dd6c661809fdd333369}{volume\+\_\+tethex}} (hexs, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4)
 \item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__ndim_aaff7f00bac7c3daa6a967b61e83e0a84}{get\+\_\+cvn\+\_\+compact\+\_\+overlapping}} (cv\+\_\+ele\+\_\+type, ndim, cv\+\_\+ngi, cv\+\_\+nloc, cvn, cvweigh)
-\begin{DoxyCompactList}\small\item\em This subroutine is specially created to be used with compact\+\_\+overlapping. \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em \+: Calculates the C\+VN and C\+V\+W\+E\+I\+GH shape functions This subroutine is specially created to be used with compact\+\_\+overlapping \end{DoxyCompactList}\item 
 integer function \mbox{\hyperlink{namespaceshape__functions__ndim_a334b2cc04802a89c38ad64fbb302f22d}{get\+\_\+nwicel}} (d3, nloc)
 \begin{DoxyCompactList}\small\item\em \+: Provides a number defining the type of element we are dealing with 4,5 Linear tetrahedra, 10 quadratic tetrahedra; 3,4 Linear triangle, 5 quadratic triangle \end{DoxyCompactList}\end{DoxyCompactItemize}
 
+
+\doxysubsection{Detailed Description}
+This module contains subroutines to generate the shape functions for multi dimensions. 
 
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespaceshape__functions__ndim_aa318c626f7781274b73f49dc1805900a}\label{namespaceshape__functions__ndim_aa318c626f7781274b73f49dc1805900a}} 
@@ -199,6 +207,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{base\_order\_tet()}{base\_order\_tet()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::base\+\_\+order\+\_\+tet (\begin{DoxyParamCaption}\item[{real, dimension( nloc, ngi ), intent(inout)}]{n,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{ngi }\end{DoxyParamCaption})}
 
+
+
+order so that the 1st nodes are on the base of tet for a quadratic tet... 
+
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -212,6 +224,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{base\_order\_tri()}{base\_order\_tri()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::base\+\_\+order\+\_\+tri (\begin{DoxyParamCaption}\item[{real, dimension( nloc, ngi ), intent(inout)}]{n,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{ngi }\end{DoxyParamCaption})}
 
+
+
+order so that the 1st nodes are on the base for a quadratic triangle... 
+
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -224,6 +240,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{binomial\_coefficient@{binomial\_coefficient}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{binomial\_coefficient()}{binomial\_coefficient()}}
 {\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::binomial\+\_\+coefficient (\begin{DoxyParamCaption}\item[{integer}]{K,  }\item[{integer}]{L }\end{DoxyParamCaption})}
+
+
+
+Calculate binomial coefficients. 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -245,6 +265,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{calc\_cvn\_tritetquadhex()}{calc\_cvn\_tritetquadhex()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::calc\+\_\+cvn\+\_\+tritetquadhex (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{totele,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{cv\+\_\+ngi,  }\item[{integer, intent(in)}]{x\+\_\+nonods,  }\item[{integer, intent(in)}]{quad\+\_\+cv\+\_\+nloc,  }\item[{integer, dimension( \+: ), intent(in)}]{x\+\_\+ndgln,  }\item[{integer, dimension( \+: ), intent(in)}]{fem\+\_\+nod,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{cvn }\end{DoxyParamCaption})}
 
+
+
+Compute C\+VN (CV basis function) for triangles, tetrahedra, quadrilaterals and hexahedra. 
+
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -257,6 +281,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{cheby1@{cheby1}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{cheby1()}{cheby1()}}
 {\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::cheby1 (\begin{DoxyParamCaption}\item[{logical, intent(inout)}]{D\+I\+FF,  }\item[{real, intent(inout)}]{LX,  }\item[{integer, intent(inout)}]{I\+N\+OD,  }\item[{integer, intent(inout)}]{N\+D\+N\+OD,  }\item[{real, dimension(\+:), intent(inout)}]{N\+O\+D\+P\+OS }\end{DoxyParamCaption})}
+
+
+
+If D\+I\+FF then returns the spectral function D\+I\+F\+F\+E\+R\+E\+N\+T\+I\+A\+T\+ED W.\+R.\+T X associated. This function returns the spectral function associated with node I\+N\+OD at P\+O\+I\+NT LX N\+D\+N\+OD=no of nodes in 1-\/D. N\+D\+GI=no of Gauss pts in 1-\/D. NB The nodes are at the points C\+OS(pie$\ast$\+J/2.) j=0,..,ndgi-\/1. 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -278,6 +306,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{cheby2()}{cheby2()}}
 {\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::cheby2 (\begin{DoxyParamCaption}\item[{logical, intent(inout)}]{D\+I\+FF,  }\item[{real, intent(inout)}]{LX,  }\item[{integer, intent(inout)}]{I\+N\+OD,  }\item[{integer, intent(inout)}]{N\+D\+N\+OD,  }\item[{real, dimension(\+:), intent(inout)}]{N\+O\+D\+P\+OS }\end{DoxyParamCaption})}
 
+
+
+If D\+I\+FF then returns the spectral function D\+I\+F\+F\+E\+R\+E\+N\+T\+I\+A\+T\+ED W.\+R.\+T X associated. This function returns the spectral function associated with node I\+N\+OD at P\+O\+I\+NT LX N\+D\+N\+OD=no of nodes in 1-\/D. N\+D\+GI=no of Gauss pts in 1-\/D. NB The nodes are at the points C\+OS(pie$\ast$\+J/2.) j=0,..,ndgi-\/1. 
+
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -297,6 +329,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{cherot@{cherot}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{cherot()}{cherot()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::cherot (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{W\+E\+IT,  }\item[{real, dimension(\+:), intent(inout)}]{Q\+U\+A\+P\+OS,  }\item[{integer, intent(inout)}]{N\+D\+GI,  }\item[{logical, intent(inout)}]{G\+E\+T\+N\+DP }\end{DoxyParamCaption})}
+
+
+
+This computes the weight and points for Chebyshev-\/\+Gauss-\/\+Lobatto quadrature. See page 67 of\+:Spectral Methods in Fluid Dynamics, C.\+Canuto I\+F(\+G\+E\+T\+N\+D\+P) then get the P\+O\+S\+I\+T\+I\+ON OF T\+HE N\+O\+D\+ES A\+ND D\+O\+NT B\+O\+T\+H\+ER W\+I\+TH T\+HE W\+E\+I\+TS. 
 
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -334,6 +370,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{compute\_xndgln\_tritetquadhex@{compute\_xndgln\_tritetquadhex}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{compute\_xndgln\_tritetquadhex()}{compute\_xndgln\_tritetquadhex()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::compute\+\_\+xndgln\+\_\+tritetquadhex (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type,  }\item[{integer, intent(in)}]{max\+\_\+totele,  }\item[{integer, intent(in)}]{max\+\_\+x\+\_\+nonods,  }\item[{integer, intent(in)}]{quad\+\_\+cv\+\_\+nloc,  }\item[{integer, intent(inout)}]{totele,  }\item[{integer, intent(inout)}]{x\+\_\+nonods,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln,  }\item[{real, dimension( \+: ), intent(inout)}]{lx,  }\item[{real, dimension( \+: ), intent(inout)}]{ly,  }\item[{real, dimension( \+: ), intent(inout)}]{lz,  }\item[{real, dimension( \+: ), intent(inout)}]{x,  }\item[{real, dimension( \+: ), intent(inout)}]{y,  }\item[{real, dimension( \+: ), intent(inout)}]{z,  }\item[{integer, dimension( \+: ), intent(inout)}]{fem\+\_\+nod,  }\item[{real, dimension( \+: ), intent(inout)}]{x\+\_\+ideal,  }\item[{real, dimension( \+: ), intent(inout)}]{y\+\_\+ideal,  }\item[{real, dimension( \+: ), intent(inout)}]{z\+\_\+ideal,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln\+\_\+ideal }\end{DoxyParamCaption})}
+
+
+
+Get the x\+\_\+ndgln for the nodes of triangles or tetrahedra. 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -380,6 +420,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{determin\_sloclist@{determin\_sloclist}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{determin\_sloclist()}{determin\_sloclist()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::determin\+\_\+sloclist (\begin{DoxyParamCaption}\item[{integer, dimension( \+:, \+: ), intent(inout)}]{C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+S\+N\+L\+OC,  }\item[{integer, intent(in)}]{N\+F\+A\+CE,  }\item[{integer, intent(in)}]{ndim,  }\item[{integer, intent(in)}]{cv\+\_\+ele\+\_\+type }\end{DoxyParamCaption})}
+
+
+
+determine C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST 
 
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -434,6 +478,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{dummy\_tri\_tet()}{dummy\_tri\_tet()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::dummy\+\_\+tri\+\_\+tet (\begin{DoxyParamCaption}\item[{logical, intent(in)}]{d1,  }\item[{logical, intent(in)}]{d3,  }\item[{integer, intent(inout)}]{quad\+\_\+cv\+\_\+ngi,  }\item[{integer, intent(in)}]{quad\+\_\+cv\+\_\+nloc,  }\item[{integer, intent(inout)}]{dummy\+\_\+sngi,  }\item[{integer, intent(inout)}]{dummy\+\_\+snloc,  }\item[{integer, intent(inout)}]{nwicel,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{cv\+\_\+sngi,  }\item[{integer, intent(in)}]{totele,  }\item[{integer, intent(inout)}]{quad\+\_\+u\+\_\+loc\+\_\+dummy,  }\item[{integer, intent(inout)}]{mloc,  }\item[{integer, intent(inout)}]{dummy\+\_\+smloc,  }\item[{logical, intent(inout)}]{lowqua,  }\item[{integer, intent(inout)}]{npoly,  }\item[{integer, intent(inout)}]{npoly\+\_\+ngi }\end{DoxyParamCaption})}
 
+
+
+Compute some local variables for suf\+\_\+shape\+\_\+tri\+\_\+tet. 
+
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -473,6 +521,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{factorial()}{factorial()}}
 {\footnotesize\ttfamily recursive integer function shape\+\_\+functions\+\_\+ndim\+::factorial (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{n }\end{DoxyParamCaption})}
 
+
+
+Calculate n! 
+
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -488,7 +540,7 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-This subroutine is specially created to be used with compact\+\_\+overlapping. 
+\+: Calculates the C\+VN and C\+V\+W\+E\+I\+GH shape functions This subroutine is specially created to be used with compact\+\_\+overlapping 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -533,6 +585,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{gtroot()}{gtroot()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::gtroot (\begin{DoxyParamCaption}\item[{integer, intent(inout)}]{I\+P\+O\+LY,  }\item[{integer, intent(inout)}]{I\+Q\+A\+D\+RA,  }\item[{real, dimension(\+:), intent(inout)}]{W\+E\+IT,  }\item[{real, dimension(\+:), intent(inout)}]{N\+O\+D\+P\+OS,  }\item[{real, dimension(\+:), intent(inout)}]{Q\+U\+A\+P\+OS,  }\item[{integer, intent(inout)}]{N\+D\+GI,  }\item[{integer, intent(inout)}]{N\+D\+N\+OD }\end{DoxyParamCaption})}
 
+
+
+This sub returns the weights W\+E\+IT the quadrature points Q\+U\+A\+P\+OS and the node points N\+O\+D\+P\+OS. N\+O\+D\+AL P\+O\+I\+S\+T\+I\+O\+NS $\ast$$\ast$$\ast$$\ast$$\ast$$\ast$ NB if G\+E\+T\+N\+DP then find the nodal positions. 
+
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -553,6 +609,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{jacobf()}{jacobf()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::jacobf (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N,  }\item[{real, intent(inout)}]{P\+O\+LY,  }\item[{real, intent(inout)}]{P\+D\+ER,  }\item[{real, intent(inout)}]{P\+O\+L\+Y\+M1,  }\item[{real, intent(inout)}]{P\+D\+E\+R\+M1,  }\item[{real, intent(inout)}]{P\+O\+L\+Y\+M2,  }\item[{real, intent(inout)}]{P\+D\+E\+R\+M2,  }\item[{real, intent(in)}]{X }\end{DoxyParamCaption})}
 
+
+
+C\+O\+M\+P\+U\+T\+ES T\+HE J\+A\+C\+O\+BI P\+O\+L\+Y\+N\+O\+M\+I\+AL (P\+O\+LY) A\+ND I\+TS D\+E\+R\+I\+V\+A\+T\+I\+VE (P\+D\+ER) OF D\+E\+G\+R\+EE N AT X. 
+
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -566,7 +626,13 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{jacobl()}{jacobl()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::jacobl (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N,  }\item[{real, intent(inout)}]{A\+L\+P\+HA,  }\item[{real, intent(inout)}]{B\+E\+TA,  }\item[{real, dimension(\+: )}]{X\+J\+AC }\end{DoxyParamCaption})}
 
-Here is the call graph for this function\+:\nopagebreak
+
+
+C\+O\+M\+P\+U\+T\+ES T\+HE G\+A\+U\+S\+S-\/\+L\+O\+B\+A\+T\+TO C\+O\+L\+L\+O\+C\+A\+T\+I\+ON P\+O\+I\+N\+TS F\+OR J\+A\+C\+O\+BI P\+O\+L\+Y\+N\+O\+M\+I\+A\+LS. 
+
+N\+: D\+E\+G\+R\+EE OF A\+P\+P\+R\+O\+X\+I\+M\+A\+T\+I\+ON A\+L\+P\+HA\+: P\+A\+R\+A\+M\+E\+T\+ER IN J\+A\+C\+O\+BI W\+E\+I\+G\+HT B\+E\+TA\+: P\+A\+R\+A\+M\+E\+T\+ER IN J\+A\+C\+O\+BI W\+E\+I\+G\+HT
+
+X\+J\+AC\+: O\+U\+T\+P\+UT A\+R\+R\+AY W\+I\+TH T\+HE G\+A\+U\+S\+S-\/\+L\+O\+B\+A\+T\+TO R\+O\+O\+TS T\+H\+EY A\+RE O\+R\+D\+E\+R\+ED F\+R\+OM L\+A\+R\+G\+E\+ST (+1.\+0) TO S\+M\+A\+L\+L\+E\+ST (-\/1.\+0) Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
 \leavevmode
@@ -610,6 +676,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{legend()}{legend()}}
 {\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::legend (\begin{DoxyParamCaption}\item[{logical, intent(inout)}]{D\+I\+FF,  }\item[{real, intent(inout)}]{LX,  }\item[{integer, intent(inout)}]{I\+N\+OD,  }\item[{integer, intent(inout)}]{N\+D\+N\+OD,  }\item[{real, dimension(\+:), intent(inout)}]{N\+O\+D\+P\+OS }\end{DoxyParamCaption})}
 
+
+
+If D\+I\+FF then returns the spectral function D\+I\+F\+F\+E\+R\+E\+N\+T\+I\+A\+T\+ED W.\+R.\+T X associated. This function returns the spectral function associated with node I\+N\+OD at P\+O\+I\+NT LX N\+D\+N\+OD=no of nodes in 1-\/D. N\+D\+GI=no of Gauss pts in 1-\/D. NB The nodes are at the points C\+OS(pie$\ast$\+J/2.) j=0,..,ndgi-\/1. 
+
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -622,6 +692,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{legrot@{legrot}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{legrot()}{legrot()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::legrot (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{W\+E\+IT,  }\item[{real, dimension(\+:), intent(inout)}]{Q\+U\+A\+P\+OS,  }\item[{integer, intent(inout)}]{N\+D\+GI,  }\item[{logical, intent(inout)}]{G\+E\+T\+N\+DP }\end{DoxyParamCaption})}
+
+
+
+This computes the weight and points for Chebyshev-\/\+Gauss-\/\+Lobatto quadrature. See page 69 of\+:Spectral Methods in Fluid Dynamics, C.\+Canuto I\+F(\+G\+E\+T\+N\+D\+P) then get the P\+O\+S\+I\+T\+I\+ON OF T\+HE N\+O\+D\+ES A\+ND D\+O\+NT B\+O\+T\+H\+ER W\+I\+TH T\+HE W\+E\+I\+TS. 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -642,6 +716,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{lroots@{lroots}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{lroots()}{lroots()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::lroots (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{Q\+U\+A\+P\+OS,  }\item[{integer}]{N\+D\+GI }\end{DoxyParamCaption})}
+
+
+
+This sub works out the Gauss-\/\+Lobatto-\/\+Legendre roots. 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -695,6 +773,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{make\_qtets@{make\_qtets}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{make\_qtets()}{make\_qtets()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::make\+\_\+qtets (\begin{DoxyParamCaption}\item[{integer, intent(inout)}]{totele,  }\item[{integer, intent(in)}]{quad\+\_\+cv\+\_\+nloc,  }\item[{integer, intent(in)}]{x\+\_\+nloc,  }\item[{integer, intent(in)}]{max\+\_\+x\+\_\+nonods,  }\item[{integer, intent(inout)}]{x\+\_\+nonods,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln\+\_\+real,  }\item[{real, dimension( \+: ), intent(inout)}]{lx,  }\item[{real, dimension( \+: ), intent(inout)}]{ly,  }\item[{real, dimension( \+: ), intent(inout)}]{lz,  }\item[{real, dimension( \+: ), intent(inout)}]{x,  }\item[{real, dimension( \+: ), intent(inout)}]{y,  }\item[{real, dimension( \+: ), intent(inout)}]{z,  }\item[{integer, dimension( \+: ), intent(inout)}]{fem\+\_\+nod,  }\item[{real, dimension( \+: ), intent(inout)}]{xp2,  }\item[{real, dimension( \+: ), intent(inout)}]{yp2,  }\item[{real, dimension( \+: ), intent(inout)}]{zp2,  }\item[{integer, dimension( \+: ), intent(inout)}]{x\+\_\+ndgln\+\_\+p2 }\end{DoxyParamCaption})}
+
+
+
+This subrt creates the local coordinates and node points for\+: (a) quadratic tetrahedra of unit volume and (b) 27 points of the 8 hexahedra within the 8 linear tetrahedra. F\+E\+M\+\_\+\+N\+OD is the local numbering of the F\+EM representation of the unit volume quadratic tetrahedron. 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -760,6 +842,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{normgi()}{normgi()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::normgi (\begin{DoxyParamCaption}\item[{real, intent(inout)}]{N\+O\+R\+M\+XN,  }\item[{real, intent(inout)}]{N\+O\+R\+M\+YN,  }\item[{real, intent(inout)}]{N\+O\+R\+M\+ZN,  }\item[{real, intent(in)}]{D\+X\+D\+LX,  }\item[{real, intent(in)}]{D\+Y\+D\+LX,  }\item[{real, intent(in)}]{D\+Z\+D\+LX,  }\item[{real, intent(in)}]{D\+X\+D\+LY,  }\item[{real, intent(in)}]{D\+Y\+D\+LY,  }\item[{real, intent(in)}]{D\+Z\+D\+LY,  }\item[{real, intent(in)}]{N\+O\+R\+MX,  }\item[{real, intent(in)}]{N\+O\+R\+MY,  }\item[{real, intent(in)}]{N\+O\+R\+MZ }\end{DoxyParamCaption})}
 
+
+
+Calculate the normal at the Gauss pts Perform x-\/product. N=T1 x T2. 
+
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -803,6 +889,13 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: For quadratic elements. Shape functions associated with volume integration using both CV basis functions C\+VN as well as F\+EM basis functions N (and its derivatives N\+LX, N\+LY, N\+LZ) 
 
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespaceshape__functions__ndim_ab0d45b5cca739d6579a00f6a5ac41de7_cgraph}
+\end{center}
+\end{figure}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -890,6 +983,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{shape\_l\_q\_quad()}{shape\_l\_q\_quad()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::shape\+\_\+l\+\_\+q\+\_\+quad (\begin{DoxyParamCaption}\item[{logical, intent(in)}]{lowqua,  }\item[{integer, intent(in)}]{ngi,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{mloc,  }\item[{integer, intent(in)}]{sngi,  }\item[{integer, intent(in)}]{snloc,  }\item[{integer, intent(in)}]{smloc,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{m,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{mlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{mly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{mlz,  }\item[{real, dimension( \+: ), intent(inout)}]{weight,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz,  }\item[{real, dimension( \+: ), intent(inout)}]{sweigh,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sn,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{snlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{snly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{sm,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{smlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{smly,  }\item[{integer, intent(in)}]{nwicel,  }\item[{logical, intent(in)}]{d3 }\end{DoxyParamCaption})}
 
+
+
+This subrt computes shape functions. For now, let\textquotesingle{}s just define for one element type. NB\+: N may overwrite M if we are not solving for pressure. 
+
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -958,6 +1055,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{shape\_triangle\_cubic()}{shape\_triangle\_cubic()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::shape\+\_\+triangle\+\_\+cubic (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(in)}]{l1,  }\item[{real, dimension( \+: ), intent(in)}]{l2,  }\item[{real, dimension( \+: ), intent(in)}]{l3,  }\item[{real, dimension( \+: ), intent(in)}]{l4,  }\item[{real, dimension( \+: ), intent(in)}]{weight,  }\item[{logical, intent(in)}]{d3,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{ngi,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz }\end{DoxyParamCaption})}
 
+
+
+Generates the shape functions of a cubic triangle. 
+
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -970,6 +1071,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{shatri@{shatri}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{shatri()}{shatri()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::shatri (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(in)}]{l1,  }\item[{real, dimension( \+: ), intent(in)}]{l2,  }\item[{real, dimension( \+: ), intent(in)}]{l3,  }\item[{real, dimension( \+: ), intent(in)}]{l4,  }\item[{real, dimension( \+: ), intent(in)}]{weight,  }\item[{logical, intent(in)}]{d3,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{ngi,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz }\end{DoxyParamCaption})}
+
+
+
+get the shape functions for a triangle/tetrahedron 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -990,6 +1095,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{shatri\_hex@{shatri\_hex}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{shatri\_hex()}{shatri\_hex()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::shatri\+\_\+hex (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(in)}]{l1,  }\item[{real, dimension( \+: ), intent(in)}]{l2,  }\item[{real, dimension( \+: ), intent(in)}]{l3,  }\item[{real, dimension( \+: ), intent(in)}]{l4,  }\item[{real, dimension( \+: ), intent(inout)}]{weight,  }\item[{logical, intent(in)}]{d3,  }\item[{integer, intent(in)}]{nloc,  }\item[{integer, intent(in)}]{ngi,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{nlz,  }\item[{logical, intent(in)}]{tri\+\_\+tet }\end{DoxyParamCaption})}
+
+
+
+Get the shape functions on lines (in 2D) and quadrilateral surfaces in 3D. 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -1059,6 +1168,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{specfu()}{specfu()}}
 {\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::specfu (\begin{DoxyParamCaption}\item[{logical}]{D\+I\+FF,  }\item[{real}]{L\+X\+GP,  }\item[{integer}]{I\+N\+OD,  }\item[{integer}]{N\+D\+N\+OD,  }\item[{integer}]{I\+P\+O\+LY,  }\item[{real, dimension(\+:)}]{N\+O\+D\+P\+OS }\end{DoxyParamCaption})}
 
+
+
+I\+N\+OD contains the node at which the polynomial is associated with L\+X\+GP is the position at which the polynomial is to be avaluated.\textbackslash{} If(\+D\+I\+F\+F) then find the D poly/\+DX. 
+
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -1078,6 +1191,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{spectr@{spectr}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{spectr()}{spectr()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::spectr (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N\+GI,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{M\+L\+OC,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{M,  }\item[{real, dimension(\+:), intent(inout)}]{W\+E\+I\+G\+HT,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N\+LX,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N\+LY,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N\+LZ,  }\item[{logical}]{D3,  }\item[{logical}]{D2,  }\item[{integer, intent(inout)}]{I\+P\+O\+LY,  }\item[{integer, intent(inout)}]{I\+Q\+A\+D\+RA }\end{DoxyParamCaption})}
+
+
+
+This subroutine defines a spectal element. I\+P\+O\+LY defines the element type and I\+Q\+A\+D\+RA the quadrature. In 2-\/D the spectral local node numbering is as.. 7 8 9 4 5 6 1 2 3 For 3-\/D... lz=-\/1 3 4 1 2 and for lz=1 7 8 5 6. 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -1123,7 +1240,11 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{tcheb()}{tcheb()}}
 {\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::tcheb (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N,  }\item[{real, intent(in)}]{X\+PT,  }\item[{logical, intent(in)}]{D\+I\+FF,  }\item[{logical, intent(in)}]{D\+I\+F\+F2 }\end{DoxyParamCaption})}
 
-Here is the call graph for this function\+:\nopagebreak
+
+
+If D\+I\+FF then return the n\textquotesingle{}th Chebyshef polynomial differentiated w.\+r.\+t x. If D\+I\+F\+F2 then form the 2\textquotesingle{}nd derivative. This sub returns the value of the K\textquotesingle{}th Chebyshef polynomial at a point X\+PT. 
+
+This formula can be found in\+:Spectral Methods for Fluid Dynamics, page 66 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
 \leavevmode
@@ -1142,6 +1263,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{test\_quad\_tet@{test\_quad\_tet}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{test\_quad\_tet()}{test\_quad\_tet()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::test\+\_\+quad\+\_\+tet (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{cv\+\_\+ngi,  }\item[{real, dimension( \+:,\+: ), intent(in)}]{cvn,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{n,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{nlx,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{nly,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{nlz,  }\item[{real, dimension( \+: ), intent(in)}]{cvweight,  }\item[{real, dimension( \+: ), intent(in)}]{x,  }\item[{real, dimension( \+: ), intent(in)}]{y,  }\item[{real, dimension( \+: ), intent(in)}]{z,  }\item[{integer, intent(in)}]{x\+\_\+nonods,  }\item[{integer, dimension( \+: ), intent(in)}]{x\+\_\+ndgln2,  }\item[{integer, intent(in)}]{totele }\end{DoxyParamCaption})}
+
+
+
+test the volumes of idealised triangle 
 
 \mbox{\Hypertarget{namespaceshape__functions__ndim_a2cb290bece46a6733c9af01aec40d451}\label{namespaceshape__functions__ndim_a2cb290bece46a6733c9af01aec40d451}} 
 \index{shape\_functions\_ndim@{shape\_functions\_ndim}!tet\_vol@{tet\_vol}}
@@ -1168,6 +1293,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{tr2d@{tr2d}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{tr2d()}{tr2d()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::tr2d (\begin{DoxyParamCaption}\item[{logical}]{L\+O\+W\+Q\+UA,  }\item[{integer, intent(in)}]{N\+GI,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{M\+L\+OC,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{M,  }\item[{real, dimension(\+:), intent(inout)}]{W\+E\+I\+G\+HT,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N\+LX,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{N\+LY,  }\item[{integer, intent(in)}]{S\+N\+GI,  }\item[{integer, intent(in)}]{S\+N\+L\+OC,  }\item[{real, dimension(\+:), intent(inout)}]{S\+W\+E\+I\+GH,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{SN,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{S\+N\+LX }\end{DoxyParamCaption})}
+
+
+
+This subroutine defines the shape functions M and N and their derivatives at the Gauss points For 3-\/D F\+L\+OW. 
 
 \mbox{\Hypertarget{namespaceshape__functions__ndim_a25072ca7508393d73b9e91c2e80ebc6f}\label{namespaceshape__functions__ndim_a25072ca7508393d73b9e91c2e80ebc6f}} 
 \index{shape\_functions\_ndim@{shape\_functions\_ndim}!tr2or3dqu@{tr2or3dqu}}
@@ -1266,6 +1395,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{volume\_quad\_map()}{volume\_quad\_map()}}
 {\footnotesize\ttfamily real function shape\+\_\+functions\+\_\+ndim\+::volume\+\_\+quad\+\_\+map (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+iloc,  }\item[{real, intent(in)}]{xgi,  }\item[{real, intent(in)}]{ygi,  }\item[{real, intent(in)}]{zgi,  }\item[{real, dimension( \+: ), intent(in)}]{lx,  }\item[{real, dimension( \+: ), intent(in)}]{ly,  }\item[{real, dimension( \+: ), intent(in)}]{lz }\end{DoxyParamCaption})}
 
+
+
+Compute the cv\+\_\+iloc$^\wedge$\{th\} shape function value at point (xgi, ygi, zgi) 
+
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -1299,9 +1432,17 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{xprod1()}{xprod1()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::xprod1 (\begin{DoxyParamCaption}\item[{real, intent(inout)}]{AX,  }\item[{real, intent(inout)}]{AY,  }\item[{real, intent(inout)}]{AZ,  }\item[{real, intent(in)}]{BX,  }\item[{real, intent(in)}]{BY,  }\item[{real, intent(in)}]{BZ,  }\item[{real, intent(in)}]{CX,  }\item[{real, intent(in)}]{CY,  }\item[{real, intent(in)}]{CZ }\end{DoxyParamCaption})}
 
+
+
+Perform the cross product of two vectors. 
+
 \mbox{\Hypertarget{namespaceshape__functions__ndim_aa91a970575f1acc9e70afdc8a9b3e115}\label{namespaceshape__functions__ndim_aa91a970575f1acc9e70afdc8a9b3e115}} 
 \index{shape\_functions\_ndim@{shape\_functions\_ndim}!xprod2@{xprod2}}
 \index{xprod2@{xprod2}!shape\_functions\_ndim@{shape\_functions\_ndim}}
 \doxysubsubsection{\texorpdfstring{xprod2()}{xprod2()}}
 {\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+ndim\+::xprod2 (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{A,  }\item[{real, dimension(\+:), intent(in)}]{B,  }\item[{real, dimension(\+:), intent(in)}]{C }\end{DoxyParamCaption})}
+
+
+
+Perform the cross product of two vectors. 
 

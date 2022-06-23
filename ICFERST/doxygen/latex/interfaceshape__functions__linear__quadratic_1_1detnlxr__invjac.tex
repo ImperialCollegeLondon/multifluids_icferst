@@ -8,35 +8,47 @@
 \doxysubsection*{Public Member Functions}
 \begin{DoxyCompactItemize}
 \item 
-\mbox{\hyperlink{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_ac29f3696d98ed62d5748070bf1330a12}{detnlxr\+\_\+invjac1}}
-\item 
-\mbox{\hyperlink{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_ab5b946113962b343ed04eda395332723}{detnlxr\+\_\+invjac2}}
-\item 
-\mbox{\hyperlink{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_ac668dd394d017757f279ab0a4baf940d}{detnlxr\+\_\+invjac3}}
-\end{DoxyCompactItemize}
+subroutine \mbox{\hyperlink{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_a3e30eee35d33fc65ce854417e4de3f3e}{detnlxr\+\_\+invjac1}} (E\+LE, X\+\_\+\+A\+LL, X\+O\+N\+D\+GL, weight, nshape, nshapelx, Dev\+Funs)
+\begin{DoxyCompactList}\small\item\em Computes the inverse of the Jacobian of a Finite element Example of calling this\+: \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_ae978520e2d438141cc47edbb959f69f0}{detnlxr\+\_\+invjac2}} (E\+LE, X\+\_\+\+A\+LL, Mdims, X\+O\+N\+D\+GL, N, N\+L\+X\+\_\+\+A\+LL, W\+E\+I\+G\+HT, D\+E\+T\+W\+EI, RA, V\+O\+L\+U\+ME, D\+C\+YL, N\+X\+\_\+\+A\+LL, I\+N\+V\+\_\+\+J\+AC)
+\begin{DoxyCompactList}\small\item\em Computes the inverse of the Jacobian of a Finite element. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_a50c870ef62d3fa58696df9bd66f95cf9}{detnlxr\+\_\+invjac3}} (E\+LE, X, Y, Z, X\+O\+N\+D\+GL, T\+O\+T\+E\+LE, N\+O\+N\+O\+DS, N\+L\+OC, N\+GI, N, N\+LX, N\+LY, N\+LZ, W\+E\+I\+G\+HT, D\+E\+T\+W\+EI, RA, V\+O\+L\+U\+ME, D1, D3, D\+C\+YL, NX, NY, NZ, N\+D\+IM, I\+N\+V\+\_\+\+J\+AC)
+\begin{DoxyCompactList}\small\item\em Computes the inverse of the Jacobian of a Finite element. \end{DoxyCompactList}\end{DoxyCompactItemize}
 
 
 \doxysubsection{Detailed Description}
 \+: Computes the derivatives of the shape functions and the inverse of the Jacobian 
 
 \doxysubsection{Member Function/\+Subroutine Documentation}
-\mbox{\Hypertarget{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_ac29f3696d98ed62d5748070bf1330a12}\label{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_ac29f3696d98ed62d5748070bf1330a12}} 
+\mbox{\Hypertarget{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_a3e30eee35d33fc65ce854417e4de3f3e}\label{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_a3e30eee35d33fc65ce854417e4de3f3e}} 
 \index{shape\_functions\_linear\_quadratic::detnlxr\_invjac@{shape\_functions\_linear\_quadratic::detnlxr\_invjac}!detnlxr\_invjac1@{detnlxr\_invjac1}}
 \index{detnlxr\_invjac1@{detnlxr\_invjac1}!shape\_functions\_linear\_quadratic::detnlxr\_invjac@{shape\_functions\_linear\_quadratic::detnlxr\_invjac}}
 \doxysubsubsection{\texorpdfstring{detnlxr\_invjac1()}{detnlxr\_invjac1()}}
-{\footnotesize\ttfamily shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::detnlxr\+\_\+invjac\+::detnlxr\+\_\+invjac1}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::detnlxr\+\_\+invjac\+::detnlxr\+\_\+invjac1 (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{E\+LE,  }\item[{real, dimension(\+:,\+:), intent(in)}]{X\+\_\+\+A\+LL,  }\item[{integer, dimension( \+: ), intent(in)}]{X\+O\+N\+D\+GL,  }\item[{real, dimension(\+:), intent(in)}]{weight,  }\item[{real, dimension(\+:,\+:), intent(in)}]{nshape,  }\item[{real, dimension(\+:,\+:,\+:), intent(in)}]{nshapelx,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__dev__shape__funs}{multi\+\_\+dev\+\_\+shape\+\_\+funs}})}]{Dev\+Funs }\end{DoxyParamCaption})}
 
-\mbox{\Hypertarget{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_ab5b946113962b343ed04eda395332723}\label{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_ab5b946113962b343ed04eda395332723}} 
+
+
+Computes the inverse of the Jacobian of a Finite element Example of calling this\+: 
+
+Calculate D\+E\+T\+W\+EI, RA, NX, NY, NZ for element E\+LE call D\+E\+T\+N\+L\+X\+R\+\_\+\+I\+N\+V\+J\+AC( E\+LE, X\+\_\+\+A\+LL, ndglnx, C\+V\+\_\+funsscvfeweigh, C\+V\+\_\+funsscvfen, C\+V\+\_\+funsscvfenlx\+\_\+all, Sdev\+Funs) \mbox{\Hypertarget{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_ae978520e2d438141cc47edbb959f69f0}\label{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_ae978520e2d438141cc47edbb959f69f0}} 
 \index{shape\_functions\_linear\_quadratic::detnlxr\_invjac@{shape\_functions\_linear\_quadratic::detnlxr\_invjac}!detnlxr\_invjac2@{detnlxr\_invjac2}}
 \index{detnlxr\_invjac2@{detnlxr\_invjac2}!shape\_functions\_linear\_quadratic::detnlxr\_invjac@{shape\_functions\_linear\_quadratic::detnlxr\_invjac}}
 \doxysubsubsection{\texorpdfstring{detnlxr\_invjac2()}{detnlxr\_invjac2()}}
-{\footnotesize\ttfamily shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::detnlxr\+\_\+invjac\+::detnlxr\+\_\+invjac2}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::detnlxr\+\_\+invjac\+::detnlxr\+\_\+invjac2 (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{E\+LE,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+A\+LL,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{integer, dimension( \+: )}]{X\+O\+N\+D\+GL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{N,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{N\+L\+X\+\_\+\+A\+LL,  }\item[{real, dimension( \+: ), intent(in)}]{W\+E\+I\+G\+HT,  }\item[{real, dimension( \+: ), intent(inout)}]{D\+E\+T\+W\+EI,  }\item[{real, dimension( \+: ), intent(inout)}]{RA,  }\item[{real, intent(inout)}]{V\+O\+L\+U\+ME,  }\item[{logical, intent(in)}]{D\+C\+YL,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{N\+X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:,\+:, \+: ), intent(inout)}]{I\+N\+V\+\_\+\+J\+AC }\end{DoxyParamCaption})}
 
-\mbox{\Hypertarget{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_ac668dd394d017757f279ab0a4baf940d}\label{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_ac668dd394d017757f279ab0a4baf940d}} 
+
+
+Computes the inverse of the Jacobian of a Finite element. 
+
+\mbox{\Hypertarget{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_a50c870ef62d3fa58696df9bd66f95cf9}\label{interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac_a50c870ef62d3fa58696df9bd66f95cf9}} 
 \index{shape\_functions\_linear\_quadratic::detnlxr\_invjac@{shape\_functions\_linear\_quadratic::detnlxr\_invjac}!detnlxr\_invjac3@{detnlxr\_invjac3}}
 \index{detnlxr\_invjac3@{detnlxr\_invjac3}!shape\_functions\_linear\_quadratic::detnlxr\_invjac@{shape\_functions\_linear\_quadratic::detnlxr\_invjac}}
 \doxysubsubsection{\texorpdfstring{detnlxr\_invjac3()}{detnlxr\_invjac3()}}
-{\footnotesize\ttfamily shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::detnlxr\+\_\+invjac\+::detnlxr\+\_\+invjac3}
+{\footnotesize\ttfamily subroutine shape\+\_\+functions\+\_\+linear\+\_\+quadratic\+::detnlxr\+\_\+invjac\+::detnlxr\+\_\+invjac3 (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{E\+LE,  }\item[{real, dimension( \+: ), intent(in)}]{X,  }\item[{real, dimension( \+: ), intent(in)}]{Y,  }\item[{real, dimension( \+: ), intent(in)}]{Z,  }\item[{integer, dimension( \+: )}]{X\+O\+N\+D\+GL,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, intent(in)}]{N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{N\+GI,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{N,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{N\+LX,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{N\+LY,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{N\+LZ,  }\item[{real, dimension( \+: ), intent(in)}]{W\+E\+I\+G\+HT,  }\item[{real, dimension( \+: ), intent(inout)}]{D\+E\+T\+W\+EI,  }\item[{real, dimension( \+: ), intent(inout)}]{RA,  }\item[{real, intent(inout)}]{V\+O\+L\+U\+ME,  }\item[{logical, intent(in)}]{D1,  }\item[{logical, intent(in)}]{D3,  }\item[{logical, intent(in)}]{D\+C\+YL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{NX,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{NY,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{NZ,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{real, dimension( \+:,\+:, \+: ), intent(inout)}]{I\+N\+V\+\_\+\+J\+AC }\end{DoxyParamCaption})}
+
+
+
+Computes the inverse of the Jacobian of a Finite element. 
 
 
 

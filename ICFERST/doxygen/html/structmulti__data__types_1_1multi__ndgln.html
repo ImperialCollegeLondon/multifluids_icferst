@@ -25,7 +25,7 @@
    <div id="projectname">ICFERST
    &#160;<span id="projectnumber">22_06</span>
    </div>
-   <div id="projectbrief">Reservoir simulator</div>
+   <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
  </tr>
  </tbody>
@@ -75,87 +75,51 @@ $(function() {
 <div class="title">multi_data_types::multi_ndgln Type Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>This type contains all the local to global conversors for the different fields we have.  
+ <a href="structmulti__data__types_1_1multi__ndgln.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a0761b54736086249b7667f54718c974b"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a0761b54736086249b7667f54718c974b">cv</a> =&gt; null()</td></tr>
 <tr class="separator:a0761b54736086249b7667f54718c974b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0a6d5d7929636beea2b889981dbb7b6e"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a0a6d5d7929636beea2b889981dbb7b6e">control</a></td></tr>
-<tr class="separator:a0a6d5d7929636beea2b889981dbb7b6e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a346cf04f2bfb0f8b0160ada6b639b012"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a346cf04f2bfb0f8b0160ada6b639b012">volume</a></td></tr>
-<tr class="separator:a346cf04f2bfb0f8b0160ada6b639b012"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8ccdc76425d4e4e9fc0f2f2dcc601736"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a8ccdc76425d4e4e9fc0f2f2dcc601736">local</a></td></tr>
-<tr class="separator:a8ccdc76425d4e4e9fc0f2f2dcc601736"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac23db3df22fb11d2cdb444d79ea2ced2"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#ac23db3df22fb11d2cdb444d79ea2ced2">to</a></td></tr>
-<tr class="separator:ac23db3df22fb11d2cdb444d79ea2ced2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afc925027d105ff36325bd1d96265bc0d"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#afc925027d105ff36325bd1d96265bc0d">global</a></td></tr>
-<tr class="separator:afc925027d105ff36325bd1d96265bc0d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a26836795deb24de5f5ee7341191ec97d"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a26836795deb24de5f5ee7341191ec97d">numbering</a></td></tr>
-<tr class="separator:a26836795deb24de5f5ee7341191ec97d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acce603970accee21af488734205b83c3"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#acce603970accee21af488734205b83c3">u</a> =&gt; null()</td></tr>
 <tr class="separator:acce603970accee21af488734205b83c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9fff09c64f724091de9a7d53f4a5384d"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a9fff09c64f724091de9a7d53f4a5384d">velocity</a></td></tr>
-<tr class="separator:a9fff09c64f724091de9a7d53f4a5384d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a64e5c6b5467205f88e3288fb7105d47a"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a64e5c6b5467205f88e3288fb7105d47a">p</a> =&gt; null()</td></tr>
 <tr class="separator:a64e5c6b5467205f88e3288fb7105d47a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1fe25248a6f3f767713dd2e7d8e4ac54"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a1fe25248a6f3f767713dd2e7d8e4ac54">pressure</a></td></tr>
-<tr class="separator:a1fe25248a6f3f767713dd2e7d8e4ac54"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1942bb72e5267ebb937bdeb10ff50ab3"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a1942bb72e5267ebb937bdeb10ff50ab3">x</a> =&gt; null()</td></tr>
 <tr class="separator:a1942bb72e5267ebb937bdeb10ff50ab3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a49c6f4641d8c1aa3e11b05e83f43bca5"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a49c6f4641d8c1aa3e11b05e83f43bca5">continuous</a></td></tr>
-<tr class="separator:a49c6f4641d8c1aa3e11b05e83f43bca5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4d0905d6b6e8aba3ce594bb01f32adb1"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a4d0905d6b6e8aba3ce594bb01f32adb1">mesh</a></td></tr>
-<tr class="separator:a4d0905d6b6e8aba3ce594bb01f32adb1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0c473d1b0918af2448b64e36eb93e23b"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a0c473d1b0918af2448b64e36eb93e23b">x_p1</a> =&gt; null()</td></tr>
 <tr class="separator:a0c473d1b0918af2448b64e36eb93e23b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a71dbecdba79e2dc5cb8eeff4df59b6ae"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a71dbecdba79e2dc5cb8eeff4df59b6ae">p1</a></td></tr>
-<tr class="separator:a71dbecdba79e2dc5cb8eeff4df59b6ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8b6b06159b0796b7f34ede9273a66a85"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a8b6b06159b0796b7f34ede9273a66a85">xu</a> =&gt; null()</td></tr>
 <tr class="separator:a8b6b06159b0796b7f34ede9273a66a85"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a043d80adcd580a4e84d21df0ec066239"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a043d80adcd580a4e84d21df0ec066239">mat</a> =&gt; null()</td></tr>
 <tr class="separator:a043d80adcd580a4e84d21df0ec066239"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae774ca225b7e5a01e6d089ba4e769122"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#ae774ca225b7e5a01e6d089ba4e769122">discontinuous</a></td></tr>
-<tr class="separator:ae774ca225b7e5a01e6d089ba4e769122"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa1c44bf88759a94bccdd739d76cff1a8"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#aa1c44bf88759a94bccdd739d76cff1a8">suf_cv</a> =&gt; null()</td></tr>
 <tr class="separator:aa1c44bf88759a94bccdd739d76cff1a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a45889436170b9fc552b0faa258426944"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a45889436170b9fc552b0faa258426944">surface</a></td></tr>
-<tr class="separator:a45889436170b9fc552b0faa258426944"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab571df8c7177c94cb9ce2384c26490a6"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#ab571df8c7177c94cb9ce2384c26490a6">numering</a></td></tr>
-<tr class="separator:ab571df8c7177c94cb9ce2384c26490a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a10cb5815fd46c8a215d3a45bfa5a3e54"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a10cb5815fd46c8a215d3a45bfa5a3e54">suf_p</a> =&gt; null()</td></tr>
 <tr class="separator:a10cb5815fd46c8a215d3a45bfa5a3e54"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a69b24b6d7796fa1cada010938f912a45"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__ndgln.html#a69b24b6d7796fa1cada010938f912a45">suf_u</a> =&gt; null()</td></tr>
 <tr class="separator:a69b24b6d7796fa1cada010938f912a45"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Data Documentation</h2>
-<a id="a49c6f4641d8c1aa3e11b05e83f43bca5"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a49c6f4641d8c1aa3e11b05e83f43bca5">&#9670;&nbsp;</a></span>continuous</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::continuous</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a0a6d5d7929636beea2b889981dbb7b6e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0a6d5d7929636beea2b889981dbb7b6e">&#9670;&nbsp;</a></span>control</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::control</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>This type contains all the local to global conversors for the different fields we have. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">cv=&gt;</td><td>null() Control volume local to global numbering </td></tr>
+    <tr><td class="paramname">u=&gt;</td><td>null() Velocity local to global numbering </td></tr>
+    <tr><td class="paramname">p=&gt;</td><td>null() Pressure local to global numbering </td></tr>
+    <tr><td class="paramname">x=&gt;</td><td>null() Continuous mesh pressure local to global numbering </td></tr>
+    <tr><td class="paramname">x_p1=&gt;</td><td>null() Continuous mesh pressure P1 local to global numbering </td></tr>
+    <tr><td class="paramname">xu=&gt;</td><td>null() Continuous mesh velocity local to global numbering </td></tr>
+    <tr><td class="paramname">mat=&gt;</td><td>null() Pressure discontinuous local to global numbering </td></tr>
+    <tr><td class="paramname">suf_cv=&gt;</td><td>null() Surface control volume local to global numering </td></tr>
+    <tr><td class="paramname">suf_p=&gt;</td><td>null() Pressure local to global numbering </td></tr>
+    <tr><td class="paramname">suf_u=&gt;</td><td>null() Velocity surface local to global numbering </td></tr>
+  </table>
+  </dd>
+</dl>
+</div><h2 class="groupheader">Member Data Documentation</h2>
 <a id="a0761b54736086249b7667f54718c974b"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0761b54736086249b7667f54718c974b">&#9670;&nbsp;</a></span>cv</h2>
 
@@ -164,48 +128,6 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::cv =&gt; null()</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ae774ca225b7e5a01e6d089ba4e769122"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae774ca225b7e5a01e6d089ba4e769122">&#9670;&nbsp;</a></span>discontinuous</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::discontinuous</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="afc925027d105ff36325bd1d96265bc0d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afc925027d105ff36325bd1d96265bc0d">&#9670;&nbsp;</a></span>global</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::global</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a8ccdc76425d4e4e9fc0f2f2dcc601736"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8ccdc76425d4e4e9fc0f2f2dcc601736">&#9670;&nbsp;</a></span>local</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::local</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -226,48 +148,6 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a4d0905d6b6e8aba3ce594bb01f32adb1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a4d0905d6b6e8aba3ce594bb01f32adb1">&#9670;&nbsp;</a></span>mesh</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::mesh</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a26836795deb24de5f5ee7341191ec97d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a26836795deb24de5f5ee7341191ec97d">&#9670;&nbsp;</a></span>numbering</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::numbering</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ab571df8c7177c94cb9ce2384c26490a6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab571df8c7177c94cb9ce2384c26490a6">&#9670;&nbsp;</a></span>numering</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::numering</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="a64e5c6b5467205f88e3288fb7105d47a"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a64e5c6b5467205f88e3288fb7105d47a">&#9670;&nbsp;</a></span>p</h2>
 
@@ -276,34 +156,6 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::p =&gt; null()</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a71dbecdba79e2dc5cb8eeff4df59b6ae"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a71dbecdba79e2dc5cb8eeff4df59b6ae">&#9670;&nbsp;</a></span>p1</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::p1</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a1fe25248a6f3f767713dd2e7d8e4ac54"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1fe25248a6f3f767713dd2e7d8e4ac54">&#9670;&nbsp;</a></span>pressure</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::pressure</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -352,34 +204,6 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a45889436170b9fc552b0faa258426944"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a45889436170b9fc552b0faa258426944">&#9670;&nbsp;</a></span>surface</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::surface</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ac23db3df22fb11d2cdb444d79ea2ced2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac23db3df22fb11d2cdb444d79ea2ced2">&#9670;&nbsp;</a></span>to</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::to</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="acce603970accee21af488734205b83c3"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#acce603970accee21af488734205b83c3">&#9670;&nbsp;</a></span>u</h2>
 
@@ -388,34 +212,6 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::u =&gt; null()</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a9fff09c64f724091de9a7d53f4a5384d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9fff09c64f724091de9a7d53f4a5384d">&#9670;&nbsp;</a></span>velocity</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::velocity</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a346cf04f2bfb0f8b0160ada6b639b012"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a346cf04f2bfb0f8b0160ada6b639b012">&#9670;&nbsp;</a></span>volume</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension( : ), pointer multi_data_types::multi_ndgln::volume</td>
         </tr>
       </table>
 </div><div class="memdoc">

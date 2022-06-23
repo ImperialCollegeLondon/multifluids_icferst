@@ -1,6 +1,6 @@
 <map id="multiphase_1d_engine::force_bal_cty_assem_solve" name="multiphase_1d_engine::force_bal_cty_assem_solve">
 <area shape="rect" id="node1" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="5,856,215,897"/>
-<area shape="rect" id="node2" href="$namespacemulti__data__types.html#af7028748dfa3e370ed4bfd1db524c87b" title=" " alt="" coords="296,5,463,47"/>
+<area shape="rect" id="node2" href="$namespacemulti__data__types.html#af7028748dfa3e370ed4bfd1db524c87b" title="This subroutine performs the addition of an array and a multifield and returns the array b = b + a * ..." alt="" coords="296,5,463,47"/>
 <area shape="rect" id="node3" href="$namespacematrix__operations.html#a1167c3b995711ad4c85718f072beb45e" title=" " alt="" coords="276,71,483,112"/>
 <area shape="rect" id="node4" href="$namespacematrix__operations.html#a3cf9d9f54e55a501e927c1ae443093f0" title=": Performs the multiplication CDP_tensor = MmatC * deltap" alt="" coords="593,193,743,235"/>
 <area shape="rect" id="node6" href="$multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="287,623,471,650"/>
@@ -12,7 +12,7 @@
 <area shape="rect" id="node24" href="$namespacemultiphase__1d__engine.html#a92d78676878788b54916f9a7e0bc894a" title=": This subroutine combines the distributed and block diagonal for an element into the matrix DGM_PHA...." alt="" coords="275,987,484,1028"/>
 <area shape="rect" id="node25" href="$namespacemultiphase__1d__engine.html#af8e1dabacd438da77f8e97f5234e6e3e" title=": This subroutine combines the distributed and block diagonal for an element into the matrix DGM_PHA." alt="" coords="290,1053,469,1109"/>
 <area shape="rect" id="node26" href="$multi__dyncore__dg_8_f90.html#a53b2f85c6a8345f6316959365e52bd83" title="Calculates the divergence of the velocity by multipliying it by the Ct matrix." alt="" coords="607,325,729,351"/>
-<area shape="rect" id="node29" href="$namespacemulti__data__types.html#a65dde4f9748cb3dd200c328f99304c4e" title=" " alt="" coords="274,1133,485,1175"/>
+<area shape="rect" id="node29" href="$namespacemulti__data__types.html#a65dde4f9748cb3dd200c328f99304c4e" title="Deallocation of a multi field type." alt="" coords="274,1133,485,1175"/>
 <area shape="rect" id="node30" href="$multi__dyncore__dg_8_f90.html#ad3c0d8ed87bdfa9ff27a1048406ecd2f" title="Flip P and V BCs for wells. Implemented for ATES applications or other applications when needing to s..." alt="" coords="313,1199,446,1226"/>
 <area shape="rect" id="node31" href="$multi__dyncore__dg_8_f90.html#a86babf83394e349a6bb014238237de1f" title="Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not." alt="" coords="296,1251,463,1292"/>
 <area shape="rect" id="node32" href="$namespacemultiphase__1d__engine.html#a7a01c78d922871a74af7e6e4a3228868" title=": Instead of including the gravity in the RHS normally, here a system based on a Laplacian is created..." alt="" coords="566,725,770,767"/>
@@ -32,11 +32,11 @@
 <area shape="rect" id="node49" href="$namespacemultiphase__eos.html#a98927879ae36867eabec1a9e6a5f22d8" title=":Computes velocity absorption from diamond information" alt="" coords="274,1773,485,1815"/>
 <area shape="rect" id="node50" href="$namespacemultiphase__eos.html#a8f7f68ee8d294089b9077c480795eb9c" title=":Computes velocity source from diamond information" alt="" coords="290,1839,469,1880"/>
 <area shape="rect" id="node5" href="$namespacematrix__operations.html#a895e0f98ecb17a8541be87879adf8876" title=": CDP=C*DP" alt="" coords="871,139,1020,180"/>
-<area shape="rect" id="node7" href="$namespacecv__advection.html#a083e26c7f43d55723d9e316ef2069394" title="Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for..." alt="" coords="573,623,763,650"/>
+<area shape="rect" id="node7" href="$namespacecv__advection.html#a4c9c5c3afe6e6355fcf8bfefbaa3211a" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="573,623,763,650"/>
 <area shape="rect" id="node12" href="$multi__dyncore__dg_8_f90.html#aa2eb04d27443c785084566c701903207" title="and faster to compute than for Navier&#45;Stokes. Therefore, here the RHS and the Mass matrix are compute..." alt="" coords="573,674,763,701"/>
-<area shape="rect" id="node8" href="$namespacemulti__data__types.html#a0a02226803b07ac9bb8cbf05f9d0ab6a" title=" " alt="" coords="848,791,1043,832"/>
+<area shape="rect" id="node8" href="$namespacemulti__data__types.html#a0a02226803b07ac9bb8cbf05f9d0ab6a" title="This subroutine allocates and initialises to zero all the arrays in a multi_shape_funs data type It u..." alt="" coords="848,791,1043,832"/>
 <area shape="rect" id="node9" href="$namespaceshape__functions__prototype.html#ae23b2b5b8e264b0e1b498f4e28f1c18d" title=" " alt="" coords="846,660,1045,701"/>
-<area shape="rect" id="node10" href="$namespacemulti__data__types.html#ab256dfeac442756797e748a252de6ea0" title=" " alt="" coords="840,725,1051,767"/>
+<area shape="rect" id="node10" href="$namespacemulti__data__types.html#ab256dfeac442756797e748a252de6ea0" title="This subroutine deallocates and nullifies all the fields inside multi_shape_funs." alt="" coords="840,725,1051,767"/>
 <area shape="rect" id="node11" href="$namespaceshape__functions__linear__quadratic.html#a523197b210811772a490d2fecb451771" title=": Computes the number of Gauss integration points and all the necessary information" alt="" coords="857,595,1033,636"/>
 <area shape="rect" id="node14" href="$multi__eos_8_f90.html#acd1caed43acc66691c351206d8dd7b2c" title=":This functions returns the capillary pressure for a certain input saturation" alt="" coords="603,857,733,883"/>
 <area shape="rect" id="node16" href="$namespacemulti__surface__tension.html#a5a80b62b8be2aabfa44e733c53908eb4" title=" " alt="" coords="555,791,781,832"/>

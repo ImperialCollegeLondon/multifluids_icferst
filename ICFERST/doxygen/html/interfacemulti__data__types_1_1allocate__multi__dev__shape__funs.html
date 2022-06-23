@@ -25,7 +25,7 @@
    <div id="projectname">ICFERST
    &#160;<span id="projectnumber">22_06</span>
    </div>
-   <div id="projectbrief">Reservoir simulator</div>
+   <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
  </tr>
  </tbody>
@@ -75,17 +75,25 @@ $(function() {
 <div class="title">multi_data_types::allocate_multi_dev_shape_funs Interface Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>Allocates the required memory to store the derivatives of the shape functions.  
+ <a href="interfacemulti__data__types_1_1allocate__multi__dev__shape__funs.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a4f20ccf7fcfcdac87426338696ed8666"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacemulti__data__types_1_1allocate__multi__dev__shape__funs.html#a4f20ccf7fcfcdac87426338696ed8666">allocate_multi_dev_shape_funs1</a> (funs, DevFuns, nx_all_FE_size)</td></tr>
+<tr class="memdesc:a4f20ccf7fcfcdac87426338696ed8666"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocates the required memory to store the derivatives of the shape functions.  <a href="interfacemulti__data__types_1_1allocate__multi__dev__shape__funs.html#a4f20ccf7fcfcdac87426338696ed8666">More...</a><br /></td></tr>
 <tr class="separator:a4f20ccf7fcfcdac87426338696ed8666"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adbcbc35f4a9305e9d4cbce9cc27f3484"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacemulti__data__types_1_1allocate__multi__dev__shape__funs.html#adbcbc35f4a9305e9d4cbce9cc27f3484">allocate_multi_dev_shape_funs2</a> (Mdims, GIdims, DevFuns, nx_all_FE_size)</td></tr>
+<tr class="memdesc:adbcbc35f4a9305e9d4cbce9cc27f3484"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocates the required memory to store the derivatives of the shape functions.  <a href="interfacemulti__data__types_1_1allocate__multi__dev__shape__funs.html#adbcbc35f4a9305e9d4cbce9cc27f3484">More...</a><br /></td></tr>
 <tr class="separator:adbcbc35f4a9305e9d4cbce9cc27f3484"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a27fb5f2ffe75097649a82db4047accdf"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacemulti__data__types_1_1allocate__multi__dev__shape__funs.html#a27fb5f2ffe75097649a82db4047accdf">allocate_multi_dev_shape_funs3</a> (cvfenlx_all, ufenlx_all, DevFuns, nx_all_FE_size)</td></tr>
+<tr class="memdesc:a27fb5f2ffe75097649a82db4047accdf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocates the required memory to store the derivatives of the shape functions.  <a href="interfacemulti__data__types_1_1allocate__multi__dev__shape__funs.html#a27fb5f2ffe75097649a82db4047accdf">More...</a><br /></td></tr>
 <tr class="separator:a27fb5f2ffe75097649a82db4047accdf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Function/Subroutine Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Allocates the required memory to store the derivatives of the shape functions. </p>
+</div><h2 class="groupheader">Member Function/Subroutine Documentation</h2>
 <a id="a4f20ccf7fcfcdac87426338696ed8666"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a4f20ccf7fcfcdac87426338696ed8666">&#9670;&nbsp;</a></span>allocate_multi_dev_shape_funs1()</h2>
 
@@ -117,6 +125,16 @@ Public Member Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Allocates the required memory to store the derivatives of the shape functions. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">funs</td><td>shape functions, are used to indentified the required memory </td></tr>
+    <tr><td class="paramname">DevFuns</td><td>output field with the memory allocated </td></tr>
+    <tr><td class="paramname">nx_all_FE_size</td><td>If true then the size of the generic nx_all is set like ufenlx_all, otherwise, like cvfenlx_all </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -158,6 +176,16 @@ Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
+<p>Allocates the required memory to store the derivatives of the shape functions. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">GIdims</td><td>Gauss integration data, used to indentified the required memory </td></tr>
+    <tr><td class="paramname">DevFuns</td><td>output field with the memory allocated </td></tr>
+    <tr><td class="paramname">nx_all_FE_size</td><td>If true then the size of the generic nx_all is set like ufenlx_all, otherwise, like cvfenlx_all </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="a27fb5f2ffe75097649a82db4047accdf"></a>
@@ -197,6 +225,17 @@ Public Member Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Allocates the required memory to store the derivatives of the shape functions. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">cvfenlx_all</td><td>array used to indentified the required memory </td></tr>
+    <tr><td class="paramname">ufenlx_all</td><td>array used to indentified the required memory </td></tr>
+    <tr><td class="paramname">DevFuns</td><td>output field with the memory allocated </td></tr>
+    <tr><td class="paramname">nx_all_FE_size</td><td>If true then the size of the generic nx_all is set like ufenlx_all, otherwise, like cvfenlx_all </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>

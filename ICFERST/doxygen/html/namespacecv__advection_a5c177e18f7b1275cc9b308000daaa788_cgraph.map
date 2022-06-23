@@ -1,4 +1,4 @@
 <map id="cv_advection::put_in_ct_rhs" name="cv_advection::put_in_ct_rhs">
-<area shape="rect" id="node1" title=" " alt="" coords="5,5,161,47"/>
-<area shape="rect" id="node2" href="$cv-adv-dif_8_f90.html#aa40294c371735f893e09254f0416ae74" title=" " alt="" coords="209,5,396,47"/>
+<area shape="rect" id="node1" title="This subroutine caculates the discretised cty eqn acting on the velocities i.e. MmatCT,..." alt="" coords="5,5,161,47"/>
+<area shape="rect" id="node2" href="$cv-adv-dif_8_f90.html#aa40294c371735f893e09254f0416ae74" title="This subroutine populates Bound_ele_correct and Bound_ele2_correct to properly apply the BCs when cre..." alt="" coords="209,5,396,47"/>
 </map>

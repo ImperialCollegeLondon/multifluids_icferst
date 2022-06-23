@@ -30,13 +30,14 @@ module multi_data_types
     use multi_tools
     use futils
 
-
+    !> Allocates the required memory to store the derivatives of the shape functions
     interface allocate_multi_dev_shape_funs
         module procedure allocate_multi_dev_shape_funs1
         module procedure allocate_multi_dev_shape_funs2
         module procedure allocate_multi_dev_shape_funs3
     end interface
 
+     !> Allocated a multi field type based on field name 
     interface allocate_multi_field
         module procedure allocate_multi_field1
         module procedure allocate_multi_field2
@@ -107,7 +108,9 @@ module multi_data_types
 
 
     !>This type includes the necessary information to choose from the different discretization options available
-    !> They are a mistery even for the most advance wizards of the realm... hopefully they can be removed in the future
+    !> They are a mistery even for the most advanced wizards of the realm... hopefully they can be removed in the future
+    !> These parameters represent the degree of discretisation used, they are in general hardcoded based on the precision requested by the user
+    !> so as said, to be removed in the future hopefully
     type multi_discretization_opts
         
         integer ::  cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type
@@ -201,7 +204,14 @@ module multi_data_types
 
     end type multi_shape_funs
 
-    !Data structure to store the derivatives of the shape functions and conversors from reference element to local
+    !>Data structure to store the derivatives of the shape functions and conversors from reference element to local
+    !>@param volume Volume of the local element
+    !>@param detwei=> null() Determinant times weigth (i.e: conversor from reference element to local element)
+    !>@param ra => null()    ???
+    !>@param :: cvfenx_all=> null() Space derivatives of the pressure (CV) shape functions
+    !>@param :: ufenx_all=> null() Space derivatives of the velocity (FE) shape functions
+    !>@param :: nx_all => null() Space derivatives of a generic field.
+    !>@param :: inv_jac => null() Inverse of the Jacobian matrix
     type multi_dev_shape_funs
         real :: volume!>Volume of the local element
         real, pointer, dimension(:) :: detwei=> null()!>Determinant times weigth (i.e: conversor from reference element to local element)
@@ -211,7 +221,27 @@ module multi_data_types
         real, pointer, dimension(:, :, :) :: nx_all => null()!>Space derivatives of a generic field.
         real, pointer, dimension(:, :, :) :: inv_jac => null()!>Inverse of the Jacobian matrix
     end type multi_dev_shape_funs
-    !This type comprises the four necessary variables to represent matrices using a CSR structure
+    !>This type comprises the necessary variables to represent matrices using a CSR structure
+    !>@param ncol Number of columns
+    !>@param fin is the row index
+    !>@param col is the column index
+    !>@param mid is to access the diagonal elements (barely used...)
+    !>
+    !> @htmlonly
+    !> <CODE>
+    !> <PRE>
+    !> Taken from wikipedia. For the following watrix: 
+    !> 10 20  0  0  0  0
+    !> 0  30  0 40  0  0
+    !> 0  0  50 60 70  0
+    !> 0  0  0  0  0  80
+    !> You would access it using CSR as:
+    !> V   = [ 10 20 30 40 50 60 70 80 ]
+    !> COL = [  0  1  1  3  2  3  4  5 ]   
+    !> FIN = [  0  2  4  7  8 ]
+    !> </PRE>
+    !> </CODE>
+    !> @endhtmlonly
     type multi_sparsity
         integer :: ncol
         integer, pointer, dimension(:) :: fin=> null()
@@ -219,113 +249,192 @@ module multi_data_types
         integer, pointer, dimension(:) :: mid=> null()
     end type multi_sparsity
 
-    !This data type contains all the sparsities necessary in the multiphase prototype code
+    !>This data type contains all the sparsities necessary in the multiphase prototype code
+    !>@param  acv      CV multi-phase eqns (e.g. vol frac, temp)
+    !>@param  small_acv  Local CV multi-phase eqns (e.g. vol frac, temp)
+    !>@param  ele      Element connectivity
+    !>@param  dgm_pha  Force balance sparsity
+    !>@param  ct       CT sparsity - global continuity eqn
+    !>@param  C        C sparsity operating on pressure in force balance
+    !>@param  cmc      pressure matrix for projection method
+    !>@param  m        CV-FEM matrix
+    !>@param  HydrostaticPressure       HydrostaticPressure matrix
     type multi_sparsities
-        type (multi_sparsity) :: acv     !>CV multi-phase eqns (e.g. vol frac, temp)
-        type (multi_sparsity) :: small_acv !>Local CV multi-phase eqns (e.g. vol frac, temp)
-        type (multi_sparsity) :: ele     !>Element connectivity
-        type (multi_sparsity) :: dgm_pha !>Force balance sparsity
-        type (multi_sparsity) :: ct      !>CT sparsity - global continuity eqn
-        type (multi_sparsity) :: C       !>C sparsity operating on pressure in force balance
-        type (multi_sparsity) :: cmc     !>pressure matrix for projection method
-        type (multi_sparsity) :: m       !>CV-FEM matrix
-        type (multi_sparsity) :: HydrostaticPressure      !>HydrostaticPressure matrix
+        type (multi_sparsity) :: acv     
+        type (multi_sparsity) :: small_acv 
+        type (multi_sparsity) :: ele     
+        type (multi_sparsity) :: dgm_pha 
+        type (multi_sparsity) :: ct      
+        type (multi_sparsity) :: C       
+        type (multi_sparsity) :: cmc     
+        type (multi_sparsity) :: m       
+        type (multi_sparsity) :: HydrostaticPressure      
     end type multi_sparsities
-
+    !> This type contains all the local to global conversors for the different fields we have
+    !>@param  cv=> null()      Control volume local to global numbering
+    !>@param  u=> null()       Velocity local to global numbering
+    !>@param  p=> null()       Pressure local to global numbering
+    !>@param  x=> null()       Continuous mesh pressure local to global numbering
+    !>@param  x_p1=> null()    Continuous mesh pressure P1 local to global numbering
+    !>@param  xu=> null()      Continuous mesh velocity local to global numbering
+    !>@param  mat=> null()     Pressure discontinuous local to global numbering
+    !>@param   suf_cv=> null()  Surface control volume local to global numering
+    !>@param   suf_p=> null()   Pressure local to global numbering
+    !>@param   suf_u=> null()   Velocity surface local to global numbering
     type multi_ndgln
-        integer, dimension( : ), pointer  :: cv=> null()     !>Control volume local to global numbering
-        integer, dimension( : ), pointer  :: u=> null()      !>Velocity local to global numbering
-        integer, dimension( : ), pointer  :: p=> null()      !>Pressure local to global numbering
-        integer, dimension( : ), pointer  :: x=> null()      !>Continuous mesh pressure local to global numbering
-        integer, dimension( : ), pointer  :: x_p1=> null()   !>Continuous mesh pressure P1 local to global numbering
-        integer, dimension( : ), pointer  :: xu=> null()     !>Continuous mesh velocity local to global numbering
-        integer, dimension( : ), pointer  :: mat=> null()    !>Pressure discontinuous local to global numbering
-        integer, dimension( : ), pointer ::  suf_cv=> null() !>Surface control volume local to global numering
-        integer, dimension( : ), pointer ::  suf_p=> null()  !>Pressure local to global numbering
-        integer, dimension( : ), pointer ::  suf_u=> null()  !>Velocity surface local to global numbering
+        integer, dimension( : ), pointer  :: cv=> null()     
+        integer, dimension( : ), pointer  :: u=> null()      
+        integer, dimension( : ), pointer  :: p=> null()     
+        integer, dimension( : ), pointer  :: x=> null()      
+        integer, dimension( : ), pointer  :: x_p1=> null()   
+        integer, dimension( : ), pointer  :: xu=> null()     
+        integer, dimension( : ), pointer  :: mat=> null()    
+        integer, dimension( : ), pointer ::  suf_cv=> null() 
+        integer, dimension( : ), pointer ::  suf_p=> null()  
+        integer, dimension( : ), pointer ::  suf_u=> null()  
     end type multi_ndgln
 
+    !> This type contains all the necessary information to solve =systems, matrices, RHS, limiters, colouring and also flags to decide
+    !> which sort of matrices are generated
+    !>@param C => null() Gradient matrix using a FE discretization (storable)
+    !>@param C_CV => null() Gradient matrix using a CV discretization (storable)
+    !>@param U_RHS => null() Rigth hand side of the momentum equation
+    !>@param CT => null() Divergence matrix
+    !>@param CT_RHS Rigth hand side of the continuity equation
+    !>@param petsc_ACV Matrix containing the terms of transport equations
+    !>@param CV_RHS Rigth hand side of the saturation equation
+    !>@param PIVIT_MAT => null() Mass matrix (matrix form by the sigmas) (storable)
+    !>@param ICOLOR => null() Array used to accelerate the creation of CMC in COLOR_GET_CMC_PHA_FAST
+    !>@param NCOLOR  Number of colors in ICOLOR
+    !>@param DGM_PETSC Matrix contatining the momemtum terms for Navier-Stokes/Stokes equation
+    !>@param C_PETSC PETSc version of the gradient matrix (storable)
+    !>@param CT_PETSC PETSc version of the divergence matrix
+    !>@param PIVIT_PETSC PETSc version of the divergence matrix        
+    !>@param NO_MATRIX_STORE  Flag to whether calculate and use DGM_PETSC or C
+    !>@param CV_pressure      Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)
+    !>@param stored = .false. Flag to be true when the storable matrices have been stored
+    !>@param compact_PIVIT_MAT = .false.  Flag to know whether to use a compacted mass matrix or not
+    !>@param limiters_ELEMATPSI=> null() Stores locations used by the limiters
+    !>@param limiters_ELEMATWEI=> null() Stores weights used by the limiters
+    !>@param WIC_FLIP_P_VEL_BCS=> null()!Stores array to check when to flip BCs
+    !>@param FACE_ELE=> null()!Stores neighbouring elements
     type multi_matrices
-        real, dimension( :, :, : ), pointer :: C => null()!>Gradient matrix using a FE discretization (storable)
-        real, dimension( :, :, : ), pointer :: C_CV => null()!>Gradient matrix using a CV discretization (storable)
-        REAL, DIMENSION( :, :, : ), pointer :: U_RHS => null()!>Rigth hand side of the momentum equation
-        real, dimension( :, :, : ), pointer :: CT => null()!>Divergence matrix
-        type(vector_field) :: CT_RHS!>Rigth hand side of the continuity equation
-        type(petsc_csr_matrix) :: petsc_ACV!>Matrix containing the terms of transport equations
-        type(vector_field) :: CV_RHS!>Rigth hand side of the saturation equation
-        real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()!>Mass matrix (matrix form by the sigmas) (storable)
-        integer, dimension(:), pointer :: ICOLOR => null()!>Array used to accelerate the creation of CMC in COLOR_GET_CMC_PHA_FAST
-        integer :: NCOLOR !>Number of colors in ICOLOR
-        type(petsc_csr_matrix):: DGM_PETSC!>Matrix contatining the momemtum terms for Navier-Stokes/Stokes equation
-        type(petsc_csr_matrix):: C_PETSC!>PETSc version of the gradient matrix (storable)
-        type(petsc_csr_matrix):: CT_PETSC!>PETSc version of the divergence matrix
-        type(petsc_csr_matrix):: PIVIT_PETSC!>PETSc version of the divergence matrix        
-        logical :: NO_MATRIX_STORE !>Flag to whether calculate and use DGM_PETSC or C
-        logical :: CV_pressure     !>Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)
-        logical :: stored = .false.!>Flag to be true when the storable matrices have been stored
-        logical :: compact_PIVIT_MAT = .false. !>Flag to know whether to use a compacted mass matrix or not
-        integer, dimension(:), pointer :: limiters_ELEMATPSI=> null()!>Stores locations used by the limiters
-        real, dimension(:), pointer :: limiters_ELEMATWEI=> null()!>Stores weights used by the limiters
-        integer, dimension(:,:,:), pointer :: WIC_FLIP_P_VEL_BCS=> null()!Stores array to check when to flip BCs
-        INTEGER, DIMENSION( :, : ), pointer ::  FACE_ELE=> null()!Stores neighbouring elements
+        real, dimension( :, :, : ), pointer :: C => null()
+        real, dimension( :, :, : ), pointer :: C_CV => null()
+        REAL, DIMENSION( :, :, : ), pointer :: U_RHS => null()
+        real, dimension( :, :, : ), pointer :: CT => null()
+        type(vector_field) :: CT_RHS
+        type(petsc_csr_matrix) :: petsc_ACV
+        type(vector_field) :: CV_RHS
+        real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()
+        integer, dimension(:), pointer :: ICOLOR => null()
+        integer :: NCOLOR 
+        type(petsc_csr_matrix):: DGM_PETSC
+        type(petsc_csr_matrix):: C_PETSC
+        type(petsc_csr_matrix):: CT_PETSC
+        type(petsc_csr_matrix):: PIVIT_PETSC      
+        logical :: NO_MATRIX_STORE 
+        logical :: CV_pressure     
+        logical :: stored = .false.
+        logical :: compact_PIVIT_MAT = .false. 
+        integer, dimension(:), pointer :: limiters_ELEMATPSI=> null()
+        real, dimension(:), pointer :: limiters_ELEMATWEI=> null()
+        integer, dimension(:,:,:), pointer :: WIC_FLIP_P_VEL_BCS=> null()
+        INTEGER, DIMENSION( :, : ), pointer ::  FACE_ELE=> null()
     end type multi_matrices
 
-
+    !> Required values to compute the fluxes for porous media. Effectively the sigma terms from the papers 
+    !> Currently they are oversized since apart from the permeability they are not tensors, this should be changed!
+    !>@param  adv_coef => null() Sigmas at the boundary to calculate fluxes
+    !>@param  inv_adv_coef => null() Inverse of sigmas at the boundary to calculate fluxes
+    !>@param  adv_coef_grad => null() Gradient of the sigmas at the boundary to calculate fluxes
+    !>@param  inv_permeability => null() Gradient of the sigmas at the boundary to calculate fluxes
     type porous_adv_coefs
-        real, dimension( :, :, :, : ), pointer :: adv_coef => null()!>Sigmas at the boundary to calculate fluxes
-        real, dimension( :, :, :, : ), pointer :: inv_adv_coef => null()!>Inverse of sigmas at the boundary to calculate fluxes
-        real, dimension( :, :, :, : ), pointer :: adv_coef_grad => null()!>Gradient of the sigmas at the boundary to calculate fluxes
-        real, dimension( :, :, : ),    pointer :: inv_permeability => null()!>Gradient of the sigmas at the boundary to calculate fluxes
+        real, dimension( :, :, :, : ), pointer :: adv_coef => null()
+        real, dimension( :, :, :, : ), pointer :: inv_adv_coef => null()
+        real, dimension( :, :, :, : ), pointer :: adv_coef_grad => null()
+        real, dimension( :, :, : ),    pointer :: inv_permeability => null()
     end type porous_adv_coefs
 
+    !> Type created to store absorption terms in a compacted way associated subroutines where created to be used with these fields
+    !> @param val  Pointer with the values of the field stored
+    !> @param have_field do we need this field for this simulation?
+    !> @param is_constant  if ( .true. ) nonods = 1 for what follows     -   DELETE THIS MAYBE ???
+    !> @param memory_type 
+    !> 0  Isotropic tensor - ( 1, 1, nphase, nonods ) - this is unrolled as ( ndim, ndim, nphase, nonods );
+    !> 1  Isotropic - ( 1, 1, nphase, nonods ) - diagonal;
+    !> 2  Anisotropic - ( ndim, ndim, nphase, nonods );
+    !> 3  Isotropic coupled - ( 1, nphase, nphase, nonods );
+    !> 4  Anisotropic coupled (aka Full Metal Jacket) - ( 1, ndim x nphase, ndim x nphase, nonods );
+    !> 6 Isotropic coupled - ( 1, ndim, nphase, nonods );
+    !>    This is for porous media. We assume isotropic properties like permiability to be diagonal
+    !> @param ndim1 dimensions of field
+    !> @param ndim2 dimensions of field
+    !> @param ndim3 dimensions of field
+    !>
+    !> @ref allocate_multi_field
+    !> @ref deallocate_multi_field
+    !> @ref add_array_to_multi_field 
+    !> @ref add_multi_field_to_array
+    !> @ref mult_multi_field_by_array
+    !> @ref mult_multi_field_by_array_on_array
+    !> @ref scale_multi_field
+    !> @ref print_multi_field
+    !> @ref get_multi_field_inverse
     type multi_field
         real, dimension( :, :, :, : ), pointer :: val => null()
-
-        logical :: have_field =  .false. !> do we need this field for this simulation?
-        logical :: is_constant = .false. !> if ( .true. ) nonods = 1 for what follows     -   DELETE THIS MAYBE ???
-
-        integer :: memory_type = -1 !> 0  Isotropic tensor - ( 1, 1, nphase, nonods ) - this is unrolled as ( ndim, ndim, nphase, nonods )
-                                    !> 1  Isotropic - ( 1, 1, nphase, nonods ) - diagonal
-                                    !> 2  Anisotropic - ( ndim, ndim, nphase, nonods )
-                                    !> 3  Isotropic coupled - ( 1, nphase, nphase, nonods )
-                                    !> 4  Anisotropic coupled (aka Full Metal Jacket) - ( 1, ndim x nphase, ndim x nphase, nonods )
-                                    !> 6 Isotropic coupled - ( 1, ndim, nphase, nonods )
-                                    !>    This is for porous media. We assume isotropic properties like permiability to be diagonal
-
-        integer :: ndim1 = -1, ndim2 = -1, ndim3 = -1 !> dimensions of field
+        logical :: have_field =  .false. 
+        logical :: is_constant = .false. 
+        integer :: memory_type = -1 
+        integer :: ndim1 = -1, ndim2 = -1, ndim3 = -1 
 
     end type multi_field
 
 
+    !>Comprises all the absorption terms that migth be required
+    !>@param  PorousMedia   <= Memory_type = 2 -> Fully Anisotropic tensors.; Memory_type = 6-> Isotropic Symmetric tensors
+    !>@param  Components Unused currently
+    !>@param  Temperature Unused currently
+    !>@param  Concentration Unused currently
+    !>@param  Velocity Unused currently
+    !>@param  Magma  Magma absorption Initially to use memory type = 3  Isotropic coupled
     type multi_absorption
-        !Comprises all the absorption terms that migth be required
-        type (multi_field) :: PorousMedia !> <= Memory_type = 2 -> Fully Anisotropic tensors.
-                                          !>    Memory_type = 6-> Isotropic Symmetric tensors
+        type (multi_field) :: PorousMedia 
         type (multi_field) :: Components
         type (multi_field) :: Temperature
         type (multi_field) :: Concentration
         type (multi_field) :: Velocity
         !>Magma absorption
-        type (multi_field) :: Magma !>Initially to use memory type = 3  Isotropic coupled
+        type (multi_field) :: Magma 
     end type multi_absorption
 
+    !>Contains all the information for generic scalar fields to solve for
+    !>@param name Field name to extract from state
+    !>@param path Path from diamond
+    !>@param coupled_field Is the field coupled between phases?
+    !>@param absorption Absorption of this field
     type multi_transport_scalar
-        !Contains all the information for generic scalar fields to solve for
-        character(len = FIELD_NAME_LEN) :: name!>To extract from state
-        character(len = option_path_len) :: path!>Path from diamond
-        logical :: coupled_field!>Is the field coupled between phases?
-        type (multi_field) :: absorption!>Absorption of this field
+        character(len = FIELD_NAME_LEN) :: name!
+        character(len = option_path_len) :: path
+        logical :: coupled_field
+        type (multi_field) :: absorption
     end type
 
+    !>Contains all the information required to model pipes.
+    !> Many of these fields are unnecessary or even undesired...
+    !>@param gamma_pres_abs Specifies the apperture of the well, normally 1 or 0
+    !>@param mass_pipe Volume of the pipe/well
+    !>@param mass_cvfem2pipe Mass of the wells in CV format
+    !>@param mass_pipe2cvfem Mass of the wells in CV format
+    !>@param mass_cvfem2pipe_true Whether to computer mass_cvfem2pipe or not
+    !>@param impose_strongBCs This flag is used to trigger the imposition of strong BCs for P0DG for wells, only necessary if gamma=0 at the BC
     type multi_pipe_package
-        !>Contains all the information required to model pipes.
         real, dimension( :, :, : ), pointer  :: gamma_pres_abs=> null()
         real, dimension( : ), pointer        :: mass_pipe=> null()
         real, dimension( : ), pointer        :: mass_cvfem2pipe=> null()
         real, dimension( : ), pointer        :: mass_pipe2cvfem=> null()
         real, dimension( : ), pointer        :: mass_cvfem2pipe_true=> null()
-        logical, dimension( : ), pointer     :: impose_strongBCs=> null()!> This flag is used to trigger the imposition of 
-                                                                            !strong BCs for P0DG for wells, only necessary if gamma=0 at the BC
+        logical, dimension( : ), pointer     :: impose_strongBCs=> null()
     end type
 
     
@@ -349,18 +458,28 @@ module multi_data_types
 
     end type
 
+    !> Type containing everything required to indentify and store which nodes contain a well/pipe
+    !>@param ele Element containing pipes
+    !>@param npipes pipes per element
+    !>@param pipe_index      nodes with pipes
+    !>@param pipe_corner_nds1 size npipes
+    !>@param pipe_corner_nds2 size npipes
      type pipe_coords
-            integer :: ele, npipes                               !>Element containing pipes, pipes per element
-            logical, allocatable, dimension(:) :: pipe_index     !>nodes with pipes
-            integer, allocatable, dimension(:) :: pipe_corner_nds1!>size npipes
-            integer, allocatable, dimension(:) :: pipe_corner_nds2!>size npipes
+        integer :: ele, npipes                               
+        logical, allocatable, dimension(:) :: pipe_index     
+        integer, allocatable, dimension(:) :: pipe_corner_nds1
+        integer, allocatable, dimension(:) :: pipe_corner_nds2
      end type pipe_coords
 
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3,&
          allocate_multi_field1, allocate_multi_field2
 
 contains
-
+    !> Allocated a multi field type based on field name 
+    !>@param state Liked list containing the fluidity fields
+    !>@param Mdims Field containing the dimensions of the model
+    !>@param field_name Name of the field in fluidity format
+    !>@retval mfield Multi field allocated given its name 
     subroutine allocate_multi_field1( state, Mdims, field_name, mfield )
         !>*********UNTESTED*********
         implicit none
@@ -428,6 +547,11 @@ contains
         return
     end subroutine allocate_multi_field1
 
+    !> Allocated a multi field type based on field name 
+    !>@param Mdims Field containing the dimensions of the model
+    !>@retval mfield Multi field allocated given its name 
+    !>@param nonods_in number of nodes of the field
+    !>@param field_name Name of the field in fluidity format
     subroutine allocate_multi_field2( Mdims, mfield, nonods_in, field_name)
         !*********UNTESTED*********
         !PorousMedia_AbsorptionTerm tested
@@ -504,7 +628,9 @@ contains
     end subroutine allocate_multi_field2
 
 
-
+    !> Deallocation of a multi field type
+    !>@param mfield multifield to be deallocated 
+    !>@param and_destroy if not and_destroy then only the pointer is nullified, otherwise the field is deallocated
     subroutine deallocate_multi_field(mfield, and_destroy)
         implicit none
         type( multi_field ), intent( inout ) :: mfield
@@ -523,6 +649,9 @@ contains
 
     end subroutine deallocate_multi_field
 
+    !> Deallocation of all of the multi field types within multi_absorp
+    !>@param multi_absorp all multifields within multi_absorp are deallocated 
+    !>@param and_destroy if not and_destroy then only the pointer is nullified, otherwise the field is deallocated
     subroutine deallocate_multi_absorption(multi_absorp, and_destroy)
         implicit none
         type( multi_absorption ), intent( inout ) :: multi_absorp
@@ -540,6 +669,10 @@ contains
         if (associated(multi_absorp%Magma%val))    call deallocate_multi_field(multi_absorp%Magma, and_destroy2)
     end subroutine deallocate_multi_absorption
 
+    !> Given a multi field returns an array with its values at inode_in
+    !>@param mfield multifield to be copied into an array
+    !>@param inode_in position to be retrieved
+    !>@retval output array of size (ndim*nphase, ndim*nphase) containing the mfield at inode_in
     subroutine get_multi_field(mfield, inode_in, output)
         implicit none
         integer, intent(in) :: inode_in
@@ -595,7 +728,10 @@ contains
 
     end subroutine get_multi_field
 
-
+    !> Given a multi field returns the inverse as an array with its values at inode_in
+    !>@param mfield multifield to be copied into an array
+    !>@param inode_in position to be retrieved
+    !>@retval output array of size (ndim*nphase, ndim*nphase) containing the inverse of mfield at inode_in
     subroutine get_multi_field_inverse(mfield, inode_in, output)
         implicit none
         integer, intent(in) :: inode_in
@@ -644,7 +780,10 @@ contains
 
 
     end subroutine get_multi_field_inverse
-
+    !> Given a multi field returns prints its values at inode_in
+    !>@param mfield multifield to be copied into an array
+    !>@param inode_in position to be retrieved
+    !>@param dimension must have size(ndim*nphase, ndim*nphase)
     subroutine print_multi_field(mfield, inode_in, dimension)
         implicit none
         integer, intent(in) :: inode_in
@@ -658,10 +797,17 @@ contains
 
     end subroutine print_multi_field
 
+    !> This subroutine performs the addition of an array and a multifield and returns the multifield
+    !>mfield = mfield + b
+    !>xpos and ypos are the starting positions
+    !>for a full matrix they have to be one
+    !>@param mfield multifield to be multiplied
+    !>@param b the array to add
+    !>@param xpos starting positions
+    !>@param ypos starting positions 
+    !>@param inode position to be retrieved
+    !>@retval same input mfield with added b
     subroutine add_array_to_multi_field(mfield, b, xpos, ypos, inode)
-        !mfield = mfield + b
-        !xpos and ypos are the starting positions
-        !for a full matrix they have to be one
         implicit none
         integer, intent(in) :: inode
         integer, intent(in) :: xpos, ypos
@@ -714,10 +860,18 @@ contains
 
     end subroutine add_array_to_multi_field
 
+    !> This subroutine performs the addition of an array and a multifield and returns the array
+    !>b = b + a * mfield
+    !>xpos and ypos are the starting positions
+    !>for a full matrix they have to be one
+    !>@param mfield multifield to be multiplied
+    !>@param b the array to add
+    !>@param xpos starting positions
+    !>@param ypos starting positions 
+    !>@param inode position to be retrieved
+    !>@param a_in multiplier of mfield
+    !>@retval same input array with added mfield
     subroutine add_multi_field_to_array(mfield, b, xpos, ypos, inode, a_in)
-        !b = b + a * mfield
-        !xpos and ypos are the starting positions
-        !for a full matrix they have to be one
         implicit none
         integer, intent(in) :: inode
         integer, intent(in) :: xpos, ypos
@@ -783,8 +937,13 @@ contains
 
     end subroutine add_multi_field_to_array
 
+    !> This subroutine performs the multiplication of an array and a multifield and returns the multifield
+    !>mfield = mfield * b
+    !>@param mfield multifield to be multiplied
+    !>@param b the array to multiply
+    !>@param inode position to be retrieved
+    !>@retval same input mfield times b
     subroutine mult_multi_field_by_array(mfield, b, inode)
-        !mfield = mfield * b
         implicit none
         integer, intent(in) :: inode
         type( multi_field ), intent( inout ) :: mfield
@@ -829,8 +988,13 @@ contains
     end subroutine mult_multi_field_by_array
 
 
+    !> This subroutine performs the multiplication of an array and a multifield and returns the array
+    !>b = mfield * b
+    !>@param mfield multifield to be multiplied
+    !>@param b the array to multiply
+    !>@param inode position to be retrieved
+    !>@retval same input mfield times b
     subroutine mult_multi_field_by_array_on_array(mfield, b, inode)
-        !b = mfield * b
         implicit none
         integer, intent(in) :: inode
         type( multi_field ), intent( in ) :: mfield
@@ -885,9 +1049,13 @@ contains
     end subroutine mult_multi_field_by_array_on_array
 
 
-
+    !> This subroutine rescales a multifield
+    !>mfield = a * mfield
+    !>@param mfield multifield to be rescaled
+    !>@param a the scaling real
+    !>@param inode position to be retrieved
+    !>@retval same input mfield times a
     subroutine scale_multi_field(mfield, a, inode)
-        !mfield = a * mfield
         implicit none
         integer, intent(in) :: inode
         type( multi_field ), intent( inout ) :: mfield
@@ -897,6 +1065,11 @@ contains
 
     end subroutine scale_multi_field
 
+    !> This subroutine linearises a multifield. i.e. takes it from P2 to P1
+    !>@param mfield multifield to be rescaled
+    !>@param Mdims dimensions of the model
+    !>@param ndgln global to local numbering
+    !>@retval same input mfield linearised
     subroutine linearise_multi_field( mfield, Mdims, ndgln )
       !*********UNTESTED*********
       implicit none
@@ -931,21 +1104,13 @@ contains
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    !>This subroutine allocates and initialises to zero all the arrays in a multi_shape_funs data type
+    !> It uses the Dimensions of the model and the gauss integration to be used to allocate 
+    !> the necessary shape functions
+    !>@param shape_fun Shape functions for a given type of mesh, pressure or velocity
+    !>@param Mdims Dimensions of the model
+    !>@param GIdims GI dimensions to be used, consistent with the mesh used for shape_fun
     subroutine allocate_multi_shape_funs(shape_fun,  Mdims, GIdims)
-    !This subroutine allocates all the arrays in a multi_shape_funs data type
         implicit none
         type(multi_shape_funs), intent(inout) :: shape_fun
         type(multi_dimensions), intent(in) :: Mdims
@@ -1026,8 +1191,9 @@ contains
     end subroutine allocate_multi_shape_funs
 
 
+    !>This subroutine deallocates and nullifies all the fields inside multi_shape_funs
+    !>@param shape_fun Shape functions for a given type of mesh, pressure or velocity
     subroutine deallocate_multi_shape_funs(shape_fun)
-        !This subroutine deallocates all the fields inside multi_shape_funs
         implicit none
         type(multi_shape_funs), intent(inout) :: shape_fun
 
@@ -1109,8 +1275,9 @@ contains
 
     end subroutine deallocate_multi_shape_funs
 
+    !> This subroutine deallocates projection matrices CV2FE & FE2CV stored in shape_fun
+    !>@param shape_fun Shape functions for a given type of mesh, pressure or velocity
     subroutine deallocate_projection_matrices(shape_fun)
-        !This subroutine deallocates projection matrices CV2FE & FE2CV stored in shape_fun
         implicit none
         type(multi_shape_funs), intent(inout) :: shape_fun
 
@@ -1121,9 +1288,9 @@ contains
 
     end subroutine deallocate_projection_matrices
 
-    !This subroutine, despite it can be called by itself it is highly recommended to be called ONLY through multi_sparsity/Get_Sparsity_Patterns
+    !> This subroutine allocates part of the memory inside Mspars, i.e. sparsities of the different matrices
+    !> IMPORTANT: Despite this subroutine can be called by itself it is highly recommended to be called ONLY through multi_sparsity/Get_Sparsity_Patterns
     subroutine allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
-        !This subroutine allocates part of the memory inside Mspars
         implicit none
         type (multi_sparsities), intent(inout) :: Mspars
         type(multi_dimensions), intent(in) :: Mdims
@@ -1164,8 +1331,9 @@ contains
 
     end subroutine allocate_multi_sparsities
 
+    !>This subroutine deallocates all the memory inside Mspars
+    !>@param Mspars Multi_sparsities field
     subroutine deallocate_multi_sparsities(Mspars)
-        !This subroutine deallocates all the memory inside Mspars
         implicit none
         type (multi_sparsities), intent(inout) :: Mspars
 
@@ -1237,6 +1405,9 @@ contains
 
     end subroutine deallocate_multi_sparsities
 
+    !> This subroutine allocates the global to local conversors
+    !> @param ndgln Global to local field
+    !> @param Mdims dimensions of the model
     subroutine allocate_multi_ndgln(ndgln, Mdims)
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
@@ -1247,6 +1418,9 @@ contains
                   ndgln%suf_u( Mdims%stotel * Mdims%u_snloc ) )
     end subroutine allocate_multi_ndgln
 
+    !> Deallocates Global to local fields
+    !> NOTE that Only deallocates suf_cv, suf_p and suf_u since the others are pointers to state
+    !> @param ndgln Global to local field
     subroutine deallocate_multi_ndgln(ndgln)
         implicit none
         type(multi_ndgln), intent(inout) :: ndgln
@@ -1256,6 +1430,8 @@ contains
 
     end subroutine deallocate_multi_ndgln
 
+    !> Deallocates and nullifies the memory generated for the matrices, it is to be used after adapting the mesh
+    !>@param Mmat multi_matrices containing the memory used to solve for the different fields
     subroutine destroy_multi_matrices(Mmat)
         !Deallocates all the memory used, intended to be used after mesh adapt
         implicit none
@@ -1307,6 +1483,10 @@ contains
         Mmat%stored = .false.
     end subroutine destroy_multi_matrices
 
+    !> Allocates the required memory to store the derivatives of the shape functions
+    !> @param funs shape functions, are used to indentified the required memory
+    !> @param DevFuns output field with the memory allocated
+    !> @param nx_all_FE_size If true then the size of the generic nx_all is set like ufenlx_all, otherwise, like cvfenlx_all
     subroutine allocate_multi_dev_shape_funs1(funs, DevFuns, nx_all_FE_size)
         implicit none
         type (multi_shape_funs), intent(in) ::funs
@@ -1335,6 +1515,10 @@ contains
 
     end subroutine allocate_multi_dev_shape_funs1
 
+    !> Allocates the required memory to store the derivatives of the shape functions
+    !> @param GIdims Gauss integration data,  used to indentified the required memory
+    !> @param DevFuns output field with the memory allocated
+    !> @param nx_all_FE_size If true then the size of the generic nx_all is set like ufenlx_all, otherwise, like cvfenlx_all
     subroutine allocate_multi_dev_shape_funs2(Mdims, GIdims, DevFuns, nx_all_FE_size)
         implicit none
         type (multi_dimensions), intent(in)  ::Mdims
@@ -1364,6 +1548,11 @@ contains
 
     end subroutine allocate_multi_dev_shape_funs2
 
+    !> Allocates the required memory to store the derivatives of the shape functions
+    !> @param cvfenlx_all array used to indentified the required memory
+    !> @param ufenlx_all array used to indentified the required memory
+    !> @param DevFuns output field with the memory allocated
+    !> @param nx_all_FE_size If true then the size of the generic nx_all is set like ufenlx_all, otherwise, like cvfenlx_all
     subroutine allocate_multi_dev_shape_funs3(cvfenlx_all, ufenlx_all, DevFuns, nx_all_FE_size)
         implicit none
         real, dimension(:,:,:), intent(in) :: cvfenlx_all, ufenlx_all
@@ -1390,7 +1579,8 @@ contains
             allocate(DevFuns%nx_all(size(cvfenlx_all,1),size(cvfenlx_all,2),size(cvfenlx_all,3))) ; DevFuns%nx_all=0.0
         end if
     end subroutine allocate_multi_dev_shape_funs3
-
+    !> Deallocates the required memory to store the derivatives of the shape functions
+    !> @param DevFuns output field with the memory deallocated and pointers nullified
     subroutine deallocate_multi_dev_shape_funs(DevFuns)
         implicit none
         type (multi_dev_shape_funs), intent(inout) :: DevFuns
@@ -1408,6 +1598,9 @@ contains
         nullify(DevFuns%nx_all); nullify(DevFuns%inv_jac)
     end subroutine deallocate_multi_dev_shape_funs
 
+    !> Allocates the memory for the advection coefficients for porous media
+    !> @param Mdims- dimensions of the model
+    !> @param upwnd multi_dimensions field
     subroutine allocate_porous_adv_coefs(Mdims, upwnd)
         type (porous_adv_coefs), intent(inout) :: upwnd
         type (multi_dimensions), intent(in)  ::Mdims
@@ -1417,7 +1610,8 @@ contains
         if (.not.associated(upwnd%adv_coef_grad)) allocate(upwnd%adv_coef_grad(1,1,Mdims%nphase,Mdims%mat_nonods))
         if (.not.associated(upwnd%inv_permeability)) allocate(upwnd%inv_permeability(Mdims%ndim,Mdims%ndim,Mdims%totele))
     end subroutine allocate_porous_adv_coefs
-
+    !> Deallocates the memory for the advection coefficients for porous media
+    !> @param upwnd multi_dimensions field
     subroutine deallocate_porous_adv_coefs(upwnd)
         type (porous_adv_coefs), intent(inout) :: upwnd
 
@@ -1429,7 +1623,10 @@ contains
         nullify(upwnd%adv_coef); nullify(upwnd%inv_adv_coef);nullify(upwnd%adv_coef_grad)
     end subroutine deallocate_porous_adv_coefs
 
-
+    !> Allocates the necessary memory for multi_pipe_package
+    !> @param pipes output the multi_pipe_package field with memory allocated
+    !> @param Mdims dimensions of the model
+    !> @param Mspars multi_sparsities of the model
     subroutine allocate_multi_pipe_package(pipes, Mdims, Mspars)
         type (multi_pipe_package), intent(inout) :: pipes
         type (multi_dimensions), intent(in)  ::Mdims
@@ -1450,7 +1647,8 @@ contains
 !            if (.not.associated(pipes%mass_cvfem2pipe_true))  allocate( pipes%mass_cvfem2pipe_true( 0 ))
         end if
     end subroutine allocate_multi_pipe_package
-
+    !> Deallocates the necessary memory for multi_pipe_package
+    !> @param pipes output the multi_pipe_package field with memory deallocated
     subroutine deallocate_multi_pipe_package(pipes)
         type (multi_pipe_package), intent(inout) :: pipes
 
@@ -1474,6 +1672,9 @@ contains
         end if
     end subroutine deallocate_multi_pipe_package
 
+    !> Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer vector) variable outfluxes%outlet_id
+    !> and stores them into the multi_outfluxes field
+    !> @param outfluxes the multi_outfluxes field
     subroutine initialize_multi_outfluxes(outfluxes)
         implicit none
         type (multi_outfluxes), intent(inout) :: outfluxes
@@ -1496,6 +1697,9 @@ contains
 
     end subroutine initialize_multi_outfluxes
 
+    !> Initialises memory for outfluxes
+    !> @param Mdims dimensions of the model
+    !> @param outfluxes the multi_outfluxes field
     subroutine allocate_multi_outfluxes(Mdims, outfluxes)
         implicit none
         type (multi_dimensions), intent(in)  ::Mdims
@@ -1545,6 +1749,8 @@ contains
 
     end subroutine allocate_multi_outfluxes
 
+    !> Deallocates the multi_outfluxes field
+    !> @param outfluxes the multi_outfluxes field
     subroutine destroy_multi_outfluxes(outfluxes)
         implicit none
         type (multi_outfluxes), intent(inout) :: outfluxes

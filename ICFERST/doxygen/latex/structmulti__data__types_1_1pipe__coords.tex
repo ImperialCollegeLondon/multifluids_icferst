@@ -1,72 +1,55 @@
 \hypertarget{structmulti__data__types_1_1pipe__coords}{}\doxysection{multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords Type Reference}
 \label{structmulti__data__types_1_1pipe__coords}\index{multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}}
+
+
+Type containing everything required to indentify and store which nodes contain a well/pipe.  
+
+
 \doxysubsection*{Public Attributes}
 \begin{DoxyCompactItemize}
 \item 
 integer \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_ab80d3ebae2eac51df03e03f03c0f6e8a}{ele}}
 \item 
-integer, dimension(\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_af5ed4febd80aeb768e02b6dbb9b3ff0f}{npipes}}
-\item 
-integer \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_ab6d4c38da09b0308892f20ca2fccbc18}{element}}
-\item 
-integer \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_ac05b1919a2b23c929134a83c3547e4eb}{containing}}
-\item 
-integer, dimension(\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_af1294b3af781407d978333e9a7334cfb}{pipes}}
-\item 
-integer \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_a5132108cb00d3ad3727e5167b597ddb7}{per}}
+integer \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_a67f07df63335fb654d3b00e4d7c72bd0}{npipes}}
 \item 
 logical, dimension(\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_a0c75fd6d9c13a97d3a11e760d23bb1f3}{pipe\+\_\+index}}
 \item 
-logical, dimension(\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_a935d6ea2b2468b4369a41778fa46fbcd}{nodes}}
-\item 
-logical, dimension(\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_ab3c99f5447d977ea157577313d817375}{with}}
-\item 
-logical, dimension(\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_ad6d13b60210389d46bc431ac36c63cf8}{pipes}}
-\item 
 integer, dimension(\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_a47e46d12caa43c8d450ab32fb9a81e17}{pipe\+\_\+corner\+\_\+nds1}}
-\item 
-integer, dimension(\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_ace5d2f5058d4be0cc631ceadbff44a94}{size}}
 \item 
 integer, dimension(\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1pipe__coords_a8ae975153091096d4a96c1ad097ce75f}{pipe\+\_\+corner\+\_\+nds2}}
 \end{DoxyCompactItemize}
 
 
-\doxysubsection{Member Data Documentation}
-\mbox{\Hypertarget{structmulti__data__types_1_1pipe__coords_ac05b1919a2b23c929134a83c3547e4eb}\label{structmulti__data__types_1_1pipe__coords_ac05b1919a2b23c929134a83c3547e4eb}} 
-\index{multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}!containing@{containing}}
-\index{containing@{containing}!multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}}
-\doxysubsubsection{\texorpdfstring{containing}{containing}}
-{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords\+::containing}
+\doxysubsection{Detailed Description}
+Type containing everything required to indentify and store which nodes contain a well/pipe. 
 
+
+\begin{DoxyParams}{Parameters}
+{\em ele} & Element containing pipes \\
+\hline
+{\em npipes} & pipes per element \\
+\hline
+{\em pipe\+\_\+index} & nodes with pipes \\
+\hline
+{\em pipe\+\_\+corner\+\_\+nds1} & size npipes \\
+\hline
+{\em pipe\+\_\+corner\+\_\+nds2} & size npipes \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsection{Member Data Documentation}
 \mbox{\Hypertarget{structmulti__data__types_1_1pipe__coords_ab80d3ebae2eac51df03e03f03c0f6e8a}\label{structmulti__data__types_1_1pipe__coords_ab80d3ebae2eac51df03e03f03c0f6e8a}} 
 \index{multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}!ele@{ele}}
 \index{ele@{ele}!multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}}
 \doxysubsubsection{\texorpdfstring{ele}{ele}}
 {\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords\+::ele}
 
-\mbox{\Hypertarget{structmulti__data__types_1_1pipe__coords_ab6d4c38da09b0308892f20ca2fccbc18}\label{structmulti__data__types_1_1pipe__coords_ab6d4c38da09b0308892f20ca2fccbc18}} 
-\index{multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}!element@{element}}
-\index{element@{element}!multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}}
-\doxysubsubsection{\texorpdfstring{element}{element}}
-{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords\+::element}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1pipe__coords_a935d6ea2b2468b4369a41778fa46fbcd}\label{structmulti__data__types_1_1pipe__coords_a935d6ea2b2468b4369a41778fa46fbcd}} 
-\index{multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}!nodes@{nodes}}
-\index{nodes@{nodes}!multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}}
-\doxysubsubsection{\texorpdfstring{nodes}{nodes}}
-{\footnotesize\ttfamily logical, dimension(\+:), allocatable multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords\+::nodes}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1pipe__coords_af5ed4febd80aeb768e02b6dbb9b3ff0f}\label{structmulti__data__types_1_1pipe__coords_af5ed4febd80aeb768e02b6dbb9b3ff0f}} 
+\mbox{\Hypertarget{structmulti__data__types_1_1pipe__coords_a67f07df63335fb654d3b00e4d7c72bd0}\label{structmulti__data__types_1_1pipe__coords_a67f07df63335fb654d3b00e4d7c72bd0}} 
 \index{multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}!npipes@{npipes}}
 \index{npipes@{npipes}!multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}}
 \doxysubsubsection{\texorpdfstring{npipes}{npipes}}
-{\footnotesize\ttfamily integer, dimension(\+:), allocatable multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords\+::npipes}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1pipe__coords_a5132108cb00d3ad3727e5167b597ddb7}\label{structmulti__data__types_1_1pipe__coords_a5132108cb00d3ad3727e5167b597ddb7}} 
-\index{multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}!per@{per}}
-\index{per@{per}!multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}}
-\doxysubsubsection{\texorpdfstring{per}{per}}
-{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords\+::per}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords\+::npipes}
 
 \mbox{\Hypertarget{structmulti__data__types_1_1pipe__coords_a47e46d12caa43c8d450ab32fb9a81e17}\label{structmulti__data__types_1_1pipe__coords_a47e46d12caa43c8d450ab32fb9a81e17}} 
 \index{multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}!pipe\_corner\_nds1@{pipe\_corner\_nds1}}
@@ -85,30 +68,6 @@ integer, dimension(\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1
 \index{pipe\_index@{pipe\_index}!multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}}
 \doxysubsubsection{\texorpdfstring{pipe\_index}{pipe\_index}}
 {\footnotesize\ttfamily logical, dimension(\+:), allocatable multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords\+::pipe\+\_\+index}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1pipe__coords_af1294b3af781407d978333e9a7334cfb}\label{structmulti__data__types_1_1pipe__coords_af1294b3af781407d978333e9a7334cfb}} 
-\index{multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}!pipes@{pipes}}
-\index{pipes@{pipes}!multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}}
-\doxysubsubsection{\texorpdfstring{pipes}{pipes}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
-{\footnotesize\ttfamily integer, dimension(\+:), allocatable multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords\+::pipes}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1pipe__coords_ad6d13b60210389d46bc431ac36c63cf8}\label{structmulti__data__types_1_1pipe__coords_ad6d13b60210389d46bc431ac36c63cf8}} 
-\index{multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}!pipes@{pipes}}
-\index{pipes@{pipes}!multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}}
-\doxysubsubsection{\texorpdfstring{pipes}{pipes}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
-{\footnotesize\ttfamily logical, dimension(\+:), allocatable multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords\+::pipes}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1pipe__coords_ace5d2f5058d4be0cc631ceadbff44a94}\label{structmulti__data__types_1_1pipe__coords_ace5d2f5058d4be0cc631ceadbff44a94}} 
-\index{multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}!size@{size}}
-\index{size@{size}!multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}}
-\doxysubsubsection{\texorpdfstring{size}{size}}
-{\footnotesize\ttfamily integer, dimension(\+:), allocatable multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords\+::size}
-
-\mbox{\Hypertarget{structmulti__data__types_1_1pipe__coords_ab3c99f5447d977ea157577313d817375}\label{structmulti__data__types_1_1pipe__coords_ab3c99f5447d977ea157577313d817375}} 
-\index{multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}!with@{with}}
-\index{with@{with}!multi\_data\_types::pipe\_coords@{multi\_data\_types::pipe\_coords}}
-\doxysubsubsection{\texorpdfstring{with}{with}}
-{\footnotesize\ttfamily logical, dimension(\+:), allocatable multi\+\_\+data\+\_\+types\+::pipe\+\_\+coords\+::with}
 
 
 

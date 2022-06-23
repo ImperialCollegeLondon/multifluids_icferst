@@ -1,5 +1,10 @@
 \hypertarget{structmulti__data__types_1_1multi__dev__shape__funs}{}\doxysection{multi\+\_\+data\+\_\+types\+::multi\+\_\+dev\+\_\+shape\+\_\+funs Type Reference}
 \label{structmulti__data__types_1_1multi__dev__shape__funs}\index{multi\_data\_types::multi\_dev\_shape\_funs@{multi\_data\_types::multi\_dev\_shape\_funs}}
+
+
+Data structure to store the derivatives of the shape functions and conversors from reference element to local.  
+
+
 \doxysubsection*{Public Attributes}
 \begin{DoxyCompactItemize}
 \item 
@@ -55,6 +60,28 @@ real, dimension(\+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__type
 \item 
 real, dimension(\+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__dev__shape__funs_af46d7a46abb7cb0fdfbbd582466d66e0}{matrix}}
 \end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Data structure to store the derivatives of the shape functions and conversors from reference element to local. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em volume} & Volume of the local element \\
+\hline
+{\em detwei=$>$} & null() Determinant times weigth (i.\+e\+: conversor from reference element to local element) \\
+\hline
+{\em ra} & =$>$ null() ??? \\
+\hline
+{\em \+:} & cvfenx\+\_\+all=$>$ null() Space derivatives of the pressure (CV) shape functions \\
+\hline
+{\em \+:} & ufenx\+\_\+all=$>$ null() Space derivatives of the velocity (FE) shape functions \\
+\hline
+{\em \+:} & nx\+\_\+all =$>$ null() Space derivatives of a generic field. \\
+\hline
+{\em \+:} & inv\+\_\+jac =$>$ null() Inverse of the Jacobian matrix \\
+\hline
+\end{DoxyParams}
 
 
 \doxysubsection{Member Data Documentation}

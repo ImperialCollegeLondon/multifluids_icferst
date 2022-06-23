@@ -1,8 +1,8 @@
 <map id="shape_functions_ndim::get_cvn_compact_overlapping" name="shape_functions_ndim::get_cvn_compact_overlapping">
-<area shape="rect" id="node1" title="This subroutine is specially created to be used with compact_overlapping." alt="" coords="5,195,233,236"/>
-<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#a01db78dad28836c230edae9db5ce2b49" title=" " alt="" coords="307,161,489,203"/>
-<area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#a18ed715c7c19cc301ca5152fe8293ef2" title=" " alt="" coords="281,227,515,268"/>
-<area shape="rect" id="node4" href="$namespaceshape__functions__ndim.html#a364b3f7243c9e7b46dbcd0d3bffe5f6b" title=" " alt="" coords="563,104,731,145"/>
+<area shape="rect" id="node1" title=": Calculates the CVN and CVWEIGH shape functions This subroutine is specially created to be used with..." alt="" coords="5,195,233,236"/>
+<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#a01db78dad28836c230edae9db5ce2b49" title="Compute CVN (CV basis function) for triangles, tetrahedra, quadrilaterals and hexahedra." alt="" coords="307,161,489,203"/>
+<area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#a18ed715c7c19cc301ca5152fe8293ef2" title="Get the x_ndgln for the nodes of triangles or tetrahedra." alt="" coords="281,227,515,268"/>
+<area shape="rect" id="node4" href="$namespaceshape__functions__ndim.html#a364b3f7243c9e7b46dbcd0d3bffe5f6b" title="This subrt creates the local coordinates and node points for: (a) quadratic tetrahedra of unit volume..." alt="" coords="563,104,731,145"/>
 <area shape="rect" id="node10" href="$namespaceshape__functions__ndim.html#ab33172e32fe449b773531887a2da7894" title=" " alt="" coords="563,285,731,327"/>
 <area shape="rect" id="node5" href="$namespaceshape__functions__ndim.html#ab2cdb212a9a26a4101f281d6a3281f48" title=" " alt="" coords="799,5,997,47"/>
 <area shape="rect" id="node8" href="$namespaceshape__functions__ndim.html#a5dff129de3cfdb87cd666a114c2b56a2" title=" " alt="" coords="801,71,995,112"/>

@@ -1,24 +1,24 @@
 <map id="linearise_components" name="linearise_components">
 <area shape="rect" id="node1" title=" " alt="" coords="5,1065,171,1092"/>
-<area shape="rect" id="node2" href="$namespacemulti__data__types.html#add33a9072dfc14b1ee94cf90d53c030a" title=" " alt="" coords="235,35,429,77"/>
-<area shape="rect" id="node3" href="$namespacemulti__data__types.html#a086d82f299fc3e1148cd44350b8cff0e" title=" " alt="" coords="235,101,429,142"/>
+<area shape="rect" id="node2" href="$namespacemulti__data__types.html#add33a9072dfc14b1ee94cf90d53c030a" title="This subroutine allocates the global to local conversors." alt="" coords="235,35,429,77"/>
+<area shape="rect" id="node3" href="$namespacemulti__data__types.html#a086d82f299fc3e1148cd44350b8cff0e" title="Allocates the memory for the advection coefficients for porous media." alt="" coords="235,101,429,142"/>
 <area shape="rect" id="node4" href="$namespacemulti__sp.html#a3761caa03a0d114b25c395685b965a73" title=": This subroutine computes the saturated rock conductivity based on Tiab and Donaldson,..." alt="" coords="257,166,407,207"/>
 <area shape="rect" id="node8" href="$namespacemultiphase__eos.html#ab16c45da0af88c69945beac4e3334349" title=": Computes the density for the phases and the derivatives of the density" alt="" coords="236,385,428,426"/>
-<area shape="rect" id="node14" href="$namespacecopy__outof__state.html#abba0b467480d0b56c11d18f70e8c680e" title="This subroutine calculates the global node numbers requested to operates in the MP&#45;space." alt="" coords="233,649,431,690"/>
-<area shape="rect" id="node16" href="$namespacecv__advection.html#ae1eba9d13ff146b1bf390a5de461d421" title=" " alt="" coords="511,530,686,571"/>
-<area shape="rect" id="node18" href="$namespacemulti__data__types.html#a5ea8066a0ecf9104dd8ca9d9f18e11c9" title=" " alt="" coords="227,862,437,903"/>
-<area shape="rect" id="node19" href="$namespacemulti__data__types.html#a8d4980a0b1c7eaa7e55faa42e636eebe" title=" " alt="" coords="227,927,437,969"/>
-<area shape="rect" id="node20" href="$namespacemulti__data__types.html#a3137e48a49f7bb16cf337ff1834703b6" title=" " alt="" coords="493,647,704,689"/>
+<area shape="rect" id="node14" href="$namespacecopy__outof__state.html#abba0b467480d0b56c11d18f70e8c680e" title="This subroutine calculates the global node numbers requested to operates in ICFERST." alt="" coords="233,649,431,690"/>
+<area shape="rect" id="node16" href="$namespacecv__advection.html#ae1eba9d13ff146b1bf390a5de461d421" title="This subroutine counts then number of faces in the control volume space." alt="" coords="511,530,686,571"/>
+<area shape="rect" id="node18" href="$namespacemulti__data__types.html#a5ea8066a0ecf9104dd8ca9d9f18e11c9" title="Deallocates Global to local fields NOTE that Only deallocates suf_cv, suf_p and suf_u since the other..." alt="" coords="227,862,437,903"/>
+<area shape="rect" id="node19" href="$namespacemulti__data__types.html#a8d4980a0b1c7eaa7e55faa42e636eebe" title="Deallocates the necessary memory for multi_pipe_package." alt="" coords="227,927,437,969"/>
+<area shape="rect" id="node20" href="$namespacemulti__data__types.html#a3137e48a49f7bb16cf337ff1834703b6" title="This subroutine deallocates all the memory inside Mspars." alt="" coords="493,647,704,689"/>
 <area shape="rect" id="node21" href="$namespacemulti__phreeqc.html#a42b4f2e1448e657fbfda8a497fac99df" title=" " alt="" coords="237,993,427,1034"/>
-<area shape="rect" id="node23" href="$namespacemulti__data__types.html#a30f2b1810cafa7b1e675ca9c08eb12c7" title=" " alt="" coords="227,1058,437,1099"/>
-<area shape="rect" id="node24" href="$namespacemulti__data__types.html#abf63a6f60bfdf10af1503d0cb8787096" title=" " alt="" coords="227,1123,437,1165"/>
+<area shape="rect" id="node23" href="$namespacemulti__data__types.html#a30f2b1810cafa7b1e675ca9c08eb12c7" title="Deallocates the memory for the advection coefficients for porous media." alt="" coords="227,1058,437,1099"/>
+<area shape="rect" id="node24" href="$namespacemulti__data__types.html#abf63a6f60bfdf10af1503d0cb8787096" title="This subroutine deallocates projection matrices CV2FE &amp; FE2CV stored in shape_fun." alt="" coords="227,1123,437,1165"/>
 <area shape="rect" id="node25" href="$namespacespact.html#a6f9b1937afa54fae50f7dd86b942f3cb" title=" " alt="" coords="231,1189,433,1230"/>
-<area shape="rect" id="node26" href="$namespacemulti__data__types.html#a0b85017f5919b415d7e7ec8cc29bdc6b" title=" " alt="" coords="236,1254,428,1295"/>
+<area shape="rect" id="node26" href="$namespacemulti__data__types.html#a0b85017f5919b415d7e7ec8cc29bdc6b" title="Deallocates and nullifies the memory generated for the matrices, it is to be used after adapting the ..." alt="" coords="236,1254,428,1295"/>
 <area shape="rect" id="node27" href="$namespacecopy__outof__state.html#a25e9236f15044530da105400e0e3e3f4" title=": Obtain the type of element u_ele_type = cv_ele_type = p_ele_type will flag the dimension and type o..." alt="" coords="251,1319,413,1361"/>
 <area shape="rect" id="node28" href="$namespacecopy__outof__state.html#ab5c876f8f241119d1dedc0bffa8fa159" title="This subroutine extracts all primary variables associated with the mesh from state,..." alt="" coords="249,1385,415,1426"/>
 <area shape="rect" id="node29" href="$namespacemultiphase__eos.html#aeb644e3565a7e33c61f0e40e73a3c990" title=":Gets the relperm max, the relperm exponent and the immobile fractions and stores them into packed st..." alt="" coords="255,1450,409,1491"/>
 <area shape="rect" id="node31" href="$namespacespact.html#aeaf3853765a92827bf24c599fe79364e" title=" " alt="" coords="259,797,405,838"/>
-<area shape="rect" id="node44" href="$namespacemulti__data__types.html#aa99e43604028836507ef0ebc746beafa" title=" " alt="" coords="233,1515,431,1557"/>
+<area shape="rect" id="node44" href="$namespacemulti__data__types.html#aa99e43604028836507ef0ebc746beafa" title="Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer ..." alt="" coords="233,1515,431,1557"/>
 <area shape="rect" id="node45" href="$namespacemulti__pipes.html#adf22cecb27df6cddfd856d95c388868b" title=" " alt="" coords="225,1581,439,1622"/>
 <area shape="rect" id="node46" href="$namespacemulti__interpolation.html#a4f1475bd24977140d41a9601fce62e7f" title=" " alt="" coords="259,1646,405,1687"/>
 <area shape="rect" id="node47" href="$namespacemulti__interpolation.html#adb81d167c7226e84c335c34c9a7e98e6" title=" " alt="" coords="219,1711,445,1753"/>
@@ -26,7 +26,7 @@
 <area shape="rect" id="node49" href="$namespacecopy__outof__state.html#adba75f9a3f64d519ecf58b2b9159d629" title=": Prepares the memory to compute absorption fields" alt="" coords="236,1777,428,1818"/>
 <area shape="rect" id="node50" href="$namespacemulti__pipes.html#aa27e23615cb61d7b64663cda62a2e7da" title=": In this subroutine the elements that contain pipes are identified The pipes can either be defined u..." alt="" coords="253,1842,411,1883"/>
 <area shape="rect" id="node5" href="$namespacemultiphase__1d__engine.html#aeef4ba493db104704c886272f75f1f34" title=": In this method we assemble and solve the Laplacian system using at least P1 elements The equation s..." alt="" coords="514,5,683,61"/>
-<area shape="rect" id="node6" href="$namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b" title="@DEPRECATED: Gets memory from packed state" alt="" coords="508,86,689,127"/>
+<area shape="rect" id="node6" href="$namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b" title="@DEPRECATED: Gets memory from packed state This subroutine returns a pointer to the desired values of..." alt="" coords="508,86,689,127"/>
 <area shape="rect" id="node7" href="$namespacemulti__tools.html#ab412a6b9d80984d5739ef227590a9e8d" title=": This subroutine uses python run string to run the python_scalar_diagnostic to read a field the only..." alt="" coords="511,151,686,193"/>
 <area shape="rect" id="node9" href="$namespacemultiphase__eos.html#ac13395594592fe917fc20b7c3c2b7a5d" title=": Read from diamond and decide which sort of density representation do we have" alt="" coords="511,465,686,506"/>
 <area shape="rect" id="node10" href="$namespacemulti__tools.html#ac75ade49c065a07b12ef6532bbbd7abb" title=":Copies the data from inval to outval safely. If the sizes are different outval is populated using th..." alt="" coords="513,217,685,244"/>
@@ -37,7 +37,7 @@
 <area shape="rect" id="node17" href="$namespaceshape__functions__linear__quadratic.html#a523197b210811772a490d2fecb451771" title=": Computes the number of Gauss integration points and all the necessary information" alt="" coords="752,701,928,742"/>
 <area shape="rect" id="node22" href="$namespacephreeqcrm.html#aa18cd6cf17f8ac7b5552880340d5a3d2" title="Destroys a reaction module." alt="" coords="511,1412,686,1439"/>
 <area shape="rect" id="node30" href="$multi__eos_8_f90.html#a098f3f1c27b74be5d61f21fcff4c50a7" title=": This internal subroutine checks the if we are flipping from drainage to imbibition,..." alt="" coords="501,1463,697,1489"/>
-<area shape="rect" id="node32" href="$namespacemulti__data__types.html#a99a3adeb20eae3cd7f9c1ee1760473c3" title=" " alt="" coords="501,931,696,973"/>
+<area shape="rect" id="node32" href="$namespacemulti__data__types.html#a99a3adeb20eae3cd7f9c1ee1760473c3" title="This subroutine allocates part of the memory inside Mspars, i.e. sparsities of the different matrices..." alt="" coords="501,931,696,973"/>
 <area shape="rect" id="node33" href="$namespacesparsity__nd.html#ad2675c1d6e4a4f583ae88aca4f1c0698" title=" " alt="" coords="513,997,684,1024"/>
 <area shape="rect" id="node34" href="$namespacespact.html#aaa6676a57a39f977170aba9c14e142d9" title=" " alt="" coords="519,1048,678,1075"/>
 <area shape="rect" id="node35" href="$namespacesparsity__nd.html#a455ef657aa7fb1aaa3bff1b71aaa24a5" title=" " alt="" coords="503,713,695,754"/>

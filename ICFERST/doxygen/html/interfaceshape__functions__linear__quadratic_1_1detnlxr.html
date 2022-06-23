@@ -25,7 +25,7 @@
    <div id="projectname">ICFERST
    &#160;<span id="projectnumber">22_06</span>
    </div>
-   <div id="projectbrief">Reservoir simulator</div>
+   <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
  </tr>
  </tbody>
@@ -81,55 +81,328 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ac133a46e7eb7fb0ce406dccebded38ef"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceshape__functions__linear__quadratic_1_1detnlxr.html#ac133a46e7eb7fb0ce406dccebded38ef">detnlxr1</a></td></tr>
-<tr class="separator:ac133a46e7eb7fb0ce406dccebded38ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a30744569443a283fab46321887519c75"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceshape__functions__linear__quadratic_1_1detnlxr.html#a30744569443a283fab46321887519c75">detnlxr2</a></td></tr>
-<tr class="separator:a30744569443a283fab46321887519c75"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a60f0355649ada9402224b4a9a499a603"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceshape__functions__linear__quadratic_1_1detnlxr.html#a60f0355649ada9402224b4a9a499a603">detnlxr3</a></td></tr>
-<tr class="separator:a60f0355649ada9402224b4a9a499a603"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1c937315c60a13f3d055e8203ba990f1"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceshape__functions__linear__quadratic_1_1detnlxr.html#a1c937315c60a13f3d055e8203ba990f1">detnlxr1</a> (ELE, X_ALL, XONDGL, weight, nshape, nshapelx, DevFuns)</td></tr>
+<tr class="memdesc:a1c937315c60a13f3d055e8203ba990f1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Calculates the derivatives of the shape functions, which are stored into DevFunsNX_ALL and also DevFunsDETWEI, DevFunsRA, DevFunsVOLUME.  <a href="interfaceshape__functions__linear__quadratic_1_1detnlxr.html#a1c937315c60a13f3d055e8203ba990f1">More...</a><br /></td></tr>
+<tr class="separator:a1c937315c60a13f3d055e8203ba990f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abd253cad3b2a7fde1a5df1ffd995942d"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceshape__functions__linear__quadratic_1_1detnlxr.html#abd253cad3b2a7fde1a5df1ffd995942d">detnlxr2</a> (ELE, X_ALL, XONDGL, NLOC, NGI, N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, NX_ALL)</td></tr>
+<tr class="memdesc:abd253cad3b2a7fde1a5df1ffd995942d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Calculates the derivatives of the shape functions.  <a href="interfaceshape__functions__linear__quadratic_1_1detnlxr.html#abd253cad3b2a7fde1a5df1ffd995942d">More...</a><br /></td></tr>
+<tr class="separator:abd253cad3b2a7fde1a5df1ffd995942d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a369db603b0daa183932417f637b0324e"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfaceshape__functions__linear__quadratic_1_1detnlxr.html#a369db603b0daa183932417f637b0324e">detnlxr3</a> (ELE, X, Y, Z, XONDGL, TOTELE, NONODS, NLOC, NGI, N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, NX, NY, NZ)</td></tr>
+<tr class="memdesc:a369db603b0daa183932417f637b0324e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Calculates the derivatives of the shape functions.  <a href="interfaceshape__functions__linear__quadratic_1_1detnlxr.html#a369db603b0daa183932417f637b0324e">More...</a><br /></td></tr>
+<tr class="separator:a369db603b0daa183932417f637b0324e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>: Calculates the derivatives of the shape functions </p>
 </div><h2 class="groupheader">Member Function/Subroutine Documentation</h2>
-<a id="ac133a46e7eb7fb0ce406dccebded38ef"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac133a46e7eb7fb0ce406dccebded38ef">&#9670;&nbsp;</a></span>detnlxr1()</h2>
+<a id="a1c937315c60a13f3d055e8203ba990f1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1c937315c60a13f3d055e8203ba990f1">&#9670;&nbsp;</a></span>detnlxr1()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">shape_functions_linear_quadratic::detnlxr::detnlxr1</td>
+          <td class="memname">subroutine shape_functions_linear_quadratic::detnlxr::detnlxr1 </td>
+          <td>(</td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>ELE</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension(:,:), intent(in)&#160;</td>
+          <td class="paramname"><em>X_ALL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, dimension( : ), intent(in)&#160;</td>
+          <td class="paramname"><em>XONDGL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension(:), intent(in)&#160;</td>
+          <td class="paramname"><em>weight</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension(:,:), intent(in)&#160;</td>
+          <td class="paramname"><em>nshape</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension(:,:,:), intent(in)&#160;</td>
+          <td class="paramname"><em>nshapelx</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type (<a class="el" href="structmulti__data__types_1_1multi__dev__shape__funs.html">multi_dev_shape_funs</a>)&#160;</td>
+          <td class="paramname"><em>DevFuns</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
 
+<p>Calculates the derivatives of the shape functions, which are stored into DevFunsNX_ALL and also DevFunsDETWEI, DevFunsRA, DevFunsVOLUME. </p>
+
 </div>
 </div>
-<a id="a30744569443a283fab46321887519c75"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a30744569443a283fab46321887519c75">&#9670;&nbsp;</a></span>detnlxr2()</h2>
+<a id="abd253cad3b2a7fde1a5df1ffd995942d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abd253cad3b2a7fde1a5df1ffd995942d">&#9670;&nbsp;</a></span>detnlxr2()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">shape_functions_linear_quadratic::detnlxr::detnlxr2</td>
+          <td class="memname">subroutine shape_functions_linear_quadratic::detnlxr::detnlxr2 </td>
+          <td>(</td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>ELE</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>X_ALL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, dimension( : )&#160;</td>
+          <td class="paramname"><em>XONDGL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>NLOC</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>NGI</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>N</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>NLX_ALL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(in)&#160;</td>
+          <td class="paramname"><em>WEIGHT</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>DETWEI</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>RA</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, intent(inout)&#160;</td>
+          <td class="paramname"><em>VOLUME</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">logical, intent(in)&#160;</td>
+          <td class="paramname"><em>DCYL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ,:), intent(inout)&#160;</td>
+          <td class="paramname"><em>NX_ALL</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
 
+<p>Calculates the derivatives of the shape functions. </p>
+
 </div>
 </div>
-<a id="a60f0355649ada9402224b4a9a499a603"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a60f0355649ada9402224b4a9a499a603">&#9670;&nbsp;</a></span>detnlxr3()</h2>
+<a id="a369db603b0daa183932417f637b0324e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a369db603b0daa183932417f637b0324e">&#9670;&nbsp;</a></span>detnlxr3()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">shape_functions_linear_quadratic::detnlxr::detnlxr3</td>
+          <td class="memname">subroutine shape_functions_linear_quadratic::detnlxr::detnlxr3 </td>
+          <td>(</td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>ELE</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(in)&#160;</td>
+          <td class="paramname"><em>X</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(in)&#160;</td>
+          <td class="paramname"><em>Y</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(in)&#160;</td>
+          <td class="paramname"><em>Z</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, dimension( : )&#160;</td>
+          <td class="paramname"><em>XONDGL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>TOTELE</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>NONODS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>NLOC</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>NGI</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>N</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>NLX</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>NLY</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(in)&#160;</td>
+          <td class="paramname"><em>NLZ</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(in)&#160;</td>
+          <td class="paramname"><em>WEIGHT</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>DETWEI</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>RA</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, intent(inout)&#160;</td>
+          <td class="paramname"><em>VOLUME</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">logical, intent(in)&#160;</td>
+          <td class="paramname"><em>D1</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">logical, intent(in)&#160;</td>
+          <td class="paramname"><em>D3</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">logical, intent(in)&#160;</td>
+          <td class="paramname"><em>DCYL</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>NX</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>NY</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension( :, : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>NZ</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Calculates the derivatives of the shape functions. </p>
 
 </div>
 </div>

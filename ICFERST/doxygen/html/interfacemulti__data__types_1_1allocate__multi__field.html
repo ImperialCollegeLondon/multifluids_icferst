@@ -25,7 +25,7 @@
    <div id="projectname">ICFERST
    &#160;<span id="projectnumber">22_06</span>
    </div>
-   <div id="projectbrief">Reservoir simulator</div>
+   <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
  </tr>
  </tbody>
@@ -75,15 +75,22 @@ $(function() {
 <div class="title">multi_data_types::allocate_multi_field Interface Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>Allocated a multi field type based on field name.  
+ <a href="interfacemulti__data__types_1_1allocate__multi__field.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a3cc63da4958556b4100e23da04c42573"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacemulti__data__types_1_1allocate__multi__field.html#a3cc63da4958556b4100e23da04c42573">allocate_multi_field1</a> (state, Mdims, field_name, mfield)</td></tr>
+<tr class="memdesc:a3cc63da4958556b4100e23da04c42573"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocated a multi field type based on field name.  <a href="interfacemulti__data__types_1_1allocate__multi__field.html#a3cc63da4958556b4100e23da04c42573">More...</a><br /></td></tr>
 <tr class="separator:a3cc63da4958556b4100e23da04c42573"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6383e2645665b3b9cb805ece97fea1dd"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacemulti__data__types_1_1allocate__multi__field.html#a6383e2645665b3b9cb805ece97fea1dd">allocate_multi_field2</a> (Mdims, mfield, nonods_in, field_name)</td></tr>
+<tr class="memdesc:a6383e2645665b3b9cb805ece97fea1dd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocated a multi field type based on field name.  <a href="interfacemulti__data__types_1_1allocate__multi__field.html#a6383e2645665b3b9cb805ece97fea1dd">More...</a><br /></td></tr>
 <tr class="separator:a6383e2645665b3b9cb805ece97fea1dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Function/Subroutine Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Allocated a multi field type based on field name. </p>
+</div><h2 class="groupheader">Member Function/Subroutine Documentation</h2>
 <a id="a3cc63da4958556b4100e23da04c42573"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a3cc63da4958556b4100e23da04c42573">&#9670;&nbsp;</a></span>allocate_multi_field1()</h2>
 
@@ -121,6 +128,22 @@ Public Member Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Allocated a multi field type based on field name. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Liked list containing the fluidity fields </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Field containing the dimensions of the model </td></tr>
+    <tr><td class="paramname">field_name</td><td>Name of the field in fluidity format </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="retval"><dt>Return values</dt><dd>
+  <table class="retval">
+    <tr><td class="paramname">mfield</td><td>Multi field allocated given its name </td></tr>
+  </table>
+  </dd>
+</dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">state</td><td>*********UNTESTED********* </td></tr>
@@ -167,6 +190,27 @@ Public Member Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Allocated a multi field type based on field name. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">Mdims</td><td>Field containing the dimensions of the model </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="retval"><dt>Return values</dt><dd>
+  <table class="retval">
+    <tr><td class="paramname">mfield</td><td>Multi field allocated given its name </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">nonods_in</td><td>number of nodes of the field </td></tr>
+    <tr><td class="paramname">field_name</td><td>Name of the field in fluidity format </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>

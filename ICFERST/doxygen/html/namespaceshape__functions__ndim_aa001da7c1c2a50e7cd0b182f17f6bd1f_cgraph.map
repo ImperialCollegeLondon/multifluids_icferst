@@ -1,5 +1,5 @@
 <map id="shape_functions_ndim::lroots" name="shape_functions_ndim::lroots">
-<area shape="rect" id="node1" title=" " alt="" coords="5,5,173,47"/>
-<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#ab137b075bc778e2a27a0c1810a49b492" title=" " alt="" coords="221,5,389,47"/>
-<area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#a09da641d2526c3de68637ac538d3aabd" title=" " alt="" coords="437,5,605,47"/>
+<area shape="rect" id="node1" title="This sub works out the Gauss&#45;Lobatto&#45;Legendre roots." alt="" coords="5,5,173,47"/>
+<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#ab137b075bc778e2a27a0c1810a49b492" title="COMPUTES THE GAUSS&#45;LOBATTO COLLOCATION POINTS FOR JACOBI POLYNOMIALS." alt="" coords="221,5,389,47"/>
+<area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#a09da641d2526c3de68637ac538d3aabd" title="COMPUTES THE JACOBI POLYNOMIAL (POLY) AND ITS DERIVATIVE (PDER) OF DEGREE N AT X." alt="" coords="437,5,605,47"/>
 </map>

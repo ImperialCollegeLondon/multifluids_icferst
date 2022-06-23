@@ -25,7 +25,7 @@
    <div id="projectname">ICFERST
    &#160;<span id="projectnumber">22_06</span>
    </div>
-   <div id="projectbrief">Reservoir simulator</div>
+   <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
  </tr>
  </tbody>
@@ -75,12 +75,15 @@ $(function() {
 <div class="title">multi_data_types::multi_matrices Type Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>This type contains all the necessary information to solve =systems, matrices, RHS, limiters, colouring and also flags to decide which sort of matrices are generated.  
+ <a href="structmulti__data__types_1_1multi__matrices.html#details">More...</a></p>
 <div class="dynheader">
 Collaboration diagram for multi_data_types::multi_matrices:</div>
 <div class="dyncontent">
 <div class="center"><img src="structmulti__data__types_1_1multi__matrices__coll__graph.png" border="0" usemap="#multi__data__types_1_1multi__matrices_coll__map" alt="Collaboration graph"/></div>
 <map name="multi__data__types_1_1multi__matrices_coll__map" id="multi__data__types_1_1multi__matrices_coll__map">
-<area shape="rect" title=" " alt="" coords="35,241,213,283"/>
+<area shape="rect" title="This type contains all the necessary information to solve =systems, matrices, RHS,..." alt="" coords="35,153,213,195"/>
 <area shape="rect" title=" " alt="" coords="5,5,104,32"/>
 <area shape="rect" title=" " alt="" coords="128,5,261,32"/>
 </map>
@@ -90,376 +93,88 @@ Collaboration diagram for multi_data_types::multi_matrices:</div>
 Public Attributes</h2></td></tr>
 <tr class="memitem:ac3b9c28f4c836d495f7698ae8af258a0"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#ac3b9c28f4c836d495f7698ae8af258a0">c</a> =&gt; null()</td></tr>
 <tr class="separator:ac3b9c28f4c836d495f7698ae8af258a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a07a930a0346397cd19d0d90f60b41ef9"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a07a930a0346397cd19d0d90f60b41ef9">gradient</a></td></tr>
-<tr class="separator:a07a930a0346397cd19d0d90f60b41ef9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa713427c6b3c2ea2a079b2ba667e7d1e"><td class="memItemLeft" align="right" valign="top">real, dimension(<a class="el" href="structmulti__data__types_1_1multi__matrices.html#afe26272fa55cabbbf2d624f076821ce1">storable</a>), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aa713427c6b3c2ea2a079b2ba667e7d1e">matrix</a></td></tr>
-<tr class="separator:aa713427c6b3c2ea2a079b2ba667e7d1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0438d26586f21d00f8728529251ff336"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a0438d26586f21d00f8728529251ff336">using</a></td></tr>
-<tr class="separator:a0438d26586f21d00f8728529251ff336"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae89ecdb00cce3bd9936efab8509f3e9e"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#ae89ecdb00cce3bd9936efab8509f3e9e">a</a></td></tr>
-<tr class="separator:ae89ecdb00cce3bd9936efab8509f3e9e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa422831e70809ea4edc1fdd8e1ed8cea"><td class="memItemLeft" align="right" valign="top">real, dimension(assemb_force_cty), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aa422831e70809ea4edc1fdd8e1ed8cea">fe</a></td></tr>
-<tr class="separator:aa422831e70809ea4edc1fdd8e1ed8cea"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aef531790397da085d5481a7b2131837b"><td class="memItemLeft" align="right" valign="top">real, dimension(<a class="el" href="structmulti__data__types_1_1multi__matrices.html#afe26272fa55cabbbf2d624f076821ce1">storable</a>), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aef531790397da085d5481a7b2131837b">discretization</a></td></tr>
-<tr class="separator:aef531790397da085d5481a7b2131837b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a309b4e2bdf9344416e8f6be7331fa579"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a309b4e2bdf9344416e8f6be7331fa579">c_cv</a> =&gt; null()</td></tr>
 <tr class="separator:a309b4e2bdf9344416e8f6be7331fa579"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2f9cf4f7c0da7abe8b4d0093aff54a54"><td class="memItemLeft" align="right" valign="top">real, dimension(cv_assemb), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a2f9cf4f7c0da7abe8b4d0093aff54a54">cv</a></td></tr>
-<tr class="separator:a2f9cf4f7c0da7abe8b4d0093aff54a54"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0eaa2cf71c5394f223c49223f20cc40e"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a0eaa2cf71c5394f223c49223f20cc40e">u_rhs</a> =&gt; null()</td></tr>
 <tr class="separator:a0eaa2cf71c5394f223c49223f20cc40e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1f9634f0657dfb3c1e67a1c87d3609b5"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a1f9634f0657dfb3c1e67a1c87d3609b5">rigth</a></td></tr>
-<tr class="separator:a1f9634f0657dfb3c1e67a1c87d3609b5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1085f570b1a0916b05757d3d28326229"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a1085f570b1a0916b05757d3d28326229">hand</a></td></tr>
-<tr class="separator:a1085f570b1a0916b05757d3d28326229"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac516ec4e8ac3f4744d59b873d132066f"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#ac516ec4e8ac3f4744d59b873d132066f">side</a></td></tr>
-<tr class="separator:ac516ec4e8ac3f4744d59b873d132066f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aecc9fb51556d61439e1099dca225ace2"><td class="memItemLeft" align="right" valign="top">real, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aecc9fb51556d61439e1099dca225ace2">of</a></td></tr>
-<tr class="separator:aecc9fb51556d61439e1099dca225ace2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a82cd2bf1ac0e496bbab8e80bd95c6d87"><td class="memItemLeft" align="right" valign="top">real, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a82cd2bf1ac0e496bbab8e80bd95c6d87">the</a></td></tr>
-<tr class="separator:a82cd2bf1ac0e496bbab8e80bd95c6d87"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9ff1414bfda8e5feb6a457cdc592c762"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a9ff1414bfda8e5feb6a457cdc592c762">momentum</a></td></tr>
-<tr class="separator:a9ff1414bfda8e5feb6a457cdc592c762"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7976db810e4df5fd23ba9064ce354d35"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a7976db810e4df5fd23ba9064ce354d35">equation</a></td></tr>
-<tr class="separator:a7976db810e4df5fd23ba9064ce354d35"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1648af4a908d89099f422e220e9e918c"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a1648af4a908d89099f422e220e9e918c">ct</a> =&gt; null()</td></tr>
 <tr class="separator:a1648af4a908d89099f422e220e9e918c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae663ae8875d566c93357dc9041d078b3"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#ae663ae8875d566c93357dc9041d078b3">divergence</a></td></tr>
-<tr class="separator:ae663ae8875d566c93357dc9041d078b3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3e3c0f44597f31d98e6f29c1afadaf8d"><td class="memItemLeft" align="right" valign="top">type(vector_field)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a3e3c0f44597f31d98e6f29c1afadaf8d">ct_rhs</a></td></tr>
 <tr class="separator:a3e3c0f44597f31d98e6f29c1afadaf8d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a53db955df2f771ddc992f3baedc32059"><td class="memItemLeft" align="right" valign="top">type(vector_field), dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a53db955df2f771ddc992f3baedc32059">rigth</a></td></tr>
-<tr class="separator:a53db955df2f771ddc992f3baedc32059"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afceb7f73274cb531d86f2adbb902511a"><td class="memItemLeft" align="right" valign="top">type(vector_field), dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#afceb7f73274cb531d86f2adbb902511a">hand</a></td></tr>
-<tr class="separator:afceb7f73274cb531d86f2adbb902511a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa27f3a72702283a65d4d4dd18b1e66c1"><td class="memItemLeft" align="right" valign="top">type(vector_field), dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aa27f3a72702283a65d4d4dd18b1e66c1">side</a></td></tr>
-<tr class="separator:aa27f3a72702283a65d4d4dd18b1e66c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a468f95b91487eaf7da9c43453bc928f2"><td class="memItemLeft" align="right" valign="top">type(vector_field), dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a468f95b91487eaf7da9c43453bc928f2">of</a></td></tr>
-<tr class="separator:a468f95b91487eaf7da9c43453bc928f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afe0c29b720e377099a5223ee3a37afa4"><td class="memItemLeft" align="right" valign="top">type(vector_field), dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#afe0c29b720e377099a5223ee3a37afa4">the</a></td></tr>
-<tr class="separator:afe0c29b720e377099a5223ee3a37afa4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a63995c827ae5c366508c9a1b15731699"><td class="memItemLeft" align="right" valign="top">type(vector_field)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a63995c827ae5c366508c9a1b15731699">continuity</a></td></tr>
-<tr class="separator:a63995c827ae5c366508c9a1b15731699"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afeca9dd0f43457912c5b87536528e86d"><td class="memItemLeft" align="right" valign="top">type(vector_field), dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#afeca9dd0f43457912c5b87536528e86d">equation</a></td></tr>
-<tr class="separator:afeca9dd0f43457912c5b87536528e86d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad7585766b2102b19453d16019409160d"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#ad7585766b2102b19453d16019409160d">petsc_acv</a></td></tr>
 <tr class="separator:ad7585766b2102b19453d16019409160d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afdcbb92e386f21821b3c01d8405bd0d2"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix), dimension(<a class="el" href="structmulti__data__types_1_1multi__matrices.html#afe26272fa55cabbbf2d624f076821ce1">storable</a>), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#afdcbb92e386f21821b3c01d8405bd0d2">matrix</a></td></tr>
-<tr class="separator:afdcbb92e386f21821b3c01d8405bd0d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8c761ef3f77af22cdde94fbd1e6d9cd8"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a8c761ef3f77af22cdde94fbd1e6d9cd8">containing</a></td></tr>
-<tr class="separator:a8c761ef3f77af22cdde94fbd1e6d9cd8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aad315b1f8e9bbbcc0a1b00c0a5773fd7"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix), dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aad315b1f8e9bbbcc0a1b00c0a5773fd7">the</a></td></tr>
-<tr class="separator:aad315b1f8e9bbbcc0a1b00c0a5773fd7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8ddd5f1eb9c24992d7c54e94f372b5b6"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a8ddd5f1eb9c24992d7c54e94f372b5b6">terms</a></td></tr>
-<tr class="separator:a8ddd5f1eb9c24992d7c54e94f372b5b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acce2c4c2d0616397684434d98d6c8583"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix), dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#acce2c4c2d0616397684434d98d6c8583">of</a></td></tr>
-<tr class="separator:acce2c4c2d0616397684434d98d6c8583"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a092a466580da310e7c6c978f34caabdf"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a092a466580da310e7c6c978f34caabdf">transport</a></td></tr>
-<tr class="separator:a092a466580da310e7c6c978f34caabdf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6302cf6bc1eb54200efe684e1b073026"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a6302cf6bc1eb54200efe684e1b073026">equations</a></td></tr>
-<tr class="separator:a6302cf6bc1eb54200efe684e1b073026"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a45aecbefb62aabf5eb12c2872640e303"><td class="memItemLeft" align="right" valign="top">type(vector_field)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a45aecbefb62aabf5eb12c2872640e303">cv_rhs</a></td></tr>
 <tr class="separator:a45aecbefb62aabf5eb12c2872640e303"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a104f74e46d6174c180536c0001e110a8"><td class="memItemLeft" align="right" valign="top">type(vector_field)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a104f74e46d6174c180536c0001e110a8">saturation</a></td></tr>
-<tr class="separator:a104f74e46d6174c180536c0001e110a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a01729e31674bf840ed62d398d5653762"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a01729e31674bf840ed62d398d5653762">pivit_mat</a> =&gt; null()</td></tr>
 <tr class="separator:a01729e31674bf840ed62d398d5653762"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6c5172629556bca938dc7230dc7c8c21"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a6c5172629556bca938dc7230dc7c8c21">mass</a></td></tr>
-<tr class="separator:a6c5172629556bca938dc7230dc7c8c21"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a586b149b7ecb1a715ad64befbc8347cb"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a586b149b7ecb1a715ad64befbc8347cb">icolor</a> =&gt; null()</td></tr>
 <tr class="separator:a586b149b7ecb1a715ad64befbc8347cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a72bc41e34e46420c516afd8c52d7ef68"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a72bc41e34e46420c516afd8c52d7ef68">array</a></td></tr>
-<tr class="separator:a72bc41e34e46420c516afd8c52d7ef68"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae51acbd99fd223ef805d69286787dfb4"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#ae51acbd99fd223ef805d69286787dfb4">used</a></td></tr>
-<tr class="separator:ae51acbd99fd223ef805d69286787dfb4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abea12b2eb9bee3dcd0bb2de7f010d9a0"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#abea12b2eb9bee3dcd0bb2de7f010d9a0">to</a></td></tr>
-<tr class="separator:abea12b2eb9bee3dcd0bb2de7f010d9a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9ac53b1d8b0d1aacc40dbfa6ff870095"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a9ac53b1d8b0d1aacc40dbfa6ff870095">accelerate</a></td></tr>
-<tr class="separator:a9ac53b1d8b0d1aacc40dbfa6ff870095"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7e09f3906ad036ef894c8dce44ad808b"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a7e09f3906ad036ef894c8dce44ad808b">the</a></td></tr>
-<tr class="separator:a7e09f3906ad036ef894c8dce44ad808b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad3c8154060f58ed709b7685f83bef8eb"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#ad3c8154060f58ed709b7685f83bef8eb">creation</a></td></tr>
-<tr class="separator:ad3c8154060f58ed709b7685f83bef8eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa7a9ec587e945ea620083881d0de72f9"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aa7a9ec587e945ea620083881d0de72f9">of</a></td></tr>
-<tr class="separator:aa7a9ec587e945ea620083881d0de72f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2c0afba2c90afff4d143b3690f70e6fe"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a2c0afba2c90afff4d143b3690f70e6fe">cmc</a></td></tr>
-<tr class="separator:a2c0afba2c90afff4d143b3690f70e6fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3668860854f7ce50d47cf30f2c1cc6db"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a3668860854f7ce50d47cf30f2c1cc6db">in</a></td></tr>
-<tr class="separator:a3668860854f7ce50d47cf30f2c1cc6db"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2180a910d49b95cefe3f976e014dc417"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a2180a910d49b95cefe3f976e014dc417">color_get_cmc_pha_fast</a></td></tr>
-<tr class="separator:a2180a910d49b95cefe3f976e014dc417"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0c3c224c8165d6793725b2da1a034fa7"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a0c3c224c8165d6793725b2da1a034fa7">ncolor</a></td></tr>
 <tr class="separator:a0c3c224c8165d6793725b2da1a034fa7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af891bb62226e5ee57114a9bcc8850f2c"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#af891bb62226e5ee57114a9bcc8850f2c">number</a></td></tr>
-<tr class="separator:af891bb62226e5ee57114a9bcc8850f2c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a86cb54cd06e00b65fd21da009aee750f"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a86cb54cd06e00b65fd21da009aee750f">colors</a></td></tr>
-<tr class="separator:a86cb54cd06e00b65fd21da009aee750f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a01c9bcc7d6c7deb201e05de1e3dacbc2"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a01c9bcc7d6c7deb201e05de1e3dacbc2">dgm_petsc</a></td></tr>
 <tr class="separator:a01c9bcc7d6c7deb201e05de1e3dacbc2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a21680e2e93702024e31e97f1350eeeef"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a21680e2e93702024e31e97f1350eeeef">contatining</a></td></tr>
-<tr class="separator:a21680e2e93702024e31e97f1350eeeef"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af6584075ce371ad1237b9a73f5e8eba8"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#af6584075ce371ad1237b9a73f5e8eba8">momemtum</a></td></tr>
-<tr class="separator:af6584075ce371ad1237b9a73f5e8eba8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa15014ad13e0e8a6c25e2adf59d764ca"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aa15014ad13e0e8a6c25e2adf59d764ca">for</a></td></tr>
-<tr class="separator:aa15014ad13e0e8a6c25e2adf59d764ca"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a47731361e91f8303d326db22cf31dc4c"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a47731361e91f8303d326db22cf31dc4c">navier</a></td></tr>
-<tr class="separator:a47731361e91f8303d326db22cf31dc4c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2b9d84e82c1af0173cc276f8dfab584a"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a2b9d84e82c1af0173cc276f8dfab584a">stokes</a></td></tr>
-<tr class="separator:a2b9d84e82c1af0173cc276f8dfab584a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adeeb892db66d6f485038e2db03bb6e4f"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix), dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#adeeb892db66d6f485038e2db03bb6e4f">equation</a></td></tr>
-<tr class="separator:adeeb892db66d6f485038e2db03bb6e4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abcd1c3ea62e477dfd2c9f54aa8b1bb7c"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#abcd1c3ea62e477dfd2c9f54aa8b1bb7c">c_petsc</a></td></tr>
 <tr class="separator:abcd1c3ea62e477dfd2c9f54aa8b1bb7c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaf43d372bf4c3ff4eaa364578c827ad8"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aaf43d372bf4c3ff4eaa364578c827ad8">petsc</a></td></tr>
-<tr class="separator:aaf43d372bf4c3ff4eaa364578c827ad8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1019d5e8cdae620e276bd8dbe09b311a"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a1019d5e8cdae620e276bd8dbe09b311a">version</a></td></tr>
-<tr class="separator:a1019d5e8cdae620e276bd8dbe09b311a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a86c6fa12d273fa23a372fbe9a89cf505"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix), dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a86c6fa12d273fa23a372fbe9a89cf505">gradient</a></td></tr>
-<tr class="separator:a86c6fa12d273fa23a372fbe9a89cf505"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8c8d61085e0c784a5e7818b7b30cf8c9"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a8c8d61085e0c784a5e7818b7b30cf8c9">ct_petsc</a></td></tr>
 <tr class="separator:a8c8d61085e0c784a5e7818b7b30cf8c9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aed01f839b40909e3ac3221ca6d1d9c2d"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix), dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aed01f839b40909e3ac3221ca6d1d9c2d">divergence</a></td></tr>
-<tr class="separator:aed01f839b40909e3ac3221ca6d1d9c2d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3af914500758552f0946097ade894f32"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a3af914500758552f0946097ade894f32">pivit_petsc</a></td></tr>
 <tr class="separator:a3af914500758552f0946097ade894f32"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a378f23456af37ee286d72503151c7167"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a378f23456af37ee286d72503151c7167">no_matrix_store</a></td></tr>
 <tr class="separator:a378f23456af37ee286d72503151c7167"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7e7e3ebdb4587e8796a7d89371070865"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a7e7e3ebdb4587e8796a7d89371070865">flag</a></td></tr>
-<tr class="separator:a7e7e3ebdb4587e8796a7d89371070865"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad7778b0c9b0d74e273749ab3d9eb42cc"><td class="memItemLeft" align="right" valign="top">logical, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#ad7778b0c9b0d74e273749ab3d9eb42cc">to</a></td></tr>
-<tr class="separator:ad7778b0c9b0d74e273749ab3d9eb42cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a03082808d466636f7f101bed970bc38b"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a03082808d466636f7f101bed970bc38b">whether</a></td></tr>
-<tr class="separator:a03082808d466636f7f101bed970bc38b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad2570952585613e2277e39cd9a82b652"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#ad2570952585613e2277e39cd9a82b652">calculate</a></td></tr>
-<tr class="separator:ad2570952585613e2277e39cd9a82b652"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3f94c45b6f8e4ead8e83978403f2ef30"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a3f94c45b6f8e4ead8e83978403f2ef30">and</a></td></tr>
-<tr class="separator:a3f94c45b6f8e4ead8e83978403f2ef30"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a692dcb22aae15918b57705db3b046f76"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a692dcb22aae15918b57705db3b046f76">use</a></td></tr>
-<tr class="separator:a692dcb22aae15918b57705db3b046f76"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9a83c2eb45fe90836edff31fcadc55f0"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a9a83c2eb45fe90836edff31fcadc55f0">dgm_petsc</a></td></tr>
-<tr class="separator:a9a83c2eb45fe90836edff31fcadc55f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a710f88fe614d1fe2c151f60ee3aaa76b"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a710f88fe614d1fe2c151f60ee3aaa76b">or</a></td></tr>
-<tr class="separator:a710f88fe614d1fe2c151f60ee3aaa76b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a885f81ee5f8c2a7a7905332ef6bb6aef"><td class="memItemLeft" align="right" valign="top">logical, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a885f81ee5f8c2a7a7905332ef6bb6aef">c</a></td></tr>
-<tr class="separator:a885f81ee5f8c2a7a7905332ef6bb6aef"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aff9118da70dd8ad1c530d30328bcf37e"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aff9118da70dd8ad1c530d30328bcf37e">cv_pressure</a></td></tr>
 <tr class="separator:aff9118da70dd8ad1c530d30328bcf37e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa29d5898c28dacb16c417118ebb91823"><td class="memItemLeft" align="right" valign="top">logical, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aa29d5898c28dacb16c417118ebb91823">the</a></td></tr>
-<tr class="separator:aa29d5898c28dacb16c417118ebb91823"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a33f8744f057791f7626666d0a172ec32"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a33f8744f057791f7626666d0a172ec32">pressure</a></td></tr>
-<tr class="separator:a33f8744f057791f7626666d0a172ec32"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6fe37fd17ccb7f12cf1d48f0c1fc1bcf"><td class="memItemLeft" align="right" valign="top">logical, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a6fe37fd17ccb7f12cf1d48f0c1fc1bcf">using</a></td></tr>
-<tr class="separator:a6fe37fd17ccb7f12cf1d48f0c1fc1bcf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af4dbec0a0ac7dc63b22905aaad71b38b"><td class="memItemLeft" align="right" valign="top">logical, dimension(assemb_force_cty), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#af4dbec0a0ac7dc63b22905aaad71b38b">fe</a></td></tr>
-<tr class="separator:af4dbec0a0ac7dc63b22905aaad71b38b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a62254ac5ba7a84d1626dfb52bb7ccb84"><td class="memItemLeft" align="right" valign="top">logical, dimension(cv_assemb), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a62254ac5ba7a84d1626dfb52bb7ccb84">cv</a></td></tr>
-<tr class="separator:a62254ac5ba7a84d1626dfb52bb7ccb84"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5a515185a1ebf3491ac07f919f62da04"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a5a515185a1ebf3491ac07f919f62da04">stored</a> = .false.</td></tr>
 <tr class="separator:a5a515185a1ebf3491ac07f919f62da04"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aeae1d4d42e11a5e39943e6653107195d"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aeae1d4d42e11a5e39943e6653107195d">be</a></td></tr>
-<tr class="separator:aeae1d4d42e11a5e39943e6653107195d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaaf9c50acb5e46cf6e286b3cb1b328e1"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aaaf9c50acb5e46cf6e286b3cb1b328e1">true</a></td></tr>
-<tr class="separator:aaaf9c50acb5e46cf6e286b3cb1b328e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7692954cd85b77a551c85558a55b6650"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a7692954cd85b77a551c85558a55b6650">when</a></td></tr>
-<tr class="separator:a7692954cd85b77a551c85558a55b6650"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afe26272fa55cabbbf2d624f076821ce1"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#afe26272fa55cabbbf2d624f076821ce1">storable</a></td></tr>
-<tr class="separator:afe26272fa55cabbbf2d624f076821ce1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad4e12c36d042f4fbfe6e3f11e4b7bf84"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#ad4e12c36d042f4fbfe6e3f11e4b7bf84">matrices</a></td></tr>
-<tr class="separator:ad4e12c36d042f4fbfe6e3f11e4b7bf84"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adff470b1694a5884cac5d01146c15f65"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#adff470b1694a5884cac5d01146c15f65">have</a></td></tr>
-<tr class="separator:adff470b1694a5884cac5d01146c15f65"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a780d2c287b700065d59a38d82695d129"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a780d2c287b700065d59a38d82695d129">been</a></td></tr>
-<tr class="separator:a780d2c287b700065d59a38d82695d129"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a36496db31ded91aa9a75aa661a74f04d"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a36496db31ded91aa9a75aa661a74f04d">compact_pivit_mat</a> = .false.</td></tr>
 <tr class="separator:a36496db31ded91aa9a75aa661a74f04d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9c5d879894e606b6a594269f42ea9c16"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a9c5d879894e606b6a594269f42ea9c16">know</a></td></tr>
-<tr class="separator:a9c5d879894e606b6a594269f42ea9c16"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adaac889f2ba3d9a44cf53fc054ad91af"><td class="memItemLeft" align="right" valign="top">logical, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#adaac889f2ba3d9a44cf53fc054ad91af">a</a></td></tr>
-<tr class="separator:adaac889f2ba3d9a44cf53fc054ad91af"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a597126b008d79e298927a75134f2e386"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a597126b008d79e298927a75134f2e386">compacted</a></td></tr>
-<tr class="separator:a597126b008d79e298927a75134f2e386"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a68c57c8b98dc67f481d93678b71a7d74"><td class="memItemLeft" align="right" valign="top">logical, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a68c57c8b98dc67f481d93678b71a7d74">mass</a></td></tr>
-<tr class="separator:a68c57c8b98dc67f481d93678b71a7d74"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a61054191a016d80863139cffdc624c03"><td class="memItemLeft" align="right" valign="top">logical, dimension(<a class="el" href="structmulti__data__types_1_1multi__matrices.html#afe26272fa55cabbbf2d624f076821ce1">storable</a>), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a61054191a016d80863139cffdc624c03">matrix</a></td></tr>
-<tr class="separator:a61054191a016d80863139cffdc624c03"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a035835f8b346a3b360f9c393908c5c38"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a035835f8b346a3b360f9c393908c5c38">not</a></td></tr>
-<tr class="separator:a035835f8b346a3b360f9c393908c5c38"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acc779deb4c86e103609e442f0373f015"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#acc779deb4c86e103609e442f0373f015">limiters_elematpsi</a> =&gt; null()</td></tr>
 <tr class="separator:acc779deb4c86e103609e442f0373f015"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a719b2bca7062a781f0eb74cdabbab4a9"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a719b2bca7062a781f0eb74cdabbab4a9">stores</a></td></tr>
-<tr class="separator:a719b2bca7062a781f0eb74cdabbab4a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9b04bf80110c9e90d378779be1564af7"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a9b04bf80110c9e90d378779be1564af7">locations</a></td></tr>
-<tr class="separator:a9b04bf80110c9e90d378779be1564af7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a80e639c63c1d8c83e47e61bece3226ba"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a80e639c63c1d8c83e47e61bece3226ba">by</a></td></tr>
-<tr class="separator:a80e639c63c1d8c83e47e61bece3226ba"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a922a96c27acccad44e3a588a856a1350"><td class="memItemLeft" align="right" valign="top">integer, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a922a96c27acccad44e3a588a856a1350">limiters</a></td></tr>
-<tr class="separator:a922a96c27acccad44e3a588a856a1350"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a161be2982d8e597f4e9afa8175605f00"><td class="memItemLeft" align="right" valign="top">real, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a161be2982d8e597f4e9afa8175605f00">limiters_elematwei</a> =&gt; null()</td></tr>
 <tr class="separator:a161be2982d8e597f4e9afa8175605f00"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a27b0c9ca2b86cd9d9fccf58bb70d0d4b"><td class="memItemLeft" align="right" valign="top">real, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a27b0c9ca2b86cd9d9fccf58bb70d0d4b">stores</a></td></tr>
-<tr class="separator:a27b0c9ca2b86cd9d9fccf58bb70d0d4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaeaa10f0aa2bf5a5b296e948d67acd10"><td class="memItemLeft" align="right" valign="top">real, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aaeaa10f0aa2bf5a5b296e948d67acd10">weights</a></td></tr>
-<tr class="separator:aaeaa10f0aa2bf5a5b296e948d67acd10"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae897d867234b6cfe8ff1c51058e17add"><td class="memItemLeft" align="right" valign="top">real, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#ae897d867234b6cfe8ff1c51058e17add">used</a></td></tr>
-<tr class="separator:ae897d867234b6cfe8ff1c51058e17add"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a83e08b88fc3becc7604b966aa4fa2619"><td class="memItemLeft" align="right" valign="top">real, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a83e08b88fc3becc7604b966aa4fa2619">by</a></td></tr>
-<tr class="separator:a83e08b88fc3becc7604b966aa4fa2619"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa77f21b0682911187ffb2a4234c22fdc"><td class="memItemLeft" align="right" valign="top">real, dimension(:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aa77f21b0682911187ffb2a4234c22fdc">limiters</a></td></tr>
-<tr class="separator:aa77f21b0682911187ffb2a4234c22fdc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0e52a852be17e8357388e82fe7d49ba3"><td class="memItemLeft" align="right" valign="top">integer, dimension(:,:,:), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a0e52a852be17e8357388e82fe7d49ba3">wic_flip_p_vel_bcs</a> =&gt; null()</td></tr>
 <tr class="separator:a0e52a852be17e8357388e82fe7d49ba3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7ac7058ed826684628ecbb0de1a63300"><td class="memItemLeft" align="right" valign="top">integer, dimension(:, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a7ac7058ed826684628ecbb0de1a63300">face_ele</a> =&gt; null()</td></tr>
 <tr class="separator:a7ac7058ed826684628ecbb0de1a63300"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Data Documentation</h2>
-<a id="ae89ecdb00cce3bd9936efab8509f3e9e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae89ecdb00cce3bd9936efab8509f3e9e">&#9670;&nbsp;</a></span>a <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::multi_matrices::a</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="adaac889f2ba3d9a44cf53fc054ad91af"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#adaac889f2ba3d9a44cf53fc054ad91af">&#9670;&nbsp;</a></span>a <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension( :, :, : ), pointer multi_data_types::multi_matrices::a</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a9ac53b1d8b0d1aacc40dbfa6ff870095"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9ac53b1d8b0d1aacc40dbfa6ff870095">&#9670;&nbsp;</a></span>accelerate</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::accelerate</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a3f94c45b6f8e4ead8e83978403f2ef30"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3f94c45b6f8e4ead8e83978403f2ef30">&#9670;&nbsp;</a></span>and</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::and</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a72bc41e34e46420c516afd8c52d7ef68"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a72bc41e34e46420c516afd8c52d7ef68">&#9670;&nbsp;</a></span>array</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::array</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aeae1d4d42e11a5e39943e6653107195d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aeae1d4d42e11a5e39943e6653107195d">&#9670;&nbsp;</a></span>be</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::be</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a780d2c287b700065d59a38d82695d129"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a780d2c287b700065d59a38d82695d129">&#9670;&nbsp;</a></span>been</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::been</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a80e639c63c1d8c83e47e61bece3226ba"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a80e639c63c1d8c83e47e61bece3226ba">&#9670;&nbsp;</a></span>by <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::by</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a83e08b88fc3becc7604b966aa4fa2619"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a83e08b88fc3becc7604b966aa4fa2619">&#9670;&nbsp;</a></span>by <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension(:), pointer multi_data_types::multi_matrices::by</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>This type contains all the necessary information to solve =systems, matrices, RHS, limiters, colouring and also flags to decide which sort of matrices are generated. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">C</td><td>=&gt; null() Gradient matrix using a FE discretization (storable) </td></tr>
+    <tr><td class="paramname">C_CV</td><td>=&gt; null() Gradient matrix using a CV discretization (storable) </td></tr>
+    <tr><td class="paramname">U_RHS</td><td>=&gt; null() Rigth hand side of the momentum equation </td></tr>
+    <tr><td class="paramname">CT</td><td>=&gt; null() Divergence matrix </td></tr>
+    <tr><td class="paramname">CT_RHS</td><td>Rigth hand side of the continuity equation </td></tr>
+    <tr><td class="paramname">petsc_ACV</td><td>Matrix containing the terms of transport equations </td></tr>
+    <tr><td class="paramname">CV_RHS</td><td>Rigth hand side of the saturation equation </td></tr>
+    <tr><td class="paramname">PIVIT_MAT</td><td>=&gt; null() Mass matrix (matrix form by the sigmas) (storable) </td></tr>
+    <tr><td class="paramname">ICOLOR</td><td>=&gt; null() Array used to accelerate the creation of CMC in COLOR_GET_CMC_PHA_FAST </td></tr>
+    <tr><td class="paramname">NCOLOR</td><td>Number of colors in ICOLOR </td></tr>
+    <tr><td class="paramname">DGM_PETSC</td><td>Matrix contatining the momemtum terms for Navier-Stokes/Stokes equation </td></tr>
+    <tr><td class="paramname">C_PETSC</td><td>PETSc version of the gradient matrix (storable) </td></tr>
+    <tr><td class="paramname">CT_PETSC</td><td>PETSc version of the divergence matrix </td></tr>
+    <tr><td class="paramname">PIVIT_PETSC</td><td>PETSc version of the divergence matrix <br  />
+ </td></tr>
+    <tr><td class="paramname">NO_MATRIX_STORE</td><td>Flag to whether calculate and use DGM_PETSC or C </td></tr>
+    <tr><td class="paramname">CV_pressure</td><td>Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb) </td></tr>
+    <tr><td class="paramname">stored</td><td>= .false. Flag to be true when the storable matrices have been stored </td></tr>
+    <tr><td class="paramname">compact_PIVIT_MAT</td><td>= .false. Flag to know whether to use a compacted mass matrix or not </td></tr>
+    <tr><td class="paramname">limiters_ELEMATPSI=&gt;</td><td>null() Stores locations used by the limiters </td></tr>
+    <tr><td class="paramname">limiters_ELEMATWEI=&gt;</td><td>null() Stores weights used by the limiters </td></tr>
+    <tr><td class="paramname">WIC_FLIP_P_VEL_BCS=&gt;</td><td>null()!Stores array to check when to flip BCs </td></tr>
+    <tr><td class="paramname">FACE_ELE=&gt;</td><td>null()!Stores neighbouring elements </td></tr>
+  </table>
+  </dd>
+</dl>
+</div><h2 class="groupheader">Member Data Documentation</h2>
 <a id="ac3b9c28f4c836d495f7698ae8af258a0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac3b9c28f4c836d495f7698ae8af258a0">&#9670;&nbsp;</a></span>c <span class="overload">[1/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ac3b9c28f4c836d495f7698ae8af258a0">&#9670;&nbsp;</a></span>c</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
           <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::multi_matrices::c =&gt; null()</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a885f81ee5f8c2a7a7905332ef6bb6aef"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a885f81ee5f8c2a7a7905332ef6bb6aef">&#9670;&nbsp;</a></span>c <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension( :, :, : ), pointer multi_data_types::multi_matrices::c</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -494,62 +209,6 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="ad2570952585613e2277e39cd9a82b652"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad2570952585613e2277e39cd9a82b652">&#9670;&nbsp;</a></span>calculate</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::calculate</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a2c0afba2c90afff4d143b3690f70e6fe"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2c0afba2c90afff4d143b3690f70e6fe">&#9670;&nbsp;</a></span>cmc</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::cmc</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a2180a910d49b95cefe3f976e014dc417"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2180a910d49b95cefe3f976e014dc417">&#9670;&nbsp;</a></span>color_get_cmc_pha_fast</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::color_get_cmc_pha_fast</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a86cb54cd06e00b65fd21da009aee750f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a86cb54cd06e00b65fd21da009aee750f">&#9670;&nbsp;</a></span>colors</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer multi_data_types::multi_matrices::colors</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="a36496db31ded91aa9a75aa661a74f04d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a36496db31ded91aa9a75aa661a74f04d">&#9670;&nbsp;</a></span>compact_pivit_mat</h2>
 
@@ -558,76 +217,6 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">logical multi_data_types::multi_matrices::compact_pivit_mat = .false.</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a597126b008d79e298927a75134f2e386"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a597126b008d79e298927a75134f2e386">&#9670;&nbsp;</a></span>compacted</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::compacted</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a8c761ef3f77af22cdde94fbd1e6d9cd8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8c761ef3f77af22cdde94fbd1e6d9cd8">&#9670;&nbsp;</a></span>containing</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix) multi_data_types::multi_matrices::containing</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a21680e2e93702024e31e97f1350eeeef"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a21680e2e93702024e31e97f1350eeeef">&#9670;&nbsp;</a></span>contatining</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix) multi_data_types::multi_matrices::contatining</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a63995c827ae5c366508c9a1b15731699"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a63995c827ae5c366508c9a1b15731699">&#9670;&nbsp;</a></span>continuity</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(vector_field) multi_data_types::multi_matrices::continuity</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ad3c8154060f58ed709b7685f83bef8eb"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad3c8154060f58ed709b7685f83bef8eb">&#9670;&nbsp;</a></span>creation</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::creation</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -676,34 +265,6 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a2f9cf4f7c0da7abe8b4d0093aff54a54"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2f9cf4f7c0da7abe8b4d0093aff54a54">&#9670;&nbsp;</a></span>cv <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension (cv_assemb), pointer multi_data_types::multi_matrices::cv</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a62254ac5ba7a84d1626dfb52bb7ccb84"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a62254ac5ba7a84d1626dfb52bb7ccb84">&#9670;&nbsp;</a></span>cv <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension (cv_assemb), pointer multi_data_types::multi_matrices::cv</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="aff9118da70dd8ad1c530d30328bcf37e"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aff9118da70dd8ad1c530d30328bcf37e">&#9670;&nbsp;</a></span>cv_pressure</h2>
 
@@ -733,125 +294,13 @@ Public Attributes</h2></td></tr>
 </div>
 </div>
 <a id="a01c9bcc7d6c7deb201e05de1e3dacbc2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a01c9bcc7d6c7deb201e05de1e3dacbc2">&#9670;&nbsp;</a></span>dgm_petsc <span class="overload">[1/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a01c9bcc7d6c7deb201e05de1e3dacbc2">&#9670;&nbsp;</a></span>dgm_petsc</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
           <td class="memname">type(petsc_csr_matrix) multi_data_types::multi_matrices::dgm_petsc</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a9a83c2eb45fe90836edff31fcadc55f0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9a83c2eb45fe90836edff31fcadc55f0">&#9670;&nbsp;</a></span>dgm_petsc <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::dgm_petsc</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aef531790397da085d5481a7b2131837b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aef531790397da085d5481a7b2131837b">&#9670;&nbsp;</a></span>discretization</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension (<a class="el" href="structmulti__data__types_1_1multi__matrices.html#afe26272fa55cabbbf2d624f076821ce1">storable</a>), pointer multi_data_types::multi_matrices::discretization</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ae663ae8875d566c93357dc9041d078b3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae663ae8875d566c93357dc9041d078b3">&#9670;&nbsp;</a></span>divergence <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::multi_matrices::divergence</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aed01f839b40909e3ac3221ca6d1d9c2d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aed01f839b40909e3ac3221ca6d1d9c2d">&#9670;&nbsp;</a></span>divergence <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix), dimension( :, :, : ), pointer multi_data_types::multi_matrices::divergence</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a7976db810e4df5fd23ba9064ce354d35"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7976db810e4df5fd23ba9064ce354d35">&#9670;&nbsp;</a></span>equation <span class="overload">[1/3]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::multi_matrices::equation</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="afeca9dd0f43457912c5b87536528e86d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afeca9dd0f43457912c5b87536528e86d">&#9670;&nbsp;</a></span>equation <span class="overload">[2/3]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(vector_field), dimension( :, :, : ), pointer multi_data_types::multi_matrices::equation</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="adeeb892db66d6f485038e2db03bb6e4f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#adeeb892db66d6f485038e2db03bb6e4f">&#9670;&nbsp;</a></span>equation <span class="overload">[3/3]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix), dimension( :, :, : ), pointer multi_data_types::multi_matrices::equation</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a6302cf6bc1eb54200efe684e1b073026"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6302cf6bc1eb54200efe684e1b073026">&#9670;&nbsp;</a></span>equations</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix) multi_data_types::multi_matrices::equations</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -872,132 +321,6 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="aa422831e70809ea4edc1fdd8e1ed8cea"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa422831e70809ea4edc1fdd8e1ed8cea">&#9670;&nbsp;</a></span>fe <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension (assemb_force_cty), pointer multi_data_types::multi_matrices::fe</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="af4dbec0a0ac7dc63b22905aaad71b38b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af4dbec0a0ac7dc63b22905aaad71b38b">&#9670;&nbsp;</a></span>fe <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension (assemb_force_cty), pointer multi_data_types::multi_matrices::fe</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a7e7e3ebdb4587e8796a7d89371070865"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7e7e3ebdb4587e8796a7d89371070865">&#9670;&nbsp;</a></span>flag</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::flag</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aa15014ad13e0e8a6c25e2adf59d764ca"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa15014ad13e0e8a6c25e2adf59d764ca">&#9670;&nbsp;</a></span>for</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix) multi_data_types::multi_matrices::for</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a07a930a0346397cd19d0d90f60b41ef9"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a07a930a0346397cd19d0d90f60b41ef9">&#9670;&nbsp;</a></span>gradient <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::multi_matrices::gradient</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a86c6fa12d273fa23a372fbe9a89cf505"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a86c6fa12d273fa23a372fbe9a89cf505">&#9670;&nbsp;</a></span>gradient <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix), dimension( :, :, : ), pointer multi_data_types::multi_matrices::gradient</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a1085f570b1a0916b05757d3d28326229"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1085f570b1a0916b05757d3d28326229">&#9670;&nbsp;</a></span>hand <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::multi_matrices::hand</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="afceb7f73274cb531d86f2adbb902511a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afceb7f73274cb531d86f2adbb902511a">&#9670;&nbsp;</a></span>hand <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(vector_field), dimension( :, :, : ), pointer multi_data_types::multi_matrices::hand</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="adff470b1694a5884cac5d01146c15f65"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#adff470b1694a5884cac5d01146c15f65">&#9670;&nbsp;</a></span>have</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::have</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="a586b149b7ecb1a715ad64befbc8347cb"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a586b149b7ecb1a715ad64befbc8347cb">&#9670;&nbsp;</a></span>icolor</h2>
 
@@ -1006,62 +329,6 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::icolor =&gt; null()</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a3668860854f7ce50d47cf30f2c1cc6db"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3668860854f7ce50d47cf30f2c1cc6db">&#9670;&nbsp;</a></span>in</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::in</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a9c5d879894e606b6a594269f42ea9c16"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9c5d879894e606b6a594269f42ea9c16">&#9670;&nbsp;</a></span>know</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::know</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a922a96c27acccad44e3a588a856a1350"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a922a96c27acccad44e3a588a856a1350">&#9670;&nbsp;</a></span>limiters <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::limiters</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aa77f21b0682911187ffb2a4234c22fdc"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa77f21b0682911187ffb2a4234c22fdc">&#9670;&nbsp;</a></span>limiters <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension(:), pointer multi_data_types::multi_matrices::limiters</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -1096,146 +363,6 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a9b04bf80110c9e90d378779be1564af7"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9b04bf80110c9e90d378779be1564af7">&#9670;&nbsp;</a></span>locations</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::locations</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a6c5172629556bca938dc7230dc7c8c21"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6c5172629556bca938dc7230dc7c8c21">&#9670;&nbsp;</a></span>mass <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::multi_matrices::mass</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a68c57c8b98dc67f481d93678b71a7d74"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a68c57c8b98dc67f481d93678b71a7d74">&#9670;&nbsp;</a></span>mass <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension( :, :, : ), pointer multi_data_types::multi_matrices::mass</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ad4e12c36d042f4fbfe6e3f11e4b7bf84"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad4e12c36d042f4fbfe6e3f11e4b7bf84">&#9670;&nbsp;</a></span>matrices</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::matrices</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aa713427c6b3c2ea2a079b2ba667e7d1e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa713427c6b3c2ea2a079b2ba667e7d1e">&#9670;&nbsp;</a></span>matrix <span class="overload">[1/3]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension (<a class="el" href="structmulti__data__types_1_1multi__matrices.html#afe26272fa55cabbbf2d624f076821ce1">storable</a>), pointer multi_data_types::multi_matrices::matrix</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="afdcbb92e386f21821b3c01d8405bd0d2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afdcbb92e386f21821b3c01d8405bd0d2">&#9670;&nbsp;</a></span>matrix <span class="overload">[2/3]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix), dimension (<a class="el" href="structmulti__data__types_1_1multi__matrices.html#afe26272fa55cabbbf2d624f076821ce1">storable</a>), pointer multi_data_types::multi_matrices::matrix</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a61054191a016d80863139cffdc624c03"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a61054191a016d80863139cffdc624c03">&#9670;&nbsp;</a></span>matrix <span class="overload">[3/3]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension (<a class="el" href="structmulti__data__types_1_1multi__matrices.html#afe26272fa55cabbbf2d624f076821ce1">storable</a>), pointer multi_data_types::multi_matrices::matrix</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="af6584075ce371ad1237b9a73f5e8eba8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af6584075ce371ad1237b9a73f5e8eba8">&#9670;&nbsp;</a></span>momemtum</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix) multi_data_types::multi_matrices::momemtum</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a9ff1414bfda8e5feb6a457cdc592c762"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9ff1414bfda8e5feb6a457cdc592c762">&#9670;&nbsp;</a></span>momentum</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::multi_matrices::momentum</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a47731361e91f8303d326db22cf31dc4c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a47731361e91f8303d326db22cf31dc4c">&#9670;&nbsp;</a></span>navier</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix) multi_data_types::multi_matrices::navier</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="a0c3c224c8165d6793725b2da1a034fa7"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0c3c224c8165d6793725b2da1a034fa7">&#9670;&nbsp;</a></span>ncolor</h2>
 
@@ -1258,118 +385,6 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">logical multi_data_types::multi_matrices::no_matrix_store</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a035835f8b346a3b360f9c393908c5c38"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a035835f8b346a3b360f9c393908c5c38">&#9670;&nbsp;</a></span>not</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::not</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="af891bb62226e5ee57114a9bcc8850f2c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af891bb62226e5ee57114a9bcc8850f2c">&#9670;&nbsp;</a></span>number</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer multi_data_types::multi_matrices::number</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aecc9fb51556d61439e1099dca225ace2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aecc9fb51556d61439e1099dca225ace2">&#9670;&nbsp;</a></span>of <span class="overload">[1/4]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension(:), pointer multi_data_types::multi_matrices::of</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a468f95b91487eaf7da9c43453bc928f2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a468f95b91487eaf7da9c43453bc928f2">&#9670;&nbsp;</a></span>of <span class="overload">[2/4]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(vector_field), dimension(:), pointer multi_data_types::multi_matrices::of</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="acce2c4c2d0616397684434d98d6c8583"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acce2c4c2d0616397684434d98d6c8583">&#9670;&nbsp;</a></span>of <span class="overload">[3/4]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix), dimension(:), pointer multi_data_types::multi_matrices::of</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aa7a9ec587e945ea620083881d0de72f9"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa7a9ec587e945ea620083881d0de72f9">&#9670;&nbsp;</a></span>of <span class="overload">[4/4]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::of</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a710f88fe614d1fe2c151f60ee3aaa76b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a710f88fe614d1fe2c151f60ee3aaa76b">&#9670;&nbsp;</a></span>or</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::or</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aaf43d372bf4c3ff4eaa364578c827ad8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aaf43d372bf4c3ff4eaa364578c827ad8">&#9670;&nbsp;</a></span>petsc</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix) multi_data_types::multi_matrices::petsc</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -1418,118 +433,6 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a33f8744f057791f7626666d0a172ec32"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a33f8744f057791f7626666d0a172ec32">&#9670;&nbsp;</a></span>pressure</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::pressure</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a1f9634f0657dfb3c1e67a1c87d3609b5"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1f9634f0657dfb3c1e67a1c87d3609b5">&#9670;&nbsp;</a></span>rigth <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::multi_matrices::rigth</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a53db955df2f771ddc992f3baedc32059"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a53db955df2f771ddc992f3baedc32059">&#9670;&nbsp;</a></span>rigth <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(vector_field), dimension( :, :, : ), pointer multi_data_types::multi_matrices::rigth</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a104f74e46d6174c180536c0001e110a8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a104f74e46d6174c180536c0001e110a8">&#9670;&nbsp;</a></span>saturation</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(vector_field) multi_data_types::multi_matrices::saturation</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ac516ec4e8ac3f4744d59b873d132066f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac516ec4e8ac3f4744d59b873d132066f">&#9670;&nbsp;</a></span>side <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::multi_matrices::side</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aa27f3a72702283a65d4d4dd18b1e66c1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa27f3a72702283a65d4d4dd18b1e66c1">&#9670;&nbsp;</a></span>side <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(vector_field), dimension( :, :, : ), pointer multi_data_types::multi_matrices::side</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a2b9d84e82c1af0173cc276f8dfab584a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2b9d84e82c1af0173cc276f8dfab584a">&#9670;&nbsp;</a></span>stokes</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix) multi_data_types::multi_matrices::stokes</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="afe26272fa55cabbbf2d624f076821ce1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afe26272fa55cabbbf2d624f076821ce1">&#9670;&nbsp;</a></span>storable</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::storable</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="a5a515185a1ebf3491ac07f919f62da04"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a5a515185a1ebf3491ac07f919f62da04">&#9670;&nbsp;</a></span>stored</h2>
 
@@ -1544,174 +447,6 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a719b2bca7062a781f0eb74cdabbab4a9"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a719b2bca7062a781f0eb74cdabbab4a9">&#9670;&nbsp;</a></span>stores <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::stores</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a27b0c9ca2b86cd9d9fccf58bb70d0d4b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a27b0c9ca2b86cd9d9fccf58bb70d0d4b">&#9670;&nbsp;</a></span>stores <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension(:), pointer multi_data_types::multi_matrices::stores</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a8ddd5f1eb9c24992d7c54e94f372b5b6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8ddd5f1eb9c24992d7c54e94f372b5b6">&#9670;&nbsp;</a></span>terms</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix) multi_data_types::multi_matrices::terms</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a82cd2bf1ac0e496bbab8e80bd95c6d87"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a82cd2bf1ac0e496bbab8e80bd95c6d87">&#9670;&nbsp;</a></span>the <span class="overload">[1/5]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension(:), pointer multi_data_types::multi_matrices::the</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="afe0c29b720e377099a5223ee3a37afa4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afe0c29b720e377099a5223ee3a37afa4">&#9670;&nbsp;</a></span>the <span class="overload">[2/5]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(vector_field), dimension(:), pointer multi_data_types::multi_matrices::the</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aad315b1f8e9bbbcc0a1b00c0a5773fd7"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aad315b1f8e9bbbcc0a1b00c0a5773fd7">&#9670;&nbsp;</a></span>the <span class="overload">[3/5]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix), dimension(:), pointer multi_data_types::multi_matrices::the</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a7e09f3906ad036ef894c8dce44ad808b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7e09f3906ad036ef894c8dce44ad808b">&#9670;&nbsp;</a></span>the <span class="overload">[4/5]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::the</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aa29d5898c28dacb16c417118ebb91823"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa29d5898c28dacb16c417118ebb91823">&#9670;&nbsp;</a></span>the <span class="overload">[5/5]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension(:), pointer multi_data_types::multi_matrices::the</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="abea12b2eb9bee3dcd0bb2de7f010d9a0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#abea12b2eb9bee3dcd0bb2de7f010d9a0">&#9670;&nbsp;</a></span>to <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::to</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ad7778b0c9b0d74e273749ab3d9eb42cc"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad7778b0c9b0d74e273749ab3d9eb42cc">&#9670;&nbsp;</a></span>to <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension(:), pointer multi_data_types::multi_matrices::to</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a092a466580da310e7c6c978f34caabdf"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a092a466580da310e7c6c978f34caabdf">&#9670;&nbsp;</a></span>transport</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix) multi_data_types::multi_matrices::transport</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aaaf9c50acb5e46cf6e286b3cb1b328e1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aaaf9c50acb5e46cf6e286b3cb1b328e1">&#9670;&nbsp;</a></span>true</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::true</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="a0eaa2cf71c5394f223c49223f20cc40e"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0eaa2cf71c5394f223c49223f20cc40e">&#9670;&nbsp;</a></span>u_rhs</h2>
 
@@ -1720,132 +455,6 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::multi_matrices::u_rhs =&gt; null()</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a692dcb22aae15918b57705db3b046f76"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a692dcb22aae15918b57705db3b046f76">&#9670;&nbsp;</a></span>use</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::use</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ae51acbd99fd223ef805d69286787dfb4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae51acbd99fd223ef805d69286787dfb4">&#9670;&nbsp;</a></span>used <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">integer, dimension(:), pointer multi_data_types::multi_matrices::used</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ae897d867234b6cfe8ff1c51058e17add"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae897d867234b6cfe8ff1c51058e17add">&#9670;&nbsp;</a></span>used <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension(:), pointer multi_data_types::multi_matrices::used</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a0438d26586f21d00f8728529251ff336"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0438d26586f21d00f8728529251ff336">&#9670;&nbsp;</a></span>using <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, : ), pointer multi_data_types::multi_matrices::using</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a6fe37fd17ccb7f12cf1d48f0c1fc1bcf"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6fe37fd17ccb7f12cf1d48f0c1fc1bcf">&#9670;&nbsp;</a></span>using <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical, dimension( :, :, : ), pointer multi_data_types::multi_matrices::using</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a1019d5e8cdae620e276bd8dbe09b311a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1019d5e8cdae620e276bd8dbe09b311a">&#9670;&nbsp;</a></span>version</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix) multi_data_types::multi_matrices::version</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="aaeaa10f0aa2bf5a5b296e948d67acd10"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aaeaa10f0aa2bf5a5b296e948d67acd10">&#9670;&nbsp;</a></span>weights</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension(:), pointer multi_data_types::multi_matrices::weights</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a7692954cd85b77a551c85558a55b6650"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7692954cd85b77a551c85558a55b6650">&#9670;&nbsp;</a></span>when</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::when</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a03082808d466636f7f101bed970bc38b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a03082808d466636f7f101bed970bc38b">&#9670;&nbsp;</a></span>whether</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::whether</td>
         </tr>
       </table>
 </div><div class="memdoc">

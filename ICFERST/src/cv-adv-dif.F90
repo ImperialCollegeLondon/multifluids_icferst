@@ -54,12 +54,13 @@ module cv_advection
 #endif
 
     implicit none
-
+    !>calculates derivatives of vector fields
     interface DG_DERIVS_ALL
         module procedure DG_DERIVS_ALL1
         module procedure DG_DERIVS_ALL2
     end interface DG_DERIVS_ALL
 
+    !>Packs field together to be later on used for high order computations
     interface PACK_LOC_ALL
         module procedure PACK_LOC_ALL1
         module procedure PACK_LOC_ALL2
@@ -79,9 +80,66 @@ module cv_advection
 
 contains
 
-  !---------------------------------------------------------------------------
-  !> @author Chris Pain, Pablo Salinas
-  !> @brief Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for CV Pressure formulations
+    !---------------------------------------------------------------------------
+    !> @author Chris Pain, Pablo Salinas
+    !> @brief This subroutines generates the transport equation for a cv field. It also can generate the Continuity equation if GETCT = .true.
+    !> and also generate the gradient matrix of the momentum equation for the DCVFE method if the option is activated
+    !>
+    !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  final_phase This is the final phase to be assembled, in this way we can assemble from phase 1 to final_phase not necessarily being for all the phases
+    !>@param  Mdims Dimensions of the model
+    !>@param  CV_GIdims Gauss integration numbers for CV fields
+    !>@param  FE_GIdims Gauss integration numbers for FE fields
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  FE_funs Shape functions for the FE mesh
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  ndgln Global to local variables
+    !>@param  Mdisopt Discretisation options
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
+    !>@param  tracer  Tracer considered for the transport equation
+    !>@param  density  Density of the field
+    !>@param  velocity  Velocity of the field
+    !>@param  multi_absorp  Absoprtion of associated with the transport field
+    !>@param  CV_DISOPT, CV_DG_VEL_INT_OPT, IGOT_THETA_FLUX. More Discretisation options
+    !>@param  IGOT_T2. True (1) if solving for a tracer, false otherwise
+    !>@param  DIAG_SCALE_PRES Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
+    !>@param  DIAG_SCALE_PRES_COUP  Diagonal scaling of (distributed) pressure matrix (for wells)
+    !>@param  INV_B   Coupling term of the wells
+    !>@param  MASS_MN_PRES ??
+    !>@param  MASS_SUF ?? 
+    !>@param  DEN_ALL  Density of the field, different memory to the input field density, used to apply the Boussinesq approximation
+    !>@param  DENOLD_ALL  Density of the field, different memory to the input field density, used to apply the Boussinesq approximation
+    !>@param  THETA_GDIFF ! (nphase,Mdims%cv_nonods)
+    !>@param  THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+    !>@param  DT, CV_THETA, CV_BETA: Time step size and discretisation options
+    !>@param  SUF_SIG_DIAGTEN_BC. Like upwnd but for the boundary
+    !>@param  DERIV   Derivative of the density against the pressure (nphase,Mdims%cv_nonods)
+    !>@param  CV_P ! Control volume pressure, useless for the DCVFEM (1,Mdims%npres,Mdims%cv_nonods)
+    !>@param  SOURCT_ALL  Source term of the tracer equation
+    !>@param  ABSORBT_ALL Absorption to be used here
+    !>@param  VOLFRA_PORE   Porosity field (Mdims%npres,Mdims%totele)
+    !>@param  GETCV_DISC  obtain the transport equation
+    !>@param GETCT obtain the continuity equation
+    !>@param GET_THETA_FLUX, USE_THETA_FLUX,  RETRIEVE_SOLID_CTY, got_free_surf???
+    !>@param THERMAL true if solving for heat transport 
+    !>@param  MEAN_PORE_CV   Porosity defined control volume wise
+    !>@param  MASS_ELE_TRANSP
+    !>@param  saturation PhaseVolumeFraction field
+    !>@param  TDIFFUSION  Diffusion associated with the tracer field
+    !>@param  Phase_with_Pc   Field that defines the capillary pressure, i.e. non-wetting phase
+    !>@param  VAD_parameter  Vanishing artificial diffusion parameter
+    !>@param  Courant_number  Obvious ins't it?
+    !>@param  Permeability_tensor_field
+    !>@param  calculate_mass_delta  Variable used to control the mass conservation of the system
+    !>@param  eles_with_pipe  Elements that have a pipe
+    !>@param  pipes_aux  Information required to define wells
+    !>@param  porous_heat_coef, porous_heat_coef_old
+    !>@param  solving_compositional, assemble_collapsed_to_one_phase
+    !>@param  outfluxes  Contains all the fields required to compute the outfluxes of the model and create the outfluxes.csv file. Computed when assembling the continuity equation
+    !>@param  nonlinear_iteration Current non-linear iteration
+    !>@param  Latent_heat   Latent heat for phase change, use for enthalpy modelling
   !---------------------------------------------------------------------------
     SUBROUTINE CV_ASSEMB( state, packed_state, &
           final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -223,8 +281,8 @@ contains
           !***********************************************************************
           ! Inputs/Outputs
           IMPLICIT NONE
-          type( state_type ), dimension( : ), intent( inout ) :: state !> Linked list containing all the fields defined in diamond and considered by Fluidity
-          type( state_type ), intent( inout ) :: packed_state!> Linked list containing all the fields used by IC-FERST, memory partially shared with state
+          type( state_type ), dimension( : ), intent( inout ) :: state 
+          type( state_type ), intent( inout ) :: packed_state
           integer, intent(in) ::  final_phase
           type(multi_dimensions), intent(in) :: Mdims
           type(multi_GI_dimensions), intent(in) :: CV_GIdims
@@ -236,52 +294,52 @@ contains
           type (multi_discretization_opts) :: Mdisopt
           type (multi_matrices), intent(inout) :: Mmat
           type (porous_adv_coefs), intent(inout) :: upwnd
-          type(tensor_field), intent(inout), target :: tracer!> Tracer considered for the transport equation
-          type(tensor_field), intent(in), target :: density!> Density of the field
-          type(tensor_field), intent(in) :: velocity!> Velocity of the field
-          type(multi_absorption), intent(inout) :: multi_absorp!> Absoprtion of associated with the transport field
+          type(tensor_field), intent(inout), target :: tracer
+          type(tensor_field), intent(in), target :: density
+          type(tensor_field), intent(in) :: velocity
+          type(multi_absorption), intent(inout) :: multi_absorp
           INTEGER, intent( in ) :: CV_DISOPT, CV_DG_VEL_INT_OPT, &
               IGOT_T2, IGOT_THETA_FLUX
-          REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES!>Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
-          REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP !>Diagonal scaling of (distributed) pressure matrix (for wells)
-          REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: INV_B !> Coupling term of the wells
+          REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
+          REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP 
+          REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: INV_B 
           REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
           REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
-          REAL, DIMENSION( :, : ), target, intent( inout ) :: DEN_ALL!> Density of the field, different memory to the feld density, used to apply the Boussinesq approximation
-          REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL!> Density of the field, different memory to the feld density, used to apply the Boussinesq approximation
+          REAL, DIMENSION( :, : ), target, intent( inout ) :: DEN_ALL
+          REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL
           REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (nphase,Mdims%cv_nonods)
           REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
           REAL, intent( in ) :: DT, CV_THETA, CV_BETA
           REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-          REAL, DIMENSION( :, : ), intent( in ) :: DERIV !> Derivative of the density against the pressure (nphase,Mdims%cv_nonods)
+          REAL, DIMENSION( :, : ), intent( in ) :: DERIV 
           REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
-          REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL!> Source term of the tracer equation
+          REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
           REAL, DIMENSION( :, :, : ), pointer, intent( in ) :: ABSORBT_ALL
-          REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE !> Porosity field (Mdims%npres,Mdims%totele)
+          REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE 
           LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
           ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
-          REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV !> Porosity defined control volume wise
+          REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV 
           REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
           type(tensor_field), intent(in), optional, target :: saturation
-          REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION!> Diffusion associated with the tracer field
+          REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION
           !Variables for Vanishing artificial diffusion
-          integer, optional, intent(in) :: Phase_with_Pc !> Field that defines the capillary pressure, i.e. non-wetting phase
-          real, optional, dimension(:), intent(in) :: VAD_parameter!> Vanishing artificial diffusion parameter
+          integer, optional, intent(in) :: Phase_with_Pc 
+          real, optional, dimension(:), intent(in) :: VAD_parameter
           !Variables to cache get_int_vel OLD
-          real, optional, dimension(:), intent(inout) :: Courant_number!> Obvious ins't it?
+          real, optional, dimension(:), intent(inout) :: Courant_number
           type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
           ! Calculate_mass variable
-          real, dimension(:,:), optional :: calculate_mass_delta!> Variable used to control the mass conservation of the system
-          type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe!> Elements that have a pipe
-          type (multi_pipe_package), intent(in) :: pipes_aux!> Information required to define wells
+          real, dimension(:,:), optional :: calculate_mass_delta
+          type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
+          type (multi_pipe_package), intent(in) :: pipes_aux
           REAL, DIMENSION( :), optional, intent(in) :: porous_heat_coef, porous_heat_coef_old
           logical, optional, intent(in) :: solving_compositional, assemble_collapsed_to_one_phase
           ! Variable to store outfluxes
-          type (multi_outfluxes), optional, intent(inout) :: outfluxes!> Variable associated with
+          type (multi_outfluxes), optional, intent(inout) :: outfluxes
           !Non-linear iteration count
           integer, optional, intent(in) :: nonlinear_iteration
           !Variable for magma
-          real, optional :: Latent_heat !> Latent heat for phase change, use for enthalpy modelling
+          real, optional :: Latent_heat 
           ! ###################Local variables############################
           REAL :: ZERO_OR_TWO_THIRDS
 
@@ -3662,31 +3720,31 @@ end if
 
     END SUBROUTINE CV_ASSEMB
 
+    !> This sub calculates the limited face values TDADJ(1...SNGI) from the central
+    !> difference face values TDCEN(1...SNGI) using a NVD shceme.
+    !> INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
+    !> LIBETA is the flux limiting parameter.
+    !> TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
+    !> TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
+    !> PELEOT=element at other side of current face.
+    !> ELEOT2=element at other side of the element ELEOTH.
+    !> ELESID=element next to oposing current face.
+    !> DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU => memory
+    !> The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+    !> This sub finds the neighbouring elements. Suppose that this is the face IFACE.
+    !>---------------------------------------------------
+    !>|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+    !>---------------------------------------------------
+    !> TAIN         THALF       TAOUT
+    !>---------------------------------------------------
+    !>TEXTIN
+    !>TEXOUT
+    !---------------------------------------------------
     PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
         TDLIM, TDCEN, INCOME, &
         ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
         TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
         implicit none
-        ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-        ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-        ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-        ! LIBETA is the flux limiting parameter.
-        ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
-        ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-        ! PELEOT=element at other side of current face.
-        ! ELEOT2=element at other side of the element ELEOTH.
-        ! ELESID=element next to oposing current face.
-        ! DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU => memory
-        ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-        ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-        !---------------------------------------------------
-        !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-        !---------------------------------------------------
-        ! TAIN         THALF       TAOUT
-        !---------------------------------------------------
-        !>TEXTIN
-        !TEXOUT<
-        !---------------------------------------------------
         INTEGER, intent( in ) :: NFIELD
         REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
         REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
@@ -3715,6 +3773,8 @@ end if
         RETURN
     END SUBROUTINE ONVDLIM_ANO_MANY
 
+    !> Checks whether a field is constant or not. Although I think this check is terrible, 
+    !> no alternatives have provided the same functionality so far
     SUBROUTINE IS_FIELD_CONSTANT(IGOT_T_CONST, IGOT_T_CONST_VALUE, T_ALL, CV_NONODS)
         !SPRINT_TO_DO THIS SUBROUTINE IS HORRIBLE!!!! we need to find another way of checking if a field is constant!
         LOGICAL IGOT_T_CONST
@@ -3767,8 +3827,8 @@ end if
         RETURN
     END SUBROUTINE PACK_LOC
 
+    !> If PACK then UNpack loc_f into T_ALL  as long at IGOT_T==1 and STORE and not already in storage.
     SUBROUTINE UNPACK_LOC( LOC_F, T_ALL, NPHASE, IPT, IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE)
-        ! If PACK then UNpack loc_f into T_ALL  as long at IGOT_T==1 and STORE and not already in storage.
         IMPLICIT NONE
         INTEGER, intent( in ) :: NPHASE
         !INTEGER, intent( in ) :: GLOBAL_FACE
@@ -3800,8 +3860,8 @@ end if
     END SUBROUTINE UNPACK_LOC
 
 
+    !> If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
     SUBROUTINE PACK_OR_UNPACK_LOC( LOC_F, T_ALL, NPHASE, NFIELD, IPT, PACK, STORE, IGOT_T )
-        ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
         LOGICAL, intent( in ) :: STORE, PACK
         INTEGER, intent( in ) :: NPHASE, IGOT_T, NFIELD
         !INTEGER, intent( in ) :: GLOBAL_FACE
@@ -3844,11 +3904,11 @@ end if
         RETURN
     END SUBROUTINE PACK_OR_UNPACK_LOC
 
-    ! Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
-    ! to later on apply the limiters on all the fields at once
-    !sprint_to_do Hopefully this reduces slicing
+    !> This subroutine is for fields that have already size final_phase - 1
+    !> Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
+    !> to later on apply the limiters on all the fields at once
     SUBROUTINE PACK_LOC_ALL1( LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3, IGOT_T_PACK, use_volume_frac_T2, nfield )
-        !This subroutine is for fields that have already size final_phase - 1
+        !sprint_to_do Hopefully this reduces slicing
         IMPLICIT NONE
         LOGICAL, DIMENSION(:,:), intent( in ) :: IGOT_T_PACK
         REAL, DIMENSION(:), intent( in ) :: field1, oldfield1, field2, oldfield2, field3, oldfield3
@@ -3871,12 +3931,12 @@ end if
     END SUBROUTINE PACK_LOC_ALL1
 
 
-    ! Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
-    ! to later on apply the limiters on all the fields at once
+    !>This subrotuine is for fields that are bigger than final_phase - start_phase
+    !> Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
+    !> to later on apply the limiters on all the fields at once
     !sprint_to_do Hopefully this reduces slicing
     SUBROUTINE PACK_LOC_ALL2( LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3,&
             IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase, nodi )
-        !This subrotuine is for fields that are bigger than final_phase - start_phase
         !SPRINT_TO_DO THIS ONE IS NOW DEPRECATED!
         IMPLICIT NONE
         LOGICAL, DIMENSION(:,:), intent( in ) :: IGOT_T_PACK
@@ -3900,12 +3960,12 @@ end if
 
     END SUBROUTINE PACK_LOC_ALL2
 
-    ! Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
-    ! to later on apply the limiters on all the fields at once. This one is for integer fields
+    !>This subrotuine is for fields that are bigger than final_phase - start_phase
+    !> Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
+    !> to later on apply the limiters on all the fields at once. This one is for integer fields
     !sprint_to_do Hopefully this reduces slicing
     SUBROUTINE PACK_LOC_ALL3( LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3,&
             IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase, nodi )
-        !This subrotuine is for fields that are bigger than final_phase - start_phase
         !SPRINT_TO_DO THIS ONE IS NOW DEPRECATED!
         IMPLICIT NONE
         LOGICAL, DIMENSION(:,:), intent( in ) :: IGOT_T_PACK
@@ -3928,8 +3988,8 @@ end if
         ENDIF
 
       contains
+      !> If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
         SUBROUTINE I_PACK_LOC( LOC_F, T_ALL, NPHASE, IPT, IGOT_T_PACK )
-            ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
             IMPLICIT NONE
             INTEGER, intent( in ) :: NPHASE
             ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
@@ -3951,8 +4011,8 @@ end if
         END SUBROUTINE I_PACK_LOC
     END SUBROUTINE PACK_LOC_ALL3
 
+    !> If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
     SUBROUTINE I_PACK_LOC( LOC_F, T_ALL, NPHASE, IPT, IGOT_T_PACK )
-        ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
         IMPLICIT NONE
         INTEGER, intent( in ) :: NPHASE
         ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
@@ -3973,12 +4033,12 @@ end if
         RETURN
     END SUBROUTINE I_PACK_LOC
 
-    ! Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the LOC_F into the field
-    ! or use a constant value. This is after the limiters have been applied
+    !> If PACK then UNpack loc_f into T_ALL  as long at IGOT_T==1 and STORE and not already in storage.
+    !> Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the LOC_F into the field
+    !> or use a constant value. This is after the limiters have been applied
     !This should reduce slicing!
     SUBROUTINE UNPACK_LOC_ALL( LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3,&
                               IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE, use_volume_frac_T2, nfield)
-        ! If PACK then UNpack loc_f into T_ALL  as long at IGOT_T==1 and STORE and not already in storage.
         IMPLICIT NONE
         LOGICAL, DIMENSION(:,:), intent( in ) :: IGOT_T_PACK, IGOT_T_CONST
         REAL, DIMENSION(:), intent( inout ) :: field1, oldfield1, field2, oldfield2, field3, oldfield3
@@ -4008,9 +4068,8 @@ end if
 
 
 
+    !>     This subroutine counts then number of faces in the control volume space
     function CV_count_faces( Mdims, CV_ELE_TYPE, CV_GIdims) result(global_face)
-      !  =====================================================================
-      !     This subroutine counts then number of faces in the control volume space
       !
       ! Inputs/Outputs
       IMPLICIT NONE
@@ -4035,18 +4094,18 @@ end if
 
 
 
-
+    
+    !> We are on the boundary or next to another element. Determine CV_OTHER_LOC,
+    !> U_OTHER_LOC.
+    !> CVFEM_ON_FACE(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
+    !> Look for these nodes on the other elements.
+    !> ELE2=0 also when we are between elements but are trying to integrate across
+    !> the middle of a CV.
     SUBROUTINE FIND_OTHER_SIDE( CV_OTHER_LOC, CV_NLOC, U_OTHER_LOC, U_NLOC,  &
         MAT_OTHER_LOC, INTEGRAT_AT_GI, &
         X_NLOC, XU_NLOC, X_NDGLN, XU_NDGLN, &
         CV_SNLOC, CVFEM_ON_FACE, X_SHARE, ELE, ELE2,  &
         FINELE, COLELE, DISTCONTINUOUS_METHOD )
-        ! We are on the boundary or next to another element. Determine CV_OTHER_LOC,
-        ! U_OTHER_LOC.
-        ! CVFEM_ON_FACE(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
-        ! Look for these nodes on the other elements.
-        ! ELE2=0 also when we are between elements but are trying to integrate across
-        ! the middle of a CV.
         IMPLICIT NONE
         INTEGER, intent( in ) :: CV_NLOC, U_NLOC, X_NLOC, XU_NLOC, &
             &                   CV_SNLOC, ELE
@@ -4150,7 +4209,23 @@ end if
     !>     from T (control volume wise)
     !> (2) (optional) calculate psi_int (area) and
     !>     psi_ave (barycentre) over each CV
-    !---------------------------------------------------------------------------
+    !>
+    !>@param packed_state  ! local state data
+    !>@param fempsi   ! finite element field data
+    !>@param psi      ! finite volume field data
+    !>@param Mdims        ! dimension data
+    !>@param CV_GIdims ! gauss integer dimension data
+    !>@param CV_funs   ! control volume shape function data
+    !>@param Mspars       ! sparsity data
+    !>@param ndgln             ! global numbering data
+    !>@param igetct     ! whether to get CT matrix
+    !>@param X              ! coordinates of the elements
+    !>@param mass_ele      ! finite element mass
+    !>@param mass_mn_pres  ! ??
+    !>@param tracer field to be projected
+    !>@param activate_limiters are the limiters on?
+    !>@param psi_int ! control volume area
+    !>@param psi_ave ! control volume barycentre
     SUBROUTINE PROJ_CV_TO_FEM(packed_state, &
         fempsi, psi, &
         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
@@ -4343,7 +4418,7 @@ end if
     END SUBROUTINE PROJ_CV_TO_FEM
 
 
-
+    !> calculates derivatives of vector fields
     SUBROUTINE DG_DERIVS_ALL1( FEMT, FEMTOLD, &
         DTX_ELE, DTOLDX_ELE, &
         NDIM, NPHASE, NCOMP, TOTELE, CV_NDGLN, & ! ncomp = ndim here
@@ -4597,7 +4672,7 @@ end if
 
     END SUBROUTINE DG_DERIVS_ALL1
 
-
+    !> Computes the derivatives of vector fields
     SUBROUTINE DG_DERIVS_ALL2( FEMT, FEMTOLD, &
         DTX_ELE, DTOLDX_ELE, &
         NDIM, NPHASE, TOTELE, CV_NDGLN, &
@@ -4827,6 +4902,10 @@ end if
     END SUBROUTINE DG_DERIVS_ALL2
 
 
+    !> This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
+    !> based on a non-linear method and a non-oscillating scheme.
+    !> It requires the derivatives of the field obtained using DG_DERIVS_ALL
+    !> @ref DG_DERIVS_ALL
     SUBROUTINE DIFFUS_CAL_COEFF(DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
         CV_NLOC, MAT_NLOC, NPHASE, MAT_NDGLN, &
         SMATFEN, SCVFEN, GI, NDIM, TDIFFUSION, &
@@ -4837,8 +4916,6 @@ end if
         LOC_DTX_ELE_ALL, LOC_DTOLDX_ELE_ALL, LOC2_DTX_ELE_ALL, LOC2_DTOLDX_ELE_ALL, &
         LOC_WIC_T_BC, CV_OTHER_LOC, MAT_OTHER_LOC, CV_SNLOC, CV_SLOC2LOC, &
         on_domain_boundary, between_elements )
-        ! This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
-        ! based on a non-linear method and a non-oscillating scheme.
         IMPLICIT NONE
         INTEGER, intent( in ) :: CV_NLOC, MAT_NLOC, NPHASE, &
             &                    GI, NDIM, ELE, ELE2, &
@@ -4968,19 +5045,19 @@ end if
     END SUBROUTINE DIFFUS_CAL_COEFF
 
 
+    !> This sub calculates the effective diffusion coefficientd STRESS_IJ_ELE_EXT
+    !> it only works for between element contributions.
+    !> based on a high order scheme.
+    !> The matrix  S_INV_NNX_MAT12 is used to calculate the rows of the matrix with STRESS_IJ_ELE_EXT.
+    !> This implements the stress and tensor form of diffusion and calculates a jump conidition.
+    !> which is in DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
+    !> The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
+    !> look at the manual DG treatment of viscocity.
     SUBROUTINE LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_ELE_EXT,  S_INV_NNX_MAT12,  &
         STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
         U_SNLOC, U_NLOC, CV_SNLOC, NPHASE,  &
         SBUFEN_REVERSED,SBCVFEN_REVERSED, SDETWEI, SBCVNGI, NDIM, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, DIFF_GI_ADDED, &
         ON_BOUNDARY, SNORMXN_ALL  )
-        ! This sub calculates the effective diffusion coefficientd STRESS_IJ_ELE_EXT
-        ! it only works for between element contributions.
-        ! based on a high order scheme.
-        ! The matrix  S_INV_NNX_MAT12 is used to calculate the rows of the matrix with STRESS_IJ_ELE_EXT.
-        ! This implements the stress and tensor form of diffusion and calculates a jump conidition.
-        ! which is in DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
-        ! The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
-        ! look at the manual DG treatment of viscocity.
         IMPLICIT NONE
         LOGICAL, intent( in ) :: STRESS_FORM, STRESS_FORM_STAB, ON_BOUNDARY
         INTEGER, intent( in ) :: U_SNLOC, U_NLOC, CV_SNLOC, NPHASE,  &
@@ -5220,9 +5297,9 @@ end if
 
 
 
+    !> determine stress form of viscocity...
     SUBROUTINE CALC_STRESS_TEN(STRESS_IJ, ZERO_OR_TWO_THIRDS, NDIM,    &
         UFENX_ILOC, UFENX_JLOC,  TEN_XX, TEN_VOL )
-        ! determine stress form of viscocity...
         IMPLICIT NONE
         INTEGER, intent( in )  :: NDIM
         REAL, DIMENSION( :, :  ), intent( inOUT ) :: STRESS_IJ
@@ -5268,9 +5345,9 @@ end if
 
 
 
+    !> determine stress form of viscocity...
     SUBROUTINE CALC_STRESS_TEN_REDUCE(STRESS_IJ, ZERO_OR_TWO_THIRDS, NDIM,    &
         FEN_TEN_XX, FEN_TEN_VOL,  UFENX_JLOC  )
-        ! determine stress form of viscocity...
         IMPLICIT NONE
         INTEGER, intent( in )  :: NDIM
         REAL, DIMENSION( NDIM, NDIM  ), intent( inOUT ) :: STRESS_IJ
@@ -5308,10 +5385,10 @@ end if
 
 
 
+    !> Adjust TMIN to take into account different sized CV's.
+    !> if RESET_STORE then reset TMIN to orginal values.
     SUBROUTINE CAL_LIM_VOL_ADJUST( TMIN_STORE, TMIN, T, TMIN_NOD, RESET_STORE, MASS_CV, &
         &                         CV_NODI_IPHA, CV_NODJ_IPHA, IPHASE, CV_NONODS, INCOME )
-        ! Adjust TMIN to take into account different sized CV's.
-        ! if RESET_STORE then reset TMIN to orginal values.
         implicit none
         REAL, intent( in ) :: INCOME
         INTEGER, intent( in ) :: CV_NODI_IPHA, CV_NODJ_IPHA,IPHASE, CV_NONODS
@@ -5368,9 +5445,9 @@ end if
         RETURN
     END SUBROUTINE CAL_LIM_VOL_ADJUST
 
+    !> Form approximate surface normal (NORMX_ALL(1),NORMX_ALL(2),NORMX_ALL(3))
     SUBROUTINE DGSIMPLNORM_ALL( NLOC, SNLOC, NDIM,  &
         XL_ALL, XSL_ALL, NORMX_ALL )
-        ! Form approximate surface normal (NORMX_ALL(1),NORMX_ALL(2),NORMX_ALL(3))
         IMPLICIT NONE
         INTEGER, intent( in ) :: NLOC, SNLOC, NDIM
         REAL, DIMENSION( NDIM, NLOC ), intent( in ) :: XL_ALL
@@ -5398,11 +5475,11 @@ end if
 
 
 
-    !sprint_to_do where this is being called use the new one with the new memory
-    !and then remove
+    !> Form approximate surface normal (NORMX,NORMY,NORMZ)
     SUBROUTINE DGSIMPLNORM( ELE, SILOC2ILOC, NLOC, SNLOC, XONDGL, &
         X, Y, Z, NORMX, NORMY, NORMZ )
-        ! Form approximate surface normal (NORMX,NORMY,NORMZ)
+        !sprint_to_do where this is being called use the new one with the new memory
+        !and then remove
         IMPLICIT NONE
         INTEGER, intent( in ) :: ELE, NLOC, SNLOC
         INTEGER, DIMENSION( : ), intent( in ) ::  SILOC2ILOC
@@ -5449,6 +5526,7 @@ end if
 
 
     !sprint_to_do! do we need two? this one seems a simpler version of the other one, is the speedup worth it?
+    !> Computes the limited values at the interface, not as generic as the anisotropic one and never used actually...
     SUBROUTINE ISOTROPIC_LIMITER_ALL( &
         ! FOR SUB SURRO_CV_MINMAX:
         T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, IGOT_T2, NPHASE, CV_NONODS, nsmall_colm, SMALL_CENTRM, SMALL_FINDRM, SMALL_COLM, &
@@ -5527,6 +5605,9 @@ end if
         END DO
 
         contains
+            !> For each node, find the largest and smallest value of T and
+            !> DENSITY for both the current and previous timestep, out of
+            !> the node value and all its surrounding nodes including Dirichlet b.c's.
             SUBROUTINE SURRO_CV_MINMAX( TMAX_ALL, TMIN_ALL, TOLDMAX_ALL, TOLDMIN_ALL, DENMAX_ALL, DENMIN_ALL, DENOLDMAX_ALL, DENOLDMIN_ALL, &
                 T2MAX_ALL, T2MIN_ALL, T2OLDMAX_ALL, T2OLDMIN_ALL, &
                 T_ALL, TOLD_ALL,  T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, IGOT_T2, NPHASE, CV_NONODS, FINACV, COLACV, &
@@ -5534,9 +5615,6 @@ end if
                 TMIN_NOD_ALL, TMAX_NOD_ALL, TOLDMIN_NOD_ALL, TOLDMAX_NOD_ALL, &
                 T2MIN_NOD_ALL, T2MAX_NOD_ALL, T2OLDMIN_NOD_ALL, T2OLDMAX_NOD_ALL, &
                 DENMIN_NOD_ALL, DENMAX_NOD_ALL, DENOLDMIN_NOD_ALL, DENOLDMAX_NOD_ALL )
-                ! For each node, find the largest and smallest value of T and
-                ! DENSITY for both the current and previous timestep, out of
-                ! the node value and all its surrounding nodes including Dirichlet b.c's.
                 IMPLICIT NONE
                 INTEGER, intent( in ) :: NPHASE,CV_NONODS, STOTEL,CV_SNLOC, &
                     IGOT_T2
@@ -5681,6 +5759,10 @@ end if
             END SUBROUTINE SURRO_CV_MINMAX
 
 
+            !> Populate  limiting matrix based on max and min values
+            !> For each node, find the largest and smallest value of T and
+            !> DENSITY for both the current and previous timestep, out of
+            !> the node value and all its surrounding nodes including Dirichlet b.c's.
             SUBROUTINE CALC_LIMIT_MATRIX_MAX_MIN(TMAX_ALL, TMIN_ALL, DENMAX_ALL, DENMIN_ALL, &
                 T2MAX_ALL, T2MIN_ALL, &
                 T_ALL,  T2_ALL, DEN_ALL, IGOT_T2, NPHASE, CV_NONODS, &
@@ -5689,10 +5771,6 @@ end if
                 DENMIN_NOD_ALL, DENMAX_NOD_ALL, &
                 NSMALL_COLM, SMALL_FINDRM, SMALL_COLM, &
                 TUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, T2UPWIND_MAT_ALL, MASS_CV)
-                ! Populate  limiting matrix based on max and min values
-                ! For each node, find the largest and smallest value of T and
-                ! DENSITY for both the current and previous timestep, out of
-                ! the node value and all its surrounding nodes including Dirichlet b.c's.
                 IMPLICIT NONE
                 INTEGER, intent( in ) :: NPHASE, CV_NONODS, NSMALL_COLM, IGOT_T2
                 INTEGER, DIMENSION( : ), intent( in ) :: SMALL_FINDRM
@@ -5805,12 +5883,12 @@ end if
 
     END SUBROUTINE ISOTROPIC_LIMITER_ALL
 
-
+    
+    !> Calculate surface element, surface control volume: SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC for a face on the
+    !> boundary of the domain
     SUBROUTINE CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
         FACE_ELE, gi, CV_funs, Mdims, CV_GIdims, &
         CV_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN )
-        ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC for a face on the
-        ! boundary of the domain
         IMPLICIT NONE
         INTEGER, intent( in ) :: ELE, CV_ILOC, gi
         type(multi_dimensions), intent(in) :: Mdims
@@ -5894,6 +5972,8 @@ end if
 
 
 
+    !> This subroutine caculates the discretised cty eqn acting on the velocities i.e. Mmat%CT, Mmat%CT_RHS
+    !> It also computes the gradient matrix using the DCVFE method
     SUBROUTINE PUT_IN_CT_RHS( GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
         final_phase, Mdims, CV_funs, ndgln, Mmat, GI, between_elements, on_domain_boundary, &
         ELE, ELE2, SELE, HDC, MASS_ELE, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
@@ -5909,7 +5989,6 @@ end if
         RETRIEVE_SOLID_CTY,theta_cty_solid, &
         loc_u, THETA_VEL, &
         UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP, X_ALL, SUF_D_BC_ALL, gravty) !<= local memory sent down for speed...
-        ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. Mmat%CT, Mmat%CT_RHS
         IMPLICIT NONE
         ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO Mmat%CT MATRIX
         !    LOGICAL, PARAMETER :: more_in_ct=.false.
@@ -6117,9 +6196,9 @@ end if
         RETURN
     contains
 
+        !>This subroutine populates Bound_ele_correct and Bound_ele2_correct to properly apply the BCs when creating the
+        !>Mmat%C_CV matrix
         subroutine introduce_C_CV_boundary_conditions(Bound_ele_correct)
-            !This subroutine populates Bound_ele_correct and Bound_ele2_correct to properly apply the BCs when creating the
-            !Mmat%C_CV matrix
             implicit none
             real, dimension(:,:,:), intent(out) :: Bound_ele_correct
             !Local variables
@@ -6182,6 +6261,9 @@ end if
     END SUBROUTINE PUT_IN_CT_RHS
 
 
+    !> For the anisotropic limiting scheme we find the upwind values
+    !> by interpolation using the subroutine FINPTS or IFINPTS; the upwind
+    !> value for each node pair is stored in the matrices TUPWIND AND
     SUBROUTINE CALC_ANISOTROP_LIM(&
         ! Caculate the upwind values stored in matrix form...
         Mmat, T_ALL, TOLD_ALL, DEN_ALL, DENOLD_ALL, T2_ALL, T2OLD_ALL, &
@@ -6192,9 +6274,6 @@ end if
         SMALL_FINDRM, SMALL_CENTRM, SMALL_COLM,NSMALL_COLM, &
         X_NDGLN, X_NONODS, NDIM, &
         X_ALL, XC_CV_ALL, use_reflect)
-        ! For the anisotropic limiting scheme we find the upwind values
-        ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
-        ! value for each node pair is stored in the matrices TUPWIND AND
         IMPLICIT NONE
         type (multi_matrices), intent(inout) :: Mmat
         INTEGER, intent( in ) :: CV_NONODS,X_NONODS,TOTELE,CV_NLOC, &
@@ -6461,13 +6540,13 @@ end if
 
 
 
-
+            
+            !> use the stored interpolation coeffs to caclulate MATPSI.
+            !>     This sub finds the matrix values MATPSI for a given point on the
+            !>     stencil
             SUBROUTINE GETSTOREELEWEI(PSI_ALL,NFIELD,NONODS,NLOC,TOTELE,NDGLNO, &
                 &     MATPSI_ALL,FINDRM,COLM,NCOLM,BOUND,&
                 &     ELEMATPSI,ELEMATWEI)
-                ! use the stored interpolation coeffs to caclulate MATPSI.
-                !     This sub finds the matrix values MATPSI for a given point on the
-                !     stencil
                 IMPLICIT NONE
                 REAL FRALINE
                 LOGICAL BOUND
@@ -6521,11 +6600,11 @@ end if
 
             end subroutine getstoreelewei
 
+            !> This sub calculates the max and min values of PSI in local vacinity of
+            !> an element.
             SUBROUTINE MINMAXELEWIC(PSI_ALL,NONODS,NLOC,TOTELE,NDGLNO, &
                 &     FINDRM,COLM,NCOLM,&
                 &     MINPSI,MAXPSI)
-                ! This sub calculates the max and min values of PSI in local vacinity of
-                ! an element.
                 IMPLICIT NONE
                 INTEGER, intent(in) :: NONODS,NLOC,TOTELE,NDGLNO(TOTELE*NLOC)
                 REAL, DIMENSION(:,:), INTENT(IN) :: PSI_ALL
@@ -6563,6 +6642,9 @@ end if
             !
             !
             !
+            !>     This sub finds the matrix values MATPSI for a given point on the
+            !>     stencil
+            !> IF IGETSTOR=1 then get ELEMATPSI,ELEMATWEI.
             SUBROUTINE FINPTSSTORE(PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NFIELD,NONODS,NLOC,NGI,TOTELE,NDGLNO, &
                 MATPSI_ALL,FINDRM,COLM,NCOLM,NDIM, &
                 X_NDGLN,X_NONODS, &
@@ -6572,9 +6654,6 @@ end if
                 FINDELE,COLELE,NCOLEL,&
                 ELEMATPSI,ELEMATWEI,IGETSTOR,&
                 BOUND, REFLECT)
-                !     This sub finds the matrix values MATPSI for a given point on the
-                !     stencil
-                ! IF IGETSTOR=1 then get ELEMATPSI,ELEMATWEI.
                 IMPLICIT NONE
                 LOGICAL BOUND,REFLECT
                 ! IF REFLECT then use a reflection condition at boundary to
@@ -6715,6 +6794,10 @@ end if
             !
             !
             !
+            !>     This sub calculates the value of PSI that would be at the
+            !>     other side of the stencil if we had a linear variation and within
+            !>     a single element.
+            !> IF BOUND then make locally bounded.
             SUBROUTINE MATPTSSTORE(MATPSI_ALL,COUNT,NFIELD,NOD,XNOD,&
                 PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
                 NLOC,TOTELE,X_NDGLN,NDGLNO,&
@@ -6726,10 +6809,6 @@ end if
                 FINDELE,COLELE,NCOLEL,&
                 MINPSI,MAXPSI,  &
                 ELEWIC,LOCCORDSK,BOUND,REFLECT,NDIM)
-                !     This sub calculates the value of PSI that would be at the
-                !     other side of the stencil if we had a linear variation and within
-                !     a single element.
-                ! IF BOUND then make locally bounded.
                 IMPLICIT NONE
                 REAL INFINY,FRALINE2
                 LOGICAL, intent(in) :: REFLECT
@@ -6924,36 +7003,31 @@ end if
             !
             !
             !
+
+            !> This sub calculates the node to element list FINDELE,COLELE
+            !>
+            !> Note NLIST and INLIST are only used locally but are passed
+            !> down from parent routine where they are dynamically allocated.
+            !>
+            !> INPUTS:
+            !> ------
+            !> NDGLNO  - List of global node numbers
+            !>
+            !> OUTPUTS:
+            !> -------
+            !> COLELE  - This is a list of the element numbers that each node
+            !>           belongs to.  So it lists all elements for node 1, then
+            !>           all elements for node 2, and so on...
+            !> FINDELE - is the pointer to the place in COLELE that gives the
+            !>           first element associated with a given global node
+            !>
+            !> Called from subroutines IFINPTS and FINPTS, which are
+            !> subroutines of CONSTRUCT_ADVECTION_DIFFUSION_CV
+            !>
             SUBROUTINE PHILNODELE(NONODS,FINDELE,COLELE, &
                 NCOLEL,MXNCOLEL, &
                 TOTELE,NLOC,NDGLNO, &
                 NLIST,INLIST)
-                !=================================================================
-                ! This sub calculates the node to element list FINDELE,COLELE
-                !
-                ! Note NLIST and INLIST are only used locally but are passed
-                ! down from parent routine where they are dynamically allocated.
-                !
-                ! INPUTS:
-                ! ------
-                ! NDGLNO  - List of global node numbers
-                !
-                ! OUTPUTS:
-                ! -------
-                ! COLELE  - This is a list of the element numbers that each node
-                !           belongs to.  So it lists all elements for node 1, then
-                !           all elements for node 2, and so on...
-                ! FINDELE - is the pointer to the place in COLELE that gives the
-                !           first element associated with a given global node
-                !
-                ! Called from subroutines IFINPTS and FINPTS, which are
-                ! subroutines of CONSTRUCT_ADVECTION_DIFFUSION_CV
-                !
-                ! Description                                   Programmer      Date
-                ! ==================================================================
-                ! Original version..................................CCP   2013-28-01
-                !
-                !================================================================
                 IMPLICIT NONE
                 integer, intent( in ) :: NONODS,MXNCOLEL,TOTELE,NLOC
                 integer, intent( inout ) :: NCOLEL
@@ -7007,8 +7081,8 @@ end if
             end subroutine philnodele
 
 
+            !> convert quadratic element into a series of linear elements...
             subroutine conv_quad_to_lin_tri_tet( ndgln_p2top1, nloc_lin, cv_nloc, sub_lin_totele )
-                ! convert quadratic element into a series of linear elements...
                 integer, intent( in ) :: nloc_lin, cv_nloc, sub_lin_totele
                 integer, intent( inout ) :: ndgln_p2top1(sub_lin_totele*nloc_lin)
                 ! local variables...
@@ -7216,8 +7290,8 @@ end if
     end subroutine triloccords2d
 
 
+    !>Detects whether the element has a shockfront or not
     logical function shock_front_in_ele(ele, Mdims, sat, ndgln, Imble_frac)
-        !Detects whether the element has a shockfront or not
         implicit none
         integer :: ele
         type(multi_dimensions), intent(in) :: Mdims
@@ -7256,7 +7330,7 @@ end if
       type(multi_dimensions), intent( in ) :: Mdims
       type( state_type ), intent( inout ) :: packed_state
       type(multi_ndgln), intent(in) :: ndgln
-      integer, intent(in) :: intface_val_type!> 0 = no interpolation; 1 Harmonic mean; !20 for SP solver, harmonic mean considering charge; negative normal mean
+      integer, intent(in) :: intface_val_type! 0 = no interpolation; 1 Harmonic mean; !20 for SP solver, harmonic mean considering charge; negative normal mean
       real, dimension(:,:), intent(in) :: Sigma_field
       real, dimension(:,:,:), intent(in) :: K_fields, F_fields
       type( scalar_field ), intent(inout) :: Solution
