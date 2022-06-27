@@ -13,18 +13,18 @@ Include dependency graph for multi\+\_\+matrix\+\_\+operations.\+F90\+:\nopagebr
 \begin{DoxyCompactItemize}
 \item 
 module \mbox{\hyperlink{namespacematrix__operations}{matrix\+\_\+operations}}
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em This module contain subroutines to deal with the I\+C\+F\+E\+R\+ST matrices format. This includes M\+A\+T\+V\+E\+CS and M\+A\+T\+M\+AT operations All of this should be replaced by P\+E\+T\+Sc. \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
 subroutine \mbox{\hyperlink{namespacematrix__operations_a11255cf3f07959a2d3e20dd8705755fe}{matrix\+\_\+operations\+::matdmatinv}} (D\+M\+AT, D\+M\+A\+T\+I\+NV, N\+L\+OC)
-\item 
+\begin{DoxyCompactList}\small\item\em calculate D\+M\+A\+T\+I\+NV \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacematrix__operations_a3795359fc116fe5770ad11a89bbccc00}{matrix\+\_\+operations\+::matinv}} (A, N, N\+M\+AX)
 \begin{DoxyCompactList}\small\item\em \+: This sub finds the inverse of the matrix A and puts it back in A. M\+AT, M\+A\+T2, X and B are working vectors. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacematrix__operations_afe8e6c53cbc0059363705d48a73708d1}{matrix\+\_\+operations\+::matinvold}} (A, N, M\+AT, B)
 \begin{DoxyCompactList}\small\item\em \+: This sub finds the inverse of the matrix A and puts it back in A. M\+AT, M\+A\+T2, X and B are working vectors. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacematrix__operations_ad55f3b1531dccfb31fac2aa6022448b5}{matrix\+\_\+operations\+::smlinngot}} (A, X, B, N\+MX, I\+P\+IV, G\+O\+T\+D\+EC)
-\item 
+\begin{DoxyCompactList}\small\item\em Calculate the inverse using the LU decomposition L can be provided, speeding up the method to O(n) \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacematrix__operations_a8e0ed666ded4084ef9626e11edb7fee1}{matrix\+\_\+operations\+::color\+\_\+get\+\_\+cmc\+\_\+pha}} (Mdims, Mspars, ndgln, Mmat, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+ES, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+E\+S\+\_\+\+C\+O\+UP, I\+N\+V\+\_\+B, C\+M\+C\+\_\+petsc, C\+M\+C\+\_\+\+P\+R\+E\+C\+ON, I\+G\+O\+T\+\_\+\+C\+M\+C\+\_\+\+P\+R\+E\+C\+ON, M\+A\+S\+S\+\_\+\+M\+N\+\_\+\+P\+R\+ES, pipes\+\_\+aux, got\+\_\+free\+\_\+surf, M\+A\+S\+S\+\_\+\+S\+UF, F\+E\+M\+\_\+continuity\+\_\+equation)
 \begin{DoxyCompactList}\small\item\em \+:Initialize the momentum equation (C\+MC) and introduces the corresponding values in it. C\+O\+L\+O\+R\+\_\+\+G\+E\+T\+\_\+\+C\+M\+C\+\_\+\+P\+H\+A\+\_\+\+F\+A\+ST is very memory hungry, so we let the user decide or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{multi__matrix__operations_8_f90_aabf6daa1fc142c4f465b692f6399ee5b}{color\+\_\+get\+\_\+cmc\+\_\+pha\+\_\+slow}} (Mdims, Mspars, ndgln, Mmat, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+ES, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+E\+S\+\_\+\+C\+O\+UP, I\+N\+V\+\_\+B, C\+M\+C\+\_\+petsc, C\+M\+C\+\_\+\+P\+R\+E\+C\+ON, I\+G\+O\+T\+\_\+\+C\+M\+C\+\_\+\+P\+R\+E\+C\+ON, M\+A\+S\+S\+\_\+\+M\+N\+\_\+\+P\+R\+ES, M\+A\+S\+S\+\_\+\+P\+I\+PE, M\+A\+S\+S\+\_\+\+C\+V\+F\+E\+M2\+P\+I\+PE, M\+A\+S\+S\+\_\+\+C\+V\+F\+E\+M2\+P\+I\+P\+E\+\_\+\+T\+R\+UE, got\+\_\+free\+\_\+surf, M\+A\+S\+S\+\_\+\+S\+UF, ndpset, F\+E\+M\+\_\+continuity\+\_\+equation)

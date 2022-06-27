@@ -1,25 +1,33 @@
 \hypertarget{namespacecompositional__terms}{}\doxysection{compositional\+\_\+terms Module Reference}
 \label{namespacecompositional__terms}\index{compositional\_terms@{compositional\_terms}}
+
+
+This module contains all that is required to perform compositional modelling. N\+O\+TE T\+H\+AT T\+H\+IS F\+U\+N\+C\+T\+I\+O\+N\+A\+L\+I\+TY H\+AS N\+E\+V\+ER B\+E\+EN F\+U\+L\+LY I\+M\+P\+L\+E\+M\+E\+N\+T\+ED O\+N\+LY I\+N\+E\+RT C\+O\+M\+P\+O\+S\+I\+T\+I\+O\+N\+AL W\+O\+R\+KS C\+U\+R\+R\+E\+N\+T\+LY.  
+
+
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
 subroutine \mbox{\hyperlink{namespacecompositional__terms_ad2f5aa04b8878cd5cd9b0c4c23608bea}{calculate\+\_\+componentabsorptionterm}} (packed\+\_\+state, icomp, cv\+\_\+ndgln, Mdims, denold, volfra\+\_\+pore, mass\+\_\+ele, comp\+\_\+absorb)
-\item 
+\begin{DoxyCompactList}\small\item\em Calculate compositional model linkage between the phase expressed in C\+O\+M\+P\+\_\+\+A\+B\+S\+O\+RB. Use values from the previous time step so its easier to converge. alpha\+\_\+beta is the scaling coeff. of the compositional model e.\+g. =1.\+0. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacecompositional__terms_a5854731522b8b3e1b37deb7cfe6814c2}{calculate\+\_\+componentdiffusionterm}} (packed\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, mat\+\_\+ndgln, u\+\_\+ndgln, x\+\_\+ndgln, ncomp\+\_\+diff\+\_\+coef, comp\+\_\+diffusion\+\_\+opt, comp\+\_\+diff\+\_\+coef, comp\+\_\+diffusion)
-\item 
+\begin{DoxyCompactList}\small\item\em Calculate the diffusion coefficient C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+U\+S\+I\+ON for current composition... based on page 136 in Reservoir-\/\+Simulation-\/\+Mathematical-\/\+Techniques-\/\+In-\/\+Oil-\/\+Recovery-\/(2007).pdf C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+O\+PT, integer option defining diffusion coeff N\+C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+\_\+\+C\+O\+EF, integer defining how many coeff\textquotesingle{}s are needed to define the diffusion C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+\_\+\+C\+O\+EF( Mdimsncomp, N\+C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+\_\+\+C\+O\+EF, Mdimsnphase ) \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacecompositional__terms_ad493264ab6df90982606d40e8b794a2e}{proj\+\_\+u2mat}} (C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+O\+PT, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+U\+S\+I\+ON, N\+C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+\_\+\+C\+O\+EF, C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+\_\+\+C\+O\+EF, X\+\_\+\+A\+LL, NU, NV, NW, M\+A\+T\+\_\+\+N\+D\+G\+LN, U\+\_\+\+N\+D\+G\+LN, X\+\_\+\+N\+D\+G\+LN, M\+A\+T\+\_\+U)
-\item 
+\begin{DoxyCompactList}\small\item\em Determine M\+A\+T\+\_\+U from NU,NV,NW which are variables mapped to material mesh. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacecompositional__terms_a747fbf8752c32e5d741465ea409d6319}{calc\+\_\+comp\+\_\+dif\+\_\+ten}} (N\+D\+IM, UD, D\+I\+F\+F\+\_\+molecular, D\+I\+F\+F\+\_\+longitudinal, D\+I\+F\+F\+\_\+transverse, D\+I\+F\+F\+\_\+\+T\+EN)
-\item 
+\begin{DoxyCompactList}\small\item\em Calculate the diffusion coefficient C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+U\+S\+I\+ON for current composition... based on page 136 in Reservoir-\/\+Simulation-\/\+Mathematical-\/\+Techniques-\/\+In-\/\+Oil-\/\+Recovery-\/(2007).pdf. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacecompositional__terms_a8d067de83d2c706f165e514f8a9ca1c8}{calc\+\_\+kcomp2}} (cv\+\_\+nonods, nphase, icomp, K\+Comp\+\_\+\+Sigmoid, Satura, K\+\_\+\+Comp, max\+\_\+k, min\+\_\+k, K\+\_\+\+Comp2)
-\item 
+\begin{DoxyCompactList}\small\item\em Method to flash components. \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespacecompositional__terms_a84fea13095aadece40e1765da26a2297}{sigmoid\+\_\+function}} (Y, Y0, Width, Low\+Mag, Up\+Mag)
-\item 
+\begin{DoxyCompactList}\small\item\em Width\+: width of the sigmoid function. The sigmoid function, varies between ( Low\+Mag, Up\+Mag ). Y is the variable of the function and Y0 is the centre of the function. \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespacecompositional__terms_a9787ef666c2210caa4c2b67176eedb13}{exprep}} (M)
 \item 
 subroutine \mbox{\hyperlink{namespacecompositional__terms_ab7087656dea2acf341899e4e7a7f8eca}{cal\+\_\+comp\+\_\+sum2one\+\_\+sou}} (packed\+\_\+state, Mdims)
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em make sure the composition sums to 1.\+0 \end{DoxyCompactList}\end{DoxyCompactItemize}
 
+
+\doxysubsection{Detailed Description}
+This module contains all that is required to perform compositional modelling. N\+O\+TE T\+H\+AT T\+H\+IS F\+U\+N\+C\+T\+I\+O\+N\+A\+L\+I\+TY H\+AS N\+E\+V\+ER B\+E\+EN F\+U\+L\+LY I\+M\+P\+L\+E\+M\+E\+N\+T\+ED O\+N\+LY I\+N\+E\+RT C\+O\+M\+P\+O\+S\+I\+T\+I\+O\+N\+AL W\+O\+R\+KS C\+U\+R\+R\+E\+N\+T\+LY. 
 
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespacecompositional__terms_ab7087656dea2acf341899e4e7a7f8eca}\label{namespacecompositional__terms_ab7087656dea2acf341899e4e7a7f8eca}} 
@@ -27,6 +35,10 @@ subroutine \mbox{\hyperlink{namespacecompositional__terms_ab7087656dea2acf341899
 \index{cal\_comp\_sum2one\_sou@{cal\_comp\_sum2one\_sou}!compositional\_terms@{compositional\_terms}}
 \doxysubsubsection{\texorpdfstring{cal\_comp\_sum2one\_sou()}{cal\_comp\_sum2one\_sou()}}
 {\footnotesize\ttfamily subroutine compositional\+\_\+terms\+::cal\+\_\+comp\+\_\+sum2one\+\_\+sou (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type( \mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}} ), intent(in)}]{Mdims }\end{DoxyParamCaption})}
+
+
+
+make sure the composition sums to 1.\+0 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -48,6 +60,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{calc\_comp\_dif\_ten()}{calc\_comp\_dif\_ten()}}
 {\footnotesize\ttfamily subroutine compositional\+\_\+terms\+::calc\+\_\+comp\+\_\+dif\+\_\+ten (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{real, dimension( \+: ), intent(in)}]{UD,  }\item[{real, intent(in)}]{D\+I\+F\+F\+\_\+molecular,  }\item[{real, intent(in)}]{D\+I\+F\+F\+\_\+longitudinal,  }\item[{real, intent(in)}]{D\+I\+F\+F\+\_\+transverse,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+I\+F\+F\+\_\+\+T\+EN }\end{DoxyParamCaption})}
 
+
+
+Calculate the diffusion coefficient C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+U\+S\+I\+ON for current composition... based on page 136 in Reservoir-\/\+Simulation-\/\+Mathematical-\/\+Techniques-\/\+In-\/\+Oil-\/\+Recovery-\/(2007).pdf. 
+
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -60,6 +76,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{calc\_kcomp2@{calc\_kcomp2}!compositional\_terms@{compositional\_terms}}
 \doxysubsubsection{\texorpdfstring{calc\_kcomp2()}{calc\_kcomp2()}}
 {\footnotesize\ttfamily subroutine compositional\+\_\+terms\+::calc\+\_\+kcomp2 (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{cv\+\_\+nonods,  }\item[{integer, intent(in)}]{nphase,  }\item[{integer, intent(in)}]{icomp,  }\item[{logical, intent(in)}]{K\+Comp\+\_\+\+Sigmoid,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{Satura,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{K\+\_\+\+Comp,  }\item[{real, intent(in)}]{max\+\_\+k,  }\item[{real, intent(in)}]{min\+\_\+k,  }\item[{real, dimension( \+:, \+:, \+:, \+: ), intent(inout)}]{K\+\_\+\+Comp2 }\end{DoxyParamCaption})}
+
+
+
+Method to flash components. 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -81,6 +101,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{calculate\_componentabsorptionterm()}{calculate\_componentabsorptionterm()}}
 {\footnotesize\ttfamily subroutine compositional\+\_\+terms\+::calculate\+\_\+componentabsorptionterm (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{integer, intent(in)}]{icomp,  }\item[{integer, dimension( \+: ), intent(in)}]{cv\+\_\+ndgln,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{denold,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{volfra\+\_\+pore,  }\item[{real, dimension( \+: ), intent(in)}]{mass\+\_\+ele,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{comp\+\_\+absorb }\end{DoxyParamCaption})}
 
+
+
+Calculate compositional model linkage between the phase expressed in C\+O\+M\+P\+\_\+\+A\+B\+S\+O\+RB. Use values from the previous time step so its easier to converge. alpha\+\_\+beta is the scaling coeff. of the compositional model e.\+g. =1.\+0. 
+
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -100,6 +124,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{calculate\_componentdiffusionterm@{calculate\_componentdiffusionterm}!compositional\_terms@{compositional\_terms}}
 \doxysubsubsection{\texorpdfstring{calculate\_componentdiffusionterm()}{calculate\_componentdiffusionterm()}}
 {\footnotesize\ttfamily subroutine compositional\+\_\+terms\+::calculate\+\_\+componentdiffusionterm (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(in)}]{C\+V\+\_\+funs,  }\item[{integer, dimension( \+: ), intent(in)}]{mat\+\_\+ndgln,  }\item[{integer, dimension( \+: ), intent(in)}]{u\+\_\+ndgln,  }\item[{integer, dimension( \+: ), intent(in)}]{x\+\_\+ndgln,  }\item[{integer, intent(in)}]{ncomp\+\_\+diff\+\_\+coef,  }\item[{integer, intent(in)}]{comp\+\_\+diffusion\+\_\+opt,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{comp\+\_\+diff\+\_\+coef,  }\item[{real, dimension( \+:, \+:, \+:, \+: ), intent(inout)}]{comp\+\_\+diffusion }\end{DoxyParamCaption})}
+
+
+
+Calculate the diffusion coefficient C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+U\+S\+I\+ON for current composition... based on page 136 in Reservoir-\/\+Simulation-\/\+Mathematical-\/\+Techniques-\/\+In-\/\+Oil-\/\+Recovery-\/(2007).pdf C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+O\+PT, integer option defining diffusion coeff N\+C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+\_\+\+C\+O\+EF, integer defining how many coeff\textquotesingle{}s are needed to define the diffusion C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+\_\+\+C\+O\+EF( Mdimsncomp, N\+C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+\_\+\+C\+O\+EF, Mdimsnphase ) 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -134,6 +162,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{proj\_u2mat()}{proj\_u2mat()}}
 {\footnotesize\ttfamily subroutine compositional\+\_\+terms\+::proj\+\_\+u2mat (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+O\+PT,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(in)}]{C\+V\+\_\+funs,  }\item[{real, dimension( \+:, \+:, \+:, \+: ), intent(in)}]{C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+U\+S\+I\+ON,  }\item[{integer, intent(in)}]{N\+C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+\_\+\+C\+O\+EF,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{C\+O\+M\+P\+\_\+\+D\+I\+F\+F\+\_\+\+C\+O\+EF,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+A\+LL,  }\item[{real, dimension( \+: ), intent(in)}]{NU,  }\item[{real, dimension( \+: ), intent(in)}]{NV,  }\item[{real, dimension( \+: ), intent(in)}]{NW,  }\item[{integer, dimension( \+: ), intent(in)}]{M\+A\+T\+\_\+\+N\+D\+G\+LN,  }\item[{integer, dimension( \+: ), intent(in)}]{U\+\_\+\+N\+D\+G\+LN,  }\item[{integer, dimension( \+: ), intent(in)}]{X\+\_\+\+N\+D\+G\+LN,  }\item[{real, dimension( \+:), intent(inout)}]{M\+A\+T\+\_\+U }\end{DoxyParamCaption})}
 
+
+
+Determine M\+A\+T\+\_\+U from NU,NV,NW which are variables mapped to material mesh. 
+
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -154,6 +186,12 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{sigmoid\_function()}{sigmoid\_function()}}
 {\footnotesize\ttfamily real function compositional\+\_\+terms\+::sigmoid\+\_\+function (\begin{DoxyParamCaption}\item[{real}]{Y,  }\item[{real}]{Y0,  }\item[{real}]{Width,  }\item[{real}]{Low\+Mag,  }\item[{real}]{Up\+Mag }\end{DoxyParamCaption})}
 
+
+
+Width\+: width of the sigmoid function. The sigmoid function, varies between ( Low\+Mag, Up\+Mag ). Y is the variable of the function and Y0 is the centre of the function. 
+
+\hypertarget{namespacecompositional__terms_autotoc_md7}{}\doxysubsubsection{The function looks like\+:}\label{namespacecompositional__terms_autotoc_md7}
+/ \hypertarget{namespacecompositional__terms_autotoc_md8}{}\doxysubsubsection{/}\label{namespacecompositional__terms_autotoc_md8}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}

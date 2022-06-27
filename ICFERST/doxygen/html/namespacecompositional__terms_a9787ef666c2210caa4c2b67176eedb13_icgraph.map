@@ -1,8 +1,8 @@
 <map id="compositional_terms::exprep" name="compositional_terms::exprep">
 <area shape="rect" id="node1" title=" " alt="" coords="1480,35,1639,76"/>
-<area shape="rect" id="node2" href="$namespacecompositional__terms.html#a84fea13095aadece40e1765da26a2297" title=" " alt="" coords="1273,35,1432,76"/>
-<area shape="rect" id="node3" href="$namespacecompositional__terms.html#a8d067de83d2c706f165e514f8a9ca1c8" title=" " alt="" coords="1067,35,1225,76"/>
-<area shape="rect" id="node4" href="$namespacecompositional__terms.html#ad2f5aa04b8878cd5cd9b0c4c23608bea" title=" " alt="" coords="749,35,1019,76"/>
+<area shape="rect" id="node2" href="$namespacecompositional__terms.html#a84fea13095aadece40e1765da26a2297" title="Width: width of the sigmoid function. The sigmoid function, varies between ( LowMag,..." alt="" coords="1273,35,1432,76"/>
+<area shape="rect" id="node3" href="$namespacecompositional__terms.html#a8d067de83d2c706f165e514f8a9ca1c8" title="Method to flash components." alt="" coords="1067,35,1225,76"/>
+<area shape="rect" id="node4" href="$namespacecompositional__terms.html#ad2f5aa04b8878cd5cd9b0c4c23608bea" title="Calculate compositional model linkage between the phase expressed in COMP_ABSORB. Use values from the..." alt="" coords="749,35,1019,76"/>
 <area shape="rect" id="node5" href="$namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,35,701,76"/>
 <area shape="rect" id="node6" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" id="node8" href="$multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,71,396,98"/>

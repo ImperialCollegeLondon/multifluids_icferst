@@ -16,9 +16,9 @@
 !    USA
 #include "fdebug.h"
 
-!!!!========================================!!!!
-!!!!           MATRIX OPERATIONS            !!!!
-!!!!========================================!!!!
+
+!> This module contain subroutines to deal with the ICFERST matrices format. This includes MATVECS and MATMAT operations
+!> All of this should be replaced by PETSc
 module matrix_operations
 
     use fldebug
@@ -51,8 +51,8 @@ module matrix_operations
 contains
 
 
+    !> calculate DMATINV
     SUBROUTINE MATDMATINV( DMAT, DMATINV, NLOC )
-        ! calculate DMATINV
         IMPLICIT NONE
         INTEGER, intent( in ) :: NLOC
         REAL, DIMENSION( :, : ), intent( in ) :: DMAT
@@ -152,9 +152,9 @@ contains
         RETURN
     END SUBROUTINE MATINVold
 
+    !>Calculate the inverse using the LU decomposition
+    !>L can be provided, speeding up the method to O(n)
     SUBROUTINE SMLINNGOT( A, X, B, NMX, IPIV, GOTDEC )
-    !Calculate the inverse using the LU decomposition
-    !L can be provided, speeding up the method to O(n)
         IMPLICIT NONE
         INTEGER :: NMX
         REAL, DIMENSION( :, : ), intent( inout ) :: A

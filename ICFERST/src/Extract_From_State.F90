@@ -18,7 +18,8 @@
 #include "fdebug.h"
 
 !> This module enables the multiphase prototype code to interact with state by
-!> copying everything required from state to ICFERST.
+!> copying everything required from state to ICFERST, adaptive time-stepping, 
+!> outfluxes computation, tunneled BCs and Darcy velocity.
 module Copy_Outof_State
 
     use fldebug
@@ -2153,8 +2154,7 @@ end subroutine finalise_multistate
 !> @brief: This subroutine either store variables before the nonlinear timeloop starts, or checks
 !> how the nonlinear iterations are going and depending on that increase the timestep
 !> or decreases the timestep and repeats that timestep
-!>
-!>@param  Mdims Dimensions of the model
+!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
 !>@param  packed_state Linked list with the fields for ICFERST
 !>@param  reference_field  Field stored at the beginning of the non-linear loop to check convergence
 !>@param  old_acctim  Previous actual time

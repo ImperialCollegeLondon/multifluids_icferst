@@ -1,4 +1,5 @@
 #ifndef IPHREEQC_NO_FORTRAN_MODULE
+!> IPHREEQC module from the PHREEQC project, needed to interact with PHREEQCRM
 MODULE IPhreeqc
 implicit none
 

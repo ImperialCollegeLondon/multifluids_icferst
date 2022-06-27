@@ -1,4 +1,4 @@
 <map id="multiphase_eos::calculate_viscosity" name="multiphase_eos::calculate_viscosity">
 <area shape="rect" id="node1" title=": Computes the viscosity effect as a momemtum diffusion, this is zero for porous media" alt="" coords="5,5,197,47"/>
-<area shape="rect" id="node2" href="$multi__eos_8_f90.html#ae6d5686c281a2913192491061cfcec88" title="TO BE FILLED BY THE AUTHOR." alt="" coords="245,13,296,39"/>
+<area shape="rect" id="node2" href="$multi__eos_8_f90.html#ae6d5686c281a2913192491061cfcec88" title="Some magma stuf..." alt="" coords="245,13,296,39"/>
 </map>

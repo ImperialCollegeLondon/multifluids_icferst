@@ -1,6 +1,6 @@
 <map id="compositional_terms::calculate_componentabsorptionterm" name="compositional_terms::calculate_componentabsorptionterm">
-<area shape="rect" id="node1" title=" " alt="" coords="5,5,275,47"/>
-<area shape="rect" id="node2" href="$namespacecompositional__terms.html#a8d067de83d2c706f165e514f8a9ca1c8" title=" " alt="" coords="323,5,481,47"/>
-<area shape="rect" id="node3" href="$namespacecompositional__terms.html#a84fea13095aadece40e1765da26a2297" title=" " alt="" coords="529,5,688,47"/>
+<area shape="rect" id="node1" title="Calculate compositional model linkage between the phase expressed in COMP_ABSORB. Use values from the..." alt="" coords="5,5,275,47"/>
+<area shape="rect" id="node2" href="$namespacecompositional__terms.html#a8d067de83d2c706f165e514f8a9ca1c8" title="Method to flash components." alt="" coords="323,5,481,47"/>
+<area shape="rect" id="node3" href="$namespacecompositional__terms.html#a84fea13095aadece40e1765da26a2297" title="Width: width of the sigmoid function. The sigmoid function, varies between ( LowMag,..." alt="" coords="529,5,688,47"/>
 <area shape="rect" id="node4" href="$namespacecompositional__terms.html#a9787ef666c2210caa4c2b67176eedb13" title=" " alt="" coords="736,5,895,47"/>
 </map>

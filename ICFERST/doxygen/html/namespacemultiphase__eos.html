@@ -9,6 +9,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -48,6 +52,23 @@ $(function() {
 });
 /* @license-end */</script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:cf05388f2679ee054f2beb29a391d25f4e673ac3&amp;dn=gpl-2.0.txt GPL-v2 */
+$(document).ready(function(){initNavTree('namespacemultiphase__eos.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -62,7 +83,6 @@ $(function() {
 </iframe>
 </div>
 
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#func-members">Functions/Subroutines</a> &#124;
@@ -71,6 +91,9 @@ $(function() {
 <div class="title">multiphase_eos Module Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>This module contains subroutines related to the equations of state and other properties such as relative permeabilities, capillary, flash, etc.  
+<a href="namespacemultiphase__eos.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions/Subroutines</h2></td></tr>
@@ -126,10 +149,10 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memdesc:a26eebc3a39a15f39961c783b8558fbef"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media  <a href="namespacemultiphase__eos.html#a26eebc3a39a15f39961c783b8558fbef">More...</a><br /></td></tr>
 <tr class="separator:a26eebc3a39a15f39961c783b8558fbef"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a15a1f78f9f889b58b7b9f45de20d5a48"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a15a1f78f9f889b58b7b9f45de20d5a48">update_velocity_absorption</a> (states, ndim, nphase, velocity_absorption)</td></tr>
-<tr class="memdesc:a15a1f78f9f889b58b7b9f45de20d5a48"><td class="mdescLeft">&#160;</td><td class="mdescRight">:Computes velocity absorption from diamond information  <a href="namespacemultiphase__eos.html#a15a1f78f9f889b58b7b9f45de20d5a48">More...</a><br /></td></tr>
+<tr class="memdesc:a15a1f78f9f889b58b7b9f45de20d5a48"><td class="mdescLeft">&#160;</td><td class="mdescRight">:&lt;INERTIA ONLY&gt;Computes velocity absorption from diamond information  <a href="namespacemultiphase__eos.html#a15a1f78f9f889b58b7b9f45de20d5a48">More...</a><br /></td></tr>
 <tr class="separator:a15a1f78f9f889b58b7b9f45de20d5a48"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a98927879ae36867eabec1a9e6a5f22d8"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a98927879ae36867eabec1a9e6a5f22d8">update_velocity_absorption_coriolis</a> (states, ndim, nphase, velocity_absorption)</td></tr>
-<tr class="memdesc:a98927879ae36867eabec1a9e6a5f22d8"><td class="mdescLeft">&#160;</td><td class="mdescRight">:Computes velocity absorption from diamond information  <a href="namespacemultiphase__eos.html#a98927879ae36867eabec1a9e6a5f22d8">More...</a><br /></td></tr>
+<tr class="memdesc:a98927879ae36867eabec1a9e6a5f22d8"><td class="mdescLeft">&#160;</td><td class="mdescRight">:Computes velocity absorption associated to coriolis forces from diamond information  <a href="namespacemultiphase__eos.html#a98927879ae36867eabec1a9e6a5f22d8">More...</a><br /></td></tr>
 <tr class="separator:a98927879ae36867eabec1a9e6a5f22d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8f7f68ee8d294089b9077c480795eb9c"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a8f7f68ee8d294089b9077c480795eb9c">update_velocity_source</a> (states, Mdims, u_source)</td></tr>
 <tr class="memdesc:a8f7f68ee8d294089b9077c480795eb9c"><td class="mdescLeft">&#160;</td><td class="mdescRight">:Computes velocity source from diamond information  <a href="namespacemultiphase__eos.html#a8f7f68ee8d294089b9077c480795eb9c">More...</a><br /></td></tr>
@@ -141,22 +164,19 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memdesc:aeb644e3565a7e33c61f0e40e73a3c990"><td class="mdescLeft">&#160;</td><td class="mdescRight">:Gets the relperm max, the relperm exponent and the immobile fractions and stores them into packed state By index this is: 1) immobile fraction, 2) relperm max, 3)relperm exponent 4)Capillary entry pressure 5) Capillary exponent 6) Capillary imbition term The effective inmobile fraction is the min(inmobile,saturation_flipping formula), being the saturation the value after a succesful non-linear solver convergence! This NEEDS to be called after a succesful non-linear solver (with update_only)  <a href="namespacemultiphase__eos.html#aeb644e3565a7e33c61f0e40e73a3c990">More...</a><br /></td></tr>
 <tr class="separator:aeb644e3565a7e33c61f0e40e73a3c990"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac01c010ab184f242b5ca90a44d40affa"><td class="memItemLeft" align="right" valign="top">real function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#ac01c010ab184f242b5ca90a44d40affa">jwl</a> (A, B, w, R1, R2, E0, p, roe, ro)</td></tr>
+<tr class="memdesc:ac01c010ab184f242b5ca90a44d40affa"><td class="mdescLeft">&#160;</td><td class="mdescRight">JWL equation functions.  <a href="namespacemultiphase__eos.html#ac01c010ab184f242b5ca90a44d40affa">More...</a><br /></td></tr>
 <tr class="separator:ac01c010ab184f242b5ca90a44d40affa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7870c763c81a10948617345c3d0ca219"><td class="memItemLeft" align="right" valign="top">real function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a7870c763c81a10948617345c3d0ca219">diffjwl</a> (A, B, w, R1, R2, E0, roe, ro)</td></tr>
+<tr class="memdesc:a7870c763c81a10948617345c3d0ca219"><td class="mdescLeft">&#160;</td><td class="mdescRight">Diff of JWL equation functions.  <a href="namespacemultiphase__eos.html#a7870c763c81a10948617345c3d0ca219">More...</a><br /></td></tr>
 <tr class="separator:a7870c763c81a10948617345c3d0ca219"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8585fdea6dd3d2ca6508cf37236a7cc0"><td class="memItemLeft" align="right" valign="top">real function, dimension(jwln)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a8585fdea6dd3d2ca6508cf37236a7cc0">jwldensity</a> (eos_coefs, pressure, ro0, JWLn)</td></tr>
+<tr class="memdesc:a8585fdea6dd3d2ca6508cf37236a7cc0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Density of JWL equation functions.  <a href="namespacemultiphase__eos.html#a8585fdea6dd3d2ca6508cf37236a7cc0">More...</a><br /></td></tr>
 <tr class="separator:a8585fdea6dd3d2ca6508cf37236a7cc0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3f5f7836734b85fb788ba57a2793eda7"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a3f5f7836734b85fb788ba57a2793eda7">initialise_porous_media</a> (Mdims, ndgln, packed_state, state, exit_initialise_porous_media)</td></tr>
-<tr class="memdesc:a3f5f7836734b85fb788ba57a2793eda7"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Initialising porous media models </p><blockquote class="doxtable">
-<p>Given a free water level (FWL) we simulate capillary gravity equilibration, control volumes below FWL is kept at residual lighter phase saturation This subroutine is called after each timestep and saturations overidden below FWL with the heavier phase </p>
-</blockquote>
- <a href="namespacemultiphase__eos.html#a3f5f7836734b85fb788ba57a2793eda7">More...</a><br /></td></tr>
+<tr class="memdesc:a3f5f7836734b85fb788ba57a2793eda7"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Initialising porous media models Given a free water level (FWL) we simulate capillary gravity equilibration, control volumes below FWL is kept at residual lighter phase saturation This subroutine is called after each timestep and saturations overidden below FWL with the heavier phase  <a href="namespacemultiphase__eos.html#a3f5f7836734b85fb788ba57a2793eda7">More...</a><br /></td></tr>
 <tr class="separator:a3f5f7836734b85fb788ba57a2793eda7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a282f02f39508adfb64d99bf4659af86c"><td class="memItemLeft" align="right" valign="top">real function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a282f02f39508adfb64d99bf4659af86c">retrieve_reference_density</a> (state, packed_state, iphase, icomp, nphase)</td></tr>
-<tr class="memdesc:a282f02f39508adfb64d99bf4659af86c"><td class="mdescLeft">&#160;</td><td class="mdescRight">: For boussinesq porous media we need the reference density to ensure consistency when mixing with the porous density/Cp etc. </p><blockquote class="doxtable">
-<p>In this subroutine we retrieve the value given a phase, component. </p>
-</blockquote>
- <a href="namespacemultiphase__eos.html#a282f02f39508adfb64d99bf4659af86c">More...</a><br /></td></tr>
+<tr class="memdesc:a282f02f39508adfb64d99bf4659af86c"><td class="mdescLeft">&#160;</td><td class="mdescRight">: For boussinesq porous media we need the reference density to ensure consistency when mixing with the porous density/Cp etc. In this subroutine we retrieve the value given a phase, component.  <a href="namespacemultiphase__eos.html#a282f02f39508adfb64d99bf4659af86c">More...</a><br /></td></tr>
 <tr class="separator:a282f02f39508adfb64d99bf4659af86c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a439637e5906b37a16646c186d7fc0daf"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a439637e5906b37a16646c186d7fc0daf">flash_gas_dissolution</a> (state, packed_state, Mdims, ndgln)</td></tr>
 <tr class="memdesc:a439637e5906b37a16646c186d7fc0daf"><td class="mdescLeft">&#160;</td><td class="mdescRight">: subroutine to dissolv phase2 into phase1. Currently only for system for phase 1 = water, phase 2 = gas Dissolve instantaneously the amount introduced in diamond in mol/m3 for CO2 a reference number is 38 mol/m3. Requires the first phase to have a concentration field  <a href="namespacemultiphase__eos.html#a439637e5906b37a16646c186d7fc0daf">More...</a><br /></td></tr>
@@ -167,7 +187,9 @@ Variables</h2></td></tr>
 <tr class="memitem:ae1ce91e74714b2c125d7a764aaa79ff3"><td class="memItemLeft" align="right" valign="top">real, parameter&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#ae1ce91e74714b2c125d7a764aaa79ff3">flooding_hmin</a> = 1e-5</td></tr>
 <tr class="separator:ae1ce91e74714b2c125d7a764aaa79ff3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Function/Subroutine Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>This module contains subroutines related to the equations of state and other properties such as relative permeabilities, capillary, flash, etc. </p>
+</div><h2 class="groupheader">Function/Subroutine Documentation</h2>
 <a id="ac13395594592fe917fc20b7c3c2b7a5d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ac13395594592fe917fc20b7c3c2b7a5d">&#9670;&nbsp;</a></span>assign_equation_of_state()</h2>
 
@@ -185,6 +207,12 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>: Read from diamond and decide which sort of density representation do we have </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">eos_option_path_out</td><td>Diamond path of the EOS to be used </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
@@ -270,6 +298,19 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: Subroutine where the absorption for the porous media is actually computed </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">nphase</td><td>Number of phases </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">PorousMedia_absorp</td><td>INOUT Absorption associated to the porous media </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Number of dimensions </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+    <tr><td class="paramname">SATURA</td><td>PhasevolumeFraction field </td></tr>
+    <tr><td class="paramname">viscosities</td><td>viscosity field </td></tr>
+    <tr><td class="paramname">inv_PorousMedia_absorp</td><td>(optional) INOUT inverse of the absorption term </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
@@ -337,6 +378,15 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: Computes the density for the phases and the derivatives of the density </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramname">get_RhoCp</td><td>This flags computes rhoCp instead of rho </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
@@ -411,6 +461,16 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: In this subroutine the capilalry pressure is computed based on the saturation and the formula used </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+    <tr><td class="paramname">Totele</td><td>Total number of elements </td></tr>
+    <tr><td class="paramname">cv_nloc</td><td>Total number of CVs per element </td></tr>
+    <tr><td class="paramname">CV_funs</td><td>Shape functions for the CV mesh </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
@@ -467,6 +527,15 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: Computes the density for the components and the derivatives of the density This is were the action is actually done, the other calculate rhos are wrappers </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc <br  />
+ </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
@@ -549,6 +618,19 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: Here we compute component/solute/thermal diffusion coefficient </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Number of dimensions <br  />
+ </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+    <tr><td class="paramname">ScalarAdvectionField_Diffusion</td><td>INOUT Field containing the diffusion </td></tr>
+    <tr><td class="paramname">divide_by_rho_CP</td><td>! If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp </td></tr>
+    <tr><td class="paramname">TracerName</td><td>! For PassiveTracer with diffusion we pass down the name of the tracer </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
@@ -613,6 +695,16 @@ Here is the caller graph for this function:</div>
 
 <p>In this subroutine we calculate and update the density of the porous media based on the compressibility given in Diamond (ele-wise). We also calculate the drho/dp term for the porous media which then goes into the DERIV term in the continuity equation (cv-wise). </p>
 <dl class="section author"><dt>Author</dt><dd>Geraldine Regnier </dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Number of dimensions </td></tr>
+    <tr><td class="paramname">cv_ndgln</td><td>Global to local variables for the CV mesh </td></tr>
+    <tr><td class="paramname">drhodp.</td><td>Derivative of the porous density </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
@@ -709,6 +801,23 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: Here we compute the absorption for porous media This is the sigma term defined in the papers and contains The permeability, the relative permeability, the viscosity and the saturation </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">nphase</td><td>Number of phases </td></tr>
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">PorousMedia_absorp</td><td>INOUT Absorption associated to the porous media </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Number of dimensions </td></tr>
+    <tr><td class="paramname">CV_funs</td><td>Shape functions for the CV mesh </td></tr>
+    <tr><td class="paramname">CV_GIdims</td><td>Gauss integration numbers for CV fields </td></tr>
+    <tr><td class="paramname">Mspars</td><td>Sparsity of the matrices </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+    <tr><td class="paramname">upwnd</td><td>Sigmas to compute the fluxes at the interphase for porous media <br  />
+ </td></tr>
+    <tr><td class="paramname">SUF_SIG_DIAGTEN_BC</td><td>Like upwnd but for the boundary </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
@@ -808,6 +917,20 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: Computes the density and the derivative of the density </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">iphase</td><td>current phase </td></tr>
+    <tr><td class="paramname">icomp</td><td>current component </td></tr>
+    <tr><td class="paramname">nphase</td><td>number of phases </td></tr>
+    <tr><td class="paramname">ncomp</td><td>number of components </td></tr>
+    <tr><td class="paramname">eos_option_path</td><td>Path in diamond of the EOS to be used </td></tr>
+    <tr><td class="paramname">rho</td><td>density </td></tr>
+    <tr><td class="paramname">drhodp.</td><td>Dderivative of density </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
@@ -885,6 +1008,18 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: Dispersion for porous media For thermal, the field density needs to be passed down, which ensures that even for boussinesq a reference density is still used </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Number of dimensions <br  />
+ </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+    <tr><td class="paramname">density</td><td>Density of the field (If present density means that we need to use a reference density to ensure consistency with the rest of the equation) </td></tr>
+    <tr><td class="paramname">SoluteDispersion</td><td>INOUT The field containing the dispersivity controbution for the given field </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
@@ -947,6 +1082,16 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: This subroutine computed the gravity effect, i.e. rho * g </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">Mdims</td><td>Number of dimensions </td></tr>
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">den</td><td>Density field </td></tr>
+    <tr><td class="paramname">u_source_cv</td><td>INOUT Source term having now the gravity term </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
@@ -1016,13 +1161,23 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Number of dimensions </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+    <tr><td class="paramname">Momentum_Diffusion</td><td>Viscosity term for Stokes/Navier-Stokes </td></tr>
+    <tr><td class="paramname">Momentum_Diffusion2</td><td>Shear viscosity? </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef_cgraph.png" border="0" usemap="#namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef_cgraph" alt=""/></div>
 <map name="namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef_cgraph" id="namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef_cgraph">
 <area shape="rect" title=": Computes the viscosity effect as a momemtum diffusion, this is zero for porous media" alt="" coords="5,5,197,47"/>
-<area shape="rect" href="multi__eos_8_f90.html#ae6d5686c281a2913192491061cfcec88" title="TO BE FILLED BY THE AUTHOR." alt="" coords="245,13,296,39"/>
+<area shape="rect" href="multi__eos_8_f90.html#ae6d5686c281a2913192491061cfcec88" title="Some magma stuf..." alt="" coords="245,13,296,39"/>
 </map>
 </div>
 <div class="dynheader">
@@ -1102,6 +1257,19 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: Computes the bulk density for components and the derivatives of the density </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">ncomp</td><td>number of components </td></tr>
+    <tr><td class="paramname">nphase</td><td>number of phases </td></tr>
+    <tr><td class="paramname">cv_nonods</td><td>number of CV nodes </td></tr>
+    <tr><td class="paramname">Density_Component</td><td>density of a component for compositional modelling </td></tr>
+    <tr><td class="paramname">Density</td><td>(self descriptive) </td></tr>
+    <tr><td class="paramname">Density_Cp.</td><td>Density times Cp </td></tr>
+    <tr><td class="paramname">compute_rhoCP</td><td>This flags computes rhoCp instead of rho </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
@@ -1234,13 +1402,15 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Diff of JWL equation functions. </p>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemultiphase__eos_a7870c763c81a10948617345c3d0ca219_icgraph.png" border="0" usemap="#namespacemultiphase__eos_a7870c763c81a10948617345c3d0ca219_icgraph" alt=""/></div>
 <map name="namespacemultiphase__eos_a7870c763c81a10948617345c3d0ca219_icgraph" id="namespacemultiphase__eos_a7870c763c81a10948617345c3d0ca219_icgraph">
-<area shape="rect" title=" " alt="" coords="253,5,428,32"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a8585fdea6dd3d2ca6508cf37236a7cc0" title=" " alt="" coords="5,5,205,32"/>
+<area shape="rect" title="Diff of JWL equation functions." alt="" coords="253,5,428,32"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a8585fdea6dd3d2ca6508cf37236a7cc0" title="Density of JWL equation functions." alt="" coords="5,5,205,32"/>
 </map>
 </div>
 
@@ -1285,6 +1455,15 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: subroutine to dissolv phase2 into phase1. Currently only for system for phase 1 = water, phase 2 = gas Dissolve instantaneously the amount introduced in diamond in mol/m3 for CO2 a reference number is 38 mol/m3. Requires the first phase to have a concentration field </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
@@ -1349,6 +1528,17 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>:This functions returns the derivative of the capillary pressure with respect to the saturation </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">Sat</td><td>Phase Volume fraction at current CV </td></tr>
+    <tr><td class="paramname">Pe</td><td>Entry pressure at current ELE </td></tr>
+    <tr><td class="paramname">a</td><td>Exponent at current ELE </td></tr>
+    <tr><td class="paramname">CV_Immobile_Fraction</td><td>Immobile fraction at current CV </td></tr>
+    <tr><td class="paramname">iphase</td><td>current phase </td></tr>
+    <tr><td class="paramname">nphase</td><td>Number of phases </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
@@ -1432,6 +1622,19 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>:Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">nphase</td><td>Number of phases </td></tr>
+    <tr><td class="paramname">iphase</td><td>current phase </td></tr>
+    <tr><td class="paramname">material_absorption</td><td>INOUT Absorption associated to the porous media </td></tr>
+    <tr><td class="paramname">sat</td><td>saturation at current CV </td></tr>
+    <tr><td class="paramname">visco</td><td>viscosity at current CV </td></tr>
+    <tr><td class="paramname">CV_Immobile_fract</td><td>Immobile fraction at current CV </td></tr>
+    <tr><td class="paramname">Corey_exponent</td><td>Exponent of the relperm curve at current ELE </td></tr>
+    <tr><td class="paramname">Endpoint_relperm</td><td>End point of the relperm curve at current ELE </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
@@ -1518,6 +1721,18 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>:Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">nphase</td><td>Number of phases </td></tr>
+    <tr><td class="paramname">iphase</td><td>current phase </td></tr>
+    <tr><td class="paramname">sat</td><td>saturation at current CV </td></tr>
+    <tr><td class="paramname">CV_Immobile_fract</td><td>Immobile fraction at current CV </td></tr>
+    <tr><td class="paramname">Corey_exponent</td><td>Exponent of the relperm curve at current ELE </td></tr>
+    <tr><td class="paramname">Endpoint_relperm</td><td>End point of the relperm curve at current ELE </td></tr>
+    <tr><td class="paramname">Kr</td><td>INOUT Relative permeability at current CV </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
@@ -1598,6 +1813,17 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>:Gets the relperm max, the relperm exponent and the immobile fractions and stores them into packed state By index this is: 1) immobile fraction, 2) relperm max, 3)relperm exponent 4)Capillary entry pressure 5) Capillary exponent 6) Capillary imbition term The effective inmobile fraction is the min(inmobile,saturation_flipping formula), being the saturation the value after a succesful non-linear solver convergence! This NEEDS to be called after a succesful non-linear solver (with update_only) </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+    <tr><td class="paramname">current_time</td><td>current time in type(real). Only for the first time ever, not for checkpointing, overwrite the saturation flipping value with the initial one </td></tr>
+    <tr><td class="paramname">update_only</td><td>If true then only the Immobile fraction is updated (for Land trapping modelling only) </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
@@ -1665,10 +1891,17 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
-<p>: Initialising porous media models </p><blockquote class="doxtable">
-<p>Given a free water level (FWL) we simulate capillary gravity equilibration, control volumes below FWL is kept at residual lighter phase saturation This subroutine is called after each timestep and saturations overidden below FWL with the heavier phase </p>
-</blockquote>
-</p>
+<p>: Initialising porous media models Given a free water level (FWL) we simulate capillary gravity equilibration, control volumes below FWL is kept at residual lighter phase saturation This subroutine is called after each timestep and saturations overidden below FWL with the heavier phase </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">exit_initialise_porous_media</td><td>Activates the option to after initialising stop the simulation </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
@@ -1749,13 +1982,15 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>JWL equation functions. </p>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemultiphase__eos_ac01c010ab184f242b5ca90a44d40affa_icgraph.png" border="0" usemap="#namespacemultiphase__eos_ac01c010ab184f242b5ca90a44d40affa_icgraph" alt=""/></div>
 <map name="namespacemultiphase__eos_ac01c010ab184f242b5ca90a44d40affa_icgraph" id="namespacemultiphase__eos_ac01c010ab184f242b5ca90a44d40affa_icgraph">
-<area shape="rect" title=" " alt="" coords="253,5,405,32"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a8585fdea6dd3d2ca6508cf37236a7cc0" title=" " alt="" coords="5,5,205,32"/>
+<area shape="rect" title="JWL equation functions." alt="" coords="253,5,405,32"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a8585fdea6dd3d2ca6508cf37236a7cc0" title="Density of JWL equation functions." alt="" coords="5,5,205,32"/>
 </map>
 </div>
 
@@ -1798,14 +2033,16 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Density of JWL equation functions. </p>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemultiphase__eos_a8585fdea6dd3d2ca6508cf37236a7cc0_cgraph.png" border="0" usemap="#namespacemultiphase__eos_a8585fdea6dd3d2ca6508cf37236a7cc0_cgraph" alt=""/></div>
 <map name="namespacemultiphase__eos_a8585fdea6dd3d2ca6508cf37236a7cc0_cgraph" id="namespacemultiphase__eos_a8585fdea6dd3d2ca6508cf37236a7cc0_cgraph">
-<area shape="rect" title=" " alt="" coords="5,31,205,57"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a7870c763c81a10948617345c3d0ca219" title=" " alt="" coords="253,5,428,32"/>
-<area shape="rect" href="namespacemultiphase__eos.html#ac01c010ab184f242b5ca90a44d40affa" title=" " alt="" coords="265,56,417,83"/>
+<area shape="rect" title="Density of JWL equation functions." alt="" coords="5,31,205,57"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a7870c763c81a10948617345c3d0ca219" title="Diff of JWL equation functions." alt="" coords="253,5,428,32"/>
+<area shape="rect" href="namespacemultiphase__eos.html#ac01c010ab184f242b5ca90a44d40affa" title="JWL equation functions." alt="" coords="265,56,417,83"/>
 </map>
 </div>
 
@@ -1855,10 +2092,17 @@ Here is the call graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
-<p>: For boussinesq porous media we need the reference density to ensure consistency when mixing with the porous density/Cp etc. </p><blockquote class="doxtable">
-<p>In this subroutine we retrieve the value given a phase, component. </p>
-</blockquote>
-</p>
+<p>: For boussinesq porous media we need the reference density to ensure consistency when mixing with the porous density/Cp etc. In this subroutine we retrieve the value given a phase, component. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">iphase</td><td>Current phase </td></tr>
+    <tr><td class="paramname">icomp</td><td>current component </td></tr>
+    <tr><td class="paramname">nphase</td><td>Number of phases </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
@@ -1944,13 +2188,22 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
-<p>:Computes velocity absorption from diamond information </p>
+<p>:&lt;INERTIA ONLY&gt;Computes velocity absorption from diamond information </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">ndim</td><td>Number of dimensions </td></tr>
+    <tr><td class="paramname">nphase</td><td>Number of phases </td></tr>
+    <tr><td class="paramname">velocity_absorption</td><td>Absorption term to be updated here </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemultiphase__eos_a15a1f78f9f889b58b7b9f45de20d5a48_icgraph.png" border="0" usemap="#namespacemultiphase__eos_a15a1f78f9f889b58b7b9f45de20d5a48_icgraph" alt=""/></div>
 <map name="namespacemultiphase__eos_a15a1f78f9f889b58b7b9f45de20d5a48_icgraph" id="namespacemultiphase__eos_a15a1f78f9f889b58b7b9f45de20d5a48_icgraph">
-<area shape="rect" title=":Computes velocity absorption from diamond information" alt="" coords="724,5,903,47"/>
+<area shape="rect" title=":&lt;INERTIA ONLY&gt;Computes velocity absorption from diamond information" alt="" coords="724,5,903,47"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
@@ -1997,13 +2250,22 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
-<p>:Computes velocity absorption from diamond information </p>
+<p>:Computes velocity absorption associated to coriolis forces from diamond information </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">ndim</td><td>Number of dimensions </td></tr>
+    <tr><td class="paramname">nphase</td><td>Number of phases </td></tr>
+    <tr><td class="paramname">velocity_absorption</td><td>Absorption term to be updated here </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemultiphase__eos_a98927879ae36867eabec1a9e6a5f22d8_icgraph.png" border="0" usemap="#namespacemultiphase__eos_a98927879ae36867eabec1a9e6a5f22d8_icgraph" alt=""/></div>
 <map name="namespacemultiphase__eos_a98927879ae36867eabec1a9e6a5f22d8_icgraph" id="namespacemultiphase__eos_a98927879ae36867eabec1a9e6a5f22d8_icgraph">
-<area shape="rect" title=":Computes velocity absorption from diamond information" alt="" coords="724,5,935,47"/>
+<area shape="rect" title=":Computes velocity absorption associated to coriolis forces from diamond information" alt="" coords="724,5,935,47"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
@@ -2045,6 +2307,13 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>:Computes velocity source from diamond information </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensionrs describing the mesh, fields, nodes, etc. </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
@@ -2075,11 +2344,15 @@ Here is the caller graph for this function:</div>
 </div>
 </div>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by &#160;<a href="http://www.doxygen.org/index.html">
-<img class="footer" src="doxygen.png" alt="doxygen"/>
-</a> 1.8.17
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacemultiphase__eos.html">multiphase_eos</a></li>
+    <li class="footer">Generated by
+    <a href="http://www.doxygen.org/index.html">
+    <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.17 </li>
+  </ul>
+</div>
 </body>
 </html>

@@ -1,10 +1,15 @@
 \hypertarget{namespacemulti__interpolation}{}\doxysection{multi\+\_\+interpolation Module Reference}
 \label{namespacemulti__interpolation}\index{multi\_interpolation@{multi\_interpolation}}
+
+
+This module contains the conservative mesh to mesh interpollation for DG fields, as described in Adam et al. 2016 doi\+: \href{http://dx.doi.org/10.1016/j.jcp.2016.05.058}{\texttt{ http\+://dx.\+doi.\+org/10.\+1016/j.\+jcp.\+2016.\+05.\+058}}.  
+
+
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
 subroutine \mbox{\hyperlink{namespacemulti__interpolation_a4f1475bd24977140d41a9601fce62e7f}{m2minterpolation}} (state, packed\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, small\+\_\+finacv, small\+\_\+colacv, flag)
-\item 
+\begin{DoxyCompactList}\small\item\em Mehs to mesh interpollation method, in Diamond D\+G\+\_\+\+Galerkin. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__interpolation_a7530cc4ef072f5d033528b0d1f85bf8a}{memorycleanupinterpolation1}} ()
 \item 
 subroutine \mbox{\hyperlink{namespacemulti__interpolation_adb81d167c7226e84c335c34c9a7e98e6}{memorycleanupinterpolation2}} ()
@@ -18,12 +23,19 @@ type(state\+\_\+type) \mbox{\hyperlink{namespacemulti__interpolation_afa2240c89b
 \end{DoxyCompactItemize}
 
 
+\doxysubsection{Detailed Description}
+This module contains the conservative mesh to mesh interpollation for DG fields, as described in Adam et al. 2016 doi\+: \href{http://dx.doi.org/10.1016/j.jcp.2016.05.058}{\texttt{ http\+://dx.\+doi.\+org/10.\+1016/j.\+jcp.\+2016.\+05.\+058}}. 
+
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespacemulti__interpolation_a4f1475bd24977140d41a9601fce62e7f}\label{namespacemulti__interpolation_a4f1475bd24977140d41a9601fce62e7f}} 
 \index{multi\_interpolation@{multi\_interpolation}!m2minterpolation@{m2minterpolation}}
 \index{m2minterpolation@{m2minterpolation}!multi\_interpolation@{multi\_interpolation}}
 \doxysubsubsection{\texorpdfstring{m2minterpolation()}{m2minterpolation()}}
 {\footnotesize\ttfamily subroutine multi\+\_\+interpolation\+::m2minterpolation (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__gi__dimensions}{multi\+\_\+gi\+\_\+dimensions}}), intent(in)}]{C\+V\+\_\+\+G\+Idims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__shape__funs}{multi\+\_\+shape\+\_\+funs}}), intent(in)}]{C\+V\+\_\+funs,  }\item[{integer, dimension(\+:), intent(inout), pointer}]{small\+\_\+finacv,  }\item[{integer, dimension(\+:), intent(inout), pointer}]{small\+\_\+colacv,  }\item[{integer, intent(in)}]{flag }\end{DoxyParamCaption})}
+
+
+
+Mehs to mesh interpollation method, in Diamond D\+G\+\_\+\+Galerkin. 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]

@@ -1,9 +1,9 @@
 <map id="multi_tools::tolfun" name="multi_tools::tolfun">
 <area shape="rect" id="node1" title=":This function is a tolerance function for a value which is used as a denominator...." alt="" coords="1687,107,1828,134"/>
 <area shape="rect" id="node2" href="$cv-adv-dif_8_f90.html#aaff0fabb63f42671a6a051512b761705" title=" " alt="" coords="1496,137,1612,163"/>
-<area shape="rect" id="node14" href="$namespacemultiphase__1d__engine.html#a75a4fb88f761b81639c9b81628eddc95" title=": Determine if we have an oscillation in the normal direction... dg_oscilat_detect=1...." alt="" coords="1469,5,1639,47"/>
+<area shape="rect" id="node14" href="$namespacemultiphase__1d__engine.html#a75a4fb88f761b81639c9b81628eddc95" title=": &lt;INERTIA ONLY&gt;Determine if we have an oscillation in the normal direction... dg_oscilat_detect=1...." alt="" coords="1469,5,1639,47"/>
 <area shape="rect" id="node17" href="$cv-adv-dif_8_f90.html#a427571cc398104aab11b15662262c017" title="Computes the flux between CVs." alt="" coords="1277,187,1421,214"/>
-<area shape="rect" id="node18" href="$namespacemultiphase__1d__engine.html#a34cd5ba5d5dfec039fa896b5fdc14e9f" title=": Determine if we have an oscillation in the normal direction... dg_oscilat_detect=1...." alt="" coords="1469,71,1639,112"/>
+<area shape="rect" id="node18" href="$namespacemultiphase__1d__engine.html#a34cd5ba5d5dfec039fa896b5fdc14e9f" title=": &lt;INERTIA ONLY&gt; Determine if we have an oscillation in the normal direction... dg_oscilat_detect=1...." alt="" coords="1469,71,1639,112"/>
 <area shape="rect" id="node3" href="$namespacecv__advection.html#a4c9c5c3afe6e6355fcf8bfefbaa3211a" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1039,187,1229,214"/>
 <area shape="rect" id="node4" href="$multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="778,78,962,105"/>
 <area shape="rect" id="node8" href="$namespacemultiphase__1d__engine.html#af9aedf8b67f5b7198eb4b67601a7fab0" title="Calls to generate the transport equation for the enthalpy equation. This is efectively the temperatur..." alt="" coords="495,239,673,280"/>

@@ -1,5 +1,5 @@
 <map id="sparsity_nd::form_dgm_pha_sparsity" name="sparsity_nd::form_dgm_pha_sparsity">
-<area shape="rect" id="node1" title=" " alt="" coords="5,23,177,65"/>
+<area shape="rect" id="node1" title="Form the sparsity of the phase coupled DG discretised matrix from the element&#45;wise multi&#45;phase sparsi..." alt="" coords="5,23,177,65"/>
 <area shape="rect" id="node2" href="$namespacemulti__tools.html#a3ac19b56ac30b94f277519bc61d39d21" title=":Sort a list in increasing order Vec is the vector to sort and n is an starting point,..." alt="" coords="225,31,388,57"/>
 <area shape="rect" id="node3" href="$multi__tools_8_f90.html#a1bc37745e090cdc90171cd68ea218026" title=" " alt="" coords="436,5,547,32"/>
 <area shape="rect" id="node4" href="$multi__tools_8_f90.html#a054ef005839aa2ad2184eb3a6a28199a" title=" " alt="" coords="453,56,530,83"/>

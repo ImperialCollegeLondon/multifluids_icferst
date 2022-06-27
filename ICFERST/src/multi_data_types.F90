@@ -15,8 +15,8 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-
-
+!>This module contains all the ICFERST structures and associated subroutines (allocate/deallocate)
+!>Use it also to identify what a variable means since here they are described
 module multi_data_types
     use fldebug
     use sparse_tools_petsc

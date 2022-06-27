@@ -33,8 +33,8 @@
 <area shape="rect" id="node36" href="$namespacephreeqcrm.html#a174eb1088d6e5a2f50d2d819b757edc4" title="Set the saturation of each reaction cell. Saturation is a fraction ranging from 0 to 1...." alt="" coords="737,1525,947,1552"/>
 <area shape="rect" id="node37" href="$namespacephreeqcrm.html#a7003da44b7bf491aea37fd28fae97685" title="Set the temperature for each reaction cell. If RM_SetTemperature is not called, worker solutions will..." alt="" coords="729,1576,955,1603"/>
 <area shape="rect" id="node38" href="$namespacephreeqcrm.html#a175641b24fc5ac336ef91114f134b799" title="Set solution concentrations in the reaction cells based on the vector of aqueous species concentratio..." alt="" coords="679,1627,1005,1653"/>
-<area shape="rect" id="node5" href="$namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,1119,611,1161"/>
-<area shape="rect" id="node8" href="$namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title=" " alt="" coords="467,1011,611,1053"/>
+<area shape="rect" id="node5" href="$namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,1119,611,1161"/>
+<area shape="rect" id="node8" href="$namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title="Call PHREEQCRM and compute the reactions of the fields defined associated with the input ID." alt="" coords="467,1011,611,1053"/>
 <area shape="rect" id="node6" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,1087,419,1129"/>
 <area shape="rect" id="node7" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,1087,171,1129"/>
 </map>

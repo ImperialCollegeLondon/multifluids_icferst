@@ -12,14 +12,14 @@ Include dependency graph for multi\+\_\+surface\+\_\+tension.\+F90\+:\nopagebrea
 \begin{DoxyCompactItemize}
 \item 
 module \mbox{\hyperlink{namespacemulti__surface__tension}{multi\+\_\+surface\+\_\+tension}}
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em This module contains the subroutines to include surface tension. Currently only used for I\+N\+E\+R\+T\+IA. \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
 subroutine \mbox{\hyperlink{namespacemulti__surface__tension_af2ba4e6081b82e255306f98d0e160098}{multi\+\_\+surface\+\_\+tension\+::calculate\+\_\+surface\+\_\+tension\+\_\+new}} (state, packed\+\_\+state, Mdims, Mspars, ndgln, Mdisopt, P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+C\+O\+EF, P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+G\+R\+AD, I\+P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+OU)
 \item 
 subroutine \mbox{\hyperlink{namespacemulti__surface__tension_a5a80b62b8be2aabfa44e733c53908eb4}{multi\+\_\+surface\+\_\+tension\+::surface\+\_\+tension\+\_\+wrapper\+\_\+new}} (state, packed\+\_\+state, P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+C\+O\+EF, P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+G\+R\+AD, S\+U\+F\+\_\+\+T\+E\+N\+S\+I\+O\+N\+\_\+\+C\+O\+EF, A\+N\+G\+LE, V\+O\+L\+U\+M\+E\+\_\+\+F\+R\+AC, Mdims, Mspars, ndgln, Mdisopt)
-\item 
+\begin{DoxyCompactList}\small\item\em Calculate the surface tension force as a pressure force term\+: P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+C\+O\+EF and P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+G\+R\+AD for a given Dev\+FunsV\+O\+L\+U\+ME fraction field V\+O\+L\+U\+M\+E\+\_\+\+F\+R\+AC S\+U\+F\+\_\+\+T\+E\+N\+S\+I\+O\+N\+\_\+\+C\+O\+EF is the surface tension coefficient. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{multi__surface__tension_8_f90_a026fb325d794a04af0f7bc547cc54603}{loc\+\_\+1st\+\_\+deriv\+\_\+xyz\+\_\+dg\+\_\+curv}} (C\+U\+RV, D\+I\+S\+T\+A\+N\+C\+E\+\_\+\+F\+UN, S\+O\+L\+\_\+\+D\+E\+R\+I\+V\+\_\+X, S\+O\+L\+\_\+\+D\+E\+R\+I\+V\+\_\+Y, S\+O\+L\+\_\+\+D\+E\+R\+I\+V\+\_\+Z, N\+D\+IM, C\+V\+\_\+\+N\+D\+G\+LN, X\+\_\+\+N\+L\+OC, X\+\_\+\+N\+D\+G\+LN, C\+V\+\_\+\+N\+GI, C\+V\+\_\+\+N\+L\+OC, C\+V\+F\+EN, C\+V\+F\+E\+NX, C\+V\+F\+E\+NY, C\+V\+F\+E\+NZ, X, Y, Z, N\+F\+A\+CE, F\+A\+C\+E\+\_\+\+E\+LE, C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST, C\+V\+\_\+\+S\+N\+L\+OC, S\+B\+C\+V\+N\+GI, S\+B\+C\+V\+F\+EN, S\+B\+C\+V\+F\+E\+N\+S\+LX, S\+B\+C\+V\+F\+E\+N\+S\+LY, S\+B\+C\+V\+F\+E\+W\+E\+I\+GH, E\+LE, D\+E\+T\+W\+EI)
 \item 
 subroutine \mbox{\hyperlink{multi__surface__tension_8_f90_a03686a2a5c7469486afe07dfca950fa8}{loc\+\_\+1st\+\_\+deriv\+\_\+xyz\+\_\+dg\+\_\+deriv}} (D\+I\+S\+T\+A\+N\+C\+E\+\_\+\+F\+UN, S\+O\+L\+\_\+\+D\+E\+R\+I\+V\+\_\+X, S\+O\+L\+\_\+\+D\+E\+R\+I\+V\+\_\+Y, S\+O\+L\+\_\+\+D\+E\+R\+I\+V\+\_\+Z, N\+D\+IM, C\+V\+\_\+\+N\+D\+G\+LN, X\+\_\+\+N\+L\+OC, X\+\_\+\+N\+D\+G\+LN, C\+V\+\_\+\+N\+GI, C\+V\+\_\+\+N\+L\+OC, C\+V\+F\+EN, C\+V\+F\+E\+NX, C\+V\+F\+E\+NY, C\+V\+F\+E\+NZ, X, Y, Z, N\+F\+A\+CE, F\+A\+C\+E\+\_\+\+E\+LE, C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST, C\+V\+\_\+\+S\+N\+L\+OC, S\+B\+C\+V\+N\+GI, S\+B\+C\+V\+F\+EN, S\+B\+C\+V\+F\+E\+N\+S\+LX, S\+B\+C\+V\+F\+E\+N\+S\+LY, S\+B\+C\+V\+F\+E\+W\+E\+I\+GH, E\+LE, D\+E\+T\+W\+EI, factor, angle)

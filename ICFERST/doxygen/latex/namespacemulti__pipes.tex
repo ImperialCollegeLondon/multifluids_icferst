@@ -1,17 +1,25 @@
 \hypertarget{namespacemulti__pipes}{}\doxysection{multi\+\_\+pipes Module Reference}
 \label{namespacemulti__pipes}\index{multi\_pipes@{multi\_pipes}}
+
+
+This module contains all the subroutines to assemble and solve for pipes.  
+
+
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
 subroutine, public \mbox{\hyperlink{namespacemulti__pipes_a7cfd75b337f007460a86d927e152004e}{assemble\+\_\+pipe\+\_\+transport\+\_\+and\+\_\+cty}} (state, packed\+\_\+state, tracer, den\+\_\+all, denold\+\_\+all, final\+\_\+phase, Mdims, ndgln, D\+E\+R\+IV, C\+V\+\_\+P, S\+O\+U\+R\+C\+T\+\_\+\+A\+LL, A\+B\+S\+O\+R\+B\+T\+\_\+\+A\+LL, W\+I\+C\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+U\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+U\+\_\+\+B\+C\+\_\+\+A\+LL, getcv\+\_\+disc, getct, Mmat, Mspars, upwnd, G\+O\+T\+\_\+\+T2, DT, pipes\+\_\+aux, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+E\+S\+\_\+\+C\+O\+UP, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+ES, mean\+\_\+pore\+\_\+cv, eles\+\_\+with\+\_\+pipe, thermal, C\+V\+\_\+\+B\+E\+TA, M\+A\+S\+S\+\_\+\+CV, I\+N\+V\+\_\+B, M\+A\+S\+S\+\_\+\+E\+LE, bcs\+\_\+outfluxes, outfluxes, porous\+\_\+heat\+\_\+coef, assemble\+\_\+collapsed\+\_\+to\+\_\+one\+\_\+phase)
 \begin{DoxyCompactList}\small\item\em \+: This sub modifies either MmatCT or the Advection-\/diffusion equation for 1D pipe modelling N\+O\+TE final\+\_\+phase has to be define for the reservoir domain, i.\+e. for two phase flow it can be either 1 or 2, not 3 or 4. We define wells\+\_\+first\+\_\+phase as the first phase of the well domain \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacemulti__pipes_a297beee584d63c08823a85520b973ef5}{mod\+\_\+1d\+\_\+force\+\_\+bal\+\_\+c}} (S\+T\+A\+TE, packed\+\_\+state, Mdims, Mspars, Mmat, ndgln, eles\+\_\+with\+\_\+pipe, G\+E\+T\+\_\+\+P\+I\+V\+I\+T\+\_\+\+M\+AT, W\+I\+C\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL, S\+I\+G\+MA, N\+U\+\_\+\+A\+LL, U\+\_\+\+S\+O\+U\+R\+CE, U\+\_\+\+S\+O\+U\+R\+C\+E\+\_\+\+CV, pipes\+\_\+aux)
-\begin{DoxyCompactList}\small\item\em \+: This sub modifies MmatC for 1D pipe modelling \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em \+: This sub modifies MmatC for 1D pipe modelling. Works on the momentum equation \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacemulti__pipes_aa27e23615cb61d7b64663cda62a2e7da}{retrieve\+\_\+pipes\+\_\+coords}} (state, packed\+\_\+state, Mdims, ndgln, eles\+\_\+with\+\_\+pipe)
 \begin{DoxyCompactList}\small\item\em \+: In this subroutine the elements that contain pipes are identified The pipes can either be defined using python (D\+E\+P\+R\+E\+C\+A\+T\+ED) or a nastran file defining the trajectory of each well by points \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacemulti__pipes_adf22cecb27df6cddfd856d95c388868b}{initialize\+\_\+pipes\+\_\+package\+\_\+and\+\_\+gamma}} (state, packed\+\_\+state, pipes\+\_\+aux, Mdims, Mspars, ndgln)
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em This subroutine reads information from diamond and populates the necessary fields For P0\+D\+G\+P1 gamma is imposed to be zero at the boundary so the strong B\+Cs work fine. \end{DoxyCompactList}\end{DoxyCompactItemize}
 
+
+\doxysubsection{Detailed Description}
+This module contains all the subroutines to assemble and solve for pipes. 
 
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespacemulti__pipes_a7cfd75b337f007460a86d927e152004e}\label{namespacemulti__pipes_a7cfd75b337f007460a86d927e152004e}} 
@@ -26,6 +34,82 @@ subroutine, public \mbox{\hyperlink{namespacemulti__pipes_adf22cecb27df6cddfd856
 
 
 \begin{DoxyParams}[1]{Parameters}
+ & {\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+ & {\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+ & {\em tracer} & tracer to be assembled \\
+\hline
+ & {\em den\+\_\+all,denold\+\_\+all} & density and old density. Required like this to apply Boussinesq if required \\
+\hline
+ & {\em final\+\_\+phase} & This is the final phase to be assembled, in this way we can assemble from phase 1 to final\+\_\+phase not necessarily being for all the phases \\
+\hline
+ & {\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+ & {\em ndgln} & Global to local variables \\
+\hline
+ & {\em D\+E\+R\+IV} & Derivative of the density against the pressure (nphase,Mdimscv\+\_\+nonods) \\
+\hline
+ & {\em C\+V\+\_\+P} & ! Control volume pressure, useless for the D\+C\+V\+F\+EM (1,Mdimsnpres,Mdimscv\+\_\+nonods) \\
+\hline
+ & {\em S\+O\+U\+R\+C\+T\+\_\+\+A\+LL} & Source term of the tracer equation \\
+\hline
+ & {\em A\+B\+S\+O\+R\+B\+T\+\_\+\+A\+LL} & Absorption to be used here \\
+\hline
+ & {\em W\+I\+C\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL} & Boundary conditions for the tracer \\
+\hline
+ & {\em W\+I\+C\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL} & Boundary conditions for the density \\
+\hline
+ & {\em W\+I\+C\+\_\+\+U\+\_\+\+B\+C\+\_\+\+A\+LL} & Boundary conditions for the velocity \\
+\hline
+ & {\em S\+U\+F\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL} & Values of the tracer at the surface of the elements? \\
+\hline
+ & {\em S\+U\+F\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL} & Values of the density at the surface of the elements? \\
+\hline
+ & {\em S\+U\+F\+\_\+\+U\+\_\+\+B\+C\+\_\+\+A\+LL} & Values of the velocity at the surface of the elements? \\
+\hline
+ & {\em G\+E\+T\+C\+V\+\_\+\+D\+I\+SC} & obtain the transport equation \\
+\hline
+ & {\em G\+E\+T\+CT} & obtain the continuity equation \\
+\hline
+ & {\em Mmat} & Matrices for I\+C\+F\+E\+R\+ST \\
+\hline
+ & {\em Mspars} & Sparsity of the matrices \\
+\hline
+ & {\em upwnd} & Sigmas to compute the fluxes at the interphase for porous media \\
+\hline
+ & {\em G\+O\+T\+\_\+\+T2.} & True if solving for a tracer, false otherwise \\
+\hline
+ & {\em DT} & time-\/step size \\
+\hline
+ & {\em pipes\+\_\+aux} & Information required to define wells \\
+\hline
+ & {\em D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+E\+S\+\_\+\+C\+O\+UP} & Diagonal scaling of (distributed) pressure matrix (for wells) \\
+\hline
+ & {\em D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+ES} & Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly) \\
+\hline
+ & {\em M\+E\+A\+N\+\_\+\+P\+O\+R\+E\+\_\+\+CV} & Porosity defined control volume wise \\
+\hline
+ & {\em eles\+\_\+with\+\_\+pipe} & Elements that have a pipe \\
+\hline
+ & {\em thermal} & If true we are solving for temperature \\
+\hline
+ & {\em C\+V\+\_\+\+B\+E\+TA} & ??? \\
+\hline
+ & {\em M\+A\+S\+S\+\_\+\+CV} & mass of the C\+Vs, the volume \\
+\hline
+ & {\em I\+N\+V\+\_\+B} & Coupling term of the wells \\
+\hline
+ & {\em M\+A\+S\+S\+\_\+\+E\+LE} & M\+Ass of the elements, volume of elements \\
+\hline
+ & {\em bcs\+\_\+outfluxes} & Outfluxes that pass boundary conditions, for mass conservation check \\
+\hline
+ & {\em outfluxes} & Contains all the fields required to compute the outfluxes of the model and create the outfluxes.\+csv file. Computed when assembling the continuity equation \\
+\hline
+ & {\em porous\+\_\+heat\+\_\+coef} & includes an average of porous and fluid heat coefficients \\
+\hline
+ & {\em assemble\+\_\+collapsed\+\_\+to\+\_\+one\+\_\+phase} & Collapses phases and solves for one single temperature. When there is thermal equilibrium \\
+\hline
 \mbox{\texttt{ in,out}}  & {\em bcs\+\_\+outfluxes} & = if allocated then calculate outfluxes \\
 \hline
 \end{DoxyParams}
@@ -42,6 +126,25 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{initialize\_pipes\_package\_and\_gamma()}{initialize\_pipes\_package\_and\_gamma()}}
 {\footnotesize\ttfamily subroutine, public multi\+\_\+pipes\+::initialize\+\_\+pipes\+\_\+package\+\_\+and\+\_\+gamma (\begin{DoxyParamCaption}\item[{type(state\+\_\+type), dimension(\+:), intent(in)}]{state,  }\item[{type(state\+\_\+type), intent(in)}]{packed\+\_\+state,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package}{multi\+\_\+pipe\+\_\+package}}), intent(inout)}]{pipes\+\_\+aux,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln }\end{DoxyParamCaption})}
 
+
+
+This subroutine reads information from diamond and populates the necessary fields For P0\+D\+G\+P1 gamma is imposed to be zero at the boundary so the strong B\+Cs work fine. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em pipes\+\_\+aux} & I\+N\+O\+UT Information required to define wells \\
+\hline
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em Mspars} & Sparsity of the matrices \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -57,8 +160,41 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-\+: This sub modifies MmatC for 1D pipe modelling 
+\+: This sub modifies MmatC for 1D pipe modelling. Works on the momentum equation 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em Mspars} & Sparsity of the matrices \\
+\hline
+{\em Mmat} & Matrices for I\+C\+F\+E\+R\+ST \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em eles\+\_\+with\+\_\+pipe} & Elements that have a pipe \\
+\hline
+{\em G\+E\+T\+\_\+\+P\+I\+V\+I\+T\+\_\+\+M\+AT} & If true compute here the Mass matrix for the pipes part, default true. \\
+\hline
+{\em W\+I\+C\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL} & Boundary conditions for the pressure \\
+\hline
+{\em S\+U\+F\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL} & Values of the pressure at the surface of the elements? \\
+\hline
+{\em S\+I\+G\+MA} & Absorption term coupling reservoir and wells \\
+\hline
+{\em N\+U\+\_\+\+A\+LL} & non-\/linear velocity \\
+\hline
+{\em U\+\_\+\+S\+O\+U\+R\+CE} & Source term of the momentum equation defined on the element mesh \\
+\hline
+{\em U\+\_\+\+S\+O\+U\+R\+C\+E\+\_\+\+CV} & Source term of the momentum equation defined on the CV mesh \\
+\hline
+{\em pipes\+\_\+aux} & Information required to define wells \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -76,6 +212,19 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: In this subroutine the elements that contain pipes are identified The pipes can either be defined using python (D\+E\+P\+R\+E\+C\+A\+T\+ED) or a nastran file defining the trajectory of each well by points 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em eles\+\_\+with\+\_\+pipe} & I\+N\+O\+UT (allocated inside) Elements that have a pipe \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}

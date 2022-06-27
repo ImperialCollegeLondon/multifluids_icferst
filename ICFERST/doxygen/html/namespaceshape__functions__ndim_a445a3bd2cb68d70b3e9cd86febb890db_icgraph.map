@@ -20,16 +20,16 @@
 <area shape="rect" id="node17" href="$namespaceshape__functions__ndim.html#a26392ba54127e829f1661b9f8a2a9d53" title=": Compute shape functions N, UN etc for linear triangles. Shape functions associated with volume inte..." alt="" coords="2037,129,2205,171"/>
 <area shape="rect" id="node27" href="$namespaceshape__functions__ndim.html#a6aa37d81c26106c0d55a961df42387f0" title=": new 1 or 4 pt quadrature set on each CV of a quadratic tetrahedra ..... Compute shape functions N,..." alt="" coords="2032,195,2211,251"/>
 <area shape="rect" id="node29" href="$namespaceshape__functions__ndim.html#a8e1483fa07acac02ed8dcdcd5355f922" title=": Determine the volume shape functions n, nlx, nly, nlz and weights cvweigh for the cv_nloc_cells CV ..." alt="" coords="2295,276,2463,317"/>
-<area shape="rect" id="node18" href="$namespaceshape__functions__prototype.html#a327e5ef3b6b9241997dcf0c6f8cad2dd" title=" " alt="" coords="1785,133,1984,175"/>
+<area shape="rect" id="node18" href="$namespaceshape__functions__prototype.html#a327e5ef3b6b9241997dcf0c6f8cad2dd" title="This subroutine generates the FE basis functions, weights and the derivatives of the shape functions ..." alt="" coords="1785,133,1984,175"/>
 <area shape="rect" id="node19" href="$multi__shape__fct_8_f90.html#a3ac481479452947a759fbb6c9cf743e9" title=" " alt="" coords="1559,143,1737,170"/>
-<area shape="rect" id="node20" href="$namespaceshape__functions__prototype.html#ae23b2b5b8e264b0e1b498f4e28f1c18d" title=" " alt="" coords="1312,136,1511,177"/>
+<area shape="rect" id="node20" href="$namespaceshape__functions__prototype.html#ae23b2b5b8e264b0e1b498f4e28f1c18d" title="This subrt defines the sub&#45;control volume and FEM shape functions. Shape functions associated with vo..." alt="" coords="1312,136,1511,177"/>
 <area shape="rect" id="node21" href="$namespacesparsity__nd.html#a455ef657aa7fb1aaa3bff1b71aaa24a5" title=" " alt="" coords="1055,71,1247,112"/>
 <area shape="rect" id="node24" href="$namespacemultiphase__1d__engine.html#a7a01c78d922871a74af7e6e4a3228868" title=": Instead of including the gravity in the RHS normally, here a system based on a Laplacian is created..." alt="" coords="1049,201,1253,243"/>
-<area shape="rect" id="node25" href="$namespacemulti__surface__tension.html#a5a80b62b8be2aabfa44e733c53908eb4" title=" " alt="" coords="1037,136,1264,177"/>
-<area shape="rect" id="node22" href="$namespacespact.html#aeaf3853765a92827bf24c599fe79364e" title=" " alt="" coords="800,71,945,112"/>
+<area shape="rect" id="node25" href="$namespacemulti__surface__tension.html#a5a80b62b8be2aabfa44e733c53908eb4" title="Calculate the surface tension force as a pressure force term: PLIKE_GRAD_SOU_COEF and PLIKE_GRAD_SOU_..." alt="" coords="1037,136,1264,177"/>
+<area shape="rect" id="node22" href="$namespacespact.html#aeaf3853765a92827bf24c599fe79364e" title="Allocate and obtain the sparsity patterns of the two types of matricies for (momentum + cty) and for ..." alt="" coords="800,71,945,112"/>
 <area shape="rect" id="node23" href="$_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="505,74,670,101"/>
 <area shape="rect" id="node26" href="$namespacemulti__surface__tension.html#af2ba4e6081b82e255306f98d0e160098" title=" " alt="" coords="756,136,989,177"/>
-<area shape="rect" id="node28" href="$namespaceshape__functions__prototype.html#a55f7da59b552d475085e9ae74e74f875" title=" " alt="" coords="1785,203,1984,244"/>
+<area shape="rect" id="node28" href="$namespaceshape__functions__prototype.html#a55f7da59b552d475085e9ae74e74f875" title="SHAPESV AND RELATED SUBRTS &amp; FUNCTIONS Shape functions associated with volume integration using both ..." alt="" coords="1785,203,1984,244"/>
 <area shape="rect" id="node30" href="$namespaceshape__functions__ndim.html#a62013afe2af3b6eb9358b519e41313b8" title=": Compute shape functions N, UN etc for linear trianles. Shape functions associated with volume integ..." alt="" coords="2037,276,2205,317"/>
 <area shape="rect" id="node32" href="$cv-adv-dif_8_f90.html#a6b4e2b7cd1b1214a242258cc6f8b753a" title=" " alt="" coords="2548,394,2727,421"/>
 <area shape="rect" id="node33" href="$namespacecv__advection.html#a46d56280fc42d8db708b1658f9d4d6cb" title="For the anisotropic limiting scheme we find the upwind values by interpolation using the subroutine F..." alt="" coords="1340,392,1483,433"/>

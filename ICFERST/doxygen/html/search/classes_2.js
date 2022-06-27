@@ -1,4 +1,7 @@
 var searchData=
 [
-  ['coupling_5fterm_5fcoef_1023',['coupling_term_coef',['../structmulti__magma_1_1coupling__term__coef.html',1,'multi_magma']]]
+  ['detnlxr_975',['detnlxr',['../interfaceshape__functions__linear__quadratic_1_1detnlxr.html',1,'shape_functions_linear_quadratic']]],
+  ['detnlxr_5finvjac_976',['detnlxr_invjac',['../interfaceshape__functions__linear__quadratic_1_1detnlxr__invjac.html',1,'shape_functions_linear_quadratic']]],
+  ['detnlxr_5fplus_5fu_977',['detnlxr_plus_u',['../interfaceshape__functions__prototype_1_1detnlxr__plus__u.html',1,'shape_functions_prototype']]],
+  ['dg_5fderivs_5fall_978',['dg_derivs_all',['../interfacecv__advection_1_1dg__derivs__all.html',1,'cv_advection']]]
 ];

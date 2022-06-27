@@ -1,5 +1,5 @@
 <map id="multi_phreeqc::init_phreeqc" name="multi_phreeqc::init_phreeqc">
-<area shape="rect" id="node1" title=" " alt="" coords="5,723,149,764"/>
+<area shape="rect" id="node1" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="5,723,149,764"/>
 <area shape="rect" id="node2" href="$namespacemulti__phreeqc.html#a44407bb2fe2bdd109f2687115b46c9b1" title=": Finds the field name in diamond given a name in PHREEQC. Fields have the convention of being named ..." alt="" coords="259,5,433,47"/>
 <area shape="rect" id="node3" href="$namespacephreeqcrm.html#a8b7992170b1f1d5cd884a42e3197af7f" title="Creates a reaction module. If the code is compiled with the preprocessor directive USE_OPENMP,..." alt="" coords="263,71,429,98"/>
 <area shape="rect" id="node4" href="$namespacephreeqcrm.html#a6553114482cfbf520b545a4f67dcf716" title="Returns the number of items in the list of all elements in the InitialPhreeqc instance...." alt="" coords="231,122,461,149"/>

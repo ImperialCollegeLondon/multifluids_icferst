@@ -9,6 +9,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -48,6 +52,23 @@ $(function() {
 });
 /* @license-end */</script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:cf05388f2679ee054f2beb29a391d25f4e673ac3&amp;dn=gpl-2.0.txt GPL-v2 */
+$(document).ready(function(){initNavTree('namespacemulti__pipes.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -62,7 +83,6 @@ $(function() {
 </iframe>
 </div>
 
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#func-members">Functions/Subroutines</a>  </div>
@@ -70,6 +90,9 @@ $(function() {
 <div class="title">multi_pipes Module Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>This module contains all the subroutines to assemble and solve for pipes.  
+<a href="namespacemulti__pipes.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions/Subroutines</h2></td></tr>
@@ -77,15 +100,18 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memdesc:a7cfd75b337f007460a86d927e152004e"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This sub modifies either MmatCT or the Advection-diffusion equation for 1D pipe modelling NOTE final_phase has to be define for the reservoir domain, i.e. for two phase flow it can be either 1 or 2, not 3 or 4. We define wells_first_phase as the first phase of the well domain  <a href="namespacemulti__pipes.html#a7cfd75b337f007460a86d927e152004e">More...</a><br /></td></tr>
 <tr class="separator:a7cfd75b337f007460a86d927e152004e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a297beee584d63c08823a85520b973ef5"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__pipes.html#a297beee584d63c08823a85520b973ef5">mod_1d_force_bal_c</a> (STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe, GET_PIVIT_MAT, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA, NU_ALL, U_SOURCE, U_SOURCE_CV, pipes_aux)</td></tr>
-<tr class="memdesc:a297beee584d63c08823a85520b973ef5"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This sub modifies MmatC for 1D pipe modelling  <a href="namespacemulti__pipes.html#a297beee584d63c08823a85520b973ef5">More...</a><br /></td></tr>
+<tr class="memdesc:a297beee584d63c08823a85520b973ef5"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This sub modifies MmatC for 1D pipe modelling. Works on the momentum equation  <a href="namespacemulti__pipes.html#a297beee584d63c08823a85520b973ef5">More...</a><br /></td></tr>
 <tr class="separator:a297beee584d63c08823a85520b973ef5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa27e23615cb61d7b64663cda62a2e7da"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__pipes.html#aa27e23615cb61d7b64663cda62a2e7da">retrieve_pipes_coords</a> (state, packed_state, Mdims, ndgln, eles_with_pipe)</td></tr>
 <tr class="memdesc:aa27e23615cb61d7b64663cda62a2e7da"><td class="mdescLeft">&#160;</td><td class="mdescRight">: In this subroutine the elements that contain pipes are identified The pipes can either be defined using python (DEPRECATED) or a nastran file defining the trajectory of each well by points  <a href="namespacemulti__pipes.html#aa27e23615cb61d7b64663cda62a2e7da">More...</a><br /></td></tr>
 <tr class="separator:aa27e23615cb61d7b64663cda62a2e7da"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adf22cecb27df6cddfd856d95c388868b"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__pipes.html#adf22cecb27df6cddfd856d95c388868b">initialize_pipes_package_and_gamma</a> (state, packed_state, pipes_aux, Mdims, Mspars, ndgln)</td></tr>
+<tr class="memdesc:adf22cecb27df6cddfd856d95c388868b"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine reads information from diamond and populates the necessary fields For P0DGP1 gamma is imposed to be zero at the boundary so the strong BCs work fine.  <a href="namespacemulti__pipes.html#adf22cecb27df6cddfd856d95c388868b">More...</a><br /></td></tr>
 <tr class="separator:adf22cecb27df6cddfd856d95c388868b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Function/Subroutine Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>This module contains all the subroutines to assemble and solve for pipes. </p>
+</div><h2 class="groupheader">Function/Subroutine Documentation</h2>
 <a id="a7cfd75b337f007460a86d927e152004e"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a7cfd75b337f007460a86d927e152004e">&#9670;&nbsp;</a></span>assemble_pipe_transport_and_cty()</h2>
 
@@ -337,6 +363,44 @@ Functions/Subroutines</h2></td></tr>
 <p>: This sub modifies either MmatCT or the Advection-diffusion equation for 1D pipe modelling NOTE final_phase has to be define for the reservoir domain, i.e. for two phase flow it can be either 1 or 2, not 3 or 4. We define wells_first_phase as the first phase of the well domain </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
+    <tr><td class="paramdir"></td><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">tracer</td><td>tracer to be assembled </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">den_all,denold_all</td><td>density and old density. Required like this to apply Boussinesq if required </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">final_phase</td><td>This is the final phase to be assembled, in this way we can assemble from phase 1 to final_phase not necessarily being for all the phases </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">DERIV</td><td>Derivative of the density against the pressure (nphase,Mdimscv_nonods) </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">CV_P</td><td>! Control volume pressure, useless for the DCVFEM (1,Mdimsnpres,Mdimscv_nonods) </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">SOURCT_ALL</td><td>Source term of the tracer equation </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">ABSORBT_ALL</td><td>Absorption to be used here </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">WIC_T_BC_ALL</td><td>Boundary conditions for the tracer </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">WIC_D_BC_ALL</td><td>Boundary conditions for the density </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">WIC_U_BC_ALL</td><td>Boundary conditions for the velocity </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">SUF_T_BC_ALL</td><td>Values of the tracer at the surface of the elements? </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">SUF_D_BC_ALL</td><td>Values of the density at the surface of the elements? </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">SUF_U_BC_ALL</td><td>Values of the velocity at the surface of the elements? </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">GETCV_DISC</td><td>obtain the transport equation </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">GETCT</td><td>obtain the continuity equation </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">Mmat</td><td>Matrices for ICFERST </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">Mspars</td><td>Sparsity of the matrices </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">upwnd</td><td>Sigmas to compute the fluxes at the interphase for porous media </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">GOT_T2.</td><td>True if solving for a tracer, false otherwise </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">DT</td><td>time-step size </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">pipes_aux</td><td>Information required to define wells </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">DIAG_SCALE_PRES_COUP</td><td>Diagonal scaling of (distributed) pressure matrix (for wells) </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">DIAG_SCALE_PRES</td><td>Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly) </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">MEAN_PORE_CV</td><td>Porosity defined control volume wise </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">eles_with_pipe</td><td>Elements that have a pipe </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">thermal</td><td>If true we are solving for temperature </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">CV_BETA</td><td>??? </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">MASS_CV</td><td>mass of the CVs, the volume </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">INV_B</td><td>Coupling term of the wells </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">MASS_ELE</td><td>MAss of the elements, volume of elements </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">bcs_outfluxes</td><td>Outfluxes that pass boundary conditions, for mass conservation check </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">outfluxes</td><td>Contains all the fields required to compute the outfluxes of the model and create the outfluxes.csv file. Computed when assembling the continuity equation </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">porous_heat_coef</td><td>includes an average of porous and fluid heat coefficients </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">assemble_collapsed_to_one_phase</td><td>Collapses phases and solves for one single temperature. When there is thermal equilibrium </td></tr>
     <tr><td class="paramdir">[in,out]</td><td class="paramname">bcs_outfluxes</td><td>= if allocated then calculate outfluxes </td></tr>
   </table>
   </dd>
@@ -412,12 +476,25 @@ Here is the caller graph for this function:</div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>This subroutine reads information from diamond and populates the necessary fields For P0DGP1 gamma is imposed to be zero at the boundary so the strong BCs work fine. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">pipes_aux</td><td>INOUT Information required to define wells </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramname">Mspars</td><td>Sparsity of the matrices </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__pipes_adf22cecb27df6cddfd856d95c388868b_icgraph.png" border="0" usemap="#namespacemulti__pipes_adf22cecb27df6cddfd856d95c388868b_icgraph" alt=""/></div>
 <map name="namespacemulti__pipes_adf22cecb27df6cddfd856d95c388868b_icgraph" id="namespacemulti__pipes_adf22cecb27df6cddfd856d95c388868b_icgraph">
-<area shape="rect" title=" " alt="" coords="467,27,681,69"/>
+<area shape="rect" title="This subroutine reads information from diamond and populates the necessary fields For P0DGP1 gamma is..." alt="" coords="467,27,681,69"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
@@ -530,13 +607,33 @@ Here is the caller graph for this function:</div>
       </table>
 </div><div class="memdoc">
 
-<p>: This sub modifies MmatC for 1D pipe modelling </p>
+<p>: This sub modifies MmatC for 1D pipe modelling. Works on the momentum equation </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramname">Mspars</td><td>Sparsity of the matrices </td></tr>
+    <tr><td class="paramname">Mmat</td><td>Matrices for ICFERST </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+    <tr><td class="paramname">eles_with_pipe</td><td>Elements that have a pipe </td></tr>
+    <tr><td class="paramname">GET_PIVIT_MAT</td><td>If true compute here the Mass matrix for the pipes part, default true. </td></tr>
+    <tr><td class="paramname">WIC_P_BC_ALL</td><td>Boundary conditions for the pressure </td></tr>
+    <tr><td class="paramname">SUF_P_BC_ALL</td><td>Values of the pressure at the surface of the elements? </td></tr>
+    <tr><td class="paramname">SIGMA</td><td>Absorption term coupling reservoir and wells </td></tr>
+    <tr><td class="paramname">NU_ALL</td><td>non-linear velocity </td></tr>
+    <tr><td class="paramname">U_SOURCE</td><td>Source term of the momentum equation defined on the element mesh </td></tr>
+    <tr><td class="paramname">U_SOURCE_CV</td><td>Source term of the momentum equation defined on the CV mesh </td></tr>
+    <tr><td class="paramname">pipes_aux</td><td>Information required to define wells </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__pipes_a297beee584d63c08823a85520b973ef5_icgraph.png" border="0" usemap="#namespacemulti__pipes_a297beee584d63c08823a85520b973ef5_icgraph" alt=""/></div>
 <map name="namespacemulti__pipes_a297beee584d63c08823a85520b973ef5_icgraph" id="namespacemulti__pipes_a297beee584d63c08823a85520b973ef5_icgraph">
-<area shape="rect" title=": This sub modifies MmatC for 1D pipe modelling" alt="" coords="724,5,883,47"/>
+<area shape="rect" title=": This sub modifies MmatC for 1D pipe modelling. Works on the momentum equation" alt="" coords="724,5,883,47"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
@@ -590,6 +687,16 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: In this subroutine the elements that contain pipes are identified The pipes can either be defined using python (DEPRECATED) or a nastran file defining the trajectory of each well by points </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+    <tr><td class="paramname">eles_with_pipe</td><td>INOUT (allocated inside) Elements that have a pipe </td></tr>
+  </table>
+  </dd>
+</dl>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
@@ -605,11 +712,15 @@ Here is the caller graph for this function:</div>
 </div>
 </div>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by &#160;<a href="http://www.doxygen.org/index.html">
-<img class="footer" src="doxygen.png" alt="doxygen"/>
-</a> 1.8.17
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacemulti__pipes.html">multi_pipes</a></li>
+    <li class="footer">Generated by
+    <a href="http://www.doxygen.org/index.html">
+    <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.17 </li>
+  </ul>
+</div>
 </body>
 </html>

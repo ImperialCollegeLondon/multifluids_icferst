@@ -2,6 +2,6 @@
 <area shape="rect" id="node1" title=" " alt="" coords="5,71,201,98"/>
 <area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#a279dc82b53707b674ea9b70360e7e258" title=" " alt="" coords="267,5,435,47"/>
 <area shape="rect" id="node4" href="$namespacecv__advection.html#a59bf765f03106e474053c6af073fb1ae" title="Form approximate surface normal (NORMX,NORMY,NORMZ)" alt="" coords="249,71,452,98"/>
-<area shape="rect" id="node5" href="$namespacematrix__operations.html#ad55f3b1531dccfb31fac2aa6022448b5" title=" " alt="" coords="276,123,425,164"/>
+<area shape="rect" id="node5" href="$namespacematrix__operations.html#ad55f3b1531dccfb31fac2aa6022448b5" title="Calculate the inverse using the LU decomposition L can be provided, speeding up the method to O(n)" alt="" coords="276,123,425,164"/>
 <area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#a915ed0656cc376f20e85f62cd9cec4de" title="Calculate the normal at the Gauss pts Perform x&#45;product. N=T1 x T2." alt="" coords="500,5,668,47"/>
 </map>

@@ -1,10 +1,10 @@
 \hypertarget{namespacemulti__tools}{}\doxysection{multi\+\_\+tools Module Reference}
 \label{namespacemulti__tools}\index{multi\_tools@{multi\_tools}}
-\doxysubsection*{Data Types}
-\begin{DoxyCompactItemize}
-\item 
-type \mbox{\hyperlink{structmulti__tools_1_1bad__elements}{bad\+\_\+elements}}
-\begin{DoxyCompactList}\small\item\em \+: Type to keep an eye on the quality of the elements @\+D\+E\+P\+R\+E\+C\+A\+T\+ED \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+This module contains the generic subroutines required by I\+C\+F\+E\+R\+ST, for example quicksort.  
+
+
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
@@ -15,11 +15,11 @@ real function \mbox{\hyperlink{namespacemulti__tools_a00bc5585e5ce49ad92386eb4ac
 pure real function \mbox{\hyperlink{namespacemulti__tools_a9bc979224e98f447e412133da3464728}{tolfun}} (value)
 \begin{DoxyCompactList}\small\item\em \+:This function is a tolerance function for a value which is used as a denominator. If the absolute value of V\+A\+L\+UE less than 1E-\/10, then it returns S\+I\+G\+N(\+A,\+B) i.\+e. the absolute value of A times the sign of B where A is T\+O\+L\+E\+R\+A\+N\+CE and B is V\+A\+L\+UE. \end{DoxyCompactList}\item 
 pure real function, dimension(size(val)) \mbox{\hyperlink{namespacemulti__tools_a4f90f9b3033bd34d8d52d140a8b6d8cf}{tolfun\+\_\+many}} (val)
-\item 
+\begin{DoxyCompactList}\small\item\em \+:This function is a tolerance function for a scalar which is used as a denominator. If the absolute value of V\+A\+L\+UE less than 1E-\/10, then it returns S\+I\+G\+N(\+A,\+B) i.\+e. the absolute value of A times the sign of B where A is T\+O\+L\+E\+R\+A\+N\+CE and B is V\+A\+L\+UE. \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespacemulti__tools_a9455b92cfb559c3b76e4b77580886c47}{tetvolume}} (x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3)
 \item 
 pure real function, dimension(size(val)) \mbox{\hyperlink{namespacemulti__tools_ad2dc4462bad46ef99ca0057cb3c91262}{vtolfun}} (val)
-\item 
+\begin{DoxyCompactList}\small\item\em \+:This function is a tolerance function for a vector which is used as a denominator. If the absolute value of V\+A\+L\+UE less than 1E-\/10, then it returns S\+I\+G\+N(\+A,\+B) i.\+e. the absolute value of A times the sign of B where A is T\+O\+L\+E\+R\+A\+N\+CE and B is V\+A\+L\+UE. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__tools_a0670e50b3781879bb4eefa80cd56911f}{nan\+\_\+check}} (a, k)
 \begin{DoxyCompactList}\small\item\em \+:Checks if a number is a Nan \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__tools_af5b0f8124b8423342bd6fb38e7d244ec}{nan\+\_\+check\+\_\+arr}} (a, k)
@@ -61,6 +61,9 @@ logical function \mbox{\hyperlink{namespacemulti__tools_a1ab322da5f344e1d042fb42
 logical function \mbox{\hyperlink{namespacemulti__tools_a81569e130900c1b6a18ff46132f94d12}{is\+\_\+passivetracer\+\_\+field}} (input\+\_\+name)
 \begin{DoxyCompactList}\small\item\em \+: Returns true if the input name is a Passiev\+Tracer type. \end{DoxyCompactList}\end{DoxyCompactItemize}
 
+
+\doxysubsection{Detailed Description}
+This module contains the generic subroutines required by I\+C\+F\+E\+R\+ST, for example quicksort. 
 
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespacemulti__tools_ac75ade49c065a07b12ef6532bbbd7abb}\label{namespacemulti__tools_ac75ade49c065a07b12ef6532bbbd7abb}} 
@@ -107,6 +110,15 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+:This subroutine reads a csv file and returns them in an array 
 
+
+\begin{DoxyParams}{Parameters}
+{\em csv\+\_\+table\+\_\+strings} & I\+N\+O\+UT Allocated array of characters to be used to read the C\+VS file \\
+\hline
+{\em path\+\_\+to\+\_\+table} & absolute/relative path to the .csv file \\
+\hline
+{\em Nentries} & O\+UT Number of entries in the table \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -182,7 +194,7 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{multi\_tools@{multi\_tools}!least\_squares\_solver@{least\_squares\_solver}}
 \index{least\_squares\_solver@{least\_squares\_solver}!multi\_tools@{multi\_tools}}
 \doxysubsubsection{\texorpdfstring{least\_squares\_solver()}{least\_squares\_solver()}}
-{\footnotesize\ttfamily subroutine multi\+\_\+tools\+::least\+\_\+squares\+\_\+solver (\begin{DoxyParamCaption}\item[{real, dimension(3$\ast$size(a,1)+1), intent(inout)}]{A,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{b,  }\item[{integer, intent(inout)}]{rank }\end{DoxyParamCaption})}
+{\footnotesize\ttfamily subroutine multi\+\_\+tools\+::least\+\_\+squares\+\_\+solver (\begin{DoxyParamCaption}\item[{real, dimension(\+:,\+:), intent(inout)}]{A,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{b,  }\item[{integer, intent(inout)}]{rank }\end{DoxyParamCaption})}
 
 
 
@@ -191,6 +203,13 @@ Subroutine that solves the least squares problem $\vert$\+Ax-\/b$\vert$2 using L
 \begin{DoxyAuthor}{Author}
 Pablo Salinas 
 \end{DoxyAuthor}
+
+\begin{DoxyParams}{Parameters}
+{\em A} & Input matrix to decompose, returns the Q and R combined \\
+\hline
+{\em b} & Input R\+HS term, returns the X that minimise the system \\
+\hline
+\end{DoxyParams}
 \mbox{\Hypertarget{namespacemulti__tools_ab412a6b9d80984d5739ef227590a9e8d}\label{namespacemulti__tools_ab412a6b9d80984d5739ef227590a9e8d}} 
 \index{multi\_tools@{multi\_tools}!multi\_compute\_python\_field@{multi\_compute\_python\_field}}
 \index{multi\_compute\_python\_field@{multi\_compute\_python\_field}!multi\_tools@{multi\_tools}}
@@ -201,6 +220,23 @@ Pablo Salinas
 
 \+: This subroutine uses python run string to run the python\+\_\+scalar\+\_\+diagnostic to read a field the only difference with the normal approach is that here the Dummy field is used and the returned field is an array. I\+M\+P\+O\+R\+T\+A\+NT\+: state is used here, N\+OT packed\+\_\+state It can be used for a given array, scalar\+\_\+result, scalar fields, vector fields or tensor fields, but only one at a time 
 
+
+\begin{DoxyParams}{Parameters}
+{\em states} & Array of Linked list containing all the fields \\
+\hline
+{\em iphase} & Current phase \\
+\hline
+{\em option\+\_\+path\+\_\+python} & Path in the input file to the python code \\
+\hline
+{\em scalar\+\_\+result} & Field to be provided to the python code as initial value \\
+\hline
+{\em sfield} & Optional Only one can be picked, depending on the type of field to be used! \\
+\hline
+{\em vfield} & Optional Only one can be picked, depending on the type of field to be used! \\
+\hline
+{\em tfield} & Optional Only one can be picked, depending on the type of field to be used! \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -363,6 +399,15 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+:Template of csv table O\+P\+T\+I\+O\+N\+AL section (header) real1,real2,real3,..., size(extra\+\_\+data) rows,columns 2,3 Pressure,Saturation 1000,0.\+9 250,0.\+5 100,0.\+1 
 
+
+\begin{DoxyParams}{Parameters}
+{\em data\+\_\+array} & I\+N\+O\+UT the data in memory \\
+\hline
+{\em path\+\_\+to\+\_\+table} & absolute/relative path to the .csv file \\
+\hline
+{\em extra\+\_\+data} & The extra data is composed of one line of headers that we ignore plus one extra line with the data \\
+\hline
+\end{DoxyParams}
 \mbox{\Hypertarget{namespacemulti__tools_ab4b886f97602b31bf8009a4af74510d7}\label{namespacemulti__tools_ab4b886f97602b31bf8009a4af74510d7}} 
 \index{multi\_tools@{multi\_tools}!read\_nastran\_file@{read\_nastran\_file}}
 \index{read\_nastran\_file@{read\_nastran\_file}!multi\_tools@{multi\_tools}}
@@ -373,6 +418,15 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+:This subroutine reads a nastran file that contains the information defining the 1D path of a well the input relative filepath should include the file format, for example\+: well.\+bdf 
 
+
+\begin{DoxyParams}{Parameters}
+{\em filepath} & Relative path to the .bdf file \\
+\hline
+{\em node} & I\+N\+O\+UT. Nodes stored \\
+\hline
+{\em edges} & Edges connecting nodes \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -436,6 +490,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{tolfun\_many()}{tolfun\_many()}}
 {\footnotesize\ttfamily pure real function, dimension(size(val)) multi\+\_\+tools\+::tolfun\+\_\+many (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(in)}]{val }\end{DoxyParamCaption})}
 
+
+
+\+:This function is a tolerance function for a scalar which is used as a denominator. If the absolute value of V\+A\+L\+UE less than 1E-\/10, then it returns S\+I\+G\+N(\+A,\+B) i.\+e. the absolute value of A times the sign of B where A is T\+O\+L\+E\+R\+A\+N\+CE and B is V\+A\+L\+UE. 
+
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -448,6 +506,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{vtolfun@{vtolfun}!multi\_tools@{multi\_tools}}
 \doxysubsubsection{\texorpdfstring{vtolfun()}{vtolfun()}}
 {\footnotesize\ttfamily pure real function, dimension(size(val)) multi\+\_\+tools\+::vtolfun (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(in)}]{val }\end{DoxyParamCaption})}
+
+
+
+\+:This function is a tolerance function for a vector which is used as a denominator. If the absolute value of V\+A\+L\+UE less than 1E-\/10, then it returns S\+I\+G\+N(\+A,\+B) i.\+e. the absolute value of A times the sign of B where A is T\+O\+L\+E\+R\+A\+N\+CE and B is V\+A\+L\+UE. 
 
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]

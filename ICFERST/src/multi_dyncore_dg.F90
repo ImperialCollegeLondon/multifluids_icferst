@@ -15,7 +15,9 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-
+!> This module contain all the necessary subroutines to deal with FE-wise equations and fields. Assembling and solving of the momentum equation
+!> and associated fields such as capillary pressure, hydrostatic pressure solver, and stabilisation techniques.
+!> Also includes the assembly and solving of a Laplacian system (for zeta potential mainly)
 module multiphase_1D_engine
 
     use elements
@@ -64,9 +66,40 @@ module multiphase_1D_engine
     FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system, Tracer_Assemble_Solve
 
 contains
-  !---------------------------------------------------------------------------
-  !> @author Chris Pain, Pablo Salinas
-  !> @brief Calls to generate the transport equation for the transport of energy/temperature and to solve the transport of components
+    !---------------------------------------------------------------------------
+    !> @author Chris Pain, Pablo Salinas
+    !> @brief Calls to generate the transport equation for the transport of energy/temperature and to solve the transport of components
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  CV_GIdims Gauss integration numbers for CV fields
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  ndgln Global to local variables
+    !>@param  Mdisopt Discretisation options
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
+    !>@param  tracer  Tracer considered for the transport equation
+    !>@param  density  Density of the field
+    !>@param  velocity  Velocity of the field
+    !>@param  multi_absorp  Absoprtion of associated with the transport field
+    !>@param  IGOT_T2 !>@param  IGOT_T2. True (1) if solving for a tracer, false otherwise
+    !>@param   igot_theta_flux ????
+    !>@param  GET_THETA_FLUX, USE_THETA_FLUX ?????
+    !>@param THERMAL If true then we are solving for temperature
+    !>@param  THETA_GDIFF ????
+    !>@param  eles_with_pipe Elements that have a pipe
+    !>@param  pipes_aux Information required to define wells
+    !>@param  THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
+    !>@param  DT Time step size
+    !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
+    !>@param  VOLFRA_PORE     Porosity field (Mdims%npres,Mdims%totele)
+    !>@param  option_path   Option path of the tracer to be solved for 
+    !>@param  mass_ele_transp Mass of the elements
+    !>@param  saturation PhaseVolumeFraction field
+    !>@param Permeability_tensor_field Permeability field
+    !>@param  icomp Number of components, if > 0 then compositional is solved
+    !>param nonlinear_iteration Current non-linear iteration
   SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
@@ -492,11 +525,45 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
 
-  !---------------------------------------------------------------------------
-  !> @author Chris Pain, Pablo Salinas, Haiyang Hu
-  !> @brief Calls to generate the transport equation for the enthalpy equation.
-  !> This is efectively the temperature equation but making the enthalpy implicit by substituting the temperature by its linear relationship
-  !> with enthalpy: H = rho Cp Temp + rho Lf phi; Where Lf is the latent heat and phi is the amount of liquid fluid phase
+    !---------------------------------------------------------------------------
+    !> @author Chris Pain, Pablo Salinas, Haiyang Hu
+    !> @brief Calls to generate the transport equation for the enthalpy equation.
+    !> This is efectively the temperature equation but making the enthalpy implicit by substituting the temperature by its linear relationship
+    !> with enthalpy: H = rho Cp Temp + rho Lf phi; Where Lf is the latent heat and phi is the amount of liquid fluid phase
+    !> @author Chris Pain, Pablo Salinas
+    !> @brief Calls to generate the transport equation for the transport of energy/temperature and to solve the transport of components
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  CV_GIdims Gauss integration numbers for CV fields
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  ndgln Global to local variables
+    !>@param  Mdisopt Discretisation options
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
+    !>@param  tracer  Tracer considered for the transport equation
+    !>@param  density  Density of the field
+    !>@param  velocity  Velocity of the field
+    !>@param  multi_absorp  Absoprtion of associated with the transport field
+    !>@param  DT Time step size
+    !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
+    !>@param  VOLFRA_PORE     Porosity field (Mdims%npres,Mdims%totele)
+    !>@param  IGOT_T2 !>@param  IGOT_T2. True (1) if solving for a tracer, false otherwise
+    !>@param   igot_theta_flux ????
+    !>@param  GET_THETA_FLUX, USE_THETA_FLUX ?????
+    !>@param  THETA_GDIFF ????
+    !>@param  eles_with_pipe Elements that have a pipe
+    !>@param  pipes_aux Information required to define wells
+    !>@param  option_path   Option path of the tracer to be solved for 
+    !>@param  mass_ele_transp Mass of the elements
+    !>@param THERMAL If true then we are solving for temperature
+    !>@param  THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
+    !>@param  icomp Number of components, if > 0 then compositional is solved
+    !>@param  saturation PhaseVolumeFraction field
+    !>@param Permeability_tensor_field Permeability field
+    !>param nonlinear_iteration Current non-linear iteration
+    !>@param  magma_phase_coefficients Structure containing the information to solve for magma
   SUBROUTINE ENTHALPY_ASSEM_SOLVE( state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
@@ -808,12 +875,38 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
   end subroutine
 
-  !> @author Chris Pain, Pablo Salinas
-  !> @brief Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passive_Tracer_N
-  !> Where N is an integer which is continuous starting from 1
-  !> A boussinesq approximation is enforced on these tracers as the are totally INERT
-  !> CURRENTLY NO DIFFUSION
-  !---------------------------------------------------------------------------
+    !> @author Chris Pain, Pablo Salinas
+    !> @brief Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passive_Tracer_N
+    !> Where N is an integer which is continuous starting from 1
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  CV_GIdims Gauss integration numbers for CV fields
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  ndgln Global to local variables
+    !>@param  Mdisopt Discretisation options
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
+    !>@param  tracer  Tracer considered for the transport equation
+    !>@param  velocity  Velocity of the field
+    !>@param  density  Density of the field
+    !>@param  multi_absorp  Absoprtion of associated with the transport field
+    !>@param  DT Time step size
+    !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
+    !>@param  VOLFRA_PORE     Porosity field (Mdims%npres,Mdims%totele)
+    !>@param  IGOT_T2 !>@param  IGOT_T2. True (1) if solving for a tracer, false otherwise
+    !>@param   igot_theta_flux ????
+    !>@param  GET_THETA_FLUX, USE_THETA_FLUX ?????
+    !>@param  THETA_GDIFF ????
+    !>@param  eles_with_pipe Elements that have a pipe
+    !>@param  pipes_aux Information required to define wells
+    !>@param  mass_ele_transp Mass of the elements
+    !>@param  THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
+    !>@param  icomp Number of components, if > 0 then compositional is solved
+    !>@param  saturation PhaseVolumeFraction field
+    !>@param Permeability_tensor_field Permeability field
+    !>param nonlinear_iteration Current non-linear iteration
   SUBROUTINE Tracer_Assemble_Solve( Tracer_name, state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
@@ -1063,6 +1156,31 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !---------------------------------------------------------------------------
     !> @author Chris Pain, Pablo Salinas
     !> @brief Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method is uncluded
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  multicomponent_state Linked list containing all the fields used by compositional, just in case we are solving for components
+    !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  CV_GIdims Gauss integration numbers for CV fields
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  ndgln Global to local variables
+    !>@param  Mdisopt Discretisation options
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  multi_absorp  Absoprtion of associated with the transport field 
+    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
+    !>@param  eles_with_pipe Elements that have a pipe
+    !>@param  pipes_aux Information required to define wells
+    !>@param  DT Time step size
+    !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
+    !>@param V_SOURCE Source term
+    !>@param  VOLFRA_PORE     Porosity field (Mdims%npres,Mdims%totele)
+    !>@param   igot_theta_flux ????
+    !>@param  mass_ele_transp Mass of the elements
+    !>@param nonlinear_iteration Current non-linear iteration
+    !>@param time_step current time-step
+    !>@param SFPI_its Number of saturation fixed point iterations taken 
+    !>@param Courant_number Global courant number and shock front courant number
+    !>@param  THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
@@ -1493,6 +1611,26 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
     !>@brief:In this subroutine the components are solved for all the phases.
     !>Systems for each component are assembled and solved by calling INTENERGE_ASSEM_SOLVE
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  multicomponent_state Linked list containing all the fields used by compositional, just in case we are solving for components
+    !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  CV_GIdims Gauss integration numbers for CV fields
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  ndgln Global to local variables
+    !>@param  Mdisopt Discretisation options
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
+    !>@param  multi_absorp  Absoprtion of associated with the transport field
+    !>@param  DT Time step size
+    !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
+    !>@param  GET_THETA_FLUX, USE_THETA_FLUX ?????
+    !>@param  THETA_GDIFF ????
+    !>@param  eles_with_pipe Elements that have a pipe
+    !>@param  pipes_aux Information required to define wells
+    !>@param  mass_ele Mass of the elements
+    !>@param  sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j ????
     subroutine Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
          multi_absorp, DT, &
@@ -1720,8 +1858,34 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
     !> @author Chris Pain, Pablo Salinas, Asiri Obeysekara
     !> @brief Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix
-    !> Once these matrices (and corresponding RHSs) are generated the system of equations is solved.
-    !---------------------------------------------------------------------------
+    !> Once these matrices (and corresponding RHSs) are generated the system of equations is solved using the projection method.
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  CV_GIdims Gauss integration numbers for CV fields
+    !>@param FE_GIdims Gauss integration numbers for FE fields
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  FE_funs Shape functions for the FE mesh
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  ndgln Global to local variables
+    !>@param  Mdisopt Discretisation options
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  multi_absorp  Absoprtion of associated with the transport field
+    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
+    !>@param  eles_with_pipe Elements that have a pipe
+    !>@param  pipes_aux Information required to define wells
+    !>@param  velocity tensor field. Why do we pass it down instead of retrieving it from packed_state... 
+    !>@param  pressure tensor fieldWhy do we pass it down instead of retrieving it from packed_state... 
+    !>@param  DT Time step size
+    !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
+    !>@param V_SOURCE Source term
+    !>@param  VOLFRA_PORE     Porosity field (Mdims%npres,Mdims%totele)
+    !>@param   IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
+    !>@param  calculate_mass_delta This is to compute mass conservation 
+    !>@param  outfluxes variable containing the outfluxes information
+    !>@param pres_its_taken Integer containing the number of iterations performed by the solver to solve for pressure
+    !>@param nonlinear_its current non-linear iteration
+    !>@param Courant_number Global courant number and shock front courant number
    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt,  &
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
@@ -2447,7 +2611,6 @@ end if
         !>When the user wants the pressure BC to applied, specify normal positive
         !>pressure. Specify velocity BCs for both wells as a constant.
         !---------------------------------------------------------------------------
-
         subroutine flip_p_and_v_bcs(Mdims, WIC_P_BC_ALL, pressure_BCs, WIC_FLIP_P_VEL_BCS)
           implicit none
           type(multi_dimensions), intent(in) :: Mdims
@@ -2850,7 +3013,52 @@ end if
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
 
-    !>@brief: Form the global CTY and momentum eqns and combine to form one large matrix eqn.
+    !>@brief: Form the global continuity and the momentum eqns
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  CV_GIdims Gauss integration numbers for CV fields
+    !>@param FE_GIdims Gauss integration numbers for FE fields
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  FE_funs Shape functions for the FE mesh
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  ndgln Global to local variables
+    !>@param  Mdisopt Discretisation options
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
+    !>@param  velocity tensor field. Why do we pass it down instead of retrieving it from packed_state... 
+    !>@param  pressure tensor fieldWhy do we pass it down instead of retrieving it from packed_state... 
+    !>@param  multi_absorp  Absoprtion of associated with the transport field
+    !>@param  eles_with_pipe Elements that have a pipe
+    !>@param  pipes_aux Information required to define wells
+    !>@param X_ALL Coordinates of the nodes
+    !>@param velocity_absorption absorption associated to the momentum equation
+    !>@param U_SOURCE_ALL momentum source term on the element mesh
+    !>@param U_SOURCE_CV_ALL momentum source term on the CV mesh (used for gravity)
+    !>@param U_ALL, UOLD_ALL velocity and velocity old (same as velocity as far as I know...)
+    !>@param CV_P Pressure in using Finite volumes (same as Pressure for DCVFEM)
+    !>@param DEN_ALL, DENOLD_ALL Densities to be used. This is so we can impose the boussinesq approximation
+    !>@param DERIV Derivatives of the Equation of state against pressure so we can generate the M matrix for compressible flow
+    !>@param  DT Time step size
+    !>@param MASS_MN_PRES ???
+    !>@param MASS_ELE mass of the elements
+    !>@param got_free_surf ???
+    !>@param   MASS_SUF area of the surface of the elements???
+    !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
+    !>@param V_SOURCE Source term
+    !>@param  VOLFRA_PORE     Porosity field (Mdims%npres,Mdims%totele)
+    !>@param Courant_number Global courant number and shock front courant number   
+    !>@param DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B Variables related with the coupling between the wells and reservoir domain
+    !>@param JUST_BL_DIAG_MAT ???
+    !>@param  UDEN_ALL, UDENOLD_ALL Densities to be used. This is so we can impose the boussinesq approximation??
+    !>@param  UDIFFUSION_ALL, UDIFFUSION_VOL_ALL Parameters associated to the diffusion of the velocity for navier-stokes
+    !>@param   IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
+    !>@param   RETRIEVE_SOLID_CTY For coupling with solidity, DEPRECATED
+    !>@param IPLIKE_GRAD_SOU ??
+    !>@param FEM_continuity_equation This is to use the divergence as the transpose of the gradient matrix. Not conservative but more stable than simple CVFEM
+    !>@param  calculate_mass_delta This is to compute mass conservation 
+    !>@param  outfluxes variable containing the outfluxes information
+    !>@param DIAG_BIGM_CON, BIGM_CON To assemble the momentum equation of the Navier-stokes equation
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
         velocity, pressure, multi_absorp, eles_with_pipe, pipes_aux, &
@@ -3292,6 +3500,36 @@ end if
 
     !>@brief: Forms the gradient matrix (FE) and the momemtum matrix for intertia. This includes up to all the terms
     !> required by the navier-stokes equation
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param FE_GIdims Gauss integration numbers for FE fields
+    !>@param  FE_funs Shape functions for the FE mesh
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  ndgln Global to local variables
+    !>@param  Mdisopt Discretisation options
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  velocity tensor field. Why do we pass it down instead of retrieving it from packed_state... 
+    !>@param  pressure tensor fiel dWhy do we pass it down instead of retrieving it from packed_state... 
+    !>@param X_ALL Coordinates of the nodes
+    !>@param  U_ABSORB  Absoprtion of associated with the transport field
+    !>@param U_SOURCE momentum source term on the element mesh
+    !>@param U_SOURCE_CV momentum source term on the CV mesh (used for gravity)
+    !>@param U_ALL, UOLD_ALL velocity and velocity old (same as velocity as far as I know...)
+    !>@param NU_ALL, NUOLD_ALL Non-linear velocity and velocity old (same as velocity as far as I know...)
+    !>@param  UDEN, UDENOLD Densities to be used. This is so we can impose the boussinesq approximation??
+    !>@param DERIV Derivatives of the Equation of state against pressure so we can generate the M matrix for compressible flow
+    !>@param  DT Time step size
+    !>@param JUST_BL_DIAG_MAT DO NOT USE! it does not work
+    !>@param  UDIFFUSION, UDIFFUSION_VOL Parameters associated to the diffusion of the velocity for navier-stokes
+    !>@param DEN_ALL Densities to be used. This is so we can impose the boussinesq approximation
+    !>@param   RETRIEVE_SOLID_CTY For coupling with solidity, DEPRECATED
+    !>@param IPLIKE_GRAD_SOU ??
+    !>@param DIAG_BIGM_CON, BIGM_CON To assemble the momentum equation of the Navier-stokes equation
+    !>@param got_free_surf ???
+    !>@param  MASS_SUF area of the surface of the elements???
+    !>@param FEM_continuity_equation This is to use the divergence as the transpose of the gradient matrix. Not conservative but more stable than simple CVFEM
+    !>@param MASS_ELE mass of the elements
     SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state, &
         Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
         velocity, pressure, &
@@ -6593,7 +6831,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
     END SUBROUTINE ASSEMB_FORCE_CTY
 
 
-    !>@brief: This sub calculates S_INV_NNX_MAT12 which contains NDIM matricies that are used to form the
+    !>@brief:<FOR INERTIA ONLY> This sub calculates S_INV_NNX_MAT12 which contains NDIM matricies that are used to form the
     !> inter element coupling for the viscocity discretization.
     !> NNX_MAT, NNX_MAT2 contain matricies of first derivative times basis function for current element and neightbouring element.
     !> Similarly NN_MAT, NN_MAT2, contain the element-wise mass matrices.
@@ -6720,7 +6958,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 
 
-    !>@brief: This subroutine calculates a tensor of viscocity LES_UDIFFUSION, LES_UDIFFUSION_VOL
+    !>@brief: <FOR INERTIA ONLY> This subroutine calculates a tensor of viscocity LES_UDIFFUSION, LES_UDIFFUSION_VOL
     SUBROUTINE VISCOCITY_TENSOR_LES_CALC(LES_UDIFFUSION, LES_UDIFFUSION_VOL, DUX_ELE_ALL, &
         NDIM,NPHASE, U_NLOC,X_NLOC,TOTELE, X_NONODS, &
         X_ALL, X_NDGLN,  MAT_NONODS, MAT_NLOC, MAT_NDGLN, LES_DISOPT, LES_CS, UDEN, CV_NONODS, CV_NDGLN, &
@@ -7299,7 +7537,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 
 
-    !>@brief: This subroutine combines the distributed and block diagonal for an element
+    !>@brief: <FOR INERTIA ONLY>This subroutine combines the distributed and block diagonal for an element
     !> into the matrix DGM_PHA.
     !> For stokes also the diagonal of the matrix is introduced in the mass matrix
  SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
@@ -7384,7 +7622,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      RETURN
  END SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST
 
- !>@brief: This subroutine combines the distributed and block diagonal for an element
+ !>@brief: <FOR INERTIA ONLY>This subroutine combines the distributed and block diagonal for an element
  !> into the matrix DGM_PHA.
  SUBROUTINE comb_VEL_MATRIX_DIAG_DIST_lump(DIAG_BIGM_CON, BIGM_CON, &
      DGM_PETSC, &
@@ -7470,7 +7708,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 
 
-
+ !> Used to assemble the C matrix in the ICFERST format
  SUBROUTINE USE_POSINMAT_C_STORE(COUNT, U_INOD, P_JNOD,  &
      U_NONODS, FINDC, COLC, NCOLC, &
      IDO_STORE_AC_SPAR_PT,STORED_AC_SPAR_PT, POSINMAT_C_STORE,ELE,U_ILOC,P_JLOC, &
@@ -7496,7 +7734,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 
 
-
+!> Used to assemble the C matrix in the ICFERST format (for DG?)
  SUBROUTINE USE_POSINMAT_C_STORE_SUF_DG(COUNT, U_INOD, P_JNOD,  &
      U_NONODS, FINDC, COLC, NCOLC, &
      IDO_STORE_AC_SPAR_PT,STORED_AC_SPAR_PT, POSINMAT_C_STORE_SUF_DG, ELE,IFACE,U_SILOC,P_SJLOC,  &
@@ -7525,7 +7763,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 
 
- !>@brief: This sub will linearise a p2 field
+ !>@brief: <FOR INERTIA ONLY> This sub will linearise a p2 field
  subroutine linearise_field( field_in, field_out )
      implicit none
      type( tensor_field ), intent( in ) :: field_in
@@ -7587,9 +7825,27 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
  end subroutine linearise_field
 
 
- !>@brief: This subroutine performs and introduces the gradient of a RHS field (Capillary pressure for example)
- !> for the momentum equation. The inout field is RHS_field
- !> For capillary pressure: The capillary pressure is a term introduced as a RHS which affects the effective velocity
+    !>@brief: This subroutine performs and introduces the gradient of a RHS field (Capillary pressure for example)
+    !> for the momentum equation. It has two options (hard-coded) integrations by parts (activated) or voluemtric integration, 
+    !> For capillary pressure: The capillary pressure is a term introduced as a RHS which affects the effective velocity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  Mmat Matrices for ICFERST
+    !>@param RHS_field The values to introduce, for capilalry pressure these are the evaluted values of CapPressure%val
+    !>@param  FE_funs Shape functions for the FE mesh
+    !>@param Devfuns Derivatives of the FE_funs
+    !>@param X_ALL Coordinates of the nodes
+    !>@param LOC_U_RHS RHS INOUT field with the updated field
+    !>@param ele Current element
+    !>@param cv_ndgln Global to local variables of the CV mesh
+    !>@param x_ndgln Global to local variables of the nodes
+    !>@param ele2 neighbouring element
+    !>@param iface current face being integrated
+    !>@param sdetwe edge lenght associated to the current gauss integration point, i.e. edge lenght
+    !>@param SNORMXN_ALL normal to the current surface
+    !>@param U_SLOC2LOC Surface local to local for velocity nodes
+    !>@param CV_SLOC2LOC Surface local to local for cv nodes
+    !>@param MAT_OTHER_LOC for sub-CV the neighbouring one
  subroutine Introduce_Grad_RHS_field_term (packed_state, Mdims, Mmat, RHS_field, FE_funs, Devfuns, &
      X_ALL, LOC_U_RHS, ele, cv_ndgln, x_ndgln,&
      ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
@@ -7715,9 +7971,17 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 
 
- !!>@brief: This subroutine calculates the overrelaxation parameter (Vanishing relaxation) we introduce in the saturation equation
- !> Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
- !> For more information read: doi.org/10.1016/j.cma.2019.07.004
+    !!>@brief: This subroutine calculates the overrelaxation parameter (Vanishing relaxation) we introduce in the saturation equation
+    !> Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
+    !> For more information read: doi.org/10.1016/j.cma.2019.07.004
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
+    !>@param Overrelaxation INOUT Field containing the outcome of this subroutine
+    !>@param Phase_with_Pc Phase that will contain the Overrelaxation field
+    !>@param totally_min_max Min max of the field (to normalise for transport)
+    !>@param for_transport True if the field is not saturation
  subroutine getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, Overrelaxation, Phase_with_Pc, totally_min_max, for_transport)
      implicit none
      type( state_type ), dimension( : ), intent( inout ) :: state
@@ -7933,6 +8197,13 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 !>@brief: Instead of including the gravity in the RHS normally, here a system based on a Laplacian is created and solved
 !> that accounts for the gravity effect in the system. Next, this is introduced as a RHS in the momemtum equation
 !> This allows for higher precision for the gravity effect.
+!!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+!>@param  ndgln Global to local variables
+!>@param u_rhs INOUT Field to contain the outcome of this subroutine
+!>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+!>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+!>@param Number of phases
+!>@param u_absorbin Absorption associated to the momentum equation/velocity
 subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state, nphase, u_absorbin )
 
       implicit none
@@ -8309,7 +8580,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     end subroutine high_order_pressure_solve
 
 
-    !>@brief: Determine if we have an oscillation in the normal direction...
+    !>@brief: <INERTIA ONLY>Determine if we have an oscillation in the normal direction...
     !> dg_oscilat_detect=1.0- CENTRAL SCHEME.
     !> dg_oscilat_detect=0.0- UPWIND SCHEME.
     REAL FUNCTION dg_oscilat_detect(SNDOTQ_KEEP, SNDOTQ2_KEEP, &
@@ -8371,7 +8642,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     end function dg_oscilat_detect
 
 
-    !>@brief: Determine if we have an oscillation in the normal direction...
+    !>@brief: <INERTIA ONLY> Determine if we have an oscillation in the normal direction...
     !> dg_oscilat_detect=1.0- CENTRAL SCHEME.
     !> dg_oscilat_detect=0.0- UPWIND SCHEME.
     REAL FUNCTION p0_dg_oscilat_detect(SNDOTQ_KEEP, SNDOTQ2_KEEP, &
@@ -8423,7 +8694,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       return
     end function p0_dg_oscilat_detect
 
-    !>@brief: This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX,DIFF_COEFOLD_DIVDX
+    !>@brief: <INERTIA ONLY> This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX,DIFF_COEFOLD_DIVDX
     !> based on a non-linear method and a non-oscillating scheme.
     !> This implements the stress and tensor form of diffusion and calculates a jump conidition.
     !> which is in DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
@@ -8852,7 +9123,11 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
     END SUBROUTINE DIFFUS_CAL_COEFF_STRESS_OR_TENSOR
 
-    !>@brief:A diagonal mass matrix is obtained using the direct lump process
+    !>@brief:A diagonal mass matrix is obtained using the direct lump process, i.e. using the mass of the elements
+    !>@param ELE current element
+    !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param Devfuns Derivatives of the FE_funs
+    !>@param  Mmat Matrices for ICFERST
     subroutine get_diagonal_mass_matrix(ELE, Mdims, DevFuns, Mmat)
         implicit none
         integer, intent(in) :: ELE
@@ -8959,6 +9234,20 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     !> If harmonic average then we perform the harmonic average of sigma and K
     !> IMPORTANT: This subroutine requires the PHsparsity to be generated
     !> Note that this method solves considering FE fields. If using CV you may incur in an small error.
+    !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  ndgln Global to local variables
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  CV_GIdims Gauss integration numbers for CV fields
+    !>@param Sigma_field Coefficient multipliying the left-hand side term
+    !>@param field_name name of the field to be solved for
+    !>@param K_fields Coefficients multipliying the RHS terms
+    !>@param F_fields RHS fierlds
+    !>@param intface_val_type  0 = no interpolation; 1 Harmonic mean; !20 for SP solver, harmonic mean considering charge; negative normal mean
+    !>@param solver_path Path to select the type of solver
     subroutine generate_and_solve_Laplacian_system( Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, Sigma_field, &
                                                     field_name, K_fields, F_fields, intface_val_type, solver_path)
       implicit none
@@ -9023,7 +9312,14 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     !> pressure boundary conditions for wells ONLY. This is required only when using P0DG-P1
     !> If not imposing strong pressure BCs and using P0DG-P1, the formulation for weak pressure BCs
     !> leads to a 0 in the diagonal of the CMC matrix, therefore strong BCs are required.
-    subroutine impose_strong_bcs_wells(state,pipes_aux,Mdims,Mmat, ndgln, CMC_petsc,pressure,rhs_p)
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  pipes_aux Information required to define wells
+    !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  ndgln Global to local variables
+    !>@param CMC_petsc petsc_csr_matrix field containing the pressure matrix. Matrix to be modified here
+    !>@param rhs_p RHS associated to the pressure matrix.
+    subroutine impose_strong_bcs_wells(state, pipes_aux, Mdims, Mmat, ndgln, CMC_petsc, pressure,rhs_p)
 
         ! form pressure matrix CMC using a colouring approach
         type(multi_dimensions), intent(in) :: Mdims

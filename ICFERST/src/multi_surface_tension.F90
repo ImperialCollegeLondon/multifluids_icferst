@@ -16,7 +16,7 @@
 !    USA
 #include "fdebug.h"
 
-
+!> This module contains the subroutines to include surface tension. Currently only used for INERTIA
 module multi_surface_tension
     use fldebug
     use elements
@@ -137,14 +137,14 @@ contains
      RETURN
  END SUBROUTINE CALCULATE_SURFACE_TENSION_NEW
 
+ !> Calculate the surface tension force as a pressure force term:
+ !> PLIKE_GRAD_SOU_COEF and PLIKE_GRAD_SOU_GRAD
+ !> for a given DevFuns%VOLUME fraction field VOLUME_FRAC
+ !> SUF_TENSION_COEF is the surface tension coefficient.
  SUBROUTINE SURFACE_TENSION_WRAPPER_NEW( state, packed_state, &
      PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
      SUF_TENSION_COEF, ANGLE, VOLUME_FRAC, &
      Mdims, Mspars, ndgln, Mdisopt )
-     ! Calculate the surface tension force as a pressure force term:
-     ! PLIKE_GRAD_SOU_COEF and PLIKE_GRAD_SOU_GRAD
-     ! for a given DevFuns%VOLUME fraction field VOLUME_FRAC
-     ! SUF_TENSION_COEF is the surface tension coefficient.
      !use shape_functions
      !use matrix_operations
      ! Inputs/Outputs

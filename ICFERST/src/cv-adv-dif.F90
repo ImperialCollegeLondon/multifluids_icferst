@@ -15,7 +15,8 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-
+!> This module contains all the tools to assemble and solve the equations and fields associated with the CV mesh, i.e.
+!> transport equation, continuity equation, DCVFE gradient matrix and the Laplacian system for the zeta-potential
 module cv_advection
 
     use fldebug
@@ -88,7 +89,7 @@ contains
     !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
     !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
     !>@param  final_phase This is the final phase to be assembled, in this way we can assemble from phase 1 to final_phase not necessarily being for all the phases
-    !>@param  Mdims Dimensions of the model
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
     !>@param  CV_GIdims Gauss integration numbers for CV fields
     !>@param  FE_GIdims Gauss integration numbers for FE fields
     !>@param  CV_funs Shape functions for the CV mesh
@@ -125,18 +126,19 @@ contains
     !>@param GET_THETA_FLUX, USE_THETA_FLUX,  RETRIEVE_SOLID_CTY, got_free_surf???
     !>@param THERMAL true if solving for heat transport 
     !>@param  MEAN_PORE_CV   Porosity defined control volume wise
-    !>@param  MASS_ELE_TRANSP
+    !>@param  MASS_ELE_TRANSP Mass of the elements
     !>@param  saturation PhaseVolumeFraction field
     !>@param  TDIFFUSION  Diffusion associated with the tracer field
     !>@param  Phase_with_Pc   Field that defines the capillary pressure, i.e. non-wetting phase
     !>@param  VAD_parameter  Vanishing artificial diffusion parameter
     !>@param  Courant_number  Obvious ins't it?
-    !>@param  Permeability_tensor_field
+    !>@param  Permeability_tensor_field  Permeability field
     !>@param  calculate_mass_delta  Variable used to control the mass conservation of the system
     !>@param  eles_with_pipe  Elements that have a pipe
     !>@param  pipes_aux  Information required to define wells
-    !>@param  porous_heat_coef, porous_heat_coef_old
-    !>@param  solving_compositional, assemble_collapsed_to_one_phase
+    !>@param  porous_heat_coef, porous_heat_coef_old includes an average of porous and fluid heat coefficients 
+    !>@param  solving_compositional Solving for composition if true
+    !>@param assemble_collapsed_to_one_phase Collapses phases and solves for one single temperature. When there is thermal equilibrium
     !>@param  outfluxes  Contains all the fields required to compute the outfluxes of the model and create the outfluxes.csv file. Computed when assembling the continuity equation
     !>@param  nonlinear_iteration Current non-linear iteration
     !>@param  Latent_heat   Latent heat for phase change, use for enthalpy modelling
@@ -7323,6 +7325,19 @@ end if
     !> If harmonic average then we perform the harmonic average of sigma and K
     !> IMPORTANT: This subroutine requires the PHsparsity to be generated
     !> Note that this method solves considering FE fields. If using CV you may incur in an small error.
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  ndgln Global to local variables
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  CV_GIdims Gauss integration numbers for CV fields
+    !>@param Sigma_field Coefficient multipliying the left-hand side term
+    !>@param Solution Solution field of type scalar_field, required to ensure consistency
+    !>@param K_fields Coefficients multipliying the RHS terms
+    !>@param F_fields RHS fierlds
+    !>@param intface_val_type  0 = no interpolation; 1 Harmonic mean; !20 for SP solver, harmonic mean considering charge; negative normal mean
+
     subroutine generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, Sigma_field, &
       Solution, K_fields, F_fields, intface_val_type)
       implicit none

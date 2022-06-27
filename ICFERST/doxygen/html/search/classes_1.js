@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['bad_5felements_1022',['bad_elements',['../structmulti__tools_1_1bad__elements.html',1,'multi_tools']]]
+  ['coupling_5fterm_5fcoef_974',['coupling_term_coef',['../structmulti__magma_1_1coupling__term__coef.html',1,'multi_magma']]]
 ];

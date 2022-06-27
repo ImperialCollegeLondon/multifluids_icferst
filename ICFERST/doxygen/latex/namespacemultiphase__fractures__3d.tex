@@ -1,12 +1,17 @@
 \hypertarget{namespacemultiphase__fractures__3d}{}\doxysection{multiphase\+\_\+fractures\+\_\+3d Module Reference}
 \label{namespacemultiphase__fractures__3d}\index{multiphase\_fractures\_3d@{multiphase\_fractures\_3d}}
+
+
+D\+E\+P\+R\+E\+C\+A\+T\+ED This module contains subroutines to communicate with S\+O\+L\+I\+D\+I\+TY.  
+
+
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
 subroutine, public \mbox{\hyperlink{namespacemultiphase__fractures__3d_a9fb82c0cf3b3f96ccc40985a15c25987}{blasting}} (packed\+\_\+state, nphase)
-\item 
+\begin{DoxyCompactList}\small\item\em -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/--- Py B\+L\+A\+S\+T\+I\+NG -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/--- \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacemultiphase__fractures__3d_aaa6b152432f8f9fcbfac8f68df833154}{fracking}} (packed\+\_\+state, state, nphase)
-\item 
+\begin{DoxyCompactList}\small\item\em hydro-\/fracture/fracturing subroutine -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/--- \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacemultiphase__fractures__3d_adaf3a34e54906b76f4cd18ed48b2de39}{update\+\_\+blasting\+\_\+memory}} (packed\+\_\+state, state, timestep)
 \end{DoxyCompactItemize}
 \doxysubsection*{Variables}
@@ -26,12 +31,19 @@ integer, save \mbox{\hyperlink{namespacemultiphase__fractures__3d_ad6733ce854427
 \end{DoxyCompactItemize}
 
 
+\doxysubsection{Detailed Description}
+D\+E\+P\+R\+E\+C\+A\+T\+ED This module contains subroutines to communicate with S\+O\+L\+I\+D\+I\+TY. 
+
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespacemultiphase__fractures__3d_a9fb82c0cf3b3f96ccc40985a15c25987}\label{namespacemultiphase__fractures__3d_a9fb82c0cf3b3f96ccc40985a15c25987}} 
 \index{multiphase\_fractures\_3d@{multiphase\_fractures\_3d}!blasting@{blasting}}
 \index{blasting@{blasting}!multiphase\_fractures\_3d@{multiphase\_fractures\_3d}}
 \doxysubsubsection{\texorpdfstring{blasting()}{blasting()}}
 {\footnotesize\ttfamily subroutine, public multiphase\+\_\+fractures\+\_\+3d\+::blasting (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), intent(in)}]{packed\+\_\+state,  }\item[{integer, intent(in)}]{nphase }\end{DoxyParamCaption})}
+
+
+
+-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/--- Py B\+L\+A\+S\+T\+I\+NG -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/--- 
 
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -45,6 +57,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{fracking@{fracking}!multiphase\_fractures\_3d@{multiphase\_fractures\_3d}}
 \doxysubsubsection{\texorpdfstring{fracking()}{fracking()}}
 {\footnotesize\ttfamily subroutine, public multiphase\+\_\+fractures\+\_\+3d\+::fracking (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{integer, intent(in)}]{nphase }\end{DoxyParamCaption})}
+
+
+
+hydro-\/fracture/fracturing subroutine -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/--- 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]

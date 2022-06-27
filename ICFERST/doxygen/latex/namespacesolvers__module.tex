@@ -1,20 +1,25 @@
 \hypertarget{namespacesolvers__module}{}\doxysection{solvers\+\_\+module Module Reference}
 \label{namespacesolvers__module}\index{solvers\_module@{solvers\_module}}
+
+
+All the subroutines associated to solving non-\/linear systems, Schur complement, etc.  
+
+
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
 subroutine, public \mbox{\hyperlink{namespacesolvers__module_adef72e22883fb36304a2da0099927175}{boundedsolutioncorrections}} (state, packed\+\_\+state, Mdims, C\+V\+\_\+funs, small\+\_\+findrm, small\+\_\+colm, Field\+\_\+name, for\+\_\+sat, min\+\_\+max\+\_\+limits)
 \begin{DoxyCompactList}\small\item\em The sparcity of the local CV connectivity is in\+: small\+\_\+findrm, small\+\_\+colm. ngl\+\_\+its=max no of global iterations e.\+g. 100. error\+\_\+tol = tolerance on the iterations. \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c}{fpi\+\_\+backtracking}} (nphase, Mdims, ndgln, state, packed\+\_\+state, sat\+\_\+bak, backtrack\+\_\+sat, backtrack\+\_\+par\+\_\+from\+\_\+schema, Previous\+\_\+convergence, satisfactory\+\_\+convergence, new\+\_\+backtrack\+\_\+par, Max\+\_\+sat\+\_\+its, its, nonlinear\+\_\+iteration, useful\+\_\+sats, res, res\+\_\+ratio, first\+\_\+res)
-\begin{DoxyCompactList}\small\item\em this idea is based on the paper S\+P\+E-\/173267-\/\+MS. The method ensures convergence \char`\"{}independent\char`\"{} of the time step. \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em \+:In this subroutine we applied some corrections and backtrack\+\_\+par on the saturations obtained from the saturation equation this subroutine is detailed in Salinas et al. 2017 doi\+:10.\+1002/fld.4357 The method ensures convergence \char`\"{}independent\char`\"{} of the time step. \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacesolvers__module_a9bba1ef1495c1a4a47a7eea3f2c17719}{set\+\_\+saturation\+\_\+to\+\_\+sum\+\_\+one}} (mdims, packed\+\_\+state, state, do\+\_\+not\+\_\+update\+\_\+halos)
-\begin{DoxyCompactList}\small\item\em certain tolerance and also sets the saturation to be between bounds \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em \+:This subroutines eliminates the oscillations in the saturation that are bigger than a certain tolerance and also sets the saturation to be between bounds \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c}{non\+\_\+porous\+\_\+ensure\+\_\+sum\+\_\+to\+\_\+one}} (Mdims, packed\+\_\+state, do\+\_\+not\+\_\+update\+\_\+halos)
-\begin{DoxyCompactList}\small\item\em certain tolerance and also sets the saturation to be between bounds \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em \+: This subroutines eliminates the oscillations in the saturation that are bigger than a certain tolerance and also sets the saturation to be between bounds \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacesolvers__module_a85646e595797edceed6d3be72173ef7f}{initialise\+\_\+saturation\+\_\+sums\+\_\+one}} (mdims, packed\+\_\+state, find\+\_\+scapegoat\+\_\+phase)
-\begin{DoxyCompactList}\small\item\em all the error is compensated in the scapegoat\+\_\+phase. Normally the last \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em \+:Ensure that the saturations at the beginning sum to one, if they do not all the error is compensated in the scapegoat\+\_\+phase. Normally the last \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacesolvers__module_a4e86e8d68a22dcc9e670af385d938bf4}{auto\+\_\+backtracking}} (Mdims, backtrack\+\_\+par\+\_\+factor, courant\+\_\+number\+\_\+in, first\+\_\+time\+\_\+step, nonlinear\+\_\+iteration, I\+\_\+am\+\_\+temperature)
-\item 
+\begin{DoxyCompactList}\small\item\em \+: The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacesolvers__module_a119325e40cdcd54b1766472b55920364}{get\+\_\+anderson\+\_\+acceleration\+\_\+new\+\_\+guess}} (N, M, New\+Field, History\+\_\+field, stored\+\_\+residuals, max\+\_\+its, prev\+\_\+small\+\_\+matrix, restart\+\_\+now)
 \begin{DoxyCompactList}\small\item\em This subroutine provides a new guess based on previous updates and residuals. Use this subroutine to speed up any system being solved by looping. A new guess is computed and returned Method explained in D\+O\+I.\+10.\+1137/10078356X. \end{DoxyCompactList}\item 
 subroutine, public \mbox{\hyperlink{namespacesolvers__module_af233b921efdba4e01b5920ccf509ef29}{scale\+\_\+petsc\+\_\+matrix}} (Mat\+\_\+petsc)
@@ -24,8 +29,11 @@ subroutine, public \mbox{\hyperlink{namespacesolvers__module_a76231fdbfc56035f79
 subroutine, public \mbox{\hyperlink{namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa}{petsc\+\_\+stokes\+\_\+solver}} (packed\+\_\+state, Mdims, Mmat, ndgln, Mspars, final\+\_\+phase, pmat, P\+\_\+all, deltaP, rhs\+\_\+p, solver\+\_\+option\+\_\+path, Dmat)
 \begin{DoxyCompactList}\small\item\em In this subroutine the Schur complement is generated and solved using P\+E\+T\+Sc to update the pressure field Matrices need to be in petsc format and pmat is the preconditioned matrix, i.\+e. pmat = A11-\/ A10(Aprox\+A00$^\wedge$-\/1)A01. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacesolvers__module_aad076a468a68cdb44f63a6290e9c8159}{convert\+\_\+c\+\_\+and\+\_\+ct\+\_\+mat\+\_\+to\+\_\+petsc\+\_\+format}} (packed\+\_\+state, Mdims, Mmat, ndgln, Mspars, N\+P\+H\+A\+SE)
-\begin{DoxyCompactList}\small\item\em \+: This subroutine converts the C (gradient) and CT (Divergence) matrices into P\+E\+T\+Sc format Mainly devoted to be used by the P\+E\+T\+Sc stokes schur solver \end{DoxyCompactList}\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em \+: This subroutine converts the C (gradient) and CT (Divergence) matrices into P\+E\+T\+Sc format Mainly devoted to be used by the P\+E\+T\+Sc stokes schur solver This can be used when moving from the I\+C\+F\+E\+R\+ST matrix format to P\+E\+T\+Sc as reference \end{DoxyCompactList}\end{DoxyCompactItemize}
 
+
+\doxysubsection{Detailed Description}
+All the subroutines associated to solving non-\/linear systems, Schur complement, etc. 
 
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespacesolvers__module_a4e86e8d68a22dcc9e670af385d938bf4}\label{namespacesolvers__module_a4e86e8d68a22dcc9e670af385d938bf4}} 
@@ -34,6 +42,25 @@ subroutine \mbox{\hyperlink{namespacesolvers__module_aad076a468a68cdb44f63a6290e
 \doxysubsubsection{\texorpdfstring{auto\_backtracking()}{auto\_backtracking()}}
 {\footnotesize\ttfamily subroutine, public solvers\+\_\+module\+::auto\+\_\+backtracking (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{real, intent(inout)}]{backtrack\+\_\+par\+\_\+factor,  }\item[{real, dimension(\+:), intent(inout)}]{courant\+\_\+number\+\_\+in,  }\item[{logical, intent(in)}]{first\+\_\+time\+\_\+step,  }\item[{integer, intent(in)}]{nonlinear\+\_\+iteration,  }\item[{logical, intent(in), optional}]{I\+\_\+am\+\_\+temperature }\end{DoxyParamCaption})}
 
+
+
+\+: The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em backtrack\+\_\+par\+\_\+factor} & I\+N\+O\+UT backtracking value to use \\
+\hline
+{\em courant\+\_\+number\+\_\+in} & Courant number and shock front courant number \\
+\hline
+{\em first\+\_\+time\+\_\+step} & true if the first one \\
+\hline
+{\em nonlinear\+\_\+iteration} & current non-\/linear iteration \\
+\hline
+{\em I\+\_\+am\+\_\+temperature} & If doing temperature true (D\+E\+P\+R\+E\+C\+A\+T\+ED P\+R\+O\+B\+A\+B\+LY) \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -51,7 +78,28 @@ Here is the caller graph for this function\+:\nopagebreak
 
 The sparcity of the local CV connectivity is in\+: small\+\_\+findrm, small\+\_\+colm. ngl\+\_\+its=max no of global iterations e.\+g. 100. error\+\_\+tol = tolerance on the iterations. 
 
-nloc\+\_\+its\+: This iteration is very good at avoiding spreading the modifications too far -\/ however it can stagnate. nloc\+\_\+its2\+: This iteration is very good at avoiding stagnating but does spread the modifcations far. us a single iteration because of this as default... nits\+\_\+nod\+: iterations at a nod -\/ this iteration is very good at avoiding spreading the modifications too far -\/ however it can stagnate. Here is the call graph for this function\+:\nopagebreak
+nloc\+\_\+its\+: This iteration is very good at avoiding spreading the modifications too far -\/ however it can stagnate. nloc\+\_\+its2\+: This iteration is very good at avoiding stagnating but does spread the modifcations far. us a single iteration because of this as default... nits\+\_\+nod\+: iterations at a nod -\/ this iteration is very good at avoiding spreading the modifications too far -\/ however it can stagnate. 
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em C\+V\+\_\+funs} & Shape functions for the CV mesh \\
+\hline
+{\em small\+\_\+findrm} & sparcity of the local CV connectivity is in\+: small\+\_\+findrm, small\+\_\+colm. \\
+\hline
+{\em small\+\_\+colm} & sparcity of the local CV connectivity is in\+: small\+\_\+findrm, small\+\_\+colm. \\
+\hline
+{\em Field\+\_\+name} & Name of the field \\
+\hline
+{\em for\+\_\+sat} & True if doing it for Phase Volume Fraction \\
+\hline
+{\em min\+\_\+max\+\_\+limits} & Maximum and minimum values \\
+\hline
+\end{DoxyParams}
+Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
 \leavevmode
@@ -73,8 +121,23 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-\+: This subroutine converts the C (gradient) and CT (Divergence) matrices into P\+E\+T\+Sc format Mainly devoted to be used by the P\+E\+T\+Sc stokes schur solver 
+\+: This subroutine converts the C (gradient) and CT (Divergence) matrices into P\+E\+T\+Sc format Mainly devoted to be used by the P\+E\+T\+Sc stokes schur solver This can be used when moving from the I\+C\+F\+E\+R\+ST matrix format to P\+E\+T\+Sc as reference 
 
+
+\begin{DoxyParams}{Parameters}
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em Mmat} & Matrices for I\+C\+F\+E\+R\+ST \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em Mspars} & Sparsity of the matrices \\
+\hline
+{\em nphase} & number of phases \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -96,8 +159,47 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-this idea is based on the paper S\+P\+E-\/173267-\/\+MS. The method ensures convergence \char`\"{}independent\char`\"{} of the time step. 
+\+:In this subroutine we applied some corrections and backtrack\+\_\+par on the saturations obtained from the saturation equation this subroutine is detailed in Salinas et al. 2017 doi\+:10.\+1002/fld.4357 The method ensures convergence \char`\"{}independent\char`\"{} of the time step. 
 
+
+\begin{DoxyParams}{Parameters}
+{\em nphase} & Number of phases \\
+\hline
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em sat\+\_\+bak} & Backup of the saturation field \\
+\hline
+{\em backtrack\+\_\+sat} & Backtrack parameter used \\
+\hline
+{\em backtrack\+\_\+par\+\_\+from\+\_\+schema} & obtained from diamond/input file \\
+\hline
+{\em Previous\+\_\+convergence} & Convergence obtained in the previous attempt \\
+\hline
+{\em satisfactory\+\_\+convergence} & If converged true \\
+\hline
+{\em new\+\_\+backtrack\+\_\+par} & New obtained backtracking parameter \\
+\hline
+{\em Max\+\_\+sat\+\_\+its} & Maximum allowed number of saturation iterations \\
+\hline
+{\em its} & Iterations taken? \\
+\hline
+{\em nonlinear\+\_\+iteration} & current non\+\_\+linear iteration \\
+\hline
+{\em useful\+\_\+sats} & Number of useful iterations of the saturation iteration method \\
+\hline
+{\em res} & residual obtained using the new sigmas obtained with the new saturation in the transport equation \\
+\hline
+{\em res\+\_\+ratio} & ratio of residuals between to iterations \\
+\hline
+{\em first\+\_\+res} & residual obtained at the first attemp, used as reference \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -116,7 +218,7 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{solvers\_module@{solvers\_module}!get\_anderson\_acceleration\_new\_guess@{get\_anderson\_acceleration\_new\_guess}}
 \index{get\_anderson\_acceleration\_new\_guess@{get\_anderson\_acceleration\_new\_guess}!solvers\_module@{solvers\_module}}
 \doxysubsubsection{\texorpdfstring{get\_anderson\_acceleration\_new\_guess()}{get\_anderson\_acceleration\_new\_guess()}}
-{\footnotesize\ttfamily subroutine, public solvers\+\_\+module\+::get\+\_\+anderson\+\_\+acceleration\+\_\+new\+\_\+guess (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N,  }\item[{integer, intent(in)}]{M,  }\item[{real, dimension(n), intent(out)}]{New\+Field,  }\item[{real, dimension(n, m+2), intent(inout)}]{History\+\_\+field,  }\item[{real, dimension(n, m+1), intent(inout)}]{stored\+\_\+residuals,  }\item[{integer, optional}]{max\+\_\+its,  }\item[{real, dimension(\+:,\+:), intent(inout), optional, allocatable}]{prev\+\_\+small\+\_\+matrix,  }\item[{}]{restart\+\_\+now }\end{DoxyParamCaption})}
+{\footnotesize\ttfamily subroutine, public solvers\+\_\+module\+::get\+\_\+anderson\+\_\+acceleration\+\_\+new\+\_\+guess (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N,  }\item[{integer, intent(in)}]{M,  }\item[{real, dimension(n), intent(out)}]{New\+Field,  }\item[{real, dimension(n, m+2), intent(inout)}]{History\+\_\+field,  }\item[{real, dimension(n, m+1), intent(inout)}]{stored\+\_\+residuals,  }\item[{integer, optional}]{max\+\_\+its,  }\item[{real, dimension(\+:,\+:), intent(inout), optional, allocatable}]{prev\+\_\+small\+\_\+matrix,  }\item[{logical, intent(inout)}]{restart\+\_\+now }\end{DoxyParamCaption})}
 
 
 
@@ -125,6 +227,23 @@ This subroutine provides a new guess based on previous updates and residuals. Us
 \begin{DoxyAuthor}{Author}
 Pablo Salinas 
 \end{DoxyAuthor}
+
+\begin{DoxyParams}{Parameters}
+{\em N} & Size if the field of interest. Used also to turn vector/tensor fields into scalar fields internally here \\
+\hline
+{\em M} & Size of the field of iterations available -\/ 2 \\
+\hline
+{\em New\+Field} & New guess obtained by the Anderson Acceleration method \\
+\hline
+{\em History\+\_\+field} & Past results obtained by the outer solver \\
+\hline
+{\em stored\+\_\+residuals} & Past residuals obtained as the (-\/ guessed value + G(guess value) ) \\
+\hline
+{\em max\+\_\+its} & Maximum number of iterations \\
+\hline
+{\em prev\+\_\+small\+\_\+matrix} & Contains the previous A\textquotesingle{}$\ast$A, speeds up the method. On exit is updated (M,M) Prepared to be passed unallocated from M = 1 and allocated internally \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -140,8 +259,15 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-all the error is compensated in the scapegoat\+\_\+phase. Normally the last 
+\+:Ensure that the saturations at the beginning sum to one, if they do not all the error is compensated in the scapegoat\+\_\+phase. Normally the last 
 
+
+\begin{DoxyParams}{Parameters}
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em find\+\_\+scapegoat\+\_\+phase} & Against which phase we correct the error \\
+\hline
+\end{DoxyParams}
 \mbox{\Hypertarget{namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c}\label{namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c}} 
 \index{solvers\_module@{solvers\_module}!non\_porous\_ensure\_sum\_to\_one@{non\_porous\_ensure\_sum\_to\_one}}
 \index{non\_porous\_ensure\_sum\_to\_one@{non\_porous\_ensure\_sum\_to\_one}!solvers\_module@{solvers\_module}}
@@ -150,8 +276,17 @@ all the error is compensated in the scapegoat\+\_\+phase. Normally the last
 
 
 
-certain tolerance and also sets the saturation to be between bounds 
+\+: This subroutines eliminates the oscillations in the saturation that are bigger than a certain tolerance and also sets the saturation to be between bounds 
 
+
+\begin{DoxyParams}{Parameters}
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em do\+\_\+not\+\_\+update\+\_\+halos} & If true do not update halos, to save time in parallel \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -172,6 +307,31 @@ In this subroutine the Schur complement is generated and solved using P\+E\+T\+S
 \begin{DoxyAuthor}{Author}
 Pablo Salinas 
 \end{DoxyAuthor}
+
+\begin{DoxyParams}{Parameters}
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em Mspars} & Sparsity of the matrices \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em final\+\_\+phase} & This is the final phase to be assembled, in this way we can assemble from phase 1 to final\+\_\+phase not necessarily being for all the phases \\
+\hline
+{\em pmat} & I\+N\+O\+UT preconditioned matrix, i.\+e. pmat = A11-\/ A10(Aprox\+A00$^\wedge$-\/1)A01 \\
+\hline
+{\em P\+\_\+all} & Pressure field \\
+\hline
+{\em deltaP} & Update of pressure from before solving \\
+\hline
+{\em rhs\+\_\+p} & R\+HS of the Pressure system \\
+\hline
+{\em solver\+\_\+option\+\_\+path} & Path of the solver to be used to solve here the system \\
+\hline
+{\em Dmat} & (optional) is the Matrix multipliying pressure in the continuity equation \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -214,8 +374,19 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-certain tolerance and also sets the saturation to be between bounds 
+\+:This subroutines eliminates the oscillations in the saturation that are bigger than a certain tolerance and also sets the saturation to be between bounds 
 
+
+\begin{DoxyParams}{Parameters}
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em do\+\_\+not\+\_\+update\+\_\+halos} & If true do not update halos, to save time in parallel \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}

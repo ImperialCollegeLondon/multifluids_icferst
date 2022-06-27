@@ -1,11 +1,19 @@
 \hypertarget{namespacemulti__sp}{}\doxysection{multi\+\_\+sp Module Reference}
 \label{namespacemulti__sp}\index{multi\_sp@{multi\_sp}}
+
+
+This module contains all the necessary subroutines to deal with self Potential in I\+C\+F\+E\+R\+ST.  
+
+
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
 subroutine, public \mbox{\hyperlink{namespacemulti__sp_a3761caa03a0d114b25c395685b965a73}{assemble\+\_\+and\+\_\+solve\+\_\+sp}} (Mdims, state, packed\+\_\+state, ndgln, Mmat, Mspars, C\+V\+\_\+funs, C\+V\+\_\+\+G\+Idims)
-\begin{DoxyCompactList}\small\item\em \+: This subroutine computes the saturated rock conductivity based on Tiab and Donaldson, 2004 formula. and also includes the temperature/concentration dependency detailed in Sen and Goode, 1992 I\+M\+P\+O\+R\+T\+A\+NT\+: Water needs to be phase 1! T\+O\+DO Maybe add a R\+E\+M\+I\+N\+D\+ER when running with SP solver and to run with Kelvin, maybe this for all the temperature cases T\+O\+DO include the option to project to FE using P\+R\+O\+J\+\_\+\+C\+V\+\_\+\+T\+O\+\_\+\+F\+EM \end{DoxyCompactList}\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em \+: This subroutine computes the saturated rock conductivity based on Tiab and Donaldson, 2004 formula. and also includes the temperature/concentration dependency detailed in Sen and Goode, 1992 I\+M\+P\+O\+R\+T\+A\+NT\+: Water needs to be phase 1! T\+O\+DO Maybe add a R\+E\+M\+I\+N\+D\+ER when running with SP solver and to run with Kelvin, maybe this for all the temperature cases \end{DoxyCompactList}\end{DoxyCompactItemize}
 
+
+\doxysubsection{Detailed Description}
+This module contains all the necessary subroutines to deal with self Potential in I\+C\+F\+E\+R\+ST. 
 
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespacemulti__sp_a3761caa03a0d114b25c395685b965a73}\label{namespacemulti__sp_a3761caa03a0d114b25c395685b965a73}} 
@@ -16,8 +24,27 @@ subroutine, public \mbox{\hyperlink{namespacemulti__sp_a3761caa03a0d114b25c39568
 
 
 
-\+: This subroutine computes the saturated rock conductivity based on Tiab and Donaldson, 2004 formula. and also includes the temperature/concentration dependency detailed in Sen and Goode, 1992 I\+M\+P\+O\+R\+T\+A\+NT\+: Water needs to be phase 1! T\+O\+DO Maybe add a R\+E\+M\+I\+N\+D\+ER when running with SP solver and to run with Kelvin, maybe this for all the temperature cases T\+O\+DO include the option to project to FE using P\+R\+O\+J\+\_\+\+C\+V\+\_\+\+T\+O\+\_\+\+F\+EM 
+\+: This subroutine computes the saturated rock conductivity based on Tiab and Donaldson, 2004 formula. and also includes the temperature/concentration dependency detailed in Sen and Goode, 1992 I\+M\+P\+O\+R\+T\+A\+NT\+: Water needs to be phase 1! T\+O\+DO Maybe add a R\+E\+M\+I\+N\+D\+ER when running with SP solver and to run with Kelvin, maybe this for all the temperature cases 
 
+
+\begin{DoxyParams}{Parameters}
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em Mmat} & Matrices for I\+C\+F\+E\+R\+ST \\
+\hline
+{\em Mspars} & Sparsity of the matrices \\
+\hline
+{\em C\+V\+\_\+funs} & Shape functions for the CV mesh \\
+\hline
+{\em C\+V\+\_\+\+G\+Idims} & Gauss integration numbers for CV fields \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}

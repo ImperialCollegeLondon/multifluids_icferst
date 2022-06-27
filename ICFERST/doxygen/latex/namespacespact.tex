@@ -1,12 +1,17 @@
 \hypertarget{namespacespact}{}\doxysection{spact Module Reference}
 \label{namespacespact}\index{spact@{spact}}
+
+
+Sparsity for the Matrices?  
+
+
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
 subroutine \mbox{\hyperlink{namespacespact_a6f9b1937afa54fae50f7dd86b942f3cb}{defining\+\_\+maxlengths\+\_\+for\+\_\+sparsity\+\_\+matrices}} (ndim, nphase, totele, u\+\_\+nloc, cv\+\_\+nloc, ph\+\_\+nloc, cv\+\_\+nonods, mx\+\_\+nface\+\_\+p1, mxnele, mx\+\_\+nct, mx\+\_\+nc, mx\+\_\+ncolcmc, mx\+\_\+ncoldgm\+\_\+pha, mx\+\_\+ncolacv, mx\+\_\+ncolm, mx\+\_\+ncolph)
 \item 
 subroutine \mbox{\hyperlink{namespacespact_aeaf3853765a92827bf24c599fe79364e}{get\+\_\+sparsity\+\_\+patterns}} (state, Mdims, Mspars, ndgln, Mdisopt, mx\+\_\+ncolacv, mx\+\_\+ncoldgm\+\_\+pha, mx\+\_\+nct, mx\+\_\+nc, mx\+\_\+ncolcmc, mx\+\_\+ncolm, mx\+\_\+ncolph, mx\+\_\+nface\+\_\+p1)
-\item 
+\begin{DoxyCompactList}\small\item\em Allocate and obtain the sparsity patterns of the two types of matricies for (momentum + cty) and for energy. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacespact_aaa6676a57a39f977170aba9c14e142d9}{ct\+\_\+dg\+\_\+sparsity}} (mx\+\_\+nface\+\_\+p1, totele, cv\+\_\+nloc, u\+\_\+nloc, cv\+\_\+nonods, cv\+\_\+ndgln, u\+\_\+ndgln, ncolele, finele, colele, mx\+\_\+nct, nct, findct, colct)
 \item 
 subroutine \mbox{\hyperlink{namespacespact_a0924b7ed96a415d91f92dec1d27e306e}{check\+\_\+sparsity}} (u\+\_\+pha\+\_\+nonods, cv\+\_\+pha\+\_\+nonods, u\+\_\+nonods, cv\+\_\+nonods, totele, mx\+\_\+ncolacv, ncolacv, finacv, colacv, midacv, mxnele, ncolele, midele, finele, colele, mx\+\_\+ncoldgm\+\_\+pha, ncoldgm\+\_\+pha, coldgm\+\_\+pha, findgm\+\_\+pha, middgm\+\_\+pha, mx\+\_\+nct, ncolct, findct, colct, mx\+\_\+nc, ncolc, findc, colc, mx\+\_\+ncolcmc, ncolcmc, findcmc, colcmc, midcmc, mx\+\_\+ncolm, ncolm, findm, colm, midm)
@@ -14,6 +19,9 @@ subroutine \mbox{\hyperlink{namespacespact_a0924b7ed96a415d91f92dec1d27e306e}{ch
 subroutine \mbox{\hyperlink{namespacespact_a5f2181b54a6a764030dc7d10bf49dd4f}{checksparsity}} (option\+\_\+mid, unit, ncol2, nonods, ncol, find, mid, col)
 \end{DoxyCompactItemize}
 
+
+\doxysubsection{Detailed Description}
+Sparsity for the Matrices? 
 
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespacespact_a0924b7ed96a415d91f92dec1d27e306e}\label{namespacespact_a0924b7ed96a415d91f92dec1d27e306e}} 
@@ -80,6 +88,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{get\_sparsity\_patterns@{get\_sparsity\_patterns}!spact@{spact}}
 \doxysubsubsection{\texorpdfstring{get\_sparsity\_patterns()}{get\_sparsity\_patterns()}}
 {\footnotesize\ttfamily subroutine spact\+::get\+\_\+sparsity\+\_\+patterns (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), dimension( \+: ), intent(inout)}]{state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(inout)}]{Mdims,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(inout)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__discretization__opts}{multi\+\_\+discretization\+\_\+opts}})}]{Mdisopt,  }\item[{integer, intent(in)}]{mx\+\_\+ncolacv,  }\item[{integer, intent(in)}]{mx\+\_\+ncoldgm\+\_\+pha,  }\item[{integer, intent(in)}]{mx\+\_\+nct,  }\item[{integer, intent(in)}]{mx\+\_\+nc,  }\item[{integer, intent(in)}]{mx\+\_\+ncolcmc,  }\item[{integer, intent(in)}]{mx\+\_\+ncolm,  }\item[{integer, intent(in)}]{mx\+\_\+ncolph,  }\item[{integer, intent(in)}]{mx\+\_\+nface\+\_\+p1 }\end{DoxyParamCaption})}
+
+
+
+Allocate and obtain the sparsity patterns of the two types of matricies for (momentum + cty) and for energy. 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]

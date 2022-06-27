@@ -15,6 +15,149 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 
+!> \mainpage Introduction
+!>
+!> \section ReadMe ReadMe
+!> (This text is in Multiphase_Prototype_Wrapper.F90)
+!>All the contributions to ICFERST in this repository are under AGPL 3.0 license, 
+!>otherwise refrain from commiting your code to this repository. Each library
+!>keeps their original license.
+!>
+!>The executable is named icferst
+!>
+!>The schema for the ICFERST diamond interface is in
+!>ICFERST/schemas/multiphase.rmg
+!>
+!>For compilation run the command from the root folder:
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!>./configure --enable-2d-adaptivity && make mp!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!>ICFERST is property of the NORMS group.
+!>See the file COPYRIGHT for a description of the copyright.
+!>
+!>For more details please see:
+!>http://multifluids.github.io/ 
+!>and
+!>http://www.imperial.ac.uk/earth-science/research/research-groups/norms/
+!>
+!> \section install_sec Installation
+!>
+!> 1) Download it from github with the following one-line command
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> mkdir ICFERST && cd ICFERST && git init && git remote add -t  main  -f origin git@github.com:Multifluids/icferst.git && git checkout main
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> 2) Install dependencies
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> sudo apt-add-repository ppa:fluidity-core/ppa
+!> sudo apt-get update
+!> sudo apt-get install fluidity-dev
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> 3a) Ubuntu 18.04, modify the .bashrc file in home to include
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> export PETSC_DIR=/usr/lib/petscdir/3.8.3
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> 3b) Ubuntu 18.04, modify the .bashrc file in home to include
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> export FCFLAGS="-I/usr/include"
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> 3b) You may need to explicitly include the python dependencies
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> export PYTHONPATH=/usr/lib/python3
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> 4) Navigate to the root directory of your ICFERST folder
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> cd IC-FERST-FOLDER/
+!> sudo ./configure --enable-2d-adaptivity && make install
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> \section diamond Using the Diamond interface
+!>
+!> Using the diamond GUI to configure test cases
+!> The input files are “EXAMPLE.mpml”. This files can be either manipulated using diamond a GUI, or a text file.
+!>  To open the diamond GUI for ICFERST this is an example, 
+!> found in the examples folder in IC-FERST-FOLDER/legacy_reservoir_prototype/tests/3D_BL
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> diamond -s IC-FERST-FOLDER/legacy_reservoir_prototype/schemas/multiphase.rng 3D_test.mpml
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> \section Parallel Using ICFERST in parallel
+!> ICFERST uses openMPI to run in parallel.
+!> The mesh needs to be decomposed initially using the command
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> fldecomp -n #CPUs INPUT_MESH
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!> where #CPUs is the number of CPUs and INPUT_MESH is a binary msh file using the gmshv2 format. 
+!> This can be obtained using ICFERST from an option in diamond/geometry or from an exodusII file using the python conversor from ICFERST/tools
+!> Once the mesh is decomposed you can run in parallel using mpirun:
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> mpirun -n #CPUs icferst INPUT_mpml
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> where INPUT is INPUT_mpml is the mpml file as normally done.
+!> As a rule of thumb one wants to have around 15k elements per CPU to have optimal performance.
+!>
+!> \section Code_structure Structure of the ICFERST code
+!> All the ICFERST code is within the folder ICFERST where the test cases, code, tools and schemas for diamond are stored.
+!> Some parts of Fluidity have been slightly modified but in general the Fluidity code is untouched. 
+!> ICFERST is composed of two main loops. First, it is the time loop and secondly the non-linear loop, which is a Picard method to deal with non-linearities.
+!> The time-loop is defined in the multi_timeloop file. From this subroutine we initialise all the necessary 
+!> fields and start the non-linear loop, within which all the equations to be solved are being called as blocks.
+!> In this way, first the momentum equation and velocity are obtained, next the saturation is transported (which also contains within it another non-linear loop)
+!> and then all the other transport equations are being solved.
+!>
+!> ICFERST solves using a DCVFE formulation, which means that we use two different meshes, a CV mesh and a FE mesh. The CV mesh and associated equations
+!> are dealt with in CV_ASSEMB, which for porous media is around 70% of the overall cost. Everything related with the FE mesh is solved for in multi_dyncore
+!> However multi_dyncore contains the calls to solve for the different transport equations. So effectively the process is normally
+!> time_loop (initialise memory and stuff, including EOS, source terms...) => multi_dyncore (assemble and solve) => cv_assemb (assembles the transport equation). 
+!>
+!> To simplify and standardize the naming of the variables the structures defined in multi_data_types are used through the code. 
+!> Normally one or two of those types are created once and used throughout the code, so it is recommended to check in that section what is each variable and
+!> use those types either expanding them or creating more.
 #include "fdebug.h"
 
 subroutine multiphase_prototype_wrapper() bind(C)

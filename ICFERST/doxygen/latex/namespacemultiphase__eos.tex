@@ -1,5 +1,10 @@
 \hypertarget{namespacemultiphase__eos}{}\doxysection{multiphase\+\_\+eos Module Reference}
 \label{namespacemultiphase__eos}\index{multiphase\_eos@{multiphase\_eos}}
+
+
+This module contains subroutines related to the equations of state and other properties such as relative permeabilities, capillary, flash, etc.  
+
+
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
@@ -38,9 +43,9 @@ subroutine \mbox{\hyperlink{namespacemultiphase__eos_ae417127536bdb365fbdde39515
 subroutine \mbox{\hyperlink{namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef}{calculate\+\_\+viscosity}} (state, Mdims, ndgln, Momentum\+\_\+\+Diffusion, Momentum\+\_\+\+Diffusion2)
 \begin{DoxyCompactList}\small\item\em \+: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemultiphase__eos_a15a1f78f9f889b58b7b9f45de20d5a48}{update\+\_\+velocity\+\_\+absorption}} (states, ndim, nphase, velocity\+\_\+absorption)
-\begin{DoxyCompactList}\small\item\em \+:Computes velocity absorption from diamond information \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em \+:$<$\+I\+N\+E\+R\+T\+I\+A O\+N\+L\+Y$>$Computes velocity absorption from diamond information \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemultiphase__eos_a98927879ae36867eabec1a9e6a5f22d8}{update\+\_\+velocity\+\_\+absorption\+\_\+coriolis}} (states, ndim, nphase, velocity\+\_\+absorption)
-\begin{DoxyCompactList}\small\item\em \+:Computes velocity absorption from diamond information \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em \+:Computes velocity absorption associated to coriolis forces from diamond information \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemultiphase__eos_a8f7f68ee8d294089b9077c480795eb9c}{update\+\_\+velocity\+\_\+source}} (states, Mdims, u\+\_\+source)
 \begin{DoxyCompactList}\small\item\em \+:Computes velocity source from diamond information \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespacemultiphase__eos_a2591de41e9c67340b83129722447923b}{saturation\+\_\+temperature}} (pressure)
@@ -48,19 +53,15 @@ real function \mbox{\hyperlink{namespacemultiphase__eos_a2591de41e9c67340b831297
 subroutine \mbox{\hyperlink{namespacemultiphase__eos_aeb644e3565a7e33c61f0e40e73a3c990}{get\+\_\+rockfluidprop}} (state, packed\+\_\+state, Mdims, ndgln, current\+\_\+time, update\+\_\+only)
 \begin{DoxyCompactList}\small\item\em \+:Gets the relperm max, the relperm exponent and the immobile fractions and stores them into packed state By index this is\+: 1) immobile fraction, 2) relperm max, 3)relperm exponent 4)Capillary entry pressure 5) Capillary exponent 6) Capillary imbition term The effective inmobile fraction is the min(inmobile,saturation\+\_\+flipping formula), being the saturation the value after a succesful non-\/linear solver convergence! This N\+E\+E\+DS to be called after a succesful non-\/linear solver (with update\+\_\+only) \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespacemultiphase__eos_ac01c010ab184f242b5ca90a44d40affa}{jwl}} (A, B, w, R1, R2, E0, p, roe, ro)
-\item 
+\begin{DoxyCompactList}\small\item\em J\+WL equation functions. \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespacemultiphase__eos_a7870c763c81a10948617345c3d0ca219}{diffjwl}} (A, B, w, R1, R2, E0, roe, ro)
-\item 
+\begin{DoxyCompactList}\small\item\em Diff of J\+WL equation functions. \end{DoxyCompactList}\item 
 real function, dimension(jwln) \mbox{\hyperlink{namespacemultiphase__eos_a8585fdea6dd3d2ca6508cf37236a7cc0}{jwldensity}} (eos\+\_\+coefs, pressure, ro0, J\+W\+Ln)
-\item 
+\begin{DoxyCompactList}\small\item\em Density of J\+WL equation functions. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemultiphase__eos_a3f5f7836734b85fb788ba57a2793eda7}{initialise\+\_\+porous\+\_\+media}} (Mdims, ndgln, packed\+\_\+state, state, exit\+\_\+initialise\+\_\+porous\+\_\+media)
-\begin{DoxyCompactList}\small\item\em \+: Initialising porous media models \begin{quote}
-Given a free water level (F\+WL) we simulate capillary gravity equilibration, control volumes below F\+WL is kept at residual lighter phase saturation This subroutine is called after each timestep and saturations overidden below F\+WL with the heavier phase \end{quote}
-\end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em \+: Initialising porous media models Given a free water level (F\+WL) we simulate capillary gravity equilibration, control volumes below F\+WL is kept at residual lighter phase saturation This subroutine is called after each timestep and saturations overidden below F\+WL with the heavier phase \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c}{retrieve\+\_\+reference\+\_\+density}} (state, packed\+\_\+state, iphase, icomp, nphase)
-\begin{DoxyCompactList}\small\item\em \+: For boussinesq porous media we need the reference density to ensure consistency when mixing with the porous density/\+Cp etc. \begin{quote}
-In this subroutine we retrieve the value given a phase, component. \end{quote}
-\end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em \+: For boussinesq porous media we need the reference density to ensure consistency when mixing with the porous density/\+Cp etc. In this subroutine we retrieve the value given a phase, component. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemultiphase__eos_a439637e5906b37a16646c186d7fc0daf}{flash\+\_\+gas\+\_\+dissolution}} (state, packed\+\_\+state, Mdims, ndgln)
 \begin{DoxyCompactList}\small\item\em \+: subroutine to dissolv phase2 into phase1. Currently only for system for phase 1 = water, phase 2 = gas Dissolve instantaneously the amount introduced in diamond in mol/m3 for C\+O2 a reference number is 38 mol/m3. Requires the first phase to have a concentration field \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsection*{Variables}
@@ -69,6 +70,9 @@ subroutine \mbox{\hyperlink{namespacemultiphase__eos_a439637e5906b37a16646c186d7
 real, parameter \mbox{\hyperlink{namespacemultiphase__eos_ae1ce91e74714b2c125d7a764aaa79ff3}{flooding\+\_\+hmin}} = 1e-\/5
 \end{DoxyCompactItemize}
 
+
+\doxysubsection{Detailed Description}
+This module contains subroutines related to the equations of state and other properties such as relative permeabilities, capillary, flash, etc. 
 
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespacemultiphase__eos_ac13395594592fe917fc20b7c3c2b7a5d}\label{namespacemultiphase__eos_ac13395594592fe917fc20b7c3c2b7a5d}} 
@@ -81,6 +85,11 @@ real, parameter \mbox{\hyperlink{namespacemultiphase__eos_ae1ce91e74714b2c125d7a
 
 \+: Read from diamond and decide which sort of density representation do we have 
 
+
+\begin{DoxyParams}{Parameters}
+{\em eos\+\_\+option\+\_\+path\+\_\+out} & Diamond path of the E\+OS to be used \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -98,6 +107,25 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: Subroutine where the absorption for the porous media is actually computed 
 
+
+\begin{DoxyParams}{Parameters}
+{\em nphase} & Number of phases \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Porous\+Media\+\_\+absorp} & I\+N\+O\+UT Absorption associated to the porous media \\
+\hline
+{\em Mdims} & Number of dimensions \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em S\+A\+T\+U\+RA} & Phasevolume\+Fraction field \\
+\hline
+{\em viscosities} & viscosity field \\
+\hline
+{\em inv\+\_\+\+Porous\+Media\+\_\+absorp} & (optional) I\+N\+O\+UT inverse of the absorption term \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -122,6 +150,17 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: Computes the density for the phases and the derivatives of the density 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em get\+\_\+\+Rho\+Cp} & This flags computes rho\+Cp instead of rho \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -146,6 +185,19 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: In this subroutine the capilalry pressure is computed based on the saturation and the formula used 
 
+
+\begin{DoxyParams}{Parameters}
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em Totele} & Total number of elements \\
+\hline
+{\em cv\+\_\+nloc} & Total number of C\+Vs per element \\
+\hline
+{\em C\+V\+\_\+funs} & Shape functions for the CV mesh \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -170,6 +222,16 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: Computes the density for the components and the derivatives of the density This is were the action is actually done, the other calculate rhos are wrappers 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc ~\newline
+ \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -194,6 +256,24 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: Here we compute component/solute/thermal diffusion coefficient 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Mdims} & Number of dimensions ~\newline
+ \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em Scalar\+Advection\+Field\+\_\+\+Diffusion} & I\+N\+O\+UT Field containing the diffusion \\
+\hline
+{\em divide\+\_\+by\+\_\+rho\+\_\+\+CP} & ! If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp \\
+\hline
+{\em Tracer\+Name} & ! For Passive\+Tracer with diffusion we pass down the name of the tracer \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -214,6 +294,19 @@ In this subroutine we calculate and update the density of the porous media based
 \begin{DoxyAuthor}{Author}
 Geraldine Regnier 
 \end{DoxyAuthor}
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Mdims} & Number of dimensions \\
+\hline
+{\em cv\+\_\+ndgln} & Global to local variables for the CV mesh \\
+\hline
+{\em drhodp.} & Derivative of the porous density \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -231,6 +324,32 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: Here we compute the absorption for porous media This is the sigma term defined in the papers and contains The permeability, the relative permeability, the viscosity and the saturation 
 
+
+\begin{DoxyParams}{Parameters}
+{\em nphase} & Number of phases \\
+\hline
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Porous\+Media\+\_\+absorp} & I\+N\+O\+UT Absorption associated to the porous media \\
+\hline
+{\em Mdims} & Number of dimensions \\
+\hline
+{\em C\+V\+\_\+funs} & Shape functions for the CV mesh \\
+\hline
+{\em C\+V\+\_\+\+G\+Idims} & Gauss integration numbers for CV fields \\
+\hline
+{\em Mspars} & Sparsity of the matrices \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em upwnd} & Sigmas to compute the fluxes at the interphase for porous media ~\newline
+ \\
+\hline
+{\em S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC} & Like upwnd but for the boundary \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -255,6 +374,27 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: Computes the density and the derivative of the density 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em iphase} & current phase \\
+\hline
+{\em icomp} & current component \\
+\hline
+{\em nphase} & number of phases \\
+\hline
+{\em ncomp} & number of components \\
+\hline
+{\em eos\+\_\+option\+\_\+path} & Path in diamond of the E\+OS to be used \\
+\hline
+{\em rho} & density \\
+\hline
+{\em drhodp.} & Dderivative of density \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -279,6 +419,22 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: Dispersion for porous media For thermal, the field density needs to be passed down, which ensures that even for boussinesq a reference density is still used 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Mdims} & Number of dimensions ~\newline
+ \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em density} & Density of the field (If present density means that we need to use a reference density to ensure consistency with the rest of the equation) \\
+\hline
+{\em Solute\+Dispersion} & I\+N\+O\+UT The field containing the dispersivity controbution for the given field \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -296,6 +452,19 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: This subroutine computed the gravity effect, i.\+e. rho $\ast$ g 
 
+
+\begin{DoxyParams}{Parameters}
+{\em Mdims} & Number of dimensions \\
+\hline
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em den} & Density field \\
+\hline
+{\em u\+\_\+source\+\_\+cv} & I\+N\+O\+UT Source term having now the gravity term \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -320,6 +489,19 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em Mdims} & Number of dimensions \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em Momentum\+\_\+\+Diffusion} & Viscosity term for Stokes/\+Navier-\/\+Stokes \\
+\hline
+{\em Momentum\+\_\+\+Diffusion2} & Shear viscosity? \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -344,6 +526,25 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: Computes the bulk density for components and the derivatives of the density 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em ncomp} & number of components \\
+\hline
+{\em nphase} & number of phases \\
+\hline
+{\em cv\+\_\+nonods} & number of CV nodes \\
+\hline
+{\em Density\+\_\+\+Component} & density of a component for compositional modelling \\
+\hline
+{\em Density} & (self descriptive) \\
+\hline
+{\em Density\+\_\+\+Cp.} & Density times Cp \\
+\hline
+{\em compute\+\_\+rho\+CP} & This flags computes rho\+Cp instead of rho \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -374,6 +575,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{diffjwl()}{diffjwl()}}
 {\footnotesize\ttfamily real function multiphase\+\_\+eos\+::diffjwl (\begin{DoxyParamCaption}\item[{real, intent(in)}]{A,  }\item[{real, intent(in)}]{B,  }\item[{real, intent(in)}]{w,  }\item[{real, intent(in)}]{R1,  }\item[{real, intent(in)}]{R2,  }\item[{real, intent(in)}]{E0,  }\item[{real, intent(in)}]{roe,  }\item[{real, intent(in)}]{ro }\end{DoxyParamCaption})}
 
+
+
+Diff of J\+WL equation functions. 
+
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -391,6 +596,17 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: subroutine to dissolv phase2 into phase1. Currently only for system for phase 1 = water, phase 2 = gas Dissolve instantaneously the amount introduced in diamond in mol/m3 for C\+O2 a reference number is 38 mol/m3. Requires the first phase to have a concentration field 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -408,6 +624,21 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+:This functions returns the derivative of the capillary pressure with respect to the saturation 
 
+
+\begin{DoxyParams}{Parameters}
+{\em Sat} & Phase Volume fraction at current CV \\
+\hline
+{\em Pe} & Entry pressure at current E\+LE \\
+\hline
+{\em a} & Exponent at current E\+LE \\
+\hline
+{\em C\+V\+\_\+\+Immobile\+\_\+\+Fraction} & Immobile fraction at current CV \\
+\hline
+{\em iphase} & current phase \\
+\hline
+{\em nphase} & Number of phases \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -425,6 +656,25 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+:Calculates the relative permeability for 1, 2 (Brooks-\/corey) or 3 (stone\textquotesingle{}s model) phases 
 
+
+\begin{DoxyParams}{Parameters}
+{\em nphase} & Number of phases \\
+\hline
+{\em iphase} & current phase \\
+\hline
+{\em material\+\_\+absorption} & I\+N\+O\+UT Absorption associated to the porous media \\
+\hline
+{\em sat} & saturation at current CV \\
+\hline
+{\em visco} & viscosity at current CV \\
+\hline
+{\em C\+V\+\_\+\+Immobile\+\_\+fract} & Immobile fraction at current CV \\
+\hline
+{\em Corey\+\_\+exponent} & Exponent of the relperm curve at current E\+LE \\
+\hline
+{\em Endpoint\+\_\+relperm} & End point of the relperm curve at current E\+LE \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -449,6 +699,23 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+:Calculates the relative permeability for 1, 2 (Brooks-\/corey) or 3 (stone\textquotesingle{}s model) phases 
 
+
+\begin{DoxyParams}{Parameters}
+{\em nphase} & Number of phases \\
+\hline
+{\em iphase} & current phase \\
+\hline
+{\em sat} & saturation at current CV \\
+\hline
+{\em C\+V\+\_\+\+Immobile\+\_\+fract} & Immobile fraction at current CV \\
+\hline
+{\em Corey\+\_\+exponent} & Exponent of the relperm curve at current E\+LE \\
+\hline
+{\em Endpoint\+\_\+relperm} & End point of the relperm curve at current E\+LE \\
+\hline
+{\em Kr} & I\+N\+O\+UT Relative permeability at current CV \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -473,6 +740,21 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+:Gets the relperm max, the relperm exponent and the immobile fractions and stores them into packed state By index this is\+: 1) immobile fraction, 2) relperm max, 3)relperm exponent 4)Capillary entry pressure 5) Capillary exponent 6) Capillary imbition term The effective inmobile fraction is the min(inmobile,saturation\+\_\+flipping formula), being the saturation the value after a succesful non-\/linear solver convergence! This N\+E\+E\+DS to be called after a succesful non-\/linear solver (with update\+\_\+only) 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em current\+\_\+time} & current time in type(real). Only for the first time ever, not for checkpointing, overwrite the saturation flipping value with the initial one \\
+\hline
+{\em update\+\_\+only} & If true then only the Immobile fraction is updated (for Land trapping modelling only) \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -495,10 +777,21 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-\+: Initialising porous media models \begin{quote}
-Given a free water level (F\+WL) we simulate capillary gravity equilibration, control volumes below F\+WL is kept at residual lighter phase saturation This subroutine is called after each timestep and saturations overidden below F\+WL with the heavier phase \end{quote}
+\+: Initialising porous media models Given a free water level (F\+WL) we simulate capillary gravity equilibration, control volumes below F\+WL is kept at residual lighter phase saturation This subroutine is called after each timestep and saturations overidden below F\+WL with the heavier phase 
 
 
+\begin{DoxyParams}{Parameters}
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em exit\+\_\+initialise\+\_\+porous\+\_\+media} & Activates the option to after initialising stop the simulation \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -512,6 +805,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{jwl()}{jwl()}}
 {\footnotesize\ttfamily real function multiphase\+\_\+eos\+::jwl (\begin{DoxyParamCaption}\item[{real, intent(in)}]{A,  }\item[{real, intent(in)}]{B,  }\item[{real, intent(in)}]{w,  }\item[{real, intent(in)}]{R1,  }\item[{real, intent(in)}]{R2,  }\item[{real, intent(in)}]{E0,  }\item[{real, intent(in)}]{p,  }\item[{real, intent(in)}]{roe,  }\item[{real, intent(in)}]{ro }\end{DoxyParamCaption})}
 
+
+
+J\+WL equation functions. 
+
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -524,6 +821,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{jwldensity@{jwldensity}!multiphase\_eos@{multiphase\_eos}}
 \doxysubsubsection{\texorpdfstring{jwldensity()}{jwldensity()}}
 {\footnotesize\ttfamily real function, dimension( jwln ) multiphase\+\_\+eos\+::jwldensity (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(in)}]{eos\+\_\+coefs,  }\item[{real, dimension( \+: ), intent(in)}]{pressure,  }\item[{real, dimension( \+: ), intent(in)}]{ro0,  }\item[{integer, intent(in)}]{J\+W\+Ln }\end{DoxyParamCaption})}
+
+
+
+Density of J\+WL equation functions. 
 
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
@@ -540,10 +841,21 @@ Here is the call graph for this function\+:\nopagebreak
 
 
 
-\+: For boussinesq porous media we need the reference density to ensure consistency when mixing with the porous density/\+Cp etc. \begin{quote}
-In this subroutine we retrieve the value given a phase, component. \end{quote}
+\+: For boussinesq porous media we need the reference density to ensure consistency when mixing with the porous density/\+Cp etc. In this subroutine we retrieve the value given a phase, component. 
 
 
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em iphase} & Current phase \\
+\hline
+{\em icomp} & current component \\
+\hline
+{\em nphase} & Number of phases \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -576,8 +888,19 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-\+:Computes velocity absorption from diamond information 
+\+:$<$\+I\+N\+E\+R\+T\+I\+A O\+N\+L\+Y$>$Computes velocity absorption from diamond information 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em ndim} & Number of dimensions \\
+\hline
+{\em nphase} & Number of phases \\
+\hline
+{\em velocity\+\_\+absorption} & Absorption term to be updated here \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -593,8 +916,19 @@ Here is the caller graph for this function\+:\nopagebreak
 
 
 
-\+:Computes velocity absorption from diamond information 
+\+:Computes velocity absorption associated to coriolis forces from diamond information 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em ndim} & Number of dimensions \\
+\hline
+{\em nphase} & Number of phases \\
+\hline
+{\em velocity\+\_\+absorption} & Absorption term to be updated here \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -612,6 +946,13 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+:Computes velocity source from diamond information 
 
+
+\begin{DoxyParams}{Parameters}
+{\em state} & Linked list containing all the fields defined in diamond and considered by Fluidity \\
+\hline
+{\em Mdims} & Data type storing all the dimensionrs describing the mesh, fields, nodes, etc. \\
+\hline
+\end{DoxyParams}
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}

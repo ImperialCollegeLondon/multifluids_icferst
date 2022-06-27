@@ -2,7 +2,7 @@
 \label{namespacecopy__outof__state}\index{copy\_outof\_state@{copy\_outof\_state}}
 
 
-This module enables the multiphase prototype code to interact with state by copying everything required from state to I\+C\+F\+E\+R\+ST.  
+This module enables the multiphase prototype code to interact with state by copying everything required from state to I\+C\+F\+E\+R\+ST, adaptive time-\/stepping, outfluxes computation, tunneled B\+Cs and Darcy velocity.  
 
 
 \doxysubsection*{Functions/\+Subroutines}
@@ -63,7 +63,7 @@ subroutine, public \mbox{\hyperlink{namespacecopy__outof__state_a52b4659aa8636bb
 
 
 \doxysubsection{Detailed Description}
-This module enables the multiphase prototype code to interact with state by copying everything required from state to I\+C\+F\+E\+R\+ST. 
+This module enables the multiphase prototype code to interact with state by copying everything required from state to I\+C\+F\+E\+R\+ST, adaptive time-\/stepping, outfluxes computation, tunneled B\+Cs and Darcy velocity. 
 
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a}\label{namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a}} 
@@ -81,7 +81,7 @@ This module enables the multiphase prototype code to interact with state by copy
 \end{DoxyAuthor}
 
 \begin{DoxyParams}{Parameters}
-{\em Mdims} & Dimensions of the model \\
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
 \hline
 {\em packed\+\_\+state} & Linked list with the fields for I\+C\+F\+E\+R\+ST \\
 \hline

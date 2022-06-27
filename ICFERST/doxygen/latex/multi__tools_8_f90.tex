@@ -9,16 +9,11 @@ Include dependency graph for multi\+\_\+tools.\+F90\+:\nopagebreak
 \includegraphics[width=261pt]{multi__tools_8_f90__incl}
 \end{center}
 \end{figure}
-\doxysubsection*{Data Types}
-\begin{DoxyCompactItemize}
-\item 
-type \mbox{\hyperlink{structmulti__tools_1_1bad__elements}{multi\+\_\+tools\+::bad\+\_\+elements}}
-\begin{DoxyCompactList}\small\item\em \+: Type to keep an eye on the quality of the elements @\+D\+E\+P\+R\+E\+C\+A\+T\+ED \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsection*{Modules}
 \begin{DoxyCompactItemize}
 \item 
 module \mbox{\hyperlink{namespacemulti__tools}{multi\+\_\+tools}}
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em This module contains the generic subroutines required by I\+C\+F\+E\+R\+ST, for example quicksort. \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
@@ -29,11 +24,11 @@ real function \mbox{\hyperlink{namespacemulti__tools_a00bc5585e5ce49ad92386eb4ac
 pure real function \mbox{\hyperlink{namespacemulti__tools_a9bc979224e98f447e412133da3464728}{multi\+\_\+tools\+::tolfun}} (value)
 \begin{DoxyCompactList}\small\item\em \+:This function is a tolerance function for a value which is used as a denominator. If the absolute value of V\+A\+L\+UE less than 1E-\/10, then it returns S\+I\+G\+N(\+A,\+B) i.\+e. the absolute value of A times the sign of B where A is T\+O\+L\+E\+R\+A\+N\+CE and B is V\+A\+L\+UE. \end{DoxyCompactList}\item 
 pure real function, dimension(size(val)) \mbox{\hyperlink{namespacemulti__tools_a4f90f9b3033bd34d8d52d140a8b6d8cf}{multi\+\_\+tools\+::tolfun\+\_\+many}} (val)
-\item 
+\begin{DoxyCompactList}\small\item\em \+:This function is a tolerance function for a scalar which is used as a denominator. If the absolute value of V\+A\+L\+UE less than 1E-\/10, then it returns S\+I\+G\+N(\+A,\+B) i.\+e. the absolute value of A times the sign of B where A is T\+O\+L\+E\+R\+A\+N\+CE and B is V\+A\+L\+UE. \end{DoxyCompactList}\item 
 real function \mbox{\hyperlink{namespacemulti__tools_a9455b92cfb559c3b76e4b77580886c47}{multi\+\_\+tools\+::tetvolume}} (x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3)
 \item 
 pure real function, dimension(size(val)) \mbox{\hyperlink{namespacemulti__tools_ad2dc4462bad46ef99ca0057cb3c91262}{multi\+\_\+tools\+::vtolfun}} (val)
-\item 
+\begin{DoxyCompactList}\small\item\em \+:This function is a tolerance function for a vector which is used as a denominator. If the absolute value of V\+A\+L\+UE less than 1E-\/10, then it returns S\+I\+G\+N(\+A,\+B) i.\+e. the absolute value of A times the sign of B where A is T\+O\+L\+E\+R\+A\+N\+CE and B is V\+A\+L\+UE. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__tools_a0670e50b3781879bb4eefa80cd56911f}{multi\+\_\+tools\+::nan\+\_\+check}} (a, k)
 \begin{DoxyCompactList}\small\item\em \+:Checks if a number is a Nan \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacemulti__tools_af5b0f8124b8423342bd6fb38e7d244ec}{multi\+\_\+tools\+::nan\+\_\+check\+\_\+arr}} (a, k)

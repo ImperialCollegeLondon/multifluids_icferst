@@ -1,4 +1,4 @@
 <map id="matrix_operations::matdmatinv" name="matrix_operations::matdmatinv">
-<area shape="rect" id="node1" title=" " alt="" coords="5,5,155,47"/>
+<area shape="rect" id="node1" title="calculate DMATINV" alt="" coords="5,5,155,47"/>
 <area shape="rect" id="node2" href="$namespacematrix__operations.html#a3795359fc116fe5770ad11a89bbccc00" title=": This sub finds the inverse of the matrix A and puts it back in A. MAT, MAT2, X and B are working ve..." alt="" coords="203,5,352,47"/>
 </map>

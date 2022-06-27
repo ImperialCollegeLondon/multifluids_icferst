@@ -17,10 +17,10 @@
 <area shape="rect" id="node27" href="$namespacecopy__outof__state.html#a25e9236f15044530da105400e0e3e3f4" title=": Obtain the type of element u_ele_type = cv_ele_type = p_ele_type will flag the dimension and type o..." alt="" coords="251,1319,413,1361"/>
 <area shape="rect" id="node28" href="$namespacecopy__outof__state.html#ab5c876f8f241119d1dedc0bffa8fa159" title="This subroutine extracts all primary variables associated with the mesh from state,..." alt="" coords="249,1385,415,1426"/>
 <area shape="rect" id="node29" href="$namespacemultiphase__eos.html#aeb644e3565a7e33c61f0e40e73a3c990" title=":Gets the relperm max, the relperm exponent and the immobile fractions and stores them into packed st..." alt="" coords="255,1450,409,1491"/>
-<area shape="rect" id="node31" href="$namespacespact.html#aeaf3853765a92827bf24c599fe79364e" title=" " alt="" coords="259,797,405,838"/>
+<area shape="rect" id="node31" href="$namespacespact.html#aeaf3853765a92827bf24c599fe79364e" title="Allocate and obtain the sparsity patterns of the two types of matricies for (momentum + cty) and for ..." alt="" coords="259,797,405,838"/>
 <area shape="rect" id="node44" href="$namespacemulti__data__types.html#aa99e43604028836507ef0ebc746beafa" title="Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer ..." alt="" coords="233,1515,431,1557"/>
-<area shape="rect" id="node45" href="$namespacemulti__pipes.html#adf22cecb27df6cddfd856d95c388868b" title=" " alt="" coords="225,1581,439,1622"/>
-<area shape="rect" id="node46" href="$namespacemulti__interpolation.html#a4f1475bd24977140d41a9601fce62e7f" title=" " alt="" coords="259,1646,405,1687"/>
+<area shape="rect" id="node45" href="$namespacemulti__pipes.html#adf22cecb27df6cddfd856d95c388868b" title="This subroutine reads information from diamond and populates the necessary fields For P0DGP1 gamma is..." alt="" coords="225,1581,439,1622"/>
+<area shape="rect" id="node46" href="$namespacemulti__interpolation.html#a4f1475bd24977140d41a9601fce62e7f" title="Mehs to mesh interpollation method, in Diamond DG_Galerkin." alt="" coords="259,1646,405,1687"/>
 <area shape="rect" id="node47" href="$namespacemulti__interpolation.html#adb81d167c7226e84c335c34c9a7e98e6" title=" " alt="" coords="219,1711,445,1753"/>
 <area shape="rect" id="node48" href="$namespacecopy__outof__state.html#afca89971343f6586b89f1cddda00b2c8" title=": This subroutine creates packed_state from state(:) and links the appropiate memory so it is acessib..." alt="" coords="245,261,419,302"/>
 <area shape="rect" id="node49" href="$namespacecopy__outof__state.html#adba75f9a3f64d519ecf58b2b9159d629" title=": Prepares the memory to compute absorption fields" alt="" coords="236,1777,428,1818"/>
@@ -41,12 +41,12 @@
 <area shape="rect" id="node33" href="$namespacesparsity__nd.html#ad2675c1d6e4a4f583ae88aca4f1c0698" title=" " alt="" coords="513,997,684,1024"/>
 <area shape="rect" id="node34" href="$namespacespact.html#aaa6676a57a39f977170aba9c14e142d9" title=" " alt="" coords="519,1048,678,1075"/>
 <area shape="rect" id="node35" href="$namespacesparsity__nd.html#a455ef657aa7fb1aaa3bff1b71aaa24a5" title=" " alt="" coords="503,713,695,754"/>
-<area shape="rect" id="node36" href="$namespacesparsity__1d.html#a71b686e37752d791fc7d1ee0ed8f2e99" title=" " alt="" coords="518,1099,679,1125"/>
-<area shape="rect" id="node37" href="$namespacesparsity__1d.html#aef815576501475f4594796f76cf24cd1" title=" " alt="" coords="518,1150,679,1191"/>
-<area shape="rect" id="node38" href="$namespacesparsity__nd.html#a153ed29261138396f681d34481052706" title=" " alt="" coords="519,1215,678,1257"/>
-<area shape="rect" id="node39" href="$namespacesparsity__nd.html#afd69d7ff0e0711f9339ea44001f52fa9" title=" " alt="" coords="505,1281,692,1322"/>
-<area shape="rect" id="node40" href="$namespacesparsity__nd.html#ae461c112b56d8320a70df9e84a8e3cd9" title=" " alt="" coords="513,1346,685,1387"/>
-<area shape="rect" id="node41" href="$namespacesparsity__nd.html#a353ce2dc64a8fd11e0a28b7935cdf7ae" title=" " alt="" coords="521,779,676,805"/>
+<area shape="rect" id="node36" href="$namespacesparsity__1d.html#a71b686e37752d791fc7d1ee0ed8f2e99" title="define sparsity..." alt="" coords="518,1099,679,1125"/>
+<area shape="rect" id="node37" href="$namespacesparsity__1d.html#aef815576501475f4594796f76cf24cd1" title="define sparsity..." alt="" coords="518,1150,679,1191"/>
+<area shape="rect" id="node38" href="$namespacesparsity__nd.html#a153ed29261138396f681d34481052706" title="Extend the sparsity to a multiphase sparsity." alt="" coords="519,1215,678,1257"/>
+<area shape="rect" id="node39" href="$namespacesparsity__nd.html#afd69d7ff0e0711f9339ea44001f52fa9" title="Extend the sparsity to a multiphase sparsity." alt="" coords="505,1281,692,1322"/>
+<area shape="rect" id="node40" href="$namespacesparsity__nd.html#ae461c112b56d8320a70df9e84a8e3cd9" title="Form the sparsity of the phase coupled DG discretised matrix from the element&#45;wise multi&#45;phase sparsi..." alt="" coords="513,1346,685,1387"/>
+<area shape="rect" id="node41" href="$namespacesparsity__nd.html#a353ce2dc64a8fd11e0a28b7935cdf7ae" title="This subroutine forms the matrix operating on the pressure vector. It is found from C1T ML C1 + C2T M..." alt="" coords="521,779,676,805"/>
 <area shape="rect" id="node42" href="$namespacesparsity__1d.html#ae6ef1904813ab1128a01a1311670976a" title=" " alt="" coords="768,792,912,819"/>
 <area shape="rect" id="node43" href="$namespacesparsity__nd.html#abe3ffb7d8eabe9d7bea212a4ad5450af" title=" " alt="" coords="511,880,687,907"/>
 </map>

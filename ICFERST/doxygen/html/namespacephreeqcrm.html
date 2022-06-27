@@ -9,6 +9,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -48,6 +52,23 @@ $(function() {
 });
 /* @license-end */</script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:cf05388f2679ee054f2beb29a391d25f4e673ac3&amp;dn=gpl-2.0.txt GPL-v2 */
+$(document).ready(function(){initNavTree('namespacephreeqcrm.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -62,7 +83,6 @@ $(function() {
 </iframe>
 </div>
 
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#func-members">Functions/Subroutines</a>  </div>
@@ -549,8 +569,8 @@ Here is the caller graph for this function:</div>
 <area shape="rect" href="namespacephreeqcrm.html#a174eb1088d6e5a2f50d2d819b757edc4" title="Set the saturation of each reaction cell. Saturation is a fraction ranging from 0 to 1...." alt="" coords="737,1525,947,1552"/>
 <area shape="rect" href="namespacephreeqcrm.html#a7003da44b7bf491aea37fd28fae97685" title="Set the temperature for each reaction cell. If RM_SetTemperature is not called, worker solutions will..." alt="" coords="729,1576,955,1603"/>
 <area shape="rect" href="namespacephreeqcrm.html#a175641b24fc5ac336ef91114f134b799" title="Set solution concentrations in the reaction cells based on the vector of aqueous species concentratio..." alt="" coords="679,1627,1005,1653"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,1119,611,1161"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title=" " alt="" coords="467,1011,611,1053"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,1119,611,1161"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title="Call PHREEQCRM and compute the reactions of the fields defined associated with the input ID." alt="" coords="467,1011,611,1053"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,1087,419,1129"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,1087,171,1129"/>
 </map>
@@ -763,7 +783,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a8b7992170b1f1d5cd884a42e3197af7f_icgraph.png" border="0" usemap="#namespacephreeqcrm_a8b7992170b1f1d5cd884a42e3197af7f_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a8b7992170b1f1d5cd884a42e3197af7f_icgraph" id="namespacephreeqcrm_a8b7992170b1f1d5cd884a42e3197af7f_icgraph">
 <area shape="rect" title="Creates a reaction module. If the code is compiled with the preprocessor directive USE_OPENMP,..." alt="" coords="659,13,825,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -1139,8 +1159,8 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a6553114482cfbf520b545a4f67dcf716_icgraph.png" border="0" usemap="#namespacephreeqcrm_a6553114482cfbf520b545a4f67dcf716_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a6553114482cfbf520b545a4f67dcf716_icgraph" id="namespacephreeqcrm_a6553114482cfbf520b545a4f67dcf716_icgraph">
 <area shape="rect" title="Returns the number of items in the list of all elements in the InitialPhreeqc instance...." alt="" coords="659,46,889,73"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title=" " alt="" coords="467,71,611,112"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title="Call PHREEQCRM and compute the reactions of the fields defined associated with the input ID." alt="" coords="467,71,611,112"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,39,419,80"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,39,171,80"/>
 </map>
@@ -1330,8 +1350,8 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a315d001eefce7c311fe237a6aafe15c6_icgraph.png" border="0" usemap="#namespacephreeqcrm_a315d001eefce7c311fe237a6aafe15c6_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a315d001eefce7c311fe237a6aafe15c6_icgraph" id="namespacephreeqcrm_a315d001eefce7c311fe237a6aafe15c6_icgraph">
 <area shape="rect" title="Retrieves an item from the reaction&#45;module component list that was generated by calls to RM_FindCompo..." alt="" coords="659,46,877,73"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title=" " alt="" coords="467,71,611,112"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title="Call PHREEQCRM and compute the reactions of the fields defined associated with the input ID." alt="" coords="467,71,611,112"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,39,419,80"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,39,171,80"/>
 </map>
@@ -1448,8 +1468,8 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a89e51efde75f2daf0a1195029417f33c_icgraph.png" border="0" usemap="#namespacephreeqcrm_a89e51efde75f2daf0a1195029417f33c_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a89e51efde75f2daf0a1195029417f33c_icgraph" id="namespacephreeqcrm_a89e51efde75f2daf0a1195029417f33c_icgraph">
 <area shape="rect" title="Transfer solution concentrations from each reaction cell to the concentration array given in the argu..." alt="" coords="659,46,901,73"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title=" " alt="" coords="467,71,611,112"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title="Call PHREEQCRM and compute the reactions of the fields defined associated with the input ID." alt="" coords="467,71,611,112"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,39,419,80"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,39,171,80"/>
 </map>
@@ -4793,7 +4813,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_ac3d7e7db76abda97a3d11b3ff1903322_icgraph.png" border="0" usemap="#namespacephreeqcrm_ac3d7e7db76abda97a3d11b3ff1903322_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_ac3d7e7db76abda97a3d11b3ff1903322_icgraph" id="namespacephreeqcrm_ac3d7e7db76abda97a3d11b3ff1903322_icgraph">
 <area shape="rect" title="Transfer solutions and reactants from the InitialPhreeqc instance to the reaction&#45;module workers,..." alt="" coords="659,13,929,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -5035,7 +5055,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a14f68279b5b8e1622c36bcc6eb80ede9_icgraph.png" border="0" usemap="#namespacephreeqcrm_a14f68279b5b8e1622c36bcc6eb80ede9_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a14f68279b5b8e1622c36bcc6eb80ede9_icgraph" id="namespacephreeqcrm_a14f68279b5b8e1622c36bcc6eb80ede9_icgraph">
 <area shape="rect" title="Load a database for all IPhreeqc instances–workers, InitialPhreeqc, and Utility. All definitions of t..." alt="" coords="659,13,872,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -5352,8 +5372,8 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a7a50c4b05647d313f1ff16a1b3df379f_icgraph.png" border="0" usemap="#namespacephreeqcrm_a7a50c4b05647d313f1ff16a1b3df379f_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a7a50c4b05647d313f1ff16a1b3df379f_icgraph" id="namespacephreeqcrm_a7a50c4b05647d313f1ff16a1b3df379f_icgraph">
 <area shape="rect" title="Runs a reaction step for all of the cells in the reaction module. Normally, tranport concentrations a..." alt="" coords="659,46,835,73"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title=" " alt="" coords="467,71,611,112"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title="Call PHREEQCRM and compute the reactions of the fields defined associated with the input ID." alt="" coords="467,71,611,112"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,39,419,80"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,39,171,80"/>
 </map>
@@ -5438,7 +5458,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a5163c6455abf6aeff6eee80098fd1718_icgraph.png" border="0" usemap="#namespacephreeqcrm_a5163c6455abf6aeff6eee80098fd1718_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a5163c6455abf6aeff6eee80098fd1718_icgraph" id="namespacephreeqcrm_a5163c6455abf6aeff6eee80098fd1718_icgraph">
 <area shape="rect" title="Run a PHREEQC input file. The first three arguments determine which IPhreeqc instances will run the f..." alt="" coords="659,13,825,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -5524,7 +5544,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_ae564bbeb02f655cdf8f9ec36f681356c_icgraph.png" border="0" usemap="#namespacephreeqcrm_ae564bbeb02f655cdf8f9ec36f681356c_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_ae564bbeb02f655cdf8f9ec36f681356c_icgraph" id="namespacephreeqcrm_ae564bbeb02f655cdf8f9ec36f681356c_icgraph">
 <area shape="rect" title="Run a PHREEQC input string. The first three arguments determine which IPhreeqc instances will run the..." alt="" coords="659,13,841,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -5644,7 +5664,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a73b92c2118ef8c81acb35be400e4c422_icgraph.png" border="0" usemap="#namespacephreeqcrm_a73b92c2118ef8c81acb35be400e4c422_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a73b92c2118ef8c81acb35be400e4c422_icgraph" id="namespacephreeqcrm_a73b92c2118ef8c81acb35be400e4c422_icgraph">
 <area shape="rect" title="Select whether to include H2O in the component list. The concentrations of H and O must be known accu..." alt="" coords="659,13,901,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -5730,7 +5750,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_ae8fd22c076ee041c289258d28a904fda_icgraph.png" border="0" usemap="#namespacephreeqcrm_ae8fd22c076ee041c289258d28a904fda_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_ae8fd22c076ee041c289258d28a904fda_icgraph" id="namespacephreeqcrm_ae8fd22c076ee041c289258d28a904fda_icgraph">
 <area shape="rect" title="Use the vector of concentrations (c) to set the moles of components in each reaction cell...." alt="" coords="659,13,900,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title="Call PHREEQCRM and compute the reactions of the fields defined associated with the input ID." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -6002,7 +6022,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a7a5d3eb33254e9940bc9f3d9f3c22506_icgraph.png" border="0" usemap="#namespacephreeqcrm_a7a5d3eb33254e9940bc9f3d9f3c22506_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a7a5d3eb33254e9940bc9f3d9f3c22506_icgraph" id="namespacephreeqcrm_a7a5d3eb33254e9940bc9f3d9f3c22506_icgraph">
 <area shape="rect" title="Set the action to be taken when the reaction module encounters an error. Options are 0,..." alt="" coords="659,13,921,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -6066,7 +6086,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a7b17b553879a7112b51019930dba56d6_icgraph.png" border="0" usemap="#namespacephreeqcrm_a7b17b553879a7112b51019930dba56d6_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a7b17b553879a7112b51019930dba56d6_icgraph" id="namespacephreeqcrm_a7b17b553879a7112b51019930dba56d6_icgraph">
 <area shape="rect" title="Set the property that controls whether error messages are generated and displayed...." alt="" coords="659,13,851,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -6416,7 +6436,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a3ad87e394419ba3eef2908d643685b3d_icgraph.png" border="0" usemap="#namespacephreeqcrm_a3ad87e394419ba3eef2908d643685b3d_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a3ad87e394419ba3eef2908d643685b3d_icgraph" id="namespacephreeqcrm_a3ad87e394419ba3eef2908d643685b3d_icgraph">
 <area shape="rect" title="Sets the property for partitioning solids between the saturated and unsaturated parts of a partially ..." alt="" coords="659,13,912,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -6491,7 +6511,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a023fad873abc6f15379735add4ea32fe_icgraph.png" border="0" usemap="#namespacephreeqcrm_a023fad873abc6f15379735add4ea32fe_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a023fad873abc6f15379735add4ea32fe_icgraph" id="namespacephreeqcrm_a023fad873abc6f15379735add4ea32fe_icgraph">
 <area shape="rect" title="Set the porosity for each reaction cell. The volume of water in a reaction cell is the product of the..." alt="" coords="659,13,857,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -6753,7 +6773,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_ae135697ee27c825b1e43932d203f4b89_icgraph.png" border="0" usemap="#namespacephreeqcrm_ae135697ee27c825b1e43932d203f4b89_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_ae135697ee27c825b1e43932d203f4b89_icgraph" id="namespacephreeqcrm_ae135697ee27c825b1e43932d203f4b89_icgraph">
 <area shape="rect" title="Set the load&#45;balancing algorithm. PhreeqcRM attempts to rebalance the load of each thread or process ..." alt="" coords="659,13,907,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -6817,7 +6837,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a604f311ff4dd47e0b55c8323672c8377_icgraph.png" border="0" usemap="#namespacephreeqcrm_a604f311ff4dd47e0b55c8323672c8377_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a604f311ff4dd47e0b55c8323672c8377_icgraph" id="namespacephreeqcrm_a604f311ff4dd47e0b55c8323672c8377_icgraph">
 <area shape="rect" title="Sets the fraction of cells that are transferred among threads or processes when rebalancing...." alt="" coords="659,13,917,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -6884,7 +6904,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_aef0cbea7ba7955c4634e495ccafdbb87_icgraph.png" border="0" usemap="#namespacephreeqcrm_aef0cbea7ba7955c4634e495ccafdbb87_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_aef0cbea7ba7955c4634e495ccafdbb87_icgraph" id="namespacephreeqcrm_aef0cbea7ba7955c4634e495ccafdbb87_icgraph">
 <area shape="rect" title="Set the representative volume of each reaction cell. By default the representative volume of each rea..." alt="" coords="659,13,948,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -7118,7 +7138,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_af657b0d31e9d09a40a429c668f7a4f02_icgraph.png" border="0" usemap="#namespacephreeqcrm_af657b0d31e9d09a40a429c668f7a4f02_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_af657b0d31e9d09a40a429c668f7a4f02_icgraph" id="namespacephreeqcrm_af657b0d31e9d09a40a429c668f7a4f02_icgraph">
 <area shape="rect" title="Sets the value of the species&#45;save property. This method enables use of PhreeqcRM with multicomponent..." alt="" coords="659,13,900,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -7247,7 +7267,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_afc1f9b547402556fa4172db18b3c9ed3_icgraph.png" border="0" usemap="#namespacephreeqcrm_afc1f9b547402556fa4172db18b3c9ed3_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_afc1f9b547402556fa4172db18b3c9ed3_icgraph" id="namespacephreeqcrm_afc1f9b547402556fa4172db18b3c9ed3_icgraph">
 <area shape="rect" title="Set current simulation time for the reaction module." alt="" coords="659,13,833,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -7364,7 +7384,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a2023052b21c98a6837fbb290186fb83f_icgraph.png" border="0" usemap="#namespacephreeqcrm_a2023052b21c98a6837fbb290186fb83f_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a2023052b21c98a6837fbb290186fb83f_icgraph" id="namespacephreeqcrm_a2023052b21c98a6837fbb290186fb83f_icgraph">
 <area shape="rect" title="Set current time step for the reaction module. This is the length of time over which kinetic reaction..." alt="" coords="659,13,861,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -7430,7 +7450,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_ab18195c2924f441603e7ecd1f9b63964_icgraph.png" border="0" usemap="#namespacephreeqcrm_ab18195c2924f441603e7ecd1f9b63964_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_ab18195c2924f441603e7ecd1f9b63964_icgraph" id="namespacephreeqcrm_ab18195c2924f441603e7ecd1f9b63964_icgraph">
 <area shape="rect" title="Sets input units for exchangers. In PHREEQC input, exchangers are defined by moles of exchange sites ..." alt="" coords="659,13,899,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -7496,7 +7516,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_ac2b7fa3afd81e2b5342c5ee297f7d209_icgraph.png" border="0" usemap="#namespacephreeqcrm_ac2b7fa3afd81e2b5342c5ee297f7d209_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_ac2b7fa3afd81e2b5342c5ee297f7d209_icgraph" id="namespacephreeqcrm_ac2b7fa3afd81e2b5342c5ee297f7d209_icgraph">
 <area shape="rect" title="Set input units for gas phases. In PHREEQC input, gas phases are defined by moles of component gases ..." alt="" coords="659,13,897,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -7565,7 +7585,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_ab20b759fec4e14f04bf607f3783f9657_icgraph.png" border="0" usemap="#namespacephreeqcrm_ab20b759fec4e14f04bf607f3783f9657_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_ab20b759fec4e14f04bf607f3783f9657_icgraph" id="namespacephreeqcrm_ab20b759fec4e14f04bf607f3783f9657_icgraph">
 <area shape="rect" title="Set input units for kinetic reactants." alt="" coords="659,13,887,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -7631,7 +7651,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_aa53b2e3006b83822b9bdbd37c67f7cee_icgraph.png" border="0" usemap="#namespacephreeqcrm_aa53b2e3006b83822b9bdbd37c67f7cee_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_aa53b2e3006b83822b9bdbd37c67f7cee_icgraph" id="namespacephreeqcrm_aa53b2e3006b83822b9bdbd37c67f7cee_icgraph">
 <area shape="rect" title="Set input units for pure phase assemblages (equilibrium phases). In PHREEQC input,..." alt="" coords="659,13,931,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -7698,7 +7718,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a35e0b41c327e3f5df228e73bc2fd5ca7_icgraph.png" border="0" usemap="#namespacephreeqcrm_a35e0b41c327e3f5df228e73bc2fd5ca7_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a35e0b41c327e3f5df228e73bc2fd5ca7_icgraph" id="namespacephreeqcrm_a35e0b41c327e3f5df228e73bc2fd5ca7_icgraph">
 <area shape="rect" title="Solution concentration units used by the transport model. Options are 1, mg/L; 2 mol/L; or 3,..." alt="" coords="659,13,888,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -7764,7 +7784,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_aa88e3c585e128695991c98ff3b6fe28c_icgraph.png" border="0" usemap="#namespacephreeqcrm_aa88e3c585e128695991c98ff3b6fe28c_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_aa88e3c585e128695991c98ff3b6fe28c_icgraph" id="namespacephreeqcrm_aa88e3c585e128695991c98ff3b6fe28c_icgraph">
 <area shape="rect" title="Set input units for solid&#45;solution assemblages. In PHREEQC, solid solutions are defined by moles of e..." alt="" coords="659,13,929,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -7830,7 +7850,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_afb9852a7e4d8a41fa5b9e6fa6df15a42_icgraph.png" border="0" usemap="#namespacephreeqcrm_afb9852a7e4d8a41fa5b9e6fa6df15a42_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_afb9852a7e4d8a41fa5b9e6fa6df15a42_icgraph" id="namespacephreeqcrm_afb9852a7e4d8a41fa5b9e6fa6df15a42_icgraph">
 <area shape="rect" title="Set input units for surfaces. In PHREEQC input, surfaces are defined by moles of surface sites (Mp)...." alt="" coords="659,13,884,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -7958,7 +7978,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacephreeqcrm_a3827b6ec63d11454f8c6f47de3cfdd49_icgraph.png" border="0" usemap="#namespacephreeqcrm_a3827b6ec63d11454f8c6f47de3cfdd49_icgraph" alt=""/></div>
 <map name="namespacephreeqcrm_a3827b6ec63d11454f8c6f47de3cfdd49_icgraph" id="namespacephreeqcrm_a3827b6ec63d11454f8c6f47de3cfdd49_icgraph">
 <area shape="rect" title="Determines the volume and density to use when converting from the reaction&#45;module concentrations to t..." alt="" coords="659,13,956,39"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="467,5,611,47"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="467,5,611,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
 </map>
@@ -8030,11 +8050,15 @@ Here is the call graph for this function:</div>
 </div>
 </div>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by &#160;<a href="http://www.doxygen.org/index.html">
-<img class="footer" src="doxygen.png" alt="doxygen"/>
-</a> 1.8.17
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacephreeqcrm.html">phreeqcrm</a></li>
+    <li class="footer">Generated by
+    <a href="http://www.doxygen.org/index.html">
+    <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.17 </li>
+  </ul>
+</div>
 </body>
 </html>

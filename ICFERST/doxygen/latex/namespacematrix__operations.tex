@@ -1,16 +1,21 @@
 \hypertarget{namespacematrix__operations}{}\doxysection{matrix\+\_\+operations Module Reference}
 \label{namespacematrix__operations}\index{matrix\_operations@{matrix\_operations}}
+
+
+This module contain subroutines to deal with the I\+C\+F\+E\+R\+ST matrices format. This includes M\+A\+T\+V\+E\+CS and M\+A\+T\+M\+AT operations All of this should be replaced by P\+E\+T\+Sc.  
+
+
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
 subroutine \mbox{\hyperlink{namespacematrix__operations_a11255cf3f07959a2d3e20dd8705755fe}{matdmatinv}} (D\+M\+AT, D\+M\+A\+T\+I\+NV, N\+L\+OC)
-\item 
+\begin{DoxyCompactList}\small\item\em calculate D\+M\+A\+T\+I\+NV \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacematrix__operations_a3795359fc116fe5770ad11a89bbccc00}{matinv}} (A, N, N\+M\+AX)
 \begin{DoxyCompactList}\small\item\em \+: This sub finds the inverse of the matrix A and puts it back in A. M\+AT, M\+A\+T2, X and B are working vectors. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacematrix__operations_afe8e6c53cbc0059363705d48a73708d1}{matinvold}} (A, N, M\+AT, B)
 \begin{DoxyCompactList}\small\item\em \+: This sub finds the inverse of the matrix A and puts it back in A. M\+AT, M\+A\+T2, X and B are working vectors. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacematrix__operations_ad55f3b1531dccfb31fac2aa6022448b5}{smlinngot}} (A, X, B, N\+MX, I\+P\+IV, G\+O\+T\+D\+EC)
-\item 
+\begin{DoxyCompactList}\small\item\em Calculate the inverse using the LU decomposition L can be provided, speeding up the method to O(n) \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacematrix__operations_a8e0ed666ded4084ef9626e11edb7fee1}{color\+\_\+get\+\_\+cmc\+\_\+pha}} (Mdims, Mspars, ndgln, Mmat, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+ES, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+E\+S\+\_\+\+C\+O\+UP, I\+N\+V\+\_\+B, C\+M\+C\+\_\+petsc, C\+M\+C\+\_\+\+P\+R\+E\+C\+ON, I\+G\+O\+T\+\_\+\+C\+M\+C\+\_\+\+P\+R\+E\+C\+ON, M\+A\+S\+S\+\_\+\+M\+N\+\_\+\+P\+R\+ES, pipes\+\_\+aux, got\+\_\+free\+\_\+surf, M\+A\+S\+S\+\_\+\+S\+UF, F\+E\+M\+\_\+continuity\+\_\+equation)
 \begin{DoxyCompactList}\small\item\em \+:Initialize the momentum equation (C\+MC) and introduces the corresponding values in it. C\+O\+L\+O\+R\+\_\+\+G\+E\+T\+\_\+\+C\+M\+C\+\_\+\+P\+H\+A\+\_\+\+F\+A\+ST is very memory hungry, so we let the user decide or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451}{mass\+\_\+matrix\+\_\+inversion}} (P\+I\+V\+I\+T\+\_\+\+M\+AT, Mdims)
@@ -56,6 +61,9 @@ subroutine \mbox{\hyperlink{namespacematrix__operations_ab99709a532cd3a8ace8bd89
 type(petsc\+\_\+csr\+\_\+matrix) function \mbox{\hyperlink{namespacematrix__operations_a1167c3b995711ad4c85718f072beb45e}{allocate\+\_\+momentum\+\_\+matrix}} (sparsity, velocity)
 \end{DoxyCompactItemize}
 
+
+\doxysubsection{Detailed Description}
+This module contain subroutines to deal with the I\+C\+F\+E\+R\+ST matrices format. This includes M\+A\+T\+V\+E\+CS and M\+A\+T\+M\+AT operations All of this should be replaced by P\+E\+T\+Sc. 
 
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespacematrix__operations_ab99709a532cd3a8ace8bd896814bc37b}\label{namespacematrix__operations_ab99709a532cd3a8ace8bd896814bc37b}} 
@@ -321,6 +329,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \doxysubsubsection{\texorpdfstring{matdmatinv()}{matdmatinv()}}
 {\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::matdmatinv (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+M\+AT,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+M\+A\+T\+I\+NV,  }\item[{integer, intent(in)}]{N\+L\+OC }\end{DoxyParamCaption})}
 
+
+
+calculate D\+M\+A\+T\+I\+NV 
+
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}
@@ -462,6 +474,10 @@ Here is the caller graph for this function\+:\nopagebreak
 \index{smlinngot@{smlinngot}!matrix\_operations@{matrix\_operations}}
 \doxysubsubsection{\texorpdfstring{smlinngot()}{smlinngot()}}
 {\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::smlinngot (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+: ), intent(inout)}]{A,  }\item[{real, dimension( \+: ), intent(inout)}]{X,  }\item[{real, dimension( \+: ), intent(in)}]{B,  }\item[{integer}]{N\+MX,  }\item[{integer, dimension(\+:), intent(inout)}]{I\+P\+IV,  }\item[{logical, intent(in)}]{G\+O\+T\+D\+EC }\end{DoxyParamCaption})}
+
+
+
+Calculate the inverse using the LU decomposition L can be provided, speeding up the method to O(n) 
 
 Here is the caller graph for this function\+:\nopagebreak
 \begin{figure}[H]

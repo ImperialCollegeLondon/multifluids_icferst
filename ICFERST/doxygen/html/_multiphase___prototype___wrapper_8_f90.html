@@ -9,6 +9,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -48,6 +52,23 @@ $(function() {
 });
 /* @license-end */</script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:cf05388f2679ee054f2beb29a391d25f4e673ac3&amp;dn=gpl-2.0.txt GPL-v2 */
+$(document).ready(function(){initNavTree('_multiphase___prototype___wrapper_8_f90.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -62,11 +83,6 @@ $(function() {
 </iframe>
 </div>
 
-<div id="nav-path" class="navpath">
-  <ul>
-<li class="navelem"><a class="el" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html">src</a></li>  </ul>
-</div>
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#func-members">Functions/Subroutines</a>  </div>
@@ -237,7 +253,7 @@ Here is the call graph for this function:</div>
 <area shape="rect" href="namespacemulti__data__types.html#a0a02226803b07ac9bb8cbf05f9d0ab6a" title="This subroutine allocates and initialises to zero all the arrays in a multi_shape_funs data type It u..." alt="" coords="528,201,723,243"/>
 <area shape="rect" href="namespacemulti__data__types.html#a086d82f299fc3e1148cd44350b8cff0e" title="Allocates the memory for the advection coefficients for porous media." alt="" coords="528,267,723,308"/>
 <area shape="rect" href="namespacemulti__sp.html#a3761caa03a0d114b25c395685b965a73" title=": This subroutine computes the saturated rock conductivity based on Tiab and Donaldson,..." alt="" coords="551,332,700,373"/>
-<area shape="rect" href="namespacemultiphase__fractures__3d.html#a9fb82c0cf3b3f96ccc40985a15c25987" title=" " alt="" coords="545,397,705,439"/>
+<area shape="rect" href="namespacemultiphase__fractures__3d.html#a9fb82c0cf3b3f96ccc40985a15c25987" title="&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;— Py BLASTING &#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;—" alt="" coords="545,397,705,439"/>
 <area shape="rect" href="namespacemulti__magma.html#a8a8c0836b46804f1dda05b4b26ec30b7" title=" " alt="" coords="529,463,722,490"/>
 <area shape="rect" href="namespacemulti__magma.html#ad382ce18c512b86bf99518da8d17533a" title=" " alt="" coords="482,514,769,541"/>
 <area shape="rect" href="namespacemultiphase__eos.html#ab16c45da0af88c69945beac4e3334349" title=": Computes the density for the phases and the derivatives of the density" alt="" coords="529,565,721,607"/>
@@ -263,16 +279,16 @@ Here is the call graph for this function:</div>
 <area shape="rect" href="namespacemulti__magma.html#a07e8fa12fe99c17e5d61d86af88b70e0" title=": Subroutine to obtain the temperature field for a given enthalpy field" alt="" coords="536,1832,715,1873"/>
 <area shape="rect" href="namespacemultiphase__eos.html#a439637e5906b37a16646c186d7fc0daf" title=": subroutine to dissolv phase2 into phase1. Currently only for system for phase 1 = water,..." alt="" coords="543,1897,708,1939"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="521,1963,730,2004"/>
-<area shape="rect" href="namespacemultiphase__fractures__3d.html#aaa6b152432f8f9fcbfac8f68df833154" title=" " alt="" coords="545,2028,705,2069"/>
+<area shape="rect" href="namespacemultiphase__fractures__3d.html#aaa6b152432f8f9fcbfac8f68df833154" title="hydro&#45;fracture/fracturing subroutine &#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;—" alt="" coords="545,2028,705,2069"/>
 <area shape="rect" href="namespacecopy__outof__state.html#a2a2f72be9cad756d2151473988566c8d" title=": This subroutine calculates the actual Darcy velocity, but with P0DG precision only!" alt="" coords="544,2093,707,2135"/>
 <area shape="rect" href="namespacecopy__outof__state.html#add060a0a644c1d8db9c718a82d89c852" title=": This subroutine extract all discretisation options from the schema DISOPT Options: =0 1st order in ..." alt="" coords="539,2159,711,2200"/>
 <area shape="rect" href="namespacecopy__outof__state.html#aed2618045311aa635b4b0bd2599ab609" title=": Obtains the element type Mdisoptu_ele_type = Mdisoptcv_ele_type = Mdisoptp_ele_type will flag the d..." alt="" coords="544,2224,707,2265"/>
 <area shape="rect" href="namespacecopy__outof__state.html#ab5c876f8f241119d1dedc0bffa8fa159" title="This subroutine extracts all primary variables associated with the mesh from state,..." alt="" coords="542,2289,709,2331"/>
 <area shape="rect" href="namespacemultiphase__eos.html#aeb644e3565a7e33c61f0e40e73a3c990" title=":Gets the relperm max, the relperm exponent and the immobile fractions and stores them into packed st..." alt="" coords="548,2355,703,2396"/>
-<area shape="rect" href="namespacespact.html#aeaf3853765a92827bf24c599fe79364e" title=" " alt="" coords="553,2420,698,2461"/>
+<area shape="rect" href="namespacespact.html#aeaf3853765a92827bf24c599fe79364e" title="Allocate and obtain the sparsity patterns of the two types of matricies for (momentum + cty) and for ..." alt="" coords="553,2420,698,2461"/>
 <area shape="rect" href="namespacecopy__outof__state.html#acea2acdccf9091776be013ade24bcd97" title=": Subroutine to check whether an option is true for any phase in diamond, if any is true it returns t..." alt="" coords="538,2485,713,2527"/>
 <area shape="rect" href="namespacecopy__outof__state.html#a52b4659aa8636bb70d12b05923bc58b8" title=": Using the outfluxes values, it imposes as BC the averaged value of another BC(from within the domai..." alt="" coords="530,2551,721,2592"/>
-<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title=" " alt="" coords="553,2616,697,2657"/>
+<area shape="rect" href="namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="553,2616,697,2657"/>
 <area shape="rect" href="namespacemultiphase__eos.html#a3f5f7836734b85fb788ba57a2793eda7" title=": Initialising porous media models Given a free water level (FWL) we simulate capillary gravity equil..." alt="" coords="531,2681,720,2723"/>
 </map>
 </div>
@@ -374,11 +390,15 @@ Here is the caller graph for this function:</div>
 </div>
 </div>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by &#160;<a href="http://www.doxygen.org/index.html">
-<img class="footer" src="doxygen.png" alt="doxygen"/>
-</a> 1.8.17
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="dir_68267d1309a1af8e8297ef4c3efbcdba.html">src</a></li><li class="navelem"><a class="el" href="_multiphase___prototype___wrapper_8_f90.html">Multiphase_Prototype_Wrapper.F90</a></li>
+    <li class="footer">Generated by
+    <a href="http://www.doxygen.org/index.html">
+    <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.17 </li>
+  </ul>
+</div>
 </body>
 </html>

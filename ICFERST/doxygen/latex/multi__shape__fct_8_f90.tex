@@ -12,47 +12,47 @@ Include dependency graph for multi\+\_\+shape\+\_\+fct.\+F90\+:\nopagebreak
 \begin{DoxyCompactItemize}
 \item 
 interface \mbox{\hyperlink{interfaceshape__functions__prototype_1_1detnlxr__plus__u}{shape\+\_\+functions\+\_\+prototype\+::detnlxr\+\_\+plus\+\_\+u}}
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em Subroutine to compute the derivatives of the inputed shape functions. \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsection*{Modules}
 \begin{DoxyCompactItemize}
 \item 
 module \mbox{\hyperlink{namespaceshape__functions__prototype}{shape\+\_\+functions\+\_\+prototype}}
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em S\+H\+A\+PE F\+U\+N\+C\+T\+I\+O\+NS S\+U\+B\+R\+TS. \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsection*{Functions/\+Subroutines}
 \begin{DoxyCompactItemize}
 \item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_a55f7da59b552d475085e9ae74e74f875}{shape\+\_\+functions\+\_\+prototype\+::shape\+\_\+cv\+\_\+n}} (ndim, cv\+\_\+ele\+\_\+type, cv\+\_\+ngi, cv\+\_\+nloc, u\+\_\+nloc, cvn, cvweigh, n, nlx, nly, nlz, un, unlx, unly, unlz)
-\item 
+\begin{DoxyCompactList}\small\item\em S\+H\+A\+P\+E\+SV A\+ND R\+E\+L\+A\+T\+ED S\+U\+B\+R\+TS \& F\+U\+N\+C\+T\+I\+O\+NS Shape functions associated with volume integration using both CV basis functions C\+VN as well as F\+EM basis functions N (and its derivatives N\+LX, N\+LY, N\+LZ) also for velocity basis functions UN, U\+N\+LX, U\+N\+LY, U\+N\+LZ. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_ae23b2b5b8e264b0e1b498f4e28f1c18d}{shape\+\_\+functions\+\_\+prototype\+::cv\+\_\+fem\+\_\+shape\+\_\+funs}} (shape\+\_\+fun, Mdims, G\+Idims, cv\+\_\+ele\+\_\+type, Q\+U\+A\+D\+\_\+\+O\+V\+E\+R\+\_\+\+W\+H\+O\+L\+E\+\_\+\+E\+LE)
-\item 
+\begin{DoxyCompactList}\small\item\em This subrt defines the sub-\/control volume and F\+EM shape functions. Shape functions associated with volume integration using both CV basis functions C\+VN as well as F\+EM basis functions C\+V\+F\+EN (and its derivatives C\+V\+F\+E\+N\+LX, C\+V\+F\+E\+N\+LY, C\+V\+F\+E\+N\+LZ) \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{multi__shape__fct_8_f90_a3ac481479452947a759fbb6c9cf743e9}{cv\+\_\+fem\+\_\+shape\+\_\+funs\+\_\+old}} (ndim, cv\+\_\+ele\+\_\+type, cv\+\_\+ngi, cv\+\_\+ngi\+\_\+short, cv\+\_\+nloc, u\+\_\+nloc, cvn, cvn\+\_\+short, cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, cvweight\+\_\+short, cvfen\+\_\+short, cvfenlx\+\_\+short, cvfenly\+\_\+short, cvfenlz\+\_\+short, ufen, ufenlx, ufenly, ufenlz, scvngi, cv\+\_\+neiloc, cv\+\_\+on\+\_\+face, cvfem\+\_\+on\+\_\+face, scvfen, scvfenslx, scvfensly, scvfeweigh, scvfenlx, scvfenly, scvfenlz, sufen, sufenslx, sufensly, sufenlx, sufenly, sufenlz, u\+\_\+on\+\_\+face, ufem\+\_\+on\+\_\+face, nface, sbcvngi, sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx, sbcvfenly, sbcvfenlz, sbufen, sbufenslx, sbufensly, sbufenlx, sbufenly, sbufenlz, cv\+\_\+sloclist, u\+\_\+sloclist, cv\+\_\+snloc, u\+\_\+snloc, findgpts, colgpts, ncolgpts, sele\+\_\+overlap\+\_\+scale, Q\+U\+A\+D\+\_\+\+O\+V\+E\+R\+\_\+\+W\+H\+O\+L\+E\+\_\+\+E\+LE)
 \item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_a418bc78009a1672bdeb8eb7f0d1ed39f}{shape\+\_\+functions\+\_\+prototype\+::det\+\_\+suf\+\_\+ele\+\_\+shape}} (S\+C\+V\+N\+GI, N\+F\+A\+CE, C\+V\+F\+E\+M\+\_\+\+O\+N\+\_\+\+F\+A\+CE, C\+V\+\_\+\+N\+L\+OC, S\+C\+V\+F\+EN, S\+C\+V\+F\+E\+N\+S\+LX, S\+C\+V\+F\+E\+N\+S\+LY, S\+C\+V\+F\+E\+W\+E\+I\+GH, S\+C\+V\+F\+E\+N\+LX, S\+C\+V\+F\+E\+N\+LY, S\+C\+V\+F\+E\+N\+LZ, U\+\_\+\+N\+L\+OC, S\+U\+F\+EN, S\+U\+F\+E\+N\+S\+LX, S\+U\+F\+E\+N\+S\+LY, S\+U\+F\+E\+N\+LX, S\+U\+F\+E\+N\+LY, S\+U\+F\+E\+N\+LZ, S\+B\+C\+V\+N\+GI, S\+B\+C\+V\+F\+EN, S\+B\+C\+V\+F\+E\+N\+S\+LX, S\+B\+C\+V\+F\+E\+N\+S\+LY, S\+B\+C\+V\+F\+E\+W\+E\+I\+GH, S\+B\+C\+V\+F\+E\+N\+LX, S\+B\+C\+V\+F\+E\+N\+LY, S\+B\+C\+V\+F\+E\+N\+LZ, S\+B\+U\+F\+EN, S\+B\+U\+F\+E\+N\+S\+LX, S\+B\+U\+F\+E\+N\+S\+LY, S\+B\+U\+F\+E\+N\+LX, S\+B\+U\+F\+E\+N\+LY, S\+B\+U\+F\+E\+N\+LZ, C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST, U\+\_\+\+S\+L\+O\+C\+L\+I\+ST, C\+V\+\_\+\+S\+N\+L\+OC, U\+\_\+\+S\+N\+L\+OC, N\+D\+IM, C\+V\+\_\+\+E\+L\+E\+\_\+\+T\+Y\+PE)
-\item 
+\begin{DoxyCompactList}\small\item\em this subroutine generates the FE basis functions, weights and the derivatives of the shape functions for a variety of elements on the control volume boundaries. The routine also generates the shape functions and derivatives associated with the CV surfaces and also the FV basis functions. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_a06fcc23267a886a2b3122b3a77667801}{shape\+\_\+functions\+\_\+prototype\+::scvfen\+\_\+2\+\_\+sbcvfen}} (cv\+\_\+nloc, cv\+\_\+snloc, scvngi, sbcvngi, cv\+\_\+nloc\+\_\+cells, cv\+\_\+snloc\+\_\+cells, cvfem\+\_\+on\+\_\+face, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfenlx, sbcvfenly, sbcvfenlz, sbcvfeweigh, scvfen, scvfenslx, scvfensly, scvfenlx, scvfenly, scvfenlz, scvfeweigh)
-\item 
+\begin{DoxyCompactList}\small\item\em Compute S\+B\+C\+V\+F\+EN from S\+C\+V\+F\+EN. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_a327e5ef3b6b9241997dcf0c6f8cad2dd}{shape\+\_\+functions\+\_\+prototype\+::shapesv\+\_\+fem\+\_\+plus}} (scvngi, cv\+\_\+neiloc, cv\+\_\+on\+\_\+face, cvfem\+\_\+on\+\_\+face, ufem\+\_\+on\+\_\+face, cv\+\_\+ele\+\_\+type, cv\+\_\+nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, scvfenlx, scvfenly, scvfenlz, u\+\_\+nloc, sufen, sufenslx, sufensly, sufenlx, sufenly, sufenlz, ndim)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine generates the FE basis functions, weights and the derivatives of the shape functions for a variety of elements on the control volume boundaries. The routine also generates the shape functions and derivatives associated with the CV surfaces and also the FV basis functions. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_a8214cb813b277f2423568701a028127f}{shape\+\_\+functions\+\_\+prototype\+::fv\+\_\+1d\+\_\+quad}} (S\+C\+V\+N\+GI, C\+V\+\_\+\+N\+L\+OC, S\+C\+V\+F\+EN, S\+C\+V\+F\+E\+N\+S\+LX, S\+C\+V\+F\+E\+N\+S\+LY, S\+C\+V\+F\+E\+W\+E\+I\+GH, S\+C\+V\+F\+E\+N\+LX, S\+C\+V\+F\+E\+N\+LY, S\+C\+V\+F\+E\+N\+LZ)
-\item 
+\begin{DoxyCompactList}\small\item\em this subroutine generates the FE basis functions, weights and the derivatives of the shape functions for a variety of elements. The routine also generates the shape functions and derivatives associated with the CV surfaces and also the FV basis functions. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_a93ebe6ad06c48a17dc648ac697a51085}{shape\+\_\+functions\+\_\+prototype\+::fvquad}} (N\+GI, N\+L\+OC, S\+V\+N\+GI, M, S\+VN, S\+V\+N\+LX, S\+V\+W\+E\+I\+GH)
-\item 
+\begin{DoxyCompactList}\small\item\em this routine generates the shape functions associated with the FV\textquotesingle{}s i.\+e. their surfaces and volume shape functions and derivatives. The surface shape functions are the values of the FE volume shape functions evaluated on the surfaces of the CV\textquotesingle{}s. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_a8122ed37669278dac47e69b4437a77f0}{shape\+\_\+functions\+\_\+prototype\+::fvhex}} (N\+GI, N\+L\+OC, S\+V\+N\+GI, M, S\+VN, S\+V\+N\+LX, S\+V\+N\+LY, S\+V\+W\+E\+I\+GH)
-\item 
+\begin{DoxyCompactList}\small\item\em this routine generates the shape functions associated with the FV\textquotesingle{}s i.\+e. their surfaces and volume shape functions and derivatives. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_a571a18187866c4248a1cc74e517412d4}{shape\+\_\+functions\+\_\+prototype\+::fvqquad}} (N\+GI, N\+L\+OC, S\+V\+N\+GI, M, S\+VN, S\+V\+N\+LX, S\+V\+W\+E\+I\+GH)
-\item 
+\begin{DoxyCompactList}\small\item\em this routine generates the shape functions associated with the FV\textquotesingle{}s i.\+e. their surfaces and volume shape functions and derivatives. The surface shape functions are the values of the FE volume shape functions evaluated on the surfaces of the CV\textquotesingle{}s. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_a4195af5a6506ee13f8145561983082d7}{shape\+\_\+functions\+\_\+prototype\+::fvqhex}} (N\+GI, N\+L\+OC, S\+V\+N\+GI, M, S\+VN, S\+V\+N\+LX, S\+V\+N\+LY, S\+V\+W\+E\+I\+GH)
-\item 
+\begin{DoxyCompactList}\small\item\em this routine generates the shape functions associated with the FV\textquotesingle{}s i.\+e. their surfaces and volume shape functions and derivatives. The surface shape functions are the values of the FE volume shape functions evaluated on the surfaces of the CV\textquotesingle{}s. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_a61ebf8a017a08936e3c0df9d171b62a7}{shape\+\_\+functions\+\_\+prototype\+::volnei}} (N\+E\+I\+L\+OC, F\+E\+M\+\_\+\+N\+E\+I\+L\+OC, N\+L\+OC, S\+V\+N\+GI, C\+V\+\_\+\+E\+L\+E\+\_\+\+T\+Y\+PE)
-\item 
+\begin{DoxyCompactList}\small\item\em this subroutine calculates N\+E\+I\+L\+OC which is the array containing information given a local node and an integration point what is the other opposing local node. It contains -\/1 if on the boundary of of the element. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_ab0402e1406e4d853df626871036a6be1}{shape\+\_\+functions\+\_\+prototype\+::u\+\_\+volnei}} (cv\+\_\+ele\+\_\+type, cv\+\_\+nloc, u\+\_\+nloc, scvngi, cv\+\_\+neiloc, u\+\_\+on\+\_\+face)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine calculates U\+\_\+\+O\+N\+\_\+\+F\+A\+CE, a logical that works -\/! in a similar way of C\+V\+\_\+\+O\+N\+\_\+\+F\+A\+CE. -\/! \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_a1e6216e7c417285850e02453ce1f891a}{shape\+\_\+functions\+\_\+prototype\+::gaussiloc}} (F\+I\+N\+D\+G\+P\+TS, C\+O\+L\+G\+P\+TS, N\+C\+O\+L\+G\+P\+TS, N\+E\+I\+L\+OC, N\+L\+OC, S\+V\+N\+GI)
-\item 
+\begin{DoxyCompactList}\small\item\em This subroutine calculates F\+I\+N\+D\+G\+P\+TS,C\+O\+L\+G\+P\+TS,N\+C\+O\+L\+G\+P\+TS which contains given a local node I\+L\+OC the Gauss pts that are used to integrate around this local node. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_a150be9a8f5f7cdb81bc1120ff5140594}{shape\+\_\+functions\+\_\+prototype\+::detnlxr\+\_\+plus\+\_\+u1}} (E\+LE, X\+\_\+\+A\+LL, X\+O\+N\+D\+GL, weight, cvshape, cvshapelx, ushapelx, Dev\+Funs)
-\item 
+\begin{DoxyCompactList}\small\item\em Subroutine to compute the derivatives of the inputed shape functions. \end{DoxyCompactList}\item 
 subroutine \mbox{\hyperlink{namespaceshape__functions__prototype_a44cad6c56795ad9a5859229904c4cc0a}{shape\+\_\+functions\+\_\+prototype\+::detnlxr\+\_\+plus\+\_\+u2}} (E\+LE, X, Y, Z, X\+O\+N\+D\+GL, T\+O\+T\+E\+LE, N\+O\+N\+O\+DS, X\+\_\+\+N\+L\+OC, C\+V\+\_\+\+N\+L\+OC, N\+GI, N, N\+LX, N\+LY, N\+LZ, W\+E\+I\+G\+HT, D\+E\+T\+W\+EI, RA, V\+O\+L\+U\+ME, D1, D3, D\+C\+YL, N\+X\+\_\+\+A\+LL, U\+\_\+\+N\+L\+OC, U\+N\+LX, U\+N\+LY, U\+N\+LZ, U\+N\+X\+\_\+\+A\+LL)
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em Subroutine to compute the derivatives of the inputed shape functions. \end{DoxyCompactList}\end{DoxyCompactItemize}
 
 
 \doxysubsection{Function/\+Subroutine Documentation}

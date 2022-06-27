@@ -1,5 +1,10 @@
 \hypertarget{namespacecv__advection}{}\doxysection{cv\+\_\+advection Module Reference}
 \label{namespacecv__advection}\index{cv\_advection@{cv\_advection}}
+
+
+This module contains all the tools to assemble and solve the equations and fields associated with the CV mesh, i.\+e. transport equation, continuity equation, D\+C\+V\+FE gradient matrix and the Laplacian system for the zeta-\/potential.  
+
+
 \doxysubsection*{Data Types}
 \begin{DoxyCompactItemize}
 \item 
@@ -98,6 +103,9 @@ integer, parameter \mbox{\hyperlink{namespacecv__advection_a03647ce996f35f7512f2
 integer, parameter \mbox{\hyperlink{namespacecv__advection_a6d139b0bd7722182c16855e683657878}{wic\+\_\+p\+\_\+bc\+\_\+free}} = 2
 \end{DoxyCompactItemize}
 
+
+\doxysubsection{Detailed Description}
+This module contains all the tools to assemble and solve the equations and fields associated with the CV mesh, i.\+e. transport equation, continuity equation, D\+C\+V\+FE gradient matrix and the Laplacian system for the zeta-\/potential. 
 
 \doxysubsection{Function/\+Subroutine Documentation}
 \mbox{\Hypertarget{namespacecv__advection_a339e8bc7d0ed41fd23b546168e2c7f5e}\label{namespacecv__advection_a339e8bc7d0ed41fd23b546168e2c7f5e}} 
@@ -213,7 +221,7 @@ Chris Pain, Pablo Salinas
 \hline
 {\em final\+\_\+phase} & This is the final phase to be assembled, in this way we can assemble from phase 1 to final\+\_\+phase not necessarily being for all the phases \\
 \hline
-{\em Mdims} & Dimensions of the model \\
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
 \hline
 {\em C\+V\+\_\+\+G\+Idims} & Gauss integration numbers for CV fields \\
 \hline
@@ -287,7 +295,7 @@ Chris Pain, Pablo Salinas
 \hline
 {\em M\+E\+A\+N\+\_\+\+P\+O\+R\+E\+\_\+\+CV} & Porosity defined control volume wise \\
 \hline
-{\em M\+A\+S\+S\+\_\+\+E\+L\+E\+\_\+\+T\+R\+A\+N\+SP} & \\
+{\em M\+A\+S\+S\+\_\+\+E\+L\+E\+\_\+\+T\+R\+A\+N\+SP} & Mass of the elements \\
 \hline
 {\em saturation} & Phase\+Volume\+Fraction field \\
 \hline
@@ -299,7 +307,7 @@ Chris Pain, Pablo Salinas
 \hline
 {\em Courant\+\_\+number} & Obvious ins\textquotesingle{}t it? \\
 \hline
-{\em Permeability\+\_\+tensor\+\_\+field} & \\
+{\em Permeability\+\_\+tensor\+\_\+field} & Permeability field \\
 \hline
 {\em calculate\+\_\+mass\+\_\+delta} & Variable used to control the mass conservation of the system \\
 \hline
@@ -307,9 +315,11 @@ Chris Pain, Pablo Salinas
 \hline
 {\em pipes\+\_\+aux} & Information required to define wells \\
 \hline
-{\em porous\+\_\+heat\+\_\+coef,porous\+\_\+heat\+\_\+coef\+\_\+old} & \\
+{\em porous\+\_\+heat\+\_\+coef,porous\+\_\+heat\+\_\+coef\+\_\+old} & includes an average of porous and fluid heat coefficients \\
 \hline
-{\em solving\+\_\+compositional,assemble\+\_\+collapsed\+\_\+to\+\_\+one\+\_\+phase} & \\
+{\em solving\+\_\+compositional} & Solving for composition if true \\
+\hline
+{\em assemble\+\_\+collapsed\+\_\+to\+\_\+one\+\_\+phase} & Collapses phases and solves for one single temperature. When there is thermal equilibrium \\
 \hline
 {\em outfluxes} & Contains all the fields required to compute the outfluxes of the model and create the outfluxes.\+csv file. Computed when assembling the continuity equation \\
 \hline
@@ -475,6 +485,33 @@ Here is the caller graph for this function\+:\nopagebreak
 
 \+: In this method we assemble and solve the Laplacian system using at least P1 elements The equation solved is the following\+: Div sigma Grad X = -\/ S\+UM (Div K Grad F) with Neuman B\+Cs = 0 where K and F are passed down as a vector. Therefore for n entries the S\+UM will be performed over n fields Example\+: F = (3, nphase, cv\+\_\+nonods) would include three terms in the R\+HS and the same for K If harmonic average then we perform the harmonic average of sigma and K I\+M\+P\+O\+R\+T\+A\+NT\+: This subroutine requires the P\+Hsparsity to be generated Note that this method solves considering FE fields. If using CV you may incur in an small error. 
 
+
+\begin{DoxyParams}{Parameters}
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em ndgln} & Global to local variables \\
+\hline
+{\em Mmat} & Matrices for I\+C\+F\+E\+R\+ST \\
+\hline
+{\em Mspars} & Sparsity of the matrices \\
+\hline
+{\em C\+V\+\_\+funs} & Shape functions for the CV mesh \\
+\hline
+{\em C\+V\+\_\+\+G\+Idims} & Gauss integration numbers for CV fields \\
+\hline
+{\em Sigma\+\_\+field} & Coefficient multipliying the left-\/hand side term \\
+\hline
+{\em Solution} & Solution field of type scalar\+\_\+field, required to ensure consistency \\
+\hline
+{\em K\+\_\+fields} & Coefficients multipliying the R\+HS terms \\
+\hline
+{\em F\+\_\+fields} & R\+HS fierlds \\
+\hline
+{\em intface\+\_\+val\+\_\+type} & 0 = no interpolation; 1 Harmonic mean; !20 for SP solver, harmonic mean considering charge; negative normal mean \\
+\hline
+\end{DoxyParams}
 Here is the call graph for this function\+:\nopagebreak
 \begin{figure}[H]
 \begin{center}

@@ -9,6 +9,10 @@
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
@@ -48,6 +52,23 @@ $(function() {
 });
 /* @license-end */</script>
 <div id="main-nav"></div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+/* @license magnet:?xt=urn:btih:cf05388f2679ee054f2beb29a391d25f4e673ac3&amp;dn=gpl-2.0.txt GPL-v2 */
+$(document).ready(function(){initNavTree('namespacemulti__interpolation.html',''); initResizable(); });
+/* @license-end */
+</script>
+<div id="doc-content">
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -62,7 +83,6 @@ $(function() {
 </iframe>
 </div>
 
-</div><!-- top -->
 <div class="header">
   <div class="summary">
 <a href="#func-members">Functions/Subroutines</a> &#124;
@@ -71,10 +91,14 @@ $(function() {
 <div class="title">multi_interpolation Module Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>This module contains the conservative mesh to mesh interpollation for DG fields, as described in Adam et al. 2016 doi: <a href="http://dx.doi.org/10.1016/j.jcp.2016.05.058">http://dx.doi.org/10.1016/j.jcp.2016.05.058</a>.  
+<a href="namespacemulti__interpolation.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a4f1475bd24977140d41a9601fce62e7f"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__interpolation.html#a4f1475bd24977140d41a9601fce62e7f">m2minterpolation</a> (state, packed_state, Mdims, CV_GIdims, CV_funs, small_finacv, small_colacv, flag)</td></tr>
+<tr class="memdesc:a4f1475bd24977140d41a9601fce62e7f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Mehs to mesh interpollation method, in Diamond DG_Galerkin.  <a href="namespacemulti__interpolation.html#a4f1475bd24977140d41a9601fce62e7f">More...</a><br /></td></tr>
 <tr class="separator:a4f1475bd24977140d41a9601fce62e7f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7530cc4ef072f5d033528b0d1f85bf8a"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__interpolation.html#a7530cc4ef072f5d033528b0d1f85bf8a">memorycleanupinterpolation1</a> ()</td></tr>
 <tr class="separator:a7530cc4ef072f5d033528b0d1f85bf8a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -88,7 +112,9 @@ Variables</h2></td></tr>
 <tr class="memitem:afa2240c89baa40eadbea70abf06f6a61"><td class="memItemLeft" align="right" valign="top">type(state_type)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__interpolation.html#afa2240c89baa40eadbea70abf06f6a61">state_new</a></td></tr>
 <tr class="separator:afa2240c89baa40eadbea70abf06f6a61"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Function/Subroutine Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>This module contains the conservative mesh to mesh interpollation for DG fields, as described in Adam et al. 2016 doi: <a href="http://dx.doi.org/10.1016/j.jcp.2016.05.058">http://dx.doi.org/10.1016/j.jcp.2016.05.058</a>. </p>
+</div><h2 class="groupheader">Function/Subroutine Documentation</h2>
 <a id="a4f1475bd24977140d41a9601fce62e7f"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a4f1475bd24977140d41a9601fce62e7f">&#9670;&nbsp;</a></span>m2minterpolation()</h2>
 
@@ -150,14 +176,16 @@ Variables</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Mehs to mesh interpollation method, in Diamond DG_Galerkin. </p>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__interpolation_a4f1475bd24977140d41a9601fce62e7f_cgraph.png" border="0" usemap="#namespacemulti__interpolation_a4f1475bd24977140d41a9601fce62e7f_cgraph" alt=""/></div>
 <map name="namespacemulti__interpolation_a4f1475bd24977140d41a9601fce62e7f_cgraph" id="namespacemulti__interpolation_a4f1475bd24977140d41a9601fce62e7f_cgraph">
-<area shape="rect" title=" " alt="" coords="5,68,152,109"/>
+<area shape="rect" title="Mehs to mesh interpollation method, in Diamond DG_Galerkin." alt="" coords="5,68,152,109"/>
 <area shape="rect" href="namespacesolvers__module.html#adef72e22883fb36304a2da0099927175" title="The sparcity of the local CV connectivity is in: small_findrm, small_colm. ngl_its=max no of global i..." alt="" coords="200,46,513,73"/>
-<area shape="rect" href="namespacematrix__operations.html#ad55f3b1531dccfb31fac2aa6022448b5" title=" " alt="" coords="282,97,431,139"/>
+<area shape="rect" href="namespacematrix__operations.html#ad55f3b1531dccfb31fac2aa6022448b5" title="Calculate the inverse using the LU decomposition L can be provided, speeding up the method to O(n)" alt="" coords="282,97,431,139"/>
 <area shape="rect" href="namespacemulti__data__types.html#a5641f05bcbbf1c56b952f99ed0cd1f67" title="Deallocates the required memory to store the derivatives of the shape functions." alt="" coords="561,5,772,47"/>
 <area shape="rect" href="namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b" title="@DEPRECATED: Gets memory from packed state This subroutine returns a pointer to the desired values of..." alt="" coords="576,71,757,112"/>
 </map>
@@ -167,7 +195,7 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemulti__interpolation_a4f1475bd24977140d41a9601fce62e7f_icgraph.png" border="0" usemap="#namespacemulti__interpolation_a4f1475bd24977140d41a9601fce62e7f_icgraph" alt=""/></div>
 <map name="namespacemulti__interpolation_a4f1475bd24977140d41a9601fce62e7f_icgraph" id="namespacemulti__interpolation_a4f1475bd24977140d41a9601fce62e7f_icgraph">
-<area shape="rect" title=" " alt="" coords="219,5,365,47"/>
+<area shape="rect" title="Mehs to mesh interpollation method, in Diamond DG_Galerkin." alt="" coords="219,5,365,47"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="5,13,171,39"/>
 </map>
 </div>
@@ -251,11 +279,15 @@ Here is the caller graph for this function:</div>
 </div>
 </div>
 </div><!-- contents -->
+</div><!-- doc-content -->
 <!-- start footer part -->
-<hr class="footer"/><address class="footer"><small>
-Generated by &#160;<a href="http://www.doxygen.org/index.html">
-<img class="footer" src="doxygen.png" alt="doxygen"/>
-</a> 1.8.17
-</small></address>
+<div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
+  <ul>
+    <li class="navelem"><a class="el" href="namespacemulti__interpolation.html">multi_interpolation</a></li>
+    <li class="footer">Generated by
+    <a href="http://www.doxygen.org/index.html">
+    <img class="footer" src="doxygen.png" alt="doxygen"/></a> 1.8.17 </li>
+  </ul>
+</div>
 </body>
 </html>
