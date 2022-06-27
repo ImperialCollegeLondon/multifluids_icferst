@@ -3218,8 +3218,8 @@ end if
         end if
 
         call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
-        if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
-        if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
+        if ( .not. (solve_stokes .or. solve_mom_iteratively .or. report_residual)) call deallocate(cmc_petsc)
+        if ( .not. (solve_stokes .or. solve_mom_iteratively .or. report_residual)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
 
         !"########################UPDATE PRESSURE STEP####################################"
@@ -3258,12 +3258,12 @@ end if
             call zero(cdp_tensor)
             call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
             CALL cal_vel_residual(residual_l2norm, Mmat, velocity, CDP_tensor, Mmat%U_RHS)
-            call deallocate(Mmat%DGM_PETSC)
+            ! call deallocate(Mmat%DGM_PETSC)
             ewrite(-1,*) 'momentum residual l2_norm' , residual_l2norm
         endif
 
         call DEALLOCATE( CDP_tensor )
-        if ((solve_stokes .or. solve_mom_iteratively)) then
+        if ((solve_stokes .or. solve_mom_iteratively .or. report_residual)) then
             call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
         !######################## CORRECTION VELOCITY STEP####################################
