@@ -20,7 +20,7 @@ if (testname[-2:] == '-h'):
 	print('By default docker runs as the user icferst. Make sure it has the rights to write and read in the working folder.')
 	exit()
 
-cpus = input("Number of processors to decompose the mesh: ")
+cpus = raw_input("Number of processors to decompose the mesh: ")
 
 print('Running the test case: ' + testname)
 pwdpath = os.getcwd()

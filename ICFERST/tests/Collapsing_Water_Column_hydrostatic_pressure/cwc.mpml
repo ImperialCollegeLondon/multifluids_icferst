@@ -926,7 +926,9 @@ for i in range (field.node_count):
   <mesh_adaptivity>
     <hr_adaptivity>
       <period_in_timesteps>
-        <integer_value rank="0">500000000</integer_value>
+        <constant>
+          <integer_value rank="0">5000000000</integer_value>
+        </constant>
       </period_in_timesteps>
       <maximum_number_of_nodes>
         <integer_value rank="0">5000</integer_value>

@@ -18,12 +18,9 @@
     </mesh>
     <simulation_quality>
       <string_value>balanced</string_value>
+      <Balanced_P0DG/>
     </simulation_quality>
-    <Advance_options>
-      <FE_Pressure>
-        <FEM_continuity_equation/>
-      </FE_Pressure>
-    </Advance_options>
+    <Advance_options/>
   </geometry>
   <solver_options>
     <Non_Linear_Solver>
@@ -81,15 +78,17 @@
             <value name="WholeMesh">
               <anisotropic_symmetric>
                 <constant>
-                  <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">1. 0 0 1.</real_value>
+                  <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">1. 1 1 1.</real_value>
                 </constant>
               </anisotropic_symmetric>
             </value>
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <linear_scheme/>
+          <stress_form/>
+          <linear_scheme>
+            <high_order/>
+          </linear_scheme>
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>

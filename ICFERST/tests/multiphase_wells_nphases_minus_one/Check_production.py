@@ -36,7 +36,7 @@ with open(filename, 'r') as csvfile:
     for row in datareader:
         try:
             phase1_in.append(float(row[10]))#Cumulative injection of water
-            phase2_out.append(float(row[17]))#Cumulative production of oil
+            phase2_out.append(float(row[25]))#Cumulative production of oil
         except:
             continue
 

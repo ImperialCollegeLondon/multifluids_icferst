@@ -17,8 +17,22 @@ start =
       ## IC-FERST is a next generation simulator based on Double-Control-Volume
       ## Finite Element methods and dynamic unstructured mesh optimisation.
       ##
-      ## IC-FERST is licensed under the LGPL. For more information
+      ## IC-FERST is licensed under the AGPL. For more information
       ## please visit: http://multifluids.github.io/
+      ##
+      ## <b>Performance tips:</b>
+      ##
+      ## 1) Adapt the mesh as little as possible as it is costly (adapting every 5 time levels adds ~10% extra cost);
+      ##
+      ## 2) Avoid if possible using python fields since it comes with an extra cost (~5% for each field);
+      ##
+      ## 3) When possible use the fast option;
+      ##
+      ## 4) Output files only when required, it adds extra computations apart from the I/O;
+      ##
+      ## 5) Do not use tensor_field to define permeability unless a full anisotropic tensor is required;
+      ##
+      ## 6) PassiveTracers are cheaper as they are computed every time-level while ActiveTracers are withing the non-linear loop;
       element icferst_options {
          comment,
          ## Model output files are named according to the simulation
@@ -674,7 +688,7 @@ start =
                           }
                        )
                     }
-               )}?
+               )}
             }?
          }+,
          mesh_adaptivity_options?,
@@ -729,6 +743,8 @@ start =
                   }
                   )
                }|
+               ## <b>ONLY USE THIS OPTION IF YOU ARE GOING TO USE A FULL ANISOTROPIC TENSOR</b>
+               ## if not, vector_field is much faster and the results are the same
                element tensor_field {
                   attribute name { "Permeability" },
                   (
@@ -782,9 +798,9 @@ start =
             element porous_properties{
                 ## Specify scalar field density of the porous media
                 ##
-                ## The value to specify here is the value of the minerals or grains that make up the rock.
-                ## This is the bulk value divided by (1-porosity).
-                ## Note: Bulk density is the one normally obtained in lab experiments.
+                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix).
+                ## Double check and convert your input values so they only represent the matrix property
+                ## (e.g. bulk measurement divided by porosity)
                 element scalar_field {
                    attribute name { "porous_density" },
                    (
@@ -801,9 +817,9 @@ start =
                 },
                 ## Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
                 ##
-                ## The value to specify here is the value of the minerals or grains that make up the rock.
-                ## This is the bulk value divided by (1-porosity).
-                ## Note: Bulk density is the one normally obtained in lab experiments.
+                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix).
+                ## Double check and convert your input values so they only represent the matrix property
+                ## (e.g. bulk measurement divided by porosity)
                 element scalar_field {
                    attribute name { "porous_heat_capacity" },
                    (
@@ -823,9 +839,9 @@ start =
 
                 ## Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin => W/(m·K) )
                 ##
-                ## The value to specify here is the value of the minerals or grains that make up the rock.
-                ## This is the bulk value divided by (1-porosity).
-                ## Note: Bulk density is the one normally obtained in lab experiments.
+                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix).
+                ## Double check and convert your input values so they only represent the matrix property
+                ## (e.g. bulk measurement divided by porosity)
                element tensor_field {
                   attribute name { "porous_thermal_conductivity" },
                   element prescribed {
@@ -1125,7 +1141,7 @@ start =
                }?
           )}?,
           ## This parameter specifies the maximum dissolved gas (phase2) into the liquid phase (phase1).
-          ## 
+          ##
           ## The dissolution is considered instantaneous (flash). The units are mol/Kg.
           ## It requires a Concentration field on the first phase.
 	         element Gas_dissolution {
@@ -1134,13 +1150,13 @@ start =
 	         	## Molar mass of the gas being dissolved. For example for CO2 it is: 0.0441 kg/mol
 	         	element molar_mass{real},
 	         	## Name of the phase that dissolves
-	         	element from_phase{string},     
+	         	element from_phase{string},
 	         	## Name of the phase in which from_phase dissolves into
 	         	element to_phase{string,
 	         	(
 	           	## Name of the tracer that contains the dissolution
-	           	element tracer_name{string}	         	
-	         	)}     	
+	           	element tracer_name{string}
+	         	)}
 		        )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 	        ##
@@ -1257,10 +1273,20 @@ start =
             element do_not_bound_after_adapt {
                empty
             }?,
+            ## If selected low order diffusion we use a diffusion that does not take 10%! of the total time only to generate the term
+            ## Currently the results seems a bit off using this diffusion method.
+            element Low_order_diffusion {
+               empty
+            }?,
+            ## This disable the limiters regarless of the precision used
+            ## Limiters are quite expensive so if your simulation is slow it might be worth trying this.
+            element disable_limiters {
+               empty
+            }?,
             ## VAD is multiplied by the normalised flux. This should help focusing the VAD towards moving directions instead of acting as pure diffusion
             element flux_limited_vad {
                empty
-            }?, 
+            }?,
             ## Impose strong BCs for wells, only on the pressure BCs. Also imposes gamma to be zero at those nodes.
             ## Note that this is already imposed for wells when using P0DGP1 and gamma = 0. at one pressure BC.
             element Strong_BCs_for_P0DG_wells {
@@ -1359,13 +1385,13 @@ geometry =
            ## Selects the quality configuration of the experiment
            ## For Porous media the P1/P0 stands for P0, for inertia for P1.
            ##
-           ## Fast => Element pair = P1/P0DGP1(CV). Upwinding and implicit Euler;
+           ## Fast (<b>recommended</b>) => Element pair = P0DGP1(CV). Upwinding and implicit euler;
            ##
-           ## Balanced (<b>recommended</b>) => Element pair = P1/P0DGP1(CV). High order advection scheme and adaptive theta;
+           ## Balanced => Element pair = P1/P0DGP1(CV). High order advection scheme, adaptive theta and limiters;
            ##
-           ## Precision => Element pair = P1DGP2(CV). High order advection scheme and adaptive theta
+           ## Precision => Element pair = P1DGP2(CV). High order advection scheme and adaptive theta and limiters;
            ##
-           ## Discontinuous_pressure => P1DG(BL)P1DG(CV). High order advection scheme and adaptive theta
+           ## Discontinuous_pressure => P1DG(BL)P1DG(CV). High order advection scheme and adaptive theta and limiters;
             element simulation_quality {
               element string_value{
                  "fast" | "balanced" | "precision"|"discontinuous_pressure"
@@ -1566,7 +1592,7 @@ solver_options =
                 }?
               ),
                 ## Recommended method. XGBoost installed and compiled with ICFERST is a requirement.
-                ## Specify here the path to the machine learning (XGBoost) model.               
+                ## Specify here the path to the machine learning (XGBoost) model.
                 element ML_model_path{
                 string,
                 (
@@ -1575,14 +1601,14 @@ solver_options =
                     element save_model{
                     empty
                     }?,
-                    ## Target number of inner-nonlinear iterations per outer-nonlinear iteration. 
+                    ## Target number of inner-nonlinear iterations per outer-nonlinear iteration.
                     ##
-                    ## <b>Recommended values: 1.0 to 5.0 </b>     
+                    ## <b>Recommended values: 1.0 to 5.0 </b>
                     ##
                     ## <b>Default value: 1.0 </b>
                     element target_num_nonlinear{
                     real
-                    }?              
+                    }?
                 )
                 }?,
                 ## Introduce over-relaxation in the saturation equation.
@@ -1643,6 +1669,11 @@ solver_options =
                         ## Please double-check that the number of 'Non_Linear_Solver' iterations is greater than 'Aim_num_FPI'
                         element Aim_num_FPI {
                           integer
+                        }?,
+                        ## Only use number of NLI to control timestep and not the error of the non linear solver.
+                        ## Can sometimes be a faster option compared to both using aim NLI and error.
+                        element FPI_only {
+                           empty
                         }?
                     }?,
                     ## If any of the solvers failt to achieve convergence the time-step size is
@@ -1718,7 +1749,11 @@ solver_options =
         element rescale_mom_matrices {
            empty
         }?,
-        ## Use this option to switch on the Anderson acceleration method for the momentum equations. The mass matrix is lumped.
+        (
+        ## Use PETSc to create and solve the Schur complement matrix and solve for it
+        element Solve_mom_with_PETSc {
+           empty}|
+        ## Use this option to switch on the Anderson acceleration method for the momentum equation (IC-FERST own Stokes solver). The mass matrix is lumped.
         ##
         ## This is ACTIVATED by default for Stokes/Magma flow. <b>Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-7.</b>
         element solve_mom_iteratively {real,
@@ -1728,7 +1763,7 @@ solver_options =
            integer}?,
         ## Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.
          element Max_restarts {
-           real}?,
+           integer}?,
            ## Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, <b>unstable</b> but potentially faster.
             element Momentum_preconditioner {
            empty}?,
@@ -1741,7 +1776,8 @@ solver_options =
 
             element Disable_advance_preconditioner {
            empty}?
-        )}?
+        )}
+        )
        )}?
       )}
    )
@@ -2756,7 +2792,7 @@ scalar_field_choice =
          }|
          ## PassiveTracer. <b>You can add as many passive Tracers as you want as long as the name starts with PassiveTracer</b>
          ##
-         ## PassiveTracers are not part of the convergence criteria and are computed outside the non-linear loop. 
+         ## PassiveTracers are not part of the convergence criteria and are computed outside the non-linear loop.
          ## Also, to reduce their cost, low order methods are used for their computation.
          element scalar_field {
             attribute rank { "0" },
@@ -3904,7 +3940,7 @@ element Density{(
                         ## DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))
                         ##
                         ## NOTE: This equation is only valid for small changes in density.
-                        ## Internally it is bounded to not vary more than 10%
+                        ## <b> Internally it is bounded to stay between [DEN0/2,DEN0*2] </b>
                         element Linear_eos {
                            ## This is the density value at reference properties
                            element reference_density {
@@ -3949,6 +3985,25 @@ element Density{(
                            element Coef {
                               real
                            })}*
+                        }|
+                        ## Batzle and Wang (1992) EOS
+                        ## Use for basin scale simulations.
+                        ## Valid for ranges: 5<=P<=100 MPa, 20<=T<=350 degrees Celsius, C<=0.32 kg/kg salinity.
+                        ##
+                        ## NOTE: Reference density is calculated using reference C0, T0, P0.
+                        element BW_eos {
+                           ## Reference concentration (default 0)
+                           element C0 {
+                              real
+                           }?,
+                           ## Reference temperature (default 298)
+                           element T0 {
+                              real
+                           }?,
+                           ## Reference pressure (default 1e5 Pa)
+                           element P0 {
+                              real
+                           }?
                         }
                       ),      ## Use the boussinesq approximation. Useful for small variations of density.
                       ## For porous media only the formulate, including linear pressure, with a reference density work with this.

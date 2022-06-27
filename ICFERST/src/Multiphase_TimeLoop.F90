@@ -78,6 +78,7 @@ module multiphase_time_loop
     use multi_SP
     use multi_tools
     use momentum_diagnostic_fields, only: calculate_densities
+    use embed_python
 
 #ifdef HAVE_ZOLTAN
   use zoltan
@@ -188,7 +189,7 @@ contains
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
         type (multi_pipe_package) :: pipes_aux
         !type(scalar_field), pointer :: bathymetry
-        logical, parameter :: write_all_stats=.true.
+        logical :: write_all_stats=.true.
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
         ! Ioutlet counts the number of boundaries over which to calculate the outflux
         integer :: ioutlet
@@ -235,6 +236,7 @@ contains
         type(coupling_term_coef) :: coupling
         type(magma_phase_diagram) :: magma_phase_coef
         real :: bulk_power
+        character(len = OPTION_PATH_LEN) :: func
         !Variables for passive tracers
         logical :: have_Active_Tracers = .true.
         logical :: have_Passive_Tracers = .true.
@@ -255,6 +257,10 @@ contains
         ewrite(0,*) "WARNING: ML path specified for a model but ICFERST hasn't been compiled with XGboost. Classical method used instead."
     end if
 #endif
+
+        !If we are using the fast settings then we save time not always computing the stats
+        ! call get_option("/geometry/simulation_quality", option_name, stat=stat)
+        ! write_all_stats = .not. trim(option_name) == "fast"
 
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
@@ -290,7 +296,7 @@ contains
         call pack_multistate( Mdims%npres, state, packed_state, multiphase_state, &
             multicomponent_state )
         call prepare_absorptions(state, Mdims, multi_absorp)
-        call set_boundary_conditions_values(state, shift_time=.true.)
+        call set_boundary_conditions_values(state, shift_time=.false.)
 
         !  Access boundary conditions via a call like
         !  call get_entire_boundary_condition(extract_tensor_field(packed_state,"Packed"//name),["weakdirichlet"],tfield,bc_type_list)
@@ -400,7 +406,14 @@ contains
         call get_option( '/timestepping/timestep', dt )
         call get_option( '/timestepping/finish_time', finish_time )
         if ( have_option('/io/dump_period_in_timesteps') ) then
-            call get_option('/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1)
+            if ( have_option('/io/dump_period_in_timesteps/python') ) then
+                call get_option("/io/dump_period_in_timesteps/python", func)
+                call integer_from_python(func, acctim, dump_period_in_timesteps)
+                !Ensure it is bounded
+                dump_period_in_timesteps = min(max(dump_period_in_timesteps,0), 10000000)
+            else
+                call get_option('/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1)
+            end if
         elseif ( have_option('/io/dump_period') ) then
             call get_option('/io/dump_period/constant', dump_period, default = 0.01)
         end if
@@ -553,6 +566,7 @@ contains
             call get_option( '/timestepping/current_time', acctim )
             old_acctim = acctim
             acctim = acctim + dt
+            current_time = acctim
             call set_option( '/timestepping/current_time', acctim )
             new_lim = .true.
             ! Added a tolerance of 0.001dt to the condition below that stops us exiting the loop before printing the last time step.
@@ -601,6 +615,15 @@ contains
             SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
+
+                !##########################Impose tunneled BCs############################################################
+                !We impose it once per time-level with the exception of the first time-level where we do it after the second non-linear loop 
+                !This is because we need outfluxes to contain data
+                if ((itime > 1 .and. its == 1 ).or. (itime == 1 .and. its== 2)) &
+                                call Impose_connected_BCs(outfluxes, packed_state, Mdims, acctim )
+                !##########################End tunneled BCs############################################################
+
+
 
                 !#=================================================================================================================
                 !# Vinicius: Exit simulation if it do not reach convergence
@@ -1042,7 +1065,8 @@ contains
 
             ! If calculating boundary fluxes, dump them to outfluxes.csv
             if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
-                if(getprocno() == 1) call dump_outflux(acctim,itime,outfluxes)
+                call get_option( '/timestepping/current_time', acctim )
+                call dump_outflux(acctim,itime,outfluxes)
             endif
             if (nonLinearAdaptTs) then
                 !As the value of dt and acctim may have changed we retrieve their values
@@ -1054,23 +1078,27 @@ contains
                     itime = itime - 1
                     cycle Loop_Time
                 end if
-            end if
+            end if 
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
-
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
             !!$ Calculate diagnostic fields (it should be outside the timeloop as a one-way coupling field only)
             call get_option( '/timestepping/timestep', dt); !Backup of dt
             !dT may have changed for the next time level, however for diagnostics we need it as it has been done for this time level
             !therefore we compute it based on the actual difference of time
             call set_option( '/timestepping/timestep', acctim-old_acctim)
+            !Now we ensure that the time-step is the correct one
+            call set_option( '/timestepping/timestep', dt)            
+            !Time to compute the self-potential if required
+            if (write_all_stats .and. have_option("/porous_media/SelfPotential")) &
+                    call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
             !Now compute diagnostics
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             !calculate_diagnostic_variables_new <= computes other diagnostics such as python-based fields
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
-            !Now we ensure that the time-step is the correct one
-            call set_option( '/timestepping/timestep', dt)
+
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
+
             !Now we ensure that the time-step is the correct one
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
@@ -1187,7 +1215,7 @@ contains
             end if
             ! ####UP TO HERE####
 
-            !Post processing if the mesh has been adapted or to ecalculate fields for the new time-level
+            !Post processing if the mesh has been adapted or to recalculate fields for the new time-level
             if ( do_reallocate_fields ) then
                 after_adapt=.true.
             else
@@ -1198,7 +1226,7 @@ contains
             else
                 call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
             end if
-            call set_boundary_conditions_values(state, shift_time=.true.)
+            call set_boundary_conditions_values(state, shift_time=.false.)
             if (sig_hup .or. sig_int) then
                 ewrite(1,*) "Caught signal, exiting"
                 exit Loop_Time
@@ -1453,10 +1481,12 @@ contains
                         checkpoint_number=checkpoint_number+1
                     end if
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
+                    if (.not. write_all_stats) then
+                        if (have_option("/porous_media/SelfPotential")) &
+                            call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
+                        call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
+                    end if
                     not_to_move_det_yet = .false. ;
-                    !Time to compute the self-potential if required
-                    if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
             else if (have_option('/io/dump_period')) then
@@ -1468,7 +1498,11 @@ contains
                             protect_simulation_name=.true.,file_type='.mpml')
                         checkpoint_number=checkpoint_number+1
                     end if
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
+                    if (.not. write_all_stats) then
+                        if (have_option("/porous_media/SelfPotential")) &
+                            call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
+                        call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
+                    end if
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
                     if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
@@ -1485,6 +1519,8 @@ contains
             real, dimension(2)            :: min_max_limits_before, concentration_min_max_limits_before
             type (tensor_field), pointer  :: tempfield, ComponentMassFraction
             type (tensor_field), pointer  :: Concentration
+            character(len=PYTHON_FUNC_LEN) :: pyfunc
+            real :: acctim
 
             if (numberfields_CVGalerkin_interp > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
@@ -1507,10 +1543,18 @@ contains
                 !concentration_min_max_limits_before(2) = 1.0; call allmax(concentration_min_max_limits_before(2))
             end if
             do_reallocate_fields = .false.
+
+            call get_option( '/timestepping/current_time', acctim )
+
             Conditional_Adaptivity_ReallocatingFields: if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
                 if( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps') ) then
-                    call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps', &
+                  if( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps/constant') ) then
+                    call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps/constant', &
                         adapt_time_steps, default=5 )
+                  else if ( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps/python') ) then
+                    call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps/python', pyfunc)
+                    call integer_from_python(pyfunc, acctim, adapt_time_steps)
+                  end if
 
                 !-ao solid modelling (AMR field for fracturing)
                 if (is_multifracture ) then
@@ -1597,7 +1641,7 @@ contains
                 call pack_multistate(Mdims%npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
                 call prepare_absorptions(state, Mdims, multi_absorp)
-                call set_boundary_conditions_values(state, shift_time=.true.)
+                call set_boundary_conditions_values(state, shift_time=.false.)
                 !!$ Deallocating array variables:
                 deallocate( &
                     !!$ Working arrays

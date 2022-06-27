@@ -35,6 +35,32 @@ want this.</a:documentation>
             </optional>
           </element>
           <optional>
+            <element name="tunneled_from_another_BC">
+              <a:documentation>Use this option to use the outlet BC from id A as inlet BC of id B.
+
+&lt;b&gt;INSTRUCTIONS AND CHARACTERISTICS:&lt;/b&gt;
+
+1) You need to set the outlet BC in outfluxes, so the averaged value over the surface can be computed and therefore used here.
+
+2) The method is not mass conservative as it uses the value from the previous time-step.&lt;b&gt;For adaptive time-stepping a reduced value of increase/decrease is recommended, e.g. 1.1&lt;/b&gt;
+
+3) Works in parallel.
+
+It should be fine for ATES simulations and ventilation applications such as air purifiers.</a:documentation>
+              <element name="from_BC_id">
+                <a:documentation>Set here the BC id to use as reference.</a:documentation>
+                <ref name="integer"/>
+              </element>
+              <optional>
+                <element name="period">
+                  <a:documentation>Select a period if you want to flip the BC connection. 
+When int(time/period) is odd we flip the BC connection.</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+            </element>
+          </optional>
+          <optional>
             <element name="component_density">
               <a:documentation>For multimaterial simulations.</a:documentation>
               <empty/>
