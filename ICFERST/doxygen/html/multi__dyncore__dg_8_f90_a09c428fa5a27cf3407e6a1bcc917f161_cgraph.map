@@ -1,0 +1,13 @@
+<map id="stokes_anderson_acceleration" name="stokes_anderson_acceleration">
+<area shape="rect" id="node1" title="Generic subroutine that perform the Anderson acceleration solver. This is storing a set of results fo..." alt="" coords="5,217,224,243"/>
+<area shape="rect" id="node2" href="$namespacematrix__operations.html#a3cf9d9f54e55a501e927c1ae443093f0" title=": Performs the multiplication CDP_tensor = MmatC * deltap" alt="" coords="321,9,471,51"/>
+<area shape="rect" id="node4" href="$multi__dyncore__dg_8_f90.html#a53b2f85c6a8345f6316959365e52bd83" title="Calculates the divergence of the velocity by multipliying it by the Ct matrix." alt="" coords="335,78,457,105"/>
+<area shape="rect" id="node7" href="$namespacesolvers__module.html#a119325e40cdcd54b1766472b55920364" title="This subroutine provides a new guess based on previous updates and residuals. Use this subroutine to ..." alt="" coords="308,129,484,185"/>
+<area shape="rect" id="node8" href="$multi__dyncore__dg_8_f90.html#aa5bc5bc1a7d8c32c0a8f667b03648f64" title="Include in the pressure matrix the compressibility terms (based on taylor expansion series) to ensure..." alt="" coords="272,209,520,251"/>
+<area shape="rect" id="node9" href="$multi__dyncore__dg_8_f90.html#a68747c78369c5abd8f6bce5ae5d0bec7" title="Multiplies the inv of the lumped mass matrix times the vel_vector vel_vector = vel_vector / (mass_ele..." alt="" coords="298,275,494,302"/>
+<area shape="rect" id="node10" href="$multi__dyncore__dg_8_f90.html#ae8a4aa21acf8febcc4fec45af279f33d" title="Compute deltaP by solving the pressure equation using the CMC matrix." alt="" coords="295,326,497,353"/>
+<area shape="rect" id="node11" href="$multi__dyncore__dg_8_f90.html#a5a525a502553802a5ecbe7a138b1575c" title="Update velocity by solving the momentum equation for a given pressure, the RHS is formed here If resc..." alt="" coords="297,377,495,403"/>
+<area shape="rect" id="node3" href="$namespacematrix__operations.html#a895e0f98ecb17a8541be87879adf8876" title=": CDP=C*DP" alt="" coords="568,5,717,47"/>
+<area shape="rect" id="node5" href="$namespacematrix__operations.html#aca7d06edf5bee7b9e5c00830ee444478" title=":CV_RHS=CT*U" alt="" coords="568,71,717,112"/>
+<area shape="rect" id="node6" href="$namespacematrix__operations.html#a6aab014a9001ac1cbb2e46bba4171cd9" title=": DP = (C)^T U_ALL" alt="" coords="568,136,717,177"/>
+</map>

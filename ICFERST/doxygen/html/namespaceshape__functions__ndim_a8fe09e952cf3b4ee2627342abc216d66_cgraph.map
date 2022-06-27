@@ -1,0 +1,17 @@
+<map id="shape_functions_ndim::spectr" name="shape_functions_ndim::spectr">
+<area shape="rect" id="node1" title="This subroutine defines a spectal element. IPOLY defines the element type and IQADRA the quadrature...." alt="" coords="5,136,173,177"/>
+<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#a62d482e48ef37a99c81efcdd8e273644" title="This sub returns the weights WEIT the quadrature points QUAPOS and the node points NODPOS...." alt="" coords="221,71,389,112"/>
+<area shape="rect" id="node11" href="$namespaceshape__functions__ndim.html#afc7053552eace6af239edcd5d1b99cb3" title="INOD contains the node at which the polynomial is associated with LXGP is the position at which the p..." alt="" coords="221,168,389,209"/>
+<area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#a287190f2e4c6ec0425a18bc9d5ab56b2" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 67 of:Spectral M..." alt="" coords="437,5,605,47"/>
+<area shape="rect" id="node4" href="$namespaceshape__functions__ndim.html#a465010bbab3913a160a668f64191ba31" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 69 of:Spectral M..." alt="" coords="437,71,605,112"/>
+<area shape="rect" id="node5" href="$namespaceshape__functions__ndim.html#aa001da7c1c2a50e7cd0b182f17f6bd1f" title="This sub works out the Gauss&#45;Lobatto&#45;Legendre roots." alt="" coords="653,39,821,80"/>
+<area shape="rect" id="node8" href="$namespaceshape__functions__ndim.html#a9a01d935ddfe5ea36a29ffe505dbf73e" title=" " alt="" coords="653,104,821,145"/>
+<area shape="rect" id="node6" href="$namespaceshape__functions__ndim.html#ab137b075bc778e2a27a0c1810a49b492" title="COMPUTES THE GAUSS&#45;LOBATTO COLLOCATION POINTS FOR JACOBI POLYNOMIALS." alt="" coords="869,39,1037,80"/>
+<area shape="rect" id="node7" href="$namespaceshape__functions__ndim.html#a09da641d2526c3de68637ac538d3aabd" title="COMPUTES THE JACOBI POLYNOMIAL (POLY) AND ITS DERIVATIVE (PDER) OF DEGREE N AT X." alt="" coords="1085,39,1253,80"/>
+<area shape="rect" id="node9" href="$namespaceshape__functions__ndim.html#ae03154693b140919ff0c589df8e58f89" title="Calculate binomial coefficients." alt="" coords="869,105,1037,147"/>
+<area shape="rect" id="node10" href="$namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title="Calculate n!" alt="" coords="1085,133,1253,175"/>
+<area shape="rect" id="node12" href="$namespaceshape__functions__ndim.html#afcdd60fa5c35faed86afbc64194f32f5" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="437,136,605,177"/>
+<area shape="rect" id="node14" href="$namespaceshape__functions__ndim.html#af8259d92f168acab30360351113dd84a" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="437,201,605,243"/>
+<area shape="rect" id="node15" href="$namespaceshape__functions__ndim.html#a647388b8d7683edf0e0f203e5bcad3b6" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="437,267,605,308"/>
+<area shape="rect" id="node13" href="$namespaceshape__functions__ndim.html#ab7a1f6dd86d185746575caf1b293c45f" title="If DIFF then return the n&#39;th Chebyshef polynomial differentiated w.r.t x. If DIFF2 then form the 2&#39;nd..." alt="" coords="653,169,821,211"/>
+</map>

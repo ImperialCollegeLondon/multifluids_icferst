@@ -1,0 +1,4 @@
+<map id="get_diff_coef_divdx" name="get_diff_coef_divdx">
+<area shape="rect" id="node1" title=": Computes the effective value of K or sigma. at the interface between CVs Based on the intface_type ..." alt="" coords="228,13,379,39"/>
+<area shape="rect" id="node2" href="$namespacecv__advection.html#a133a322640c972e4b8577bb3a2439357" title=": In this method we assemble and solve the Laplacian system using at least P1 elements The equation s..." alt="" coords="5,5,180,47"/>
+</map>

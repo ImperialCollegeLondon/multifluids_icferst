@@ -1,0 +1,11 @@
+<map id="multiphase_eos::get_relperm" name="multiphase_eos::get_relperm">
+<area shape="rect" id="node1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1740,35,1895,76"/>
+<area shape="rect" id="node2" href="$namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1532,35,1692,76"/>
+<area shape="rect" id="node3" href="$namespacemultiphase__eos.html#a659427fd61af753266767259b441a345" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="1292,5,1484,47"/>
+<area shape="rect" id="node9" href="$multi__eos_8_f90.html#a7b4b5e95a2c1b64f376a9c4092d60c0a" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="1032,71,1244,98"/>
+<area shape="rect" id="node4" href="$multi__eos_8_f90.html#a2e38f3c2af7da0c1a95bbb5e485cf0b7" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="1051,5,1225,47"/>
+<area shape="rect" id="node5" href="$namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="756,35,984,76"/>
+<area shape="rect" id="node6" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,35,419,76"/>
+<area shape="rect" id="node8" href="$namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,64,708,105"/>
+<area shape="rect" id="node7" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,35,171,76"/>
+</map>
