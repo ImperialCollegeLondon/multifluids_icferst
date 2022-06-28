@@ -1,6 +1,0 @@
-<map id="multi_tools::petsc_logging" name="multi_tools::petsc_logging">
-<area shape="rect" id="node1" title="Subroutines that can initialise, register and start/end a petsc performance profiling routin...." alt="" coords="5,49,144,90"/>
-<area shape="rect" id="node2" href="$multi__tools_8_f90.html#a20ffba2d9f6022b015e7122a1a461a1f" title=": This routine registers the stage for PETSC logging IMPORTANT:" alt="" coords="197,5,309,32"/>
-<area shape="rect" id="node3" href="$multi__tools_8_f90.html#a04e6e3471cf9b89f5685e91e93e88a6c" title=": This routine ends the current stage registered for PETSc profiling IMPORTANT:" alt="" coords="196,56,311,83"/>
-<area shape="rect" id="node4" href="$multi__tools_8_f90.html#a005cd14565f82c0eca81def2d7be6cb2" title=": This routine starts the current stage registered for PETSc profiling IMPORTANT:" alt="" coords="192,107,315,133"/>
-</map>

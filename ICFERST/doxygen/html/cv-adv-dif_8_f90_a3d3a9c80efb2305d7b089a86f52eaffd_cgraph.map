@@ -1,9 +1,0 @@
-<map id="finptsstore" name="finptsstore">
-<area shape="rect" id="node1" title="This sub finds the matrix values MATPSI for a given point on the stencil IF IGETSTOR=1 then get ELEMA..." alt="" coords="5,59,97,85"/>
-<area shape="rect" id="node2" href="$cv-adv-dif_8_f90.html#a678735cdf077e4ea1a76fe486e1ba1b3" title="This sub calculates the value of PSI that would be at the other side of the stencil if we had a linea..." alt="" coords="154,33,255,60"/>
-<area shape="rect" id="node7" href="$cv-adv-dif_8_f90.html#a79e6107e4599bc638961aac18b0a1547" title="This sub calculates the max and min values of PSI in local vacinity of an element." alt="" coords="145,84,264,111"/>
-<area shape="rect" id="node3" href="$namespacecv__advection.html#aeb4c2b2bcca484786a8d6f3d1410c689" title=" " alt="" coords="320,8,504,35"/>
-<area shape="rect" id="node5" href="$namespacecv__advection.html#a1a0899f179933a6d3cbc48431237aff7" title=" " alt="" coords="312,60,512,87"/>
-<area shape="rect" id="node4" href="$namespacemulti__tools.html#a9455b92cfb559c3b76e4b77580886c47" title=" " alt="" coords="560,5,731,32"/>
-<area shape="rect" id="node6" href="$namespaceshape__functions__ndim.html#af4782b913aba9aef1af79d9db7c1739a" title=" " alt="" coords="561,57,729,98"/>
-</map>

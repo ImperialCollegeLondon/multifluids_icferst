@@ -1,4 +1,0 @@
-<map id="phreeqcrm::rm_setconcentrations" name="phreeqcrm::rm_setconcentrations">
-<area shape="rect" id="node1" title="Use the vector of concentrations (c) to set the moles of components in each reaction cell...." alt="" coords="5,5,247,32"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="295,5,453,32"/>
-</map>

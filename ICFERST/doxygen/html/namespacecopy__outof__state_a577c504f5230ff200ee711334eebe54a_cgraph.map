@@ -1,7 +1,0 @@
-<map id="copy_outof_state::adaptive_nonlinear" name="copy_outof_state::adaptive_nonlinear">
-<area shape="rect" id="node1" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="5,104,204,145"/>
-<area shape="rect" id="node2" href="$namespacecopy__outof__state.html#a7d6957a54cc1cc0a38a4a7a90bca1f89" title=": We create a potential to optimize F = sum (f**2), so the solution is when this potential reaches a ..." alt="" coords="255,5,439,47"/>
-<area shape="rect" id="node3" href="$namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b" title="@DEPRECATED: Gets memory from packed state This subroutine returns a pointer to the desired values of..." alt="" coords="256,71,437,112"/>
-<area shape="rect" id="node4" href="$namespacecopy__outof__state.html#ad775c010bade229fba0416002e6928a6" title="Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs t..." alt="" coords="252,136,441,177"/>
-<area shape="rect" id="node5" href="$namespacemulti__tools.html#a1ab322da5f344e1d042fb429ebce3637" title=": Returns true if the input name is an Active Tracer type, Tracer, Species, Concentration or any othe..." alt="" coords="266,201,427,243"/>
-</map>

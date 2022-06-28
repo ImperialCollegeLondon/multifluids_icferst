@@ -1,4 +1,0 @@
-<map id="phreeqcrm::rm_initialphreeqc2module" name="phreeqcrm::rm_initialphreeqc2module">
-<area shape="rect" id="node1" title="Transfer solutions and reactants from the InitialPhreeqc instance to the reaction&#45;module workers,..." alt="" coords="5,5,276,32"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="324,5,483,32"/>
-</map>

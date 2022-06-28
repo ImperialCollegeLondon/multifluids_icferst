@@ -1,5 +1,0 @@
-<map id="phreeqcrm::rm_setgascompmoles" name="phreeqcrm::rm_setgascompmoles">
-<area shape="rect" id="node1" title="Use the array of concentrations (gas_moles) to set the moles of gas components in each reaction cell." alt="" coords="5,31,249,57"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="361,5,519,32"/>
-<area shape="rect" id="node3" href="$namespacephreeqcrm.html#af5867cb3e15ad7b4a21392203dc6f77b" title="Returns the number of gas phase components in the initial&#45;phreeqc module. RM_FindComponents must be c..." alt="" coords="297,56,583,83"/>
-</map>

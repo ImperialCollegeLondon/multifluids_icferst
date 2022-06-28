@@ -1,6 +1,0 @@
-<map id="cv_advection::isotropic_limiter_all" name="cv_advection::isotropic_limiter_all">
-<area shape="rect" id="node1" title="Computes the limited values at the interface, not as generic as the anisotropic one and never used ac..." alt="" coords="5,31,177,72"/>
-<area shape="rect" id="node2" href="$cv-adv-dif_8_f90.html#a5c58181433ef3d6296d003eccb780c6d" title="Populate limiting matrix based on max and min values For each node, find the largest and smallest val..." alt="" coords="225,13,428,39"/>
-<area shape="rect" id="node4" href="$cv-adv-dif_8_f90.html#af8e5cd91f2c7b0d5ffa4d0f3b9c207c1" title="For each node, find the largest and smallest value of T and DENSITY for both the current and previous..." alt="" coords="257,63,396,90"/>
-<area shape="rect" id="node3" href="$namespacecv__advection.html#a339e8bc7d0ed41fd23b546168e2c7f5e" title="Adjust TMIN to take into account different sized CV&#39;s. if RESET_STORE then reset TMIN to orginal valu..." alt="" coords="476,5,639,47"/>
-</map>

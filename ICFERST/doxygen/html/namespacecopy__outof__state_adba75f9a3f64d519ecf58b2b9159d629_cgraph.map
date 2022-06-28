@@ -1,5 +1,0 @@
-<map id="copy_outof_state::prepare_absorptions" name="copy_outof_state::prepare_absorptions">
-<area shape="rect" id="node1" title=": Prepares the memory to compute absorption fields" alt="" coords="5,5,197,47"/>
-<area shape="rect" id="node2" href="$namespacemulti__data__types.html#aacf7345cba9f7c9760a4f8e1c68ee0ca" title="Deallocation of all of the multi field types within multi_absorp." alt="" coords="245,5,456,47"/>
-<area shape="rect" id="node3" href="$namespacemulti__data__types.html#a65dde4f9748cb3dd200c328f99304c4e" title="Deallocation of a multi field type." alt="" coords="504,5,715,47"/>
-</map>

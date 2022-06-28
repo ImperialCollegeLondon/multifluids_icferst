@@ -1,4 +1,0 @@
-<map id="cv_advection::pack_loc_all3" name="cv_advection::pack_loc_all3">
-<area shape="rect" id="node1" title="This subrotuine is for fields that are bigger than final_phase &#45; start_phase Checks if the fields are..." alt="" coords="5,5,152,47"/>
-<area shape="rect" id="node2" href="$cv-adv-dif_8_f90.html#a7c45215f7bff94897216c155967c06e4" title="If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage." alt="" coords="200,13,291,39"/>
-</map>
