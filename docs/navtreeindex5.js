@@ -1,5 +1,10 @@
 var NAVTREEINDEX5 =
 {
+"structmulti__magma_1_1coupling__term__coef.html#a6ea25d0aedcb4d0cd3ab57290bcc9ac7":[2,0,2,0,4],
+"structmulti__magma_1_1coupling__term__coef.html#aed6cdde0bf516c5858b18286663dbf99":[2,0,2,0,0],
+"structmulti__magma_1_1coupling__term__coef.html#aefc08959c2d9102a7801077b112ffea5":[2,0,2,0,3],
+"structmulti__magma_1_1magma__phase__diagram.html":[2,0,2,1],
+"structmulti__magma_1_1magma__phase__diagram.html#a36c68bedb748aa20e80272c38d49903d":[2,0,2,1,4],
 "structmulti__magma_1_1magma__phase__diagram.html#a3bf24cdd15418027aca850ab1fa29d77":[2,0,2,1,3],
 "structmulti__magma_1_1magma__phase__diagram.html#a42a6e06104ff75a37d5c1f7947a96b00":[2,0,2,1,8],
 "structmulti__magma_1_1magma__phase__diagram.html#a7591da6d152f1d5511668e86ee7fc275":[2,0,2,1,6],
