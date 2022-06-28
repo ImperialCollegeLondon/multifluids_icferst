@@ -157,8 +157,9 @@ Useful scripts</h2>
 <p>Within the folder ICFERST/tools you can find some useful scripts:</p>
 <p>1) If detectors are used you can use detectors_and_stat2csv.py to convert the detectors file in the more readable format .csv</p>
 <p>2) To convert from Cubit (exodusII) to a mesh type that ICFERST can open (GMSHv2 format) the scripts exodus2gmsh.py (3D) and 2Dexodus2gmsh.py (2D can be used. exodus2gmsh.py can convert directly into binary format</p>
+<p>3) Within scripts_to_make_life_easier there are two scripts to be modified and copied (manually) into /usr/bin to make the use of Diamond and ICFERST much easier.</p>
 <h1><a class="anchor" id="diamond"></a>
-Using the Diamond interface</h1>
+Diamond interface</h1>
 <p>Using the diamond GUI to configure test cases The input files are “EXAMPLE.mpml”. This files can be either manipulated using diamond a GUI, or a text file. To open the diamond GUI for ICFERST this is an example, found in the examples folder in IC-FERST-FOLDER/legacy_reservoir_prototype/tests/3D_BL  
  <CODE>
  <PRE>
@@ -166,6 +167,13 @@ Using the Diamond interface</h1>
  </PRE>
  </CODE>
  </p>
+<h2><a class="anchor" id="int_conv"></a>
+Simplified diamond interface</h2>
+<p>The current version of the multiphase schema found within ICFERST/schemas is a simplified version which gets populated internally so it is compatible with Fluidity. This extra population affects when generating checkpointing files that will not be exactly like the original and may need to amended before re-running from a checkpoint (which can be done by opening them and saving). It is important to understand that this conversion exists since it may affect some sections of the code. However, this has been tried to be kept to a minimum and developers can expect a direct connection between diamond and where the option can be found when extracting it.</p>
+<p>The simplification mainly focuses on not having to describe the discretisation type, use of defaults for solvers and other settings , density not being defined as a scalar field explicitly, simplified interpolation settings, etc. These can be found in multiphase_prototype_wrapper and are generated using the spud options as defined in the Fluidity manual in the manual folder</p>
+<h2><a class="anchor" id="Diamond_manual"></a>
+Diamond graphical document</h2>
+<p>You can find a tutorial detailing the use of diamond and the different sections in ICFERST/doc/ICFERST_tutorial.pdf Here we will provide a short summary of each section but the graphical document is still highly recommended.</p>
 <h1><a class="anchor" id="Parallel"></a>
 Using ICFERST in parallel</h1>
 <p>ICFERST uses openMPI to run in parallel. The mesh needs to be decomposed initially using the command  
@@ -186,7 +194,80 @@ Using ICFERST in parallel</h1>
 Structure of the ICFERST code</h1>
 <p>All the ICFERST code is within the folder ICFERST where the test cases, code, tools and schemas for diamond are stored. Some parts of Fluidity have been slightly modified but in general the Fluidity code is untouched. ICFERST is composed of two main loops. First, it is the time loop and secondly the non-linear loop, which is a Picard method to deal with non-linearities. The time-loop is defined in the multi_timeloop file. From this subroutine we initialise all the necessary fields and start the non-linear loop, within which all the equations to be solved are being called as blocks. In this way, first the momentum equation and velocity are obtained, next the saturation is transported (which also contains within it another non-linear loop) and then all the other transport equations are being solved.</p>
 <p>ICFERST solves using a DCVFE formulation, which means that we use two different meshes, a CV mesh and a FE mesh. The CV mesh and associated equations are dealt with in CV_ASSEMB, which for porous media is around 70% of the overall cost. Everything related with the FE mesh is solved for in multi_dyncore However multi_dyncore contains the calls to solve for the different transport equations. So effectively the process is normally time_loop (initialise memory and stuff, including EOS, source terms...) =&gt; multi_dyncore (assemble and solve) =&gt; cv_assemb (assembles the transport equation).</p>
-<p>To simplify and standardize the naming of the variables the structures defined in <a class="el" href="namespacemulti__data__types.html" title="This module contains all the ICFERST structures and associated subroutines (allocate/deallocate) Use ...">multi_data_types</a> are used through the code. Normally one or two of those types are created once and used throughout the code, so it is recommended to check in that section what is each variable and use those types either expanding them or creating more. </p>
+<p>To simplify and standardize the naming of the variables the structures defined in <a class="el" href="namespacemulti__data__types.html" title="This module contains all the ICFERST structures and associated subroutines (allocate/deallocate) Use ...">multi_data_types</a> are used through the code. Normally one or two of those types are created once and used throughout the code, so it is recommended to check in that section what is each variable and use those types either expanding them or creating more.</p>
+<h2><a class="anchor" id="code_Diagram"></a>
+Code Diagram</h2>
+<p> 
+ <CODE>
+ <PRE>
+     ┌─────────────┐     ┌────────────┐    ┌───────────────┐
+     │  Adapt mesh ├─────┤Adaptivity  ├────┤ Mesh2Mesh int │
+     └─────────────┘     │            │    └───────────────┘
+                         └─────┬──────┘
+                               │          ┌────────┐
+                               │   ┌──────┤  PETSc │
+                               │   │      └────────┘
+       ┌─────────────┐   ┌─────┴───┴─┐    ┌───────────────────┐
+       │ Read input  ├───┤ Fluidity  ├────┤ Generate vtu files│
+       └─────────────┘   │           │    │  detectors, stats │
+                         └──────┬────┘    └───────────────────┘
+                                │                        ┌────────────────────────────────────────────────────┐
+                                │                        │multi_phreeqc──────────►Initialise PHREEQCRM        │
+                                │                        │Shape functions────────►CV and FE shape functions   │
+                         ┌──────┴─────┐                  │                                                    │
+                         │  ICFERST   │ Initialisation   │Multi_data_types ──────►Initialise types and memory │
+    ┌───────────────────►│  Timeloop  ├─────────────────►│                                                    │
+    │                    │            │  of after adapt  │multi_eos  ───────────► Update EOS and petrophysical│
+    │                    └──────┬─────┘                  │                        properties                  │
+    │                           │Start non-linear        │Extract from state ────►Read from diamond and       │
+    │        ┌─────────────────►│ loop                   │                        adaptive-time-stepping      │
+    │        │                  │                        └────────────────────────────────────────────────────┘
+    │        │           ┌──────┴───────────┐
+    │        │           │Assemble and solve│      ┌───────────────────┐  ┌───────────┐ ┌───────────────────┐
+    │        │           │momentum equation ├─────►│  multi_dyncore    ├─►│ cv_assemb ├─► Assemble C and Ct │
+    │        │           └──────┬───────────┘      └─┬─────────────────┘  └───────────┘ └───────────────────┘
+    │        │                  │                    │    ┌───────────┐
+    │        │                  │                    ├───►│Assemble M │
+    │        │                  │                    │    ├───────────┴────────────┐     ┌────────────┐
+    │        │                  │                    │    │ Solve  (M  C) (u) = (f)├────►│multi_solver│
+┌───┴─────┐  │      ┌──────────►│                    └───►│        (Ct Mp) (p)  (g)│     └────────────┘
+│ Advance │  │      │           │                         │ Mp/=0 for compressible │
+│  time   │  │      │   ┌───────┴────────────┐            └────────────────────────┘
+└───┬─────┘  │      │   │If multiphase solve │     ┌─────────────┐        ┌─────────┐   ┌───────────┐
+    │        │      │   │transport saturation├────►│multi_dyncore├───────►│cv_assemb│──►│multi_pipes│
+    │        │      │   └────────┬───────────┘     └─────┬───────┤        └─────────┘   └───────────┘
+    │        │      │ Loop until │                       │  ┌─────────────────────────────┐
+    │        │      │ converge   │                       └──┤ solve and backtrack solution│
+    │        │      └────────────┤                          └──────────────────────────────┘
+    │   ┌────┴───────────┐       │                 ┌─────────────┐
+    │   │ Adapt time-step│       │                 │Temperature  ├───────┐
+    │   │   size         │       │                 ├─────────────┤       │  ┌─────────────┐  ┌─────────┐   ┌───────────┐
+    │   └────┬───────────┘       │                 │Concentration├───────┼─►│multi_dyncore├──►cv_assemb│──►│multi_pipes│
+    │        │                   │───────────────► ├─────────────┴───────┤  └────┬────────┘  └─────────┘   └───────────┘
+    │        │                   │                 │ActiveTracers/Species├──┐    │   ┌────────────┐
+    │        │ Loop until        │                 ├─────────────┬───────┤  │    └──►│solve system│
+    │        │ convergence       │                 │Compositional├───────┴──┤        └────────────┘ ┌─────────────────────────┐
+    │        └───────────────────┤                 └─────────────┘          └──────────────────────►│PHREEQC Update Species   │
+    │                            │                                                                  └─────────────────────────┘ 
+    │                            │       ┌──────────────┐       ┌──────────────┐   ┌─────────┐   ┌───────────┐
+    │                            ├──────►│PassiveTracers├───────►multi_dyncore ├──►│cv_assemb│──►│multi_pipes│
+    │                            │       └──────────────┘       └┬─────────────┘   └─────────┘   └───────────┘
+    │                            ├─────────────┐                 │  ┌────────────┐
+    │                    ┌───────┴──────────┐  │                 └─►│solve system│
+    │                    │  Output vtu      │  │                    └────────────┘
+    │                    │         outfluxes│  │
+    │                    └───────┬──────────┘  │   ┌──────────────┐
+    │                            │             └──►│SelfPotential │
+    │                     ┌──────┴────┐            └──────────────┘
+    │                     │ Adapt mesh│
+    │                     └──────┬────┘
+    └────────────────────────────│
+                              ┌──┴──┐
+                              │ END │
+                              └─────┘
+ </PRE>
+ </CODE>
+  </p>
 </div></div><!-- PageDoc -->
 </div><!-- contents -->
 </div><!-- doc-content -->

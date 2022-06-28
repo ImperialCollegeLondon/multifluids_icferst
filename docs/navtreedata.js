@@ -29,9 +29,14 @@ var NAVTREE =
       [ "Installation", "index.html#install_sec", [
         [ "Useful scripts", "index.html#Scripts", null ]
       ] ],
-      [ "Using the Diamond interface", "index.html#diamond", null ],
+      [ "Diamond interface", "index.html#diamond", [
+        [ "Simplified diamond interface", "index.html#int_conv", null ],
+        [ "Diamond graphical document", "index.html#Diamond_manual", null ]
+      ] ],
       [ "Using ICFERST in parallel", "index.html#Parallel", null ],
-      [ "Structure of the ICFERST code", "index.html#Code_structure", null ]
+      [ "Structure of the ICFERST code", "index.html#Code_structure", [
+        [ "Code Diagram", "index.html#code_Diagram", null ]
+      ] ]
     ] ],
     [ "Modules", "namespaces.html", [
       [ "Modules List", "namespaces.html", "namespaces_dup" ],
@@ -64,10 +69,10 @@ var NAVTREEINDEX =
 [
 "_extract___from___state_8_f90.html",
 "_r_m__interface_8_f90.html#aa06999b1b2bf8b9920785359f9ed0593",
-"multi__data__types_8_f90.html#a4ac5449d11858991ac53447f439013ee",
-"multi__shape__fct_8_f90.html#a327e5ef3b6b9241997dcf0c6f8cad2dd",
-"namespaceshape__functions__linear__quadratic.html",
-"structmulti__magma_1_1magma__phase__diagram.html"
+"multi__data__types_8_f90.html#a331bf7ce0c5156d2bde6c0ab82309e4c",
+"multi__shape__fct_8_f90.html#a06fcc23267a886a2b3122b3a77667801",
+"namespaces.html",
+"structmulti__magma_1_1coupling__term__coef.html#a6ea25d0aedcb4d0cd3ab57290bcc9ac7"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
