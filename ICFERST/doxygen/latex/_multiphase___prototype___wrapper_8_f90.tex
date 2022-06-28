@@ -1,0 +1,148 @@
+\hypertarget{_multiphase___prototype___wrapper_8_f90}{}\doxysection{/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/\+Multiphase\+\_\+\+Prototype\+\_\+\+Wrapper.F90 File Reference}
+\label{_multiphase___prototype___wrapper_8_f90}\index{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/Multiphase\_Prototype\_Wrapper.F90@{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/Multiphase\_Prototype\_Wrapper.F90}}
+{\ttfamily \#include \char`\"{}fdebug.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}petsc\+\_\+legacy.\+h\char`\"{}}\newline
+Include dependency graph for Multiphase\+\_\+\+Prototype\+\_\+\+Wrapper.\+F90\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=250pt]{_multiphase___prototype___wrapper_8_f90__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine \mbox{\hyperlink{_multiphase___prototype___wrapper_8_f90_a0849c5f8b4a25b1987221c6a5a69eeda}{multiphase\+\_\+prototype\+\_\+wrapper}} ()
+\item 
+subroutine \mbox{\hyperlink{_multiphase___prototype___wrapper_8_f90_ac647ed2896f73c1bde8778fb01f67a6e}{set\+\_\+simulation\+\_\+start\+\_\+times}} ()
+\item 
+subroutine \mbox{\hyperlink{_multiphase___prototype___wrapper_8_f90_a03cf8b08de9b05fadef22cafd616c9e1}{populate\+\_\+multi\+\_\+state}} (state)
+\item 
+subroutine \mbox{\hyperlink{_multiphase___prototype___wrapper_8_f90_a99884d69d5088dea5829f0059cd7c941}{read\+\_\+fluid\+\_\+and\+\_\+rock\+\_\+properties\+\_\+from\+\_\+csv}} ()
+\item 
+subroutine \mbox{\hyperlink{_multiphase___prototype___wrapper_8_f90_a4572cb0a047ae7ee4907ed2281f34349}{autocomplete\+\_\+input\+\_\+file}} (nphase, npres, ncomp)
+\begin{DoxyCompactList}\small\item\em \+: In this subroutine. We populate the input file elements that are not user-\/selected in I\+C\+\_\+\+F\+E\+R\+S\+T.\+rnc. (i.\+e. we set all the things that the user doesn\textquotesingle{}t need to worry about). @\+W\+A\+R\+N\+I\+NG\+:IT IS V\+E\+RY I\+M\+P\+O\+R\+T\+A\+NT N\+OT TO C\+H\+A\+N\+GE T\+HE O\+R\+D\+E\+R\+I\+NG IN T\+H\+IS S\+U\+B\+R\+O\+U\+T\+I\+N\+E!!! \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{_multiphase___prototype___wrapper_8_f90_a4e7c8c33fc4b27a2a9d603dd20373b75}{create\+\_\+bin\+\_\+msh\+\_\+file}} (state)
+\begin{DoxyCompactList}\small\item\em \+: We can use fluidity to read an A\+S\+C\+II mesh and generate a binary mesh with I\+C\+F\+E\+R\+ST \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{_multiphase___prototype___wrapper_8_f90_a3a9debcf70f4cf1cbe41a40be9fdb5e6}{get\+\_\+simulation\+\_\+type}} ()
+\begin{DoxyCompactList}\small\item\em \+:This subroutine selects the type of simulator to perform and activates the flags from global\+\_\+parameters accordingly \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{_multiphase___prototype___wrapper_8_f90_a4572cb0a047ae7ee4907ed2281f34349}\label{_multiphase___prototype___wrapper_8_f90_a4572cb0a047ae7ee4907ed2281f34349}} 
+\index{Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}!autocomplete\_input\_file@{autocomplete\_input\_file}}
+\index{autocomplete\_input\_file@{autocomplete\_input\_file}!Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}}
+\doxysubsubsection{\texorpdfstring{autocomplete\_input\_file()}{autocomplete\_input\_file()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+prototype\+\_\+wrapper\+::autocomplete\+\_\+input\+\_\+file (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{nphase,  }\item[{integer, intent(in)}]{npres,  }\item[{integer, intent(in)}]{ncomp }\end{DoxyParamCaption})}
+
+
+
+\+: In this subroutine. We populate the input file elements that are not user-\/selected in I\+C\+\_\+\+F\+E\+R\+S\+T.\+rnc. (i.\+e. we set all the things that the user doesn\textquotesingle{}t need to worry about). @\+W\+A\+R\+N\+I\+NG\+:IT IS V\+E\+RY I\+M\+P\+O\+R\+T\+A\+NT N\+OT TO C\+H\+A\+N\+GE T\+HE O\+R\+D\+E\+R\+I\+NG IN T\+H\+IS S\+U\+B\+R\+O\+U\+T\+I\+N\+E!!! 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{_multiphase___prototype___wrapper_8_f90_a4572cb0a047ae7ee4907ed2281f34349_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{_multiphase___prototype___wrapper_8_f90_a4e7c8c33fc4b27a2a9d603dd20373b75}\label{_multiphase___prototype___wrapper_8_f90_a4e7c8c33fc4b27a2a9d603dd20373b75}} 
+\index{Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}!create\_bin\_msh\_file@{create\_bin\_msh\_file}}
+\index{create\_bin\_msh\_file@{create\_bin\_msh\_file}!Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}}
+\doxysubsubsection{\texorpdfstring{create\_bin\_msh\_file()}{create\_bin\_msh\_file()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+prototype\+\_\+wrapper\+::create\+\_\+bin\+\_\+msh\+\_\+file (\begin{DoxyParamCaption}\item[{type(state\+\_\+type), dimension(\+:), intent(inout), pointer}]{state }\end{DoxyParamCaption})}
+
+
+
+\+: We can use fluidity to read an A\+S\+C\+II mesh and generate a binary mesh with I\+C\+F\+E\+R\+ST 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{_multiphase___prototype___wrapper_8_f90_a4e7c8c33fc4b27a2a9d603dd20373b75_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{_multiphase___prototype___wrapper_8_f90_a3a9debcf70f4cf1cbe41a40be9fdb5e6}\label{_multiphase___prototype___wrapper_8_f90_a3a9debcf70f4cf1cbe41a40be9fdb5e6}} 
+\index{Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}!get\_simulation\_type@{get\_simulation\_type}}
+\index{get\_simulation\_type@{get\_simulation\_type}!Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}}
+\doxysubsubsection{\texorpdfstring{get\_simulation\_type()}{get\_simulation\_type()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+prototype\+\_\+wrapper\+::get\+\_\+simulation\+\_\+type}
+
+
+
+\+:This subroutine selects the type of simulator to perform and activates the flags from global\+\_\+parameters accordingly 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{_multiphase___prototype___wrapper_8_f90_a3a9debcf70f4cf1cbe41a40be9fdb5e6_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{_multiphase___prototype___wrapper_8_f90_a0849c5f8b4a25b1987221c6a5a69eeda}\label{_multiphase___prototype___wrapper_8_f90_a0849c5f8b4a25b1987221c6a5a69eeda}} 
+\index{Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}!multiphase\_prototype\_wrapper@{multiphase\_prototype\_wrapper}}
+\index{multiphase\_prototype\_wrapper@{multiphase\_prototype\_wrapper}!Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}}
+\doxysubsubsection{\texorpdfstring{multiphase\_prototype\_wrapper()}{multiphase\_prototype\_wrapper()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+prototype\+\_\+wrapper}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=550pt]{_multiphase___prototype___wrapper_8_f90_a0849c5f8b4a25b1987221c6a5a69eeda_cgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{_multiphase___prototype___wrapper_8_f90_a03cf8b08de9b05fadef22cafd616c9e1}\label{_multiphase___prototype___wrapper_8_f90_a03cf8b08de9b05fadef22cafd616c9e1}} 
+\index{Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}!populate\_multi\_state@{populate\_multi\_state}}
+\index{populate\_multi\_state@{populate\_multi\_state}!Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}}
+\doxysubsubsection{\texorpdfstring{populate\_multi\_state()}{populate\_multi\_state()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+prototype\+\_\+wrapper\+::populate\+\_\+multi\+\_\+state (\begin{DoxyParamCaption}\item[{type(state\+\_\+type), dimension(\+:), intent(inout), pointer}]{state }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{_multiphase___prototype___wrapper_8_f90_a03cf8b08de9b05fadef22cafd616c9e1_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{_multiphase___prototype___wrapper_8_f90_a03cf8b08de9b05fadef22cafd616c9e1_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{_multiphase___prototype___wrapper_8_f90_a99884d69d5088dea5829f0059cd7c941}\label{_multiphase___prototype___wrapper_8_f90_a99884d69d5088dea5829f0059cd7c941}} 
+\index{Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}!read\_fluid\_and\_rock\_properties\_from\_csv@{read\_fluid\_and\_rock\_properties\_from\_csv}}
+\index{read\_fluid\_and\_rock\_properties\_from\_csv@{read\_fluid\_and\_rock\_properties\_from\_csv}!Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}}
+\doxysubsubsection{\texorpdfstring{read\_fluid\_and\_rock\_properties\_from\_csv()}{read\_fluid\_and\_rock\_properties\_from\_csv()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+prototype\+\_\+wrapper\+::read\+\_\+fluid\+\_\+and\+\_\+rock\+\_\+properties\+\_\+from\+\_\+csv}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{_multiphase___prototype___wrapper_8_f90_a99884d69d5088dea5829f0059cd7c941_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{_multiphase___prototype___wrapper_8_f90_a99884d69d5088dea5829f0059cd7c941_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{_multiphase___prototype___wrapper_8_f90_ac647ed2896f73c1bde8778fb01f67a6e}\label{_multiphase___prototype___wrapper_8_f90_ac647ed2896f73c1bde8778fb01f67a6e}} 
+\index{Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}!set\_simulation\_start\_times@{set\_simulation\_start\_times}}
+\index{set\_simulation\_start\_times@{set\_simulation\_start\_times}!Multiphase\_Prototype\_Wrapper.F90@{Multiphase\_Prototype\_Wrapper.F90}}
+\doxysubsubsection{\texorpdfstring{set\_simulation\_start\_times()}{set\_simulation\_start\_times()}}
+{\footnotesize\ttfamily subroutine multiphase\+\_\+prototype\+\_\+wrapper\+::set\+\_\+simulation\+\_\+start\+\_\+times}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{_multiphase___prototype___wrapper_8_f90_ac647ed2896f73c1bde8778fb01f67a6e_icgraph}
+\end{center}
+\end{figure}

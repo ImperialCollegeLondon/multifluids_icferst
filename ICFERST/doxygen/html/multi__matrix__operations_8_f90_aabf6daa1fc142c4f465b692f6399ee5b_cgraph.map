@@ -1,0 +1,8 @@
+<map id="color_get_cmc_pha_slow" name="color_get_cmc_pha_slow">
+<area shape="rect" id="node1" title=": form pressure matrix CMC using a colouring approach" alt="" coords="5,143,189,170"/>
+<area shape="rect" id="node2" href="$namespacematrix__operations.html#a895e0f98ecb17a8541be87879adf8876" title=": CDP=C*DP" alt="" coords="238,5,387,47"/>
+<area shape="rect" id="node3" href="$namespacematrix__operations.html#ac262416a51bbee2f70aa2ed9408be200" title=": CV_RHS=CT*U" alt="" coords="238,71,387,112"/>
+<area shape="rect" id="node4" href="$namespacematrix__operations.html#adab9184c4050e9ba8576cde63fa99b5a" title=": DP = (C)^T U_LONG" alt="" coords="238,136,387,177"/>
+<area shape="rect" id="node5" href="$namespacematrix__operations.html#a803a8d54cfb386b1ba07fc131910114c" title=": performs U = BLOCK_MAT * CDP, where block_mat" alt="" coords="237,201,388,243"/>
+<area shape="rect" id="node6" href="$namespacematrix__operations.html#af1abd4988e547cc7cd5f59bf7ccbfff9" title=" " alt="" coords="238,267,387,308"/>
+</map>

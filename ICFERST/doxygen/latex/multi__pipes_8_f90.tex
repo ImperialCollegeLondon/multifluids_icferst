@@ -1,0 +1,27 @@
+\hypertarget{multi__pipes_8_f90}{}\doxysection{/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/multi\+\_\+pipes.F90 File Reference}
+\label{multi__pipes_8_f90}\index{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/multi\_pipes.F90@{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/multi\_pipes.F90}}
+{\ttfamily \#include \char`\"{}fdebug.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}petsc\+\_\+legacy.\+h\char`\"{}}\newline
+Include dependency graph for multi\+\_\+pipes.\+F90\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=263pt]{multi__pipes_8_f90__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Modules}
+\begin{DoxyCompactItemize}
+\item 
+module \mbox{\hyperlink{namespacemulti__pipes}{multi\+\_\+pipes}}
+\begin{DoxyCompactList}\small\item\em This module contains all the subroutines to assemble and solve for pipes. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine, public \mbox{\hyperlink{namespacemulti__pipes_a7cfd75b337f007460a86d927e152004e}{multi\+\_\+pipes\+::assemble\+\_\+pipe\+\_\+transport\+\_\+and\+\_\+cty}} (state, packed\+\_\+state, tracer, den\+\_\+all, denold\+\_\+all, final\+\_\+phase, Mdims, ndgln, D\+E\+R\+IV, C\+V\+\_\+P, S\+O\+U\+R\+C\+T\+\_\+\+A\+LL, A\+B\+S\+O\+R\+B\+T\+\_\+\+A\+LL, W\+I\+C\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+U\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+U\+\_\+\+B\+C\+\_\+\+A\+LL, getcv\+\_\+disc, getct, Mmat, Mspars, upwnd, G\+O\+T\+\_\+\+T2, DT, pipes\+\_\+aux, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+E\+S\+\_\+\+C\+O\+UP, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+ES, mean\+\_\+pore\+\_\+cv, eles\+\_\+with\+\_\+pipe, thermal, C\+V\+\_\+\+B\+E\+TA, M\+A\+S\+S\+\_\+\+CV, I\+N\+V\+\_\+B, M\+A\+S\+S\+\_\+\+E\+LE, bcs\+\_\+outfluxes, outfluxes, porous\+\_\+heat\+\_\+coef, assemble\+\_\+collapsed\+\_\+to\+\_\+one\+\_\+phase)
+\begin{DoxyCompactList}\small\item\em \+: This sub modifies either MmatCT or the Advection-\/diffusion equation for 1D pipe modelling N\+O\+TE final\+\_\+phase has to be define for the reservoir domain, i.\+e. for two phase flow it can be either 1 or 2, not 3 or 4. We define wells\+\_\+first\+\_\+phase as the first phase of the well domain \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemulti__pipes_a297beee584d63c08823a85520b973ef5}{multi\+\_\+pipes\+::mod\+\_\+1d\+\_\+force\+\_\+bal\+\_\+c}} (S\+T\+A\+TE, packed\+\_\+state, Mdims, Mspars, Mmat, ndgln, eles\+\_\+with\+\_\+pipe, G\+E\+T\+\_\+\+P\+I\+V\+I\+T\+\_\+\+M\+AT, W\+I\+C\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL, S\+I\+G\+MA, N\+U\+\_\+\+A\+LL, U\+\_\+\+S\+O\+U\+R\+CE, U\+\_\+\+S\+O\+U\+R\+C\+E\+\_\+\+CV, pipes\+\_\+aux)
+\begin{DoxyCompactList}\small\item\em \+: This sub modifies MmatC for 1D pipe modelling. Works on the momentum equation \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemulti__pipes_aa27e23615cb61d7b64663cda62a2e7da}{multi\+\_\+pipes\+::retrieve\+\_\+pipes\+\_\+coords}} (state, packed\+\_\+state, Mdims, ndgln, eles\+\_\+with\+\_\+pipe)
+\begin{DoxyCompactList}\small\item\em \+: In this subroutine the elements that contain pipes are identified The pipes can either be defined using python (D\+E\+P\+R\+E\+C\+A\+T\+ED) or a nastran file defining the trajectory of each well by points \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemulti__pipes_adf22cecb27df6cddfd856d95c388868b}{multi\+\_\+pipes\+::initialize\+\_\+pipes\+\_\+package\+\_\+and\+\_\+gamma}} (state, packed\+\_\+state, pipes\+\_\+aux, Mdims, Mspars, ndgln)
+\begin{DoxyCompactList}\small\item\em This subroutine reads information from diamond and populates the necessary fields For P0\+D\+G\+P1 gamma is imposed to be zero at the boundary so the strong B\+Cs work fine. \end{DoxyCompactList}\end{DoxyCompactItemize}

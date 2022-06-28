@@ -1,0 +1,69 @@
+\hypertarget{namespacesparsity__1d}{}\doxysection{sparsity\+\_\+1d Module Reference}
+\label{namespacesparsity__1d}\index{sparsity\_1d@{sparsity\_1d}}
+
+
+Subroutines associated with the C\+SR storage used for 1D.  
+
+
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine \mbox{\hyperlink{namespacesparsity__1d_ae6ef1904813ab1128a01a1311670976a}{resize}} (A, n, copy)
+\item 
+subroutine \mbox{\hyperlink{namespacesparsity__1d_a71b686e37752d791fc7d1ee0ed8f2e99}{def\+\_\+spar}} (S\+E\+M\+I\+\_\+\+B\+A\+N\+D\+\_\+\+W\+ID, N\+O\+N\+O\+DS, M\+X\+\_\+\+N\+C\+O\+LC, N\+C\+O\+LC, C\+E\+N\+TC, F\+I\+N\+DC, C\+O\+LC)
+\begin{DoxyCompactList}\small\item\em define sparsity... \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacesparsity__1d_aef815576501475f4594796f76cf24cd1}{def\+\_\+spar\+\_\+ct\+\_\+dg}} (C\+V\+\_\+\+N\+O\+N\+O\+DS, M\+X\+\_\+\+N\+CT, N\+CT, F\+I\+N\+D\+CT, C\+O\+L\+CT, T\+O\+T\+E\+LE, C\+V\+\_\+\+N\+L\+OC, U\+\_\+\+N\+L\+OC, U\+\_\+\+N\+D\+G\+LN, C\+V\+\_\+\+N\+D\+G\+LN)
+\begin{DoxyCompactList}\small\item\em define sparsity... \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Subroutines associated with the C\+SR storage used for 1D. 
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{namespacesparsity__1d_a71b686e37752d791fc7d1ee0ed8f2e99}\label{namespacesparsity__1d_a71b686e37752d791fc7d1ee0ed8f2e99}} 
+\index{sparsity\_1d@{sparsity\_1d}!def\_spar@{def\_spar}}
+\index{def\_spar@{def\_spar}!sparsity\_1d@{sparsity\_1d}}
+\doxysubsubsection{\texorpdfstring{def\_spar()}{def\_spar()}}
+{\footnotesize\ttfamily subroutine sparsity\+\_\+1d\+::def\+\_\+spar (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{S\+E\+M\+I\+\_\+\+B\+A\+N\+D\+\_\+\+W\+ID,  }\item[{integer, intent(in)}]{N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{M\+X\+\_\+\+N\+C\+O\+LC,  }\item[{integer, intent(inout)}]{N\+C\+O\+LC,  }\item[{integer, dimension( nonods ), intent(inout)}]{C\+E\+N\+TC,  }\item[{integer, dimension( nonods + 1 ), intent(inout)}]{F\+I\+N\+DC,  }\item[{integer, dimension( mx\+\_\+ncolc ), intent(inout)}]{C\+O\+LC }\end{DoxyParamCaption})}
+
+
+
+define sparsity... 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesparsity__1d_a71b686e37752d791fc7d1ee0ed8f2e99_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacesparsity__1d_aef815576501475f4594796f76cf24cd1}\label{namespacesparsity__1d_aef815576501475f4594796f76cf24cd1}} 
+\index{sparsity\_1d@{sparsity\_1d}!def\_spar\_ct\_dg@{def\_spar\_ct\_dg}}
+\index{def\_spar\_ct\_dg@{def\_spar\_ct\_dg}!sparsity\_1d@{sparsity\_1d}}
+\doxysubsubsection{\texorpdfstring{def\_spar\_ct\_dg()}{def\_spar\_ct\_dg()}}
+{\footnotesize\ttfamily subroutine sparsity\+\_\+1d\+::def\+\_\+spar\+\_\+ct\+\_\+dg (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{M\+X\+\_\+\+N\+CT,  }\item[{integer, intent(inout)}]{N\+CT,  }\item[{integer, dimension( cv\+\_\+nonods + 1 ), intent(inout)}]{F\+I\+N\+D\+CT,  }\item[{integer, dimension( mx\+\_\+nct ), intent(inout)}]{C\+O\+L\+CT,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, dimension ( u\+\_\+nloc $\ast$ totele ), intent(in)}]{U\+\_\+\+N\+D\+G\+LN,  }\item[{integer, dimension (cv\+\_\+nloc $\ast$ totele ), intent(in)}]{C\+V\+\_\+\+N\+D\+G\+LN }\end{DoxyParamCaption})}
+
+
+
+define sparsity... 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesparsity__1d_aef815576501475f4594796f76cf24cd1_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacesparsity__1d_ae6ef1904813ab1128a01a1311670976a}\label{namespacesparsity__1d_ae6ef1904813ab1128a01a1311670976a}} 
+\index{sparsity\_1d@{sparsity\_1d}!resize@{resize}}
+\index{resize@{resize}!sparsity\_1d@{sparsity\_1d}}
+\doxysubsubsection{\texorpdfstring{resize()}{resize()}}
+{\footnotesize\ttfamily subroutine sparsity\+\_\+1d\+::resize (\begin{DoxyParamCaption}\item[{integer, dimension(\+:), intent(inout), pointer}]{A,  }\item[{integer}]{n,  }\item[{logical, intent(in), optional}]{copy }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacesparsity__1d_ae6ef1904813ab1128a01a1311670976a_icgraph}
+\end{center}
+\end{figure}

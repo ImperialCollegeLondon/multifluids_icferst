@@ -15,7 +15,7 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-
+!> All the subroutines required to handle the connection with PHREEQCRM
 module multi_phreeqc
 
 #ifdef USING_PHREEQC
@@ -44,6 +44,13 @@ module multi_phreeqc
 
   contains
 
+    !> This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires.
+    !> Reaction types, concentration units, number of components to transport...
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param id. ID associated with the settings specified here so PHREEQCRM can now it is doing the same thing
+    !>@param concetration_phreeqc OUT. Memory to be used to communicate with PHREEQC
+    !>@param after_adapt. True after adapting the mesh to redo this
     subroutine init_PHREEQC(Mdims, packed_state, id, concetration_phreeqc, after_adapt)
         implicit none
 
@@ -196,6 +203,11 @@ module multi_phreeqc
 #endif
       end subroutine init_PHREEQC
 
+      !> Call PHREEQCRM and compute the reactions of the fields defined associated with the input ID
+      !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+      !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+      !>@param id. ID associated with the settings specified here so PHREEQCRM can now it is doing the same thing
+      !>@param concetration_phreeqc INOUT. Memory to be used to communicate with PHREEQC
       subroutine run_PHREEQC(Mdims, packed_state, id, concetration_phreeqc)
         implicit none
         integer , INTENT(INOUT) :: id
@@ -238,6 +250,7 @@ module multi_phreeqc
         end do
       end subroutine run_PHREEQC
 
+      !>Reads PHREEQC input file given the path file_strings
       subroutine read_inputfile(file_strings)
 
         implicit none
@@ -272,9 +285,9 @@ module multi_phreeqc
 #endif
       end subroutine
 
-  !>@author Geraldine Regnier, Pablo Salinas
-  !>@brief: Finds the field name in diamond given a name in PHREEQC. Fields have the convention of being named in ICFERST as SPECIES_component,
-  !> for example Species_O for oxygen.
+    !>@author Geraldine Regnier, Pablo Salinas
+    !>@brief: Finds the field name in diamond given a name in PHREEQC. Fields have the convention of being named in ICFERST as SPECIES_component,
+    !> for example Species_O for oxygen.
     function get_packed_Species_name(PHREEQC_name, old_field)
       implicit none
       character(len = *), INTENT(IN) :: PHREEQC_name

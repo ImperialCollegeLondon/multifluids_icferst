@@ -1,0 +1,11 @@
+<map id="multiphase_eos::calculate_porousmedia_absorptionterms" name="multiphase_eos::calculate_porousmedia_absorptionterms">
+<area shape="rect" id="node1" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="5,64,233,105"/>
+<area shape="rect" id="node2" href="$multi__eos_8_f90.html#a2e38f3c2af7da0c1a95bbb5e485cf0b7" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="281,5,455,47"/>
+<area shape="rect" id="node8" href="$multi__eos_8_f90.html#a7b4b5e95a2c1b64f376a9c4092d60c0a" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="503,71,715,98"/>
+<area shape="rect" id="node9" href="$multi__eos_8_f90.html#aa152716c3e7e6d83fb9b90b26a9c7be7" title=": For porous media, just sets the viscosity as a scalar" alt="" coords="315,122,421,149"/>
+<area shape="rect" id="node3" href="$namespacemultiphase__eos.html#a659427fd61af753266767259b441a345" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="513,5,705,47"/>
+<area shape="rect" id="node4" href="$namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="763,35,923,76"/>
+<area shape="rect" id="node5" href="$namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="971,35,1125,76"/>
+<area shape="rect" id="node6" href="$multi__eos_8_f90.html#a0f94604be6099dd1304ee7568ad7aac1" title=": Brooks corey model of relperm. This subroutine add a small quantity to the corey function to avoid ..." alt="" coords="1173,17,1344,43"/>
+<area shape="rect" id="node7" href="$multi__eos_8_f90.html#afb461540e77781fc8560dcdf98a7ed12" title=":This subroutine calculates the relative permeability for three phases First phase has to be water,..." alt="" coords="1201,67,1317,94"/>
+</map>

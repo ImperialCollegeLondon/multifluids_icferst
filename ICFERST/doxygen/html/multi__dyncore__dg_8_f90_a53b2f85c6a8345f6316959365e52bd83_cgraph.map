@@ -1,0 +1,5 @@
+<map id="compute_div_u" name="compute_div_u">
+<area shape="rect" id="node1" title="Calculates the divergence of the velocity by multipliying it by the Ct matrix." alt="" coords="5,46,127,73"/>
+<area shape="rect" id="node2" href="$namespacematrix__operations.html#aca7d06edf5bee7b9e5c00830ee444478" title=":CV_RHS=CT*U" alt="" coords="175,5,324,47"/>
+<area shape="rect" id="node3" href="$namespacematrix__operations.html#a6aab014a9001ac1cbb2e46bba4171cd9" title=": DP = (C)^T U_ALL" alt="" coords="175,71,324,112"/>
+</map>

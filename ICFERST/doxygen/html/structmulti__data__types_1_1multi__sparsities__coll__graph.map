@@ -1,0 +1,4 @@
+<map id="multi_data_types::multi_sparsities" name="multi_data_types::multi_sparsities">
+<area shape="rect" id="node1" title="This data type contains all the sparsities necessary in the multiphase prototype code." alt="" coords="5,227,183,268"/>
+<area shape="rect" id="node2" href="$structmulti__data__types_1_1multi__sparsity.html" title="This type comprises the necessary variables to represent matrices using a CSR structure." alt="" coords="5,5,183,47"/>
+</map>

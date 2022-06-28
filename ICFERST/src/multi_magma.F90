@@ -15,7 +15,8 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-
+!>Module dealing with everything related to Magma modelling, such as EOS, data structure etc. 
+!>To be removed from main ICFERST and kept only on the MagmaFERST branch
 module multi_magma
 
     use fldebug
@@ -38,17 +39,25 @@ module multi_magma
     ! Ae - eutetic
     ! A1,B1,C1,A2,B2,C2 - phase behaviour parameters
     !real, parameter :: A1= 50.,B1= -360,C1= 1433.15,A2= 0.,B2= 0.,C2 = 0., Ae = 1.0
-
+    !>@param  A1! Phase behaviour parameters
+    !>@param  B1! Phase behaviour parameters
+    !>@param  C1! Phase behaviour parameters
+    !>@param  A2! Phase behaviour parameters
+    !>@param  B2! Phase behaviour parameters
+    !>@param  C2! Phase behaviour parameters
+    !>@param  Ae! Eutectic point
+    !>@param  Ts! Solidus, uniform solidus si the liquidus at the eutectic point
+    !>@param  Lf! Latent heat
     type magma_phase_diagram
-      real :: A1!> Phase behaviour parameters
-      real :: B1!> Phase behaviour parameters
-      real :: C1!> Phase behaviour parameters
-      real :: A2!> Phase behaviour parameters
-      real :: B2!> Phase behaviour parameters
-      real :: C2!> Phase behaviour parameters
-      real :: Ae!> Eutectic point
-      real :: Ts!> Solidus, uniform solidus si the liquidus at the eutectic point
-      real :: Lf!> Latent heat
+      real :: A1
+      real :: B1
+      real :: C1
+      real :: A2
+      real :: B2
+      real :: C2
+      real :: Ae
+      real :: Ts
+      real :: Lf
     end type magma_phase_diagram
     !------------------------------------------------------------------------------
     !>  The copling_term follows the Darcy permeability law C=1/a/d^2*mu*phi^(2-b)
@@ -59,8 +68,8 @@ module multi_magma
       real :: a
       real :: b
       real :: grain_size
-      real :: cut_low   !>  the range below which the coupling terms follow the Darcy permeability, set this to 1 to make the entire domain Darcy like.
-      real :: cut_high !>   the range above which the coupling terms follow the Hindered settling
+      real :: cut_low   !  the range below which the coupling terms follow the Darcy permeability, set this to 1 to make the entire domain Darcy like.
+      real :: cut_high !   the range above which the coupling terms follow the Hindered settling
     end type coupling_term_coef
 
 contains

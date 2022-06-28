@@ -1,0 +1,501 @@
+\hypertarget{namespacematrix__operations}{}\doxysection{matrix\+\_\+operations Module Reference}
+\label{namespacematrix__operations}\index{matrix\_operations@{matrix\_operations}}
+
+
+This module contain subroutines to deal with the I\+C\+F\+E\+R\+ST matrices format. This includes M\+A\+T\+V\+E\+CS and M\+A\+T\+M\+AT operations All of this should be replaced by P\+E\+T\+Sc.  
+
+
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a11255cf3f07959a2d3e20dd8705755fe}{matdmatinv}} (D\+M\+AT, D\+M\+A\+T\+I\+NV, N\+L\+OC)
+\begin{DoxyCompactList}\small\item\em calculate D\+M\+A\+T\+I\+NV \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a3795359fc116fe5770ad11a89bbccc00}{matinv}} (A, N, N\+M\+AX)
+\begin{DoxyCompactList}\small\item\em \+: This sub finds the inverse of the matrix A and puts it back in A. M\+AT, M\+A\+T2, X and B are working vectors. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_afe8e6c53cbc0059363705d48a73708d1}{matinvold}} (A, N, M\+AT, B)
+\begin{DoxyCompactList}\small\item\em \+: This sub finds the inverse of the matrix A and puts it back in A. M\+AT, M\+A\+T2, X and B are working vectors. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_ad55f3b1531dccfb31fac2aa6022448b5}{smlinngot}} (A, X, B, N\+MX, I\+P\+IV, G\+O\+T\+D\+EC)
+\begin{DoxyCompactList}\small\item\em Calculate the inverse using the LU decomposition L can be provided, speeding up the method to O(n) \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a8e0ed666ded4084ef9626e11edb7fee1}{color\+\_\+get\+\_\+cmc\+\_\+pha}} (Mdims, Mspars, ndgln, Mmat, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+ES, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+E\+S\+\_\+\+C\+O\+UP, I\+N\+V\+\_\+B, C\+M\+C\+\_\+petsc, C\+M\+C\+\_\+\+P\+R\+E\+C\+ON, I\+G\+O\+T\+\_\+\+C\+M\+C\+\_\+\+P\+R\+E\+C\+ON, M\+A\+S\+S\+\_\+\+M\+N\+\_\+\+P\+R\+ES, pipes\+\_\+aux, got\+\_\+free\+\_\+surf, M\+A\+S\+S\+\_\+\+S\+UF, F\+E\+M\+\_\+continuity\+\_\+equation)
+\begin{DoxyCompactList}\small\item\em \+:Initialize the momentum equation (C\+MC) and introduces the corresponding values in it. C\+O\+L\+O\+R\+\_\+\+G\+E\+T\+\_\+\+C\+M\+C\+\_\+\+P\+H\+A\+\_\+\+F\+A\+ST is very memory hungry, so we let the user decide or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451}{mass\+\_\+matrix\+\_\+inversion}} (P\+I\+V\+I\+T\+\_\+\+M\+AT, Mdims)
+\begin{DoxyCompactList}\small\item\em \+: Inversion of the mass matrix. If compacted this is much more efficient \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a501c5d1025991dd3e563d635362b475b}{mass\+\_\+matrix\+\_\+matvec}} (U, B\+L\+O\+C\+K\+\_\+\+M\+AT, C\+DP, N\+D\+IM, N\+P\+H\+A\+SE, T\+O\+T\+E\+LE, U\+\_\+\+N\+L\+OC, U\+\_\+\+N\+D\+G\+LN)
+\begin{DoxyCompactList}\small\item\em \+: U = Mass\+\_\+matrix $\ast$ Vector (tipically vector is Grad $\ast$ P + R\+HS and this is used to obtain the velocity) \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a803a8d54cfb386b1ba07fc131910114c}{pha\+\_\+block\+\_\+mat\+\_\+vec}} (U, B\+L\+O\+C\+K\+\_\+\+M\+AT, C\+DP, U\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, N\+P\+H\+A\+SE, T\+O\+T\+E\+LE, U\+\_\+\+N\+L\+OC, U\+\_\+\+N\+D\+G\+LN)
+\begin{DoxyCompactList}\small\item\em \+: performs U = B\+L\+O\+C\+K\+\_\+\+M\+AT $\ast$ C\+DP, where block\+\_\+mat \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a9bf2bd580245147bc0864acab640770f}{pha\+\_\+block\+\_\+mat\+\_\+vec2}} (U, B\+L\+O\+C\+K\+\_\+\+M\+AT, C\+DP, N\+D\+IM, N\+P\+H\+A\+SE, T\+O\+T\+E\+LE, U\+\_\+\+N\+L\+OC, U\+\_\+\+N\+D\+G\+LN)
+\begin{DoxyCompactList}\small\item\em \+:U = B\+L\+O\+C\+K\+\_\+\+M\+AT $\ast$ C\+DP \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_ae49b086515f6d3e9693137520156837a}{pha\+\_\+block\+\_\+mat\+\_\+vec\+\_\+many2}} (U, B\+L\+O\+C\+K\+\_\+\+M\+AT, C\+DP, U\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, N\+P\+H\+A\+SE, N\+B\+L\+O\+CK, T\+O\+T\+E\+LE, U\+\_\+\+N\+L\+OC, U\+\_\+\+N\+D\+G\+LN)
+\begin{DoxyCompactList}\small\item\em \+: U = B\+L\+O\+C\+K\+\_\+\+M\+AT $\ast$ C\+DP \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a79fd68b5ee6b5d90f564b6567a8ff891}{pha\+\_\+block\+\_\+mat\+\_\+vec\+\_\+many}} (U, B\+L\+O\+C\+K\+\_\+\+M\+AT, C\+DP, N\+D\+IM, N\+P\+H\+A\+SE, N\+B\+L\+O\+CK, T\+O\+T\+E\+LE, U\+\_\+\+N\+L\+OC, U\+\_\+\+N\+D\+G\+LN)
+\begin{DoxyCompactList}\small\item\em \+: U = B\+L\+O\+C\+K\+\_\+\+M\+AT $\ast$ C\+DP \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a1fe0d2f2c00d0e6b52d0121904447542}{pha\+\_\+block\+\_\+mat\+\_\+vec\+\_\+many\+\_\+reusing}} (B\+L\+O\+C\+K\+\_\+\+M\+AT, C\+DP, N\+D\+IM, N\+P\+H\+A\+SE, N\+B\+L\+O\+CK, T\+O\+T\+E\+LE, U\+\_\+\+N\+L\+OC, U\+\_\+\+N\+D\+G\+LN)
+\begin{DoxyCompactList}\small\item\em \+: U = B\+L\+O\+C\+K\+\_\+\+M\+AT $\ast$ C\+DP The difference with P\+H\+A\+\_\+\+B\+L\+O\+C\+K\+\_\+\+M\+A\+T\+\_\+\+V\+E\+C\+\_\+\+M\+A\+NY is that the input C\+DP is overwritten with the output \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_ac262416a51bbee2f70aa2ed9408be200}{ct\+\_\+mult}} (C\+V\+\_\+\+R\+HS, U, V, W, C\+V\+\_\+\+N\+O\+N\+O\+DS, U\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, N\+P\+H\+A\+SE, CT, N\+C\+O\+L\+CT, F\+I\+N\+D\+CT, C\+O\+L\+CT)
+\begin{DoxyCompactList}\small\item\em \+: C\+V\+\_\+\+R\+HS=C\+T$\ast$U \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_aca7d06edf5bee7b9e5c00830ee444478}{ct\+\_\+mult2}} (C\+V\+\_\+\+R\+HS, U, C\+V\+\_\+\+N\+O\+N\+O\+DS, U\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, N\+P\+H\+A\+SE, CT, N\+C\+O\+L\+CT, F\+I\+N\+D\+CT, C\+O\+L\+CT)
+\begin{DoxyCompactList}\small\item\em \+:C\+V\+\_\+\+R\+HS=C\+T$\ast$U \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_ad30d6b55adc62a3c43912ecbfbdb7e58}{ct\+\_\+mult\+\_\+many}} (C\+V\+\_\+\+R\+HS, U, C\+V\+\_\+\+N\+O\+N\+O\+DS, U\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, N\+P\+H\+A\+SE, N\+B\+L\+O\+CK, CT, N\+C\+O\+L\+CT, F\+I\+N\+D\+CT, C\+O\+L\+CT)
+\begin{DoxyCompactList}\small\item\em \+: C\+V\+\_\+\+R\+HS = CT $\ast$ U \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a963a038e3ea8bafb851ab3f5225a5300}{c\+\_\+mult\+\_\+many}} (C\+DP, DP, C\+V\+\_\+\+N\+O\+N\+O\+DS, U\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, N\+P\+H\+A\+SE, N\+B\+L\+O\+CK, C, N\+C\+O\+LC, F\+I\+N\+DC, C\+O\+LC)
+\begin{DoxyCompactList}\small\item\em \+: C\+DP=C$\ast$\+DP \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a895e0f98ecb17a8541be87879adf8876}{c\+\_\+mult2}} (C\+DP, DP, C\+V\+\_\+\+N\+O\+N\+O\+DS, U\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, N\+P\+H\+A\+SE, C, N\+C\+O\+LC, F\+I\+N\+DC, C\+O\+LC)
+\begin{DoxyCompactList}\small\item\em \+: C\+DP=C$\ast$\+DP \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a3cf9d9f54e55a501e927c1ae443093f0}{c\+\_\+mult2\+\_\+multi\+\_\+pres}} (Mdims, Mspars, Mmat, deltap, C\+D\+P\+\_\+tensor)
+\begin{DoxyCompactList}\small\item\em \+: Performs the multiplication C\+D\+P\+\_\+tensor = MmatC $\ast$ deltap \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_adab9184c4050e9ba8576cde63fa99b5a}{ct\+\_\+mult\+\_\+with\+\_\+c}} (DP, U\+\_\+\+L\+O\+NG, U\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, N\+P\+H\+A\+SE, C, N\+C\+O\+LC, F\+I\+N\+DC, C\+O\+LC)
+\begin{DoxyCompactList}\small\item\em \+: DP = (C)$^\wedge$T U\+\_\+\+L\+O\+NG \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a6aab014a9001ac1cbb2e46bba4171cd9}{ct\+\_\+mult\+\_\+with\+\_\+c3}} (DP, U\+\_\+\+A\+LL, U\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, N\+P\+H\+A\+SE, C, N\+C\+O\+LC, F\+I\+N\+DC, C\+O\+LC)
+\begin{DoxyCompactList}\small\item\em \+: DP = (C)$^\wedge$T U\+\_\+\+A\+LL \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_ae03adef605e7047d7fbafecd36d39c0e}{ct\+\_\+mult\+\_\+with\+\_\+c\+\_\+many}} (DP, U\+\_\+\+L\+O\+NG, U\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, N\+P\+H\+A\+SE, C, F\+I\+N\+DC, C\+O\+LC)
+\begin{DoxyCompactList}\small\item\em \+: DP = (C)$^\wedge$T U\+\_\+\+L\+O\+NG \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_af1abd4988e547cc7cd5f59bf7ccbfff9}{ulong\+\_\+2\+\_\+uvw}} (U, V, W, UP, U\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, N\+P\+H\+A\+SE)
+\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_ae6b8bf3fc8ca7e4a1b4a1ea3b639d75e}{posinmat}} (posmat, globi, globj, findrm, colm)
+\begin{DoxyCompactList}\small\item\em \+: Find position in matrix P\+O\+S\+M\+AT which has column G\+L\+O\+BJ \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_a0672157371d0caa31527e9b209742d60}{assemble\+\_\+global\+\_\+multiphase\+\_\+csr}} (global\+\_\+csr, block\+\_\+csr, dense\+\_\+block\+\_\+matrix, block\+\_\+to\+\_\+global, global\+\_\+dense\+\_\+block)
+\item 
+subroutine \mbox{\hyperlink{namespacematrix__operations_ab99709a532cd3a8ace8bd896814bc37b}{allocate\+\_\+global\+\_\+multiphase\+\_\+petsc\+\_\+csr}} (global\+\_\+petsc, sparsity, tracer, nphase)
+\item 
+type(petsc\+\_\+csr\+\_\+matrix) function \mbox{\hyperlink{namespacematrix__operations_a1167c3b995711ad4c85718f072beb45e}{allocate\+\_\+momentum\+\_\+matrix}} (sparsity, velocity)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+This module contain subroutines to deal with the I\+C\+F\+E\+R\+ST matrices format. This includes M\+A\+T\+V\+E\+CS and M\+A\+T\+M\+AT operations All of this should be replaced by P\+E\+T\+Sc. 
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{namespacematrix__operations_ab99709a532cd3a8ace8bd896814bc37b}\label{namespacematrix__operations_ab99709a532cd3a8ace8bd896814bc37b}} 
+\index{matrix\_operations@{matrix\_operations}!allocate\_global\_multiphase\_petsc\_csr@{allocate\_global\_multiphase\_petsc\_csr}}
+\index{allocate\_global\_multiphase\_petsc\_csr@{allocate\_global\_multiphase\_petsc\_csr}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{allocate\_global\_multiphase\_petsc\_csr()}{allocate\_global\_multiphase\_petsc\_csr()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::allocate\+\_\+global\+\_\+multiphase\+\_\+petsc\+\_\+csr (\begin{DoxyParamCaption}\item[{type(petsc\+\_\+csr\+\_\+matrix)}]{global\+\_\+petsc,  }\item[{type(csr\+\_\+sparsity)}]{sparsity,  }\item[{type(tensor\+\_\+field)}]{tracer,  }\item[{integer, intent(in)}]{nphase }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_ab99709a532cd3a8ace8bd896814bc37b_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_a1167c3b995711ad4c85718f072beb45e}\label{namespacematrix__operations_a1167c3b995711ad4c85718f072beb45e}} 
+\index{matrix\_operations@{matrix\_operations}!allocate\_momentum\_matrix@{allocate\_momentum\_matrix}}
+\index{allocate\_momentum\_matrix@{allocate\_momentum\_matrix}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{allocate\_momentum\_matrix()}{allocate\_momentum\_matrix()}}
+{\footnotesize\ttfamily type(petsc\+\_\+csr\+\_\+matrix) function matrix\+\_\+operations\+::allocate\+\_\+momentum\+\_\+matrix (\begin{DoxyParamCaption}\item[{type(csr\+\_\+sparsity), intent(inout)}]{sparsity,  }\item[{type(tensor\+\_\+field), intent(inout)}]{velocity }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a1167c3b995711ad4c85718f072beb45e_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_a0672157371d0caa31527e9b209742d60}\label{namespacematrix__operations_a0672157371d0caa31527e9b209742d60}} 
+\index{matrix\_operations@{matrix\_operations}!assemble\_global\_multiphase\_csr@{assemble\_global\_multiphase\_csr}}
+\index{assemble\_global\_multiphase\_csr@{assemble\_global\_multiphase\_csr}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{assemble\_global\_multiphase\_csr()}{assemble\_global\_multiphase\_csr()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::assemble\+\_\+global\+\_\+multiphase\+\_\+csr (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(out)}]{global\+\_\+csr,  }\item[{real, dimension(\+:), intent(in)}]{block\+\_\+csr,  }\item[{real, dimension(\+:,\+:,\+:), intent(in)}]{dense\+\_\+block\+\_\+matrix,  }\item[{integer, dimension(\+:), intent(in)}]{block\+\_\+to\+\_\+global,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{global\+\_\+dense\+\_\+block }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{namespacematrix__operations_a895e0f98ecb17a8541be87879adf8876}\label{namespacematrix__operations_a895e0f98ecb17a8541be87879adf8876}} 
+\index{matrix\_operations@{matrix\_operations}!c\_mult2@{c\_mult2}}
+\index{c\_mult2@{c\_mult2}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{c\_mult2()}{c\_mult2()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::c\+\_\+mult2 (\begin{DoxyParamCaption}\item[{real, dimension( ndim, nphase, u\+\_\+nonods ), intent(inout)}]{C\+DP,  }\item[{real, dimension( cv\+\_\+nonods ), intent(in)}]{DP,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{real, dimension( ndim, nphase, ncolc ), intent(in)}]{C,  }\item[{integer, intent(in)}]{N\+C\+O\+LC,  }\item[{integer, dimension( u\+\_\+nonods + 1 ), intent(in)}]{F\+I\+N\+DC,  }\item[{integer, dimension( ncolc ), intent(in)}]{C\+O\+LC }\end{DoxyParamCaption})}
+
+
+
+\+: C\+DP=C$\ast$\+DP 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a895e0f98ecb17a8541be87879adf8876_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_a3cf9d9f54e55a501e927c1ae443093f0}\label{namespacematrix__operations_a3cf9d9f54e55a501e927c1ae443093f0}} 
+\index{matrix\_operations@{matrix\_operations}!c\_mult2\_multi\_pres@{c\_mult2\_multi\_pres}}
+\index{c\_mult2\_multi\_pres@{c\_mult2\_multi\_pres}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{c\_mult2\_multi\_pres()}{c\_mult2\_multi\_pres()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::c\+\_\+mult2\+\_\+multi\+\_\+pres (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(in)}]{Mmat,  }\item[{real, dimension(mdims\%npres,mdims\%cv\+\_\+nonods), intent(in)}]{deltap,  }\item[{type(tensor\+\_\+field), intent(inout)}]{C\+D\+P\+\_\+tensor }\end{DoxyParamCaption})}
+
+
+
+\+: Performs the multiplication C\+D\+P\+\_\+tensor = MmatC $\ast$ deltap 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=341pt]{namespacematrix__operations_a3cf9d9f54e55a501e927c1ae443093f0_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a3cf9d9f54e55a501e927c1ae443093f0_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_a963a038e3ea8bafb851ab3f5225a5300}\label{namespacematrix__operations_a963a038e3ea8bafb851ab3f5225a5300}} 
+\index{matrix\_operations@{matrix\_operations}!c\_mult\_many@{c\_mult\_many}}
+\index{c\_mult\_many@{c\_mult\_many}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{c\_mult\_many()}{c\_mult\_many()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::c\+\_\+mult\+\_\+many (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+:, \+:, \+: ), intent(inout)}]{C\+DP,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{DP,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{N\+B\+L\+O\+CK,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{C,  }\item[{integer, intent(in)}]{N\+C\+O\+LC,  }\item[{integer, dimension( \+: ), intent(in)}]{F\+I\+N\+DC,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+O\+LC }\end{DoxyParamCaption})}
+
+
+
+\+: C\+DP=C$\ast$\+DP 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a963a038e3ea8bafb851ab3f5225a5300_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_a8e0ed666ded4084ef9626e11edb7fee1}\label{namespacematrix__operations_a8e0ed666ded4084ef9626e11edb7fee1}} 
+\index{matrix\_operations@{matrix\_operations}!color\_get\_cmc\_pha@{color\_get\_cmc\_pha}}
+\index{color\_get\_cmc\_pha@{color\_get\_cmc\_pha}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{color\_get\_cmc\_pha()}{color\_get\_cmc\_pha()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::color\+\_\+get\+\_\+cmc\+\_\+pha (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__matrices}{multi\+\_\+matrices}}), intent(inout)}]{Mmat,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+ES,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+E\+S\+\_\+\+C\+O\+UP,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{I\+N\+V\+\_\+B,  }\item[{type(petsc\+\_\+csr\+\_\+matrix), intent(inout)}]{C\+M\+C\+\_\+petsc,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{C\+M\+C\+\_\+\+P\+R\+E\+C\+ON,  }\item[{integer, intent(in)}]{I\+G\+O\+T\+\_\+\+C\+M\+C\+\_\+\+P\+R\+E\+C\+ON,  }\item[{real, dimension( \+: ), intent(in)}]{M\+A\+S\+S\+\_\+\+M\+N\+\_\+\+P\+R\+ES,  }\item[{type (\mbox{\hyperlink{structmulti__data__types_1_1multi__pipe__package}{multi\+\_\+pipe\+\_\+package}}), intent(in)}]{pipes\+\_\+aux,  }\item[{logical, intent(in)}]{got\+\_\+free\+\_\+surf,  }\item[{real, dimension( \+: ), intent(in)}]{M\+A\+S\+S\+\_\+\+S\+UF,  }\item[{logical, intent(in)}]{F\+E\+M\+\_\+continuity\+\_\+equation }\end{DoxyParamCaption})}
+
+
+
+\+:Initialize the momentum equation (C\+MC) and introduces the corresponding values in it. C\+O\+L\+O\+R\+\_\+\+G\+E\+T\+\_\+\+C\+M\+C\+\_\+\+P\+H\+A\+\_\+\+F\+A\+ST is very memory hungry, so we let the user decide or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a8e0ed666ded4084ef9626e11edb7fee1_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a8e0ed666ded4084ef9626e11edb7fee1_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_ac262416a51bbee2f70aa2ed9408be200}\label{namespacematrix__operations_ac262416a51bbee2f70aa2ed9408be200}} 
+\index{matrix\_operations@{matrix\_operations}!ct\_mult@{ct\_mult}}
+\index{ct\_mult@{ct\_mult}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{ct\_mult()}{ct\_mult()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::ct\+\_\+mult (\begin{DoxyParamCaption}\item[{real, dimension( cv\+\_\+nonods ), intent(inout)}]{C\+V\+\_\+\+R\+HS,  }\item[{real, dimension( u\+\_\+nonods $\ast$ nphase ), intent(in)}]{U,  }\item[{real, dimension( u\+\_\+nonods $\ast$ nphase ), intent(in)}]{V,  }\item[{real, dimension( u\+\_\+nonods $\ast$ nphase ), intent(in)}]{W,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{real, dimension( ndim, nphase, ncolct ), intent(in)}]{CT,  }\item[{integer, intent(in)}]{N\+C\+O\+L\+CT,  }\item[{integer, dimension( cv\+\_\+nonods + 1 ), intent(in)}]{F\+I\+N\+D\+CT,  }\item[{integer, dimension( ncolct ), intent(in)}]{C\+O\+L\+CT }\end{DoxyParamCaption})}
+
+
+
+\+: C\+V\+\_\+\+R\+HS=C\+T$\ast$U 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_ac262416a51bbee2f70aa2ed9408be200_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_aca7d06edf5bee7b9e5c00830ee444478}\label{namespacematrix__operations_aca7d06edf5bee7b9e5c00830ee444478}} 
+\index{matrix\_operations@{matrix\_operations}!ct\_mult2@{ct\_mult2}}
+\index{ct\_mult2@{ct\_mult2}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{ct\_mult2()}{ct\_mult2()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::ct\+\_\+mult2 (\begin{DoxyParamCaption}\item[{real, dimension( cv\+\_\+nonods ), intent(inout)}]{C\+V\+\_\+\+R\+HS,  }\item[{real, dimension( ndim, nphase, u\+\_\+nonods ), intent(in)}]{U,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{real, dimension( ndim, nphase, ncolct ), intent(in)}]{CT,  }\item[{integer, intent(in)}]{N\+C\+O\+L\+CT,  }\item[{integer, dimension( cv\+\_\+nonods + 1 ), intent(in)}]{F\+I\+N\+D\+CT,  }\item[{integer, dimension( ncolct ), intent(in)}]{C\+O\+L\+CT }\end{DoxyParamCaption})}
+
+
+
+\+:C\+V\+\_\+\+R\+HS=C\+T$\ast$U 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_aca7d06edf5bee7b9e5c00830ee444478_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_ad30d6b55adc62a3c43912ecbfbdb7e58}\label{namespacematrix__operations_ad30d6b55adc62a3c43912ecbfbdb7e58}} 
+\index{matrix\_operations@{matrix\_operations}!ct\_mult\_many@{ct\_mult\_many}}
+\index{ct\_mult\_many@{ct\_mult\_many}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{ct\_mult\_many()}{ct\_mult\_many()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::ct\+\_\+mult\+\_\+many (\begin{DoxyParamCaption}\item[{real, dimension( nblock, cv\+\_\+nonods ), intent(inout)}]{C\+V\+\_\+\+R\+HS,  }\item[{real, dimension( nblock, ndim, nphase, u\+\_\+nonods ), intent(in)}]{U,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{N\+B\+L\+O\+CK,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{CT,  }\item[{integer, intent(in)}]{N\+C\+O\+L\+CT,  }\item[{integer, dimension( \+: ), intent(in)}]{F\+I\+N\+D\+CT,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+O\+L\+CT }\end{DoxyParamCaption})}
+
+
+
+\+: C\+V\+\_\+\+R\+HS = CT $\ast$ U 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_ad30d6b55adc62a3c43912ecbfbdb7e58_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_adab9184c4050e9ba8576cde63fa99b5a}\label{namespacematrix__operations_adab9184c4050e9ba8576cde63fa99b5a}} 
+\index{matrix\_operations@{matrix\_operations}!ct\_mult\_with\_c@{ct\_mult\_with\_c}}
+\index{ct\_mult\_with\_c@{ct\_mult\_with\_c}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{ct\_mult\_with\_c()}{ct\_mult\_with\_c()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::ct\+\_\+mult\+\_\+with\+\_\+c (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(inout)}]{DP,  }\item[{real, dimension( \+: ), intent(in)}]{U\+\_\+\+L\+O\+NG,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{C,  }\item[{integer, intent(in)}]{N\+C\+O\+LC,  }\item[{integer, dimension( \+: ), intent(in)}]{F\+I\+N\+DC,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+O\+LC }\end{DoxyParamCaption})}
+
+
+
+\+: DP = (C)$^\wedge$T U\+\_\+\+L\+O\+NG 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_adab9184c4050e9ba8576cde63fa99b5a_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_a6aab014a9001ac1cbb2e46bba4171cd9}\label{namespacematrix__operations_a6aab014a9001ac1cbb2e46bba4171cd9}} 
+\index{matrix\_operations@{matrix\_operations}!ct\_mult\_with\_c3@{ct\_mult\_with\_c3}}
+\index{ct\_mult\_with\_c3@{ct\_mult\_with\_c3}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{ct\_mult\_with\_c3()}{ct\_mult\_with\_c3()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::ct\+\_\+mult\+\_\+with\+\_\+c3 (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(inout)}]{DP,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{U\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{C,  }\item[{integer, intent(in)}]{N\+C\+O\+LC,  }\item[{integer, dimension( \+: ), intent(in)}]{F\+I\+N\+DC,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+O\+LC }\end{DoxyParamCaption})}
+
+
+
+\+: DP = (C)$^\wedge$T U\+\_\+\+A\+LL 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a6aab014a9001ac1cbb2e46bba4171cd9_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_ae03adef605e7047d7fbafecd36d39c0e}\label{namespacematrix__operations_ae03adef605e7047d7fbafecd36d39c0e}} 
+\index{matrix\_operations@{matrix\_operations}!ct\_mult\_with\_c\_many@{ct\_mult\_with\_c\_many}}
+\index{ct\_mult\_with\_c\_many@{ct\_mult\_with\_c\_many}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{ct\_mult\_with\_c\_many()}{ct\_mult\_with\_c\_many()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::ct\+\_\+mult\+\_\+with\+\_\+c\+\_\+many (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+: ), intent(inout)}]{DP,  }\item[{real, dimension( \+:, \+:, \+:, \+: ), intent(in)}]{U\+\_\+\+L\+O\+NG,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{C,  }\item[{integer, dimension( \+: ), intent(in)}]{F\+I\+N\+DC,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+O\+LC }\end{DoxyParamCaption})}
+
+
+
+\+: DP = (C)$^\wedge$T U\+\_\+\+L\+O\+NG 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_ae03adef605e7047d7fbafecd36d39c0e_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451}\label{namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451}} 
+\index{matrix\_operations@{matrix\_operations}!mass\_matrix\_inversion@{mass\_matrix\_inversion}}
+\index{mass\_matrix\_inversion@{mass\_matrix\_inversion}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{mass\_matrix\_inversion()}{mass\_matrix\_inversion()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::mass\+\_\+matrix\+\_\+inversion (\begin{DoxyParamCaption}\item[{real, dimension( \+: , \+: , \+: ), intent(inout), contiguous}]{P\+I\+V\+I\+T\+\_\+\+M\+AT,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims }\end{DoxyParamCaption})}
+
+
+
+\+: Inversion of the mass matrix. If compacted this is much more efficient 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_a501c5d1025991dd3e563d635362b475b}\label{namespacematrix__operations_a501c5d1025991dd3e563d635362b475b}} 
+\index{matrix\_operations@{matrix\_operations}!mass\_matrix\_matvec@{mass\_matrix\_matvec}}
+\index{mass\_matrix\_matvec@{mass\_matrix\_matvec}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{mass\_matrix\_matvec()}{mass\_matrix\_matvec()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::mass\+\_\+matrix\+\_\+matvec (\begin{DoxyParamCaption}\item[{real, dimension( ndim $\ast$ nphase $\ast$ u\+\_\+nloc $\ast$ totele ), intent(inout)}]{U,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in), target}]{B\+L\+O\+C\+K\+\_\+\+M\+AT,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{C\+DP,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in), target}]{U\+\_\+\+N\+D\+G\+LN }\end{DoxyParamCaption})}
+
+
+
+\+: U = Mass\+\_\+matrix $\ast$ Vector (tipically vector is Grad $\ast$ P + R\+HS and this is used to obtain the velocity) 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a501c5d1025991dd3e563d635362b475b_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_a11255cf3f07959a2d3e20dd8705755fe}\label{namespacematrix__operations_a11255cf3f07959a2d3e20dd8705755fe}} 
+\index{matrix\_operations@{matrix\_operations}!matdmatinv@{matdmatinv}}
+\index{matdmatinv@{matdmatinv}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{matdmatinv()}{matdmatinv()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::matdmatinv (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+M\+AT,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+M\+A\+T\+I\+NV,  }\item[{integer, intent(in)}]{N\+L\+OC }\end{DoxyParamCaption})}
+
+
+
+calculate D\+M\+A\+T\+I\+NV 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=340pt]{namespacematrix__operations_a11255cf3f07959a2d3e20dd8705755fe_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a11255cf3f07959a2d3e20dd8705755fe_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_a3795359fc116fe5770ad11a89bbccc00}\label{namespacematrix__operations_a3795359fc116fe5770ad11a89bbccc00}} 
+\index{matrix\_operations@{matrix\_operations}!matinv@{matinv}}
+\index{matinv@{matinv}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{matinv()}{matinv()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::matinv (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+: ), intent(inout)}]{A,  }\item[{integer, intent(in)}]{N,  }\item[{integer, intent(in)}]{N\+M\+AX }\end{DoxyParamCaption})}
+
+
+
+\+: This sub finds the inverse of the matrix A and puts it back in A. M\+AT, M\+A\+T2, X and B are working vectors. 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a3795359fc116fe5770ad11a89bbccc00_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_afe8e6c53cbc0059363705d48a73708d1}\label{namespacematrix__operations_afe8e6c53cbc0059363705d48a73708d1}} 
+\index{matrix\_operations@{matrix\_operations}!matinvold@{matinvold}}
+\index{matinvold@{matinvold}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{matinvold()}{matinvold()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::matinvold (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+: ), intent(inout)}]{A,  }\item[{integer, intent(in)}]{N,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{M\+AT,  }\item[{real, dimension( \+: ), intent(inout)}]{B }\end{DoxyParamCaption})}
+
+
+
+\+: This sub finds the inverse of the matrix A and puts it back in A. M\+AT, M\+A\+T2, X and B are working vectors. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=340pt]{namespacematrix__operations_afe8e6c53cbc0059363705d48a73708d1_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_afe8e6c53cbc0059363705d48a73708d1_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_a803a8d54cfb386b1ba07fc131910114c}\label{namespacematrix__operations_a803a8d54cfb386b1ba07fc131910114c}} 
+\index{matrix\_operations@{matrix\_operations}!pha\_block\_mat\_vec@{pha\_block\_mat\_vec}}
+\index{pha\_block\_mat\_vec@{pha\_block\_mat\_vec}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{pha\_block\_mat\_vec()}{pha\_block\_mat\_vec()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::pha\+\_\+block\+\_\+mat\+\_\+vec (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(inout)}]{U,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in), target}]{B\+L\+O\+C\+K\+\_\+\+M\+AT,  }\item[{real, dimension( ndim, nphase, u\+\_\+nonods ), intent(inout)}]{C\+DP,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in), target}]{U\+\_\+\+N\+D\+G\+LN }\end{DoxyParamCaption})}
+
+
+
+\+: performs U = B\+L\+O\+C\+K\+\_\+\+M\+AT $\ast$ C\+DP, where block\+\_\+mat 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a803a8d54cfb386b1ba07fc131910114c_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_a9bf2bd580245147bc0864acab640770f}\label{namespacematrix__operations_a9bf2bd580245147bc0864acab640770f}} 
+\index{matrix\_operations@{matrix\_operations}!pha\_block\_mat\_vec2@{pha\_block\_mat\_vec2}}
+\index{pha\_block\_mat\_vec2@{pha\_block\_mat\_vec2}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{pha\_block\_mat\_vec2()}{pha\_block\_mat\_vec2()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::pha\+\_\+block\+\_\+mat\+\_\+vec2 (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{U,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in), target}]{B\+L\+O\+C\+K\+\_\+\+M\+AT,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{C\+DP,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in), target}]{U\+\_\+\+N\+D\+G\+LN }\end{DoxyParamCaption})}
+
+
+
+\+:U = B\+L\+O\+C\+K\+\_\+\+M\+AT $\ast$ C\+DP 
+
+\mbox{\Hypertarget{namespacematrix__operations_a79fd68b5ee6b5d90f564b6567a8ff891}\label{namespacematrix__operations_a79fd68b5ee6b5d90f564b6567a8ff891}} 
+\index{matrix\_operations@{matrix\_operations}!pha\_block\_mat\_vec\_many@{pha\_block\_mat\_vec\_many}}
+\index{pha\_block\_mat\_vec\_many@{pha\_block\_mat\_vec\_many}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{pha\_block\_mat\_vec\_many()}{pha\_block\_mat\_vec\_many()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::pha\+\_\+block\+\_\+mat\+\_\+vec\+\_\+many (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+:, \+:, \+: ), intent(inout), target, contiguous}]{U,  }\item[{real, dimension( \+:, \+: , \+: ), intent(in), contiguous}]{B\+L\+O\+C\+K\+\_\+\+M\+AT,  }\item[{real, dimension( \+:, \+: , \+:, \+: ), intent(in), target, contiguous}]{C\+DP,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{N\+B\+L\+O\+CK,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{U\+\_\+\+N\+D\+G\+LN }\end{DoxyParamCaption})}
+
+
+
+\+: U = B\+L\+O\+C\+K\+\_\+\+M\+AT $\ast$ C\+DP 
+
+\mbox{\Hypertarget{namespacematrix__operations_ae49b086515f6d3e9693137520156837a}\label{namespacematrix__operations_ae49b086515f6d3e9693137520156837a}} 
+\index{matrix\_operations@{matrix\_operations}!pha\_block\_mat\_vec\_many2@{pha\_block\_mat\_vec\_many2}}
+\index{pha\_block\_mat\_vec\_many2@{pha\_block\_mat\_vec\_many2}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{pha\_block\_mat\_vec\_many2()}{pha\_block\_mat\_vec\_many2()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::pha\+\_\+block\+\_\+mat\+\_\+vec\+\_\+many2 (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+: ), intent(inout)}]{U,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in), target}]{B\+L\+O\+C\+K\+\_\+\+M\+AT,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{C\+DP,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{N\+B\+L\+O\+CK,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in), target}]{U\+\_\+\+N\+D\+G\+LN }\end{DoxyParamCaption})}
+
+
+
+\+: U = B\+L\+O\+C\+K\+\_\+\+M\+AT $\ast$ C\+DP 
+
+\mbox{\Hypertarget{namespacematrix__operations_a1fe0d2f2c00d0e6b52d0121904447542}\label{namespacematrix__operations_a1fe0d2f2c00d0e6b52d0121904447542}} 
+\index{matrix\_operations@{matrix\_operations}!pha\_block\_mat\_vec\_many\_reusing@{pha\_block\_mat\_vec\_many\_reusing}}
+\index{pha\_block\_mat\_vec\_many\_reusing@{pha\_block\_mat\_vec\_many\_reusing}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{pha\_block\_mat\_vec\_many\_reusing()}{pha\_block\_mat\_vec\_many\_reusing()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::pha\+\_\+block\+\_\+mat\+\_\+vec\+\_\+many\+\_\+reusing (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+: , \+: ), intent(in), contiguous}]{B\+L\+O\+C\+K\+\_\+\+M\+AT,  }\item[{real, dimension( \+:, \+: , \+:, \+: ), intent(inout), target, contiguous}]{C\+DP,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{N\+B\+L\+O\+CK,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{U\+\_\+\+N\+D\+G\+LN }\end{DoxyParamCaption})}
+
+
+
+\+: U = B\+L\+O\+C\+K\+\_\+\+M\+AT $\ast$ C\+DP The difference with P\+H\+A\+\_\+\+B\+L\+O\+C\+K\+\_\+\+M\+A\+T\+\_\+\+V\+E\+C\+\_\+\+M\+A\+NY is that the input C\+DP is overwritten with the output 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_a1fe0d2f2c00d0e6b52d0121904447542_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_ae6b8bf3fc8ca7e4a1b4a1ea3b639d75e}\label{namespacematrix__operations_ae6b8bf3fc8ca7e4a1b4a1ea3b639d75e}} 
+\index{matrix\_operations@{matrix\_operations}!posinmat@{posinmat}}
+\index{posinmat@{posinmat}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{posinmat()}{posinmat()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::posinmat (\begin{DoxyParamCaption}\item[{integer, intent(inout)}]{posmat,  }\item[{integer, intent(in)}]{globi,  }\item[{integer, intent(in)}]{globj,  }\item[{integer, dimension( \+: ), intent(in)}]{findrm,  }\item[{integer, dimension( \+: ), intent(in)}]{colm }\end{DoxyParamCaption})}
+
+
+
+\+: Find position in matrix P\+O\+S\+M\+AT which has column G\+L\+O\+BJ 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_ae6b8bf3fc8ca7e4a1b4a1ea3b639d75e_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_ad55f3b1531dccfb31fac2aa6022448b5}\label{namespacematrix__operations_ad55f3b1531dccfb31fac2aa6022448b5}} 
+\index{matrix\_operations@{matrix\_operations}!smlinngot@{smlinngot}}
+\index{smlinngot@{smlinngot}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{smlinngot()}{smlinngot()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::smlinngot (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+: ), intent(inout)}]{A,  }\item[{real, dimension( \+: ), intent(inout)}]{X,  }\item[{real, dimension( \+: ), intent(in)}]{B,  }\item[{integer}]{N\+MX,  }\item[{integer, dimension(\+:), intent(inout)}]{I\+P\+IV,  }\item[{logical, intent(in)}]{G\+O\+T\+D\+EC }\end{DoxyParamCaption})}
+
+
+
+Calculate the inverse using the LU decomposition L can be provided, speeding up the method to O(n) 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_ad55f3b1531dccfb31fac2aa6022448b5_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacematrix__operations_af1abd4988e547cc7cd5f59bf7ccbfff9}\label{namespacematrix__operations_af1abd4988e547cc7cd5f59bf7ccbfff9}} 
+\index{matrix\_operations@{matrix\_operations}!ulong\_2\_uvw@{ulong\_2\_uvw}}
+\index{ulong\_2\_uvw@{ulong\_2\_uvw}!matrix\_operations@{matrix\_operations}}
+\doxysubsubsection{\texorpdfstring{ulong\_2\_uvw()}{ulong\_2\_uvw()}}
+{\footnotesize\ttfamily subroutine matrix\+\_\+operations\+::ulong\+\_\+2\+\_\+uvw (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(inout)}]{U,  }\item[{real, dimension( \+: ), intent(inout)}]{V,  }\item[{real, dimension( \+: ), intent(inout)}]{W,  }\item[{real, dimension( \+: ), intent(in)}]{UP,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacematrix__operations_af1abd4988e547cc7cd5f59bf7ccbfff9_icgraph}
+\end{center}
+\end{figure}

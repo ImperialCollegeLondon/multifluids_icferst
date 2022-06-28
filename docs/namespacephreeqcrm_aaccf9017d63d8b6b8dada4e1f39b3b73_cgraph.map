@@ -1,0 +1,4 @@
+<map id="phreeqcrm::rm_warningmessage" name="phreeqcrm::rm_warningmessage">
+<area shape="rect" id="node1" title="Print a warning message to the screen and the log file." alt="" coords="5,5,241,32"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#a73c704101dd8f52b2555ba84322a3b69" title="Send an error message to the screen, the output file, and the log file." alt="" coords="289,5,504,32"/>
+</map>

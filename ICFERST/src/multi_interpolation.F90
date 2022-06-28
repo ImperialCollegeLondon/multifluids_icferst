@@ -16,7 +16,8 @@
 !    USA
 #include "fdebug.h"
 
-
+!>This module contains the conservative mesh to mesh interpollation for DG fields, as described in Adam et al. 2016
+!> doi: http://dx.doi.org/10.1016/j.jcp.2016.05.058
 module multi_interpolation
 
     use fldebug
@@ -62,7 +63,7 @@ module multi_interpolation
     type(state_type) :: state_old, state_new
 
 contains
-
+   !> Mehs to mesh interpollation method, in Diamond DG_Galerkin
   subroutine M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, small_finacv, &
             small_colacv, flag)
     implicit none

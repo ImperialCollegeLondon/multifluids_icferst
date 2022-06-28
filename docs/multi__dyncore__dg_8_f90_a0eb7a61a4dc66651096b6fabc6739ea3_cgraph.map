@@ -1,0 +1,6 @@
+<map id="project_velocity_to_affine_space" name="project_velocity_to_affine_space">
+<area shape="rect" id="node1" title="Project back the velocity from a non divergent&#45;free space to a divergent free space." alt="" coords="5,39,152,80"/>
+<area shape="rect" id="node2" href="$namespacematrix__operations.html#a3cf9d9f54e55a501e927c1ae443093f0" title=": Performs the multiplication CDP_tensor = MmatC * deltap" alt="" coords="206,5,357,47"/>
+<area shape="rect" id="node4" href="$namespacematrix__operations.html#a501c5d1025991dd3e563d635362b475b" title=": U = Mass_matrix * Vector (tipically vector is Grad * P + RHS and this is used to obtain the velocit..." alt="" coords="200,71,363,112"/>
+<area shape="rect" id="node3" href="$namespacematrix__operations.html#a895e0f98ecb17a8541be87879adf8876" title=": CDP=C*DP" alt="" coords="411,5,560,47"/>
+</map>

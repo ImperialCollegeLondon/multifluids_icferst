@@ -1,0 +1,256 @@
+\hypertarget{structmulti__data__types_1_1multi__matrices}{}\doxysection{multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices Type Reference}
+\label{structmulti__data__types_1_1multi__matrices}\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+
+
+This type contains all the necessary information to solve =systems, matrices, R\+HS, limiters, colouring and also flags to decide which sort of matrices are generated.  
+
+
+
+
+Collaboration diagram for multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=272pt]{structmulti__data__types_1_1multi__matrices__coll__graph}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+real, dimension(\+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_ac3b9c28f4c836d495f7698ae8af258a0}{c}} =$>$ null()
+\item 
+real, dimension(\+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a309b4e2bdf9344416e8f6be7331fa579}{c\+\_\+cv}} =$>$ null()
+\item 
+real, dimension(\+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a0eaa2cf71c5394f223c49223f20cc40e}{u\+\_\+rhs}} =$>$ null()
+\item 
+real, dimension(\+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a1648af4a908d89099f422e220e9e918c}{ct}} =$>$ null()
+\item 
+type(vector\+\_\+field) \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a3e3c0f44597f31d98e6f29c1afadaf8d}{ct\+\_\+rhs}}
+\item 
+type(petsc\+\_\+csr\+\_\+matrix) \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_ad7585766b2102b19453d16019409160d}{petsc\+\_\+acv}}
+\item 
+type(vector\+\_\+field) \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a45aecbefb62aabf5eb12c2872640e303}{cv\+\_\+rhs}}
+\item 
+real, dimension(\+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a01729e31674bf840ed62d398d5653762}{pivit\+\_\+mat}} =$>$ null()
+\item 
+integer, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a586b149b7ecb1a715ad64befbc8347cb}{icolor}} =$>$ null()
+\item 
+integer \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a0c3c224c8165d6793725b2da1a034fa7}{ncolor}}
+\item 
+type(petsc\+\_\+csr\+\_\+matrix) \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a01c9bcc7d6c7deb201e05de1e3dacbc2}{dgm\+\_\+petsc}}
+\item 
+type(petsc\+\_\+csr\+\_\+matrix) \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_abcd1c3ea62e477dfd2c9f54aa8b1bb7c}{c\+\_\+petsc}}
+\item 
+type(petsc\+\_\+csr\+\_\+matrix) \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a8c8d61085e0c784a5e7818b7b30cf8c9}{ct\+\_\+petsc}}
+\item 
+type(petsc\+\_\+csr\+\_\+matrix) \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a3af914500758552f0946097ade894f32}{pivit\+\_\+petsc}}
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a378f23456af37ee286d72503151c7167}{no\+\_\+matrix\+\_\+store}}
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_aff9118da70dd8ad1c530d30328bcf37e}{cv\+\_\+pressure}}
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a5a515185a1ebf3491ac07f919f62da04}{stored}} = .false.
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a36496db31ded91aa9a75aa661a74f04d}{compact\+\_\+pivit\+\_\+mat}} = .false.
+\item 
+integer, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_acc779deb4c86e103609e442f0373f015}{limiters\+\_\+elematpsi}} =$>$ null()
+\item 
+real, dimension(\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a161be2982d8e597f4e9afa8175605f00}{limiters\+\_\+elematwei}} =$>$ null()
+\item 
+integer, dimension(\+:,\+:,\+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a0e52a852be17e8357388e82fe7d49ba3}{wic\+\_\+flip\+\_\+p\+\_\+vel\+\_\+bcs}} =$>$ null()
+\item 
+integer, dimension(\+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1multi__matrices_a7ac7058ed826684628ecbb0de1a63300}{face\+\_\+ele}} =$>$ null()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+This type contains all the necessary information to solve =systems, matrices, R\+HS, limiters, colouring and also flags to decide which sort of matrices are generated. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em C} & =$>$ null() Gradient matrix using a FE discretization (storable) \\
+\hline
+{\em C\+\_\+\+CV} & =$>$ null() Gradient matrix using a CV discretization (storable) \\
+\hline
+{\em U\+\_\+\+R\+HS} & =$>$ null() Rigth hand side of the momentum equation \\
+\hline
+{\em CT} & =$>$ null() Divergence matrix \\
+\hline
+{\em C\+T\+\_\+\+R\+HS} & Rigth hand side of the continuity equation \\
+\hline
+{\em petsc\+\_\+\+A\+CV} & Matrix containing the terms of transport equations \\
+\hline
+{\em C\+V\+\_\+\+R\+HS} & Rigth hand side of the saturation equation \\
+\hline
+{\em P\+I\+V\+I\+T\+\_\+\+M\+AT} & =$>$ null() Mass matrix (matrix form by the sigmas) (storable) \\
+\hline
+{\em I\+C\+O\+L\+OR} & =$>$ null() Array used to accelerate the creation of C\+MC in C\+O\+L\+O\+R\+\_\+\+G\+E\+T\+\_\+\+C\+M\+C\+\_\+\+P\+H\+A\+\_\+\+F\+A\+ST \\
+\hline
+{\em N\+C\+O\+L\+OR} & Number of colors in I\+C\+O\+L\+OR \\
+\hline
+{\em D\+G\+M\+\_\+\+P\+E\+T\+SC} & Matrix contatining the momemtum terms for Navier-\/\+Stokes/\+Stokes equation \\
+\hline
+{\em C\+\_\+\+P\+E\+T\+SC} & P\+E\+T\+Sc version of the gradient matrix (storable) \\
+\hline
+{\em C\+T\+\_\+\+P\+E\+T\+SC} & P\+E\+T\+Sc version of the divergence matrix \\
+\hline
+{\em P\+I\+V\+I\+T\+\_\+\+P\+E\+T\+SC} & P\+E\+T\+Sc version of the divergence matrix ~\newline
+ \\
+\hline
+{\em N\+O\+\_\+\+M\+A\+T\+R\+I\+X\+\_\+\+S\+T\+O\+RE} & Flag to whether calculate and use D\+G\+M\+\_\+\+P\+E\+T\+SC or C \\
+\hline
+{\em C\+V\+\_\+pressure} & Flag to whether calculate the pressure using FE (A\+S\+S\+E\+M\+B\+\_\+\+F\+O\+R\+C\+E\+\_\+\+C\+TY) or CV (cv\+\_\+assemb) \\
+\hline
+{\em stored} & = .false. Flag to be true when the storable matrices have been stored \\
+\hline
+{\em compact\+\_\+\+P\+I\+V\+I\+T\+\_\+\+M\+AT} & = .false. Flag to know whether to use a compacted mass matrix or not \\
+\hline
+{\em limiters\+\_\+\+E\+L\+E\+M\+A\+T\+P\+S\+I=$>$} & null() Stores locations used by the limiters \\
+\hline
+{\em limiters\+\_\+\+E\+L\+E\+M\+A\+T\+W\+E\+I=$>$} & null() Stores weights used by the limiters \\
+\hline
+{\em W\+I\+C\+\_\+\+F\+L\+I\+P\+\_\+\+P\+\_\+\+V\+E\+L\+\_\+\+B\+C\+S=$>$} & null()!\+Stores array to check when to flip B\+Cs \\
+\hline
+{\em F\+A\+C\+E\+\_\+\+E\+L\+E=$>$} & null()!\+Stores neighbouring elements \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_ac3b9c28f4c836d495f7698ae8af258a0}\label{structmulti__data__types_1_1multi__matrices_ac3b9c28f4c836d495f7698ae8af258a0}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!c@{c}}
+\index{c@{c}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{c}{c}}
+{\footnotesize\ttfamily real, dimension( \+:, \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::c =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a309b4e2bdf9344416e8f6be7331fa579}\label{structmulti__data__types_1_1multi__matrices_a309b4e2bdf9344416e8f6be7331fa579}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!c\_cv@{c\_cv}}
+\index{c\_cv@{c\_cv}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{c\_cv}{c\_cv}}
+{\footnotesize\ttfamily real, dimension( \+:, \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::c\+\_\+cv =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_abcd1c3ea62e477dfd2c9f54aa8b1bb7c}\label{structmulti__data__types_1_1multi__matrices_abcd1c3ea62e477dfd2c9f54aa8b1bb7c}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!c\_petsc@{c\_petsc}}
+\index{c\_petsc@{c\_petsc}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{c\_petsc}{c\_petsc}}
+{\footnotesize\ttfamily type(petsc\+\_\+csr\+\_\+matrix) multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::c\+\_\+petsc}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a36496db31ded91aa9a75aa661a74f04d}\label{structmulti__data__types_1_1multi__matrices_a36496db31ded91aa9a75aa661a74f04d}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!compact\_pivit\_mat@{compact\_pivit\_mat}}
+\index{compact\_pivit\_mat@{compact\_pivit\_mat}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{compact\_pivit\_mat}{compact\_pivit\_mat}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::compact\+\_\+pivit\+\_\+mat = .false.}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a1648af4a908d89099f422e220e9e918c}\label{structmulti__data__types_1_1multi__matrices_a1648af4a908d89099f422e220e9e918c}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!ct@{ct}}
+\index{ct@{ct}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{ct}{ct}}
+{\footnotesize\ttfamily real, dimension( \+:, \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::ct =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a8c8d61085e0c784a5e7818b7b30cf8c9}\label{structmulti__data__types_1_1multi__matrices_a8c8d61085e0c784a5e7818b7b30cf8c9}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!ct\_petsc@{ct\_petsc}}
+\index{ct\_petsc@{ct\_petsc}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{ct\_petsc}{ct\_petsc}}
+{\footnotesize\ttfamily type(petsc\+\_\+csr\+\_\+matrix) multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::ct\+\_\+petsc}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a3e3c0f44597f31d98e6f29c1afadaf8d}\label{structmulti__data__types_1_1multi__matrices_a3e3c0f44597f31d98e6f29c1afadaf8d}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!ct\_rhs@{ct\_rhs}}
+\index{ct\_rhs@{ct\_rhs}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{ct\_rhs}{ct\_rhs}}
+{\footnotesize\ttfamily type(vector\+\_\+field) multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::ct\+\_\+rhs}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_aff9118da70dd8ad1c530d30328bcf37e}\label{structmulti__data__types_1_1multi__matrices_aff9118da70dd8ad1c530d30328bcf37e}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!cv\_pressure@{cv\_pressure}}
+\index{cv\_pressure@{cv\_pressure}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{cv\_pressure}{cv\_pressure}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::cv\+\_\+pressure}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a45aecbefb62aabf5eb12c2872640e303}\label{structmulti__data__types_1_1multi__matrices_a45aecbefb62aabf5eb12c2872640e303}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!cv\_rhs@{cv\_rhs}}
+\index{cv\_rhs@{cv\_rhs}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{cv\_rhs}{cv\_rhs}}
+{\footnotesize\ttfamily type(vector\+\_\+field) multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::cv\+\_\+rhs}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a01c9bcc7d6c7deb201e05de1e3dacbc2}\label{structmulti__data__types_1_1multi__matrices_a01c9bcc7d6c7deb201e05de1e3dacbc2}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!dgm\_petsc@{dgm\_petsc}}
+\index{dgm\_petsc@{dgm\_petsc}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{dgm\_petsc}{dgm\_petsc}}
+{\footnotesize\ttfamily type(petsc\+\_\+csr\+\_\+matrix) multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::dgm\+\_\+petsc}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a7ac7058ed826684628ecbb0de1a63300}\label{structmulti__data__types_1_1multi__matrices_a7ac7058ed826684628ecbb0de1a63300}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!face\_ele@{face\_ele}}
+\index{face\_ele@{face\_ele}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{face\_ele}{face\_ele}}
+{\footnotesize\ttfamily integer, dimension( \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::face\+\_\+ele =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a586b149b7ecb1a715ad64befbc8347cb}\label{structmulti__data__types_1_1multi__matrices_a586b149b7ecb1a715ad64befbc8347cb}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!icolor@{icolor}}
+\index{icolor@{icolor}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{icolor}{icolor}}
+{\footnotesize\ttfamily integer, dimension(\+:), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::icolor =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_acc779deb4c86e103609e442f0373f015}\label{structmulti__data__types_1_1multi__matrices_acc779deb4c86e103609e442f0373f015}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!limiters\_elematpsi@{limiters\_elematpsi}}
+\index{limiters\_elematpsi@{limiters\_elematpsi}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{limiters\_elematpsi}{limiters\_elematpsi}}
+{\footnotesize\ttfamily integer, dimension(\+:), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::limiters\+\_\+elematpsi =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a161be2982d8e597f4e9afa8175605f00}\label{structmulti__data__types_1_1multi__matrices_a161be2982d8e597f4e9afa8175605f00}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!limiters\_elematwei@{limiters\_elematwei}}
+\index{limiters\_elematwei@{limiters\_elematwei}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{limiters\_elematwei}{limiters\_elematwei}}
+{\footnotesize\ttfamily real, dimension(\+:), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::limiters\+\_\+elematwei =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a0c3c224c8165d6793725b2da1a034fa7}\label{structmulti__data__types_1_1multi__matrices_a0c3c224c8165d6793725b2da1a034fa7}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!ncolor@{ncolor}}
+\index{ncolor@{ncolor}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{ncolor}{ncolor}}
+{\footnotesize\ttfamily integer multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::ncolor}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a378f23456af37ee286d72503151c7167}\label{structmulti__data__types_1_1multi__matrices_a378f23456af37ee286d72503151c7167}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!no\_matrix\_store@{no\_matrix\_store}}
+\index{no\_matrix\_store@{no\_matrix\_store}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{no\_matrix\_store}{no\_matrix\_store}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::no\+\_\+matrix\+\_\+store}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_ad7585766b2102b19453d16019409160d}\label{structmulti__data__types_1_1multi__matrices_ad7585766b2102b19453d16019409160d}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!petsc\_acv@{petsc\_acv}}
+\index{petsc\_acv@{petsc\_acv}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{petsc\_acv}{petsc\_acv}}
+{\footnotesize\ttfamily type(petsc\+\_\+csr\+\_\+matrix) multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::petsc\+\_\+acv}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a01729e31674bf840ed62d398d5653762}\label{structmulti__data__types_1_1multi__matrices_a01729e31674bf840ed62d398d5653762}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!pivit\_mat@{pivit\_mat}}
+\index{pivit\_mat@{pivit\_mat}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{pivit\_mat}{pivit\_mat}}
+{\footnotesize\ttfamily real, dimension( \+:, \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::pivit\+\_\+mat =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a3af914500758552f0946097ade894f32}\label{structmulti__data__types_1_1multi__matrices_a3af914500758552f0946097ade894f32}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!pivit\_petsc@{pivit\_petsc}}
+\index{pivit\_petsc@{pivit\_petsc}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{pivit\_petsc}{pivit\_petsc}}
+{\footnotesize\ttfamily type(petsc\+\_\+csr\+\_\+matrix) multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::pivit\+\_\+petsc}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a5a515185a1ebf3491ac07f919f62da04}\label{structmulti__data__types_1_1multi__matrices_a5a515185a1ebf3491ac07f919f62da04}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!stored@{stored}}
+\index{stored@{stored}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{stored}{stored}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::stored = .false.}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a0eaa2cf71c5394f223c49223f20cc40e}\label{structmulti__data__types_1_1multi__matrices_a0eaa2cf71c5394f223c49223f20cc40e}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!u\_rhs@{u\_rhs}}
+\index{u\_rhs@{u\_rhs}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{u\_rhs}{u\_rhs}}
+{\footnotesize\ttfamily real, dimension( \+:, \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::u\+\_\+rhs =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__matrices_a0e52a852be17e8357388e82fe7d49ba3}\label{structmulti__data__types_1_1multi__matrices_a0e52a852be17e8357388e82fe7d49ba3}} 
+\index{multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}!wic\_flip\_p\_vel\_bcs@{wic\_flip\_p\_vel\_bcs}}
+\index{wic\_flip\_p\_vel\_bcs@{wic\_flip\_p\_vel\_bcs}!multi\_data\_types::multi\_matrices@{multi\_data\_types::multi\_matrices}}
+\doxysubsubsection{\texorpdfstring{wic\_flip\_p\_vel\_bcs}{wic\_flip\_p\_vel\_bcs}}
+{\footnotesize\ttfamily integer, dimension(\+:,\+:,\+:), pointer multi\+\_\+data\+\_\+types\+::multi\+\_\+matrices\+::wic\+\_\+flip\+\_\+p\+\_\+vel\+\_\+bcs =$>$ null()}
+
+
+
+The documentation for this type was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/\mbox{\hyperlink{multi__data__types_8_f90}{multi\+\_\+data\+\_\+types.\+F90}}\end{DoxyCompactItemize}

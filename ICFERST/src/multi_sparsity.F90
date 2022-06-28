@@ -16,7 +16,7 @@
 !    USA
 #include "fdebug.h"
 
-
+!>Subroutines associated with the CSR storage used for 1D
 module sparsity_1D
     use fldebug
 
@@ -45,9 +45,9 @@ contains
         a=>temp
     end subroutine resize
 
+    !> define sparsity...
     SUBROUTINE DEF_SPAR( SEMI_BAND_WID, NONODS, MX_NCOLC, NCOLC, &
         CENTC, FINDC, COLC)
-        ! define sparsity...
         ! SEMI_BAND_WID is the semi band width.
         IMPLICIT NONE
         INTEGER, intent( in ) :: SEMI_BAND_WID, NONODS, MX_NCOLC
@@ -90,9 +90,9 @@ contains
         RETURN
     END SUBROUTINE DEF_SPAR
 
+    !> define sparsity...
     SUBROUTINE DEF_SPAR_CT_DG( CV_NONODS, MX_NCT, NCT, FINDCT, COLCT, &
         TOTELE, CV_NLOC, U_NLOC, U_NDGLN, CV_NDGLN)
-        ! define sparsity...
         ! SEMI_BAND_WID is the semi band width.
         IMPLICIT NONE
         INTEGER, intent( in ) :: CV_NONODS, MX_NCT
@@ -227,7 +227,7 @@ contains
     END SUBROUTINE DEF_SPAR_CT_DG
 
 end module sparsity_1D
-
+!>Subroutines associated with the CSR storage used in ICFERST
 module sparsity_ND
     use fldebug
     use sparsity_1D
@@ -238,10 +238,10 @@ module sparsity_ND
     use multi_tools
 contains
 
+    !> This sub caluculates COLELE the element connectivitiy list
+    !> in order of faces.
     subroutine getfinele( totele, nloc, snloc, nonods, ndglno, mx_nface_p1, &
         mxnele, ncolele, finele, colele, midele )
-        ! This sub caluculates COLELE the element connectivitiy list
-        ! in order of faces.
         implicit none
         integer, intent( in ) :: totele, nloc, snloc, nonods
         integer, dimension( totele * nloc ), intent( in ) :: ndglno
@@ -369,10 +369,10 @@ contains
         return
     end subroutine getfinele
 
+    !> Extend the sparsity to a multiphase sparsity
     subroutine exten_sparse_multi_phase_old( nonods, mxnele, finm, colm, &
         nphase, npha_nonods, ncolm_pha, &
         finm_pha, colm_pha, midm_pha )
-        ! Extend the sparsity to a multiphase sparsity
         implicit none
         integer, intent( in ) :: nonods, mxnele
         integer, dimension( nonods + 1 ), intent( in ) :: finm
@@ -418,10 +418,10 @@ contains
         return
     end subroutine exten_sparse_multi_phase_old
 
+    !> Extend the sparsity to a multiphase sparsity
     subroutine exten_sparse_multi_phase( nonods, mxnele, finm, colm, &
         nphase, npha_nonods, ncolm_pha, &
         finm_pha, colm_pha, midm_pha )
-        ! Extend the sparsity to a multiphase sparsity
         implicit none
         integer, intent( in ) :: nonods, mxnele
         integer, dimension( nonods + 1 ), intent( in ) :: finm
@@ -470,12 +470,12 @@ contains
     end subroutine exten_sparse_multi_phase
 
 
+    !> Form the sparsity of the phase coupled DG discretised matrix
+    !> from the element-wise multi-phase sparsity matrix.
     subroutine form_dgm_pha_sparsity( totele, nphase, u_nloc, u_pha_nonods, &
         ndim, mx_ncoldgm_pha, ncoldgm_pha, &
         coldgm_pha, findgm_pha, middgm_pha, &
         finele, colele, ncolele )
-        ! Form the sparsity of the phase coupled DG discretised matrix
-        ! from the element-wise multi-phase sparsity matrix.
         implicit none
         integer, intent( in ) :: totele, nphase, u_nloc, u_pha_nonods, &
             mx_ncoldgm_pha, ndim, ncolele
@@ -773,13 +773,13 @@ contains
     end subroutine conv_ct2c
 
 
+    !> This subroutine forms the matrix operating on the pressure vector.
+    !> It is found from C1T ML C1 + C2T ML C2
+    !> In the first part of COLCMC contains the pressure nodes surrounding
+    !> a given node.
     subroutine poscmc( totele, nonods, nimem, nct, &
         findct, colct, &
         ncmc, fincmc, colcmc, midcmc, noinod, presym )
-        ! This subroutine forms the matrix operating on the pressure vector.
-        ! It is found from C1T ML C1 + C2T ML C2
-        ! In the first part of COLCMC contains the pressure nodes surrounding
-        ! a given node.
         implicit none
         integer, intent ( in ) :: totele, nonods, nimem, nct
         integer, dimension( totele + 1 ), intent( in ) :: findct
@@ -1095,7 +1095,7 @@ contains
 end module sparsity_ND
 
 
-
+!> Sparsity for the Matrices?
 module spact
 
     use fldebug
@@ -1151,10 +1151,10 @@ contains
         return
     end subroutine Defining_MaxLengths_for_Sparsity_Matrices
 
+    !> Allocate and obtain the sparsity patterns of the two types of matricies for
+    !> (momentum + cty) and for energy
     subroutine Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv, &
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
-        !!$ Allocate and obtain the sparsity patterns of the two types of matricies for
-        !!$ (momentum + cty) and for energy
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type(multi_dimensions), intent(inout) :: Mdims

@@ -1,0 +1,7 @@
+<map id="color_get_cmc_pha_fast" name="color_get_cmc_pha_fast">
+<area shape="rect" id="node1" title=": form pressure matrix CMC using a colouring approach, requires more memory" alt="" coords="5,111,184,138"/>
+<area shape="rect" id="node2" href="$namespacematrix__operations.html#a963a038e3ea8bafb851ab3f5225a5300" title=": CDP=C*DP" alt="" coords="255,5,404,47"/>
+<area shape="rect" id="node3" href="$namespacematrix__operations.html#ad30d6b55adc62a3c43912ecbfbdb7e58" title=": CV_RHS = CT * U" alt="" coords="255,71,404,112"/>
+<area shape="rect" id="node4" href="$namespacematrix__operations.html#ae03adef605e7047d7fbafecd36d39c0e" title=": DP = (C)^T U_LONG" alt="" coords="247,136,411,177"/>
+<area shape="rect" id="node5" href="$namespacematrix__operations.html#a1fe0d2f2c00d0e6b52d0121904447542" title=": U = BLOCK_MAT * CDP The difference with PHA_BLOCK_MAT_VEC_MANY is that the input CDP is overwritten..." alt="" coords="232,202,427,258"/>
+</map>

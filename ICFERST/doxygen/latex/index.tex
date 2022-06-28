@@ -1,0 +1,32 @@
+\hypertarget{index_ReadMe}{}\doxysection{Read\+Me}\label{index_ReadMe}
+All the contributions to I\+C\+F\+E\+R\+ST in this repository are under A\+G\+PL 3.\+0 license, otherwise refrain from commiting your code to this repository. Each library keeps their original license.
+
+The executable is named icferst
+
+The schema for the I\+C\+F\+E\+R\+ST diamond interface is in I\+C\+F\+E\+R\+S\+T/schemas/multiphase.\+rmg
+
+For compilation run the command from the root folder\+: 
+
+I\+C\+F\+E\+R\+ST is property of the N\+O\+R\+MS group. See the file C\+O\+P\+Y\+R\+I\+G\+HT for a description of the copyright.
+
+For more details please see\+: \href{http://multifluids.github.io/}{\texttt{ http\+://multifluids.\+github.\+io/}} and \href{http://www.imperial.ac.uk/earth-science/research/research-groups/norms/}{\texttt{ http\+://www.\+imperial.\+ac.\+uk/earth-\/science/research/research-\/groups/norms/}}\hypertarget{index_install_sec}{}\doxysection{Installation}\label{index_install_sec}
+1) Download it from github with the following one-\/line command 
+
+2) Install dependencies 
+
+3a) Ubuntu 18.\+04, modify the .bashrc file in home to include 
+
+3b) Ubuntu 18.\+04, modify the .bashrc file in home to include 
+
+3b) You may need to explicitly include the python dependencies 
+
+4) Navigate to the root directory of your I\+C\+F\+E\+R\+ST folder \hypertarget{index_diamond}{}\doxysection{Using the Diamond interface}\label{index_diamond}
+Using the diamond G\+UI to configure test cases The input files are “\+E\+X\+A\+M\+P\+L\+E.\+mpml”. This files can be either manipulated using diamond a G\+UI, or a text file. To open the diamond G\+UI for I\+C\+F\+E\+R\+ST this is an example, found in the examples folder in I\+C-\/\+F\+E\+R\+S\+T-\/\+F\+O\+L\+D\+E\+R/legacy\+\_\+reservoir\+\_\+prototype/tests/3\+D\+\_\+\+BL \hypertarget{index_Parallel}{}\doxysection{Using I\+C\+F\+E\+R\+S\+T in parallel}\label{index_Parallel}
+I\+C\+F\+E\+R\+ST uses open\+M\+PI to run in parallel. The mesh needs to be decomposed initially using the command  where \#\+C\+P\+Us is the number of C\+P\+Us and I\+N\+P\+U\+T\+\_\+\+M\+E\+SH is a binary msh file using the gmshv2 format. This can be obtained using I\+C\+F\+E\+R\+ST from an option in diamond/geometry or from an exodus\+II file using the python conversor from I\+C\+F\+E\+R\+S\+T/tools Once the mesh is decomposed you can run in parallel using mpirun\+: 
+
+where I\+N\+P\+UT is I\+N\+P\+U\+T\+\_\+mpml is the mpml file as normally done. As a rule of thumb one wants to have around 15k elements per C\+PU to have optimal performance.\hypertarget{index_Code_structure}{}\doxysection{Structure of the I\+C\+F\+E\+R\+S\+T code}\label{index_Code_structure}
+All the I\+C\+F\+E\+R\+ST code is within the folder I\+C\+F\+E\+R\+ST where the test cases, code, tools and schemas for diamond are stored. Some parts of Fluidity have been slightly modified but in general the Fluidity code is untouched. I\+C\+F\+E\+R\+ST is composed of two main loops. First, it is the time loop and secondly the non-\/linear loop, which is a Picard method to deal with non-\/linearities. The time-\/loop is defined in the multi\+\_\+timeloop file. From this subroutine we initialise all the necessary fields and start the non-\/linear loop, within which all the equations to be solved are being called as blocks. In this way, first the momentum equation and velocity are obtained, next the saturation is transported (which also contains within it another non-\/linear loop) and then all the other transport equations are being solved.
+
+I\+C\+F\+E\+R\+ST solves using a D\+C\+V\+FE formulation, which means that we use two different meshes, a CV mesh and a FE mesh. The CV mesh and associated equations are dealt with in C\+V\+\_\+\+A\+S\+S\+E\+MB, which for porous media is around 70\% of the overall cost. Everything related with the FE mesh is solved for in multi\+\_\+dyncore However multi\+\_\+dyncore contains the calls to solve for the different transport equations. So effectively the process is normally time\+\_\+loop (initialise memory and stuff, including E\+OS, source terms...) =$>$ multi\+\_\+dyncore (assemble and solve) =$>$ cv\+\_\+assemb (assembles the transport equation).
+
+To simplify and standardize the naming of the variables the structures defined in \mbox{\hyperlink{namespacemulti__data__types}{multi\+\_\+data\+\_\+types}} are used through the code. Normally one or two of those types are created once and used throughout the code, so it is recommended to check in that section what is each variable and use those types either expanding them or creating more. 

@@ -1,0 +1,6 @@
+<map id="multi_machine_learning::test_xgboost" name="multi_machine_learning::test_xgboost">
+<area shape="rect" id="node1" title="Teste the XGBoost coupling." alt="" coords="5,71,184,112"/>
+<area shape="rect" id="node2" href="$namespacemulti__machine__learning.html#ab29633fc84fa093d2b642cca9277e4fb" title="Free the loaded XGBoost model from memory." alt="" coords="232,5,411,47"/>
+<area shape="rect" id="node3" href="$namespacemulti__machine__learning.html#aef6418a01cde10a690094f4356680ab9" title="Load the XGBoost model as &#45;&gt; xgb_model (private module variable)" alt="" coords="232,71,411,112"/>
+<area shape="rect" id="node4" href="$namespacemulti__machine__learning.html#ab0878ccdf102121522aa391c66ccdb83" title="Predict using the loaded XGBoost model xgboost_load_model() needs to be run first." alt="" coords="232,136,411,177"/>
+</map>

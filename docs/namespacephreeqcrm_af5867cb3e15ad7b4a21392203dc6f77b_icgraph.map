@@ -1,0 +1,9 @@
+<map id="phreeqcrm::rm_getgascomponentscount" name="phreeqcrm::rm_getgascomponentscount">
+<area shape="rect" id="node1" title="Returns the number of gas phase components in the initial&#45;phreeqc module. RM_FindComponents must be c..." alt="" coords="321,132,607,159"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#a7f0231d4760f2469abbab54905369113" title="Transfer moles of gas components from each reaction cell to the array given in the argument list (gas..." alt="" coords="17,5,262,32"/>
+<area shape="rect" id="node3" href="$namespacephreeqcrm.html#a68e896cacccfd1a3333550852e89b95f" title="Transfer fugacity coefficients (phi) of gas components from each reaction cell to the array given in ..." alt="" coords="27,56,252,83"/>
+<area shape="rect" id="node4" href="$namespacephreeqcrm.html#acd9befe464ac99cc85aa506918ebeb15" title="Transfer pressures of gas components from each reaction cell to the array given in the argument list ..." alt="" coords="5,107,273,133"/>
+<area shape="rect" id="node5" href="$namespacephreeqcrm.html#ab3cc21dbed21fc34cfe4ce6571fb199a" title="Transfer volume of gas from each reaction cell to the vector given in the argument list (gas_volume)." alt="" coords="11,157,268,184"/>
+<area shape="rect" id="node6" href="$namespacephreeqcrm.html#a0161b707ac7c404b14cec4a12630a0c7" title="Use the array of concentrations (gas_moles) to set the moles of gas components in each reaction cell." alt="" coords="17,208,261,235"/>
+<area shape="rect" id="node7" href="$namespacephreeqcrm.html#a220443bcc0c00b91edcacbc70e3f8d1a" title="Transfer volumes of gas phases from the array given in the argument list (gas_volume) to each reactio..." alt="" coords="11,259,267,285"/>
+</map>

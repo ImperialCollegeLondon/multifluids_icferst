@@ -15,7 +15,7 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-
+!> DEPRECATED This module contains subroutines to communicate with SOLIDITY. 
 module multiphase_fractures_3D
 
   use quadrature
@@ -65,8 +65,8 @@ module multiphase_fractures_3D
   end interface
 
 
-! Subroutine for coupling with viscosity (drag force, slip velocity, viscosity)
   interface
+  !> Subroutine for coupling with viscosity (drag force, slip velocity, viscosity)
      subroutine y3dfemdem( string, dt, p, uf_r, vf_r, wf_r, uf_v, vf_v, wf_v, du_s, dv_s, dw_s, u_s, v_s, w_s, &
          mu_f, f_x, f_y, f_z, usl, vsl, wsl,a_xx, a_xy, a_yy, a_xz, a_yz, a_zz, p_v )
        character( len = * ), intent( in ) :: string
@@ -101,7 +101,7 @@ module multiphase_fractures_3D
 contains
 
 
-!!----------------------------- Py BLASTING -----------------------------------------------------
+!>----------------------------- Py BLASTING -----------------------------------------------------
   subroutine blasting( packed_state, nphase )
 
     implicit none
@@ -166,8 +166,8 @@ print *,  'ready to interpolate_fields_in_r_out------'
     return
   end subroutine blasting
 
-    !------------------ao---------------hydro-fracture/fracturing subroutine --------------------------------------------------
-
+  
+  !>hydro-fracture/fracturing subroutine --------------------------------------------------
   subroutine fracking( packed_state, state, nphase )
   !!-ao add a flag for femdem? 1=fracking; 2=blasting; 3=thermal?
     implicit none

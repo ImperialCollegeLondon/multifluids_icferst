@@ -1,0 +1,39 @@
+\hypertarget{_multiphase___time_loop_8_f90}{}\doxysection{/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/\+Multiphase\+\_\+\+Time\+Loop.F90 File Reference}
+\label{_multiphase___time_loop_8_f90}\index{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/Multiphase\_TimeLoop.F90@{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/Multiphase\_TimeLoop.F90}}
+{\ttfamily \#include \char`\"{}fdebug.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}petsc\+\_\+legacy.\+h\char`\"{}}\newline
+Include dependency graph for Multiphase\+\_\+\+Time\+Loop.\+F90\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=250pt]{_multiphase___time_loop_8_f90__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Modules}
+\begin{DoxyCompactItemize}
+\item 
+module \mbox{\hyperlink{namespacemultiphase__time__loop}{multiphase\+\_\+time\+\_\+loop}}
+\begin{DoxyCompactList}\small\item\em Time-\/loop module of I\+C-\/\+F\+E\+R\+ST. This module contains the time-\/loop and the non-\/linear loop. The time-\/loop consists many steps\+: 1) Data initialisation including shape functions, memory allocation, sparsity, porous media properties, etc. 2) Initialisation of the actual time loop. 3) Non-\/linear loop. I\+C-\/\+F\+E\+R\+ST uses a modified Anderson-\/acceleration non-\/linear solver, which is based in a Picard iterative non-\/linear solver. In this way, the different equations are solved independently and coupled through the Anderson non-\/linear solver. First the momentum and continuity equations are assembled and solved for, next the different transport equations are solved, for example\+: saturation, temperature, concentration, etc. Active\+Tracers and Species are solved within the non-\/linear solver while Passive\+Tracers are solved outside the non-\/linear solver. 4) Once the non-\/linear solver has converged, we proceed to jump to the next time-\/level but first we check if we need to adapt the mesh and/or generate a vtu file. etc. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__time__loop_a04598d33bda1f46f9537570dbc0119bc}{multiphase\+\_\+time\+\_\+loop\+::multifluids\+\_\+solvetimeloop}} (state, dt, nonlinear\+\_\+iterations, dump\+\_\+no)
+\begin{DoxyCompactList}\small\item\em This is the main subroutine from which everything is called. It performs the time-\/loop and therefore calls all the necessary blocks to solve for the system of equations, adapt the mesh, etc. See Salinas et al. 2016 doi\+: 10.\+1002/fld.4357, for a description of the time-\/loop and non-\/linear solver. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{_multiphase___time_loop_8_f90_acdc79e479d6b4674e9471ef506d78b2f}{linearise\+\_\+components}} ()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{_multiphase___time_loop_8_f90_acdc79e479d6b4674e9471ef506d78b2f}\label{_multiphase___time_loop_8_f90_acdc79e479d6b4674e9471ef506d78b2f}} 
+\index{Multiphase\_TimeLoop.F90@{Multiphase\_TimeLoop.F90}!linearise\_components@{linearise\_components}}
+\index{linearise\_components@{linearise\_components}!Multiphase\_TimeLoop.F90@{Multiphase\_TimeLoop.F90}}
+\doxysubsubsection{\texorpdfstring{linearise\_components()}{linearise\_components()}}
+{\footnotesize\ttfamily subroutine multifluids\+\_\+solvetimeloop\+::linearise\+\_\+components}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=550pt]{_multiphase___time_loop_8_f90_acdc79e479d6b4674e9471ef506d78b2f_cgraph}
+\end{center}
+\end{figure}

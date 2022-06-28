@@ -1,0 +1,39 @@
+\hypertarget{multi__fracture__3_d_8_f90}{}\doxysection{/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/multi\+\_\+fracture\+\_\+3D.F90 File Reference}
+\label{multi__fracture__3_d_8_f90}\index{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/multi\_fracture\_3D.F90@{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/multi\_fracture\_3D.F90}}
+{\ttfamily \#include \char`\"{}fdebug.\+h\char`\"{}}\newline
+Include dependency graph for multi\+\_\+fracture\+\_\+3\+D.\+F90\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=294pt]{multi__fracture__3_d_8_f90__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Modules}
+\begin{DoxyCompactItemize}
+\item 
+module \mbox{\hyperlink{namespacemultiphase__fractures__3d}{multiphase\+\_\+fractures\+\_\+3d}}
+\begin{DoxyCompactList}\small\item\em D\+E\+P\+R\+E\+C\+A\+T\+ED This module contains subroutines to communicate with S\+O\+L\+I\+D\+I\+TY. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__fractures__3d_a9fb82c0cf3b3f96ccc40985a15c25987}{multiphase\+\_\+fractures\+\_\+3d\+::blasting}} (packed\+\_\+state, nphase)
+\begin{DoxyCompactList}\small\item\em -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/--- Py B\+L\+A\+S\+T\+I\+NG -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/--- \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__fractures__3d_aaa6b152432f8f9fcbfac8f68df833154}{multiphase\+\_\+fractures\+\_\+3d\+::fracking}} (packed\+\_\+state, state, nphase)
+\begin{DoxyCompactList}\small\item\em hydro-\/fracture/fracturing subroutine -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/--- \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__fractures__3d_adaf3a34e54906b76f4cd18ed48b2de39}{multiphase\+\_\+fractures\+\_\+3d\+::update\+\_\+blasting\+\_\+memory}} (packed\+\_\+state, state, timestep)
+\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+type(vector\+\_\+field), save \mbox{\hyperlink{namespacemultiphase__fractures__3d_a69b5e9eb361d637faa3de1f72b4750a2}{multiphase\+\_\+fractures\+\_\+3d\+::positions\+\_\+r}}
+\item 
+type(vector\+\_\+field), save \mbox{\hyperlink{namespacemultiphase__fractures__3d_ab85451b761d6afe06825d2dac1617166}{multiphase\+\_\+fractures\+\_\+3d\+::positions\+\_\+v}}
+\item 
+type(vector\+\_\+field), save \mbox{\hyperlink{namespacemultiphase__fractures__3d_ad6c98de3dc5d287bb53aa61a020933e3}{multiphase\+\_\+fractures\+\_\+3d\+::positions\+\_\+vc}}
+\item 
+type(tensor\+\_\+field), save \mbox{\hyperlink{namespacemultiphase__fractures__3d_af0b3e7f23c06ce2826b6a83572958932}{multiphase\+\_\+fractures\+\_\+3d\+::permeability\+\_\+r}}
+\item 
+character(len=field\+\_\+name\+\_\+len), save \mbox{\hyperlink{namespacemultiphase__fractures__3d_a9206458475a1121d6b6545f28ff142fd}{multiphase\+\_\+fractures\+\_\+3d\+::femdem\+\_\+mesh\+\_\+name}}
+\item 
+integer, save \mbox{\hyperlink{namespacemultiphase__fractures__3d_ad6733ce854427721534c61d149b8fdec}{multiphase\+\_\+fractures\+\_\+3d\+::ndim}}
+\end{DoxyCompactItemize}

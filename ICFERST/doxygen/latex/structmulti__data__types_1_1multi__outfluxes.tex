@@ -1,0 +1,104 @@
+\hypertarget{structmulti__data__types_1_1multi__outfluxes}{}\doxysection{multi\+\_\+data\+\_\+types\+::multi\+\_\+outfluxes Type Reference}
+\label{structmulti__data__types_1_1multi__outfluxes}\index{multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}}
+
+
+Contains variables to analyse the flux across the B\+Cs that the user is interested.  
+
+
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+logical \mbox{\hyperlink{structmulti__data__types_1_1multi__outfluxes_a325f7ac2a393cc79ef7d7191177fb98b}{calculate\+\_\+flux}}
+\item 
+integer, dimension(\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1multi__outfluxes_a70c95d89d09988b313a208bc225be76a}{outlet\+\_\+id}}
+\item 
+real \mbox{\hyperlink{structmulti__data__types_1_1multi__outfluxes_a7daca839a5f3e624116413d9abd4569b}{porevolume}}
+\item 
+real, dimension(\+:,\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1multi__outfluxes_a70615b7ccfc96ce240834439a21915e6}{totout}}
+\item 
+real, dimension(\+:,\+:,\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1multi__outfluxes_ae2c8c52f78753f027864a3b8ecfc121f}{avgout}}
+\item 
+real, dimension(\+:, \+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1multi__outfluxes_aa9520cf3525e991b94c91f366942380f}{area\+\_\+outlet}}
+\item 
+real, dimension(\+:,\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1multi__outfluxes_a6c911fb817eb85da68d8ff0a7a05ca1c}{intflux}}
+\item 
+character(len=field\+\_\+name\+\_\+len), dimension(\+:,\+:), allocatable \mbox{\hyperlink{structmulti__data__types_1_1multi__outfluxes_ac13eaf3182b5265a0061329f9522c2d3}{field\+\_\+names}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Contains variables to analyse the flux across the B\+Cs that the user is interested. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em calculate\+\_\+flux} & True if all the process related with this has to start or not \\
+\hline
+{\em outlet\+\_\+id} & ids the user wants \\
+\hline
+{\em porevolume} & for outfluxes.\+csv to calculate the pore volume injected \\
+\hline
+{\em totout} & Total outflux for a given surface id (Mdimsnphase, size(outlet\+\_\+id)) \\
+\hline
+{\em avgout} & Average outflux for a given surface id(fields, Mdimsnphase, size(outlet\+\_\+id)) \\
+\hline
+{\em area\+\_\+outlet} & Are of the surface id Mdinsnphase, size(outlet\+\_\+id) \\
+\hline
+{\em field\+\_\+names} & Name of the field Mdinsnphase, nfields\+: Store with the same ordering the field names \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__outfluxes_aa9520cf3525e991b94c91f366942380f}\label{structmulti__data__types_1_1multi__outfluxes_aa9520cf3525e991b94c91f366942380f}} 
+\index{multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}!area\_outlet@{area\_outlet}}
+\index{area\_outlet@{area\_outlet}!multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}}
+\doxysubsubsection{\texorpdfstring{area\_outlet}{area\_outlet}}
+{\footnotesize\ttfamily real, dimension(\+:, \+:), allocatable multi\+\_\+data\+\_\+types\+::multi\+\_\+outfluxes\+::area\+\_\+outlet}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__outfluxes_ae2c8c52f78753f027864a3b8ecfc121f}\label{structmulti__data__types_1_1multi__outfluxes_ae2c8c52f78753f027864a3b8ecfc121f}} 
+\index{multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}!avgout@{avgout}}
+\index{avgout@{avgout}!multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}}
+\doxysubsubsection{\texorpdfstring{avgout}{avgout}}
+{\footnotesize\ttfamily real, dimension(\+:,\+:,\+:), allocatable multi\+\_\+data\+\_\+types\+::multi\+\_\+outfluxes\+::avgout}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__outfluxes_a325f7ac2a393cc79ef7d7191177fb98b}\label{structmulti__data__types_1_1multi__outfluxes_a325f7ac2a393cc79ef7d7191177fb98b}} 
+\index{multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}!calculate\_flux@{calculate\_flux}}
+\index{calculate\_flux@{calculate\_flux}!multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}}
+\doxysubsubsection{\texorpdfstring{calculate\_flux}{calculate\_flux}}
+{\footnotesize\ttfamily logical multi\+\_\+data\+\_\+types\+::multi\+\_\+outfluxes\+::calculate\+\_\+flux}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__outfluxes_ac13eaf3182b5265a0061329f9522c2d3}\label{structmulti__data__types_1_1multi__outfluxes_ac13eaf3182b5265a0061329f9522c2d3}} 
+\index{multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}!field\_names@{field\_names}}
+\index{field\_names@{field\_names}!multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}}
+\doxysubsubsection{\texorpdfstring{field\_names}{field\_names}}
+{\footnotesize\ttfamily character(len = field\+\_\+name\+\_\+len), dimension(\+:,\+:), allocatable multi\+\_\+data\+\_\+types\+::multi\+\_\+outfluxes\+::field\+\_\+names}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__outfluxes_a6c911fb817eb85da68d8ff0a7a05ca1c}\label{structmulti__data__types_1_1multi__outfluxes_a6c911fb817eb85da68d8ff0a7a05ca1c}} 
+\index{multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}!intflux@{intflux}}
+\index{intflux@{intflux}!multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}}
+\doxysubsubsection{\texorpdfstring{intflux}{intflux}}
+{\footnotesize\ttfamily real, dimension(\+:,\+:), allocatable multi\+\_\+data\+\_\+types\+::multi\+\_\+outfluxes\+::intflux}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__outfluxes_a70c95d89d09988b313a208bc225be76a}\label{structmulti__data__types_1_1multi__outfluxes_a70c95d89d09988b313a208bc225be76a}} 
+\index{multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}!outlet\_id@{outlet\_id}}
+\index{outlet\_id@{outlet\_id}!multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}}
+\doxysubsubsection{\texorpdfstring{outlet\_id}{outlet\_id}}
+{\footnotesize\ttfamily integer, dimension(\+:), allocatable multi\+\_\+data\+\_\+types\+::multi\+\_\+outfluxes\+::outlet\+\_\+id}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__outfluxes_a7daca839a5f3e624116413d9abd4569b}\label{structmulti__data__types_1_1multi__outfluxes_a7daca839a5f3e624116413d9abd4569b}} 
+\index{multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}!porevolume@{porevolume}}
+\index{porevolume@{porevolume}!multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}}
+\doxysubsubsection{\texorpdfstring{porevolume}{porevolume}}
+{\footnotesize\ttfamily real multi\+\_\+data\+\_\+types\+::multi\+\_\+outfluxes\+::porevolume}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1multi__outfluxes_a70615b7ccfc96ce240834439a21915e6}\label{structmulti__data__types_1_1multi__outfluxes_a70615b7ccfc96ce240834439a21915e6}} 
+\index{multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}!totout@{totout}}
+\index{totout@{totout}!multi\_data\_types::multi\_outfluxes@{multi\_data\_types::multi\_outfluxes}}
+\doxysubsubsection{\texorpdfstring{totout}{totout}}
+{\footnotesize\ttfamily real, dimension(\+:,\+:), allocatable multi\+\_\+data\+\_\+types\+::multi\+\_\+outfluxes\+::totout}
+
+
+
+The documentation for this type was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/\mbox{\hyperlink{multi__data__types_8_f90}{multi\+\_\+data\+\_\+types.\+F90}}\end{DoxyCompactItemize}

@@ -1,0 +1,64 @@
+\hypertarget{namespacemulti__surface__tension}{}\doxysection{multi\+\_\+surface\+\_\+tension Module Reference}
+\label{namespacemulti__surface__tension}\index{multi\_surface\_tension@{multi\_surface\_tension}}
+
+
+This module contains the subroutines to include surface tension. Currently only used for I\+N\+E\+R\+T\+IA.  
+
+
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine \mbox{\hyperlink{namespacemulti__surface__tension_af2ba4e6081b82e255306f98d0e160098}{calculate\+\_\+surface\+\_\+tension\+\_\+new}} (state, packed\+\_\+state, Mdims, Mspars, ndgln, Mdisopt, P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+C\+O\+EF, P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+G\+R\+AD, I\+P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+OU)
+\item 
+subroutine \mbox{\hyperlink{namespacemulti__surface__tension_a5a80b62b8be2aabfa44e733c53908eb4}{surface\+\_\+tension\+\_\+wrapper\+\_\+new}} (state, packed\+\_\+state, P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+C\+O\+EF, P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+G\+R\+AD, S\+U\+F\+\_\+\+T\+E\+N\+S\+I\+O\+N\+\_\+\+C\+O\+EF, A\+N\+G\+LE, V\+O\+L\+U\+M\+E\+\_\+\+F\+R\+AC, Mdims, Mspars, ndgln, Mdisopt)
+\begin{DoxyCompactList}\small\item\em Calculate the surface tension force as a pressure force term\+: P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+C\+O\+EF and P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+G\+R\+AD for a given Dev\+FunsV\+O\+L\+U\+ME fraction field V\+O\+L\+U\+M\+E\+\_\+\+F\+R\+AC S\+U\+F\+\_\+\+T\+E\+N\+S\+I\+O\+N\+\_\+\+C\+O\+EF is the surface tension coefficient. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+This module contains the subroutines to include surface tension. Currently only used for I\+N\+E\+R\+T\+IA. 
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{namespacemulti__surface__tension_af2ba4e6081b82e255306f98d0e160098}\label{namespacemulti__surface__tension_af2ba4e6081b82e255306f98d0e160098}} 
+\index{multi\_surface\_tension@{multi\_surface\_tension}!calculate\_surface\_tension\_new@{calculate\_surface\_tension\_new}}
+\index{calculate\_surface\_tension\_new@{calculate\_surface\_tension\_new}!multi\_surface\_tension@{multi\_surface\_tension}}
+\doxysubsubsection{\texorpdfstring{calculate\_surface\_tension\_new()}{calculate\_surface\_tension\_new()}}
+{\footnotesize\ttfamily subroutine multi\+\_\+surface\+\_\+tension\+::calculate\+\_\+surface\+\_\+tension\+\_\+new (\begin{DoxyParamCaption}\item[{type(state\+\_\+type), dimension( \+: ), intent(inout)}]{state,  }\item[{type(state\+\_\+type), intent(inout)}]{packed\+\_\+state,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__discretization__opts}{multi\+\_\+discretization\+\_\+opts}}), intent(in)}]{Mdisopt,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+C\+O\+EF,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+G\+R\+AD,  }\item[{integer, intent(inout)}]{I\+P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+OU }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__surface__tension_af2ba4e6081b82e255306f98d0e160098_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__surface__tension_af2ba4e6081b82e255306f98d0e160098_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__surface__tension_a5a80b62b8be2aabfa44e733c53908eb4}\label{namespacemulti__surface__tension_a5a80b62b8be2aabfa44e733c53908eb4}} 
+\index{multi\_surface\_tension@{multi\_surface\_tension}!surface\_tension\_wrapper\_new@{surface\_tension\_wrapper\_new}}
+\index{surface\_tension\_wrapper\_new@{surface\_tension\_wrapper\_new}!multi\_surface\_tension@{multi\_surface\_tension}}
+\doxysubsubsection{\texorpdfstring{surface\_tension\_wrapper\_new()}{surface\_tension\_wrapper\_new()}}
+{\footnotesize\ttfamily subroutine multi\+\_\+surface\+\_\+tension\+::surface\+\_\+tension\+\_\+wrapper\+\_\+new (\begin{DoxyParamCaption}\item[{type(state\+\_\+type), dimension( \+: ), intent(inout)}]{state,  }\item[{type(state\+\_\+type), intent(inout)}]{packed\+\_\+state,  }\item[{real, dimension( \+:), intent(inout)}]{P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+C\+O\+EF,  }\item[{real, dimension( \+:), intent(inout)}]{P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+G\+R\+AD,  }\item[{real, intent(in)}]{S\+U\+F\+\_\+\+T\+E\+N\+S\+I\+O\+N\+\_\+\+C\+O\+EF,  }\item[{real, intent(in)}]{A\+N\+G\+LE,  }\item[{real, dimension( \+: ), intent(in)}]{V\+O\+L\+U\+M\+E\+\_\+\+F\+R\+AC,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__sparsities}{multi\+\_\+sparsities}}), intent(in)}]{Mspars,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__ndgln}{multi\+\_\+ndgln}}), intent(in)}]{ndgln,  }\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__discretization__opts}{multi\+\_\+discretization\+\_\+opts}}), intent(in)}]{Mdisopt }\end{DoxyParamCaption})}
+
+
+
+Calculate the surface tension force as a pressure force term\+: P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+C\+O\+EF and P\+L\+I\+K\+E\+\_\+\+G\+R\+A\+D\+\_\+\+S\+O\+U\+\_\+\+G\+R\+AD for a given Dev\+FunsV\+O\+L\+U\+ME fraction field V\+O\+L\+U\+M\+E\+\_\+\+F\+R\+AC S\+U\+F\+\_\+\+T\+E\+N\+S\+I\+O\+N\+\_\+\+C\+O\+EF is the surface tension coefficient. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__surface__tension_a5a80b62b8be2aabfa44e733c53908eb4_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__surface__tension_a5a80b62b8be2aabfa44e733c53908eb4_icgraph}
+\end{center}
+\end{figure}

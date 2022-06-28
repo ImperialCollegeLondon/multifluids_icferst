@@ -1,0 +1,66 @@
+\hypertarget{structmulti__data__types_1_1porous__adv__coefs}{}\doxysection{multi\+\_\+data\+\_\+types\+::porous\+\_\+adv\+\_\+coefs Type Reference}
+\label{structmulti__data__types_1_1porous__adv__coefs}\index{multi\_data\_types::porous\_adv\_coefs@{multi\_data\_types::porous\_adv\_coefs}}
+
+
+Required values to compute the fluxes for porous media. Effectively the sigma terms from the papers Currently they are oversized since apart from the permeability they are not tensors, this should be changed!  
+
+
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+real, dimension(\+:, \+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1porous__adv__coefs_a7dfe3f6172db8a9567e3ddc8224454fa}{adv\+\_\+coef}} =$>$ null()
+\item 
+real, dimension(\+:, \+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1porous__adv__coefs_add52cedca92232c0d06b577474b4e3a8}{inv\+\_\+adv\+\_\+coef}} =$>$ null()
+\item 
+real, dimension(\+:, \+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1porous__adv__coefs_adfcceabfbe5ca89e3dc81710be1fa6f4}{adv\+\_\+coef\+\_\+grad}} =$>$ null()
+\item 
+real, dimension(\+:, \+:, \+:), pointer \mbox{\hyperlink{structmulti__data__types_1_1porous__adv__coefs_aa78a22a9bdf2c3325b1eea2980ad14da}{inv\+\_\+permeability}} =$>$ null()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Required values to compute the fluxes for porous media. Effectively the sigma terms from the papers Currently they are oversized since apart from the permeability they are not tensors, this should be changed! 
+
+
+\begin{DoxyParams}{Parameters}
+{\em adv\+\_\+coef} & =$>$ null() Sigmas at the boundary to calculate fluxes \\
+\hline
+{\em inv\+\_\+adv\+\_\+coef} & =$>$ null() Inverse of sigmas at the boundary to calculate fluxes \\
+\hline
+{\em adv\+\_\+coef\+\_\+grad} & =$>$ null() Gradient of the sigmas at the boundary to calculate fluxes \\
+\hline
+{\em inv\+\_\+permeability} & =$>$ null() Gradient of the sigmas at the boundary to calculate fluxes \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structmulti__data__types_1_1porous__adv__coefs_a7dfe3f6172db8a9567e3ddc8224454fa}\label{structmulti__data__types_1_1porous__adv__coefs_a7dfe3f6172db8a9567e3ddc8224454fa}} 
+\index{multi\_data\_types::porous\_adv\_coefs@{multi\_data\_types::porous\_adv\_coefs}!adv\_coef@{adv\_coef}}
+\index{adv\_coef@{adv\_coef}!multi\_data\_types::porous\_adv\_coefs@{multi\_data\_types::porous\_adv\_coefs}}
+\doxysubsubsection{\texorpdfstring{adv\_coef}{adv\_coef}}
+{\footnotesize\ttfamily real, dimension( \+:, \+:, \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::porous\+\_\+adv\+\_\+coefs\+::adv\+\_\+coef =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1porous__adv__coefs_adfcceabfbe5ca89e3dc81710be1fa6f4}\label{structmulti__data__types_1_1porous__adv__coefs_adfcceabfbe5ca89e3dc81710be1fa6f4}} 
+\index{multi\_data\_types::porous\_adv\_coefs@{multi\_data\_types::porous\_adv\_coefs}!adv\_coef\_grad@{adv\_coef\_grad}}
+\index{adv\_coef\_grad@{adv\_coef\_grad}!multi\_data\_types::porous\_adv\_coefs@{multi\_data\_types::porous\_adv\_coefs}}
+\doxysubsubsection{\texorpdfstring{adv\_coef\_grad}{adv\_coef\_grad}}
+{\footnotesize\ttfamily real, dimension( \+:, \+:, \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::porous\+\_\+adv\+\_\+coefs\+::adv\+\_\+coef\+\_\+grad =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1porous__adv__coefs_add52cedca92232c0d06b577474b4e3a8}\label{structmulti__data__types_1_1porous__adv__coefs_add52cedca92232c0d06b577474b4e3a8}} 
+\index{multi\_data\_types::porous\_adv\_coefs@{multi\_data\_types::porous\_adv\_coefs}!inv\_adv\_coef@{inv\_adv\_coef}}
+\index{inv\_adv\_coef@{inv\_adv\_coef}!multi\_data\_types::porous\_adv\_coefs@{multi\_data\_types::porous\_adv\_coefs}}
+\doxysubsubsection{\texorpdfstring{inv\_adv\_coef}{inv\_adv\_coef}}
+{\footnotesize\ttfamily real, dimension( \+:, \+:, \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::porous\+\_\+adv\+\_\+coefs\+::inv\+\_\+adv\+\_\+coef =$>$ null()}
+
+\mbox{\Hypertarget{structmulti__data__types_1_1porous__adv__coefs_aa78a22a9bdf2c3325b1eea2980ad14da}\label{structmulti__data__types_1_1porous__adv__coefs_aa78a22a9bdf2c3325b1eea2980ad14da}} 
+\index{multi\_data\_types::porous\_adv\_coefs@{multi\_data\_types::porous\_adv\_coefs}!inv\_permeability@{inv\_permeability}}
+\index{inv\_permeability@{inv\_permeability}!multi\_data\_types::porous\_adv\_coefs@{multi\_data\_types::porous\_adv\_coefs}}
+\doxysubsubsection{\texorpdfstring{inv\_permeability}{inv\_permeability}}
+{\footnotesize\ttfamily real, dimension( \+:, \+:, \+: ), pointer multi\+\_\+data\+\_\+types\+::porous\+\_\+adv\+\_\+coefs\+::inv\+\_\+permeability =$>$ null()}
+
+
+
+The documentation for this type was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/\mbox{\hyperlink{multi__data__types_8_f90}{multi\+\_\+data\+\_\+types.\+F90}}\end{DoxyCompactItemize}

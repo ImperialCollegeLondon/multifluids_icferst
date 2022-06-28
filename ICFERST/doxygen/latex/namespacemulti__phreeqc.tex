@@ -1,0 +1,136 @@
+\hypertarget{namespacemulti__phreeqc}{}\doxysection{multi\+\_\+phreeqc Module Reference}
+\label{namespacemulti__phreeqc}\index{multi\_phreeqc@{multi\_phreeqc}}
+
+
+All the subroutines required to handle the connection with P\+H\+R\+E\+E\+Q\+C\+RM.  
+
+
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine \mbox{\hyperlink{namespacemulti__phreeqc_a81c3fa5effd1a8d5a6b6ec4622003a9f}{init\+\_\+phreeqc}} (Mdims, packed\+\_\+state, id, concetration\+\_\+phreeqc, after\+\_\+adapt)
+\begin{DoxyCompactList}\small\item\em This subroutine is used to initialise all the necessary parameters that P\+H\+R\+E\+E\+Q\+C\+RM requires. Reaction types, concentration units, number of components to transport... \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemulti__phreeqc_aee344bd4200d550db264a9d4255778b0}{run\+\_\+phreeqc}} (Mdims, packed\+\_\+state, id, concetration\+\_\+phreeqc)
+\begin{DoxyCompactList}\small\item\em Call P\+H\+R\+E\+E\+Q\+C\+RM and compute the reactions of the fields defined associated with the input ID. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemulti__phreeqc_a42b4f2e1448e657fbfda8a497fac99df}{deallocate\+\_\+phreeqc}} (id)
+\item 
+character(len=option\+\_\+path\+\_\+len) function \mbox{\hyperlink{namespacemulti__phreeqc_a44407bb2fe2bdd109f2687115b46c9b1}{get\+\_\+packed\+\_\+species\+\_\+name}} (P\+H\+R\+E\+E\+Q\+C\+\_\+name, old\+\_\+field)
+\begin{DoxyCompactList}\small\item\em \+: Finds the field name in diamond given a name in P\+H\+R\+E\+E\+QC. Fields have the convention of being named in I\+C\+F\+E\+R\+ST as S\+P\+E\+C\+I\+E\+S\+\_\+component, for example Species\+\_\+O for oxygen. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+All the subroutines required to handle the connection with P\+H\+R\+E\+E\+Q\+C\+RM. 
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{namespacemulti__phreeqc_a42b4f2e1448e657fbfda8a497fac99df}\label{namespacemulti__phreeqc_a42b4f2e1448e657fbfda8a497fac99df}} 
+\index{multi\_phreeqc@{multi\_phreeqc}!deallocate\_phreeqc@{deallocate\_phreeqc}}
+\index{deallocate\_phreeqc@{deallocate\_phreeqc}!multi\_phreeqc@{multi\_phreeqc}}
+\doxysubsubsection{\texorpdfstring{deallocate\_phreeqc()}{deallocate\_phreeqc()}}
+{\footnotesize\ttfamily subroutine multi\+\_\+phreeqc\+::deallocate\+\_\+phreeqc (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{id }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__phreeqc_a42b4f2e1448e657fbfda8a497fac99df_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__phreeqc_a42b4f2e1448e657fbfda8a497fac99df_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__phreeqc_a44407bb2fe2bdd109f2687115b46c9b1}\label{namespacemulti__phreeqc_a44407bb2fe2bdd109f2687115b46c9b1}} 
+\index{multi\_phreeqc@{multi\_phreeqc}!get\_packed\_species\_name@{get\_packed\_species\_name}}
+\index{get\_packed\_species\_name@{get\_packed\_species\_name}!multi\_phreeqc@{multi\_phreeqc}}
+\doxysubsubsection{\texorpdfstring{get\_packed\_species\_name()}{get\_packed\_species\_name()}}
+{\footnotesize\ttfamily character (len = option\+\_\+path\+\_\+len) function multi\+\_\+phreeqc\+::get\+\_\+packed\+\_\+species\+\_\+name (\begin{DoxyParamCaption}\item[{character(len = $\ast$), intent(in)}]{P\+H\+R\+E\+E\+Q\+C\+\_\+name,  }\item[{logical, intent(in)}]{old\+\_\+field }\end{DoxyParamCaption})}
+
+
+
+\+: Finds the field name in diamond given a name in P\+H\+R\+E\+E\+QC. Fields have the convention of being named in I\+C\+F\+E\+R\+ST as S\+P\+E\+C\+I\+E\+S\+\_\+component, for example Species\+\_\+O for oxygen. 
+
+\begin{DoxyAuthor}{Author}
+Geraldine Regnier, Pablo Salinas 
+\end{DoxyAuthor}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__phreeqc_a44407bb2fe2bdd109f2687115b46c9b1_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__phreeqc_a81c3fa5effd1a8d5a6b6ec4622003a9f}\label{namespacemulti__phreeqc_a81c3fa5effd1a8d5a6b6ec4622003a9f}} 
+\index{multi\_phreeqc@{multi\_phreeqc}!init\_phreeqc@{init\_phreeqc}}
+\index{init\_phreeqc@{init\_phreeqc}!multi\_phreeqc@{multi\_phreeqc}}
+\doxysubsubsection{\texorpdfstring{init\_phreeqc()}{init\_phreeqc()}}
+{\footnotesize\ttfamily subroutine multi\+\_\+phreeqc\+::init\+\_\+phreeqc (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{integer, intent(out)}]{id,  }\item[{real, dimension(\+:,\+:), intent(out), allocatable}]{concetration\+\_\+phreeqc,  }\item[{logical, intent(in)}]{after\+\_\+adapt }\end{DoxyParamCaption})}
+
+
+
+This subroutine is used to initialise all the necessary parameters that P\+H\+R\+E\+E\+Q\+C\+RM requires. Reaction types, concentration units, number of components to transport... 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em id.} & ID associated with the settings specified here so P\+H\+R\+E\+E\+Q\+C\+RM can now it is doing the same thing \\
+\hline
+{\em concetration\+\_\+phreeqc} & O\+UT. Memory to be used to communicate with P\+H\+R\+E\+E\+QC \\
+\hline
+{\em after\+\_\+adapt.} & True after adapting the mesh to redo this \\
+\hline
+\end{DoxyParams}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=550pt]{namespacemulti__phreeqc_a81c3fa5effd1a8d5a6b6ec4622003a9f_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__phreeqc_a81c3fa5effd1a8d5a6b6ec4622003a9f_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{namespacemulti__phreeqc_aee344bd4200d550db264a9d4255778b0}\label{namespacemulti__phreeqc_aee344bd4200d550db264a9d4255778b0}} 
+\index{multi\_phreeqc@{multi\_phreeqc}!run\_phreeqc@{run\_phreeqc}}
+\index{run\_phreeqc@{run\_phreeqc}!multi\_phreeqc@{multi\_phreeqc}}
+\doxysubsubsection{\texorpdfstring{run\_phreeqc()}{run\_phreeqc()}}
+{\footnotesize\ttfamily subroutine multi\+\_\+phreeqc\+::run\+\_\+phreeqc (\begin{DoxyParamCaption}\item[{type(\mbox{\hyperlink{structmulti__data__types_1_1multi__dimensions}{multi\+\_\+dimensions}}), intent(in)}]{Mdims,  }\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{integer, intent(inout)}]{id,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{concetration\+\_\+phreeqc }\end{DoxyParamCaption})}
+
+
+
+Call P\+H\+R\+E\+E\+Q\+C\+RM and compute the reactions of the fields defined associated with the input ID. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Mdims} & Data type storing all the dimensions describing the mesh, fields, nodes, etc \\
+\hline
+{\em packed\+\_\+state} & Linked list containing all the fields used by I\+C-\/\+F\+E\+R\+ST, memory partially shared with state \\
+\hline
+{\em id.} & ID associated with the settings specified here so P\+H\+R\+E\+E\+Q\+C\+RM can now it is doing the same thing \\
+\hline
+{\em concetration\+\_\+phreeqc} & I\+N\+O\+UT. Memory to be used to communicate with P\+H\+R\+E\+E\+QC \\
+\hline
+\end{DoxyParams}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__phreeqc_aee344bd4200d550db264a9d4255778b0_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{namespacemulti__phreeqc_aee344bd4200d550db264a9d4255778b0_icgraph}
+\end{center}
+\end{figure}

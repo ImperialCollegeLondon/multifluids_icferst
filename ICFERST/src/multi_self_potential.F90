@@ -15,7 +15,7 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-
+!> This module contains all the necessary subroutines to deal with self Potential in ICFERST
 module multi_SP
 
     use fldebug
@@ -38,12 +38,20 @@ module multi_SP
     contains
 
 
-      !>@brief: This subroutine computes the saturated rock conductivity based on Tiab and Donaldson, 2004 formula.
-      !> and also includes the temperature/concentration dependency detailed in Sen and Goode, 1992
-      !> IMPORTANT: Water needs to be phase 1! TODO Maybe add a REMINDER when running with SP solver and to run with Kelvin, maybe this for all the temperature cases
-      !> TODO include the option to project to FE using PROJ_CV_TO_FEM
-      subroutine Assemble_and_solve_SP( Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
-        implicit none
+    !>@brief: This subroutine computes the saturated rock conductivity based on Tiab and Donaldson, 2004 formula.
+    !> and also includes the temperature/concentration dependency detailed in Sen and Goode, 1992
+    !> IMPORTANT: Water needs to be phase 1! TODO Maybe add a REMINDER when running with SP solver and to run with Kelvin, maybe this for all the temperature cases
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  ndgln Global to local variables
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  CV_GIdims Gauss integration numbers for CV fields
+    subroutine Assemble_and_solve_SP( Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
+      ! TODO include the option to project to FE using PROJ_CV_TO_FEM
+      implicit none
 
         type(multi_dimensions), intent( in ) :: Mdims
         type( state_type ), dimension(:), intent( inout ) :: state
@@ -136,6 +144,14 @@ module multi_SP
       !>@brief: This subroutine computes the saturated rock conductivity based on Tiab and Donaldson, 2004 formula.
       !> and also includes the temperature/concentration dependency detailed in Sen and Goode, 1992
       !> IMPORTANT: Water needs to be phase 1! TODO Maybe add a REMINDER when running with SP solver and to run with Kelvin, maybe this for all the temperature cases
+      !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
+      !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+      !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+      !>@param  ndgln Global to local variables
+      !>@param  Saturation Phase Volume fraction
+      !>@param  Concentration Concentration field (Here Concentration needs to be in mol/litre)
+      !>@param  Temperature Temperature field in KELVIN
+      !>@param rock_sat_conductivity INOUT. Rock conductivity for self potential
       subroutine get_rock_sat_conductivity(state, packed_state, Mdims, ndgln, Saturation, Concentration, Temperature, rock_sat_conductivity )
         implicit none
         type( state_type ), dimension(:), intent( inout ) :: state
@@ -221,6 +237,15 @@ module multi_SP
 
       !>@brief: This subroutine computes the coupling coefficients required to compute the self potential using Jackson et al. (2012)
       !>1 => Electrokinetic; 2=> Thermal; 3=> Exclusion diffusion
+      !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
+      !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+      !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+      !>@param rock_sat_conductivity Rock conductivity for self potential
+      !>@param  coupling_term INOUT Effect being computed, Electrokinetic, thermal, etc.
+      !>@param  Saturation Phase Volume fraction
+      !>@param  Concentration Concentration field (Here Concentration needs to be in mol/litre)
+      !>@param  Temperature Temperature field in KELVIN
+      !>@param flag 1 => Electrokinetic; 2=> Thermal; 3=> Exclusion diffusion
       subroutine get_SP_coupling_coefficients(state, packed_state, Mdims, ndgln, rock_sat_conductivity, coupling_term, Saturation, Concentration, Temperature, flag )
         implicit none
         type( state_type ), dimension(:), intent( inout ) :: state
@@ -228,9 +253,9 @@ module multi_SP
         type( state_type ), intent( inout ) :: packed_state
         real, dimension(:), intent(in) :: rock_sat_conductivity
         type(multi_ndgln), intent(in) :: ndgln
-        real, dimension(:), intent(inout) ::  coupling_term!>output of the subroutine.
+        real, dimension(:), intent(inout) ::  coupling_term!output of the subroutine.
         real, dimension(:), intent(in) :: Concentration, Saturation, Temperature!Here Concentration needs to be in mol/litre
-        integer, intent(in) :: flag !>1 => Electrokinetic; 2=> Thermal; 3=> Exclusion diffusion
+        integer, intent(in) :: flag !1 => Electrokinetic; 2=> Thermal; 3=> Exclusion diffusion
         !Local variables
         real :: norm_water_sat, Cf, Tna, AuxR, temp
         integer :: cv_inod, ele, cv_iloc, stat

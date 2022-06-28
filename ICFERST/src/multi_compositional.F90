@@ -15,7 +15,9 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-
+!> This module contains all that is required to perform compositional modelling.
+!> NOTE THAT THIS FUNCTIONALITY HAS NEVER BEEN FULLY IMPLEMENTED
+!> ONLY INERT COMPOSITIONAL WORKS CURRENTLY
 module Compositional_Terms
     use fldebug
     use futils
@@ -30,12 +32,12 @@ module Compositional_Terms
 
 contains
 
+    !> Calculate compositional model linkage between the phase expressed in COMP_ABSORB.
+    !> Use values from the previous time step so its easier to converge.
+    !> alpha_beta is the scaling coeff. of the compositional model e.g. =1.0
     subroutine Calculate_ComponentAbsorptionTerm( packed_state, icomp, cv_ndgln, &
                                                   Mdims, denold, volfra_pore, mass_ele, comp_absorb )
 
-        !!$ Calculate compositional model linkage between the phase expressed in COMP_ABSORB.
-        !!$ Use values from the previous time step so its easier to converge.
-        !!$ alpha_beta is the scaling coeff. of the compositional model e.g. =1.0
 
         implicit none
         type( state_type ), intent( inout ) :: packed_state
@@ -171,17 +173,17 @@ contains
     end subroutine Calculate_ComponentAbsorptionTerm
 
 
+    !> Calculate the diffusion coefficient COMP_DIFFUSION for current composition...
+    !> based on page 136 in Reservoir-Simulation-Mathematical-Techniques-In-Oil-Recovery-(2007).pdf
+    !> COMP_DIFFUSION_OPT, integer option defining diffusion coeff
+    !> NCOMP_DIFF_COEF,  integer defining how many coeff's are needed to define the diffusion
+    !> COMP_DIFF_COEF( Mdims%ncomp,  NCOMP_DIFF_COEF, Mdims%nphase  )
     subroutine Calculate_ComponentDiffusionTerm( packed_state, &
         Mdims, CV_GIdims, CV_funs,&
         mat_ndgln, u_ndgln, x_ndgln, &
         ncomp_diff_coef, comp_diffusion_opt, &
         comp_diff_coef, &
         comp_diffusion)
-        !!$ Calculate the diffusion coefficient COMP_DIFFUSION for current composition...
-        !!$ based on page 136 in Reservoir-Simulation-Mathematical-Techniques-In-Oil-Recovery-(2007).pdf
-        !!$ COMP_DIFFUSION_OPT, integer option defining diffusion coeff
-        !!$ NCOMP_DIFF_COEF,  integer defining how many coeff's are needed to define the diffusion
-        !!$ COMP_DIFF_COEF( Mdims%ncomp,  NCOMP_DIFF_COEF, Mdims%nphase  )
         implicit none
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
@@ -248,12 +250,12 @@ contains
         return
     end subroutine Calculate_ComponentDiffusionTerm
 
+    !> Determine MAT_U from NU,NV,NW which are variables mapped to material mesh.
     SUBROUTINE PROJ_U2MAT( COMP_DIFFUSION_OPT, &
         Mdims, CV_GIdims, CV_funs,&
         COMP_DIFFUSION, NCOMP_DIFF_COEF, COMP_DIFF_COEF, &
         X_ALL, NU, NV, NW, MAT_NDGLN, U_NDGLN, X_NDGLN, &
         MAT_U)
-        ! Determine MAT_U from NU,NV,NW which are variables mapped to material mesh.
 
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
@@ -358,10 +360,10 @@ contains
     end subroutine PROJ_U2MAT
 
 
+    !> Calculate the diffusion coefficient COMP_DIFFUSION for current composition...
+    !> based on page 136 in Reservoir-Simulation-Mathematical-Techniques-In-Oil-Recovery-(2007).pdf
     SUBROUTINE CALC_COMP_DIF_TEN( NDIM, UD, DIFF_molecular, DIFF_longitudinal, DIFF_transverse, &
         DIFF_TEN )
-        ! Calculate the diffusion coefficient COMP_DIFFUSION for current composition...
-        ! based on page 136 in Reservoir-Simulation-Mathematical-Techniques-In-Oil-Recovery-(2007).pdf
         implicit none
 
         INTEGER, intent( in ) :: NDIM
@@ -411,7 +413,7 @@ contains
 
     END SUBROUTINE CALC_COMP_DIF_TEN
 
-
+    !> Method to flash components
     subroutine Calc_KComp2( cv_nonods, nphase, icomp, KComp_Sigmoid, &
         Satura, K_Comp, max_k, min_k, &
         K_Comp2 )
@@ -459,21 +461,21 @@ contains
     end subroutine Calc_KComp2
 
 
+    !> Width: width of the sigmoid function.
+    !> The sigmoid function, varies between ( LowMag, UpMag ).
+    !> Y is the variable of the function and Y0 is the centre
+    !> of the function.
+    !> The function looks like:
+    !>             -------------
+    !>           /
+    !>          /
+    !> --------
     real function sigmoid_function( Y, Y0, Width, LowMag, UpMag )
         implicit none
         real :: Y, Y0, Width, LowMag, UpMag
         ! Local Variables
         real :: alpha
         !
-        ! Width: width of the sigmoid function.
-        ! The sigmoid function, varies between ( LowMag, UpMag ).
-        ! Y is the variable of the function and Y0 is the centre
-        ! of the function.
-        ! The function looks like:
-        !             -------------
-        !           /
-        !          /
-        ! --------
 
         if( Y - Y0 < - 3. * Width ) then
             sigmoid_function = UpMag
@@ -505,9 +507,9 @@ contains
 
 
 
+    !> make sure the composition sums to 1.0
     SUBROUTINE CAL_COMP_SUM2ONE_SOU( packed_state, Mdims )
 
-      ! make sure the composition sums to 1.0
       implicit none
       type( state_type ), intent( inout ) :: packed_state
       type( multi_dimensions ), intent( in ) :: Mdims

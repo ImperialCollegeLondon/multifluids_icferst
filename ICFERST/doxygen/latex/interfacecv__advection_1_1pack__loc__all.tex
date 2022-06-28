@@ -1,0 +1,57 @@
+\hypertarget{interfacecv__advection_1_1pack__loc__all}{}\doxysection{cv\+\_\+advection\+::pack\+\_\+loc\+\_\+all Interface Reference}
+\label{interfacecv__advection_1_1pack__loc__all}\index{cv\_advection::pack\_loc\_all@{cv\_advection::pack\_loc\_all}}
+
+
+Packs field together to be later on used for high order computations.  
+
+
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+subroutine \mbox{\hyperlink{interfacecv__advection_1_1pack__loc__all_aa32cb57414346a3b22d48e2f6ed08567}{pack\+\_\+loc\+\_\+all1}} (L\+O\+C\+\_\+F, field1, oldfield1, field2, oldfield2, field3, oldfield3, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, use\+\_\+volume\+\_\+frac\+\_\+\+T2, nfield)
+\begin{DoxyCompactList}\small\item\em This subroutine is for fields that have already size final\+\_\+phase -\/ 1 Checks if the fields are constant or not, stored in I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, based on that introduces the field into L\+O\+C\+\_\+F to later on apply the limiters on all the fields at once. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{interfacecv__advection_1_1pack__loc__all_ac8100da8bf6718865a507e072b9f3977}{pack\+\_\+loc\+\_\+all2}} (L\+O\+C\+\_\+F, field1, oldfield1, field2, oldfield2, field3, oldfield3, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, use\+\_\+volume\+\_\+frac\+\_\+\+T2, start\+\_\+phase, final\+\_\+phase, nodi)
+\begin{DoxyCompactList}\small\item\em This subrotuine is for fields that are bigger than final\+\_\+phase -\/ start\+\_\+phase Checks if the fields are constant or not, stored in I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, based on that introduces the field into L\+O\+C\+\_\+F to later on apply the limiters on all the fields at once. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{interfacecv__advection_1_1pack__loc__all_a7e74c3dcd5a537781b3f0a77392094ac}{pack\+\_\+loc\+\_\+all3}} (L\+O\+C\+\_\+F, field1, oldfield1, field2, oldfield2, field3, oldfield3, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, use\+\_\+volume\+\_\+frac\+\_\+\+T2, start\+\_\+phase, final\+\_\+phase, nodi)
+\begin{DoxyCompactList}\small\item\em This subrotuine is for fields that are bigger than final\+\_\+phase -\/ start\+\_\+phase Checks if the fields are constant or not, stored in I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, based on that introduces the field into L\+O\+C\+\_\+F to later on apply the limiters on all the fields at once. This one is for integer fields. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Packs field together to be later on used for high order computations. 
+
+\doxysubsection{Member Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{interfacecv__advection_1_1pack__loc__all_aa32cb57414346a3b22d48e2f6ed08567}\label{interfacecv__advection_1_1pack__loc__all_aa32cb57414346a3b22d48e2f6ed08567}} 
+\index{cv\_advection::pack\_loc\_all@{cv\_advection::pack\_loc\_all}!pack\_loc\_all1@{pack\_loc\_all1}}
+\index{pack\_loc\_all1@{pack\_loc\_all1}!cv\_advection::pack\_loc\_all@{cv\_advection::pack\_loc\_all}}
+\doxysubsubsection{\texorpdfstring{pack\_loc\_all1()}{pack\_loc\_all1()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::pack\+\_\+loc\+\_\+all\+::pack\+\_\+loc\+\_\+all1 (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{L\+O\+C\+\_\+F,  }\item[{real, dimension(\+:), intent(in)}]{field1,  }\item[{real, dimension(\+:), intent(in)}]{oldfield1,  }\item[{real, dimension(\+:), intent(in)}]{field2,  }\item[{real, dimension(\+:), intent(in)}]{oldfield2,  }\item[{real, dimension(\+:), intent(in)}]{field3,  }\item[{real, dimension(\+:), intent(in)}]{oldfield3,  }\item[{logical, dimension(\+:,\+:), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK,  }\item[{logical, intent(in)}]{use\+\_\+volume\+\_\+frac\+\_\+\+T2,  }\item[{integer, intent(in)}]{nfield }\end{DoxyParamCaption})}
+
+
+
+This subroutine is for fields that have already size final\+\_\+phase -\/ 1 Checks if the fields are constant or not, stored in I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, based on that introduces the field into L\+O\+C\+\_\+F to later on apply the limiters on all the fields at once. 
+
+\mbox{\Hypertarget{interfacecv__advection_1_1pack__loc__all_ac8100da8bf6718865a507e072b9f3977}\label{interfacecv__advection_1_1pack__loc__all_ac8100da8bf6718865a507e072b9f3977}} 
+\index{cv\_advection::pack\_loc\_all@{cv\_advection::pack\_loc\_all}!pack\_loc\_all2@{pack\_loc\_all2}}
+\index{pack\_loc\_all2@{pack\_loc\_all2}!cv\_advection::pack\_loc\_all@{cv\_advection::pack\_loc\_all}}
+\doxysubsubsection{\texorpdfstring{pack\_loc\_all2()}{pack\_loc\_all2()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::pack\+\_\+loc\+\_\+all\+::pack\+\_\+loc\+\_\+all2 (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{L\+O\+C\+\_\+F,  }\item[{real, dimension(\+:,\+:), intent(in)}]{field1,  }\item[{real, dimension(\+:,\+:), intent(in)}]{oldfield1,  }\item[{real, dimension(\+:,\+:), intent(in)}]{field2,  }\item[{real, dimension(\+:,\+:), intent(in)}]{oldfield2,  }\item[{real, dimension(\+:,\+:), intent(in)}]{field3,  }\item[{real, dimension(\+:,\+:), intent(in)}]{oldfield3,  }\item[{logical, dimension(\+:,\+:), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK,  }\item[{logical, intent(in)}]{use\+\_\+volume\+\_\+frac\+\_\+\+T2,  }\item[{integer, intent(in)}]{start\+\_\+phase,  }\item[{integer, intent(in)}]{final\+\_\+phase,  }\item[{integer, intent(in)}]{nodi }\end{DoxyParamCaption})}
+
+
+
+This subrotuine is for fields that are bigger than final\+\_\+phase -\/ start\+\_\+phase Checks if the fields are constant or not, stored in I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, based on that introduces the field into L\+O\+C\+\_\+F to later on apply the limiters on all the fields at once. 
+
+\mbox{\Hypertarget{interfacecv__advection_1_1pack__loc__all_a7e74c3dcd5a537781b3f0a77392094ac}\label{interfacecv__advection_1_1pack__loc__all_a7e74c3dcd5a537781b3f0a77392094ac}} 
+\index{cv\_advection::pack\_loc\_all@{cv\_advection::pack\_loc\_all}!pack\_loc\_all3@{pack\_loc\_all3}}
+\index{pack\_loc\_all3@{pack\_loc\_all3}!cv\_advection::pack\_loc\_all@{cv\_advection::pack\_loc\_all}}
+\doxysubsubsection{\texorpdfstring{pack\_loc\_all3()}{pack\_loc\_all3()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+advection\+::pack\+\_\+loc\+\_\+all\+::pack\+\_\+loc\+\_\+all3 (\begin{DoxyParamCaption}\item[{integer, dimension(\+:), intent(inout)}]{L\+O\+C\+\_\+F,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{field1,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{oldfield1,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{field2,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{oldfield2,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{field3,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{oldfield3,  }\item[{logical, dimension(\+:,\+:), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK,  }\item[{logical, intent(in)}]{use\+\_\+volume\+\_\+frac\+\_\+\+T2,  }\item[{integer, intent(in)}]{start\+\_\+phase,  }\item[{integer, intent(in)}]{final\+\_\+phase,  }\item[{integer, intent(in)}]{nodi }\end{DoxyParamCaption})}
+
+
+
+This subrotuine is for fields that are bigger than final\+\_\+phase -\/ start\+\_\+phase Checks if the fields are constant or not, stored in I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, based on that introduces the field into L\+O\+C\+\_\+F to later on apply the limiters on all the fields at once. This one is for integer fields. 
+
+
+
+The documentation for this interface was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/\mbox{\hyperlink{cv-adv-dif_8_f90}{cv-\/adv-\/dif.\+F90}}\end{DoxyCompactItemize}

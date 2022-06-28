@@ -1,0 +1,5 @@
+<map id="phreeqcrm::rm_getmpitasks" name="phreeqcrm::rm_getmpitasks">
+<area shape="rect" id="node1" title="Returns the number of MPI processes (tasks) assigned to the reaction module. For the OPENMP version,..." alt="" coords="252,31,459,57"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#a46d1ef91643490ac431a50fc9f45255b" title="Returns an array with the ending cell numbers from the range of cell numbers assigned to each worker." alt="" coords="8,5,201,32"/>
+<area shape="rect" id="node3" href="$namespacephreeqcrm.html#aed313f09a4213ff579e17229a885e755" title="Returns an array with the starting cell numbers from the range of cell numbers assigned to each worke..." alt="" coords="5,56,204,83"/>
+</map>

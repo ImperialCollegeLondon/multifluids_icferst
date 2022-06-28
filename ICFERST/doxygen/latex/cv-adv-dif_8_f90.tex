@@ -1,0 +1,592 @@
+\hypertarget{cv-adv-dif_8_f90}{}\doxysection{/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/cv-\/adv-\/dif.F90 File Reference}
+\label{cv-adv-dif_8_f90}\index{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/cv-\/adv-\/dif.F90@{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/cv-\/adv-\/dif.F90}}
+{\ttfamily \#include \char`\"{}fdebug.\+h\char`\"{}}\newline
+{\ttfamily \#include \char`\"{}petsc\+\_\+legacy.\+h\char`\"{}}\newline
+Include dependency graph for cv-\/adv-\/dif.F90\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=246pt]{cv-adv-dif_8_f90__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Data Types}
+\begin{DoxyCompactItemize}
+\item 
+interface \mbox{\hyperlink{interfacecv__advection_1_1dg__derivs__all}{cv\+\_\+advection\+::dg\+\_\+derivs\+\_\+all}}
+\begin{DoxyCompactList}\small\item\em calculates derivatives of vector fields \end{DoxyCompactList}\item 
+interface \mbox{\hyperlink{interfacecv__advection_1_1pack__loc__all}{cv\+\_\+advection\+::pack\+\_\+loc\+\_\+all}}
+\begin{DoxyCompactList}\small\item\em Packs field together to be later on used for high order computations. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Modules}
+\begin{DoxyCompactItemize}
+\item 
+module \mbox{\hyperlink{namespacecv__advection}{cv\+\_\+advection}}
+\begin{DoxyCompactList}\small\item\em This module contains all the tools to assemble and solve the equations and fields associated with the CV mesh, i.\+e. transport equation, continuity equation, D\+C\+V\+FE gradient matrix and the Laplacian system for the zeta-\/potential. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a4c9c5c3afe6e6355fcf8bfefbaa3211a}{cv\+\_\+advection\+::cv\+\_\+assemb}} (state, packed\+\_\+state, final\+\_\+phase, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, tracer, velocity, density, multi\+\_\+absorp, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+ES, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+E\+S\+\_\+\+C\+O\+UP, I\+N\+V\+\_\+B, D\+E\+N\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+\_\+\+A\+LL, C\+V\+\_\+\+D\+I\+S\+O\+PT, C\+V\+\_\+\+D\+G\+\_\+\+V\+E\+L\+\_\+\+I\+N\+T\+\_\+\+O\+PT, DT, C\+V\+\_\+\+T\+H\+E\+TA, C\+V\+\_\+\+B\+E\+TA, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, D\+E\+R\+IV, C\+V\+\_\+P, S\+O\+U\+R\+C\+T\+\_\+\+A\+LL, A\+B\+S\+O\+R\+B\+T\+\_\+\+A\+LL, V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE, G\+E\+T\+C\+V\+\_\+\+D\+I\+SC, G\+E\+T\+CT, I\+G\+O\+T\+\_\+\+T2, I\+G\+O\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF, M\+E\+A\+N\+\_\+\+P\+O\+R\+E\+\_\+\+CV, M\+A\+S\+S\+\_\+\+M\+N\+\_\+\+P\+R\+ES, T\+H\+E\+R\+M\+AL, R\+E\+T\+R\+I\+E\+V\+E\+\_\+\+S\+O\+L\+I\+D\+\_\+\+C\+TY, got\+\_\+free\+\_\+surf, M\+A\+S\+S\+\_\+\+S\+UF, M\+A\+S\+S\+\_\+\+E\+L\+E\+\_\+\+T\+R\+A\+N\+SP, T\+D\+I\+F\+F\+U\+S\+I\+ON, saturation, V\+A\+D\+\_\+parameter, Phase\+\_\+with\+\_\+\+Pc, Courant\+\_\+number, Permeability\+\_\+tensor\+\_\+field, calculate\+\_\+mass\+\_\+delta, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, porous\+\_\+heat\+\_\+coef, porous\+\_\+heat\+\_\+coef\+\_\+old, outfluxes, solving\+\_\+compositional, nonlinear\+\_\+iteration, assemble\+\_\+collapsed\+\_\+to\+\_\+one\+\_\+phase, Latent\+\_\+heat)
+\begin{DoxyCompactList}\small\item\em This subroutines generates the transport equation for a cv field. It also can generate the Continuity equation if G\+E\+T\+CT = .true. and also generate the gradient matrix of the momentum equation for the D\+C\+V\+FE method if the option is activated. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_aaff0fabb63f42671a6a051512b761705}{apply\+\_\+eno\+\_\+2\+\_\+t}} (L\+I\+MF, T\+\_\+\+A\+LL, T\+O\+L\+D\+\_\+\+A\+LL, F\+E\+M\+T\+\_\+\+A\+LL, F\+E\+M\+T\+O\+L\+D\+\_\+\+A\+LL, I\+N\+C\+O\+ME, I\+N\+C\+O\+M\+E\+O\+LD, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, C\+V\+\_\+\+N\+O\+DI, C\+V\+\_\+\+N\+O\+DJ, X\+\_\+\+N\+O\+DI, X\+\_\+\+N\+O\+DJ, C\+V\+\_\+\+I\+L\+OC, C\+V\+\_\+\+J\+L\+OC, E\+LE, C\+V\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, N\+P\+H\+A\+SE, C\+V\+\_\+\+N\+L\+OC, T\+O\+T\+E\+LE, X\+\_\+\+N\+D\+G\+LN, C\+V\+\_\+\+N\+D\+G\+LN, X\+\_\+\+A\+LL, F\+A\+C\+E\+\_\+\+E\+LE, N\+F\+A\+CE, B\+E\+T\+W\+E\+E\+N\+\_\+\+E\+L\+E\+M\+E\+N\+TS, S\+C\+V\+F\+EN, S\+C\+V\+F\+E\+Nx, GI, I\+N\+V\+\_\+\+J\+AC, U\+GI, on\+\_\+domain\+\_\+boundary)
+\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_aad25281c21796ab5cdd1ecf160cdad8f}{tri\+\_\+tet\+\_\+loccords}} (Xpt, L\+O\+C\+C\+O\+R\+DS, X\+\_\+\+C\+O\+R\+N\+E\+R\+S\+\_\+\+A\+LL, N\+D\+IM, C\+V\+\_\+\+N\+L\+OC)
+\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_ac967cdd9ff5610dfe95e1f50be00c936}{dump\+\_\+multiphase}} (prefix, icp)
+\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a427571cc398104aab11b15662262c017}{get\+\_\+int\+\_\+t\+\_\+den\+\_\+new}} (L\+I\+MF)
+\begin{DoxyCompactList}\small\item\em Computes the flux between C\+Vs. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a721d9557da90724f09df1b2086a97119}{get\+\_\+int\+\_\+vel\+\_\+orig\+\_\+new}} (N\+D\+O\+T\+Q\+N\+EW, N\+D\+O\+TQ, I\+N\+C\+O\+ME, L\+O\+C\+\_\+\+T\+\_\+I, L\+O\+C\+\_\+\+T\+\_\+J, L\+O\+C\+\_\+\+D\+E\+N\+\_\+I, L\+O\+C\+\_\+\+D\+E\+N\+\_\+J, L\+O\+C\+\_\+\+NU, L\+O\+C2\+\_\+\+NU, N\+U\+G\+I\+\_\+\+A\+LL, U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E\+\_\+\+A\+LL, U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E2\+\_\+\+A\+LL, not\+\_\+\+O\+L\+D\+\_\+\+V\+EL)
+\begin{DoxyCompactList}\small\item\em Computes the flux between C\+Vs. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a89933f3d5d5183f002dece1a1e67174c}{get\+\_\+int\+\_\+vel\+\_\+porous\+\_\+vel}} (N\+D\+O\+T\+Q\+N\+EW, N\+D\+O\+TQ, I\+N\+C\+O\+ME, L\+O\+C\+\_\+\+T\+\_\+I, L\+O\+C\+\_\+\+T\+\_\+J, L\+O\+C\+\_\+\+F\+E\+MT, L\+O\+C\+\_\+\+NU, L\+O\+C2\+\_\+\+NU, S\+L\+O\+C\+\_\+\+NU, U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E\+\_\+\+A\+LL, U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E2\+\_\+\+A\+LL, I\+\_\+adv\+\_\+coef, I\+\_\+adv\+\_\+coef\+\_\+grad, J\+\_\+adv\+\_\+coef, J\+\_\+adv\+\_\+coef\+\_\+grad, I\+\_\+inv\+\_\+adv\+\_\+coef, J\+\_\+inv\+\_\+adv\+\_\+coef, U\+D\+G\+I\+\_\+\+A\+LL, M\+A\+S\+S\+\_\+\+C\+V\+\_\+I, M\+A\+S\+S\+\_\+\+C\+V\+\_\+J, T\+U\+P\+W\+I\+N\+D\+\_\+\+IN, T\+U\+P\+W\+I\+N\+D\+\_\+\+O\+UT, not\+\_\+\+O\+L\+D\+\_\+\+V\+EL)
+\begin{DoxyCompactList}\small\item\em Computes the flux between C\+Vs for porous media. N\+D\+O\+T\+Q\+N\+EW contains the fluxes for a given gauss integration point. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_afb4e96858b9341a76e72da5321bb4562}{face\+\_\+theta\+\_\+many}} (F\+T\+H\+E\+TA, I\+N\+T\+E\+R\+F\+A\+C\+E\+\_\+\+T\+R\+A\+CK, T\+\_\+\+N\+O\+D\+J\+\_\+\+I\+P\+HA, T\+\_\+\+N\+O\+D\+I\+\_\+\+I\+P\+HA, T\+O\+L\+D\+\_\+\+N\+O\+D\+J\+\_\+\+I\+P\+HA, T\+O\+L\+D\+\_\+\+N\+O\+D\+I\+\_\+\+I\+P\+HA)
+\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a613230535e80cb2894e9b6447ce613e9}{get\+\_\+neigbouring\+\_\+lists}} (J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC, I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC, J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2, I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2, C\+\_\+\+J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC, C\+\_\+\+I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC, C\+\_\+\+J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2, C\+\_\+\+I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2)
+\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a77201531d5bc443a857dce86befbb61e}{mass\+\_\+conservation\+\_\+check\+\_\+and\+\_\+outfluxes}} (calculate\+\_\+mass\+\_\+delta, outfluxes, D\+E\+N\+\_\+\+A\+LL, flag)
+\item 
+pure subroutine \mbox{\hyperlink{namespacecv__advection_afc0d98d467a15c460d49668d0194344a}{cv\+\_\+advection\+::onvdlim\+\_\+ano\+\_\+many}} (N\+F\+I\+E\+LD, T\+D\+L\+IM, T\+D\+C\+EN, I\+N\+C\+O\+ME, E\+T\+D\+N\+E\+W\+\_\+\+P\+E\+LE, E\+T\+D\+N\+E\+W\+\_\+\+P\+E\+L\+E\+OT, X\+I\+\_\+\+L\+I\+M\+IT, T\+U\+P\+W\+IN, T\+U\+P\+W\+I2, D\+E\+N\+O\+IN, C\+T\+I\+L\+IN, D\+E\+N\+O\+OU, C\+T\+I\+L\+OU, F\+T\+I\+L\+IN, F\+T\+I\+L\+OU)
+\begin{DoxyCompactList}\small\item\em This sub calculates the limited face values T\+D\+A\+D\+J(1...\+S\+N\+G\+I) from the central difference face values T\+D\+C\+E\+N(1...\+S\+N\+G\+I) using a N\+VD shceme. I\+N\+C\+O\+M\+E(1...\+S\+N\+G\+I)=1 for incomming to element E\+LE else =0. L\+I\+B\+E\+TA is the flux limiting parameter. T\+D\+M\+A\+X(\+P\+E\+L\+E)=maximum of the surrounding 6 element values of element P\+E\+LE. T\+D\+M\+I\+N(\+P\+E\+L\+E)=minimum of the surrounding 6 element values of element P\+E\+LE. P\+E\+L\+E\+OT=element at other side of current face. E\+L\+E\+O\+T2=element at other side of the element E\+L\+E\+O\+TH. E\+L\+E\+S\+ID=element next to oposing current face. D\+E\+N\+O\+IN, C\+T\+I\+L\+IN, D\+E\+N\+O\+OU, C\+T\+I\+L\+OU, F\+T\+I\+L\+IN, F\+T\+I\+L\+OU =$>$ memory The elements are arranged in this order\+: E\+L\+E\+O\+T2,E\+LE, P\+E\+L\+E\+OT, E\+L\+E\+S\+ID. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a9146e672783ba218dd881ca49af8e590}{cv\+\_\+advection\+::is\+\_\+field\+\_\+constant}} (I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+ST, I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+S\+T\+\_\+\+V\+A\+L\+UE, T\+\_\+\+A\+LL, C\+V\+\_\+\+N\+O\+N\+O\+DS)
+\begin{DoxyCompactList}\small\item\em Checks whether a field is constant or not. Although I think this check is terrible, no alternatives have provided the same functionality so far. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_ad76059547a9ad0bf6e0fdac35af6d724}{cv\+\_\+advection\+::pack\+\_\+loc}} (L\+O\+C\+\_\+F, T\+\_\+\+A\+LL, N\+P\+H\+A\+SE, I\+PT, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK)
+\begin{DoxyCompactList}\small\item\em Copies memory into the same large array to then perform a projection from CV to FE. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a8eaa2bdc0f6f2d32549f762ef9743c68}{cv\+\_\+advection\+::unpack\+\_\+loc}} (L\+O\+C\+\_\+F, T\+\_\+\+A\+LL, N\+P\+H\+A\+SE, I\+PT, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+ST, I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+S\+T\+\_\+\+V\+A\+L\+UE)
+\begin{DoxyCompactList}\small\item\em If P\+A\+CK then U\+Npack loc\+\_\+f into T\+\_\+\+A\+LL as long at I\+G\+O\+T\+\_\+T==1 and S\+T\+O\+RE and not already in storage. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a99c70da010b438be07a486366e552b5e}{cv\+\_\+advection\+::pack\+\_\+or\+\_\+unpack\+\_\+loc}} (L\+O\+C\+\_\+F, T\+\_\+\+A\+LL, N\+P\+H\+A\+SE, N\+F\+I\+E\+LD, I\+PT, P\+A\+CK, S\+T\+O\+RE, I\+G\+O\+T\+\_\+T)
+\begin{DoxyCompactList}\small\item\em If P\+A\+CK then pack T\+\_\+\+A\+LL into L\+O\+C\+\_\+F as long at I\+G\+O\+T\+\_\+T==1 and S\+T\+O\+RE and not already in storage. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_ab7e6dd94e89bb340ff613a35190fab2f}{cv\+\_\+advection\+::pack\+\_\+loc\+\_\+all1}} (L\+O\+C\+\_\+F, field1, oldfield1, field2, oldfield2, field3, oldfield3, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, use\+\_\+volume\+\_\+frac\+\_\+\+T2, nfield)
+\begin{DoxyCompactList}\small\item\em This subroutine is for fields that have already size final\+\_\+phase -\/ 1 Checks if the fields are constant or not, stored in I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, based on that introduces the field into L\+O\+C\+\_\+F to later on apply the limiters on all the fields at once. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a91d158eadfcc686460e36465e8bb0632}{cv\+\_\+advection\+::pack\+\_\+loc\+\_\+all2}} (L\+O\+C\+\_\+F, field1, oldfield1, field2, oldfield2, field3, oldfield3, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, use\+\_\+volume\+\_\+frac\+\_\+\+T2, start\+\_\+phase, final\+\_\+phase, nodi)
+\begin{DoxyCompactList}\small\item\em This subrotuine is for fields that are bigger than final\+\_\+phase -\/ start\+\_\+phase Checks if the fields are constant or not, stored in I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, based on that introduces the field into L\+O\+C\+\_\+F to later on apply the limiters on all the fields at once. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_ac44991cb894fd9bee43a5f71d0dddbb7}{cv\+\_\+advection\+::pack\+\_\+loc\+\_\+all3}} (L\+O\+C\+\_\+F, field1, oldfield1, field2, oldfield2, field3, oldfield3, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, use\+\_\+volume\+\_\+frac\+\_\+\+T2, start\+\_\+phase, final\+\_\+phase, nodi)
+\begin{DoxyCompactList}\small\item\em This subrotuine is for fields that are bigger than final\+\_\+phase -\/ start\+\_\+phase Checks if the fields are constant or not, stored in I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, based on that introduces the field into L\+O\+C\+\_\+F to later on apply the limiters on all the fields at once. This one is for integer fields. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a7c45215f7bff94897216c155967c06e4}{i\+\_\+pack\+\_\+loc}} (L\+O\+C\+\_\+F, T\+\_\+\+A\+LL, N\+P\+H\+A\+SE, I\+PT, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK)
+\begin{DoxyCompactList}\small\item\em If P\+A\+CK then pack T\+\_\+\+A\+LL into L\+O\+C\+\_\+F as long at I\+G\+O\+T\+\_\+T==1 and S\+T\+O\+RE and not already in storage. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_aba41799bc248d577965cfbb86f1d153f}{cv\+\_\+advection\+::i\+\_\+pack\+\_\+loc}} (L\+O\+C\+\_\+F, T\+\_\+\+A\+LL, N\+P\+H\+A\+SE, I\+PT, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK)
+\begin{DoxyCompactList}\small\item\em If P\+A\+CK then pack T\+\_\+\+A\+LL into L\+O\+C\+\_\+F as long at I\+G\+O\+T\+\_\+T==1 and S\+T\+O\+RE and not already in storage. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_ad714b20d018bf748c3ad080732b7c9cc}{cv\+\_\+advection\+::unpack\+\_\+loc\+\_\+all}} (L\+O\+C\+\_\+F, field1, oldfield1, field2, oldfield2, field3, oldfield3, I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+ST, I\+G\+O\+T\+\_\+\+T\+\_\+\+C\+O\+N\+S\+T\+\_\+\+V\+A\+L\+UE, use\+\_\+volume\+\_\+frac\+\_\+\+T2, nfield)
+\begin{DoxyCompactList}\small\item\em If P\+A\+CK then U\+Npack loc\+\_\+f into T\+\_\+\+A\+LL as long at I\+G\+O\+T\+\_\+T==1 and S\+T\+O\+RE and not already in storage. Checks if the fields are constant or not, stored in I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK, based on that introduces the L\+O\+C\+\_\+F into the field or use a constant value. This is after the limiters have been applied. \end{DoxyCompactList}\item 
+integer function \mbox{\hyperlink{namespacecv__advection_ae1eba9d13ff146b1bf390a5de461d421}{cv\+\_\+advection\+::cv\+\_\+count\+\_\+faces}} (Mdims, C\+V\+\_\+\+E\+L\+E\+\_\+\+T\+Y\+PE, C\+V\+\_\+\+G\+Idims)
+\begin{DoxyCompactList}\small\item\em This subroutine counts then number of faces in the control volume space. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a581f8fe3e0c643ca294adf375008b018}{cv\+\_\+advection\+::find\+\_\+other\+\_\+side}} (C\+V\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, C\+V\+\_\+\+N\+L\+OC, U\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, U\+\_\+\+N\+L\+OC, M\+A\+T\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, I\+N\+T\+E\+G\+R\+A\+T\+\_\+\+A\+T\+\_\+\+GI, X\+\_\+\+N\+L\+OC, X\+U\+\_\+\+N\+L\+OC, X\+\_\+\+N\+D\+G\+LN, X\+U\+\_\+\+N\+D\+G\+LN, C\+V\+\_\+\+S\+N\+L\+OC, C\+V\+F\+E\+M\+\_\+\+O\+N\+\_\+\+F\+A\+CE, X\+\_\+\+S\+H\+A\+RE, E\+LE, E\+L\+E2, F\+I\+N\+E\+LE, C\+O\+L\+E\+LE, D\+I\+S\+T\+C\+O\+N\+T\+I\+N\+U\+O\+U\+S\+\_\+\+M\+E\+T\+H\+OD)
+\begin{DoxyCompactList}\small\item\em We are on the boundary or next to another element. Determine C\+V\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, U\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC. C\+V\+F\+E\+M\+\_\+\+O\+N\+\_\+\+F\+A\+C\+E(\+C\+V\+\_\+\+K\+L\+O\+C,\+G\+I)=.T\+R\+UE. if C\+V\+\_\+\+K\+L\+OC is on the face that GI is centred on. Look for these nodes on the other elements. E\+L\+E2=0 also when we are between elements but are trying to integrate across the middle of a CV. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a33cb5d5dfd5eced81d2952c7dcd294d5}{cv\+\_\+advection\+::proj\+\_\+cv\+\_\+to\+\_\+fem}} (packed\+\_\+state, fempsi, psi, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, igetct, X, mass\+\_\+ele, mass\+\_\+mn\+\_\+pres, tracer, psi\+\_\+ave, psi\+\_\+int, activate\+\_\+limiters)
+\begin{DoxyCompactList}\small\item\em Calls to generate the transport equation for the saturation. Embeded an F\+PI with backtracking method is uncluded Subroutine description\+: (1) determine F\+E\+MT (finite element wise) etc from T (control volume wise) (2) (optional) calculate psi\+\_\+int (area) and psi\+\_\+ave (barycentre) over each CV. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a3c6836760693b867362d87cf5f12c250}{cv\+\_\+advection\+::dg\+\_\+derivs\+\_\+all1}} (F\+E\+MT, F\+E\+M\+T\+O\+LD, D\+T\+X\+\_\+\+E\+LE, D\+T\+O\+L\+D\+X\+\_\+\+E\+LE, N\+D\+IM, N\+P\+H\+A\+SE, N\+C\+O\+MP, T\+O\+T\+E\+LE, C\+V\+\_\+\+N\+D\+G\+LN, X\+C\+V\+\_\+\+N\+D\+G\+LN, X\+\_\+\+N\+L\+OC, X\+\_\+\+N\+D\+G\+LN, C\+V\+\_\+\+N\+GI, C\+V\+\_\+\+N\+L\+OC, C\+V\+W\+E\+I\+G\+HT, N, N\+LX, N\+LY, N\+LZ, X\+\_\+N, X\+\_\+\+N\+LX, X\+\_\+\+N\+LY, X\+\_\+\+N\+LZ, X\+\_\+\+N\+O\+N\+O\+DS, X, Y, Z, N\+F\+A\+CE, F\+A\+C\+E\+\_\+\+E\+LE, C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST, X\+\_\+\+S\+L\+O\+C\+L\+I\+ST, C\+V\+\_\+\+S\+N\+L\+OC, X\+\_\+\+S\+N\+L\+OC, W\+I\+C\+\_\+\+T\+\_\+\+BC, S\+U\+F\+\_\+\+T\+\_\+\+BC, S\+B\+C\+V\+N\+GI, S\+B\+C\+V\+F\+EN, S\+B\+W\+E\+I\+GH, X\+\_\+\+S\+B\+C\+V\+F\+EN, X\+\_\+\+S\+B\+C\+V\+F\+E\+N\+S\+LX, X\+\_\+\+S\+B\+C\+V\+F\+E\+N\+S\+LY, get\+\_\+gradU, state, P0\+Mesh)
+\begin{DoxyCompactList}\small\item\em calculates derivatives of vector fields \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a63eed68fe5bdec0b525e1fddf9e0d3f5}{cv\+\_\+advection\+::dg\+\_\+derivs\+\_\+all2}} (F\+E\+MT, F\+E\+M\+T\+O\+LD, D\+T\+X\+\_\+\+E\+LE, D\+T\+O\+L\+D\+X\+\_\+\+E\+LE, N\+D\+IM, N\+P\+H\+A\+SE, T\+O\+T\+E\+LE, C\+V\+\_\+\+N\+D\+G\+LN, X\+C\+V\+\_\+\+N\+D\+G\+LN, X\+\_\+\+N\+L\+OC, X\+\_\+\+N\+D\+G\+LN, C\+V\+\_\+\+N\+GI, C\+V\+\_\+\+N\+L\+OC, C\+V\+W\+E\+I\+G\+HT, N, N\+LX, N\+LY, N\+LZ, X\+\_\+N, X\+\_\+\+N\+LX, X\+\_\+\+N\+LY, X\+\_\+\+N\+LZ, X\+\_\+\+N\+O\+N\+O\+DS, X, Y, Z, N\+F\+A\+CE, F\+A\+C\+E\+\_\+\+E\+LE, C\+V\+\_\+\+S\+L\+O\+C\+L\+I\+ST, X\+\_\+\+S\+L\+O\+C\+L\+I\+ST, C\+V\+\_\+\+S\+N\+L\+OC, X\+\_\+\+S\+N\+L\+OC, W\+I\+C\+\_\+\+T\+\_\+\+BC, S\+U\+F\+\_\+\+T\+\_\+\+BC, S\+B\+C\+V\+N\+GI, S\+B\+C\+V\+F\+EN, S\+B\+W\+E\+I\+GH, X\+\_\+\+S\+B\+C\+V\+F\+EN, X\+\_\+\+S\+B\+C\+V\+F\+E\+N\+S\+LX, X\+\_\+\+S\+B\+C\+V\+F\+E\+N\+S\+LY, P0\+Mesh)
+\begin{DoxyCompactList}\small\item\em Computes the derivatives of vector fields. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a3323eb4932694a86940d81127e40d9fe}{cv\+\_\+advection\+::diffus\+\_\+cal\+\_\+coeff}} (D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX, D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX, C\+V\+\_\+\+N\+L\+OC, M\+A\+T\+\_\+\+N\+L\+OC, N\+P\+H\+A\+SE, M\+A\+T\+\_\+\+N\+D\+G\+LN, S\+M\+A\+T\+F\+EN, S\+C\+V\+F\+EN, GI, N\+D\+IM, T\+D\+I\+F\+F\+U\+S\+I\+ON, H\+DC, T\+\_\+\+C\+V\+\_\+\+N\+O\+DJ, T\+\_\+\+C\+V\+\_\+\+N\+O\+DI, T\+O\+L\+D\+\_\+\+C\+V\+\_\+\+N\+O\+DJ, T\+O\+L\+D\+\_\+\+C\+V\+\_\+\+N\+O\+DI, E\+LE, E\+L\+E2, C\+V\+N\+O\+R\+M\+X\+\_\+\+A\+LL, L\+O\+C\+\_\+\+D\+T\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, L\+O\+C\+\_\+\+D\+T\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, L\+O\+C2\+\_\+\+D\+T\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, L\+O\+C2\+\_\+\+D\+T\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, L\+O\+C\+\_\+\+W\+I\+C\+\_\+\+T\+\_\+\+BC, C\+V\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, M\+A\+T\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, C\+V\+\_\+\+S\+N\+L\+OC, C\+V\+\_\+\+S\+L\+O\+C2\+L\+OC, on\+\_\+domain\+\_\+boundary, between\+\_\+elements)
+\begin{DoxyCompactList}\small\item\em This sub calculates the effective diffusion coefficientd D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX, D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX based on a non-\/linear method and a non-\/oscillating scheme. It requires the derivatives of the field obtained using D\+G\+\_\+\+D\+E\+R\+I\+V\+S\+\_\+\+A\+LL D\+G\+\_\+\+D\+E\+R\+I\+V\+S\+\_\+\+A\+LL. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a3778683fc29bd4646b518eec834d1b2b}{cv\+\_\+advection\+::linear\+\_\+high\+\_\+diffus\+\_\+cal\+\_\+coeff\+\_\+stress\+\_\+or\+\_\+tensor}} (S\+T\+R\+E\+S\+S\+\_\+\+I\+J\+\_\+\+E\+L\+E\+\_\+\+E\+XT, S\+\_\+\+I\+N\+V\+\_\+\+N\+N\+X\+\_\+\+M\+A\+T12, S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+RM, S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+R\+M\+\_\+\+S\+T\+AB, Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS, U\+\_\+\+S\+N\+L\+OC, U\+\_\+\+N\+L\+OC, C\+V\+\_\+\+S\+N\+L\+OC, N\+P\+H\+A\+SE, S\+B\+U\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED, S\+B\+C\+V\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED, S\+D\+E\+T\+W\+EI, S\+B\+C\+V\+N\+GI, N\+D\+IM, S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL, S\+L\+O\+C2\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, S\+L\+O\+C2\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL, D\+I\+F\+F\+\_\+\+G\+I\+\_\+\+A\+D\+D\+ED, O\+N\+\_\+\+B\+O\+U\+N\+D\+A\+RY, S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL)
+\begin{DoxyCompactList}\small\item\em This sub calculates the effective diffusion coefficientd S\+T\+R\+E\+S\+S\+\_\+\+I\+J\+\_\+\+E\+L\+E\+\_\+\+E\+XT it only works for between element contributions. based on a high order scheme. The matrix S\+\_\+\+I\+N\+V\+\_\+\+N\+N\+X\+\_\+\+M\+A\+T12 is used to calculate the rows of the matrix with S\+T\+R\+E\+S\+S\+\_\+\+I\+J\+\_\+\+E\+L\+E\+\_\+\+E\+XT. This implements the stress and tensor form of diffusion and calculates a jump conidition. which is in D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX, D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX The coefficient are in N\+\_\+\+D\+O\+T\+\_\+\+D\+K\+DU, N\+\_\+\+D\+O\+T\+\_\+\+D\+K\+D\+U\+O\+LD. look at the manual DG treatment of viscocity. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_aa3ef74a90808188963586069f9231675}{cv\+\_\+advection\+::calc\+\_\+stress\+\_\+ten}} (S\+T\+R\+E\+S\+S\+\_\+\+IJ, Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS, N\+D\+IM, U\+F\+E\+N\+X\+\_\+\+I\+L\+OC, U\+F\+E\+N\+X\+\_\+\+J\+L\+OC, T\+E\+N\+\_\+\+XX, T\+E\+N\+\_\+\+V\+OL)
+\begin{DoxyCompactList}\small\item\em determine stress form of viscocity... \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a6f557f5a7dfeffca4640671937d7e141}{cv\+\_\+advection\+::calc\+\_\+stress\+\_\+ten\+\_\+reduce}} (S\+T\+R\+E\+S\+S\+\_\+\+IJ, Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS, N\+D\+IM, F\+E\+N\+\_\+\+T\+E\+N\+\_\+\+XX, F\+E\+N\+\_\+\+T\+E\+N\+\_\+\+V\+OL, U\+F\+E\+N\+X\+\_\+\+J\+L\+OC)
+\begin{DoxyCompactList}\small\item\em determine stress form of viscocity... \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a339e8bc7d0ed41fd23b546168e2c7f5e}{cv\+\_\+advection\+::cal\+\_\+lim\+\_\+vol\+\_\+adjust}} (T\+M\+I\+N\+\_\+\+S\+T\+O\+RE, T\+M\+IN, T, T\+M\+I\+N\+\_\+\+N\+OD, R\+E\+S\+E\+T\+\_\+\+S\+T\+O\+RE, M\+A\+S\+S\+\_\+\+CV, C\+V\+\_\+\+N\+O\+D\+I\+\_\+\+I\+P\+HA, C\+V\+\_\+\+N\+O\+D\+J\+\_\+\+I\+P\+HA, I\+P\+H\+A\+SE, C\+V\+\_\+\+N\+O\+N\+O\+DS, I\+N\+C\+O\+ME)
+\begin{DoxyCompactList}\small\item\em Adjust T\+M\+IN to take into account different sized CV\textquotesingle{}s. if R\+E\+S\+E\+T\+\_\+\+S\+T\+O\+RE then reset T\+M\+IN to orginal values. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_aba06a5f3680d58e1db30e740119dd5dc}{cv\+\_\+advection\+::dgsimplnorm\+\_\+all}} (N\+L\+OC, S\+N\+L\+OC, N\+D\+IM, X\+L\+\_\+\+A\+LL, X\+S\+L\+\_\+\+A\+LL, N\+O\+R\+M\+X\+\_\+\+A\+LL)
+\begin{DoxyCompactList}\small\item\em Form approximate surface normal (N\+O\+R\+M\+X\+\_\+\+A\+L\+L(1),N\+O\+R\+M\+X\+\_\+\+A\+L\+L(2),N\+O\+R\+M\+X\+\_\+\+A\+L\+L(3)) \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a59bf765f03106e474053c6af073fb1ae}{cv\+\_\+advection\+::dgsimplnorm}} (E\+LE, S\+I\+L\+O\+C2\+I\+L\+OC, N\+L\+OC, S\+N\+L\+OC, X\+O\+N\+D\+GL, X, Y, Z, N\+O\+R\+MX, N\+O\+R\+MY, N\+O\+R\+MZ)
+\begin{DoxyCompactList}\small\item\em Form approximate surface normal (N\+O\+R\+MX,N\+O\+R\+MY,N\+O\+R\+MZ) \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_ae629d3a52942059265356baccf02b919}{cv\+\_\+advection\+::isotropic\+\_\+limiter\+\_\+all}} (T\+\_\+\+A\+LL, T\+O\+L\+D\+\_\+\+A\+LL, T2\+\_\+\+A\+LL, T2\+O\+L\+D\+\_\+\+A\+LL, D\+E\+N\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+\_\+\+A\+LL, I\+G\+O\+T\+\_\+\+T2, N\+P\+H\+A\+SE, C\+V\+\_\+\+N\+O\+N\+O\+DS, nsmall\+\_\+colm, S\+M\+A\+L\+L\+\_\+\+C\+E\+N\+T\+RM, S\+M\+A\+L\+L\+\_\+\+F\+I\+N\+D\+RM, S\+M\+A\+L\+L\+\_\+\+C\+O\+LM, S\+T\+O\+T\+EL, C\+V\+\_\+\+S\+N\+L\+OC, C\+V\+\_\+\+S\+N\+D\+G\+LN, S\+U\+F\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+T2\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+T2\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL, M\+A\+S\+S\+\_\+\+CV, T\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, T2\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, T\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, D\+E\+N\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, T2\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL)
+\begin{DoxyCompactList}\small\item\em Computes the limited values at the interface, not as generic as the anisotropic one and never used actually... \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_af8e5cd91f2c7b0d5ffa4d0f3b9c207c1}{surro\+\_\+cv\+\_\+minmax}} (T\+M\+A\+X\+\_\+\+A\+LL, T\+M\+I\+N\+\_\+\+A\+LL, T\+O\+L\+D\+M\+A\+X\+\_\+\+A\+LL, T\+O\+L\+D\+M\+I\+N\+\_\+\+A\+LL, D\+E\+N\+M\+A\+X\+\_\+\+A\+LL, D\+E\+N\+M\+I\+N\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+M\+A\+X\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+M\+I\+N\+\_\+\+A\+LL, T2\+M\+A\+X\+\_\+\+A\+LL, T2\+M\+I\+N\+\_\+\+A\+LL, T2\+O\+L\+D\+M\+A\+X\+\_\+\+A\+LL, T2\+O\+L\+D\+M\+I\+N\+\_\+\+A\+LL, T\+\_\+\+A\+LL, T\+O\+L\+D\+\_\+\+A\+LL, T2\+\_\+\+A\+LL, T2\+O\+L\+D\+\_\+\+A\+LL, D\+E\+N\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+\_\+\+A\+LL, I\+G\+O\+T\+\_\+\+T2, N\+P\+H\+A\+SE, C\+V\+\_\+\+N\+O\+N\+O\+DS, F\+I\+N\+A\+CV, C\+O\+L\+A\+CV, S\+T\+O\+T\+EL, C\+V\+\_\+\+S\+N\+L\+OC, C\+V\+\_\+\+S\+N\+D\+G\+LN, S\+U\+F\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+T2\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+T2\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL, T\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL, T\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL, T\+O\+L\+D\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL, T\+O\+L\+D\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL, T2\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL, T2\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL, T2\+O\+L\+D\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL, T2\+O\+L\+D\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL, D\+E\+N\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL, D\+E\+N\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL)
+\begin{DoxyCompactList}\small\item\em For each node, find the largest and smallest value of T and D\+E\+N\+S\+I\+TY for both the current and previous timestep, out of the node value and all its surrounding nodes including Dirichlet b.\+c\textquotesingle{}s. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a5c58181433ef3d6296d003eccb780c6d}{calc\+\_\+limit\+\_\+matrix\+\_\+max\+\_\+min}} (T\+M\+A\+X\+\_\+\+A\+LL, T\+M\+I\+N\+\_\+\+A\+LL, D\+E\+N\+M\+A\+X\+\_\+\+A\+LL, D\+E\+N\+M\+I\+N\+\_\+\+A\+LL, T2\+M\+A\+X\+\_\+\+A\+LL, T2\+M\+I\+N\+\_\+\+A\+LL, T\+\_\+\+A\+LL, T2\+\_\+\+A\+LL, D\+E\+N\+\_\+\+A\+LL, I\+G\+O\+T\+\_\+\+T2, N\+P\+H\+A\+SE, C\+V\+\_\+\+N\+O\+N\+O\+DS, T\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL, T\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL, T2\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL, T2\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL, D\+E\+N\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL, D\+E\+N\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL, N\+S\+M\+A\+L\+L\+\_\+\+C\+O\+LM, S\+M\+A\+L\+L\+\_\+\+F\+I\+N\+D\+RM, S\+M\+A\+L\+L\+\_\+\+C\+O\+LM, T\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, D\+E\+N\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, T2\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, M\+A\+S\+S\+\_\+\+CV)
+\begin{DoxyCompactList}\small\item\em Populate limiting matrix based on max and min values For each node, find the largest and smallest value of T and D\+E\+N\+S\+I\+TY for both the current and previous timestep, out of the node value and all its surrounding nodes including Dirichlet b.\+c\textquotesingle{}s. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a9a0d23f536863720989376a298e7bfca}{cv\+\_\+advection\+::calc\+\_\+sele}} (E\+LE, E\+L\+E3, S\+E\+LE, C\+V\+\_\+\+S\+I\+L\+OC, C\+V\+\_\+\+I\+L\+OC, U\+\_\+\+S\+L\+O\+C2\+L\+OC, C\+V\+\_\+\+S\+L\+O\+C2\+L\+OC, F\+A\+C\+E\+\_\+\+E\+LE, gi, C\+V\+\_\+funs, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+\+N\+D\+G\+LN, U\+\_\+\+N\+D\+G\+LN, C\+V\+\_\+\+S\+N\+D\+G\+LN, U\+\_\+\+S\+N\+D\+G\+LN)
+\begin{DoxyCompactList}\small\item\em Calculate surface element, surface control volume\+: S\+E\+LE, C\+V\+\_\+\+S\+I\+L\+OC, U\+\_\+\+S\+L\+O\+C2\+L\+OC, C\+V\+\_\+\+S\+L\+O\+C2\+L\+OC for a face on the boundary of the domain. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a5c177e18f7b1275cc9b308000daaa788}{cv\+\_\+advection\+::put\+\_\+in\+\_\+ct\+\_\+rhs}} (G\+E\+T\+\_\+\+C\+\_\+\+I\+N\+\_\+\+C\+V\+\_\+\+A\+D\+V\+D\+I\+F\+\_\+\+A\+N\+D\+\_\+\+C\+A\+L\+C\+\_\+\+C\+\_\+\+CV, ct\+\_\+rhs\+\_\+phase\+\_\+cv\+\_\+nodi, ct\+\_\+rhs\+\_\+phase\+\_\+cv\+\_\+nodj, final\+\_\+phase, Mdims, C\+V\+\_\+funs, ndgln, Mmat, GI, between\+\_\+elements, on\+\_\+domain\+\_\+boundary, E\+LE, E\+L\+E2, S\+E\+LE, H\+DC, M\+A\+S\+S\+\_\+\+E\+LE, J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC, J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2, I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC, I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2, C\+\_\+\+J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC, C\+\_\+\+J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2, C\+\_\+\+I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC, C\+\_\+\+I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2, U\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, U\+\_\+\+S\+L\+O\+C2\+L\+OC, C\+V\+\_\+\+S\+L\+O\+C2\+L\+OC, S\+C\+V\+D\+E\+T\+W\+EI, C\+V\+N\+O\+R\+M\+X\+\_\+\+A\+LL, D\+E\+N\+\_\+\+A\+LL, C\+V\+\_\+\+N\+O\+DI, C\+V\+\_\+\+N\+O\+DJ, W\+I\+C\+\_\+\+U\+\_\+\+B\+C\+\_\+\+A\+LL, W\+I\+C\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL, S\+U\+F\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL, U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E\+\_\+\+A\+LL, U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E2\+\_\+\+A\+LL, N\+D\+O\+TQ, N\+D\+O\+T\+Q\+O\+LD, L\+I\+MT, L\+I\+M\+DT, L\+I\+M\+D\+T\+O\+LD, L\+I\+M\+T\+\_\+\+H\+AT, N\+D\+O\+T\+Q\+\_\+\+H\+AT, F\+T\+H\+E\+T\+A\+\_\+\+T2, O\+N\+E\+\_\+\+M\+\_\+\+F\+T\+H\+E\+T\+A\+\_\+\+T2\+O\+LD, F\+T\+H\+E\+T\+A\+\_\+\+T2\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+F\+T\+H\+E\+T\+A\+\_\+\+T2\+O\+L\+D\+\_\+J, integrate\+\_\+other\+\_\+side\+\_\+and\+\_\+not\+\_\+boundary, R\+E\+T\+R\+I\+E\+V\+E\+\_\+\+S\+O\+L\+I\+D\+\_\+\+C\+TY, theta\+\_\+cty\+\_\+solid, loc\+\_\+u, T\+H\+E\+T\+A\+\_\+\+V\+EL, U\+D\+G\+I\+\_\+\+I\+M\+P\+\_\+\+A\+LL, R\+C\+ON, R\+C\+O\+N\+\_\+J, N\+D\+O\+T\+Q\+\_\+\+I\+MP, X\+\_\+\+A\+LL, S\+U\+F\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL, gravty)
+\begin{DoxyCompactList}\small\item\em This subroutine caculates the discretised cty eqn acting on the velocities i.\+e. MmatCT, MmatC\+T\+\_\+\+R\+HS It also computes the gradient matrix using the D\+C\+V\+FE method. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_aa40294c371735f893e09254f0416ae74}{introduce\+\_\+c\+\_\+cv\+\_\+boundary\+\_\+conditions}} (Bound\+\_\+ele\+\_\+correct)
+\begin{DoxyCompactList}\small\item\em This subroutine populates Bound\+\_\+ele\+\_\+correct and Bound\+\_\+ele2\+\_\+correct to properly apply the B\+Cs when creating the MmatC\+\_\+\+CV matrix. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a46d56280fc42d8db708b1658f9d4d6cb}{cv\+\_\+advection\+::calc\+\_\+anisotrop\+\_\+lim}} (Mmat, T\+\_\+\+A\+LL, T\+O\+L\+D\+\_\+\+A\+LL, D\+E\+N\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+\_\+\+A\+LL, T2\+\_\+\+A\+LL, T2\+O\+L\+D\+\_\+\+A\+LL, F\+E\+M\+T\+\_\+\+A\+LL, F\+E\+M\+T\+O\+L\+D\+\_\+\+A\+LL, F\+E\+M\+D\+E\+N\+\_\+\+A\+LL, F\+E\+M\+D\+E\+N\+O\+L\+D\+\_\+\+A\+LL, F\+E\+M\+T2\+\_\+\+A\+LL, F\+E\+M\+T2\+O\+L\+D\+\_\+\+A\+LL, U\+S\+E\+\_\+\+F\+E\+MT, T\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, T\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, D\+E\+N\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, D\+E\+N\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, T2\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, T2\+O\+L\+D\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL, I\+G\+O\+T\+\_\+\+T2, N\+P\+H\+A\+SE, C\+V\+\_\+\+N\+O\+N\+O\+DS, C\+V\+\_\+\+N\+L\+OC, T\+O\+T\+E\+LE, C\+V\+\_\+\+N\+D\+G\+LN, S\+M\+A\+L\+L\+\_\+\+F\+I\+N\+D\+RM, S\+M\+A\+L\+L\+\_\+\+C\+E\+N\+T\+RM, S\+M\+A\+L\+L\+\_\+\+C\+O\+LM, N\+S\+M\+A\+L\+L\+\_\+\+C\+O\+LM, X\+\_\+\+N\+D\+G\+LN, X\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, X\+\_\+\+A\+LL, X\+C\+\_\+\+C\+V\+\_\+\+A\+LL, use\+\_\+reflect)
+\begin{DoxyCompactList}\small\item\em For the anisotropic limiting scheme we find the upwind values by interpolation using the subroutine F\+I\+N\+P\+TS or I\+F\+I\+N\+P\+TS; the upwind value for each node pair is stored in the matrices T\+U\+P\+W\+I\+ND A\+ND. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a6b4e2b7cd1b1214a242258cc6f8b753a}{calc\+\_\+anisotrop\+\_\+lim\+\_\+vals}} (Mmat, T\+\_\+\+A\+LL, F\+E\+M\+T\+\_\+\+A\+LL, U\+S\+E\+\_\+\+F\+E\+MT, T\+U\+P\+W\+I\+N\+D\+\_\+\+A\+LL, N\+F\+I\+E\+LD, N\+O\+N\+O\+DS, C\+V\+\_\+\+N\+L\+OC, T\+O\+T\+E\+LE, C\+V\+\_\+\+N\+D\+G\+LN, S\+M\+A\+L\+L\+\_\+\+F\+I\+N\+D\+RM, S\+M\+A\+L\+L\+\_\+\+C\+O\+LM, N\+S\+M\+A\+L\+L\+\_\+\+C\+O\+LM, X\+\_\+\+N\+D\+G\+LN, X\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, X\+\_\+\+A\+LL, X\+C\+\_\+\+C\+V\+\_\+\+A\+LL, use\+\_\+reflect)
+\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a45a3dbc2621f52d962f12eaa872c4523}{calc\+\_\+anisotrop\+\_\+lim\+\_\+vals2}} (Mmat, T\+\_\+\+A\+LL, F\+E\+M\+T\+\_\+\+A\+LL, U\+S\+E\+\_\+\+F\+E\+MT, T\+U\+P\+W\+I\+N\+D\+\_\+\+A\+LL, N\+F\+I\+E\+LD, N\+O\+N\+O\+DS, N\+L\+OC, N\+GI, T\+O\+T\+E\+LE, N\+D\+G\+L\+NO, F\+I\+N\+D\+RM, C\+O\+LM, N\+C\+O\+LM, X\+\_\+\+N\+D\+G\+LN, X\+\_\+\+N\+O\+N\+O\+DS, N\+D\+IM, X\+\_\+\+A\+LL, X\+C\+\_\+\+C\+V\+\_\+\+A\+LL, N, N\+L\+X\+\_\+\+A\+LL, W\+E\+I\+G\+HT, use\+\_\+reflect)
+\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_aac2f503b955577fbfd9ff7ecf8b8ca71}{getstoreelewei}} (P\+S\+I\+\_\+\+A\+LL, N\+F\+I\+E\+LD, N\+O\+N\+O\+DS, N\+L\+OC, T\+O\+T\+E\+LE, N\+D\+G\+L\+NO, M\+A\+T\+P\+S\+I\+\_\+\+A\+LL, F\+I\+N\+D\+RM, C\+O\+LM, N\+C\+O\+LM, B\+O\+U\+ND, E\+L\+E\+M\+A\+T\+P\+SI, E\+L\+E\+M\+A\+T\+W\+EI)
+\begin{DoxyCompactList}\small\item\em use the stored interpolation coeffs to caclulate M\+A\+T\+P\+SI. This sub finds the matrix values M\+A\+T\+P\+SI for a given point on the stencil \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a79e6107e4599bc638961aac18b0a1547}{minmaxelewic}} (P\+S\+I\+\_\+\+A\+LL, N\+O\+N\+O\+DS, N\+L\+OC, T\+O\+T\+E\+LE, N\+D\+G\+L\+NO, F\+I\+N\+D\+RM, C\+O\+LM, N\+C\+O\+LM, M\+I\+N\+P\+SI, M\+A\+X\+P\+SI)
+\begin{DoxyCompactList}\small\item\em This sub calculates the max and min values of P\+SI in local vacinity of an element. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a3d3a9c80efb2305d7b089a86f52eaffd}{finptsstore}} (P\+S\+I\+\_\+\+A\+LL, F\+E\+M\+P\+S\+I\+\_\+\+A\+LL, U\+S\+E\+\_\+\+F\+E\+M\+P\+SI, N\+F\+I\+E\+LD, N\+O\+N\+O\+DS, N\+L\+OC, N\+GI, T\+O\+T\+E\+LE, N\+D\+G\+L\+NO, M\+A\+T\+P\+S\+I\+\_\+\+A\+LL, F\+I\+N\+D\+RM, C\+O\+LM, N\+C\+O\+LM, N\+D\+IM, X\+\_\+\+N\+D\+G\+LN, X\+\_\+\+N\+O\+N\+O\+DS, X\+\_\+\+A\+LL, X\+C\+\_\+\+C\+V\+\_\+\+A\+LL, N, N\+L\+X\+\_\+\+A\+LL, W\+E\+I\+G\+HT, F\+I\+N\+D\+E\+LE, C\+O\+L\+E\+LE, N\+C\+O\+L\+EL, E\+L\+E\+M\+A\+T\+P\+SI, E\+L\+E\+M\+A\+T\+W\+EI, I\+G\+E\+T\+S\+T\+OR, B\+O\+U\+ND, R\+E\+F\+L\+E\+CT)
+\begin{DoxyCompactList}\small\item\em This sub finds the matrix values M\+A\+T\+P\+SI for a given point on the stencil IF I\+G\+E\+T\+S\+T\+OR=1 then get E\+L\+E\+M\+A\+T\+P\+SI,E\+L\+E\+M\+A\+T\+W\+EI. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a678735cdf077e4ea1a76fe486e1ba1b3}{matptsstore}} (M\+A\+T\+P\+S\+I\+\_\+\+A\+LL, C\+O\+U\+NT, N\+F\+I\+E\+LD, N\+OD, X\+N\+OD, P\+S\+I\+\_\+\+A\+LL, F\+E\+M\+P\+S\+I\+\_\+\+A\+LL, U\+S\+E\+\_\+\+F\+E\+M\+P\+SI, N\+O\+N\+O\+DS, X\+\_\+\+N\+O\+N\+O\+DS, N\+L\+OC, T\+O\+T\+E\+LE, X\+\_\+\+N\+D\+G\+LN, N\+D\+G\+L\+NO, X1\+\_\+\+A\+LL, X2\+\_\+\+A\+LL, N\+O\+R\+M\+X1\+\_\+\+A\+LL, X\+\_\+\+A\+LL, F\+I\+N\+D\+E\+LE, C\+O\+L\+E\+LE, N\+C\+O\+L\+EL, M\+I\+N\+P\+SI, M\+A\+X\+P\+SI, E\+L\+E\+W\+IC, L\+O\+C\+C\+O\+R\+D\+SK, B\+O\+U\+ND, R\+E\+F\+L\+E\+CT, N\+D\+IM)
+\begin{DoxyCompactList}\small\item\em This sub calculates the value of P\+SI that would be at the other side of the stencil if we had a linear variation and within a single element. IF B\+O\+U\+ND then make locally bounded. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a7ebc33e75591610eadff3c7168a88a97}{philnodele}} (N\+O\+N\+O\+DS, F\+I\+N\+D\+E\+LE, C\+O\+L\+E\+LE, N\+C\+O\+L\+EL, M\+X\+N\+C\+O\+L\+EL, T\+O\+T\+E\+LE, N\+L\+OC, N\+D\+G\+L\+NO, N\+L\+I\+ST, I\+N\+L\+I\+ST)
+\begin{DoxyCompactList}\small\item\em This sub calculates the node to element list F\+I\+N\+D\+E\+LE,C\+O\+L\+E\+LE. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{cv-adv-dif_8_f90_a05f4a37b1cfcfa9f1a124322a899600e}{conv\+\_\+quad\+\_\+to\+\_\+lin\+\_\+tri\+\_\+tet}} (ndgln\+\_\+p2top1, nloc\+\_\+lin, cv\+\_\+nloc, sub\+\_\+lin\+\_\+totele)
+\begin{DoxyCompactList}\small\item\em convert quadratic element into a series of linear elements... \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_aeb4c2b2bcca484786a8d6f3d1410c689}{cv\+\_\+advection\+::triloccords}} (Xp, Yp, Zp, N1, N2, N3, N4, X1, Y1, Z1, X2, Y2, Z2, X3, Y3, Z3, X4, Y4, Z4)
+\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a1a0899f179933a6d3cbc48431237aff7}{cv\+\_\+advection\+::triloccords2d}} (Xp, Yp, N1, N2, N3, X1, Y1, X2, Y2, X3, Y3)
+\item 
+logical function \mbox{\hyperlink{namespacecv__advection_ae140305e60c328f17beabcae47d8aa6f}{cv\+\_\+advection\+::shock\+\_\+front\+\_\+in\+\_\+ele}} (ele, Mdims, sat, ndgln, Imble\+\_\+frac)
+\begin{DoxyCompactList}\small\item\em Detects whether the element has a shockfront or not. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a133a322640c972e4b8577bb3a2439357}{cv\+\_\+advection\+::generate\+\_\+laplacian\+\_\+system}} (Mdims, packed\+\_\+state, ndgln, Mmat, Mspars, C\+V\+\_\+funs, C\+V\+\_\+\+G\+Idims, Sigma\+\_\+field, Solution, K\+\_\+fields, F\+\_\+fields, intface\+\_\+val\+\_\+type)
+\begin{DoxyCompactList}\small\item\em \+: In this method we assemble and solve the Laplacian system using at least P1 elements The equation solved is the following\+: Div sigma Grad X = -\/ S\+UM (Div K Grad F) with Neuman B\+Cs = 0 where K and F are passed down as a vector. Therefore for n entries the S\+UM will be performed over n fields Example\+: F = (3, nphase, cv\+\_\+nonods) would include three terms in the R\+HS and the same for K If harmonic average then we perform the harmonic average of sigma and K I\+M\+P\+O\+R\+T\+A\+NT\+: This subroutine requires the P\+Hsparsity to be generated Note that this method solves considering FE fields. If using CV you may incur in an small error. \end{DoxyCompactList}\item 
+real function \mbox{\hyperlink{cv-adv-dif_8_f90_a659fc896150d136fb79922d4a3209b9b}{get\+\_\+diff\+\_\+coef\+\_\+divdx}} (intface\+\_\+type, H\+DC, W\+\_\+i, W\+\_\+j, Value\+\_\+i, Value\+\_\+j, sigma\+\_\+i, sigma\+\_\+j)
+\begin{DoxyCompactList}\small\item\em \+: Computes the effective value of K or sigma. at the interface between C\+Vs Based on the intface\+\_\+type integer\+: 0 = no interpolation; 1 Harmonic mean; !20 for Self\+Potential solver, harmonic mean considering charge; negative normal mean \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacecv__advection_a7a433d2f6b47e86ffdbc1fc4af1e7a05}{cv\+\_\+advection\+::scvdetnx}} (Mdims, ndgln, X\+\_\+\+A\+LL, C\+V\+\_\+funs, C\+V\+\_\+\+G\+Idims, on\+\_\+domain\+\_\+boundary, between\+\_\+elements, E\+LE, GI, S\+C\+V\+D\+E\+T\+W\+EI, C\+V\+N\+O\+R\+M\+X\+\_\+\+A\+LL, X\+C\+\_\+\+A\+LL, X\+\_\+\+N\+OD, X\+\_\+\+N\+O\+DJ)
+\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a939c43361c098c807280c739e30b5370}{cv\+\_\+advection\+::wic\+\_\+t\+\_\+bc\+\_\+dirichlet}} = 1
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a8f50cabe5b0bcd1018205e2d6f15f3ff}{cv\+\_\+advection\+::wic\+\_\+t\+\_\+bc\+\_\+robin}} = 2
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a29adecab6c33872a56cf4775b4e1c3e3}{cv\+\_\+advection\+::wic\+\_\+t\+\_\+bc\+\_\+diri\+\_\+adv\+\_\+and\+\_\+robin}} = 3
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_aa646dbddd6308ea78c1c05d5b51c4d22}{cv\+\_\+advection\+::wic\+\_\+d\+\_\+bc\+\_\+dirichlet}} = 1
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a7ceb6fac2898be0cae2d603d5226f631}{cv\+\_\+advection\+::wic\+\_\+u\+\_\+bc\+\_\+dirichlet}} = 1
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a6309cc2d2e0e51146784619230b6e70a}{cv\+\_\+advection\+::wic\+\_\+u\+\_\+bc\+\_\+robin}} = 2
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_ab87709ec60fd78f0870ce18b9bbf7eb8}{cv\+\_\+advection\+::wic\+\_\+u\+\_\+bc\+\_\+diri\+\_\+adv\+\_\+and\+\_\+robin}} = 3
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a03129ee41533b2c78d1ec116019892fa}{cv\+\_\+advection\+::wic\+\_\+u\+\_\+bc\+\_\+dirichlet\+\_\+inout}} = 2
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a03647ce996f35f7512f2206c2a4bc8d4}{cv\+\_\+advection\+::wic\+\_\+p\+\_\+bc\+\_\+dirichlet}} = 1
+\item 
+integer, parameter \mbox{\hyperlink{namespacecv__advection_a6d139b0bd7722182c16855e683657878}{cv\+\_\+advection\+::wic\+\_\+p\+\_\+bc\+\_\+free}} = 2
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_aaff0fabb63f42671a6a051512b761705}\label{cv-adv-dif_8_f90_aaff0fabb63f42671a6a051512b761705}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!apply\_eno\_2\_t@{apply\_eno\_2\_t}}
+\index{apply\_eno\_2\_t@{apply\_eno\_2\_t}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{apply\_eno\_2\_t()}{apply\_eno\_2\_t()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+assemb\+::apply\+\_\+eno\+\_\+2\+\_\+t (\begin{DoxyParamCaption}\item[{real, dimension(\+:), intent(inout)}]{L\+I\+MF,  }\item[{real, dimension(\+:,\+:), intent(in)}]{T\+\_\+\+A\+LL,  }\item[{real, dimension(\+:,\+:), intent(in)}]{T\+O\+L\+D\+\_\+\+A\+LL,  }\item[{real, dimension(\+:,\+:), intent(in)}]{F\+E\+M\+T\+\_\+\+A\+LL,  }\item[{real, dimension(\+:,\+:), intent(in)}]{F\+E\+M\+T\+O\+L\+D\+\_\+\+A\+LL,  }\item[{real, dimension(\+:), intent(in)}]{I\+N\+C\+O\+ME,  }\item[{real, dimension(\+:), intent(in)}]{I\+N\+C\+O\+M\+E\+O\+LD,  }\item[{logical, dimension(\+:,\+:), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+DI,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+DJ,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+O\+DI,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+O\+DJ,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+I\+L\+OC,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+J\+L\+OC,  }\item[{integer, intent(in)}]{E\+LE,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, dimension(\+:), intent(in)}]{X\+\_\+\+N\+D\+G\+LN,  }\item[{integer, dimension(\+:), intent(in)}]{C\+V\+\_\+\+N\+D\+G\+LN,  }\item[{real, dimension(\+:,\+:), intent(in)}]{X\+\_\+\+A\+LL,  }\item[{integer, dimension(\+:,\+:), intent(in)}]{F\+A\+C\+E\+\_\+\+E\+LE,  }\item[{integer, intent(in)}]{N\+F\+A\+CE,  }\item[{logical, intent(in)}]{B\+E\+T\+W\+E\+E\+N\+\_\+\+E\+L\+E\+M\+E\+N\+TS,  }\item[{real, dimension(\+:,\+:), intent(in)}]{S\+C\+V\+F\+EN,  }\item[{real, dimension(\+:,\+:,\+:), intent(in)}]{S\+C\+V\+F\+E\+Nx,  }\item[{integer, intent(in)}]{GI,  }\item[{real, dimension(\+:,\+:,\+:), intent(in)}]{I\+N\+V\+\_\+\+J\+AC,  }\item[{real, dimension(\+:,\+:), intent(in)}]{U\+GI,  }\item[{logical, intent(in)}]{on\+\_\+domain\+\_\+boundary }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_aaff0fabb63f42671a6a051512b761705_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_aaff0fabb63f42671a6a051512b761705_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a6b4e2b7cd1b1214a242258cc6f8b753a}\label{cv-adv-dif_8_f90_a6b4e2b7cd1b1214a242258cc6f8b753a}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!calc\_anisotrop\_lim\_vals@{calc\_anisotrop\_lim\_vals}}
+\index{calc\_anisotrop\_lim\_vals@{calc\_anisotrop\_lim\_vals}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{calc\_anisotrop\_lim\_vals()}{calc\_anisotrop\_lim\_vals()}}
+{\footnotesize\ttfamily subroutine calc\+\_\+anisotrop\+\_\+lim\+::calc\+\_\+anisotrop\+\_\+lim\+\_\+vals (\begin{DoxyParamCaption}\item[{type (multi\+\_\+matrices), intent(inout)}]{Mmat,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{F\+E\+M\+T\+\_\+\+A\+LL,  }\item[{logical, intent(in)}]{U\+S\+E\+\_\+\+F\+E\+MT,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+U\+P\+W\+I\+N\+D\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+F\+I\+E\+LD,  }\item[{integer, intent(in)}]{N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, dimension( \+:  ), intent(in)}]{C\+V\+\_\+\+N\+D\+G\+LN,  }\item[{integer, dimension( \+: ), intent(in)}]{S\+M\+A\+L\+L\+\_\+\+F\+I\+N\+D\+RM,  }\item[{integer, dimension( \+: ), intent(in)}]{S\+M\+A\+L\+L\+\_\+\+C\+O\+LM,  }\item[{integer, intent(in)}]{N\+S\+M\+A\+L\+L\+\_\+\+C\+O\+LM,  }\item[{integer, dimension( \+:  ), intent(in)}]{X\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+A\+LL,  }\item[{real, dimension( ndim, nonods ), intent(in)}]{X\+C\+\_\+\+C\+V\+\_\+\+A\+LL,  }\item[{logical, intent(in)}]{use\+\_\+reflect }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a6b4e2b7cd1b1214a242258cc6f8b753a_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a6b4e2b7cd1b1214a242258cc6f8b753a_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a45a3dbc2621f52d962f12eaa872c4523}\label{cv-adv-dif_8_f90_a45a3dbc2621f52d962f12eaa872c4523}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!calc\_anisotrop\_lim\_vals2@{calc\_anisotrop\_lim\_vals2}}
+\index{calc\_anisotrop\_lim\_vals2@{calc\_anisotrop\_lim\_vals2}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{calc\_anisotrop\_lim\_vals2()}{calc\_anisotrop\_lim\_vals2()}}
+{\footnotesize\ttfamily subroutine calc\+\_\+anisotrop\+\_\+lim\+::calc\+\_\+anisotrop\+\_\+lim\+\_\+vals2 (\begin{DoxyParamCaption}\item[{type (multi\+\_\+matrices), intent(inout)}]{Mmat,  }\item[{real, dimension( \+:,\+: ), intent(in)}]{T\+\_\+\+A\+LL,  }\item[{real, dimension(  \+:,\+: ), intent(in)}]{F\+E\+M\+T\+\_\+\+A\+LL,  }\item[{logical, intent(in)}]{U\+S\+E\+\_\+\+F\+E\+MT,  }\item[{real, dimension( \+:,\+:  ), intent(inout)}]{T\+U\+P\+W\+I\+N\+D\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+F\+I\+E\+LD,  }\item[{integer, intent(in)}]{N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{N\+GI,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, dimension( \+: ), intent(in)}]{N\+D\+G\+L\+NO,  }\item[{integer, dimension( \+: ), intent(in)}]{F\+I\+N\+D\+RM,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+O\+LM,  }\item[{integer, intent(in)}]{N\+C\+O\+LM,  }\item[{integer, dimension( \+: ), intent(in)}]{X\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{real, dimension(\+:,\+:), intent(in)}]{X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+C\+\_\+\+C\+V\+\_\+\+A\+LL,  }\item[{real, dimension(\+:,\+:), intent(in)}]{N,  }\item[{real, dimension(\+:,\+:,\+:), intent(in)}]{N\+L\+X\+\_\+\+A\+LL,  }\item[{real, dimension(\+:), intent(in)}]{W\+E\+I\+G\+HT,  }\item[{logical, intent(in)}]{use\+\_\+reflect }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a45a3dbc2621f52d962f12eaa872c4523_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a45a3dbc2621f52d962f12eaa872c4523_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a5c58181433ef3d6296d003eccb780c6d}\label{cv-adv-dif_8_f90_a5c58181433ef3d6296d003eccb780c6d}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!calc\_limit\_matrix\_max\_min@{calc\_limit\_matrix\_max\_min}}
+\index{calc\_limit\_matrix\_max\_min@{calc\_limit\_matrix\_max\_min}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{calc\_limit\_matrix\_max\_min()}{calc\_limit\_matrix\_max\_min()}}
+{\footnotesize\ttfamily subroutine isotropic\+\_\+limiter\+\_\+all\+::calc\+\_\+limit\+\_\+matrix\+\_\+max\+\_\+min (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+M\+A\+X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+M\+I\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+M\+A\+X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+M\+I\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T2\+M\+A\+X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T2\+M\+I\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:), intent(in)}]{T2\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+E\+N\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{I\+G\+O\+T\+\_\+\+T2,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{T\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{T\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{T2\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{T2\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+S\+M\+A\+L\+L\+\_\+\+C\+O\+LM,  }\item[{integer, dimension( \+: ), intent(in)}]{S\+M\+A\+L\+L\+\_\+\+F\+I\+N\+D\+RM,  }\item[{integer, dimension( \+: ), intent(in)}]{S\+M\+A\+L\+L\+\_\+\+C\+O\+LM,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T2\+U\+P\+W\+I\+N\+D\+\_\+\+M\+A\+T\+\_\+\+A\+LL,  }\item[{real, dimension( \+: ), intent(in)}]{M\+A\+S\+S\+\_\+\+CV }\end{DoxyParamCaption})}
+
+
+
+Populate limiting matrix based on max and min values For each node, find the largest and smallest value of T and D\+E\+N\+S\+I\+TY for both the current and previous timestep, out of the node value and all its surrounding nodes including Dirichlet b.\+c\textquotesingle{}s. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a5c58181433ef3d6296d003eccb780c6d_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a5c58181433ef3d6296d003eccb780c6d_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a05f4a37b1cfcfa9f1a124322a899600e}\label{cv-adv-dif_8_f90_a05f4a37b1cfcfa9f1a124322a899600e}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!conv\_quad\_to\_lin\_tri\_tet@{conv\_quad\_to\_lin\_tri\_tet}}
+\index{conv\_quad\_to\_lin\_tri\_tet@{conv\_quad\_to\_lin\_tri\_tet}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{conv\_quad\_to\_lin\_tri\_tet()}{conv\_quad\_to\_lin\_tri\_tet()}}
+{\footnotesize\ttfamily subroutine calc\+\_\+anisotrop\+\_\+lim\+::conv\+\_\+quad\+\_\+to\+\_\+lin\+\_\+tri\+\_\+tet (\begin{DoxyParamCaption}\item[{integer, dimension(sub\+\_\+lin\+\_\+totele$\ast$nloc\+\_\+lin), intent(inout)}]{ndgln\+\_\+p2top1,  }\item[{integer, intent(in)}]{nloc\+\_\+lin,  }\item[{integer, intent(in)}]{cv\+\_\+nloc,  }\item[{integer, intent(in)}]{sub\+\_\+lin\+\_\+totele }\end{DoxyParamCaption})}
+
+
+
+convert quadratic element into a series of linear elements... 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a05f4a37b1cfcfa9f1a124322a899600e_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_ac967cdd9ff5610dfe95e1f50be00c936}\label{cv-adv-dif_8_f90_ac967cdd9ff5610dfe95e1f50be00c936}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!dump\_multiphase@{dump\_multiphase}}
+\index{dump\_multiphase@{dump\_multiphase}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{dump\_multiphase()}{dump\_multiphase()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+assemb\+::dump\+\_\+multiphase (\begin{DoxyParamCaption}\item[{character(len=$\ast$), intent(in)}]{prefix,  }\item[{integer, optional}]{icp }\end{DoxyParamCaption})}
+
+\mbox{\Hypertarget{cv-adv-dif_8_f90_afb4e96858b9341a76e72da5321bb4562}\label{cv-adv-dif_8_f90_afb4e96858b9341a76e72da5321bb4562}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!face\_theta\_many@{face\_theta\_many}}
+\index{face\_theta\_many@{face\_theta\_many}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{face\_theta\_many()}{face\_theta\_many()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+assemb\+::face\+\_\+theta\+\_\+many (\begin{DoxyParamCaption}\item[{real, dimension(final\+\_\+phase)}]{F\+T\+H\+E\+TA,  }\item[{logical, intent(in)}]{I\+N\+T\+E\+R\+F\+A\+C\+E\+\_\+\+T\+R\+A\+CK,  }\item[{real, dimension( final\+\_\+phase ), intent(in)}]{T\+\_\+\+N\+O\+D\+J\+\_\+\+I\+P\+HA,  }\item[{real, dimension( final\+\_\+phase ), intent(in)}]{T\+\_\+\+N\+O\+D\+I\+\_\+\+I\+P\+HA,  }\item[{real, dimension( final\+\_\+phase ), intent(in)}]{T\+O\+L\+D\+\_\+\+N\+O\+D\+J\+\_\+\+I\+P\+HA,  }\item[{real, dimension( final\+\_\+phase ), intent(in)}]{T\+O\+L\+D\+\_\+\+N\+O\+D\+I\+\_\+\+I\+P\+HA }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_afb4e96858b9341a76e72da5321bb4562_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_afb4e96858b9341a76e72da5321bb4562_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a3d3a9c80efb2305d7b089a86f52eaffd}\label{cv-adv-dif_8_f90_a3d3a9c80efb2305d7b089a86f52eaffd}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!finptsstore@{finptsstore}}
+\index{finptsstore@{finptsstore}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{finptsstore()}{finptsstore()}}
+{\footnotesize\ttfamily subroutine calc\+\_\+anisotrop\+\_\+lim\+::finptsstore (\begin{DoxyParamCaption}\item[{real, dimension(\+:,\+:), intent(in)}]{P\+S\+I\+\_\+\+A\+LL,  }\item[{real, dimension(\+:,\+:), intent(in)}]{F\+E\+M\+P\+S\+I\+\_\+\+A\+LL,  }\item[{logical, intent(in)}]{U\+S\+E\+\_\+\+F\+E\+M\+P\+SI,  }\item[{integer, intent(in)}]{N\+F\+I\+E\+LD,  }\item[{integer, intent(in)}]{N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{N\+GI,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, dimension(\+:), intent(in)}]{N\+D\+G\+L\+NO,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{M\+A\+T\+P\+S\+I\+\_\+\+A\+LL,  }\item[{integer, dimension(\+:), intent(in)}]{F\+I\+N\+D\+RM,  }\item[{integer, dimension(\+:), intent(in)}]{C\+O\+LM,  }\item[{integer, intent(in)}]{N\+C\+O\+LM,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, dimension(\+:), intent(in)}]{X\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+O\+N\+O\+DS,  }\item[{real, dimension(\+:,\+:), intent(in)}]{X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+C\+\_\+\+C\+V\+\_\+\+A\+LL,  }\item[{real, dimension(\+:,\+:), intent(in)}]{N,  }\item[{real, dimension(\+:, \+:,\+:), intent(in)}]{N\+L\+X\+\_\+\+A\+LL,  }\item[{real, dimension(\+:), intent(in)}]{W\+E\+I\+G\+HT,  }\item[{integer, dimension(\+:), intent(in)}]{F\+I\+N\+D\+E\+LE,  }\item[{integer, dimension(\+:), intent(in)}]{C\+O\+L\+E\+LE,  }\item[{integer, intent(in)}]{N\+C\+O\+L\+EL,  }\item[{integer, dimension(\+:), intent(inout)}]{E\+L\+E\+M\+A\+T\+P\+SI,  }\item[{real, dimension(\+:), intent(inout)}]{E\+L\+E\+M\+A\+T\+W\+EI,  }\item[{integer, intent(in)}]{I\+G\+E\+T\+S\+T\+OR,  }\item[{logical}]{B\+O\+U\+ND,  }\item[{logical}]{R\+E\+F\+L\+E\+CT }\end{DoxyParamCaption})}
+
+
+
+This sub finds the matrix values M\+A\+T\+P\+SI for a given point on the stencil IF I\+G\+E\+T\+S\+T\+OR=1 then get E\+L\+E\+M\+A\+T\+P\+SI,E\+L\+E\+M\+A\+T\+W\+EI. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a3d3a9c80efb2305d7b089a86f52eaffd_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a3d3a9c80efb2305d7b089a86f52eaffd_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a659fc896150d136fb79922d4a3209b9b}\label{cv-adv-dif_8_f90_a659fc896150d136fb79922d4a3209b9b}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!get\_diff\_coef\_divdx@{get\_diff\_coef\_divdx}}
+\index{get\_diff\_coef\_divdx@{get\_diff\_coef\_divdx}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{get\_diff\_coef\_divdx()}{get\_diff\_coef\_divdx()}}
+{\footnotesize\ttfamily real function generate\+\_\+laplacian\+\_\+system\+::get\+\_\+diff\+\_\+coef\+\_\+divdx (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{intface\+\_\+type,  }\item[{real, intent(in)}]{H\+DC,  }\item[{real, intent(in)}]{W\+\_\+i,  }\item[{real, intent(in)}]{W\+\_\+j,  }\item[{real, intent(in)}]{Value\+\_\+i,  }\item[{real, intent(in)}]{Value\+\_\+j,  }\item[{real, intent(in), optional}]{sigma\+\_\+i,  }\item[{real, intent(in), optional}]{sigma\+\_\+j }\end{DoxyParamCaption})}
+
+
+
+\+: Computes the effective value of K or sigma. at the interface between C\+Vs Based on the intface\+\_\+type integer\+: 0 = no interpolation; 1 Harmonic mean; !20 for Self\+Potential solver, harmonic mean considering charge; negative normal mean 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a659fc896150d136fb79922d4a3209b9b_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a427571cc398104aab11b15662262c017}\label{cv-adv-dif_8_f90_a427571cc398104aab11b15662262c017}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!get\_int\_t\_den\_new@{get\_int\_t\_den\_new}}
+\index{get\_int\_t\_den\_new@{get\_int\_t\_den\_new}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{get\_int\_t\_den\_new()}{get\_int\_t\_den\_new()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+assemb\+::get\+\_\+int\+\_\+t\+\_\+den\+\_\+new (\begin{DoxyParamCaption}\item[{real, dimension ( nfield), intent(inout)}]{L\+I\+MF }\end{DoxyParamCaption})}
+
+
+
+Computes the flux between C\+Vs. 
+
+\begin{DoxyAuthor}{Author}
+Chris Pain, Pablo Salinas 
+\end{DoxyAuthor}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a427571cc398104aab11b15662262c017_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a427571cc398104aab11b15662262c017_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a721d9557da90724f09df1b2086a97119}\label{cv-adv-dif_8_f90_a721d9557da90724f09df1b2086a97119}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!get\_int\_vel\_orig\_new@{get\_int\_vel\_orig\_new}}
+\index{get\_int\_vel\_orig\_new@{get\_int\_vel\_orig\_new}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{get\_int\_vel\_orig\_new()}{get\_int\_vel\_orig\_new()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+assemb\+::get\+\_\+int\+\_\+vel\+\_\+orig\+\_\+new (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(inout)}]{N\+D\+O\+T\+Q\+N\+EW,  }\item[{real, dimension( \+: ), intent(inout)}]{N\+D\+O\+TQ,  }\item[{real, dimension( \+: ), intent(inout)}]{I\+N\+C\+O\+ME,  }\item[{real, dimension( \+: ), intent(in)}]{L\+O\+C\+\_\+\+T\+\_\+I,  }\item[{real, dimension( \+: ), intent(in)}]{L\+O\+C\+\_\+\+T\+\_\+J,  }\item[{real, dimension( \+: ), intent(in)}]{L\+O\+C\+\_\+\+D\+E\+N\+\_\+I,  }\item[{real, dimension( \+: ), intent(in)}]{L\+O\+C\+\_\+\+D\+E\+N\+\_\+J,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{L\+O\+C\+\_\+\+NU,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{L\+O\+C2\+\_\+\+NU,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{N\+U\+G\+I\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E2\+\_\+\+A\+LL,  }\item[{logical, intent(in)}]{not\+\_\+\+O\+L\+D\+\_\+\+V\+EL }\end{DoxyParamCaption})}
+
+
+
+Computes the flux between C\+Vs. 
+
+\begin{DoxyAuthor}{Author}
+Chris Pain, Pablo Salinas, Lluis Via-\/\+Estrem, Asiri Obeysekara 
+\end{DoxyAuthor}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a721d9557da90724f09df1b2086a97119_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a89933f3d5d5183f002dece1a1e67174c}\label{cv-adv-dif_8_f90_a89933f3d5d5183f002dece1a1e67174c}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!get\_int\_vel\_porous\_vel@{get\_int\_vel\_porous\_vel}}
+\index{get\_int\_vel\_porous\_vel@{get\_int\_vel\_porous\_vel}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{get\_int\_vel\_porous\_vel()}{get\_int\_vel\_porous\_vel()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+assemb\+::get\+\_\+int\+\_\+vel\+\_\+porous\+\_\+vel (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(inout)}]{N\+D\+O\+T\+Q\+N\+EW,  }\item[{real, dimension( \+: ), intent(inout)}]{N\+D\+O\+TQ,  }\item[{real, dimension( \+: ), intent(inout)}]{I\+N\+C\+O\+ME,  }\item[{real, dimension( \+: ), intent(in)}]{L\+O\+C\+\_\+\+T\+\_\+I,  }\item[{real, dimension( \+: ), intent(in)}]{L\+O\+C\+\_\+\+T\+\_\+J,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{L\+O\+C\+\_\+\+F\+E\+MT,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{L\+O\+C\+\_\+\+NU,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{L\+O\+C2\+\_\+\+NU,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{S\+L\+O\+C\+\_\+\+NU,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:, \+: ), intent(inout)}]{U\+G\+I\+\_\+\+C\+O\+E\+F\+\_\+\+E\+L\+E2\+\_\+\+A\+LL,  }\item[{real, dimension( \+: ), intent(in)}]{I\+\_\+adv\+\_\+coef,  }\item[{real, dimension( \+: ), intent(in)}]{I\+\_\+adv\+\_\+coef\+\_\+grad,  }\item[{real, dimension( \+: ), intent(in)}]{J\+\_\+adv\+\_\+coef,  }\item[{real, dimension( \+: ), intent(in)}]{J\+\_\+adv\+\_\+coef\+\_\+grad,  }\item[{real, dimension( \+: ), intent(in)}]{I\+\_\+inv\+\_\+adv\+\_\+coef,  }\item[{real, dimension( \+: ), intent(in)}]{J\+\_\+inv\+\_\+adv\+\_\+coef,  }\item[{real, dimension( \+:, \+:  ), intent(inout)}]{U\+D\+G\+I\+\_\+\+A\+LL,  }\item[{real, intent(in)}]{M\+A\+S\+S\+\_\+\+C\+V\+\_\+I,  }\item[{real, intent(in)}]{M\+A\+S\+S\+\_\+\+C\+V\+\_\+J,  }\item[{real, dimension( \+: ), intent(in)}]{T\+U\+P\+W\+I\+N\+D\+\_\+\+IN,  }\item[{real, dimension( \+: ), intent(in)}]{T\+U\+P\+W\+I\+N\+D\+\_\+\+O\+UT,  }\item[{logical, intent(in)}]{not\+\_\+\+O\+L\+D\+\_\+\+V\+EL }\end{DoxyParamCaption})}
+
+
+
+Computes the flux between C\+Vs for porous media. N\+D\+O\+T\+Q\+N\+EW contains the fluxes for a given gauss integration point. 
+
+\begin{DoxyAuthor}{Author}
+Chris Pain, Pablo Salinas 
+\end{DoxyAuthor}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a89933f3d5d5183f002dece1a1e67174c_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a89933f3d5d5183f002dece1a1e67174c_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a613230535e80cb2894e9b6447ce613e9}\label{cv-adv-dif_8_f90_a613230535e80cb2894e9b6447ce613e9}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!get\_neigbouring\_lists@{get\_neigbouring\_lists}}
+\index{get\_neigbouring\_lists@{get\_neigbouring\_lists}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{get\_neigbouring\_lists()}{get\_neigbouring\_lists()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+assemb\+::get\+\_\+neigbouring\+\_\+lists (\begin{DoxyParamCaption}\item[{integer, dimension(\+:), intent(inout)}]{J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC,  }\item[{integer, dimension(\+:), intent(inout)}]{I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC,  }\item[{integer, dimension(\+:), intent(inout)}]{J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2,  }\item[{integer, dimension(\+:), intent(inout)}]{I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2,  }\item[{integer, dimension(\+:), intent(inout)}]{C\+\_\+\+J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC,  }\item[{integer, dimension(\+:), intent(inout)}]{C\+\_\+\+I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+OC,  }\item[{integer, dimension(\+:), intent(inout)}]{C\+\_\+\+J\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2,  }\item[{integer, dimension(\+:), intent(inout)}]{C\+\_\+\+I\+C\+O\+U\+N\+T\+\_\+\+K\+L\+O\+C2 }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a613230535e80cb2894e9b6447ce613e9_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_aac2f503b955577fbfd9ff7ecf8b8ca71}\label{cv-adv-dif_8_f90_aac2f503b955577fbfd9ff7ecf8b8ca71}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!getstoreelewei@{getstoreelewei}}
+\index{getstoreelewei@{getstoreelewei}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{getstoreelewei()}{getstoreelewei()}}
+{\footnotesize\ttfamily subroutine calc\+\_\+anisotrop\+\_\+lim\+::getstoreelewei (\begin{DoxyParamCaption}\item[{real, dimension(\+:,\+:), intent(in)}]{P\+S\+I\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+F\+I\+E\+LD,  }\item[{integer, intent(in)}]{N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, dimension(totele$\ast$nloc), intent(in)}]{N\+D\+G\+L\+NO,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{M\+A\+T\+P\+S\+I\+\_\+\+A\+LL,  }\item[{integer, dimension(\+:), intent(in)}]{F\+I\+N\+D\+RM,  }\item[{integer, dimension(\+:), intent(in)}]{C\+O\+LM,  }\item[{integer, intent(in)}]{N\+C\+O\+LM,  }\item[{logical}]{B\+O\+U\+ND,  }\item[{integer, dimension(\+:), intent(in)}]{E\+L\+E\+M\+A\+T\+P\+SI,  }\item[{real, dimension(ncolm$\ast$nloc), intent(in)}]{E\+L\+E\+M\+A\+T\+W\+EI }\end{DoxyParamCaption})}
+
+
+
+use the stored interpolation coeffs to caclulate M\+A\+T\+P\+SI. This sub finds the matrix values M\+A\+T\+P\+SI for a given point on the stencil 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=294pt]{cv-adv-dif_8_f90_aac2f503b955577fbfd9ff7ecf8b8ca71_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_aac2f503b955577fbfd9ff7ecf8b8ca71_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a7c45215f7bff94897216c155967c06e4}\label{cv-adv-dif_8_f90_a7c45215f7bff94897216c155967c06e4}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!i\_pack\_loc@{i\_pack\_loc}}
+\index{i\_pack\_loc@{i\_pack\_loc}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{i\_pack\_loc()}{i\_pack\_loc()}}
+{\footnotesize\ttfamily subroutine pack\+\_\+loc\+\_\+all3\+::i\+\_\+pack\+\_\+loc (\begin{DoxyParamCaption}\item[{integer, dimension(\+:), intent(inout)}]{L\+O\+C\+\_\+F,  }\item[{integer, dimension(nphase), intent(in)}]{T\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(inout)}]{I\+PT,  }\item[{logical, dimension(nphase), intent(in)}]{I\+G\+O\+T\+\_\+\+T\+\_\+\+P\+A\+CK }\end{DoxyParamCaption})}
+
+
+
+If P\+A\+CK then pack T\+\_\+\+A\+LL into L\+O\+C\+\_\+F as long at I\+G\+O\+T\+\_\+T==1 and S\+T\+O\+RE and not already in storage. 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a7c45215f7bff94897216c155967c06e4_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_aa40294c371735f893e09254f0416ae74}\label{cv-adv-dif_8_f90_aa40294c371735f893e09254f0416ae74}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!introduce\_c\_cv\_boundary\_conditions@{introduce\_c\_cv\_boundary\_conditions}}
+\index{introduce\_c\_cv\_boundary\_conditions@{introduce\_c\_cv\_boundary\_conditions}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{introduce\_c\_cv\_boundary\_conditions()}{introduce\_c\_cv\_boundary\_conditions()}}
+{\footnotesize\ttfamily subroutine put\+\_\+in\+\_\+ct\+\_\+rhs\+::introduce\+\_\+c\+\_\+cv\+\_\+boundary\+\_\+conditions (\begin{DoxyParamCaption}\item[{real, dimension(\+:,\+:,\+:), intent(out)}]{Bound\+\_\+ele\+\_\+correct }\end{DoxyParamCaption})}
+
+
+
+This subroutine populates Bound\+\_\+ele\+\_\+correct and Bound\+\_\+ele2\+\_\+correct to properly apply the B\+Cs when creating the MmatC\+\_\+\+CV matrix. 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_aa40294c371735f893e09254f0416ae74_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a77201531d5bc443a857dce86befbb61e}\label{cv-adv-dif_8_f90_a77201531d5bc443a857dce86befbb61e}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!mass\_conservation\_check\_and\_outfluxes@{mass\_conservation\_check\_and\_outfluxes}}
+\index{mass\_conservation\_check\_and\_outfluxes@{mass\_conservation\_check\_and\_outfluxes}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{mass\_conservation\_check\_and\_outfluxes()}{mass\_conservation\_check\_and\_outfluxes()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+assemb\+::mass\+\_\+conservation\+\_\+check\+\_\+and\+\_\+outfluxes (\begin{DoxyParamCaption}\item[{real, dimension(\+:,\+:), intent(inout)}]{calculate\+\_\+mass\+\_\+delta,  }\item[{type (multi\+\_\+outfluxes), intent(inout)}]{outfluxes,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+E\+N\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{flag }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a77201531d5bc443a857dce86befbb61e_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a77201531d5bc443a857dce86befbb61e_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a678735cdf077e4ea1a76fe486e1ba1b3}\label{cv-adv-dif_8_f90_a678735cdf077e4ea1a76fe486e1ba1b3}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!matptsstore@{matptsstore}}
+\index{matptsstore@{matptsstore}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{matptsstore()}{matptsstore()}}
+{\footnotesize\ttfamily subroutine calc\+\_\+anisotrop\+\_\+lim\+::matptsstore (\begin{DoxyParamCaption}\item[{real, dimension(\+:,\+:), intent(inout)}]{M\+A\+T\+P\+S\+I\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{C\+O\+U\+NT,  }\item[{integer, intent(in)}]{N\+F\+I\+E\+LD,  }\item[{integer, intent(in)}]{N\+OD,  }\item[{integer, intent(in)}]{X\+N\+OD,  }\item[{real, dimension(\+:,\+:), intent(in)}]{P\+S\+I\+\_\+\+A\+LL,  }\item[{real, dimension(\+:,\+:), intent(in)}]{F\+E\+M\+P\+S\+I\+\_\+\+A\+LL,  }\item[{logical, intent(in)}]{U\+S\+E\+\_\+\+F\+E\+M\+P\+SI,  }\item[{integer, intent(in)}]{N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, dimension(nloc$\ast$totele), intent(in)}]{X\+\_\+\+N\+D\+G\+LN,  }\item[{integer, dimension(nloc$\ast$totele), intent(in)}]{N\+D\+G\+L\+NO,  }\item[{real, dimension(\+:)}]{X1\+\_\+\+A\+LL,  }\item[{real, dimension(\+:)}]{X2\+\_\+\+A\+LL,  }\item[{real, dimension(\+:)}]{N\+O\+R\+M\+X1\+\_\+\+A\+LL,  }\item[{real, dimension(\+:,\+:), intent(in)}]{X\+\_\+\+A\+LL,  }\item[{integer, dimension(x\+\_\+nonods+1), intent(in)}]{F\+I\+N\+D\+E\+LE,  }\item[{integer, dimension(ncolel), intent(in)}]{C\+O\+L\+E\+LE,  }\item[{integer, intent(in)}]{N\+C\+O\+L\+EL,  }\item[{real, dimension(\+:, \+:), intent(in)}]{M\+I\+N\+P\+SI,  }\item[{real, dimension(\+:, \+:), intent(in)}]{M\+A\+X\+P\+SI,  }\item[{integer, intent(inout)}]{E\+L\+E\+W\+IC,  }\item[{real, dimension(nloc), intent(inout)}]{L\+O\+C\+C\+O\+R\+D\+SK,  }\item[{logical, intent(in)}]{B\+O\+U\+ND,  }\item[{logical, intent(in)}]{R\+E\+F\+L\+E\+CT,  }\item[{integer, intent(in)}]{N\+D\+IM }\end{DoxyParamCaption})}
+
+
+
+This sub calculates the value of P\+SI that would be at the other side of the stencil if we had a linear variation and within a single element. IF B\+O\+U\+ND then make locally bounded. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a678735cdf077e4ea1a76fe486e1ba1b3_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a678735cdf077e4ea1a76fe486e1ba1b3_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a79e6107e4599bc638961aac18b0a1547}\label{cv-adv-dif_8_f90_a79e6107e4599bc638961aac18b0a1547}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!minmaxelewic@{minmaxelewic}}
+\index{minmaxelewic@{minmaxelewic}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{minmaxelewic()}{minmaxelewic()}}
+{\footnotesize\ttfamily subroutine calc\+\_\+anisotrop\+\_\+lim\+::minmaxelewic (\begin{DoxyParamCaption}\item[{real, dimension(\+:,\+:), intent(in)}]{P\+S\+I\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+O\+N\+O\+DS,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, dimension(totele$\ast$nloc), intent(in)}]{N\+D\+G\+L\+NO,  }\item[{integer, dimension(nonods+1), intent(in)}]{F\+I\+N\+D\+RM,  }\item[{integer, dimension(ncolm), intent(in)}]{C\+O\+LM,  }\item[{integer, intent(in)}]{N\+C\+O\+LM,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{M\+I\+N\+P\+SI,  }\item[{real, dimension(\+:,\+:), intent(inout)}]{M\+A\+X\+P\+SI }\end{DoxyParamCaption})}
+
+
+
+This sub calculates the max and min values of P\+SI in local vacinity of an element. 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a79e6107e4599bc638961aac18b0a1547_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_a7ebc33e75591610eadff3c7168a88a97}\label{cv-adv-dif_8_f90_a7ebc33e75591610eadff3c7168a88a97}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!philnodele@{philnodele}}
+\index{philnodele@{philnodele}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{philnodele()}{philnodele()}}
+{\footnotesize\ttfamily subroutine calc\+\_\+anisotrop\+\_\+lim\+::philnodele (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{N\+O\+N\+O\+DS,  }\item[{integer, dimension( \+: ), intent(inout)}]{F\+I\+N\+D\+E\+LE,  }\item[{integer, dimension( \+: ), intent(inout)}]{C\+O\+L\+E\+LE,  }\item[{integer, intent(inout)}]{N\+C\+O\+L\+EL,  }\item[{integer, intent(in)}]{M\+X\+N\+C\+O\+L\+EL,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, intent(in)}]{N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{N\+D\+G\+L\+NO,  }\item[{integer, dimension( \+: ), intent(inout)}]{N\+L\+I\+ST,  }\item[{integer, dimension( \+: ), intent(inout)}]{I\+N\+L\+I\+ST }\end{DoxyParamCaption})}
+
+
+
+This sub calculates the node to element list F\+I\+N\+D\+E\+LE,C\+O\+L\+E\+LE. 
+
+Note N\+L\+I\+ST and I\+N\+L\+I\+ST are only used locally but are passed down from parent routine where they are dynamically allocated.\hypertarget{cv-adv-dif_8_f90_autotoc_md3}{}\doxysubsubsection{I\+N\+P\+U\+T\+S\+:}\label{cv-adv-dif_8_f90_autotoc_md3}
+N\+D\+G\+L\+NO -\/ List of global node numbers\hypertarget{cv-adv-dif_8_f90_autotoc_md4}{}\doxysubsubsection{O\+U\+T\+P\+U\+T\+S\+:}\label{cv-adv-dif_8_f90_autotoc_md4}
+C\+O\+L\+E\+LE -\/ This is a list of the element numbers that each node belongs to. So it lists all elements for node 1, then all elements for node 2, and so on... F\+I\+N\+D\+E\+LE -\/ is the pointer to the place in C\+O\+L\+E\+LE that gives the first element associated with a given global node
+
+Called from subroutines I\+F\+I\+N\+P\+TS and F\+I\+N\+P\+TS, which are subroutines of C\+O\+N\+S\+T\+R\+U\+C\+T\+\_\+\+A\+D\+V\+E\+C\+T\+I\+O\+N\+\_\+\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+CV Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_a7ebc33e75591610eadff3c7168a88a97_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_af8e5cd91f2c7b0d5ffa4d0f3b9c207c1}\label{cv-adv-dif_8_f90_af8e5cd91f2c7b0d5ffa4d0f3b9c207c1}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!surro\_cv\_minmax@{surro\_cv\_minmax}}
+\index{surro\_cv\_minmax@{surro\_cv\_minmax}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{surro\_cv\_minmax()}{surro\_cv\_minmax()}}
+{\footnotesize\ttfamily subroutine isotropic\+\_\+limiter\+\_\+all\+::surro\+\_\+cv\+\_\+minmax (\begin{DoxyParamCaption}\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+M\+A\+X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+M\+I\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+O\+L\+D\+M\+A\+X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T\+O\+L\+D\+M\+I\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+M\+A\+X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+M\+I\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+O\+L\+D\+M\+A\+X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+O\+L\+D\+M\+I\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T2\+M\+A\+X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T2\+M\+I\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T2\+O\+L\+D\+M\+A\+X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(inout)}]{T2\+O\+L\+D\+M\+I\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{T\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{T\+O\+L\+D\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{T2\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{T2\+O\+L\+D\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+E\+N\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+E\+N\+O\+L\+D\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{I\+G\+O\+T\+\_\+\+T2,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+O\+N\+O\+DS,  }\item[{integer, dimension( \+: ), intent(in)}]{F\+I\+N\+A\+CV,  }\item[{integer, dimension( \+: ), intent(in), target}]{C\+O\+L\+A\+CV,  }\item[{integer, intent(in)}]{S\+T\+O\+T\+EL,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+S\+N\+L\+OC,  }\item[{integer, dimension( \+: ), intent(in)}]{C\+V\+\_\+\+S\+N\+D\+G\+LN,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{S\+U\+F\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in), pointer}]{S\+U\+F\+\_\+\+T2\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{S\+U\+F\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{integer, dimension( \+: , \+: , \+: ), intent(in)}]{W\+I\+C\+\_\+\+T\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{integer, dimension( \+: , \+: , \+: ), intent(in)}]{W\+I\+C\+\_\+\+T2\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{integer, dimension( \+: , \+: , \+: ), intent(in)}]{W\+I\+C\+\_\+\+D\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{T\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{T\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{T\+O\+L\+D\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{T\+O\+L\+D\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{T2\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{T2\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{T2\+O\+L\+D\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{T2\+O\+L\+D\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+O\+L\+D\+M\+I\+N\+\_\+\+N\+O\+D\+\_\+\+A\+LL,  }\item[{integer, dimension( \+:, \+: ), intent(inout)}]{D\+E\+N\+O\+L\+D\+M\+A\+X\+\_\+\+N\+O\+D\+\_\+\+A\+LL }\end{DoxyParamCaption})}
+
+
+
+For each node, find the largest and smallest value of T and D\+E\+N\+S\+I\+TY for both the current and previous timestep, out of the node value and all its surrounding nodes including Dirichlet b.\+c\textquotesingle{}s. 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_af8e5cd91f2c7b0d5ffa4d0f3b9c207c1_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{cv-adv-dif_8_f90_aad25281c21796ab5cdd1ecf160cdad8f}\label{cv-adv-dif_8_f90_aad25281c21796ab5cdd1ecf160cdad8f}} 
+\index{cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}!tri\_tet\_loccords@{tri\_tet\_loccords}}
+\index{tri\_tet\_loccords@{tri\_tet\_loccords}!cv-\/adv-\/dif.F90@{cv-\/adv-\/dif.F90}}
+\doxysubsubsection{\texorpdfstring{tri\_tet\_loccords()}{tri\_tet\_loccords()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+assemb\+::tri\+\_\+tet\+\_\+loccords (\begin{DoxyParamCaption}\item[{real, dimension(ndim), intent(in)}]{Xpt,  }\item[{real, dimension(ndim+1), intent(inout)}]{L\+O\+C\+C\+O\+R\+DS,  }\item[{real, dimension(ndim,cv\+\_\+nloc), intent(in)}]{X\+\_\+\+C\+O\+R\+N\+E\+R\+S\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+N\+L\+OC }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_aad25281c21796ab5cdd1ecf160cdad8f_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{cv-adv-dif_8_f90_aad25281c21796ab5cdd1ecf160cdad8f_icgraph}
+\end{center}
+\end{figure}

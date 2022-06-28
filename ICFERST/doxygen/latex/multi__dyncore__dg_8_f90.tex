@@ -1,0 +1,573 @@
+\hypertarget{multi__dyncore__dg_8_f90}{}\doxysection{/home/psalinas/\+Documents/workspace/\+Multi\+Fluids\+\_\+\+Dev/\+I\+C\+F\+E\+R\+S\+T/src/multi\+\_\+dyncore\+\_\+dg.F90 File Reference}
+\label{multi__dyncore__dg_8_f90}\index{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/multi\_dyncore\_dg.F90@{/home/psalinas/Documents/workspace/MultiFluids\_Dev/ICFERST/src/multi\_dyncore\_dg.F90}}
+{\ttfamily \#include \char`\"{}fdebug.\+h\char`\"{}}\newline
+Include dependency graph for multi\+\_\+dyncore\+\_\+dg.\+F90\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=293pt]{multi__dyncore__dg_8_f90__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Modules}
+\begin{DoxyCompactItemize}
+\item 
+module \mbox{\hyperlink{namespacemultiphase__1d__engine}{multiphase\+\_\+1d\+\_\+engine}}
+\begin{DoxyCompactList}\small\item\em This module contain all the necessary subroutines to deal with F\+E-\/wise equations and fields. Assembling and solving of the momentum equation and associated fields such as capillary pressure, hydrostatic pressure solver, and stabilisation techniques. Also includes the assembly and solving of a Laplacian system (for zeta potential mainly) \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Functions/\+Subroutines}
+\begin{DoxyCompactItemize}
+\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__1d__engine_a98e757b51a04b55df8d38e36470e0b96}{multiphase\+\_\+1d\+\_\+engine\+::intenerge\+\_\+assem\+\_\+solve}} (state, packed\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, tracer, velocity, density, multi\+\_\+absorp, DT, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE, I\+G\+O\+T\+\_\+\+T2, igot\+\_\+theta\+\_\+flux, G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, option\+\_\+path, mass\+\_\+ele\+\_\+transp, thermal, T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, icomp, saturation, Permeability\+\_\+tensor\+\_\+field, nonlinear\+\_\+iteration)
+\begin{DoxyCompactList}\small\item\em Calls to generate the transport equation for the transport of energy/temperature and to solve the transport of components. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a9996f3a8552933cf3c0fc9672de6ec86}{effective\+\_\+cp\+\_\+density}} (porous\+\_\+heat\+\_\+coef, porous\+\_\+heat\+\_\+coef\+\_\+old)
+\begin{DoxyCompactList}\small\item\em \+: Checks convergence on the temperature field Calculation of the averaged heat capacity and density average = porosity $\ast$ Cp\+\_\+f$\ast$rho\+\_\+f + (1-\/porosity) $\ast$ C\+P\+\_\+p$\ast$rho\+\_\+p Since porous promerties is defined element-\/wise and fluid properties C\+V-\/wise we perform an average as it is stored cv-\/wise \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__1d__engine_af9aedf8b67f5b7198eb4b67601a7fab0}{multiphase\+\_\+1d\+\_\+engine\+::enthalpy\+\_\+assem\+\_\+solve}} (state, packed\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, tracer, velocity, density, multi\+\_\+absorp, DT, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE, I\+G\+O\+T\+\_\+\+T2, igot\+\_\+theta\+\_\+flux, G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, option\+\_\+path, mass\+\_\+ele\+\_\+transp, thermal, T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, icomp, saturation, Permeability\+\_\+tensor\+\_\+field, nonlinear\+\_\+iteration, magma\+\_\+phase\+\_\+coefficients)
+\begin{DoxyCompactList}\small\item\em Calls to generate the transport equation for the enthalpy equation. This is efectively the temperature equation but making the enthalpy implicit by substituting the temperature by its linear relationship with enthalpy\+: H = rho Cp Temp + rho Lf phi; Where Lf is the latent heat and phi is the amount of liquid fluid phase. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a86c48c7bcc5921e6764217e562a7b5d6}{multiphase\+\_\+1d\+\_\+engine\+::force\+\_\+min\+\_\+max\+\_\+principle}} (Mdims, entrance, tracer, nonlinear\+\_\+iteration, totally\+\_\+min\+\_\+max)
+\begin{DoxyCompactList}\small\item\em \+: To help the stability of the system,if there are no sources/sinks it is known that the temperature must fulfill the min max principle, therefore here values outside this rank are capped. \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__1d__engine_aa5819c18b57b8144faa1885776a2cc8b}{multiphase\+\_\+1d\+\_\+engine\+::tracer\+\_\+assemble\+\_\+solve}} (Tracer\+\_\+name, state, packed\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, tracer, velocity, density, multi\+\_\+absorp, DT, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE, I\+G\+O\+T\+\_\+\+T2, igot\+\_\+theta\+\_\+flux, G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, mass\+\_\+ele\+\_\+transp, T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, icomp, saturation, Permeability\+\_\+tensor\+\_\+field, nonlinear\+\_\+iteration)
+\begin{DoxyCompactList}\small\item\em Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passive\+\_\+\+Tracer\+\_\+N Where N is an integer which is continuous starting from 1. \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__1d__engine_ad29606c63b241238edd97827aa4564d7}{multiphase\+\_\+1d\+\_\+engine\+::volumefraction\+\_\+assemble\+\_\+solve}} (state, packed\+\_\+state, multicomponent\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, multi\+\_\+absorp, upwnd, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, DT, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, V\+\_\+\+S\+O\+U\+R\+CE, V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE, igot\+\_\+theta\+\_\+flux, mass\+\_\+ele\+\_\+transp, nonlinear\+\_\+iteration, time\+\_\+step, S\+F\+P\+I\+\_\+taken, S\+F\+P\+I\+\_\+its, Courant\+\_\+number, T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J)
+\begin{DoxyCompactList}\small\item\em Calls to generate the transport equation for the saturation. Embeded an F\+PI with backtracking method is uncluded. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a171ba3eb037458ea0b2f128257e43588}{update\+\_\+components}} ()
+\begin{DoxyCompactList}\small\item\em W\+A\+R\+N\+I\+NG\+: Still work in progress. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a871f4ede396b430a5194023196511192}{multiphase\+\_\+1d\+\_\+engine\+::compositional\+\_\+assemble\+\_\+solve}} (state, packed\+\_\+state, multicomponent\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, C\+V\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, multi\+\_\+absorp, DT, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, G\+E\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, U\+S\+E\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+G\+D\+I\+FF, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, mass\+\_\+ele, sum\+\_\+theta\+\_\+flux, sum\+\_\+one\+\_\+m\+\_\+theta\+\_\+flux, sum\+\_\+theta\+\_\+flux\+\_\+j, sum\+\_\+one\+\_\+m\+\_\+theta\+\_\+flux\+\_\+j)
+\begin{DoxyCompactList}\small\item\em \+:In this subroutine the components are solved for all the phases. Systems for each component are assembled and solved by calling I\+N\+T\+E\+N\+E\+R\+G\+E\+\_\+\+A\+S\+S\+E\+M\+\_\+\+S\+O\+L\+VE \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a2ca070e362a90a07dcb98eada12a622f}{ensure\+\_\+components\+\_\+sum\+\_\+to\+\_\+one}} (packed\+\_\+state)
+\begin{DoxyCompactList}\small\item\em W\+A\+R\+N\+I\+NG\+: It is currently not working well...better to use Chris\textquotesingle{} method which uses a R\+HS. \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__1d__engine_ae5be4b78c1796fac4008d398a7cdd0aa}{multiphase\+\_\+1d\+\_\+engine\+::force\+\_\+bal\+\_\+cty\+\_\+assem\+\_\+solve}} (state, packed\+\_\+state, Mdims, C\+V\+\_\+\+G\+Idims, F\+E\+\_\+\+G\+Idims, C\+V\+\_\+funs, F\+E\+\_\+funs, Mspars, ndgln, Mdisopt, Mmat, multi\+\_\+absorp, upwnd, eles\+\_\+with\+\_\+pipe, pipes\+\_\+aux, velocity, pressure, DT, S\+U\+F\+\_\+\+S\+I\+G\+\_\+\+D\+I\+A\+G\+T\+E\+N\+\_\+\+BC, V\+\_\+\+S\+O\+U\+R\+CE, V\+O\+L\+F\+R\+A\+\_\+\+P\+O\+RE, I\+G\+O\+T\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+UX, T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, O\+N\+E\+\_\+\+M\+\_\+\+T\+H\+E\+T\+A\+\_\+\+F\+L\+U\+X\+\_\+J, calculate\+\_\+mass\+\_\+delta, outfluxes, pres\+\_\+its\+\_\+taken, nonlinear\+\_\+its, Courant\+\_\+number)
+\begin{DoxyCompactList}\small\item\em Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix Once these matrices (and corresponding R\+H\+Ss) are generated the system of equations is solved using the projection method. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a09c428fa5a27cf3407e6a1bcc917f161}{stokes\+\_\+anderson\+\_\+acceleration}} (packed\+\_\+state, Mdims, Mmat, Mspars, I\+N\+V\+\_\+B, rhs\+\_\+p, ndgln, M\+A\+S\+S\+\_\+\+E\+LE, diagonal\+\_\+A, velocity, P\+\_\+all, deltap, cmc\+\_\+petsc, stokes\+\_\+max\+\_\+its)
+\begin{DoxyCompactList}\small\item\em Generic subroutine that perform the Anderson acceleration solver. This is storing a set of results for a system that converges based on a F\+PI and finding an optimal combination of all of these results that minimise the residual Method explained in D\+O\+I.\+10.\+1137/16\+M1076770. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_ad3c0d8ed87bdfa9ff27a1048406ecd2f}{flip\+\_\+p\+\_\+and\+\_\+v\+\_\+bcs}} (Mdims, W\+I\+C\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL, pressure\+\_\+\+B\+Cs, W\+I\+C\+\_\+\+F\+L\+I\+P\+\_\+\+P\+\_\+\+V\+E\+L\+\_\+\+B\+CS)
+\begin{DoxyCompactList}\small\item\em Flip P and V B\+Cs for wells. Implemented for A\+T\+ES applications or other applications when needing to switch on and off wells. For this to work, need to define boundary conditions for wells for both pressure and velocity in a time-\/dependent manner through Diamond using a python function. When the user wants the pressure BC to be ignored and the velocity BC to be applied, specify negative pressure. When the user wants the pressure BC to applied, specify normal positive pressure. Specify velocity B\+Cs for both wells as a constant. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a68747c78369c5abd8f6bce5ae5d0bec7}{mult\+\_\+inv\+\_\+mass\+\_\+vel\+\_\+vector}} (Mdims, ndgln, vel\+\_\+vector, M\+A\+S\+S\+\_\+\+E\+LE)
+\begin{DoxyCompactList}\small\item\em Multiplies the inv of the lumped mass matrix times the vel\+\_\+vector vel\+\_\+vector = vel\+\_\+vector / (mass\+\_\+ele/vel\+\_\+local\+\_\+nodes) \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a86babf83394e349a6bb014238237de1f}{generate\+\_\+pivit\+\_\+matrix\+\_\+stokes}} (Mdims, Mmat, M\+A\+S\+S\+\_\+\+E\+LE, diagonal\+\_\+A)
+\begin{DoxyCompactList}\small\item\em Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a5a525a502553802a5ecbe7a138b1575c}{solve\+\_\+and\+\_\+update\+\_\+velocity}} (Mmat, Velocity, C\+D\+P\+\_\+tensor, U\+\_\+\+R\+HS, diagonal\+\_\+A)
+\begin{DoxyCompactList}\small\item\em Update velocity by solving the momentum equation for a given pressure, the R\+HS is formed here If rescale\+\_\+mom\+\_\+matrices = .true., here the R\+HS rescaled. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_ae8a4aa21acf8febcc4fec45af279f33d}{solve\+\_\+and\+\_\+update\+\_\+pressure}} (Mdims, rhs\+\_\+p, P\+\_\+all, deltap, cmc\+\_\+petsc, diagonal\+\_\+\+C\+MC, update\+\_\+pres)
+\begin{DoxyCompactList}\small\item\em Compute deltaP by solving the pressure equation using the C\+MC matrix. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a0eb7a61a4dc66651096b6fabc6739ea3}{project\+\_\+velocity\+\_\+to\+\_\+affine\+\_\+space}} (Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp\+\_\+tensor)
+\begin{DoxyCompactList}\small\item\em Project back the velocity from a non divergent-\/free space to a divergent free space. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a53b2f85c6a8345f6316959365e52bd83}{compute\+\_\+div\+\_\+u}} (Mdims, Mmat, Mspars, velocity, I\+N\+V\+\_\+B, rhs\+\_\+p, force\+\_\+transpose\+\_\+C)
+\begin{DoxyCompactList}\small\item\em Calculates the divergence of the velocity by multipliying it by the Ct matrix. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_aa5bc5bc1a7d8c32c0a8f667b03648f64}{include\+\_\+wells\+\_\+and\+\_\+compressibility\+\_\+into\+\_\+rhs}} (Mdims, rhs\+\_\+p, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+ES, M\+A\+S\+S\+\_\+\+M\+N\+\_\+\+P\+R\+ES, M\+A\+S\+S\+\_\+\+S\+UF, pipes\+\_\+aux, D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+E\+S\+\_\+\+C\+O\+UP)
+\begin{DoxyCompactList}\small\item\em Include in the pressure matrix the compressibility terms (based on taylor expansion series) to ensure that we account for this term as implicitly as possible. For wells it introduces the coupling between pressures. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a1329a9f2f2cb2da28424447b49428e34}{calc\+\_\+cvpres\+\_\+from\+\_\+fepres}} ()
+\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_aa2eb04d27443c785084566c701903207}{porous\+\_\+assemb\+\_\+force\+\_\+cty}} (packed\+\_\+state, pressure, Mdims, F\+E\+\_\+\+G\+Idims, F\+E\+\_\+funs, Mspars, ndgln, Mmat, X\+\_\+\+A\+LL, U\+\_\+\+S\+O\+U\+R\+C\+E\+\_\+\+C\+V\+\_\+\+A\+LL)
+\begin{DoxyCompactList}\small\item\em and faster to compute than for Navier-\/\+Stokes. Therefore, here the R\+HS and the Mass matrix are computed for this case \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a6a7f0d36d29011eddc120ea33cb763db}{get\+\_\+massmatrix}} (E\+LE, Mdims, Dev\+Funs, Mmat, X\+\_\+\+A\+LL, U\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED)
+\begin{DoxyCompactList}\small\item\em Here no homogenisation can be performed. N\+O\+TE\+: F\+OR T\+HE T\+I\+ME B\+E\+I\+NG O\+N\+LY R\+O\+W\+\_\+\+S\+UM IS A\+C\+T\+I\+V\+A\+T\+ED H\+E\+RE, A\+ND G\+E\+T\+\_\+\+P\+O\+R\+O\+U\+S\+\_\+\+M\+A\+S\+S\+\_\+\+M\+A\+T\+R\+IX IS K\+E\+PT F\+OR T\+HE D\+I\+A\+G\+O\+N\+AL S\+C\+A\+L\+I\+NG M\+E\+T\+H\+OD. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_ae2e637a6ef27761363d224b3d7869c6a}{get\+\_\+all\+\_\+in\+\_\+mass\+\_\+matrix}} (Mdims, Mmat, D\+I\+A\+G\+\_\+\+B\+I\+G\+M\+\_\+\+C\+ON, L\+U\+M\+P\+\_\+\+P\+I\+V\+I\+T\+\_\+\+O\+N\+\_\+\+A\+LL, L\+U\+M\+P\+\_\+\+D\+I\+A\+G\+\_\+\+M\+OM)
+\begin{DoxyCompactList}\small\item\em W\+A\+R\+N\+I\+N\+G$\ast$$\ast$$\ast$$\ast$this is under testing$\ast$$\ast$$\ast$$\ast$. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a24c9e30f49053a0f6dfe4ad7f5f73de9}{p0\+\_\+limiter}} ()
+\begin{DoxyCompactList}\small\item\em \+: Computes a limited velocity when using a P0\+DG velocity discretisation \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_af5917482b2dae4c57c6e06a839682e42}{multiphase\+\_\+1d\+\_\+engine\+::dg\+\_\+visc\+\_\+lin}} (S\+\_\+\+I\+N\+V\+\_\+\+N\+N\+X\+\_\+\+M\+A\+T12, N\+N\+X\+\_\+\+M\+AT, N\+N\+X\+\_\+\+M\+A\+T2, N\+N\+\_\+\+M\+AT, N\+N\+\_\+\+M\+A\+T2, U\+\_\+\+S\+N\+L\+OC, U\+\_\+\+N\+L\+OC, S\+B\+U\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED, S\+D\+E\+T\+WE, S\+B\+C\+V\+N\+GI, S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL, N\+D\+IM, U\+\_\+\+S\+L\+O\+C2\+L\+OC, U\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC, U\+\_\+\+N\+L\+O\+C\+\_\+\+E\+XT, O\+N\+\_\+\+B\+O\+U\+N\+D\+A\+RY)
+\begin{DoxyCompactList}\small\item\em \+:$<$\+F\+O\+R I\+N\+E\+R\+T\+I\+A O\+N\+L\+Y$>$ This sub calculates S\+\_\+\+I\+N\+V\+\_\+\+N\+N\+X\+\_\+\+M\+A\+T12 which contains N\+D\+IM matricies that are used to form the inter element coupling for the viscocity discretization. N\+N\+X\+\_\+\+M\+AT, N\+N\+X\+\_\+\+M\+A\+T2 contain matricies of first derivative times basis function for current element and neightbouring element. Similarly N\+N\+\_\+\+M\+AT, N\+N\+\_\+\+M\+A\+T2, contain the element-\/wise mass matrices. Only call this sub if element not next to the boundary... \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_afcedae35a0a37c9b033248d85bb9ad86}{multiphase\+\_\+1d\+\_\+engine\+::viscocity\+\_\+tensor\+\_\+les\+\_\+calc}} (L\+E\+S\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, L\+E\+S\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL, D\+U\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, N\+D\+IM, N\+P\+H\+A\+SE, U\+\_\+\+N\+L\+OC, X\+\_\+\+N\+L\+OC, T\+O\+T\+E\+LE, X\+\_\+\+N\+O\+N\+O\+DS, X\+\_\+\+A\+LL, X\+\_\+\+N\+D\+G\+LN, M\+A\+T\+\_\+\+N\+O\+N\+O\+DS, M\+A\+T\+\_\+\+N\+L\+OC, M\+A\+T\+\_\+\+N\+D\+G\+LN, L\+E\+S\+\_\+\+D\+I\+S\+O\+PT, L\+E\+S\+\_\+\+CS, U\+D\+EN, C\+V\+\_\+\+N\+O\+N\+O\+DS, C\+V\+\_\+\+N\+D\+G\+LN, U\+\_\+\+N\+D\+G\+LN, U\+\_\+\+N\+O\+N\+O\+DS, U\+\_\+\+A\+LL, D\+E\+R\+IV)
+\begin{DoxyCompactList}\small\item\em \+: $<$\+F\+O\+R I\+N\+E\+R\+T\+I\+A O\+N\+L\+Y$>$ This subroutine calculates a tensor of viscocity L\+E\+S\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, L\+E\+S\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_aac4e80d22e26450266e054deedd13fc9}{viscocity\+\_\+tensor\+\_\+les\+\_\+calc\+\_\+u}} (L\+E\+S\+\_\+\+U\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, L\+E\+S\+\_\+\+U\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL, Q\+\_\+\+S\+C\+H\+E\+M\+E\+\_\+\+A\+B\+S\+\_\+\+C\+O\+N\+T\+\_\+\+V\+OL, D\+U\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, N\+D\+IM, N\+P\+H\+A\+SE, U\+\_\+\+N\+L\+OC, X\+\_\+\+N\+L\+OC, T\+O\+T\+E\+LE, X\+\_\+\+N\+O\+N\+O\+DS, X\+\_\+\+A\+LL, X\+\_\+\+N\+D\+G\+LN, L\+E\+S\+\_\+\+D\+I\+S\+O\+PT, CS, U\+\_\+\+N\+D\+G\+LN, U\+\_\+\+N\+O\+N\+O\+DS, U\+\_\+\+A\+LL)
+\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a41b4850724ffd0c17e8300f4eaa60296}{oneeletens\+\_\+all}} (L\+O\+C\+\_\+\+X\+\_\+\+A\+LL, L\+E\+S\+\_\+\+D\+I\+S\+O\+PT, O\+N\+E\+\_\+\+O\+V\+E\+R\+\_\+\+H2, T\+E\+N\+S\+X\+X\+\_\+\+A\+LL, X\+\_\+\+N\+L\+OC, N\+D\+IM, M\+E\+A\+N\+\_\+\+U\+D\+E\+R\+\_\+U, N\+P\+H\+A\+SE)
+\begin{DoxyCompactList}\small\item\em R\+E\+P\+R\+E\+S\+E\+N\+TS T\+HE S\+I\+ZE A\+ND S\+H\+A\+PE OF T\+HE S\+U\+R\+R\+O\+U\+N\+D\+I\+NG E\+L\+E\+M\+E\+N\+TS. L\+E\+S\+\_\+\+D\+I\+S\+O\+PT=L\+ES option. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a7a5112eda36874919ad0ce46f54978c4}{jacdia}} (AA, V, D, N, A)
+\begin{DoxyCompactList}\small\item\em find the eigen-\/vectors V and the eigen values A so that AA=V$^\wedge$T D V \& D is diagonal. It uses the algorithm of Matrix Computations 2nd edition, p196. sprint\+\_\+to\+\_\+do!!!!\+M\+O\+VE TO F\+O\+R\+T\+R\+AN 90 \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a58cac3905be09f7b7a02061cfef6ef01}{jacpre}} (S\+I\+N\+A\+LF, C\+O\+S\+A\+LF, P, Q, A, N)
+\begin{DoxyCompactList}\small\item\em P\+R\+E-\/\+M\+U\+L\+T\+I\+P\+LY matrix A by transpose of Rotation matrix is realised by passing -\/S\+I\+N\+A\+LF down into S\+I\+N\+A\+LF. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a09643136688e87eec9171d22ab63d181}{jacpos}} (S\+I\+N\+A\+LF, C\+O\+S\+A\+LF, P, Q, A, N)
+\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a92d78676878788b54916f9a7e0bc894a}{multiphase\+\_\+1d\+\_\+engine\+::comb\+\_\+vel\+\_\+matrix\+\_\+diag\+\_\+dist}} (D\+I\+A\+G\+\_\+\+B\+I\+G\+M\+\_\+\+C\+ON, B\+I\+G\+M\+\_\+\+C\+ON, D\+G\+M\+\_\+\+P\+E\+T\+SC, F\+I\+N\+E\+LE, C\+O\+L\+E\+LE, N\+D\+IM, N\+P\+H\+A\+SE, U\+\_\+\+N\+L\+OC, T\+O\+T\+E\+LE, velocity, pressure, Mmat)
+\begin{DoxyCompactList}\small\item\em \+: $<$\+F\+O\+R I\+N\+E\+R\+T\+I\+A O\+N\+L\+Y$>$This subroutine combines the distributed and block diagonal for an element into the matrix D\+G\+M\+\_\+\+P\+HA. For stokes also the diagonal of the matrix is introduced in the mass matrix \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_af8e1dabacd438da77f8e97f5234e6e3e}{multiphase\+\_\+1d\+\_\+engine\+::comb\+\_\+vel\+\_\+matrix\+\_\+diag\+\_\+dist\+\_\+lump}} (D\+I\+A\+G\+\_\+\+B\+I\+G\+M\+\_\+\+C\+ON, B\+I\+G\+M\+\_\+\+C\+ON, D\+G\+M\+\_\+\+P\+E\+T\+SC, F\+I\+N\+E\+LE, C\+O\+L\+E\+LE, N\+D\+IM, N\+P\+H\+A\+SE, U\+\_\+\+N\+L\+OC, T\+O\+T\+E\+LE, velocity, pressure)
+\begin{DoxyCompactList}\small\item\em \+: $<$\+F\+O\+R I\+N\+E\+R\+T\+I\+A O\+N\+L\+Y$>$This subroutine combines the distributed and block diagonal for an element into the matrix D\+G\+M\+\_\+\+P\+HA. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a8e2d722ec8283f1e4d87f7b6d7e427a5}{multiphase\+\_\+1d\+\_\+engine\+::use\+\_\+posinmat\+\_\+c\+\_\+store}} (C\+O\+U\+NT, U\+\_\+\+I\+N\+OD, P\+\_\+\+J\+N\+OD, U\+\_\+\+N\+O\+N\+O\+DS, F\+I\+N\+DC, C\+O\+LC, N\+C\+O\+LC, I\+D\+O\+\_\+\+S\+T\+O\+R\+E\+\_\+\+A\+C\+\_\+\+S\+P\+A\+R\+\_\+\+PT, S\+T\+O\+R\+E\+D\+\_\+\+A\+C\+\_\+\+S\+P\+A\+R\+\_\+\+PT, P\+O\+S\+I\+N\+M\+A\+T\+\_\+\+C\+\_\+\+S\+T\+O\+RE, E\+LE, U\+\_\+\+I\+L\+OC, P\+\_\+\+J\+L\+OC, T\+O\+T\+E\+LE, U\+\_\+\+N\+L\+OC, P\+\_\+\+N\+L\+OC)
+\begin{DoxyCompactList}\small\item\em Used to assemble the C matrix in the I\+C\+F\+E\+R\+ST format. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a25c88bda5ea4082016d39781e111d445}{multiphase\+\_\+1d\+\_\+engine\+::use\+\_\+posinmat\+\_\+c\+\_\+store\+\_\+suf\+\_\+dg}} (C\+O\+U\+NT, U\+\_\+\+I\+N\+OD, P\+\_\+\+J\+N\+OD, U\+\_\+\+N\+O\+N\+O\+DS, F\+I\+N\+DC, C\+O\+LC, N\+C\+O\+LC, I\+D\+O\+\_\+\+S\+T\+O\+R\+E\+\_\+\+A\+C\+\_\+\+S\+P\+A\+R\+\_\+\+PT, S\+T\+O\+R\+E\+D\+\_\+\+A\+C\+\_\+\+S\+P\+A\+R\+\_\+\+PT, P\+O\+S\+I\+N\+M\+A\+T\+\_\+\+C\+\_\+\+S\+T\+O\+R\+E\+\_\+\+S\+U\+F\+\_\+\+DG, E\+LE, I\+F\+A\+CE, U\+\_\+\+S\+I\+L\+OC, P\+\_\+\+S\+J\+L\+OC, T\+O\+T\+E\+LE, N\+F\+A\+CE, U\+\_\+\+S\+N\+L\+OC, P\+\_\+\+S\+N\+L\+OC)
+\begin{DoxyCompactList}\small\item\em Used to assemble the C matrix in the I\+C\+F\+E\+R\+ST format (for DG?) \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a8917356adde1eb2aedccd0320529a6c5}{multiphase\+\_\+1d\+\_\+engine\+::linearise\+\_\+field}} (field\+\_\+in, field\+\_\+out)
+\begin{DoxyCompactList}\small\item\em \+: $<$\+F\+O\+R I\+N\+E\+R\+T\+I\+A O\+N\+L\+Y$>$ This sub will linearise a p2 field \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a03c49a0f1a67a464bbb77115775ae4d1}{multiphase\+\_\+1d\+\_\+engine\+::introduce\+\_\+grad\+\_\+rhs\+\_\+field\+\_\+term}} (packed\+\_\+state, Mdims, Mmat, R\+H\+S\+\_\+field, F\+E\+\_\+funs, Devfuns, X\+\_\+\+A\+LL, L\+O\+C\+\_\+\+U\+\_\+\+R\+HS, ele, cv\+\_\+ndgln, x\+\_\+ndgln, ele2, iface, sdetwe, S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL, U\+\_\+\+S\+L\+O\+C2\+L\+OC, C\+V\+\_\+\+S\+L\+O\+C2\+L\+OC, M\+A\+T\+\_\+\+O\+T\+H\+E\+R\+\_\+\+L\+OC)
+\begin{DoxyCompactList}\small\item\em \+: This subroutine performs and introduces the gradient of a R\+HS field (Capillary pressure for example) for the momentum equation. It has two options (hard-\/coded) integrations by parts (activated) or voluemtric integration, For capillary pressure\+: The capillary pressure is a term introduced as a R\+HS which affects the effective velocity \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_acad594ff5e1d219a2e1c7e5fe2a51605}{multiphase\+\_\+1d\+\_\+engine\+::getoverrelaxation\+\_\+parameter}} (state, packed\+\_\+state, Mdims, ndgln, Overrelaxation, Phase\+\_\+with\+\_\+\+Pc, totally\+\_\+min\+\_\+max, for\+\_\+transport)
+\begin{DoxyCompactList}\small\item\em Overrelaxation has to be alocate before calling this subroutine its size is cv\+\_\+nonods For more information read\+: doi.\+org/10.1016/j.\+cma.\+2019.\+07.\+004. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a7a01c78d922871a74af7e6e4a3228868}{multiphase\+\_\+1d\+\_\+engine\+::high\+\_\+order\+\_\+pressure\+\_\+solve}} (Mdims, ndgln, u\+\_\+rhs, state, packed\+\_\+state, nphase, u\+\_\+absorbin)
+\begin{DoxyCompactList}\small\item\em \+: Instead of including the gravity in the R\+HS normally, here a system based on a Laplacian is created and solved that accounts for the gravity effect in the system. Next, this is introduced as a R\+HS in the momemtum equation This allows for higher precision for the gravity effect. $>$ \end{DoxyCompactList}\item 
+real function \mbox{\hyperlink{namespacemultiphase__1d__engine_a75a4fb88f761b81639c9b81628eddc95}{multiphase\+\_\+1d\+\_\+engine\+::dg\+\_\+oscilat\+\_\+detect}} (S\+N\+D\+O\+T\+Q\+\_\+\+K\+E\+EP, S\+N\+D\+O\+T\+Q2\+\_\+\+K\+E\+EP, N\+\_\+\+D\+O\+T\+\_\+\+DU, N\+\_\+\+D\+O\+T\+\_\+\+D\+U2, S\+I\+N\+C\+O\+ME, M\+A\+S\+S\+\_\+\+E\+LE, M\+A\+S\+S\+\_\+\+E\+L\+E2)
+\begin{DoxyCompactList}\small\item\em \+: $<$\+I\+N\+E\+R\+T\+I\+A O\+N\+L\+Y$>$Determine if we have an oscillation in the normal direction... dg\+\_\+oscilat\+\_\+detect=1.\+0-\/ C\+E\+N\+T\+R\+AL S\+C\+H\+E\+ME. dg\+\_\+oscilat\+\_\+detect=0.\+0-\/ U\+P\+W\+I\+ND S\+C\+H\+E\+ME. \end{DoxyCompactList}\item 
+real function \mbox{\hyperlink{namespacemultiphase__1d__engine_a34cd5ba5d5dfec039fa896b5fdc14e9f}{multiphase\+\_\+1d\+\_\+engine\+::p0\+\_\+dg\+\_\+oscilat\+\_\+detect}} (S\+N\+D\+O\+T\+Q\+\_\+\+K\+E\+EP, S\+N\+D\+O\+T\+Q2\+\_\+\+K\+E\+EP, N\+\_\+\+D\+O\+T\+\_\+\+DU, N\+\_\+\+D\+O\+T\+\_\+\+D\+U2, S\+I\+N\+C\+O\+ME, M\+A\+S\+S\+\_\+\+E\+LE, M\+A\+S\+S\+\_\+\+E\+L\+E2)
+\begin{DoxyCompactList}\small\item\em \+: $<$\+I\+N\+E\+R\+T\+I\+A O\+N\+L\+Y$>$ Determine if we have an oscillation in the normal direction... dg\+\_\+oscilat\+\_\+detect=1.\+0-\/ C\+E\+N\+T\+R\+AL S\+C\+H\+E\+ME. dg\+\_\+oscilat\+\_\+detect=0.\+0-\/ U\+P\+W\+I\+ND S\+C\+H\+E\+ME. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_a44c487b15ec28694d3d4e75dd952d27f}{multiphase\+\_\+1d\+\_\+engine\+::diffus\+\_\+cal\+\_\+coeff\+\_\+stress\+\_\+or\+\_\+tensor}} (Mdims, D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX, D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX, S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+RM, S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+R\+M\+\_\+\+S\+T\+AB, Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS, S\+B\+U\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED, S\+B\+C\+V\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED, S\+B\+C\+V\+N\+GI, S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL, S\+L\+O\+C2\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, S\+L\+O\+C2\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL, D\+I\+F\+F\+\_\+\+G\+I\+\_\+\+A\+D\+D\+ED, H\+DC, U\+\_\+\+C\+V\+\_\+\+N\+O\+D\+J\+\_\+\+I\+P\+H\+A\+\_\+\+A\+LL, U\+\_\+\+C\+V\+\_\+\+N\+O\+D\+I\+\_\+\+I\+P\+H\+A\+\_\+\+A\+LL, U\+O\+L\+D\+\_\+\+C\+V\+\_\+\+N\+O\+D\+J\+\_\+\+I\+P\+H\+A\+\_\+\+A\+LL, U\+O\+L\+D\+\_\+\+C\+V\+\_\+\+N\+O\+D\+I\+\_\+\+I\+P\+H\+A\+\_\+\+A\+LL, E\+LE, E\+L\+E2, S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL, S\+L\+O\+C\+\_\+\+D\+U\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, S\+L\+O\+C2\+\_\+\+D\+U\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, S\+L\+O\+C\+\_\+\+D\+U\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, S\+L\+O\+C2\+\_\+\+D\+U\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, S\+E\+LE, W\+I\+C\+\_\+\+U\+\_\+\+BC, W\+I\+C\+\_\+\+U\+\_\+\+B\+C\+\_\+\+D\+I\+R\+I\+C\+H\+L\+ET, S\+I\+M\+P\+L\+E\+\_\+\+D\+I\+F\+F\+\_\+\+C\+A\+LC, D\+I\+F\+F\+\_\+\+M\+I\+N\+\_\+\+F\+R\+AC, D\+I\+F\+F\+\_\+\+M\+A\+X\+\_\+\+F\+R\+AC)
+\begin{DoxyCompactList}\small\item\em \+: $<$\+I\+N\+E\+R\+T\+I\+A O\+N\+L\+Y$>$ This sub calculates the effective diffusion coefficientd D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX,D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX based on a non-\/linear method and a non-\/oscillating scheme. This implements the stress and tensor form of diffusion and calculates a jump conidition. which is in D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+\_\+\+D\+I\+V\+DX, D\+I\+F\+F\+\_\+\+C\+O\+E\+F\+O\+L\+D\+\_\+\+D\+I\+V\+DX The coefficient are in N\+\_\+\+D\+O\+T\+\_\+\+D\+K\+DU, N\+\_\+\+D\+O\+T\+\_\+\+D\+K\+D\+U\+O\+LD. look at the manual DG treatment of viscocity. \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{multi__dyncore__dg_8_f90_a15505780dc171eceae929e55d7951913}{for\+\_\+tens\+\_\+derivs\+\_\+ndots}} (D\+I\+F\+F\+\_\+\+S\+T\+A\+N\+D\+\_\+\+D\+I\+V\+D\+X\+\_\+U, N\+\_\+\+D\+O\+T\+\_\+\+D\+K\+DU, N\+\_\+\+D\+O\+T\+\_\+\+D\+K\+D\+U\+O\+LD, D\+I\+F\+F\+\_\+\+G\+I\+\_\+\+A\+D\+D\+ED, S\+L\+O\+C\+\_\+\+D\+U\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, S\+L\+O\+C\+\_\+\+D\+U\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL, S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON, S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL, N\+D\+I\+M\+\_\+\+V\+EL, N\+D\+IM, N\+P\+H\+A\+SE, U\+\_\+\+S\+N\+L\+OC, C\+V\+\_\+\+S\+N\+L\+OC, S\+B\+C\+V\+N\+GI, S\+B\+U\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED, S\+B\+C\+V\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED, S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL, H\+DC, Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS, S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+RM, S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+R\+M\+\_\+\+S\+T\+AB)
+\begin{DoxyCompactList}\small\item\em This implements the stress and tensor form of diffusion and calculates a jump conidition. D\+I\+F\+F\+\_\+\+S\+T\+A\+N\+D\+\_\+\+D\+I\+V\+D\+X\+\_\+U is the minimal amount of diffusion. \end{DoxyCompactList}\item 
+subroutine, public \mbox{\hyperlink{namespacemultiphase__1d__engine_aeef4ba493db104704c886272f75f1f34}{multiphase\+\_\+1d\+\_\+engine\+::generate\+\_\+and\+\_\+solve\+\_\+laplacian\+\_\+system}} (Mdims, state, packed\+\_\+state, ndgln, Mmat, Mspars, C\+V\+\_\+funs, C\+V\+\_\+\+G\+Idims, Sigma\+\_\+field, field\+\_\+name, K\+\_\+fields, F\+\_\+fields, intface\+\_\+val\+\_\+type, solver\+\_\+path)
+\begin{DoxyCompactList}\small\item\em \+: In this method we assemble and solve the Laplacian system using at least P1 elements The equation solved is the following\+: Div sigma Grad X = -\/ S\+UM (Div K Grad F) with Neuman B\+Cs = 0 where K and F are passed down as a vector. Therefore for n entries the S\+UM will be performed over n fields Example\+: F = (3, nphase, cv\+\_\+nonods) would include three terms in the R\+HS and the same for K If harmonic average then we perform the harmonic average of sigma and K I\+M\+P\+O\+R\+T\+A\+NT\+: This subroutine requires the P\+Hsparsity to be generated Note that this method solves considering FE fields. If using CV you may incur in an small error. $>$ \end{DoxyCompactList}\item 
+subroutine \mbox{\hyperlink{namespacemultiphase__1d__engine_ac978f4c53e089cee150a4c15b117eee5}{multiphase\+\_\+1d\+\_\+engine\+::impose\+\_\+strong\+\_\+bcs\+\_\+wells}} (state, pipes\+\_\+aux, Mdims, Mmat, ndgln, C\+M\+C\+\_\+petsc, pressure, rhs\+\_\+p)
+\begin{DoxyCompactList}\small\item\em \+: In this subroutine, we modify the C\+MC matrix and the R\+HS for the pressure to strongly impose the pressure boundary conditions for wells O\+N\+LY. This is required only when using P0\+D\+G-\/\+P1 If not imposing strong pressure B\+Cs and using P0\+D\+G-\/\+P1, the formulation for weak pressure B\+Cs leads to a 0 in the diagonal of the C\+MC matrix, therefore strong B\+Cs are required. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function/\+Subroutine Documentation}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a1329a9f2f2cb2da28424447b49428e34}\label{multi__dyncore__dg_8_f90_a1329a9f2f2cb2da28424447b49428e34}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!calc\_cvpres\_from\_fepres@{calc\_cvpres\_from\_fepres}}
+\index{calc\_cvpres\_from\_fepres@{calc\_cvpres\_from\_fepres}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{calc\_cvpres\_from\_fepres()}{calc\_cvpres\_from\_fepres()}}
+{\footnotesize\ttfamily subroutine force\+\_\+bal\+\_\+cty\+\_\+assem\+\_\+solve\+::calc\+\_\+cvpres\+\_\+from\+\_\+fepres}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=550pt]{multi__dyncore__dg_8_f90_a1329a9f2f2cb2da28424447b49428e34_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a1329a9f2f2cb2da28424447b49428e34_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a53b2f85c6a8345f6316959365e52bd83}\label{multi__dyncore__dg_8_f90_a53b2f85c6a8345f6316959365e52bd83}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!compute\_div\_u@{compute\_div\_u}}
+\index{compute\_div\_u@{compute\_div\_u}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{compute\_div\_u()}{compute\_div\_u()}}
+{\footnotesize\ttfamily subroutine force\+\_\+bal\+\_\+cty\+\_\+assem\+\_\+solve\+::compute\+\_\+div\+\_\+u (\begin{DoxyParamCaption}\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type (multi\+\_\+matrices), intent(in)}]{Mmat,  }\item[{type (multi\+\_\+sparsities), intent(in)}]{Mspars,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{velocity,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{I\+N\+V\+\_\+B,  }\item[{type( vector\+\_\+field ), intent(inout)}]{rhs\+\_\+p,  }\item[{logical, intent(in), optional}]{force\+\_\+transpose\+\_\+C }\end{DoxyParamCaption})}
+
+
+
+Calculates the divergence of the velocity by multipliying it by the Ct matrix. 
+
+\begin{DoxyAuthor}{Author}
+Pablo Salinas 
+\end{DoxyAuthor}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=319pt]{multi__dyncore__dg_8_f90_a53b2f85c6a8345f6316959365e52bd83_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a53b2f85c6a8345f6316959365e52bd83_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a9996f3a8552933cf3c0fc9672de6ec86}\label{multi__dyncore__dg_8_f90_a9996f3a8552933cf3c0fc9672de6ec86}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!effective\_cp\_density@{effective\_cp\_density}}
+\index{effective\_cp\_density@{effective\_cp\_density}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{effective\_cp\_density()}{effective\_cp\_density()}}
+{\footnotesize\ttfamily subroutine intenerge\+\_\+assem\+\_\+solve\+::effective\+\_\+cp\+\_\+density (\begin{DoxyParamCaption}\item[{real, dimension( \+: ), intent(inout)}]{porous\+\_\+heat\+\_\+coef,  }\item[{real, dimension( \+: ), intent(inout)}]{porous\+\_\+heat\+\_\+coef\+\_\+old }\end{DoxyParamCaption})}
+
+
+
+\+: Checks convergence on the temperature field Calculation of the averaged heat capacity and density average = porosity $\ast$ Cp\+\_\+f$\ast$rho\+\_\+f + (1-\/porosity) $\ast$ C\+P\+\_\+p$\ast$rho\+\_\+p Since porous promerties is defined element-\/wise and fluid properties C\+V-\/wise we perform an average as it is stored cv-\/wise 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a9996f3a8552933cf3c0fc9672de6ec86_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a2ca070e362a90a07dcb98eada12a622f}\label{multi__dyncore__dg_8_f90_a2ca070e362a90a07dcb98eada12a622f}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!ensure\_components\_sum\_to\_one@{ensure\_components\_sum\_to\_one}}
+\index{ensure\_components\_sum\_to\_one@{ensure\_components\_sum\_to\_one}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{ensure\_components\_sum\_to\_one()}{ensure\_components\_sum\_to\_one()}}
+{\footnotesize\ttfamily subroutine compositional\+\_\+assemble\+\_\+solve\+::ensure\+\_\+components\+\_\+sum\+\_\+to\+\_\+one (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state }\end{DoxyParamCaption})}
+
+
+
+W\+A\+R\+N\+I\+NG\+: It is currently not working well...better to use Chris\textquotesingle{} method which uses a R\+HS. 
+
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_ad3c0d8ed87bdfa9ff27a1048406ecd2f}\label{multi__dyncore__dg_8_f90_ad3c0d8ed87bdfa9ff27a1048406ecd2f}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!flip\_p\_and\_v\_bcs@{flip\_p\_and\_v\_bcs}}
+\index{flip\_p\_and\_v\_bcs@{flip\_p\_and\_v\_bcs}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{flip\_p\_and\_v\_bcs()}{flip\_p\_and\_v\_bcs()}}
+{\footnotesize\ttfamily subroutine force\+\_\+bal\+\_\+cty\+\_\+assem\+\_\+solve\+::flip\+\_\+p\+\_\+and\+\_\+v\+\_\+bcs (\begin{DoxyParamCaption}\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{integer, dimension( \+:,\+:,\+: ), intent(in)}]{W\+I\+C\+\_\+\+P\+\_\+\+B\+C\+\_\+\+A\+LL,  }\item[{type(tensor\+\_\+field)}]{pressure\+\_\+\+B\+Cs,  }\item[{integer, dimension( 1,mdims\%npres,surface\+\_\+element\+\_\+count(pressure)), intent(out)}]{W\+I\+C\+\_\+\+F\+L\+I\+P\+\_\+\+P\+\_\+\+V\+E\+L\+\_\+\+B\+CS }\end{DoxyParamCaption})}
+
+
+
+Flip P and V B\+Cs for wells. Implemented for A\+T\+ES applications or other applications when needing to switch on and off wells. For this to work, need to define boundary conditions for wells for both pressure and velocity in a time-\/dependent manner through Diamond using a python function. When the user wants the pressure BC to be ignored and the velocity BC to be applied, specify negative pressure. When the user wants the pressure BC to applied, specify normal positive pressure. Specify velocity B\+Cs for both wells as a constant. 
+
+\begin{DoxyAuthor}{Author}
+Geraldine Regnier 
+\end{DoxyAuthor}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_ad3c0d8ed87bdfa9ff27a1048406ecd2f_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a15505780dc171eceae929e55d7951913}\label{multi__dyncore__dg_8_f90_a15505780dc171eceae929e55d7951913}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!for\_tens\_derivs\_ndots@{for\_tens\_derivs\_ndots}}
+\index{for\_tens\_derivs\_ndots@{for\_tens\_derivs\_ndots}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{for\_tens\_derivs\_ndots()}{for\_tens\_derivs\_ndots()}}
+{\footnotesize\ttfamily subroutine diffus\+\_\+cal\+\_\+coeff\+\_\+stress\+\_\+or\+\_\+tensor\+::for\+\_\+tens\+\_\+derivs\+\_\+ndots (\begin{DoxyParamCaption}\item[{real, dimension( ndim,nphase,sbcvngi ), intent(inout)}]{D\+I\+F\+F\+\_\+\+S\+T\+A\+N\+D\+\_\+\+D\+I\+V\+D\+X\+\_\+U,  }\item[{real, dimension( ndim\+\_\+vel,nphase,sbcvngi ), intent(inout)}]{N\+\_\+\+D\+O\+T\+\_\+\+D\+K\+DU,  }\item[{real, dimension( ndim\+\_\+vel,nphase,sbcvngi ), intent(inout)}]{N\+\_\+\+D\+O\+T\+\_\+\+D\+K\+D\+U\+O\+LD,  }\item[{real, dimension( ndim\+\_\+vel, ndim,ndim, nphase, sbcvngi), intent(in)}]{D\+I\+F\+F\+\_\+\+G\+I\+\_\+\+A\+D\+D\+ED,  }\item[{real, dimension( ndim\+\_\+vel, ndim , nphase, u\+\_\+snloc ), intent(in)}]{S\+L\+O\+C\+\_\+\+D\+U\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{real, dimension( ndim\+\_\+vel, ndim , nphase, u\+\_\+snloc ), intent(in)}]{S\+L\+O\+C\+\_\+\+D\+U\+O\+L\+D\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{real, dimension( ndim,ndim,nphase,cv\+\_\+snloc ), intent(in)}]{S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON,  }\item[{real, dimension( nphase,cv\+\_\+snloc ), intent(in)}]{S\+L\+O\+C\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL,  }\item[{integer, intent(in)}]{N\+D\+I\+M\+\_\+\+V\+EL,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{U\+\_\+\+S\+N\+L\+OC,  }\item[{integer, intent(in)}]{C\+V\+\_\+\+S\+N\+L\+OC,  }\item[{integer, intent(in)}]{S\+B\+C\+V\+N\+GI,  }\item[{real, dimension( sbcvngi, u\+\_\+snloc ), intent(in)}]{S\+B\+U\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED,  }\item[{real, dimension( sbcvngi, cv\+\_\+snloc ), intent(in)}]{S\+B\+C\+V\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED,  }\item[{real, dimension( ndim, sbcvngi ), intent(in)}]{S\+N\+O\+R\+M\+X\+N\+\_\+\+A\+LL,  }\item[{real, intent(in)}]{H\+DC,  }\item[{real, intent(in)}]{Z\+E\+R\+O\+\_\+\+O\+R\+\_\+\+T\+W\+O\+\_\+\+T\+H\+I\+R\+DS,  }\item[{logical, intent(in)}]{S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+RM,  }\item[{logical, intent(in)}]{S\+T\+R\+E\+S\+S\+\_\+\+F\+O\+R\+M\+\_\+\+S\+T\+AB }\end{DoxyParamCaption})}
+
+
+
+This implements the stress and tensor form of diffusion and calculates a jump conidition. D\+I\+F\+F\+\_\+\+S\+T\+A\+N\+D\+\_\+\+D\+I\+V\+D\+X\+\_\+U is the minimal amount of diffusion. 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a15505780dc171eceae929e55d7951913_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a86babf83394e349a6bb014238237de1f}\label{multi__dyncore__dg_8_f90_a86babf83394e349a6bb014238237de1f}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!generate\_pivit\_matrix\_stokes@{generate\_pivit\_matrix\_stokes}}
+\index{generate\_pivit\_matrix\_stokes@{generate\_pivit\_matrix\_stokes}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{generate\_pivit\_matrix\_stokes()}{generate\_pivit\_matrix\_stokes()}}
+{\footnotesize\ttfamily subroutine force\+\_\+bal\+\_\+cty\+\_\+assem\+\_\+solve\+::generate\+\_\+pivit\+\_\+matrix\+\_\+stokes (\begin{DoxyParamCaption}\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type (multi\+\_\+matrices), intent(inout)}]{Mmat,  }\item[{real, dimension(\+:), intent(in)}]{M\+A\+S\+S\+\_\+\+E\+LE,  }\item[{type( vector\+\_\+field ), intent(in)}]{diagonal\+\_\+A }\end{DoxyParamCaption})}
+
+
+
+Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not. 
+
+\begin{DoxyAuthor}{Author}
+Pablo Salinas 
+\end{DoxyAuthor}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a86babf83394e349a6bb014238237de1f_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_ae2e637a6ef27761363d224b3d7869c6a}\label{multi__dyncore__dg_8_f90_ae2e637a6ef27761363d224b3d7869c6a}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!get\_all\_in\_mass\_matrix@{get\_all\_in\_mass\_matrix}}
+\index{get\_all\_in\_mass\_matrix@{get\_all\_in\_mass\_matrix}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{get\_all\_in\_mass\_matrix()}{get\_all\_in\_mass\_matrix()}}
+{\footnotesize\ttfamily subroutine assemb\+\_\+force\+\_\+cty\+::get\+\_\+all\+\_\+in\+\_\+mass\+\_\+matrix (\begin{DoxyParamCaption}\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type (multi\+\_\+matrices), intent(inout)}]{Mmat,  }\item[{real, dimension ( \+:, \+:, \+:,   \+:, \+:, \+:,   \+: ), intent(in)}]{D\+I\+A\+G\+\_\+\+B\+I\+G\+M\+\_\+\+C\+ON,  }\item[{logical, intent(in)}]{L\+U\+M\+P\+\_\+\+P\+I\+V\+I\+T\+\_\+\+O\+N\+\_\+\+A\+LL,  }\item[{logical, intent(in)}]{L\+U\+M\+P\+\_\+\+D\+I\+A\+G\+\_\+\+M\+OM }\end{DoxyParamCaption})}
+
+
+
+W\+A\+R\+N\+I\+N\+G$\ast$$\ast$$\ast$$\ast$this is under testing$\ast$$\ast$$\ast$$\ast$. 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_ae2e637a6ef27761363d224b3d7869c6a_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a6a7f0d36d29011eddc120ea33cb763db}\label{multi__dyncore__dg_8_f90_a6a7f0d36d29011eddc120ea33cb763db}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!get\_massmatrix@{get\_massmatrix}}
+\index{get\_massmatrix@{get\_massmatrix}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{get\_massmatrix()}{get\_massmatrix()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+assemb\+\_\+force\+\_\+cty\+::get\+\_\+massmatrix (\begin{DoxyParamCaption}\item[{integer, intent(in)}]{E\+LE,  }\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type(multi\+\_\+dev\+\_\+shape\+\_\+funs), intent(in)}]{Dev\+Funs,  }\item[{type (multi\+\_\+matrices), intent(inout)}]{Mmat,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+A\+LL,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{U\+F\+E\+N\+\_\+\+R\+E\+V\+E\+R\+S\+ED }\end{DoxyParamCaption})}
+
+
+
+Here no homogenisation can be performed. N\+O\+TE\+: F\+OR T\+HE T\+I\+ME B\+E\+I\+NG O\+N\+LY R\+O\+W\+\_\+\+S\+UM IS A\+C\+T\+I\+V\+A\+T\+ED H\+E\+RE, A\+ND G\+E\+T\+\_\+\+P\+O\+R\+O\+U\+S\+\_\+\+M\+A\+S\+S\+\_\+\+M\+A\+T\+R\+IX IS K\+E\+PT F\+OR T\+HE D\+I\+A\+G\+O\+N\+AL S\+C\+A\+L\+I\+NG M\+E\+T\+H\+OD. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a6a7f0d36d29011eddc120ea33cb763db_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a6a7f0d36d29011eddc120ea33cb763db_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_aa5bc5bc1a7d8c32c0a8f667b03648f64}\label{multi__dyncore__dg_8_f90_aa5bc5bc1a7d8c32c0a8f667b03648f64}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!include\_wells\_and\_compressibility\_into\_rhs@{include\_wells\_and\_compressibility\_into\_rhs}}
+\index{include\_wells\_and\_compressibility\_into\_rhs@{include\_wells\_and\_compressibility\_into\_rhs}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{include\_wells\_and\_compressibility\_into\_rhs()}{include\_wells\_and\_compressibility\_into\_rhs()}}
+{\footnotesize\ttfamily subroutine force\+\_\+bal\+\_\+cty\+\_\+assem\+\_\+solve\+::include\+\_\+wells\+\_\+and\+\_\+compressibility\+\_\+into\+\_\+rhs (\begin{DoxyParamCaption}\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type( vector\+\_\+field ), intent(inout)}]{rhs\+\_\+p,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+ES,  }\item[{real, dimension( \+: ), intent(in)}]{M\+A\+S\+S\+\_\+\+M\+N\+\_\+\+P\+R\+ES,  }\item[{real, dimension( \+: ), intent(in)}]{M\+A\+S\+S\+\_\+\+S\+UF,  }\item[{type (multi\+\_\+pipe\+\_\+package), intent(in)}]{pipes\+\_\+aux,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{D\+I\+A\+G\+\_\+\+S\+C\+A\+L\+E\+\_\+\+P\+R\+E\+S\+\_\+\+C\+O\+UP }\end{DoxyParamCaption})}
+
+
+
+Include in the pressure matrix the compressibility terms (based on taylor expansion series) to ensure that we account for this term as implicitly as possible. For wells it introduces the coupling between pressures. 
+
+\begin{DoxyAuthor}{Author}
+Chris Pain, Pablo Salinas 
+\end{DoxyAuthor}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_aa5bc5bc1a7d8c32c0a8f667b03648f64_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a7a5112eda36874919ad0ce46f54978c4}\label{multi__dyncore__dg_8_f90_a7a5112eda36874919ad0ce46f54978c4}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!jacdia@{jacdia}}
+\index{jacdia@{jacdia}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{jacdia()}{jacdia()}}
+{\footnotesize\ttfamily subroutine viscocity\+\_\+tensor\+\_\+les\+\_\+calc\+::jacdia (\begin{DoxyParamCaption}\item[{real, dimension(n,n)}]{AA,  }\item[{real, dimension(n,n)}]{V,  }\item[{real, dimension(n)}]{D,  }\item[{integer}]{N,  }\item[{real, dimension(n,n)}]{A }\end{DoxyParamCaption})}
+
+
+
+find the eigen-\/vectors V and the eigen values A so that AA=V$^\wedge$T D V \& D is diagonal. It uses the algorithm of Matrix Computations 2nd edition, p196. sprint\+\_\+to\+\_\+do!!!!\+M\+O\+VE TO F\+O\+R\+T\+R\+AN 90 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=210pt]{multi__dyncore__dg_8_f90_a7a5112eda36874919ad0ce46f54978c4_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a7a5112eda36874919ad0ce46f54978c4_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a09643136688e87eec9171d22ab63d181}\label{multi__dyncore__dg_8_f90_a09643136688e87eec9171d22ab63d181}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!jacpos@{jacpos}}
+\index{jacpos@{jacpos}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{jacpos()}{jacpos()}}
+{\footnotesize\ttfamily subroutine viscocity\+\_\+tensor\+\_\+les\+\_\+calc\+::jacpos (\begin{DoxyParamCaption}\item[{real}]{S\+I\+N\+A\+LF,  }\item[{real}]{C\+O\+S\+A\+LF,  }\item[{integer}]{P,  }\item[{integer}]{Q,  }\item[{real, dimension(n,n)}]{A,  }\item[{integer}]{N }\end{DoxyParamCaption})}
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a09643136688e87eec9171d22ab63d181_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a58cac3905be09f7b7a02061cfef6ef01}\label{multi__dyncore__dg_8_f90_a58cac3905be09f7b7a02061cfef6ef01}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!jacpre@{jacpre}}
+\index{jacpre@{jacpre}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{jacpre()}{jacpre()}}
+{\footnotesize\ttfamily subroutine viscocity\+\_\+tensor\+\_\+les\+\_\+calc\+::jacpre (\begin{DoxyParamCaption}\item[{real}]{S\+I\+N\+A\+LF,  }\item[{real}]{C\+O\+S\+A\+LF,  }\item[{integer}]{P,  }\item[{integer}]{Q,  }\item[{real, dimension(n,n)}]{A,  }\item[{integer}]{N }\end{DoxyParamCaption})}
+
+
+
+P\+R\+E-\/\+M\+U\+L\+T\+I\+P\+LY matrix A by transpose of Rotation matrix is realised by passing -\/S\+I\+N\+A\+LF down into S\+I\+N\+A\+LF. 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a58cac3905be09f7b7a02061cfef6ef01_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a68747c78369c5abd8f6bce5ae5d0bec7}\label{multi__dyncore__dg_8_f90_a68747c78369c5abd8f6bce5ae5d0bec7}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!mult\_inv\_mass\_vel\_vector@{mult\_inv\_mass\_vel\_vector}}
+\index{mult\_inv\_mass\_vel\_vector@{mult\_inv\_mass\_vel\_vector}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{mult\_inv\_mass\_vel\_vector()}{mult\_inv\_mass\_vel\_vector()}}
+{\footnotesize\ttfamily subroutine force\+\_\+bal\+\_\+cty\+\_\+assem\+\_\+solve\+::mult\+\_\+inv\+\_\+mass\+\_\+vel\+\_\+vector (\begin{DoxyParamCaption}\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type(multi\+\_\+ndgln), intent(in)}]{ndgln,  }\item[{real, dimension(\+:,\+:,\+:), intent(inout)}]{vel\+\_\+vector,  }\item[{real, dimension(\+:), intent(in)}]{M\+A\+S\+S\+\_\+\+E\+LE }\end{DoxyParamCaption})}
+
+
+
+Multiplies the inv of the lumped mass matrix times the vel\+\_\+vector vel\+\_\+vector = vel\+\_\+vector / (mass\+\_\+ele/vel\+\_\+local\+\_\+nodes) 
+
+\begin{DoxyAuthor}{Author}
+Pablo Salinas 
+\end{DoxyAuthor}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a68747c78369c5abd8f6bce5ae5d0bec7_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a41b4850724ffd0c17e8300f4eaa60296}\label{multi__dyncore__dg_8_f90_a41b4850724ffd0c17e8300f4eaa60296}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!oneeletens\_all@{oneeletens\_all}}
+\index{oneeletens\_all@{oneeletens\_all}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{oneeletens\_all()}{oneeletens\_all()}}
+{\footnotesize\ttfamily subroutine viscocity\+\_\+tensor\+\_\+les\+\_\+calc\+::oneeletens\+\_\+all (\begin{DoxyParamCaption}\item[{real, dimension(ndim,x\+\_\+nloc), intent(in)}]{L\+O\+C\+\_\+\+X\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{L\+E\+S\+\_\+\+D\+I\+S\+O\+PT,  }\item[{logical, intent(in)}]{O\+N\+E\+\_\+\+O\+V\+E\+R\+\_\+\+H2,  }\item[{real, dimension(ndim,ndim, nphase), intent(inout)}]{T\+E\+N\+S\+X\+X\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{real, dimension(ndim,ndim, nphase), intent(in)}]{M\+E\+A\+N\+\_\+\+U\+D\+E\+R\+\_\+U,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE }\end{DoxyParamCaption})}
+
+
+
+R\+E\+P\+R\+E\+S\+E\+N\+TS T\+HE S\+I\+ZE A\+ND S\+H\+A\+PE OF T\+HE S\+U\+R\+R\+O\+U\+N\+D\+I\+NG E\+L\+E\+M\+E\+N\+TS. L\+E\+S\+\_\+\+D\+I\+S\+O\+PT=L\+ES option. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=334pt]{multi__dyncore__dg_8_f90_a41b4850724ffd0c17e8300f4eaa60296_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a41b4850724ffd0c17e8300f4eaa60296_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a24c9e30f49053a0f6dfe4ad7f5f73de9}\label{multi__dyncore__dg_8_f90_a24c9e30f49053a0f6dfe4ad7f5f73de9}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!p0\_limiter@{p0\_limiter}}
+\index{p0\_limiter@{p0\_limiter}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{p0\_limiter()}{p0\_limiter()}}
+{\footnotesize\ttfamily subroutine assemb\+\_\+force\+\_\+cty\+::p0\+\_\+limiter}
+
+
+
+\+: Computes a limited velocity when using a P0\+DG velocity discretisation 
+
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a24c9e30f49053a0f6dfe4ad7f5f73de9_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_aa2eb04d27443c785084566c701903207}\label{multi__dyncore__dg_8_f90_aa2eb04d27443c785084566c701903207}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!porous\_assemb\_force\_cty@{porous\_assemb\_force\_cty}}
+\index{porous\_assemb\_force\_cty@{porous\_assemb\_force\_cty}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{porous\_assemb\_force\_cty()}{porous\_assemb\_force\_cty()}}
+{\footnotesize\ttfamily subroutine cv\+\_\+assemb\+\_\+force\+\_\+cty\+::porous\+\_\+assemb\+\_\+force\+\_\+cty (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type( tensor\+\_\+field ), intent(in)}]{pressure,  }\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type(multi\+\_\+gi\+\_\+dimensions), intent(in)}]{F\+E\+\_\+\+G\+Idims,  }\item[{type(multi\+\_\+shape\+\_\+funs), intent(in)}]{F\+E\+\_\+funs,  }\item[{type (multi\+\_\+sparsities), intent(in)}]{Mspars,  }\item[{type(multi\+\_\+ndgln), intent(in)}]{ndgln,  }\item[{type (multi\+\_\+matrices), intent(inout)}]{Mmat,  }\item[{real, dimension( \+:, \+: ), intent(in)}]{X\+\_\+\+A\+LL,  }\item[{real, dimension(\+:,\+:,\+:), intent(in)}]{U\+\_\+\+S\+O\+U\+R\+C\+E\+\_\+\+C\+V\+\_\+\+A\+LL }\end{DoxyParamCaption})}
+
+
+
+and faster to compute than for Navier-\/\+Stokes. Therefore, here the R\+HS and the Mass matrix are computed for this case 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_aa2eb04d27443c785084566c701903207_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_aa2eb04d27443c785084566c701903207_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a0eb7a61a4dc66651096b6fabc6739ea3}\label{multi__dyncore__dg_8_f90_a0eb7a61a4dc66651096b6fabc6739ea3}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!project\_velocity\_to\_affine\_space@{project\_velocity\_to\_affine\_space}}
+\index{project\_velocity\_to\_affine\_space@{project\_velocity\_to\_affine\_space}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{project\_velocity\_to\_affine\_space()}{project\_velocity\_to\_affine\_space()}}
+{\footnotesize\ttfamily subroutine force\+\_\+bal\+\_\+cty\+\_\+assem\+\_\+solve\+::project\+\_\+velocity\+\_\+to\+\_\+affine\+\_\+space (\begin{DoxyParamCaption}\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type (multi\+\_\+matrices), intent(in)}]{Mmat,  }\item[{type (multi\+\_\+sparsities), intent(in)}]{Mspars,  }\item[{type(multi\+\_\+ndgln), intent(in)}]{ndgln,  }\item[{type(tensor\+\_\+field), intent(inout)}]{velocity,  }\item[{type( vector\+\_\+field ), intent(inout)}]{deltap,  }\item[{type(tensor\+\_\+field), intent(inout)}]{cdp\+\_\+tensor }\end{DoxyParamCaption})}
+
+
+
+Project back the velocity from a non divergent-\/free space to a divergent free space. 
+
+\begin{DoxyAuthor}{Author}
+Pablo Salinas 
+\end{DoxyAuthor}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a0eb7a61a4dc66651096b6fabc6739ea3_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a0eb7a61a4dc66651096b6fabc6739ea3_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_ae8a4aa21acf8febcc4fec45af279f33d}\label{multi__dyncore__dg_8_f90_ae8a4aa21acf8febcc4fec45af279f33d}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!solve\_and\_update\_pressure@{solve\_and\_update\_pressure}}
+\index{solve\_and\_update\_pressure@{solve\_and\_update\_pressure}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{solve\_and\_update\_pressure()}{solve\_and\_update\_pressure()}}
+{\footnotesize\ttfamily subroutine force\+\_\+bal\+\_\+cty\+\_\+assem\+\_\+solve\+::solve\+\_\+and\+\_\+update\+\_\+pressure (\begin{DoxyParamCaption}\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type( vector\+\_\+field ), intent(inout)}]{rhs\+\_\+p,  }\item[{real, dimension(mdims\%npres, mdims\%cv\+\_\+nonods), intent(inout)}]{P\+\_\+all,  }\item[{type( vector\+\_\+field ), intent(inout)}]{deltap,  }\item[{type(petsc\+\_\+csr\+\_\+matrix), intent(inout)}]{cmc\+\_\+petsc,  }\item[{real, dimension(mdims\%npres, mdims\%cv\+\_\+nonods), intent(in)}]{diagonal\+\_\+\+C\+MC,  }\item[{logical, intent(in), optional}]{update\+\_\+pres }\end{DoxyParamCaption})}
+
+
+
+Compute deltaP by solving the pressure equation using the C\+MC matrix. 
+
+\begin{DoxyAuthor}{Author}
+Pablo Salinas 
+\end{DoxyAuthor}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_ae8a4aa21acf8febcc4fec45af279f33d_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a5a525a502553802a5ecbe7a138b1575c}\label{multi__dyncore__dg_8_f90_a5a525a502553802a5ecbe7a138b1575c}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!solve\_and\_update\_velocity@{solve\_and\_update\_velocity}}
+\index{solve\_and\_update\_velocity@{solve\_and\_update\_velocity}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{solve\_and\_update\_velocity()}{solve\_and\_update\_velocity()}}
+{\footnotesize\ttfamily subroutine force\+\_\+bal\+\_\+cty\+\_\+assem\+\_\+solve\+::solve\+\_\+and\+\_\+update\+\_\+velocity (\begin{DoxyParamCaption}\item[{type (multi\+\_\+matrices), intent(inout)}]{Mmat,  }\item[{type(tensor\+\_\+field), intent(inout)}]{Velocity,  }\item[{type(tensor\+\_\+field), intent(inout)}]{C\+D\+P\+\_\+tensor,  }\item[{real, dimension(mdims\%ndim $\ast$ mdims\%nphase, mdims\%u\+\_\+nonods), intent(in)}]{U\+\_\+\+R\+HS,  }\item[{type( vector\+\_\+field ), intent(inout)}]{diagonal\+\_\+A }\end{DoxyParamCaption})}
+
+
+
+Update velocity by solving the momentum equation for a given pressure, the R\+HS is formed here If rescale\+\_\+mom\+\_\+matrices = .true., here the R\+HS rescaled. 
+
+\begin{DoxyAuthor}{Author}
+Pablo Salinas 
+\end{DoxyAuthor}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a5a525a502553802a5ecbe7a138b1575c_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a09c428fa5a27cf3407e6a1bcc917f161}\label{multi__dyncore__dg_8_f90_a09c428fa5a27cf3407e6a1bcc917f161}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!stokes\_anderson\_acceleration@{stokes\_anderson\_acceleration}}
+\index{stokes\_anderson\_acceleration@{stokes\_anderson\_acceleration}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{stokes\_anderson\_acceleration()}{stokes\_anderson\_acceleration()}}
+{\footnotesize\ttfamily subroutine force\+\_\+bal\+\_\+cty\+\_\+assem\+\_\+solve\+::stokes\+\_\+anderson\+\_\+acceleration (\begin{DoxyParamCaption}\item[{type( state\+\_\+type ), intent(inout)}]{packed\+\_\+state,  }\item[{type(multi\+\_\+dimensions), intent(in)}]{Mdims,  }\item[{type (multi\+\_\+matrices), intent(inout)}]{Mmat,  }\item[{type (multi\+\_\+sparsities), intent(in)}]{Mspars,  }\item[{real, dimension( \+:, \+:, \+: ), intent(in)}]{I\+N\+V\+\_\+B,  }\item[{type( vector\+\_\+field ), intent(inout)}]{rhs\+\_\+p,  }\item[{type(multi\+\_\+ndgln), intent(in)}]{ndgln,  }\item[{real, dimension(\+:), intent(in)}]{M\+A\+S\+S\+\_\+\+E\+LE,  }\item[{type( vector\+\_\+field ), intent(inout)}]{diagonal\+\_\+A,  }\item[{type(tensor\+\_\+field), intent(inout)}]{velocity,  }\item[{type(tensor\+\_\+field), intent(inout)}]{P\+\_\+all,  }\item[{type( vector\+\_\+field ), intent(inout)}]{deltap,  }\item[{type(petsc\+\_\+csr\+\_\+matrix), intent(inout)}]{cmc\+\_\+petsc,  }\item[{integer, intent(in)}]{stokes\+\_\+max\+\_\+its }\end{DoxyParamCaption})}
+
+
+
+Generic subroutine that perform the Anderson acceleration solver. This is storing a set of results for a system that converges based on a F\+PI and finding an optimal combination of all of these results that minimise the residual Method explained in D\+O\+I.\+10.\+1137/16\+M1076770. 
+
+\begin{DoxyAuthor}{Author}
+Pablo Salinas 
+\end{DoxyAuthor}
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a09c428fa5a27cf3407e6a1bcc917f161_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a09c428fa5a27cf3407e6a1bcc917f161_icgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_a171ba3eb037458ea0b2f128257e43588}\label{multi__dyncore__dg_8_f90_a171ba3eb037458ea0b2f128257e43588}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!update\_components@{update\_components}}
+\index{update\_components@{update\_components}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{update\_components()}{update\_components()}}
+{\footnotesize\ttfamily subroutine volumefraction\+\_\+assemble\+\_\+solve\+::update\+\_\+components}
+
+
+
+W\+A\+R\+N\+I\+NG\+: Still work in progress. 
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_a171ba3eb037458ea0b2f128257e43588_cgraph}
+\end{center}
+\end{figure}
+\mbox{\Hypertarget{multi__dyncore__dg_8_f90_aac4e80d22e26450266e054deedd13fc9}\label{multi__dyncore__dg_8_f90_aac4e80d22e26450266e054deedd13fc9}} 
+\index{multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}!viscocity\_tensor\_les\_calc\_u@{viscocity\_tensor\_les\_calc\_u}}
+\index{viscocity\_tensor\_les\_calc\_u@{viscocity\_tensor\_les\_calc\_u}!multi\_dyncore\_dg.F90@{multi\_dyncore\_dg.F90}}
+\doxysubsubsection{\texorpdfstring{viscocity\_tensor\_les\_calc\_u()}{viscocity\_tensor\_les\_calc\_u()}}
+{\footnotesize\ttfamily subroutine viscocity\+\_\+tensor\+\_\+les\+\_\+calc\+::viscocity\+\_\+tensor\+\_\+les\+\_\+calc\+\_\+u (\begin{DoxyParamCaption}\item[{real, dimension( ndim, ndim, nphase, u\+\_\+nloc, totele  ), intent(inout)}]{L\+E\+S\+\_\+\+U\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+ON,  }\item[{real, dimension( nphase, u\+\_\+nloc, totele  ), intent(inout)}]{L\+E\+S\+\_\+\+U\+\_\+\+U\+D\+I\+F\+F\+U\+S\+I\+O\+N\+\_\+\+V\+OL,  }\item[{real, dimension( nphase, u\+\_\+nloc, totele  ), intent(inout)}]{Q\+\_\+\+S\+C\+H\+E\+M\+E\+\_\+\+A\+B\+S\+\_\+\+C\+O\+N\+T\+\_\+\+V\+OL,  }\item[{real, dimension( ndim, ndim, nphase, u\+\_\+nloc, totele  ), intent(in)}]{D\+U\+X\+\_\+\+E\+L\+E\+\_\+\+A\+LL,  }\item[{integer, intent(in)}]{N\+D\+IM,  }\item[{integer, intent(in)}]{N\+P\+H\+A\+SE,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+L\+OC,  }\item[{integer, intent(in)}]{T\+O\+T\+E\+LE,  }\item[{integer, intent(in)}]{X\+\_\+\+N\+O\+N\+O\+DS,  }\item[{real, dimension( ndim, x\+\_\+nonods  ), intent(in)}]{X\+\_\+\+A\+LL,  }\item[{integer, dimension( x\+\_\+nloc $\ast$ totele  ), intent(in)}]{X\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{L\+E\+S\+\_\+\+D\+I\+S\+O\+PT,  }\item[{real, intent(in)}]{CS,  }\item[{integer, dimension( u\+\_\+nloc $\ast$ totele  ), intent(in)}]{U\+\_\+\+N\+D\+G\+LN,  }\item[{integer, intent(in)}]{U\+\_\+\+N\+O\+N\+O\+DS,  }\item[{real, dimension( ndim, nphase, u\+\_\+nonods  ), intent(in)}]{U\+\_\+\+A\+LL }\end{DoxyParamCaption})}
+
+Here is the call graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_aac4e80d22e26450266e054deedd13fc9_cgraph}
+\end{center}
+\end{figure}
+Here is the caller graph for this function\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{multi__dyncore__dg_8_f90_aac4e80d22e26450266e054deedd13fc9_icgraph}
+\end{center}
+\end{figure}
