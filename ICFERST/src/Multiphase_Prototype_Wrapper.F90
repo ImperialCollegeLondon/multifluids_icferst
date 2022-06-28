@@ -18,7 +18,7 @@
 !> \mainpage Introduction
 !>
 !> \section ReadMe ReadMe
-!> (This text is in Multiphase_Prototype_Wrapper.F90)
+!> (This text is in @ref Multiphase_Prototype_Wrapper.F90)
 !>All the contributions to ICFERST in this repository are under AGPL 3.0 license, 
 !>otherwise refrain from commiting your code to this repository. Each library
 !>keeps their original license.
@@ -41,8 +41,30 @@
 !>
 !>For more details please see:
 !>http://multifluids.github.io/ 
-!>and
+!>or
 !>http://www.imperial.ac.uk/earth-science/research/research-groups/norms/
+!>
+!> \section applications Applications
+!>
+!> ICFERST can currently be used to model inertia dominated flows (Navier-Stokes), Stokes flow or Darcy flow.
+!> This latter is the most commonly used and the main application of ICFERST and therefore this documentation will focus on it.
+!> ICFERST can model single (aquifer thermal energy storage) and multiphase flow with or without wells, 
+!> compositional with reaction provided by PHREEQC (needs to be installed separately).
+!>
+!> The recommended action when generating a new simulation is to build from an input file that has the initial settings that you want. 
+!> There are examples in ICFERST/test/:
+!> Single and multiphase flow (3D_template_porous_case) using wells (Thermal_wells_analytical/multiphase_wells), 
+!> gravity (BL_with_gravity), capillary pressure (Grav_cap_competing_fast), 
+!> ATES (Thermal_boussinesq), tunneled BCs (tunneled_BCs), use of Active (Active_tracers) and Passive Tracers (Passive_tracers),
+!> drainage (Drainage_test), dissolution (Dissolution_test), use of different region ids to specify petrophysical 
+!> properties using diamond (3D_template_porous_case) or a input file (Porous_media_general_test), generation of the outfluxes file (BL_fast_fluxes), 
+!> compositional (Porous_compositional), compressible flow (porous_density_compressible), Robin BCs(Thermal_robin_BCs), 
+!> three phases with the stone model (Three_phases),  adaptive time-stepping using the CFL condition (Adaptive_times_Courant) 
+!> or based on the stability of the non-linear solver (BL_fast_adapt_ts), anisotropic permeability (Anisotropic_permeability), 
+!> adapt the mesh within the non-linear solver (Adapt_within_FPI), checkpointing (BL_Checkpointing), Boussinesq approximation (Boussinesq_eos_with_tracers)
+!> run in parallel (Parallel_Buckley_Leverett), self potential (SP_ElectroDiffusive_test, SP_ElectroKinetic_test, SP_ThermoElectric_test)
+!> thermal modelling (Thermal_analytical_validation) and concentration with dispersion (2D_Dispersive_Saline_Intrusion)
+!> 
 !>
 !> \section install_sec Installation
 !>
@@ -102,6 +124,16 @@
 !> </PRE>
 !> </CODE>
 !> @endhtmlonly
+!>
+!> \subsection Scripts Useful scripts
+!> Within the folder ICFERST/tools you can find some useful scripts:
+!>
+!> 1) If detectors are used you can use detectors_and_stat2csv.py to convert the detectors file in the more readable format .csv
+!>
+!> 2) To convert from Cubit (exodusII) to a mesh type that ICFERST can open (GMSHv2 format) the scripts exodus2gmsh.py (3D) and 2Dexodus2gmsh.py (2D can be used. 
+!> exodus2gmsh.py can convert directly into binary format
+!>
+!> 3) Within scripts_to_make_life_easier there are two scripts to be modified and copied (manually) into /usr/bin to make the use of Diamond and ICFERST much easier.
 !>
 !> \section diamond Using the Diamond interface
 !>

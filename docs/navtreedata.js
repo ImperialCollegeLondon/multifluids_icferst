@@ -25,7 +25,10 @@ var NAVTREE =
   [ "ICFERST", "index.html", [
     [ "Introduction", "index.html", [
       [ "ReadMe", "index.html#ReadMe", null ],
-      [ "Installation", "index.html#install_sec", null ],
+      [ "Applications", "index.html#applications", null ],
+      [ "Installation", "index.html#install_sec", [
+        [ "Useful scripts", "index.html#Scripts", null ]
+      ] ],
       [ "Using the Diamond interface", "index.html#diamond", null ],
       [ "Using ICFERST in parallel", "index.html#Parallel", null ],
       [ "Structure of the ICFERST code", "index.html#Code_structure", null ]
@@ -61,10 +64,10 @@ var NAVTREEINDEX =
 [
 "_extract___from___state_8_f90.html",
 "_r_m__interface_8_f90.html#aa06999b1b2bf8b9920785359f9ed0593",
-"multi__data__types_8_f90.html#a5641f05bcbbf1c56b952f99ed0cd1f67",
-"multi__shape__fct_8_f90.html#a418bc78009a1672bdeb8eb7f0d1ed39f",
-"namespaceshape__functions__ndim.html",
-"structmulti__magma_1_1magma__phase__diagram.html#a3bf24cdd15418027aca850ab1fa29d77"
+"multi__data__types_8_f90.html#a4ac5449d11858991ac53447f439013ee",
+"multi__shape__fct_8_f90.html#a327e5ef3b6b9241997dcf0c6f8cad2dd",
+"namespaceshape__functions__linear__quadratic.html",
+"structmulti__magma_1_1magma__phase__diagram.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
