@@ -1,8 +1,0 @@
-<map id="effective_cp_density" name="effective_cp_density">
-<area shape="rect" id="node1" title=": Checks convergence on the temperature field Calculation of the averaged heat capacity and density a..." alt="" coords="981,42,1139,69"/>
-<area shape="rect" id="node2" href="$namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="749,35,933,76"/>
-<area shape="rect" id="node3" href="$namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,64,701,105"/>
-<area shape="rect" id="node4" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" id="node6" href="$multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,71,396,98"/>
-<area shape="rect" id="node5" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
-</map>

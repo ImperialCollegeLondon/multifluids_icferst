@@ -1,4 +1,0 @@
-<map id="multi_tools::printmatrix" name="multi_tools::printmatrix">
-<area shape="rect" id="node1" title=":Subroutine to print Arrays by (columns,rows) Matrix = 2D Array" alt="" coords="227,13,403,39"/>
-<area shape="rect" id="node2" href="$namespacemulti__data__types.html#abc9ae53d6f6cb1baec1d2d80c70b13db" title="Given a multi field returns prints its values at inode_in." alt="" coords="5,5,179,47"/>
-</map>

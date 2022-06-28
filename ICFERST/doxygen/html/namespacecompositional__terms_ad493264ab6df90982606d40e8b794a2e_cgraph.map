@@ -1,6 +1,0 @@
-<map id="compositional_terms::proj_u2mat" name="compositional_terms::proj_u2mat">
-<area shape="rect" id="node1" title="Determine MAT_U from NU,NV,NW which are variables mapped to material mesh." alt="" coords="5,39,164,80"/>
-<area shape="rect" id="node2" href="$namespacemulti__data__types.html#a5641f05bcbbf1c56b952f99ed0cd1f67" title="Deallocates the required memory to store the derivatives of the shape functions." alt="" coords="212,5,423,47"/>
-<area shape="rect" id="node3" href="$namespacematrix__operations.html#a11255cf3f07959a2d3e20dd8705755fe" title="calculate DMATINV" alt="" coords="243,71,392,112"/>
-<area shape="rect" id="node4" href="$namespacematrix__operations.html#a3795359fc116fe5770ad11a89bbccc00" title=": This sub finds the inverse of the matrix A and puts it back in A. MAT, MAT2, X and B are working ve..." alt="" coords="471,71,620,112"/>
-</map>

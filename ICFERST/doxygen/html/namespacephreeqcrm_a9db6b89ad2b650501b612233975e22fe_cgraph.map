@@ -1,4 +1,0 @@
-<map id="phreeqcrm::rm_getsaturation" name="phreeqcrm::rm_getsaturation">
-<area shape="rect" id="node1" title="Returns a vector of saturations (sat_calc) as calculated by the reaction module. Reactions will chang..." alt="" coords="5,5,217,32"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="265,5,424,32"/>
-</map>

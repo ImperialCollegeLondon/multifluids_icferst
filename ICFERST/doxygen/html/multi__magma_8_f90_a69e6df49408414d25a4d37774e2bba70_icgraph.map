@@ -1,6 +1,0 @@
-<map id="c_value" name="c_value">
-<area shape="rect" id="node1" title=" " alt="" coords="695,13,767,39"/>
-<area shape="rect" id="node2" href="$namespacemulti__magma.html#adc4c4c821c9d037834bffb7bcdb00583" title=":This subroutine calculates the coupling term for the magma modelling and adds it to the absorptiont ..." alt="" coords="467,5,647,47"/>
-<area shape="rect" id="node3" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" id="node4" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
-</map>

@@ -1,4 +1,0 @@
-<map id="multiphase_1d_engine::diffus_cal_coeff_stress_or_tensor" name="multiphase_1d_engine::diffus_cal_coeff_stress_or_tensor">
-<area shape="rect" id="node1" title=": &lt;INERTIA ONLY&gt; This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX,..." alt="" coords="5,5,184,61"/>
-<area shape="rect" id="node2" href="$multi__dyncore__dg_8_f90.html#a15505780dc171eceae929e55d7951913" title="This implements the stress and tensor form of diffusion and calculates a jump conidition...." alt="" coords="232,20,397,47"/>
-</map>

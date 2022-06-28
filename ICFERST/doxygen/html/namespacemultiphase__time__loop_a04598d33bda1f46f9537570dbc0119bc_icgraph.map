@@ -1,4 +1,0 @@
-<map id="multiphase_time_loop::multifluids_solvetimeloop" name="multiphase_time_loop::multifluids_solvetimeloop">
-<area shape="rect" id="node1" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" id="node2" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
-</map>

@@ -1,9 +1,0 @@
-<map id="multi_magma::get_liquidus" name="multi_magma::get_liquidus">
-<area shape="rect" id="node1" title=" " alt="" coords="1056,75,1256,101"/>
-<area shape="rect" id="node2" href="$namespacemulti__magma.html#ae192f3dbea81b36501cea987d494a199" title=" " alt="" coords="801,34,1008,75"/>
-<area shape="rect" id="node7" href="$namespacemulti__magma.html#a2f6818fba70095c8af4076b7fca78d87" title=" " alt="" coords="816,99,993,141"/>
-<area shape="rect" id="node3" href="$namespacemulti__magma.html#ad382ce18c512b86bf99518da8d17533a" title=" " alt="" coords="467,5,753,32"/>
-<area shape="rect" id="node6" href="$namespacemulti__magma.html#a9db9a2ee1568a2626b341961c39ad5b2" title=": Compute porosity(Saturation) given an enthalpy field and a BulkComposition" alt="" coords="514,56,706,83"/>
-<area shape="rect" id="node4" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,49,419,90"/>
-<area shape="rect" id="node5" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,49,171,90"/>
-</map>

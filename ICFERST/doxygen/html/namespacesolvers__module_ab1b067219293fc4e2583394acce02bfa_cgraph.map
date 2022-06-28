@@ -1,4 +1,0 @@
-<map id="solvers_module::petsc_stokes_solver" name="solvers_module::petsc_stokes_solver">
-<area shape="rect" id="node1" title="In this subroutine the Schur complement is generated and solved using PETSc to update the pressure fi..." alt="" coords="5,13,173,54"/>
-<area shape="rect" id="node2" href="$namespacesolvers__module.html#aad076a468a68cdb44f63a6290e9c8159" title=": This subroutine converts the C (gradient) and CT (Divergence) matrices into PETSc format Mainly dev..." alt="" coords="221,5,404,61"/>
-</map>

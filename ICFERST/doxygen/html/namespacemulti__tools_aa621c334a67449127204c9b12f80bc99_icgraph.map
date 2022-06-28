@@ -1,6 +1,0 @@
-<map id="multi_tools::extract_strings_from_csv_file" name="multi_tools::extract_strings_from_csv_file">
-<area shape="rect" id="node1" title=":This subroutine reads a csv file and returns them in an array" alt="" coords="637,5,805,47"/>
-<area shape="rect" id="node2" href="$_multiphase___prototype___wrapper_8_f90.html#a99884d69d5088dea5829f0059cd7c941" title=" " alt="" coords="427,5,589,47"/>
-<area shape="rect" id="node3" href="$_multiphase___prototype___wrapper_8_f90.html#a03cf8b08de9b05fadef22cafd616c9e1" title=" " alt="" coords="219,13,379,39"/>
-<area shape="rect" id="node4" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
-</map>
