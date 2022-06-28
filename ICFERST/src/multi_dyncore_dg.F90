@@ -2832,6 +2832,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         real, dimension(Mdims%totele) :: MASS_ELE
         integer :: j, jdim, u_jnod, IPHA_IDIM, JPHA_JDIM, ele, u_jloc
         logical :: solve_mom_iteratively = .false.
+        logical :: solve_mom_with_petsc = .false.
         type( vector_field ) :: diagonal_A, diagonal_CMC!> Variables to perform rescaling D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
         !Variables to re-scale PETSc matrices
         logical :: rescale_mom_matrices = .false.
@@ -2846,6 +2847,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         rescale_mom_matrices = have_option("/solver_options/Momemtum_matrix/rescale_mom_matrices")
         !The stokes solver method can be activated from diamond also
         solve_mom_iteratively = have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively")
+        solve_mom_with_petsc  = have_option("/solver_options/Momemtum_matrix/Solve_mom_with_PETSc")
         !Retrieve the maximum allowed number of its
         call get_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/restart_its", stokes_max_its, default = 15)
         if (is_porous_media) then !Find parameter to re-scale the pressure matrix
@@ -3135,13 +3137,13 @@ end if
         ! form pres eqn.
         if (.not.Mmat%Stored .or. .not.is_porous_media) then
           !Retrieve the diagonal of the momentum matrix only once if required
-          if (((solve_stokes .or. solve_mom_iteratively) &
+          if (((solve_stokes .or. solve_mom_iteratively .or. solve_mom_with_petsc ) &
                .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
               rescale_mom_matrices ) then
             call allocate(diagonal_A, Mdims%nphase*Mdims%ndim, velocity%mesh, "diagonal_A")
             call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
           end if
-          if (solve_stokes .or. solve_mom_iteratively) call generate_Pivit_matrix_Stokes(Mdims, Mmat, MASS_ELE, diagonal_A)
+          if (solve_stokes .or. solve_mom_iteratively .or. solve_mom_with_petsc ) call generate_Pivit_matrix_Stokes(Mdims, Mmat, MASS_ELE, diagonal_A)
           !Now invert the Mass matrix
           CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
@@ -3176,7 +3178,7 @@ end if
               !For a velocity field the diagonal of A needs to be extracted using a vector field
               call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
             end if
-            if ( .not. (solve_stokes .or. solve_mom_iteratively .or. report_residual) )  call deallocate(Mmat%DGM_PETSC)
+            if ( .not. (solve_stokes .or. solve_mom_iteratively .or. solve_mom_with_petsc .or. report_residual) )  call deallocate(Mmat%DGM_PETSC)
         END IF
         !"########################UPDATE PRESSURE STEP####################################"
         !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver, for inertia this is a huge save as for that momemt DGM_petsc is deallocated!)
@@ -3218,18 +3220,19 @@ end if
         end if
 
         call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
-        if ( .not. (solve_stokes .or. solve_mom_iteratively .or. report_residual)) call deallocate(cmc_petsc)
-        if ( .not. (solve_stokes .or. solve_mom_iteratively .or. report_residual)) call deallocate(rhs_p)
+        if ( .not. (solve_stokes .or. solve_mom_iteratively .or. solve_mom_with_petsc .or. report_residual)) call deallocate(cmc_petsc)
+        if ( .not. (solve_stokes .or. solve_mom_iteratively .or. solve_mom_with_petsc .or. report_residual)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
 
         !"########################UPDATE PRESSURE STEP####################################"
         !We may apply the Anderson acceleration method
-        if ((solve_stokes .or. solve_mom_iteratively)) then
+        if ((solve_stokes .or. solve_mom_iteratively .or. solve_mom_with_petsc)) then
             if (solve_mom_iteratively) then
                 !Solve Schur complement using our own method
                 call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
                                               MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
-            else !Solve Schur complement using PETSc
+            else ! solve_mom_with_petsc = .true.
+                 !Solve Schur complement using PETSc
                 ! if (is_magma)  then!This section will be for stokes with compressibility Dmat will be the "compression" matrix
                 !     call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, CMC_petsc, P_all, &
                 !                             deltaP, rhs_p, solver_option_pressure, Dmat = CMC_petsc2) !Dmat cmc2
@@ -3245,7 +3248,7 @@ end if
         
         !######################## CORRECTION VELOCITY STEP####################################
         !Ensure that the velocity fulfils the continuity equation before moving on
-        if (.not. solve_stokes .or. solve_mom_iteratively ) then
+        if (.not. solve_stokes .or. solve_mom_iteratively .or. solve_mom_with_petsc) then
             call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
         end if
         call deallocate(deltaP)
@@ -3263,7 +3266,7 @@ end if
         endif
 
         call DEALLOCATE( CDP_tensor )
-        if ((solve_stokes .or. solve_mom_iteratively .or. report_residual)) then
+        if ((solve_stokes .or. solve_mom_iteratively .or. solve_mom_with_petsc .or. report_residual)) then
             call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
         !######################## CORRECTION VELOCITY STEP####################################
@@ -3282,7 +3285,7 @@ end if
         end if
 
         !Using associate doesn't seem to be stable enough
-        if (((solve_stokes .or. solve_mom_iteratively) &
+        if (((solve_stokes .or. solve_mom_iteratively .or. solve_mom_with_petsc) &
              .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
             rescale_mom_matrices ) then
             call deallocate(diagonal_A)
