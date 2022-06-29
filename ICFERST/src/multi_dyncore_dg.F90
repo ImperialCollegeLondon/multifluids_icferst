@@ -4121,7 +4121,7 @@ end if
         DEALLOCATE( THETA_GDIFF )
         DEALLOCATE( MEAN_PORE_CV )
         ! DEALLOCATE( NU_ALL) !JXiang
-        DEALLOCATE( NUOLD_ALL) !JXiang
+        ! DEALLOCATE( NUOLD_ALL) !JXiang
         ewrite(3,*) 'Leaving CV_ASSEMB_FORCE_CTY'
 
       contains
@@ -5939,7 +5939,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                             END IF
                                           END IF
                                         END IF
-                                        if (newton_linear_stress) then 
+                                        if (newton_linear_stress.and.solid_implicit) then 
                                             DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) = &
                                             DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
                                             - D_sigma_int(U_JLOC, JDIM, IDIM, U_ILOC)
@@ -6117,23 +6117,23 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                   END DO
                                END DO
                             endif
+                            ! Newton-linearisation of solid stress term - rhs term: D_sigma * u_current
+                            if (newton_linear_stress) then 
+                                do IPHASE = 1, Mdims%nphase 
+                                    do jdim = 1, Mdims%ndim 
+                                        ! do U_JLOC = 1, Mdims%u_nloc 
+                                            do idim = 1, Mdims%ndim
+                                                ! do U_ILOC = 1, Mdims%u_nloc
+                                                    LOC_U_RHS( IDIM, IPHASE, U_ILOC) = LOC_U_RHS( IDIM, IPHASE, U_ILOC) & 
+                                                        - D_sigma_int(U_JLOC, jdim, idim, U_ILOC) * loc_u(jdim, iphase, u_jloc)
+                                                ! enddo
+                                            enddo
+                                        ! enddo
+                                    enddo
+                                enddo
+                            endif
                         endif
 
-                        ! Newton-linearisation of solid stress term - rhs term: D_sigma * u_current
-                        if (newton_linear_stress) then 
-                            do IPHASE = 1, Mdims%nphase 
-                                do jdim = 1, Mdims%ndim 
-                                    ! do U_JLOC = 1, Mdims%u_nloc 
-                                        do idim = 1, Mdims%ndim
-                                            ! do U_ILOC = 1, Mdims%u_nloc
-                                                LOC_U_RHS( IDIM, IPHASE, U_ILOC) = LOC_U_RHS( IDIM, IPHASE, U_ILOC) & 
-                                                    - D_sigma_int(U_JLOC, jdim, idim, U_ILOC) * loc_u(jdim, iphase, u_jloc)
-                                            ! enddo
-                                        enddo
-                                    ! enddo
-                                enddo
-                            enddo
-                        endif
     
                         IF ( .NOT.JUST_BL_DIAG_MAT ) THEN
                             IF ( STRESS_FORM ) THEN
