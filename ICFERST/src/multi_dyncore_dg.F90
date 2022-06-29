@@ -4120,7 +4120,7 @@ end if
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
         DEALLOCATE( THETA_GDIFF )
         DEALLOCATE( MEAN_PORE_CV )
-        DEALLOCATE( NU_ALL) !JXiang
+        ! DEALLOCATE( NU_ALL) !JXiang
         DEALLOCATE( NUOLD_ALL) !JXiang
         ewrite(3,*) 'Leaving CV_ASSEMB_FORCE_CTY'
 
