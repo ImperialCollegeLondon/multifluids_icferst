@@ -1,5 +1,9 @@
 var NAVTREEINDEX4 =
 {
+"namespacemembers_s.html":[1,1,0,17],
+"namespacemembers_t.html":[1,1,0,18],
+"namespacemembers_u.html":[1,1,0,19],
+"namespacemembers_v.html":[1,1,0,20],
 "namespacemembers_vars.html":[1,1,2],
 "namespacemembers_w.html":[1,1,0,21],
 "namespacemembers_x.html":[1,1,0,22],
@@ -7,8 +11,8 @@ var NAVTREEINDEX4 =
 "namespacemulti__data__types.html":[1,0,5],
 "namespacemulti__interpolation.html":[1,0,6],
 "namespacemulti__machine__learning.html":[1,0,7],
-"namespacemulti__magma.html":[1,0,8],
 "namespacemulti__magma.html":[2,0,2],
+"namespacemulti__magma.html":[1,0,8],
 "namespacemulti__phreeqc.html":[1,0,9],
 "namespacemulti__pipes.html":[1,0,10],
 "namespacemulti__sp.html":[1,0,11],
@@ -22,12 +26,12 @@ var NAVTREEINDEX4 =
 "namespaces.html":[1,0],
 "namespacesetbasicfortrancallbackf.html":[1,0,19],
 "namespacesetbasicfortrancallbackf.html":[2,0,3],
-"namespaceshape__functions__linear__quadratic.html":[2,0,4],
 "namespaceshape__functions__linear__quadratic.html":[1,0,20],
+"namespaceshape__functions__linear__quadratic.html":[2,0,4],
 "namespaceshape__functions__ndim.html":[2,0,5],
 "namespaceshape__functions__ndim.html":[1,0,21],
-"namespaceshape__functions__prototype.html":[2,0,6],
 "namespaceshape__functions__prototype.html":[1,0,22],
+"namespaceshape__functions__prototype.html":[2,0,6],
 "namespacesolvers__module.html":[1,0,23],
 "namespacespact.html":[1,0,24],
 "namespacesparsity__1d.html":[1,0,25],
@@ -245,9 +249,5 @@ var NAVTREEINDEX4 =
 "structmulti__data__types_1_1multi__sparsities.html#a8dec2e285d86610c9fe02e9975d5586b":[2,0,1,13,2],
 "structmulti__data__types_1_1multi__sparsities.html#ab03463e20954ee1e3e0800deb600a7bf":[2,0,1,13,8],
 "structmulti__data__types_1_1multi__sparsities.html#acc8e34117aeecf35792fe8040034f6ca":[2,0,1,13,5],
-"structmulti__data__types_1_1multi__sparsity.html":[2,0,1,14],
-"structmulti__data__types_1_1multi__sparsity.html#a0540892f8d1bd92dad2ef8326e62761d":[2,0,1,14,2],
-"structmulti__data__types_1_1multi__sparsity.html#a09b3700546364fd6fc38e4a44ade31eb":[2,0,1,14,1],
-"structmulti__data__types_1_1multi__sparsity.html#adecfe4d6514f32e8ac73e008f40011ae":[2,0,1,14,0],
-"structmulti__data__types_1_1multi__sparsity.html#af8b0fcced0c7ee9972d0c5fcddccf08f":[2,0,1,14,3]
+"structmulti__data__types_1_1multi__sparsity.html":[2,0,1,14]
 };

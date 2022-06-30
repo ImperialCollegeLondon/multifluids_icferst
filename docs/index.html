@@ -235,7 +235,40 @@ Code Diagram</h2>
  </p>
 <h1><a class="anchor" id="how_to_use"></a>
 How to use ICFERST</h1>
-<p>ICFERST is a dimension agnostic code and therefore it is FUNDAMENTAL that the units used, unless otherwise specified, are the S.I. units to ensure consistency on the results obtained. </p>
+<p>ICFERST is a dimension agnostic code and therefore it is FUNDAMENTAL that the units used, unless otherwise specified, are the S.I. units to ensure consistency on the results obtained.</p>
+<p>The procedure to use IC-FERST is the following:</p>
+<p>Generate a model and a mesh =&gt; Set up the physics of the model with diamond =&gt; Run ICFERST =&gt; Examine outputs with Paraview </p>
+<h2><a class="anchor" id="modelgeneration"></a>
+Generation of a model</h2>
+<p>IC-FERST can currently only read .msh files following the format described by GMSHv2 or GMSHv4. For a model to work with IC-FERST it must be meshed with either triangles in 2D or tetrahedra in 3D. Boundaries must be specified with surface ids and the different material properties must be defined with region IDs following the Surface Based modeling paradigm. Although only the GMSH files can be read, normally Cubit is used to generate the models as it is more powerful and the files exported in ExodusII can easily be converted to GMSHv2 format using the scripts described in <a class="el" href="index.html#Scripts">Useful scripts</a> </p>
+<h2><a class="anchor" id="wellmodelling"></a>
+Wells in ICFERST</h2>
+<p>To model wells, it is necessary to define a line that describe the well path. As ICFERST cannot respect 1D lines when adapting the mesh, normally this is achieved by generating a well-sleeve composed of three regions whose central connection represents the well path. In this way we ensure that mesh adaptivity will respect the well path and also ensures a minimum precision around the well. To provide the well path to ICFERST there are two alternatives:</p>
+<p>1) Generate a nastran (.bdf) file per well describing the well path with nodes and edges.</p>
+<p>2) If the well is a straight line then only by defining the top and bottom coordinates are enough. </p>
+<h3><a class="anchor" id="well_prop"></a>
+Well properties in Diamond</h3>
+<p>Under the section /porous_media/wells_and_pipes the user can find all the required fields that can be modified to set up a simulation with wells. The wells consider a modified Darcy equation to model flow within the pipes, meaning that we are solving the flow within the pipe. To set up a well the user must define:</p><ul>
+<li>Gamma: Defines which parts of the well are open. This can be used to close some sections dynamically with python.</li>
+<li>Sigma: Specifies the friction factor. it is recommended to use /porous_media/wells_and_pipes/well_options/calculate_sigma_pipe and specify the roughness of the material there.</li>
+<li>DiameterPipe: Specifies the diameter of the well.</li>
+<li>Thermal properties: The user can specify if the wells may lose heat by specifying the thickness of the pipe and its conductivity value.</li>
+<li>Well colume ids: The user must specify the region ids of the sleeves defining the wells.</li>
+<li>Well from file or from coordinates to specify as said in <a class="el" href="index.html#wellmodelling">Wells in ICFERST</a> the well paths. </li>
+</ul>
+<h3><a class="anchor" id="Wells"></a>
+Well modelling as multiphases</h3>
+<p>Currently, ICFERST model wells by considering that two different domains co-exist and are connected through the nodes of the wells. To define this through diamond One has to duplicate the number of phases to the ones required to model the system without wells and consider that they are equivalent, for example for two phase phase 1 and 3 are the same. Therefore, the EOS and different properties must be defined equivalently. Another important requirement is that now two Pressure needs to be solved for, in this case phase 1 and 3 will have a defined pressure and phase 2 and 4 will be aliased with 1 and 3 respectively. Once this is done the boundary conditions need to be set accordingly </p>
+<h2><a class="anchor" id="xgboost"></a>
+Coupling with XGBoost for machine learning libraries</h2>
+<p>ICFERST can use XGBoost to accelerate the non-linear solver using a pre-trained model based on dimensionless parameters (Silva et al. 2022). In order to activate this option XGBoost needs to be installed and liked with ICFERST, this latter can be done with the following command:  
+ <CODE>
+ <PRE>
+ ./configure --with-xgboost && make mp
+ </PRE>
+ </CODE>
+  and then specify the model path in /solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path</p>
+<p>Since currently the model is very heavy, it takes 2GBs, the model is not stored online so currently it needs to be requested to ICFERST developers.</p>
 <h2><a class="anchor" id="diamond"></a>
 Diamond interface</h2>
 <p>Using the diamond GUI to configure test cases The input files are “EXAMPLE.mpml”. This files can be either manipulated using diamond a GUI, or a text file. To open the diamond GUI for ICFERST this is an example, found in the examples folder in IC-FERST-FOLDER/legacy_reservoir_prototype/tests/3D_BL  
@@ -270,9 +303,6 @@ Material phase</h3>
 <p>You can add as many phases as desired in theory, however ICFERST can only do up to three phases (gas, liquid, aqua), doubling to 6 if having wells. It is important to note that pressure is only solved for the first phase and the other phases are aliased with this phase. Within each phase the user has to defined its viscosity and different properties based on the modelling requested. PhaseVolumeFraction has to be always defined even though a single phase model is done.</p>
 <p>A phase must have a pressure field defined, a Velocity field and a PahseVolumeFraction defined. Also, temperature, concentration and Passive/ActiveTracers can be defined as well as species. To define a Passive/ActiveTracer the fiel must start with that name, for example ActiveTracer_Humidity. In this way, n-fields can be solved for. There are some more restricted fields or diagnostic fields that are used by Fluidity that the user can take advantage of, we recommend the reader to check the Fluidity manual for those.</p>
 <p>For multiphase, the section multiphase_properties must be defined. There the relative permeability, immobile fraction and capillary pressure can be defined. </p>
-<h3><a class="anchor" id="Wells"></a>
-Well modelling as multiphases</h3>
-<p>Currently, ICFERST model wells by considering that two different domains co-exist and are connected through the nodes of the wells. To define this through diamond One has to duplicate the number of phases to the ones required to model the system without wells and consider that they are equivalent, for example for two phase phase 1 and 3 are the same. Therefore, the EOS and different properties must be defined equivalently. Another important requirement is that now two Pressure needs to be solved for, in this case phase 1 and 3 will have a defined pressure and phase 2 and 4 will be aliased with 1 and 3 respectively. Once this is done the boundary conditions need to be set accordingly </p>
 <h3><a class="anchor" id="BCs"></a>
 Boundary conditions</h3>
 <p>ICFERST accepts three types of BCs all of them weakly enforced (excepting pressure dirichlet for wells): Dirichlet, zero_flux and Robin. If Neumann are required the recommendation is to use Robin without the dirichlet contribution. </p>
@@ -316,7 +346,7 @@ Self Potential</h3>
 <p>It is very important to define a reference coordinate where the Voltage will be set to zero, and everything in reference to that. Moreover, if not temperature field is solved for, a reservoir temperature needs to be provided. For more information of the default models read Mutlaq et al. 2020. </p>
 <h3><a class="anchor" id="dissolution"></a>
 Gas dissolution</h3>
-<p>IC-FERST can model instantaneous dissolution of gas into a fluid using this option and as a flash calculation that occurs after the non-linear solver. </p>
+<p>IC-FERST can model instantaneous gas dissolution into a fluid using this option and as a flash calculation that occurs after the non-linear solver. </p>
 <h3><a class="anchor" id="int_conv"></a>
 Simplified diamond interface</h3>
 <p>The current version of the multiphase schema found within ICFERST/schemas is a simplified version which gets populated internally so it is compatible with Fluidity. This extra population affects when generating checkpointing files that will not be exactly like the original and may need to amended before re-running from a checkpoint (which can be done by opening them and saving). It is important to understand that this conversion exists since it may affect some sections of the code. However, this has been tried to be kept to a minimum and developers can expect a direct connection between diamond and where the option can be found when extracting it.</p>

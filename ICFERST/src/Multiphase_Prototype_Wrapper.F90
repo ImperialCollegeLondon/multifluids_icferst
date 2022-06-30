@@ -209,6 +209,56 @@
 !> \section how_to_use How to use ICFERST
 !> ICFERST is a dimension agnostic code and therefore it is FUNDAMENTAL that the units used, unless otherwise specified, are the S.I. units to ensure 
 !> consistency on the results obtained. 
+!>
+!> The procedure to use IC-FERST is the following:
+!>
+!> Generate a model and a mesh => Set up the physics of the model with diamond => Run ICFERST => Examine outputs with Paraview
+!> \subsection modelgeneration Generation of a model
+!> IC-FERST can currently only read .msh files following the format described by GMSHv2 or GMSHv4.
+!> For a model to work with IC-FERST it must be meshed with either triangles in 2D or tetrahedra in 3D. Boundaries must be specified with surface ids and
+!> the different material properties must be defined with region IDs following the Surface Based modeling paradigm.
+!> Although only the GMSH files can be read, normally Cubit is used to generate the models as it is more powerful and the files exported in ExodusII 
+!> can easily be converted to GMSHv2 format using the scripts described in @ref Scripts
+!> \subsection wellmodelling Wells in ICFERST
+!> To model wells, it is necessary to define a line that describe the well path. As ICFERST cannot respect 1D lines when adapting the mesh, normally
+!> this is achieved by generating a well-sleeve composed of three regions whose central connection represents the well path. In this way we ensure that
+!> mesh adaptivity will respect the well path and also ensures a minimum precision around the well. 
+!> To provide the well path to ICFERST there are two alternatives:
+!> 
+!> 1) Generate a nastran (.bdf) file per well describing the well path with nodes and edges.
+!>
+!> 2) If the well is a straight line then only by defining the top and bottom coordinates are enough.
+!> \subsubsection well_prop Well properties in Diamond
+!> Under the section /porous_media/wells_and_pipes the user can find all the required fields that can be modified to set up a simulation with wells.
+!> The wells consider a modified Darcy equation to model flow within the pipes, meaning that we are solving the flow within the pipe.
+!> To set up a well the user must define:
+!> - Gamma: Defines which parts of the well are open. This can be used to close some sections dynamically with python.
+!> - Sigma: Specifies the friction factor. it is recommended to use /porous_media/wells_and_pipes/well_options/calculate_sigma_pipe and specify the
+!> roughness of the material there.
+!> - DiameterPipe: Specifies the diameter of the well.
+!> - Thermal properties: The user can specify if the wells may lose heat by specifying the thickness of the pipe and its conductivity value.
+!> - Well colume ids: The user must specify the region ids of the sleeves defining the wells.
+!> - Well from file or from coordinates to specify as said in @ref wellmodelling the well paths. 
+!> \subsubsection Wells Well modelling as multiphases
+!> Currently, ICFERST model wells by considering that two different domains co-exist and are connected through the nodes of the wells. To define this through diamond
+!> One has to duplicate the number of phases to the ones required to model the system without wells and consider that they are equivalent, for example for two phase
+!> phase 1 and 3 are the same. Therefore, the EOS and different properties must be defined equivalently. Another important requirement is that now two Pressure needs to
+!> be solved for, in this case phase 1 and 3 will have a defined pressure and phase 2 and 4 will be aliased with 1 and 3 respectively. Once this is done
+!> the boundary conditions need to be set accordingly
+!> \subsection xgboost Coupling with XGBoost for machine learning libraries
+!> ICFERST can use XGBoost to accelerate the non-linear solver using a pre-trained model based on dimensionless parameters (Silva et al. 2022).
+!> In order to activate this option XGBoost needs to be installed and liked with ICFERST, this latter can be done with the following command:
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> ./configure --with-xgboost && make mp
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!> and then specify the model path in /solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path
+!> 
+!> Since currently the model is very heavy, it takes 2GBs, the model is not stored online so currently it needs to be requested to ICFERST developers.
+!> 
 !> \subsection diamond Diamond interface
 !>
 !> Using the diamond GUI to configure test cases
@@ -265,12 +315,6 @@
 !> Fluidity that the user can take advantage of, we recommend the reader to check the Fluidity manual for those.
 !>
 !> For multiphase, the section multiphase_properties must be defined. There the relative permeability, immobile fraction and capillary pressure can be defined.
-!> \subsubsection Wells Well modelling as multiphases
-!> Currently, ICFERST model wells by considering that two different domains co-exist and are connected through the nodes of the wells. To define this through diamond
-!> One has to duplicate the number of phases to the ones required to model the system without wells and consider that they are equivalent, for example for two phase
-!> phase 1 and 3 are the same. Therefore, the EOS and different properties must be defined equivalently. Another important requirement is that now two Pressure needs to
-!> be solved for, in this case phase 1 and 3 will have a defined pressure and phase 2 and 4 will be aliased with 1 and 3 respectively. Once this is done
-!> the boundary conditions need to be set accordingly
 !>\subsubsection BCs Boundary conditions
 !> ICFERST accepts three types of BCs all of them weakly enforced (excepting pressure dirichlet for wells): Dirichlet, zero_flux and Robin. If Neumann are required the
 !> recommendation is to use Robin without the dirichlet contribution.

@@ -32,6 +32,12 @@ var NAVTREE =
         [ "Code Diagram", "index.html#code_Diagram", null ]
       ] ],
       [ "How to use ICFERST", "index.html#how_to_use", [
+        [ "Generation of a model", "index.html#modelgeneration", null ],
+        [ "Wells in ICFERST", "index.html#wellmodelling", [
+          [ "Well properties in Diamond", "index.html#well_prop", null ],
+          [ "Well modelling as multiphases", "index.html#Wells", null ]
+        ] ],
+        [ "Coupling with XGBoost for machine learning libraries", "index.html#xgboost", null ],
         [ "Diamond interface", "index.html#diamond", [
           [ "Diamond graphical document", "index.html#Diamond_manual", null ],
           [ "Geometry", "index.html#geometry", null ],
@@ -40,7 +46,6 @@ var NAVTREE =
           [ "Timestepping", "index.html#timestepping", null ],
           [ "Physical parameters", "index.html#physical_par", null ],
           [ "Material phase", "index.html#material_phase", null ],
-          [ "Well modelling as multiphases", "index.html#Wells", null ],
           [ "Boundary conditions", "index.html#BCs", null ],
           [ "MinMax principle", "index.html#minmax", null ],
           [ "Adaptivity options", "index.html#madapt_opt", null ],
@@ -90,10 +95,10 @@ var NAVTREEINDEX =
 [
 "_extract___from___state_8_f90.html",
 "_r_m__interface_8_f90.html#aa06999b1b2bf8b9920785359f9ed0593",
-"interfacexgb__interface_1_1fortran___x_g_d_matrix_create_from_mat.html#a1d930b4cce73e8fff0cf1c0f302478b5",
-"multi__pipes_8_f90.html#ac3db5e51c305b64215805e287c39151f",
-"namespacemembers_vars.html",
-"structmulti__data__types_1_1multi__transport__scalar.html"
+"interfacexgb__interface_1_1fortran___x_g_booster_save_model.html#a27a145f5f8ab531b26e19fcf3e97df0b",
+"multi__pipes_8_f90.html#a9ee038dac8fcca773ef00083d4b89cf7",
+"namespacemembers_s.html",
+"structmulti__data__types_1_1multi__sparsity.html#a0540892f8d1bd92dad2ef8326e62761d"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
