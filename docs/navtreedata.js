@@ -25,17 +25,43 @@ var NAVTREE =
   [ "ICFERST", "index.html", [
     [ "Introduction", "index.html", [
       [ "ReadMe", "index.html#ReadMe", null ],
-      [ "Applications", "index.html#applications", null ],
       [ "Installation", "index.html#install_sec", [
         [ "Useful scripts", "index.html#Scripts", null ]
       ] ],
-      [ "Diamond interface", "index.html#diamond", [
-        [ "Simplified diamond interface", "index.html#int_conv", null ],
-        [ "Diamond graphical document", "index.html#Diamond_manual", null ]
-      ] ],
-      [ "Using ICFERST in parallel", "index.html#Parallel", null ],
       [ "Structure of the ICFERST code", "index.html#Code_structure", [
         [ "Code Diagram", "index.html#code_Diagram", null ]
+      ] ],
+      [ "How to use ICFERST", "index.html#how_to_use", [
+        [ "Generation of a model", "index.html#modelgeneration", null ],
+        [ "Wells in ICFERST", "index.html#wellmodelling", [
+          [ "Well properties in Diamond", "index.html#well_prop", null ],
+          [ "Well modelling as multiphases", "index.html#Wells", null ]
+        ] ],
+        [ "Coupling with XGBoost for machine learning libraries", "index.html#xgboost", null ],
+        [ "Diamond interface", "index.html#diamond", [
+          [ "Diamond graphical document", "index.html#Diamond_manual", null ],
+          [ "Geometry", "index.html#geometry", null ],
+          [ "Solver Options", "index.html#solv_options", null ],
+          [ "IO(Input/output)", "index.html#io", null ],
+          [ "Timestepping", "index.html#timestepping", null ],
+          [ "Physical parameters", "index.html#physical_par", null ],
+          [ "Material phase", "index.html#material_phase", null ],
+          [ "Boundary conditions", "index.html#BCs", null ],
+          [ "MinMax principle", "index.html#minmax", null ],
+          [ "Adaptivity options", "index.html#madapt_opt", null ],
+          [ "Mesh to Mesh interpolator", "index.html#Mesh2mesh", null ],
+          [ "Source and Absorption terms", "index.html#sourceterm", null ],
+          [ "Mesh Adaptivity", "index.html#mesh_adaptivity", null ],
+          [ "Porous media settings", "index.html#porousmedia", null ],
+          [ "PHREEQC coupling", "index.html#phreqqc", null ],
+          [ "Self Potential", "index.html#selfP", null ],
+          [ "Gas dissolution", "index.html#dissolution", null ],
+          [ "Simplified diamond interface", "index.html#int_conv", null ]
+        ] ],
+        [ "Applications and tests", "index.html#applications", [
+          [ "Automatic Testing", "index.html#test_case", null ]
+        ] ],
+        [ "Using ICFERST in parallel", "index.html#Parallel", null ]
       ] ]
     ] ],
     [ "Modules", "namespaces.html", [
@@ -69,10 +95,10 @@ var NAVTREEINDEX =
 [
 "_extract___from___state_8_f90.html",
 "_r_m__interface_8_f90.html#aa06999b1b2bf8b9920785359f9ed0593",
-"multi__data__types_8_f90.html#a331bf7ce0c5156d2bde6c0ab82309e4c",
-"multi__shape__fct_8_f90.html#a06fcc23267a886a2b3122b3a77667801",
-"namespaces.html",
-"structmulti__magma_1_1coupling__term__coef.html#a6ea25d0aedcb4d0cd3ab57290bcc9ac7"
+"interfacexgb__interface_1_1fortran___x_g_booster_save_model.html#a27a145f5f8ab531b26e19fcf3e97df0b",
+"multi__pipes_8_f90.html#a9ee038dac8fcca773ef00083d4b89cf7",
+"namespacemembers_s.html",
+"structmulti__data__types_1_1multi__sparsity.html#a0540892f8d1bd92dad2ef8326e62761d"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
