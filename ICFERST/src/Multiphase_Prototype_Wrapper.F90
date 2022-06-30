@@ -19,6 +19,7 @@
 !>
 !> \section ReadMe ReadMe
 !> (This text is in @ref Multiphase_Prototype_Wrapper.F90)
+!>
 !>All the contributions to ICFERST in this repository are under AGPL 3.0 license, 
 !>otherwise refrain from commiting your code to this repository. Each library
 !>keeps their original license.
@@ -43,28 +44,6 @@
 !>http://multifluids.github.io/ 
 !>or
 !>http://www.imperial.ac.uk/earth-science/research/research-groups/norms/
-!>
-!> \section applications Applications
-!>
-!> ICFERST can currently be used to model inertia dominated flows (Navier-Stokes), Stokes flow or Darcy flow.
-!> This latter is the most commonly used and the main application of ICFERST and therefore this documentation will focus on it.
-!> ICFERST can model single (aquifer thermal energy storage) and multiphase flow with or without wells, 
-!> compositional with reaction provided by PHREEQC (needs to be installed separately).
-!>
-!> The recommended action when generating a new simulation is to build from an input file that has the initial settings that you want. 
-!> There are examples in ICFERST/test/:
-!> Single and multiphase flow (3D_template_porous_case) using wells (Thermal_wells_analytical/multiphase_wells), 
-!> gravity (BL_with_gravity), capillary pressure (Grav_cap_competing_fast), 
-!> ATES (Thermal_boussinesq), tunneled BCs (tunneled_BCs), use of Active (Active_tracers) and Passive Tracers (Passive_tracers),
-!> drainage (Drainage_test), dissolution (Dissolution_test), use of different region ids to specify petrophysical 
-!> properties using diamond (3D_template_porous_case) or a input file (Porous_media_general_test), generation of the outfluxes file (BL_fast_fluxes), 
-!> compositional (Porous_compositional), compressible flow (porous_density_compressible), Robin BCs(Thermal_robin_BCs), 
-!> three phases with the stone model (Three_phases),  adaptive time-stepping using the CFL condition (Adaptive_times_Courant) 
-!> or based on the stability of the non-linear solver (BL_fast_adapt_ts), anisotropic permeability (Anisotropic_permeability), 
-!> adapt the mesh within the non-linear solver (Adapt_within_FPI), checkpointing (BL_Checkpointing), Boussinesq approximation (Boussinesq_eos_with_tracers)
-!> run in parallel (Parallel_Buckley_Leverett), self potential (SP_ElectroDiffusive_test, SP_ElectroKinetic_test, SP_ThermoElectric_test)
-!> thermal modelling (Thermal_analytical_validation) and concentration with dispersion (2D_Dispersive_Saline_Intrusion)
-!> 
 !>
 !> \section install_sec Installation
 !>
@@ -97,7 +76,7 @@
 !> </CODE>
 !> @endhtmlonly
 !>
-!> 3b) Ubuntu 18.04, modify the .bashrc file in home to include
+!> 3b) Ubuntu 20.04, modify the .bashrc file in home to include
 !> @htmlonly
 !> <CODE>
 !> <PRE>
@@ -135,61 +114,6 @@
 !>
 !> 3) Within scripts_to_make_life_easier there are two scripts to be modified and copied (manually) into /usr/bin to make the use of Diamond and ICFERST much easier.
 !>
-!> \section diamond Diamond interface
-!>
-!> Using the diamond GUI to configure test cases
-!> The input files are “EXAMPLE.mpml”. This files can be either manipulated using diamond a GUI, or a text file.
-!> To open the diamond GUI for ICFERST this is an example, 
-!> found in the examples folder in IC-FERST-FOLDER/legacy_reservoir_prototype/tests/3D_BL
-!> @htmlonly
-!> <CODE>
-!> <PRE>
-!> diamond -s IC-FERST-FOLDER/legacy_reservoir_prototype/schemas/multiphase.rng 3D_test.mpml
-!> </PRE>
-!> </CODE>
-!> @endhtmlonly
-!>
-!> \subsection int_conv Simplified diamond interface
-!> 
-!> The current version of the multiphase schema found within ICFERST/schemas is a simplified version which gets populated internally
-!> so it is compatible with Fluidity. This extra population affects when generating checkpointing files that will not be exactly like
-!> the original and may need to amended before re-running from a checkpoint (which can be done by opening them and saving). 
-!> It is important to understand that this conversion exists since it may affect some sections of the code. However, 
-!> this has been tried to be kept to a minimum
-!> and developers can expect a direct connection between diamond and where the option can be found when extracting it.
-!> 
-!> The simplification mainly focuses on not having to describe the discretisation type, use of defaults for solvers and other settings
-!> , density not being defined as a scalar field explicitly, simplified interpolation settings, etc. These can be found in multiphase_prototype_wrapper
-!> and are generated using the spud options as defined in the Fluidity manual in the manual folder
-!>
-!> \subsection Diamond_manual Diamond graphical document
-!> 
-!> You can find a tutorial detailing the use of diamond and the different sections in ICFERST/doc/ICFERST_tutorial.pdf
-!> Here we will provide a short summary of each section but the graphical document is still highly recommended.
-!> 
-!> \section Parallel Using ICFERST in parallel
-!> ICFERST uses openMPI to run in parallel.
-!> The mesh needs to be decomposed initially using the command
-!> @htmlonly
-!> <CODE>
-!> <PRE>
-!> fldecomp -n #CPUs INPUT_MESH
-!> </PRE>
-!> </CODE>
-!> @endhtmlonly
-!> where #CPUs is the number of CPUs and INPUT_MESH is a binary msh file using the gmshv2 format. 
-!> This can be obtained using ICFERST from an option in diamond/geometry or from an exodusII file using the python conversor from ICFERST/tools
-!> Once the mesh is decomposed you can run in parallel using mpirun:
-!> @htmlonly
-!> <CODE>
-!> <PRE>
-!> mpirun -n #CPUs icferst INPUT_mpml
-!> </PRE>
-!> </CODE>
-!> @endhtmlonly
-!>
-!> where INPUT is INPUT_mpml is the mpml file as normally done.
-!> As a rule of thumb one wants to have around 15k elements per CPU to have optimal performance.
 !>
 !> \section Code_structure Structure of the ICFERST code
 !> All the ICFERST code is within the folder ICFERST where the test cases, code, tools and schemas for diamond are stored.
@@ -214,19 +138,19 @@
 !> <CODE>
 !> <PRE>
 !>     ┌─────────────┐     ┌────────────┐    ┌───────────────┐
-!>     │  Adapt mesh ├─────┤Adaptivity  ├────┤ Mesh2Mesh int │
-!>     └─────────────┘     │            │    └───────────────┘
+!>     │Adapt_state  ├─────┤Adaptivity  ├────┤ Mesh2Mesh int │
+!>     └─────────────┘     │ (assemble) │    └───────────────┘
 !>                         └─────┬──────┘
 !>                               │          ┌────────┐
 !>                               │   ┌──────┤  PETSc │
 !>                               │   │      └────────┘
 !>       ┌─────────────┐   ┌─────┴───┴─┐    ┌───────────────────┐
 !>       │ Read input  ├───┤ Fluidity  ├────┤ Generate vtu files│
-!>       └─────────────┘   │           │    │  detectors, stats │
+!>       └─────────────┘   │ (femtools)│    │  detectors, stats │
 !>                         └──────┬────┘    └───────────────────┘
-!>                                │                        ┌────────────────────────────────────────────────────┐
-!>                                │                        │multi_phreeqc──────────►Initialise PHREEQCRM        │
-!>                                │                        │Shape functions────────►CV and FE shape functions   │
+!>        ┌──────────────┐        │                        ┌────────────────────────────────────────────────────┐
+!>        │Populate_state├────────┤                        │multi_phreeqc──────────►Initialise PHREEQCRM        │
+!>        └──────────────┘        │                        │Shape functions────────►CV and FE shape functions   │
 !>                         ┌──────┴─────┐                  │                                                    │
 !>                         │  ICFERST   │ Initialisation   │Multi_data_types ──────►Initialise types and memory │
 !>    ┌───────────────────►│  Timeloop  ├─────────────────►│                                                    │
@@ -251,7 +175,7 @@
 !>    │        │      │   └────────┬───────────┘     └─────┬───────┤        └─────────┘   └───────────┘
 !>    │        │      │ Loop until │                       │  ┌─────────────────────────────┐
 !>    │        │      │ converge   │                       └──┤ solve and backtrack solution│
-!>    │        │      └────────────┤                          └──────────────────────────────┘
+!>    │        │      └────────────┤                          └─────────────────────────────┘
 !>    │   ┌────┴───────────┐       │                 ┌─────────────┐
 !>    │   │ Adapt time-step│       │                 │Temperature  ├───────┐
 !>    │   │   size         │       │                 ├─────────────┤       │  ┌─────────────┐  ┌─────────┐   ┌───────────┐
@@ -281,8 +205,230 @@
 !> </PRE>
 !> </CODE>
 !> @endhtmlonly
-
-
+!> 
+!> \section how_to_use How to use ICFERST
+!> ICFERST is a dimension agnostic code and therefore it is FUNDAMENTAL that the units used, unless otherwise specified, are the S.I. units to ensure 
+!> consistency on the results obtained. 
+!> \subsection diamond Diamond interface
+!>
+!> Using the diamond GUI to configure test cases
+!> The input files are “EXAMPLE.mpml”. This files can be either manipulated using diamond a GUI, or a text file.
+!> To open the diamond GUI for ICFERST this is an example, 
+!> found in the examples folder in IC-FERST-FOLDER/legacy_reservoir_prototype/tests/3D_BL
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> diamond -s IC-FERST-FOLDER/legacy_reservoir_prototype/schemas/multiphase.rng 3D_test.mpml
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!> \subsubsection Diamond_manual Diamond graphical document
+!> 
+!> You can find a tutorial detailing the use of diamond and the different sections in ICFERST/doc/ICFERST_tutorial.pdf
+!> Here we will provide a short summary of each section but the graphical document is still highly recommended, also more information
+!> of each field is already in place in the Diamond interface itself in the description box.
+!> 
+!> \subsubsection geometry Geometry
+!> In this section the user must define the dimensions of the mode, the input file and the simulation quality.
+!> Currently only Fast and Balance are operative the other settings are just for research purposes and its use is not recommended.
+!> The option create_binary_mesh is used to convert the given mesh into a binary format to be used by fldecomp, if this option is one the recommended
+!> usage is to use it and kill the simulation once the conversion has been done (printed on the terminal).
+!>\subsubsection solv_options Solver Options
+!> This zone is devoted to modify the linear and non-linear solvers. It is recommended not to modify the linear solver settings unless
+!> a model with undefined pressure is used, in which case the pressure solver needs to be defined with the option remove null space.
+!> Even for this cases it is recommended to use the default settings of GMRES(30)+Hypre and relative residual reduction of 1e-10
+!>
+!> Regarding the non-linear solver settings, it is also recommended not to modify it unless the adaptive time-stepping method with PID is used
+!> in which case the user is encouraged to introduce the defaults settings for all the requested fields and specify the PID adaptive time-stepping.
+!>
+!> The momentum_matrix settings are only for magma and stokes and therefore out of the scope of this manual.
+!>\subsubsection io IO(Input/output)
+!> In this section the user can specify what to output from ICFERST. 
+!> The outputs of vtu files can either be based on timesteps or time in seconds. 
+!> The user can select to print convergence information and the current courant number, also the user can select from here to generate the outfluxes file
+!> and checkpointing.
+!>\subsubsection timestepping Timestepping
+!> The initial time, final time and initial time-step size is selected here. Also a time-stepping method based on a CFL limit can be specified here.
+!> Note that if the time-step is to be adjusted on both the CFL and the non-linear solver, the most limiting one will be used.
+!>\subsubsection physical_par Physical parameters
+!> The user can select the magnitude and direction of the gravity forces as well as select from two options to help with hydrostatic modelling
+!> hydrostatic pressure solver, which requries an extra solver and does not work with Wells or remove hydrostatic contribution, only for single phase.
+!> \subsubsection material_phase Material phase
+!> You can add as many phases as desired in theory, however ICFERST can only do up to three phases (gas, liquid, aqua), doubling to 6 if having wells.
+!> It is important to note that pressure is only solved for the first phase and the other phases are aliased with this phase.
+!> Within each phase the user has to defined its viscosity and different properties based on the modelling requested. PhaseVolumeFraction has to be always defined
+!> even though a single phase model is done. 
+!>
+!> A phase must have a pressure field defined, a Velocity field and a PahseVolumeFraction defined. Also, temperature, 
+!> concentration and Passive/ActiveTracers can be defined as well as species. To define a Passive/ActiveTracer the fiel must start with that name, for example
+!> ActiveTracer_Humidity. In this way, n-fields can be solved for. There are some more restricted fields or diagnostic fields that are used by
+!> Fluidity that the user can take advantage of, we recommend the reader to check the Fluidity manual for those.
+!>
+!> For multiphase, the section multiphase_properties must be defined. There the relative permeability, immobile fraction and capillary pressure can be defined.
+!> \subsubsection Wells Well modelling as multiphases
+!> Currently, ICFERST model wells by considering that two different domains co-exist and are connected through the nodes of the wells. To define this through diamond
+!> One has to duplicate the number of phases to the ones required to model the system without wells and consider that they are equivalent, for example for two phase
+!> phase 1 and 3 are the same. Therefore, the EOS and different properties must be defined equivalently. Another important requirement is that now two Pressure needs to
+!> be solved for, in this case phase 1 and 3 will have a defined pressure and phase 2 and 4 will be aliased with 1 and 3 respectively. Once this is done
+!> the boundary conditions need to be set accordingly
+!>\subsubsection BCs Boundary conditions
+!> ICFERST accepts three types of BCs all of them weakly enforced (excepting pressure dirichlet for wells): Dirichlet, zero_flux and Robin. If Neumann are required the
+!> recommendation is to use Robin without the dirichlet contribution.
+!>\subsubsection minmax MinMax principle
+!> For tracer fields, it is HIGHLY recommended to specify the min_max condition since it helps ensure a physical solution as well as accelerate the simulation.
+!>\subsubsection madapt_opt Adaptivity options
+!> Specify this option to adapt the mesh to this field with the requested precision
+!>\subsubsection Mesh2mesh Mesh to Mesh interpolator
+!> It is recommended to use Consistent interpolation for wells and pressure, and Galerkin for scalar fields and velocity.
+!>\subsubsection sourceterm Source and Absorption terms
+!> A source term can be added to every field. 
+!> The absorption term however is inactive. Only defining a tensor field named UAbsorB on the first phase this can be used. 
+!> UAbsorB can be used to modify the momentum equation through the diamond interface. 
+!> \subsubsection mesh_adaptivity Mesh Adaptivity
+!> To activate mesh adaptivity there are two different parts. The user first needs to select the type of interpolation and specify the precision 
+!> requested for the fields of interest using @ref madapt_opt and @ref Mesh2mesh and secondly activate the settings in mesh_adaptivity/hr_adaptivity
+!>
+!> Within this section the user can select
+!> - how often adapt the mesh based on the number of iterations or an accumulated courant number if adapting within the non-linear solver. 
+!> - Maximum and minimum number of nodes to be used. It is recommended to give a minimum number of nodes per core of at least 1000 to ensure
+!> that parallel simulations can perform well.
+!> - Gradation: this parameters specifies how bigger an element can be compared to its neighbour.
+!> - Minimum and maximum edge lenghts: it is recommended to ignore the off-diagonal values and consider in the diagonals the precision in metres required.
+!> normally spanning 3 or 4 orders of magnitude is stable.
+!>
+!> Other settings to take into account are adapt at the first time step, which can be used to generate a mesh from a given one or if there is
+!> an interface at the beginning. The fail safe is on by default and it is not recommended to modify it, similar to the other settings.
+!> \subsubsection porousmedia Porous media settings
+!> In this part the user must specify the petrophysical properties under porosity, permeability, and if needed, Dispersion and rock properties
+!>  such as density, heat capacity and coductivity of the porous media under porous properties. 
+!> \subsubsection phreqqc PHREEQC coupling
+!> IC-FERST can run reaction modelling where the reaction part is performed using PHREEQC. To do this first the user must install PHREEQCRM
+!> on the system and compile IC-FERST to support this with the following command:
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> ./configure --with-phreeqc && make mp
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!> Next, a PHREEQC file needs to be generated as normal and provided it through the command /porous_media/Phreeqc_coupling/simulation_name.
+!> \subsubsection selfP Self Potential
+!> By activating /porous_media/SelfPotential that computation will be performed. Some extra parameters are required, which can either use 
+!> the default ones or use the python interface from python to introduce different models.
+!>
+!> It is very important to define a reference coordinate where the Voltage will be set to zero, and everything in reference to that.
+!> Moreover, if not temperature field is solved for, a reservoir temperature needs to be provided. For more information of the default models
+!> read Mutlaq et al. 2020. 
+!> \subsubsection dissolution Gas dissolution
+!> IC-FERST can model instantaneous gas dissolution into a fluid using this option and as a flash calculation that occurs after the non-linear solver.
+!> \subsubsection int_conv Simplified diamond interface
+!> 
+!> The current version of the multiphase schema found within ICFERST/schemas is a simplified version which gets populated internally
+!> so it is compatible with Fluidity. This extra population affects when generating checkpointing files that will not be exactly like
+!> the original and may need to amended before re-running from a checkpoint (which can be done by opening them and saving). 
+!> It is important to understand that this conversion exists since it may affect some sections of the code. However, 
+!> this has been tried to be kept to a minimum
+!> and developers can expect a direct connection between diamond and where the option can be found when extracting it.
+!> 
+!> The simplification mainly focuses on not having to describe the discretisation type, use of defaults for solvers and other settings
+!> , density not being defined as a scalar field explicitly, simplified interpolation settings, etc. These can be found in multiphase_prototype_wrapper
+!> and are generated using the spud options as defined in the Fluidity manual in the manual folder
+!> \subsection applications Applications and tests
+!>
+!> ICFERST can currently be used to model inertia dominated flows (Navier-Stokes), Stokes flow or Darcy flow.
+!> This latter is the most commonly used and the main application of ICFERST and therefore this documentation will focus on it.
+!> ICFERST can model single (aquifer thermal energy storage) and multiphase flow with or without wells, 
+!> compositional with reaction provided by PHREEQC (needs to be installed separately).
+!>
+!> The recommended action when generating a new simulation is to build from an input file that has the initial settings that you want. 
+!> There are examples in ICFERST/test/:
+!> - Single and multiphase flow (3D_template_porous_case) 
+!>
+!> - using wells (Thermal_wells_analytical/multiphase_wells) 
+!>
+!> - gravity (BL_with_gravity)
+!>
+!> - capillary pressure (Grav_cap_competing_fast)
+!>
+!> - ATES (Thermal_boussinesq)
+!>
+!> - tunneled BCs (tunneled_BCs)
+!>
+!> - use of Active (Active_tracers) and Passive Tracers (Passive_tracers)
+!>
+!> - drainage (Drainage_test)
+!>
+!> - dissolution (Dissolution_test)
+!>
+!> - use of different region ids to specify petrophysical properties using diamond (3D_template_porous_case) or a input file (Porous_media_general_test)
+!>
+!> - generation of the outfluxes file (BL_fast_fluxes)
+!>
+!> - compositional (Porous_compositional)
+!> 
+!> - compressible flow (porous_density_compressible)
+!>
+!> - Robin BCs(Thermal_robin_BCs) 
+!>
+!> - three phases with the stone model (Three_phases)
+!>
+!> - adaptive time-stepping using the CFL condition (Adaptive_times_Courant) or based on the stability of the non-linear solver (BL_fast_adapt_ts)
+!>
+!> - anisotropic permeability (Anisotropic_permeability) 
+!>
+!> - adapt the mesh within the non-linear solver (Adapt_within_FPI)
+!>
+!> - checkpointing (BL_Checkpointing)
+!>
+!> - Boussinesq approximation (Boussinesq_eos_with_tracers)
+!>
+!> - run in parallel (Parallel_Buckley_Leverett)
+!>
+!> - self potential (SP_ElectroDiffusive_test, SP_ElectroKinetic_test, SP_ThermoElectric_test)
+!>
+!> - thermal modelling (Thermal_analytical_validation) and concentration with dispersion (2D_Dispersive_Saline_Intrusion)
+!>
+!> \subsubsection test_case Automatic Testing
+!>
+!> All the test cases are run using Github actions every time a commit is done to master or one of the designated 
+!> branches defined in the file .github/workflows/ubuntu.yml
+!>
+!> There are two type of test cases. Ones based on a python script comparing against an analytical solution, or the ones based on
+!> checking against data obtained from the .stat file (i.e. min/max of fields, integral etc).
+!> In all the cases the test is triggered through the xml file and can be tested locally by running the python script in ICFERST/tools 
+!> testharness_ICFERST.py The most common flags are -n <#CPUs> and -t <TAG_of_test_cases>.
+!> An example of running locally the quick test cases would be:
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> python3 testharness_ICFERST.py -n 2 -t tbc </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> For every functionality there MUST be a test case checking that functionality, uniquely if possible.
+!> \subsection Parallel Using ICFERST in parallel
+!> ICFERST uses openMPI to run in parallel.
+!> The mesh needs to be decomposed initially using the command
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> fldecomp -n #CPUs INPUT_MESH
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!> where #CPUs is the number of CPUs and INPUT_MESH is a binary msh file using the gmshv2 format. 
+!> This can be obtained using ICFERST from an option in diamond/geometry or from an exodusII file using the python conversor from ICFERST/tools
+!> Once the mesh is decomposed you can run in parallel using mpirun:
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> mpirun -n #CPUs icferst INPUT_mpml
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> where INPUT is INPUT_mpml is the mpml file as normally done.
+!> As a rule of thumb one wants to have around 15k elements per CPU to have optimal performance.
 #include "fdebug.h"
 
 subroutine multiphase_prototype_wrapper() bind(C)
