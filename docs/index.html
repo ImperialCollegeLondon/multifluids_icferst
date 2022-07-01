@@ -237,8 +237,10 @@ Code Diagram</h2>
 How to use ICFERST</h1>
 <p>ICFERST is a dimension agnostic code and therefore it is FUNDAMENTAL that the units used, unless otherwise specified, are the S.I. units to ensure consistency on the results obtained.</p>
 <p>The procedure to use IC-FERST is the following:</p>
-<p>Generate a model and a mesh =&gt; Set up the physics of the model with diamond =&gt; Run ICFERST =&gt; Examine outputs with Paraview </p>
-<h2><a class="anchor" id="modelgeneration"></a>
+<p>Generate a model and a mesh =&gt; Set up the physics of the model with diamond =&gt; Run ICFERST =&gt; Examine outputs with Paraview </p><div class="image">
+<img src="icferst_workflow.png" alt=""/>
+</div>
+ <h2><a class="anchor" id="modelgeneration"></a>
 Generation of a model</h2>
 <p>IC-FERST can currently only read .msh files following the format described by GMSHv2 or GMSHv4. For a model to work with IC-FERST it must be meshed with either triangles in 2D or tetrahedra in 3D. Boundaries must be specified with surface ids and the different material properties must be defined with region IDs following the Surface Based modeling paradigm. Although only the GMSH files can be read, normally Cubit is used to generate the models as it is more powerful and the files exported in ExodusII can easily be converted to GMSHv2 format using the scripts described in <a class="el" href="index.html#Scripts">Useful scripts</a> </p>
 <h2><a class="anchor" id="wellmodelling"></a>

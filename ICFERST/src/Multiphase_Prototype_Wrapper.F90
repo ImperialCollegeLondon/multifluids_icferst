@@ -213,6 +213,7 @@
 !> The procedure to use IC-FERST is the following:
 !>
 !> Generate a model and a mesh => Set up the physics of the model with diamond => Run ICFERST => Examine outputs with Paraview
+!> \image html icferst_workflow.png
 !> \subsection modelgeneration Generation of a model
 !> IC-FERST can currently only read .msh files following the format described by GMSHv2 or GMSHv4.
 !> For a model to work with IC-FERST it must be meshed with either triangles in 2D or tetrahedra in 3D. Boundaries must be specified with surface ids and
