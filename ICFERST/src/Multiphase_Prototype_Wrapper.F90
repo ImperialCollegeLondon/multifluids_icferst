@@ -114,7 +114,26 @@
 !>
 !> 3) Within scripts_to_make_life_easier there are two scripts to be modified and copied (manually) into /usr/bin to make the use of Diamond and ICFERST much easier.
 !>
+!> \section Formulation Formulation
 !>
+!> The formulation of the IC-FERST code is split in:
+!>
+!> 1) The manual in ICFERST/doc which is outdated but contains a very detailed description of the mathematical formulation
+!>
+!> 2) Papers published containing the formulation used in IC-FERST: 
+!>
+!> - Jackson et al 2015. doi: 10.2118/163633-PA: Overall concept of ICFERST.
+!> - Gomes et al 2016. doi: 10.1002/fld.4275: Old discretisation, boundary conditions and high order flux calculation.
+!> - Salinas et al 2017a. doi: 10.1002/fld.4357: Non-linear solver with acceleration.
+!> - Salinas et al 2017b. doi: 10.1002/fld.4381: New discretisation, the Double Control Volume Finite Element method.
+!> - Jacquemyn et al 2018. doi: 10.1007/s11004-018-9764-8: Surface-based modelling (generating models for ICFERST)
+!> - Salinas et al 2018a. doi: 10.1016/j.jcp.2017.09.058: Discontinuous formulation.
+!> - Salinas et al 2018b. doi: 10.1007/s10596-018-9759-z: Adapt within FPI and problems associated with large Courant numbers and DMO.
+!> - Salinas et al 2019. doi: 10.1016/j.cma.2019.07.004: Vanishing artificial diffusion (VAD option in diamond).
+!> - Salinas et al 2021. doi: 10.1016/j.geothermics.2021.102089: Well modelling and thermal transport.
+!> - Silva et al. 2022. doi: 10.1016/j.cma.2021.113989: Non-linear solver acceleration with Machine Learning.
+!> - Regnier et al 2022. doi: 10.1007/s10040-022-02481-w: Aquifer thermal energy storage and well modelling.
+!> - Hamzeloo et al 2022. doi: 10.1016/j.advwatres.2022.104189: Tracer modelling and parallel performance.
 !> \section Code_structure Structure of the ICFERST code
 !> All the ICFERST code is within the folder ICFERST where the test cases, code, tools and schemas for diamond are stored.
 !> Some parts of Fluidity have been slightly modified but in general the Fluidity code is untouched. 
@@ -273,9 +292,22 @@
 !> </PRE>
 !> </CODE>
 !> @endhtmlonly
+!> \subsubsection modifying_diamond Extending and modifying the diamond interface
+!> The current settings for diamond are stored in the folder ICFERST/schemas being multiphase.rnc the main file which calls the other ones.
+!> To add/remove or modify the schema the .rnc files need to be modified as required and afterwards recompiled using spud-preprocess:
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> spud-preprocess multiphase.rnc
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!> this will generate new .rng files which are the ones read by diamond. spud-preprocess should have been 
+!> installed in your system as part of the make install process.
 !> \subsubsection Diamond_manual Diamond graphical document
 !> 
-!> You can find a tutorial detailing the use of diamond and the different sections in ICFERST/doc/ICFERST_tutorial.pdf
+!> You can find a tutorial detailing the use of diamond and the different sections in ICFERST/doc/ICFERST_tutorial.pdf (Like the figure below)
+!> \image html diamond_overview.png
 !> Here we will provide a short summary of each section but the graphical document is still highly recommended, also more information
 !> of each field is already in place in the Diamond interface itself in the description box.
 !> 
@@ -366,6 +398,64 @@
 !> read Mutlaq et al. 2020. 
 !> \subsubsection dissolution Gas dissolution
 !> IC-FERST can model instantaneous gas dissolution into a fluid using this option and as a flash calculation that occurs after the non-linear solver.
+!> \subsubsection pythonscripting Input using python
+!> Diamond enables the user to introduce Boundary Conditions and diagnostic fields, as well as other fields such as SelfPotential parameters
+!> using python code. It is important to note that using a python field is considerably slower than using a field based on region ids, this extra cost is
+!> not unberable but it is neither negligible. Therefore, the use of python fields is only recommended only if strictly necessary.
+!>
+!> For boundary conditions and simple fields, the python code looks as follow to set up Velocity Boundary Conditions based on time:
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!>  # Function code
+!>  def val(X, t):
+!>   import numpy as np
+!>   alpha = 2.5 #m/s - max velocity
+!>   f     = 20./60. #20 breath/min
+!>   angle = np.radians(30.)
+!>   v_ejecta = alpha*np.sin(2.*np.pi*f*t)
+!>   
+!>   if v_ejecta < 0.:
+!>     u = 0.0
+!>   else:
+!>     u = v_ejecta  * np.cos(angle)  
+!>   
+!>   return u # Return value
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> it can be seen that it can load modules. This code will be called and evaluated for every single node 
+!> in the boundary and the only inputs are Coordinates (X) and time (t).
+!>
+!> Using diagnostic fields the user can have access to all the fields stored in state (or packed_state, check the description)
+!> which enables the user to perform more complex operations such as alter fields. In this way the python call is performed only once per non-linear loop.
+!> It is important to note that the python code is parallel safe as long as everything is keep in memory, i.e. not trying to read a file.
+!> In this case the example of the code would be as follows:
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> import numpy as np
+!> 
+!> C = state.scalar_fields['PassiveTracer_H2O']
+!> P = 1.01325e+5
+!> 
+!> T  = state.scalar_fields['Temperature']
+!> UV = 0.0
+!> Ref_temp = 20.615+273.15
+!> 
+!> for nodeID in range(field.node_count):
+!>   #Convert to relative humidity
+!>   RH=0.263*P*C.node_val(nodeID)*1./(np.exp((17.67*(T.node_val(nodeID)-273.15))/(T.node_val(nodeID)-29.65)))
+!>   k_inf = (0.16030+0.04018*((T.node_val(nodeID)-Ref_temp)/10.585)+0.02176*((RH-45.235)/28.665)+0.14369*((UV-0.95)/0.95)+0.02636*((T.node_val(nodeID)-Ref_temp)/10.585)*((UV-0.95)/0.95))/60.0
+!>   field.set(nodeID, k_inf)
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!> it can be seen how fields can be extracted from state and then looped over them. Compared to the previous script here we need to use commands such as set
+!> to impose the value of the field. This approach is very powerful. To include new fields in diamond that can use this it is recommended to link it using 
+!> @ref multi_compute_python_field following the procedure done for the SelfPotential fields.
+!> For more details of available commands check Fluidity's manual.
 !> \subsubsection int_conv Simplified diamond interface
 !> 
 !> The current version of the multiphase schema found within ICFERST/schemas is a simplified version which gets populated internally
