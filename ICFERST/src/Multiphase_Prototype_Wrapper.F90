@@ -134,6 +134,8 @@
 !> - Silva et al. 2022. doi: 10.1016/j.cma.2021.113989: Non-linear solver acceleration with Machine Learning.
 !> - Regnier et al 2022. doi: 10.1007/s10040-022-02481-w: Aquifer thermal energy storage and well modelling.
 !> - Hamzeloo et al 2022. doi: 10.1016/j.advwatres.2022.104189: Tracer modelling and parallel performance.
+!>
+!> The Fluidity manual contains information about the parts done by Fluidity, such as mesh adaptivity, mesh to mesh interpolation, etc.
 !> \section Code_structure Structure of the ICFERST code
 !> All the ICFERST code is within the folder ICFERST where the test cases, code, tools and schemas for diamond are stored.
 !> Some parts of Fluidity have been slightly modified but in general the Fluidity code is untouched. 
@@ -143,7 +145,7 @@
 !> In this way, first the momentum equation and velocity are obtained, next the saturation is transported (which also contains within it another non-linear loop)
 !> and then all the other transport equations are being solved.
 !>
-!> ICFERST solves using a DCVFE formulation, which means that we use two different meshes, a CV mesh and a FE mesh. The CV mesh and associated equations
+!> ICFERST solves the system of equations using a DCVFE formulation, which means that we use two different meshes, a CV mesh and a FE mesh. The CV mesh and associated equations
 !> are dealt with in CV_ASSEMB, which for porous media is around 70% of the overall cost. Everything related with the FE mesh is solved for in multi_dyncore
 !> However multi_dyncore contains the calls to solve for the different transport equations. So effectively the process is normally
 !> time_loop (initialise memory and stuff, including EOS, source terms...) => multi_dyncore (assemble and solve) => cv_assemb (assembles the transport equation). 
@@ -265,7 +267,7 @@
 !> phase 1 and 3 are the same. Therefore, the EOS and different properties must be defined equivalently. Another important requirement is that now two Pressure needs to
 !> be solved for, in this case phase 1 and 3 will have a defined pressure and phase 2 and 4 will be aliased with 1 and 3 respectively. Once this is done
 !> the boundary conditions need to be set accordingly
-!> \subsection xgboost Coupling with XGBoost for machine learning libraries
+!> \subsection xgboost Coupling with XGBoost for machine learning acceleration
 !> ICFERST can use XGBoost to accelerate the non-linear solver using a pre-trained model based on dimensionless parameters (Silva et al. 2022).
 !> In order to activate this option XGBoost needs to be installed and liked with ICFERST, this latter can be done with the following command:
 !> @htmlonly

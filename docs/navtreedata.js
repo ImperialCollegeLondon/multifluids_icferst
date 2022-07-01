@@ -38,7 +38,7 @@ var NAVTREE =
           [ "Well properties in Diamond", "index.html#well_prop", null ],
           [ "Well modelling as multiphases", "index.html#Wells", null ]
         ] ],
-        [ "Coupling with XGBoost for machine learning libraries", "index.html#xgboost", null ],
+        [ "Coupling with XGBoost for machine learning acceleration", "index.html#xgboost", null ],
         [ "Diamond interface", "index.html#diamond", [
           [ "Extending and modifying the diamond interface", "index.html#modifying_diamond", null ],
           [ "Diamond graphical document", "index.html#Diamond_manual", null ],

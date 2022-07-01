@@ -172,12 +172,13 @@ Formulation</h1>
 <li>Salinas et al 2021. doi: 10.1016/j.geothermics.2021.102089: Well modelling and thermal transport.</li>
 <li>Silva et al. 2022. doi: 10.1016/j.cma.2021.113989: Non-linear solver acceleration with Machine Learning.</li>
 <li>Regnier et al 2022. doi: 10.1007/s10040-022-02481-w: Aquifer thermal energy storage and well modelling.</li>
-<li>Hamzeloo et al 2022. doi: 10.1016/j.advwatres.2022.104189: Tracer modelling and parallel performance. </li>
+<li>Hamzeloo et al 2022. doi: 10.1016/j.advwatres.2022.104189: Tracer modelling and parallel performance.</li>
 </ul>
+<p>The Fluidity manual contains information about the parts done by Fluidity, such as mesh adaptivity, mesh to mesh interpolation, etc. </p>
 <h1><a class="anchor" id="Code_structure"></a>
 Structure of the ICFERST code</h1>
 <p>All the ICFERST code is within the folder ICFERST where the test cases, code, tools and schemas for diamond are stored. Some parts of Fluidity have been slightly modified but in general the Fluidity code is untouched. ICFERST is composed of two main loops. First, it is the time loop and secondly the non-linear loop, which is a Picard method to deal with non-linearities. The time-loop is defined in the multi_timeloop file. From this subroutine we initialise all the necessary fields and start the non-linear loop, within which all the equations to be solved are being called as blocks. In this way, first the momentum equation and velocity are obtained, next the saturation is transported (which also contains within it another non-linear loop) and then all the other transport equations are being solved.</p>
-<p>ICFERST solves using a DCVFE formulation, which means that we use two different meshes, a CV mesh and a FE mesh. The CV mesh and associated equations are dealt with in CV_ASSEMB, which for porous media is around 70% of the overall cost. Everything related with the FE mesh is solved for in multi_dyncore However multi_dyncore contains the calls to solve for the different transport equations. So effectively the process is normally time_loop (initialise memory and stuff, including EOS, source terms...) =&gt; multi_dyncore (assemble and solve) =&gt; cv_assemb (assembles the transport equation).</p>
+<p>ICFERST solves the system of equations using a DCVFE formulation, which means that we use two different meshes, a CV mesh and a FE mesh. The CV mesh and associated equations are dealt with in CV_ASSEMB, which for porous media is around 70% of the overall cost. Everything related with the FE mesh is solved for in multi_dyncore However multi_dyncore contains the calls to solve for the different transport equations. So effectively the process is normally time_loop (initialise memory and stuff, including EOS, source terms...) =&gt; multi_dyncore (assemble and solve) =&gt; cv_assemb (assembles the transport equation).</p>
 <p>To simplify and standardize the naming of the variables the structures defined in <a class="el" href="namespacemulti__data__types.html" title="This module contains all the ICFERST structures and associated subroutines (allocate/deallocate) Use ...">multi_data_types</a> are used through the code. Normally one or two of those types are created once and used throughout the code, so it is recommended to check in that section what is each variable and use those types either expanding them or creating more.</p>
 <h2><a class="anchor" id="code_Diagram"></a>
 Code Diagram</h2>
@@ -281,7 +282,7 @@ Well properties in Diamond</h3>
 Well modelling as multiphases</h3>
 <p>Currently, ICFERST model wells by considering that two different domains co-exist and are connected through the nodes of the wells. To define this through diamond One has to duplicate the number of phases to the ones required to model the system without wells and consider that they are equivalent, for example for two phase phase 1 and 3 are the same. Therefore, the EOS and different properties must be defined equivalently. Another important requirement is that now two Pressure needs to be solved for, in this case phase 1 and 3 will have a defined pressure and phase 2 and 4 will be aliased with 1 and 3 respectively. Once this is done the boundary conditions need to be set accordingly </p>
 <h2><a class="anchor" id="xgboost"></a>
-Coupling with XGBoost for machine learning libraries</h2>
+Coupling with XGBoost for machine learning acceleration</h2>
 <p>ICFERST can use XGBoost to accelerate the non-linear solver using a pre-trained model based on dimensionless parameters (Silva et al. 2022). In order to activate this option XGBoost needs to be installed and liked with ICFERST, this latter can be done with the following command:  
  <CODE>
  <PRE>
