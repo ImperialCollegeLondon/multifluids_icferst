@@ -323,7 +323,18 @@
 !>
 !> Regarding the non-linear solver settings, it is also recommended not to modify it unless the adaptive time-stepping method with PID is used
 !> in which case the user is encouraged to introduce the defaults settings for all the requested fields and specify the PID adaptive time-stepping.
+!>\subsubsection PID PID adaptive time-stepping
 !>
+!> The recommended method to adjust the time-step size in ICFERST is to do it based on the stability of the non-linear solver with the addition of the
+!> PID controler (Proportional Integrator Derivator). Adaptive time-stepping methods based on the stability of the non-linear solver normally suffer from
+!> the fact that they keep raising the time-step size until they fail, which forces them to repeat a time-level, halve the time-step size and repeat
+!> the process. This is suboptimal, in ICFERST we use a PID type method based on a requested number of non-linear iterations, where the controller
+!> adjusts the time-step size to try to always have the same number of non-linear iterations, avoiding that problem and being overall more efficient.
+!>\subsubsection VAD Vanishing artificial diffusion
+!> The Vanishing Artificial Diffusion (VAD) is devoted to stabilise the system when solving for multiphase flow. It can also be used for transport however 
+!> we have seen that in certain scenarios it may not be beneficial, this could be solved adjusting the parameter but xthis work needs to be done.
+!> However, for multiphase it has shown to greatly accelerate the non-linear solver and specially when having capillary pressure in the system.
+!> Unless explicitly imposed, when capillary pressure is active VAD is also active. Moreover, VAD is active if no settings of the non-linear solver are set.
 !> The momentum_matrix settings are only for magma and stokes and therefore out of the scope of this manual.
 !>\subsubsection io IO(Input/output)
 !> In this section the user can specify what to output from ICFERST. 

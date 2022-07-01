@@ -1,5 +1,7 @@
 var NAVTREEINDEX5 =
 {
+"structmulti__data__types_1_1multi__sparsities.html#a74ede11a2a5ad035372a4f7ddd74498d":[2,0,1,13,0],
+"structmulti__data__types_1_1multi__sparsities.html#a8dec2e285d86610c9fe02e9975d5586b":[2,0,1,13,2],
 "structmulti__data__types_1_1multi__sparsities.html#ab03463e20954ee1e3e0800deb600a7bf":[2,0,1,13,8],
 "structmulti__data__types_1_1multi__sparsities.html#acc8e34117aeecf35792fe8040034f6ca":[2,0,1,13,5],
 "structmulti__data__types_1_1multi__sparsity.html":[2,0,1,14],
