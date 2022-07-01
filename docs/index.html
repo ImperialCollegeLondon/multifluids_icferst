@@ -27,7 +27,7 @@
   <td id="projectlogo"><img alt="Logo" src="IC_FERST_Logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">ICFERST
-   &#160;<span id="projectnumber">22-06</span>
+   &#160;<span id="projectnumber">22-07</span>
    </div>
    <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
@@ -155,10 +155,30 @@ Useful scripts</h2>
 <p>1) If detectors are used you can use detectors_and_stat2csv.py to convert the detectors file in the more readable format .csv</p>
 <p>2) To convert from Cubit (exodusII) to a mesh type that ICFERST can open (GMSHv2 format) the scripts exodus2gmsh.py (3D) and 2Dexodus2gmsh.py (2D can be used. exodus2gmsh.py can convert directly into binary format</p>
 <p>3) Within scripts_to_make_life_easier there are two scripts to be modified and copied (manually) into /usr/bin to make the use of Diamond and ICFERST much easier.</p>
+<h1><a class="anchor" id="Formulation"></a>
+Formulation</h1>
+<p>The formulation of the IC-FERST code is split in:</p>
+<p>1) The manual in ICFERST/doc which is outdated but contains a very detailed description of the mathematical formulation</p>
+<p>2) Papers published containing the formulation used in IC-FERST:</p>
+<ul>
+<li>Jackson et al 2015. doi: 10.2118/163633-PA: Overall concept of ICFERST.</li>
+<li>Gomes et al 2016. doi: 10.1002/fld.4275: Old discretisation, boundary conditions and high order flux calculation.</li>
+<li>Salinas et al 2017a. doi: 10.1002/fld.4357: Non-linear solver with acceleration.</li>
+<li>Salinas et al 2017b. doi: 10.1002/fld.4381: New discretisation, the Double Control Volume Finite Element method.</li>
+<li>Jacquemyn et al 2018. doi: 10.1007/s11004-018-9764-8: Surface-based modelling (generating models for ICFERST)</li>
+<li>Salinas et al 2018a. doi: 10.1016/j.jcp.2017.09.058: Discontinuous formulation.</li>
+<li>Salinas et al 2018b. doi: 10.1007/s10596-018-9759-z: Adapt within FPI and problems associated with large Courant numbers and DMO.</li>
+<li>Salinas et al 2019. doi: 10.1016/j.cma.2019.07.004: Vanishing artificial diffusion (VAD option in diamond).</li>
+<li>Salinas et al 2021. doi: 10.1016/j.geothermics.2021.102089: Well modelling and thermal transport.</li>
+<li>Silva et al. 2022. doi: 10.1016/j.cma.2021.113989: Non-linear solver acceleration with Machine Learning.</li>
+<li>Regnier et al 2022. doi: 10.1007/s10040-022-02481-w: Aquifer thermal energy storage and well modelling.</li>
+<li>Hamzeloo et al 2022. doi: 10.1016/j.advwatres.2022.104189: Tracer modelling and parallel performance.</li>
+</ul>
+<p>The Fluidity manual contains information about the parts done by Fluidity, such as mesh adaptivity, mesh to mesh interpolation, etc. </p>
 <h1><a class="anchor" id="Code_structure"></a>
 Structure of the ICFERST code</h1>
 <p>All the ICFERST code is within the folder ICFERST where the test cases, code, tools and schemas for diamond are stored. Some parts of Fluidity have been slightly modified but in general the Fluidity code is untouched. ICFERST is composed of two main loops. First, it is the time loop and secondly the non-linear loop, which is a Picard method to deal with non-linearities. The time-loop is defined in the multi_timeloop file. From this subroutine we initialise all the necessary fields and start the non-linear loop, within which all the equations to be solved are being called as blocks. In this way, first the momentum equation and velocity are obtained, next the saturation is transported (which also contains within it another non-linear loop) and then all the other transport equations are being solved.</p>
-<p>ICFERST solves using a DCVFE formulation, which means that we use two different meshes, a CV mesh and a FE mesh. The CV mesh and associated equations are dealt with in CV_ASSEMB, which for porous media is around 70% of the overall cost. Everything related with the FE mesh is solved for in multi_dyncore However multi_dyncore contains the calls to solve for the different transport equations. So effectively the process is normally time_loop (initialise memory and stuff, including EOS, source terms...) =&gt; multi_dyncore (assemble and solve) =&gt; cv_assemb (assembles the transport equation).</p>
+<p>ICFERST solves the system of equations using a DCVFE formulation, which means that we use two different meshes, a CV mesh and a FE mesh. The CV mesh and associated equations are dealt with in CV_ASSEMB, which for porous media is around 70% of the overall cost. Everything related with the FE mesh is solved for in multi_dyncore However multi_dyncore contains the calls to solve for the different transport equations. So effectively the process is normally time_loop (initialise memory and stuff, including EOS, source terms...) =&gt; multi_dyncore (assemble and solve) =&gt; cv_assemb (assembles the transport equation).</p>
 <p>To simplify and standardize the naming of the variables the structures defined in <a class="el" href="namespacemulti__data__types.html" title="This module contains all the ICFERST structures and associated subroutines (allocate/deallocate) Use ...">multi_data_types</a> are used through the code. Normally one or two of those types are created once and used throughout the code, so it is recommended to check in that section what is each variable and use those types either expanding them or creating more.</p>
 <h2><a class="anchor" id="code_Diagram"></a>
 Code Diagram</h2>
@@ -237,8 +257,10 @@ Code Diagram</h2>
 How to use ICFERST</h1>
 <p>ICFERST is a dimension agnostic code and therefore it is FUNDAMENTAL that the units used, unless otherwise specified, are the S.I. units to ensure consistency on the results obtained.</p>
 <p>The procedure to use IC-FERST is the following:</p>
-<p>Generate a model and a mesh =&gt; Set up the physics of the model with diamond =&gt; Run ICFERST =&gt; Examine outputs with Paraview </p>
-<h2><a class="anchor" id="modelgeneration"></a>
+<p>Generate a model and a mesh =&gt; Set up the physics of the model with diamond =&gt; Run ICFERST =&gt; Examine outputs with Paraview </p><div class="image">
+<img src="icferst_workflow.png" alt=""/>
+</div>
+ <h2><a class="anchor" id="modelgeneration"></a>
 Generation of a model</h2>
 <p>IC-FERST can currently only read .msh files following the format described by GMSHv2 or GMSHv4. For a model to work with IC-FERST it must be meshed with either triangles in 2D or tetrahedra in 3D. Boundaries must be specified with surface ids and the different material properties must be defined with region IDs following the Surface Based modeling paradigm. Although only the GMSH files can be read, normally Cubit is used to generate the models as it is more powerful and the files exported in ExodusII can easily be converted to GMSHv2 format using the scripts described in <a class="el" href="index.html#Scripts">Useful scripts</a> </p>
 <h2><a class="anchor" id="wellmodelling"></a>
@@ -260,7 +282,7 @@ Well properties in Diamond</h3>
 Well modelling as multiphases</h3>
 <p>Currently, ICFERST model wells by considering that two different domains co-exist and are connected through the nodes of the wells. To define this through diamond One has to duplicate the number of phases to the ones required to model the system without wells and consider that they are equivalent, for example for two phase phase 1 and 3 are the same. Therefore, the EOS and different properties must be defined equivalently. Another important requirement is that now two Pressure needs to be solved for, in this case phase 1 and 3 will have a defined pressure and phase 2 and 4 will be aliased with 1 and 3 respectively. Once this is done the boundary conditions need to be set accordingly </p>
 <h2><a class="anchor" id="xgboost"></a>
-Coupling with XGBoost for machine learning libraries</h2>
+Coupling with XGBoost for machine learning acceleration</h2>
 <p>ICFERST can use XGBoost to accelerate the non-linear solver using a pre-trained model based on dimensionless parameters (Silva et al. 2022). In order to activate this option XGBoost needs to be installed and liked with ICFERST, this latter can be done with the following command:  
  <CODE>
  <PRE>
@@ -278,17 +300,34 @@ Diamond interface</h2>
  </PRE>
  </CODE>
   </p>
+<h3><a class="anchor" id="modifying_diamond"></a>
+Extending and modifying the diamond interface</h3>
+<p>The current settings for diamond are stored in the folder ICFERST/schemas being multiphase.rnc the main file which calls the other ones. To add/remove or modify the schema the .rnc files need to be modified as required and afterwards recompiled using spud-preprocess:  
+ <CODE>
+ <PRE>
+ spud-preprocess multiphase.rnc
+ </PRE>
+ </CODE>
+  this will generate new .rng files which are the ones read by diamond. spud-preprocess should have been installed in your system as part of the make install process. </p>
 <h3><a class="anchor" id="Diamond_manual"></a>
 Diamond graphical document</h3>
-<p>You can find a tutorial detailing the use of diamond and the different sections in ICFERST/doc/ICFERST_tutorial.pdf Here we will provide a short summary of each section but the graphical document is still highly recommended, also more information of each field is already in place in the Diamond interface itself in the description box.</p>
+<p>You can find a tutorial detailing the use of diamond and the different sections in ICFERST/doc/ICFERST_tutorial.pdf (Like the figure below) </p><div class="image">
+<img src="diamond_overview.png" alt=""/>
+</div>
+<p> Here we will provide a short summary of each section but the graphical document is still highly recommended, also more information of each field is already in place in the Diamond interface itself in the description box.</p>
 <h3><a class="anchor" id="geometry"></a>
 Geometry</h3>
 <p>In this section the user must define the dimensions of the mode, the input file and the simulation quality. Currently only Fast and Balance are operative the other settings are just for research purposes and its use is not recommended. The option create_binary_mesh is used to convert the given mesh into a binary format to be used by fldecomp, if this option is one the recommended usage is to use it and kill the simulation once the conversion has been done (printed on the terminal). </p>
 <h3><a class="anchor" id="solv_options"></a>
 Solver Options</h3>
 <p>This zone is devoted to modify the linear and non-linear solvers. It is recommended not to modify the linear solver settings unless a model with undefined pressure is used, in which case the pressure solver needs to be defined with the option remove null space. Even for this cases it is recommended to use the default settings of GMRES(30)+Hypre and relative residual reduction of 1e-10</p>
-<p>Regarding the non-linear solver settings, it is also recommended not to modify it unless the adaptive time-stepping method with PID is used in which case the user is encouraged to introduce the defaults settings for all the requested fields and specify the PID adaptive time-stepping.</p>
-<p>The momentum_matrix settings are only for magma and stokes and therefore out of the scope of this manual. </p>
+<p>Regarding the non-linear solver settings, it is also recommended not to modify it unless the adaptive time-stepping method with PID is used in which case the user is encouraged to introduce the defaults settings for all the requested fields and specify the PID adaptive time-stepping. </p>
+<h3><a class="anchor" id="PID"></a>
+PID adaptive time-stepping</h3>
+<p>The recommended method to adjust the time-step size in ICFERST is to do it based on the stability of the non-linear solver with the addition of the PID controler (Proportional Integrator Derivator). Adaptive time-stepping methods based on the stability of the non-linear solver normally suffer from the fact that they keep raising the time-step size until they fail, which forces them to repeat a time-level, halve the time-step size and repeat the process. This is suboptimal, in ICFERST we use a PID type method based on a requested number of non-linear iterations, where the controller adjusts the time-step size to try to always have the same number of non-linear iterations, avoiding that problem and being overall more efficient. </p>
+<h3><a class="anchor" id="VAD"></a>
+Vanishing artificial diffusion</h3>
+<p>The Vanishing Artificial Diffusion (VAD) is devoted to stabilise the system when solving for multiphase flow. It can also be used for transport however we have seen that in certain scenarios it may not be beneficial, this could be solved adjusting the parameter but xthis work needs to be done. However, for multiphase it has shown to greatly accelerate the non-linear solver and specially when having capillary pressure in the system. Unless explicitly imposed, when capillary pressure is active VAD is also active. Moreover, VAD is active if no settings of the non-linear solver are set. The momentum_matrix settings are only for magma and stokes and therefore out of the scope of this manual. </p>
 <h3><a class="anchor" id="io"></a>
 IO(Input/output)</h3>
 <p>In this section the user can specify what to output from ICFERST. The outputs of vtu files can either be based on timesteps or time in seconds. The user can select to print convergence information and the current courant number, also the user can select from here to generate the outfluxes file and checkpointing. </p>
@@ -347,6 +386,50 @@ Self Potential</h3>
 <h3><a class="anchor" id="dissolution"></a>
 Gas dissolution</h3>
 <p>IC-FERST can model instantaneous gas dissolution into a fluid using this option and as a flash calculation that occurs after the non-linear solver. </p>
+<h3><a class="anchor" id="pythonscripting"></a>
+Input using python</h3>
+<p>Diamond enables the user to introduce Boundary Conditions and diagnostic fields, as well as other fields such as SelfPotential parameters using python code. It is important to note that using a python field is considerably slower than using a field based on region ids, this extra cost is not unberable but it is neither negligible. Therefore, the use of python fields is only recommended only if strictly necessary.</p>
+<p>For boundary conditions and simple fields, the python code looks as follow to set up Velocity Boundary Conditions based on time:  
+ <CODE>
+ <PRE>
+  # Function code
+  def val(X, t):
+   import numpy as np
+   alpha = 2.5 #m/s - max velocity
+   f     = 20./60. #20 breath/min
+   angle = np.radians(30.)
+   v_ejecta = alpha*np.sin(2.*np.pi*f*t)
+   
+   if v_ejecta < 0.:
+     u = 0.0
+   else:
+     u = v_ejecta  * np.cos(angle)  
+   
+   return u # Return value
+ </PRE>
+ </CODE>
+ </p>
+<p>it can be seen that it can load modules. This code will be called and evaluated for every single node in the boundary and the only inputs are Coordinates (X) and time (t).</p>
+<p>Using diagnostic fields the user can have access to all the fields stored in state (or packed_state, check the description) which enables the user to perform more complex operations such as alter fields. In this way the python call is performed only once per non-linear loop. It is important to note that the python code is parallel safe as long as everything is keep in memory, i.e. not trying to read a file. In this case the example of the code would be as follows:  
+ <CODE>
+ <PRE>
+ import numpy as np
+ 
+ C = state.scalar_fields['PassiveTracer_H2O']
+ P = 1.01325e+5
+ 
+ T  = state.scalar_fields['Temperature']
+ UV = 0.0
+ Ref_temp = 20.615+273.15
+ 
+ for nodeID in range(field.node_count):
+   #Convert to relative humidity
+   RH=0.263*P*C.node_val(nodeID)*1./(np.exp((17.67*(T.node_val(nodeID)-273.15))/(T.node_val(nodeID)-29.65)))
+   k_inf = (0.16030+0.04018*((T.node_val(nodeID)-Ref_temp)/10.585)+0.02176*((RH-45.235)/28.665)+0.14369*((UV-0.95)/0.95)+0.02636*((T.node_val(nodeID)-Ref_temp)/10.585)*((UV-0.95)/0.95))/60.0
+   field.set(nodeID, k_inf)
+ </PRE>
+ </CODE>
+  it can be seen how fields can be extracted from state and then looped over them. Compared to the previous script here we need to use commands such as set to impose the value of the field. This approach is very powerful. To include new fields in diamond that can use this it is recommended to link it using multi_compute_python_field following the procedure done for the SelfPotential fields. For more details of available commands check Fluidity's manual. </p>
 <h3><a class="anchor" id="int_conv"></a>
 Simplified diamond interface</h3>
 <p>The current version of the multiphase schema found within ICFERST/schemas is a simplified version which gets populated internally so it is compatible with Fluidity. This extra population affects when generating checkpointing files that will not be exactly like the original and may need to amended before re-running from a checkpoint (which can be done by opening them and saving). It is important to understand that this conversion exists since it may affect some sections of the code. However, this has been tried to be kept to a minimum and developers can expect a direct connection between diamond and where the option can be found when extracting it.</p>

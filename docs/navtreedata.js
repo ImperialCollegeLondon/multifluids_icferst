@@ -28,6 +28,7 @@ var NAVTREE =
       [ "Installation", "index.html#install_sec", [
         [ "Useful scripts", "index.html#Scripts", null ]
       ] ],
+      [ "Formulation", "index.html#Formulation", null ],
       [ "Structure of the ICFERST code", "index.html#Code_structure", [
         [ "Code Diagram", "index.html#code_Diagram", null ]
       ] ],
@@ -37,11 +38,14 @@ var NAVTREE =
           [ "Well properties in Diamond", "index.html#well_prop", null ],
           [ "Well modelling as multiphases", "index.html#Wells", null ]
         ] ],
-        [ "Coupling with XGBoost for machine learning libraries", "index.html#xgboost", null ],
+        [ "Coupling with XGBoost for machine learning acceleration", "index.html#xgboost", null ],
         [ "Diamond interface", "index.html#diamond", [
+          [ "Extending and modifying the diamond interface", "index.html#modifying_diamond", null ],
           [ "Diamond graphical document", "index.html#Diamond_manual", null ],
           [ "Geometry", "index.html#geometry", null ],
           [ "Solver Options", "index.html#solv_options", null ],
+          [ "PID adaptive time-stepping", "index.html#PID", null ],
+          [ "Vanishing artificial diffusion", "index.html#VAD", null ],
           [ "IO(Input/output)", "index.html#io", null ],
           [ "Timestepping", "index.html#timestepping", null ],
           [ "Physical parameters", "index.html#physical_par", null ],
@@ -56,6 +60,7 @@ var NAVTREE =
           [ "PHREEQC coupling", "index.html#phreqqc", null ],
           [ "Self Potential", "index.html#selfP", null ],
           [ "Gas dissolution", "index.html#dissolution", null ],
+          [ "Input using python", "index.html#pythonscripting", null ],
           [ "Simplified diamond interface", "index.html#int_conv", null ]
         ] ],
         [ "Applications and tests", "index.html#applications", [
@@ -95,10 +100,10 @@ var NAVTREEINDEX =
 [
 "_extract___from___state_8_f90.html",
 "_r_m__interface_8_f90.html#aa06999b1b2bf8b9920785359f9ed0593",
-"interfacexgb__interface_1_1fortran___x_g_booster_save_model.html#a27a145f5f8ab531b26e19fcf3e97df0b",
-"multi__pipes_8_f90.html#a9ee038dac8fcca773ef00083d4b89cf7",
-"namespacemembers_s.html",
-"structmulti__data__types_1_1multi__sparsity.html#a0540892f8d1bd92dad2ef8326e62761d"
+"interfacexgb__interface_1_1fortran___x_g_booster_load_model.html",
+"multi__pipes_8_f90.html#a7b452d55d681c15cd356bdee00f0c26f",
+"namespacemembers_n.html",
+"structmulti__data__types_1_1multi__sparsities.html#a74ede11a2a5ad035372a4f7ddd74498d"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
