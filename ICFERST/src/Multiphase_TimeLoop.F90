@@ -71,12 +71,10 @@ module multiphase_time_loop
     use checkpoint
     use boundary_conditions
     use boundary_conditions_from_options
-    !!$ Modules indigenous to the prototype Code
     use shape_functions_Linear_Quadratic
     use spact
     use Compositional_Terms
     use multiphase_EOS
-    use multiphase_fractures_3D
     use Compositional_Terms
     use Copy_Outof_State
     use cv_advection, only : cv_count_faces
@@ -86,7 +84,6 @@ module multiphase_time_loop
     use vtk_interfaces
     use multi_interpolation
     use multi_pipes
-    use multi_magma
     use multi_SP
     use multi_tools
     use momentum_diagnostic_fields, only: calculate_densities
@@ -104,12 +101,7 @@ module multiphase_time_loop
 #include "petsc_legacy.h"
 
     private
-    !public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
     public :: MultiFluids_SolveTimeLoop, dump_outflux
-    !type(rheology_type), dimension(:), allocatable :: rheology
-
-
-
 contains
 
     !> This is the main subroutine from which everything is called. It performs the time-loop and
@@ -241,12 +233,6 @@ contains
 
         integer :: SFPI_its = 0
         integer :: max_sat_its
-
-        real,allocatable, dimension(:) :: c_phi_series
-        integer :: c_phi_length
-        type(coupling_term_coef) :: coupling
-        type(magma_phase_diagram) :: magma_phase_coef
-        real :: bulk_power
         character(len = OPTION_PATH_LEN) :: func
         !Variables for passive tracers
         logical :: have_Active_Tracers = .true.
@@ -517,16 +503,6 @@ contains
            call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
         end if
 
-        !HH Initialize all the magma simulation related coefficients
-        if (is_magma) then
-          c_phi_length=1e7  ! the number of items of the coupling term coefficients stored in the system
-          allocate(c_phi_series(c_phi_length))
-          call C_generate (c_phi_series, c_phi_length, state, coupling)
-          call initialize_magma_parameters(magma_phase_coef,  coupling)
-          !This is important to specify EnthalpyOld based on the temperature which is easier for the user
-          !WHAT ABOUT THE BCS? FOR THE TIME BEING WE NEED ENTHALPY BCs...
-          call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
-        end if
 
 
         call petsc_logging(3,stages,ierrr,default=.true.)
@@ -582,17 +558,6 @@ contains
                 end if
             end if
             !!$ FEMDEM...
-#ifdef USING_FEMDEM
-            if ( is_multifracture ) then
-               call fracking(packed_state, state,Mdims%nphase)
-            elseif ( have_option( '/blasting') ) then
-               call blasting( packed_state, Mdims%nphase )
-               call update_blasting_memory( packed_state, state, timestep )
-!            elseif (have_option( '/femdem_thermal') ) then ! Overriting of the temperature source and temperature absorption
-!              call femdemthermal(packed_state, state,Mdims%nphase)
-!			   call update_blasting_memory( packed_state, state, timestep )
-            end if
-#endif
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
 
             !!$ Start non-linear loop
@@ -649,7 +614,6 @@ contains
                         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                 end if
 
-                if ( is_magma ) call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln, c_phi_series)
 
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
@@ -691,13 +655,21 @@ contains
                 !#=================================================================================================================
                 !$ Now solving the Momentum Equation ( = Force Balance Equation )
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
-                    !if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
-                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
-                        Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
-                        dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
-                        igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        calculate_mass_delta, outfluxes, pres_its_taken, its, Courant_number)
+                    if (is_porous_media .and. is_P0DGP1) then 
+                        CALL POROUS_FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
+                            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
+                            Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
+                            dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
+                            igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
+                            calculate_mass_delta, outfluxes, pres_its_taken, its, Courant_number)
+                    else
+                        CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
+                            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
+                            Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
+                            dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
+                            igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
+                            calculate_mass_delta, outfluxes, pres_its_taken, its, Courant_number)
+                    end if
                 end if Conditional_ForceBalanceEquation
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
@@ -719,7 +691,7 @@ contains
 #endif
                   end if
                 end if
-                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma) ) then
+                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
@@ -741,7 +713,7 @@ contains
                 !#=================================================================================================================
 
                 !!$ Solve advection of the scalar 'Temperature':
-                Conditional_ScalarAdvectionField: if( have_temperature_field .and. (.not. is_magma)) then
+                Conditional_ScalarAdvectionField: if( have_temperature_field) then
 
                     ewrite(3,*)'Now advecting Temperature Field'
                     call set_nu_to_u( packed_state )
@@ -762,34 +734,6 @@ contains
                         thermal = .true.,&
                         ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field, nonlinear_iteration = its)
-
-                else IF (is_magma) then !... in which case we solve for enthalpy instead
-
-                  tracer_field=>extract_tensor_field(packed_state,"PackedEnthalpy")
-                  density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                  saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                  velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                  !Recalculate densities
-                  call Calculate_All_Rhos( state, packed_state, Mdims )
-                  call set_nu_to_u( packed_state )
-                  ewrite(3,*)'Now advecting Enthalpy Field'
-                  call ENTHALPY_ASSEM_SOLVE( state, packed_state, &
-                  Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                  tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                  suf_sig_diagten_bc, Porosity_field%val, &
-                  !!$
-                  0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                  THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                  option_path = '/material_phase[0]/scalar_field::Enthalpy', &
-                  thermal = .false.,saturation=saturation_field, nonlinear_iteration = its, &
-                  magma_phase_coefficients=  magma_phase_coef)
-
-                  ! ! Calculate melt fraction from phase diagram
-                  call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
-                  ! ! Update the temperature field
-                  call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
-                  ! ! Update the composition
-                  call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
 
                 END IF Conditional_ScalarAdvectionField
 
@@ -1410,20 +1354,6 @@ contains
                     call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps/python', pyfunc)
                     call integer_from_python(pyfunc, acctim, adapt_time_steps)
                   end if
-
-                !-ao solid modelling (AMR field for fracturing)
-                if (is_multifracture ) then
-                    if ((is_fracturing) .AND. (itime>1)) then !-asiri- If new fractures surfaces are detected, reduce AMR period and adapt every timestep
-                        adapt_time_steps=1
-                    else if (.not. is_fracturing .AND. ((itime/adapt_time_steps)>5)) then !after intial adapt
-                        adapt_time_steps=50
-                    else
-                        call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps', & !forcing default again (just in case)
-                            adapt_time_steps, default=5 )
-                endif
-                !-ao solid modelling (AMR field for fracturing)
-
-                end if
                 else if (have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
                     do_reallocate_fields = .true.
                     adapt_time_steps = 5!adapt_time_steps requires a default value

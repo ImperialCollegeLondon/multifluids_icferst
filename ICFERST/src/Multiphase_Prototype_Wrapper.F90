@@ -337,7 +337,7 @@
 !> we have seen that in certain scenarios it may not be beneficial, this could be solved adjusting the parameter but xthis work needs to be done.
 !> However, for multiphase it has shown to greatly accelerate the non-linear solver and specially when having capillary pressure in the system.
 !> Unless explicitly imposed, when capillary pressure is active VAD is also active. Moreover, VAD is active if no settings of the non-linear solver are set.
-!> The momentum_matrix settings are only for magma and stokes and therefore out of the scope of this manual.
+!> The momentum_matrix settings are only for stokes and therefore out of the scope of this manual.
 !>\subsubsection io IO(Input/output)
 !> In this section the user can specify what to output from ICFERST. 
 !> The outputs of vtu files can either be based on timesteps or time in seconds. 
@@ -1516,7 +1516,7 @@ contains
 !Easiest way to create the heatcapacity field is to move where it was inside temperature!SPRINT_TO_DO NEED TO CHANGE THIS!
             if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity")) then
                 if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic")) then
-                    FLAbort("HeatCapacity specified but no prognostic temperature field specified. This is required even if solving for Magma/Enthalpy.")
+                    FLAbort("HeatCapacity specified but no prognostic temperature field specified. ")
                 end if
               ! if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic")) then
               call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity",&
@@ -1635,13 +1635,8 @@ contains
         integer :: Vdegree, Pdegree
         !By default it is inertia dominated
         is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media')
-        is_magma = have_option('/magma_simulator')
-        !Decide to solve Stokes equations instead of navier-Stokes (magma requires this option as well)
-        solve_stokes = have_option('/stokes_simulator') .or. is_magma
-        !Flag to set up the coupling with femdem
-        is_multifracture = have_option( '/femdem_fracture' )
-        !Flag to set up blasting
-        is_blasting = have_option( '/blasting' )
+        !Decide to solve Stokes equations instead of navier-Stokes
+        solve_stokes = have_option('/stokes_simulator')
         !Has temperature
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
         has_concentration = have_option( '/material_phase[0]/scalar_field::Concentration/' )
@@ -1657,13 +1652,6 @@ contains
         if (have_option('/inertia_dominated_simulator') .and. have_option('/porous_media')) then
           if (GetProcNo() == 1) then
             FLAbort("The simulator has been set up to inertia dominated but porous media options have been set up. ")
-          end if
-        end if
-
-        if ((is_magma .and. .not. have_option('/magma_parameters/Phase_diagram_coefficients')) .or. &
-        ( have_option('/magma_parameters/Phase_diagram_coefficients') .and. .not. is_magma)) then
-          if (GetProcNo() == 1) then
-            FLAbort("Magma simulator requires /magma_parameters options.")
           end if
         end if
 

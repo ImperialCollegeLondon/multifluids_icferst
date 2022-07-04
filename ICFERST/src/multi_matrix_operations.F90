@@ -213,7 +213,6 @@ contains
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
         pipes_aux, got_free_surf,  MASS_SUF, &
         FEM_continuity_equation )
-        !use multiphase_1D_engine
         implicit none
         ! form pressure matrix CMC using a colouring approach
         type(multi_dimensions), intent(in) :: Mdims
@@ -270,7 +269,6 @@ contains
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
             MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
             got_free_surf,  MASS_SUF, ndpset, FEM_continuity_equation )
-            !use multiphase_1D_engine
             implicit none
             ! form pressure matrix CMC using a colouring approach
             type(multi_dimensions), intent(in) :: Mdims

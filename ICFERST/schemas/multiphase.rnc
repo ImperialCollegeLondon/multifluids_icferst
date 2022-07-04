@@ -42,14 +42,10 @@ start =
             anystring
          },
              (
-                ## Navier-stokes simulator
-                element inertia_dominated_simulator{comment}|
                 ## Darcy flow simulator
                 element porous_media_simulator{comment}|
-                ## Magma flow simulator
-                element magma_simulator{comment}|
-                ## Stokes flow simulator
-                element stokes_simulator{comment}
+                ## Navier-stokes simulator
+                element inertia_dominated_simulator{comment}
              ),
          geometry,
 	     solver_options,
@@ -1376,18 +1372,10 @@ geometry =
          },
 
            ## Selects the quality configuration of the experiment
-           ## For Porous media the P1/P0 stands for P0, for inertia for P1.
-           ##
            ## Fast (<b>recommended</b>) => Element pair = P0DGP1(CV). Upwinding and implicit euler;
-           ##
-           ## Balanced => Element pair = P1/P0DGP1(CV). High order advection scheme, adaptive theta and limiters;
-           ##
-           ## Precision => Element pair = P1DGP2(CV). High order advection scheme and adaptive theta and limiters;
-           ##
-           ## Discontinuous_pressure => P1DG(BL)P1DG(CV). High order advection scheme and adaptive theta and limiters;
             element simulation_quality {
               element string_value{
-                 "fast" | "balanced" | "precision"|"discontinuous_pressure"
+                 "fast"
               },
                 ## <b>For Balanced and fast precisions.</b>
                 ##

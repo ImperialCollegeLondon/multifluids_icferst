@@ -397,15 +397,12 @@ module multi_data_types
     !>@param  Temperature Unused currently
     !>@param  Concentration Unused currently
     !>@param  Velocity Unused currently
-    !>@param  Magma  Magma absorption Initially to use memory type = 3  Isotropic coupled
     type multi_absorption
         type (multi_field) :: PorousMedia 
         type (multi_field) :: Components
         type (multi_field) :: Temperature
         type (multi_field) :: Concentration
         type (multi_field) :: Velocity
-        !>Magma absorption
-        type (multi_field) :: Magma 
     end type multi_absorption
 
     !>Contains all the information for generic scalar fields to solve for
@@ -588,10 +585,6 @@ contains
 !              end if
             end if
 
-            if (trim(field_name)=="Magma_AbsorptionTerm") then
-                mfield%is_constant = .false.!It cannot be constant
-                mfield%memory_type = 3      !The absorption is always Isotropic coupled
-            end if
 
             if (trim(field_name)=="ComponentAbsorption") then
                 mfield%memory_type = 4
@@ -666,7 +659,6 @@ contains
         if (associated(multi_absorp%Temperature%val)) call deallocate_multi_field(multi_absorp%Temperature, and_destroy2)
         if (associated(multi_absorp%Velocity%val))    call deallocate_multi_field(multi_absorp%Velocity, and_destroy2)
         if (associated(multi_absorp%Concentration%val))call deallocate_multi_field(multi_absorp%Concentration, and_destroy2)
-        if (associated(multi_absorp%Magma%val))    call deallocate_multi_field(multi_absorp%Magma, and_destroy2)
     end subroutine deallocate_multi_absorption
 
     !> Given a multi field returns an array with its values at inode_in
