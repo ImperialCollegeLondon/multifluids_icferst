@@ -13,8 +13,8 @@ max_val = stat("connected_bcs.stat")["water"]["Concentration"]["max"][-1]</varia
 int_val = stat("connected_bcs.stat")["water"]["Concentration"]["integral"][-1]</variable>
   </variables>
   <pass_tests>
-    <test name="Assert final max conc" language="python">assert(abs((max_val - 0.17)/0.17) &lt; 0.01)</test>
-    <test name="Assert final int conc" language="python">assert(abs((int_val - 0.0123)/0.0123) &lt; 0.01)</test>
+    <test name="Assert final max conc" language="python">assert(abs((max_val - 0.167)/0.167) &lt; 0.01)</test>
+    <test name="Assert final int conc" language="python">assert(abs((int_val - 0.0131)/0.0131) &lt; 0.01)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

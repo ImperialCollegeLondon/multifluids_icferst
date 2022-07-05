@@ -205,7 +205,6 @@ for i in range(len(Experimental_X)):
         
         
 L1_norm= L1_sum / len(Experimental_X) 
-L2_norm = L2_sum**0.5 / len(Experimental_X) 
   
 Passed = True
 
