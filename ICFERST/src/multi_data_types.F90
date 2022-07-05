@@ -306,11 +306,9 @@ module multi_data_types
     !>@param PIVIT_MAT => null() Mass matrix (matrix form by the sigmas) (storable)
     !>@param ICOLOR => null() Array used to accelerate the creation of CMC in COLOR_GET_CMC_PHA_FAST
     !>@param NCOLOR  Number of colors in ICOLOR
-    !>@param DGM_PETSC Matrix contatining the momemtum terms for Navier-Stokes equation
     !>@param C_PETSC PETSc version of the gradient matrix (storable)
     !>@param CT_PETSC PETSc version of the divergence matrix
     !>@param PIVIT_PETSC PETSc version of the divergence matrix        
-    !>@param NO_MATRIX_STORE  Flag to whether calculate and use DGM_PETSC or C
     !>@param CV_pressure      Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)
     !>@param stored = .false. Flag to be true when the storable matrices have been stored
     !>@param compact_PIVIT_MAT = .false.  Flag to know whether to use a compacted mass matrix or not
@@ -329,11 +327,9 @@ module multi_data_types
         real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()
         integer, dimension(:), pointer :: ICOLOR => null()
         integer :: NCOLOR 
-        type(petsc_csr_matrix):: DGM_PETSC
         type(petsc_csr_matrix):: C_PETSC
         type(petsc_csr_matrix):: CT_PETSC
         type(petsc_csr_matrix):: PIVIT_PETSC      
-        logical :: NO_MATRIX_STORE 
         logical :: CV_pressure     
         logical :: stored = .false.
         logical :: compact_PIVIT_MAT = .false. 
@@ -1452,7 +1448,6 @@ contains
         !This one below gives problems unless it has been allocated at some point, as Mmat%CV_RHS%val is by default associated...
 !        if (associated(Mmat%CV_RHS%val)) call deallocate(Mmat%CV_RHS)!<=Should not need to deallocate anyway as it is done somewhere else
 !        if (associated(Mmat%petsc_ACV%refcount)) call deallocate(Mmat%petsc_ACV)!<=Should not need to deallocate anyway as it is done somewhere else
-        if (associated(Mmat%DGM_PETSC%refcount)) call deallocate(Mmat%DGM_PETSC)
         if (associated(Mmat%C_PETSC%refcount)) call deallocate(Mmat%C_PETSC)
         if (associated(Mmat%CT_PETSC%refcount)) call deallocate(Mmat%CT_PETSC)
         if (associated(Mmat%PIVIT_PETSC%refcount)) call deallocate(Mmat%PIVIT_PETSC)

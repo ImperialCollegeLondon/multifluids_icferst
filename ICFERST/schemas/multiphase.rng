@@ -1509,20 +1509,10 @@ activate this to also output the force_density</a:documentation>
         <ref name="mesh_info"/>
       </element>
       <element name="simulation_quality">
-        <a:documentation>Selects the quality configuration of the experiment
-Fast (&lt;b&gt;recommended&lt;/b&gt;) =&gt; Element pair = P0DGP1(CV). Upwinding and implicit euler;</a:documentation>
+        <a:documentation>Element pair = P0DGP1(CV). Upwinding and implicit euler;</a:documentation>
         <element name="string_value">
           <value>fast</value>
         </element>
-        <optional>
-          <element name="Balanced_P0DG">
-            <a:documentation>&lt;b&gt;For Balanced and fast precisions.&lt;/b&gt;
-
-Select the P0DG element pair instead of the default P1DG.
-NOTE: that for porous media the default is P0DG.</a:documentation>
-            <empty/>
-          </element>
-        </optional>
       </element>
       <optional>
         <element name="Advance_options">

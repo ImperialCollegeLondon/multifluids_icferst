@@ -155,9 +155,6 @@ contains
       !Logical to check if we using a conservative method or not, to save cpu time
       logical :: conservative_advection
       !Parameters of the simulation
-      logical, parameter :: UPWIND_PIPES = .true.! Used for testing...
-      logical, parameter :: PIPE_MIN_DIAM=.true. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
-      logical, parameter :: LUMP_COUPLING_RES_PIPES = .true. ! Lump the coupling term which couples the pressure between the pipe and reservior.
       real, parameter :: INFINY=1.0E+20
       integer, parameter :: WIC_B_BC_DIRICHLET = 1
       !Variables extra for outfluxes
@@ -325,8 +322,6 @@ contains
       END DO
       ! END OF SET UP THE SURFACE B.C'S
 
-
-
       T_ALL => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
       DEN_ALL => extract_tensor_field( packed_state, "PackedDensity" )
       U_ALL => extract_tensor_field( packed_state, "PackedVelocity" )
@@ -432,22 +427,10 @@ contains
               ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
               L_CVFENX_ALL(:,:) = 2.0 * cvn_femlx(:,:) / DX
               L_UFENX_ALL(:,:) = 2.0 * UNLX(:,:) / DX
-
-              IF(PIPE_MIN_DIAM) THEN
-                  MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
-                  PIPE_DIAM_GI_VOL = MIN_DIAM
-                  PIPE_DIAM_GI_SUF = MIN_DIAM
-              ELSE
-                  PIPE_DIAM_GI_VOL = 0.0
-                  PIPE_DIAM_GI_SUF = 0.0
-                  DO CV_LILOC = 1, CV_LNLOC
-                      CV_KNOD = CV_GL_GL( CV_LILOC )
-                      PIPE_DIAM_GI_VOL = PIPE_DIAM_GI_VOL + PIPE_diameter%val( CV_KNOD ) * cvn_fem( CV_LILOC, : )
-                      PIPE_DIAM_GI_SUF = PIPE_DIAM_GI_SUF + PIPE_diameter%val( CV_KNOD ) * SBCVFEN( CV_LILOC, : )
-                  END DO
-                  PIPE_DIAM_GI_VOL = max( 0.0, PIPE_DIAM_GI_VOL )
-                  PIPE_DIAM_GI_SUF = max( 0.0, PIPE_DIAM_GI_SUF )
-              ENDIF
+              !Select the min diameter for an element
+              MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
+              PIPE_DIAM_GI_VOL = MIN_DIAM
+              PIPE_DIAM_GI_SUF = MIN_DIAM
               DO IDIM = 1, Mdims%ndim
                   L_CVFENX_ALL_REVERSED(IDIM,:,:) = cvn_femlx * DIRECTION(IDIM)
               END DO
@@ -486,41 +469,24 @@ contains
                   L_UFEN_REVERSED( :, U_LILOC ) =  UN( U_LILOC, : )
               END DO
               ! Add contributions from the volume...
-              IF( LUMP_COUPLING_RES_PIPES ) THEN
-                  DO CV_LILOC = 1, CV_LNLOC
-                      CV_NODI = CV_GL_GL(CV_LILOC)
-                      MASS_PIPE(CV_NODI) = MASS_PIPE(CV_NODI) + SUM( CVN(CV_LILOC,:) *  CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
-                      MASS_PIPE_FOR_COUP(CV_NODI) = MASS_PIPE_FOR_COUP(CV_NODI) + SUM( CVN(CV_LILOC,:) *  CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI2( : ) )
-                      DO COUNT2 = Mspars%CMC%fin(CV_NODI), Mspars%CMC%fin(CV_NODI+1)-1
-                          IF ( CV_NODI==Mspars%CMC%col(count2)) count=count2
-                      end do
-                      MASS_CVFEM2PIPE(COUNT) = MASS_CVFEM2PIPE(COUNT) + SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI2( : ) )
-                      MASS_PIPE2CVFEM(COUNT) = MASS_PIPE2CVFEM(COUNT) + SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI2( : ) ) ! this is possibly bugged...
-                      DO CV_LJLOC = 1, CV_LNLOC
-                          CV_NODJ = CV_GL_GL(CV_LJLOC)
-                          DO COUNT = Mspars%CMC%fin(CV_NODI), Mspars%CMC%fin(CV_NODI+1)-1
-                              IF ( CV_NODI==CV_NODJ ) THEN
-                                  MASS_CVFEM2PIPE_TRUE(COUNT) = MASS_CVFEM2PIPE_TRUE(COUNT) + SUM( CVN(CV_LILOC,:) * CVN_FEM(CV_LJLOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
-                              END IF
-                          END DO
-                      END DO
-                  END DO
-              ELSE
-                  DO CV_LILOC = 1, CV_LNLOC
-                      CV_NODI = CV_GL_GL(CV_LILOC)
-                      MASS_PIPE(CV_NODI) = MASS_PIPE(CV_NODI) + SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
-                      DO CV_LJLOC = 1, CV_LNLOC
-                          CV_NODJ = CV_GL_GL(CV_LJLOC)
-                          DO COUNT = Mspars%CMC%fin(CV_NODI), Mspars%CMC%fin(CV_NODI+1)-1
-                              IF ( CV_NODI==CV_NODJ ) THEN
-                                  MASS_CVFEM2PIPE(COUNT) = MASS_CVFEM2PIPE(COUNT) + SUM( CVN(CV_LILOC,:) * CVN_FEM(CV_LJLOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI2( : ) )
-                                  MASS_PIPE2CVFEM(COUNT) = MASS_PIPE2CVFEM(COUNT) + SUM( CVN(CV_LJLOC,:) * CVN_FEM(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI2( : ) )
-                                  MASS_CVFEM2PIPE_TRUE(COUNT) = MASS_CVFEM2PIPE_TRUE(COUNT) + SUM( CVN(CV_LJLOC,:) * CVN_FEM(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
-                              END IF
-                          END DO
-                      END DO
-                  END DO
-              END IF
+              DO CV_LILOC = 1, CV_LNLOC
+                CV_NODI = CV_GL_GL(CV_LILOC)
+                MASS_PIPE(CV_NODI) = MASS_PIPE(CV_NODI) + SUM( CVN(CV_LILOC,:) *  CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
+                MASS_PIPE_FOR_COUP(CV_NODI) = MASS_PIPE_FOR_COUP(CV_NODI) + SUM( CVN(CV_LILOC,:) *  CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI2( : ) )
+                DO COUNT2 = Mspars%CMC%fin(CV_NODI), Mspars%CMC%fin(CV_NODI+1)-1
+                    IF ( CV_NODI==Mspars%CMC%col(count2)) count=count2
+                end do
+                MASS_CVFEM2PIPE(COUNT) = MASS_CVFEM2PIPE(COUNT) + SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI2( : ) )
+                MASS_PIPE2CVFEM(COUNT) = MASS_PIPE2CVFEM(COUNT) + SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI2( : ) ) ! this is possibly bugged...
+                DO CV_LJLOC = 1, CV_LNLOC
+                    CV_NODJ = CV_GL_GL(CV_LJLOC)
+                    DO COUNT = Mspars%CMC%fin(CV_NODI), Mspars%CMC%fin(CV_NODI+1)-1
+                        IF ( CV_NODI==CV_NODJ ) THEN
+                            MASS_CVFEM2PIPE_TRUE(COUNT) = MASS_CVFEM2PIPE_TRUE(COUNT) + SUM( CVN(CV_LILOC,:) * CVN_FEM(CV_LJLOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
+                        END IF
+                    END DO
+                END DO
+              END DO
               ! Calculate INV_SIGMA_APPROX for the 1st n_in_pres phases...
               ! Determine the tangent and bi-normal vectors from the normal NormX, NormY, NormZ:
               IF(Mdims%ndim==2) THEN
@@ -570,39 +536,6 @@ contains
                           CV_NODJ = CV_GL_GL(CV_LJLOC)
                           direction_norm = - direction
                       END IF
-                      if (.not. UPWIND_PIPES) then 
-                        TUPWIND_OUT=0.0; DUPWIND_OUT=0.0
-                        TUPWIND_IN=0.0; DUPWIND_IN=0.0
-
-                        !Only for the wells domain
-                        DO IPHASE=1, final_phase
-                            global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
-                            compact_phase = iphase + (Mdims%npres - 1)*final_phase
-                        ! DO IPHASE = n_in_pres+1, final_phase
-                            ! CV incomming T:
-                            IF ( T_ALL%val( 1, global_phase, CV_NODI ) > T_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
-                                TUPWIND_OUT( compact_phase ) = TMAX_ALL( compact_phase, CV_NODI )
-                            ELSE
-                                TUPWIND_OUT( compact_phase ) = TMIN_ALL( compact_phase, CV_NODI )
-                            END IF
-                            IF ( DEN_ALL%val( 1, global_phase, CV_NODI ) > DEN_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
-                                DUPWIND_OUT( compact_phase ) = DENMAX_ALL( compact_phase, CV_NODI )
-                            ELSE
-                                DUPWIND_OUT( compact_phase ) = DENMIN_ALL( compact_phase, CV_NODI )
-                            END IF
-                            ! CV outgoing T:
-                            IF ( T_ALL%val( 1, global_phase, CV_NODI ) < T_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
-                                TUPWIND_IN( compact_phase ) = TMAX_ALL( compact_phase, CV_NODJ )
-                            ELSE
-                                TUPWIND_IN( compact_phase ) = TMIN_ALL( compact_phase, CV_NODJ )
-                            END IF
-                            IF ( DEN_ALL%val( 1, global_phase, CV_NODI ) < DEN_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
-                                DUPWIND_IN( compact_phase ) = DENMAX_ALL( compact_phase, CV_NODJ )
-                            ELSE
-                                DUPWIND_IN( compact_phase ) = DENMIN_ALL( compact_phase, CV_NODJ )
-                            END IF
-                        END DO
-                      end if
                       ! Value of sigma in the force balance eqn...
                       INV_SIGMA_GI = 1.0!sprint_to_do remove INV_SIGMA_GI??
                       ! Velocity in the pipe
@@ -646,27 +579,9 @@ contains
                         D_CV_NODI(compact_phase) = DEN_ALL%val( 1, global_phase, CV_NODI)
                         D_CV_NODJ(compact_phase) = DEN_ALL%val( 1, global_phase, CV_NODJ)
                       end do
-                      IF ( UPWIND_PIPES ) THEN ! Used for testing...
-                          LIMT = T_CV_NODI*(1.0-INCOME) + T_CV_NODJ*INCOME
-                          LIMD = D_CV_NODI*(1.0-INCOME) + D_CV_NODJ*INCOME
-                      ELSE
-                          ! Call the limiter for T...
-                          CALL ONVDLIM_ANO_MANY( final_phase*2, &!Only do it for the phases within the pipe
-                              LIMT, FEMTGI, INCOME, &
-                              T_CV_NODI, T_CV_NODJ, XI_LIMIT, &
-                              TUPWIND_IN, TUPWIND_OUT , &
-                              memory_limiters(1:Mdims%nphase), memory_limiters(Mdims%nphase + 1:Mdims%nphase*2),&
-                              memory_limiters(2*Mdims%nphase + 1:Mdims%nphase*3), memory_limiters(3*Mdims%nphase + 1:Mdims%nphase*4),&
-                              memory_limiters(4*Mdims%nphase + 1:Mdims%nphase*5), memory_limiters(5*Mdims%nphase + 1:Mdims%nphase*6) )
-                          ! Call the limiter for D...
-                          CALL ONVDLIM_ANO_MANY( final_phase*2, &
-                              LIMD, FEMDGI, INCOME, &
-                              D_CV_NODI, D_CV_NODJ, XI_LIMIT, &
-                              DUPWIND_IN, DUPWIND_OUT, &
-                              memory_limiters(1:Mdims%nphase), memory_limiters(Mdims%nphase + 1:Mdims%nphase*2),&
-                              memory_limiters(2*Mdims%nphase + 1:Mdims%nphase*3), memory_limiters(3*Mdims%nphase + 1:Mdims%nphase*4),&
-                              memory_limiters(4*Mdims%nphase + 1:Mdims%nphase*5), memory_limiters(5*Mdims%nphase + 1:Mdims%nphase*6) )
-                      END IF
+                      !Obtain the value at the interface using upwinding
+                      LIMT = T_CV_NODI*(1.0-INCOME) + T_CV_NODJ*INCOME
+                      LIMD = D_CV_NODI*(1.0-INCOME) + D_CV_NODJ*INCOME
                       LIMDT = LIMD * LIMT
                       IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS
                           DO U_LKLOC = 1, U_LNLOC
@@ -874,58 +789,6 @@ contains
        end if
       Mmat%petsc_ACV%is_assembled = .false.
   CONTAINS
-    !>@brief: This sub calculates the limited face values TDADJ(1...SNGI) from the central
-    !> difference face values TDCEN(1...SNGI) using a NVD shceme.
-    !> INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-    !> LIBETA is the flux limiting parameter.
-    !> TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
-    !> TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-    !> PELEOT=element at other side of current face.
-    !> ELEOT2=element at other side of the element ELEOTH.
-    !> ELESID=element next to oposing current face.
-    !> DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU => memory
-    !> The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-    !> This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-    !>---------------------------------------------------
-    !>|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-    !>---------------------------------------------------
-    !> TAIN         THALF       TAOUT
-    !>---------------------------------------------------
-    !>TEXTIN
-    !>TEXOUT<
-    !>---------------------------------------------------
-    PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
-        TDLIM, TDCEN, INCOME, &
-        ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
-        TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
-        implicit none
-        INTEGER, intent( in ) :: NFIELD
-        REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
-        REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
-        REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
-        real, dimension( NFIELD ), intent(inout) :: DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU
-        ! Local variables
-        REAL, PARAMETER :: TOLER=1.0E-10
-        ! Calculate normalisation parameters for incomming velocities
-        DENOIN = ( ETDNEW_PELE - TUPWIN )
-        where( ABS( DENOIN ) < TOLER )
-            DENOIN = SIGN( TOLER, DENOIN )
-        end where
-        CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
-        ! Calculate normalisation parameters for out going velocities
-        DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
-        where( ABS( DENOOU ) < TOLER )
-            DENOOU = SIGN( TOLER, DENOOU )
-        end where
-        CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
-        FTILIN = ( TDCEN - TUPWIN ) / DENOIN
-        FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
-        ! Velocity is going out of element
-        TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW_MANY( FTILIN, CTILIN, XI_LIMIT ) * DENOIN ) &
-            + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
-        TDLIM = MAX( TDLIM, 0.0 )
-        RETURN
-    END SUBROUTINE ONVDLIM_ANO_MANY
 
     
   END SUBROUTINE MOD_1D_CT_AND_ADV
@@ -1045,7 +908,7 @@ contains
       !Variables for assemble_collapsed_to_one_phase; Note that diffusion parameters etc need
       integer :: assembly_phase, assembly_phase_2
       !Logical to check if we using a conservative method or not, to save cpu time
-      logical :: conservative_advection, have_absorption
+      logical :: conservative_advection
       !Parameters of the simulation
       real, parameter :: INFINY=1.0E+20
       integer, parameter :: WIC_B_BC_DIRICHLET = 1
@@ -1066,7 +929,6 @@ contains
       !Define phase where we start the assembly, this is the first phase of the well domains.
       wells_first_phase = 1 + final_phase
 
-      have_absorption = associated( absorbt_all )
       one_m_cv_beta = 1.0 - cv_beta
       Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
 
@@ -1390,41 +1252,9 @@ contains
                       call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, &
                           cv_nodi, cv_nodi, &
                           MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
-                          ! if(.not.conservative_advection) then ! original method - all implicit (may be unstable in some cases 12/07/2017)
-                          !     call addto(Mmat%petsc_ACV,iphase,compact_phase, &
-                          !         cv_nodi, cv_nodi, &
-                          !         MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
-                          ! else
-                          !   !Some sort of predictor corrector. Implicit may be unstable, therefore the explicit acts as a Dumping term
-                          !   call addto(Mmat%petsc_ACV,iphase,compact_phase, &
-                          !       cv_nodi, cv_nodi, &
-                          !         (1. + dumping_well_factor) * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
-                          !
-                          !       ! ! well mass exchange is introduced in the RHS so it is treated explictly
-                          !       LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
-                          !       + dumping_well_factor * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI )* T_ALL(global_phase, CV_NODI)
-                          !
-                          !     ! ! ! well mass exchange is introduced in the RHS so it is treated explictly <+ all explicit is too slow
-                          !     ! LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
-                          !     ! - MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI )* T_ALL(global_phase, CV_NODI)
-                          ! endif
                     end do
                 end do
               end do
-
-              if ( have_absorption ) then
-                DO jphase=1 , final_phase
-                  compact_phase = jphase + final_phase
-                  assembly_phase = compact_phase
-                  if (assemble_collapsed_to_one_phase) assembly_phase = 1 + (jphase-1)/Mdims%n_in_pres
-                    do iphase=wells_first_phase, final_phase*2
-                      assembly_phase_2 = iphase
-                      if (assemble_collapsed_to_one_phase) assembly_phase_2 = 1 + (iphase-1)/Mdims%n_in_pres
-                       call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, cv_nodi, cv_nodi, &
-                           Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI ))
-                    end do
-                end do
-            end if
 
             !Assemble into the matrix/RHS
             DO IPHASE= 1, final_phase*2
@@ -1471,12 +1301,6 @@ contains
                     / ( DT * DEN_ALL(iphase, CV_NODI) )
                 ct_rhs_phase(iphase)=ct_rhs_phase(iphase) &
                     + Mass_CV(CV_NODI ) * SOURCT_ALL( iphase, CV_NODI ) / DEN_ALL(iphase, CV_NODI)
-                IF ( HAVE_ABSORPTION ) THEN!No absorption in the wells for the time being
-                   DO JPHASE = wells_first_phase, final_phase*2
-                      ct_rhs_phase(iphase)=ct_rhs_phase(iphase)  &
-                         - Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL(iphase, CV_NODI)
-                   END DO
-                END IF
             end do
             ! scaling coefficient...
             DO IPRES=1,Mdims%npres
@@ -1537,7 +1361,7 @@ contains
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
 
         !Local variables
-        LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, U_P0DG
+        LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, U_P0DG
         LOGICAL :: CALC_SIGMA_PIPE
         INTEGER :: ELE, PIPE_NOD_COUNT, ICORNER, &
             &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, MAT_KNOD, IDIM, &
@@ -1572,7 +1396,6 @@ contains
         INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD, CV_LOC1, CV_LOC2, IPHASE_IN_PIPE, GI, IWATER
 
         ncorner = Mdims%ndim + 1
-        PIPE_MIN_DIAM=.TRUE. ! Take the min diamter of the pipe as the real diameter.
         CALC_SIGMA_PIPE = have_option("/porous_media/wells_and_pipes/well_options/calculate_sigma_pipe")
         call get_option("/porous_media/wells_and_pipes/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
         ! Add the sigma associated with the switch to switch the pipe flow on and off...
@@ -1732,28 +1555,12 @@ contains
                 DIRECTION = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
                 DX = SQRT( SUM( DIRECTION**2 ) )
                 DIRECTION = DIRECTION / DX
-
-                IF ( PIPE_MIN_DIAM ) THEN
-                    MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
-                    PIPE_DIAM_GI = MIN_DIAM
-                    DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
-                        SIGMA_GI(IPHASE,:) = MINVAL( SIGMA(IPHASE, MAT_GL_GL( : ) ) )
-                    END DO
-                ELSE
-                    PIPE_DIAM_GI = 0.0
-                    DO CV_LILOC = 1, CV_LNLOC
-                        CV_KNOD = CV_GL_GL( CV_LILOC )
-                        PIPE_DIAM_GI = PIPE_DIAM_GI + PIPE_DIAMETER%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
-                    END DO
-                    PIPE_DIAM_GI = MAX(PIPE_DIAM_GI, 0.0)
-                    SIGMA_GI(:,:)=0.0
-                    DO IPHASE=Mdims%n_in_pres+1,Mdims%nphase
-                        DO CV_LILOC = 1, CV_LNLOC
-                            MAT_KNOD = MAT_GL_GL( CV_LILOC )
-                            SIGMA_GI(IPHASE,:) = SIGMA_GI(IPHASE,:) + SIGMA( IPHASE, MAT_KNOD ) * SCVFEN( CV_LILOC, : )
-                        END DO
-                    END DO
-                END IF
+                !Select the min diameter for an element
+                MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
+                PIPE_DIAM_GI = MIN_DIAM
+                DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
+                    SIGMA_GI(IPHASE,:) = MINVAL( SIGMA(IPHASE, MAT_GL_GL( : ) ) )
+                END DO
                 ! Recalculate SIGMA if we need to...
                 IF ( CALC_SIGMA_PIPE ) THEN
                     MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
@@ -2315,29 +2122,6 @@ contains
                     end do
                 end do
             end do element_loop
-            !OLD METHOD, June/2018. REMOVEME IF THIS DATE IS TOO OLD...
-!            !Use brute force through the surface of the domain. This only works in serial...
-!            !The cost is minimised by looping over the boundary of the domain only
-!            l = 0; aux_pipe_seeds = -1
-!            do sele = 1, Mdims%stotel
-!                do siloc = 1, Mdims%p_snloc
-!                    sinod = ndgln%suf_p( ( sele - 1 ) * Mdims%p_snloc + siloc )
-!                    do edge = 1, size(edges,2)
-!                        if (is_within_pipe(X(:,sinod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe)) then
-!
-!                            found = .false.
-!                            do j = 1, size(aux_pipe_seeds)!Make sure that we do not store the same position many times
-!                                if (aux_pipe_seeds(j)==sinod) found = .true.
-!                                if (aux_pipe_seeds(j) < 0 .or. found) exit
-!                            end do
-!                            if (.not.found) then
-!                                l = l + 1
-!                                aux_pipe_seeds(l) = sinod!Store the global node number
-!                            end if
-!                        end if
-!                    end do
-!                end do
-!            end do
 
             allocate(pipe_seeds(l))
             if (size(pipe_seeds)>0) pipe_seeds = aux_pipe_seeds(1:l)

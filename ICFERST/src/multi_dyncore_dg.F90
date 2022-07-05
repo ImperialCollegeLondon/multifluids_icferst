@@ -58,10 +58,10 @@ module multiphase_1D_engine
 
     implicit none
 
-    private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
+    private :: CV_ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
     public  :: INTENERGE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
-    FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system, Tracer_Assemble_Solve
+    generate_and_solve_Laplacian_system, Tracer_Assemble_Solve
 
 contains
     !---------------------------------------------------------------------------
@@ -3488,7 +3488,7 @@ end if
     CALL Mass_matrix_MATVEC( velocity % VAL, Mmat%PIVIT_MAT, Mmat%U_RHS + CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
         Mdims%totele, Mdims%u_nloc, ndgln%u )
     !"########################UPDATE PRESSURE STEP####################################"
-    !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver, for inertia this is a huge save as for that momemt DGM_petsc is deallocated!)
+    !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver
     sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
     diag = Mdims%npres == 1!Make it non-diagonal to allow coupling between reservoir and pipes domains
     call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc",diag)

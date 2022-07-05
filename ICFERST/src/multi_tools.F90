@@ -50,21 +50,6 @@ contains
         RETURN
     END FUNCTION R2NORM
 
-    !>@brief:This function is a tolerance function for strictly positive values used as a denominator.
-    !> If the value of VALUE less than 1E-10, then it returns TOLERANCE otherwise VALUE.
-    real function ptolfun(value)
-
-        implicit none
-        real, intent(in) :: value
-        ! Local
-        real, parameter :: tolerance = 1.e-10
-
-        ptolfun = max( tolerance, value )
-
-        return
-
-    end function ptolfun
-
     !>@brief:This function is a tolerance function for a value which is used as a denominator.
     !> If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e.
     !> the absolute value of A times the sign of B where A is TOLERANCE and B is VALUE.
@@ -117,45 +102,6 @@ contains
             ) / 6.0
 
     end function tetvolume
-    !>@brief:This function is a tolerance function for a vector which is used as a denominator.
-    !> If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e.
-    !> the absolute value of A times the sign of B where A is TOLERANCE and B is VALUE.
-    PURE function vtolfun(val) result(v_tolfun)
-
-        implicit none
-        real, dimension(:), intent(in) :: val
-        real, dimension(size(val)) :: v_tolfun
-        ! Local
-        real, parameter :: tolerance = 1.e-10
-
-        v_tolfun = sign( 1.0, val ) * max( tolerance, abs(val) )
-
-        return
-
-    end function vtolfun
-
-    !>@brief:Checks if a number is a Nan
-    subroutine nan_check(a,k)
-        real :: a
-        integer :: k
-
-        if (a/=a) then
-            print*, 'nan found! loop:', k
-        end if
-
-    end subroutine nan_check
-
-    !>@brief:Checks if an array is a Nan
-    subroutine nan_check_arr(a,k)
-        real, dimension(:,:) :: a
-        integer :: k
-
-        if (any(a/=a)) then
-            print*, 'nan found! loop:', k
-        end if
-
-    end subroutine nan_check_arr
-
 
     !>@brief: The function computes NVDFUNNEW, the normalised value of the
     !> advected variable on the face of the control volume, based on
@@ -190,28 +136,6 @@ contains
     end function nvdfunnew_many
 
 
-
-
-    !>@brief: The function computes NVDFUNNEW, the normalised value of the
-    !> advected variable on the face of the control volume, based on
-    !> the normalised value of the advected variable in the donor CV,
-    !> UC, and the high-order estimate of the face value UF.
-    !> NVDFUNNEW is limited so that it is in the non-oscillatory
-    !> region of normalised variable diagram (NVD).
-    !>
-    !> XI is the parameter in equation 38 of the Riemann paper. If XI is equal
-    !> to 2 then this corresponds to a TVD condition in 1-D, a value of XI
-    !> equal to 3 has been recommended elsewhere
-    FUNCTION NVDFUNNEW_MANY_sqrt( UF, UC, XI_LIMIT ) result(nvd_limit)
-        implicit none
-        !
-        REAL, DIMENSION( : ), intent(in)  :: UC, UF, XI_LIMIT
-        real, dimension(size(uc)) :: nvd_limit
-
-
-        nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
-
-    end function nvdfunnew_many_sqrt
 
 
 
@@ -487,108 +411,6 @@ contains
     end subroutine assign_val
 
 
-    !!>@brief:This function returns the value at position input_X using
-    !>X_points, Y_points to form a linear (size == 2) or quadratic (size == 3) interpolation
-    real function table_interpolation(X_points, Y_points, input_X)
-        implicit none
-        real, intent(in) :: input_X
-        real, dimension(:), intent(in) :: X_points, Y_points
-        !Local variables
-        integer :: k, j, siz
-        real, dimension(size(X_points),size(X_points)) :: A
-        real, dimension(size(X_points)) :: b
-
-        siz = size(X_points)
-
-        do k = 1, siz
-            do j = 1, siz!Fill columns
-                A(j,k) = X_points(j)**real(siz-k)
-                if (j==k) A(j,k) = A(j,k) + A(j,k)*(1d-7*real(rand(j)))!to avoid non-invertible matrices
-            end do
-            b(k) = Y_points(k)
-        end do
-        !Solve system
-        call invert(A); b = matmul(A, b)
-        if (siz == 2) then!Linear approximation
-            table_interpolation = b(1) * input_X + b(2)
-        else!quadratic approximation
-            table_interpolation = b(1) * input_X**2. + b(2) * input_X + b(3)
-        end if
-    end function table_interpolation
-
-    !>@brief:Template of csv table
-    !>OPTIONAL section (header)
-    !>real1,real2,real3,..., size(extra_data)
-    !>rows,columns
-    !>2,3
-    !>Pressure,Saturation
-    !>1000,0.9
-    !>250,0.5
-    !>100,0.1
-    !>@param data_array INOUT the data in memory
-    !>@param path_to_table absolute/relative path to the .csv file
-    !>@param extra_data The extra data is composed of one line of headers that we ignore plus one extra line with the data
-    subroutine read_csv_table(data_array, path_to_table, extra_data)
-        implicit none
-        real, dimension(:,:), allocatable, intent(inout) :: data_array
-        character( len = option_path_len ), intent(in) :: path_to_table
-        real, optional, dimension(:), intent(inout) :: extra_data
-        !Local variables
-        integer :: i, ierr
-        integer, dimension(2) :: table_size
-        !Open file
-        open(unit= 89, file=trim(path_to_table)//".csv", status='old', action='read')
-        if (present(extra_data)) then
-            !The extra data is composed of one line of headers that we ignore plus one extra line with the data
-            read(89,*)!skip header
-            read(89,*) extra_data
-        end if
-        read(89,*)!skip header
-        !CSV table must start with the number of columns by rows
-        read(89,*) table_size
-        allocate(data_array(table_size(1), table_size(2)))
-        !Skip the headers
-        read(89,*);
-        !Read the table
-        do i = 1, table_size(2)
-            read(89,*, IOSTAT=ierr) data_array(1:table_size(1), i)
-            if (ierr/=0) exit
-        end do
-        close(89)
-    end subroutine read_csv_table
-
-
-    !>@brief:This subroutine reads a csv file and returns them in an array
-    !>@param csv_table_strings INOUT Allocated array of characters to be used to read the CVS file
-    !>@param path_to_table absolute/relative path to the .csv file
-    !>@param Nentries OUT Number of entries in the table
-    subroutine extract_strings_from_csv_file(csv_table_strings, path_to_table, Nentries)
-        implicit none
-        integer, intent(out) :: Nentries
-        character( len = option_path_len ), intent(in) :: path_to_table
-        character(len=option_path_len), dimension(:,:),  allocatable, intent(out) :: csv_table_strings
-        !Local variables
-        integer :: i, ierr, start
-        !Allocate table
-        allocate(csv_table_strings(10000,4))!This should be enough
-
-        !Open file
-        open(unit= 89, file=trim(path_to_table)//'.csv', status='old', action='read')
-        !CSV table must start with the number of columns by rows
-        !Read the table
-        i = 1
-        start = 1
-        do while (.true.)
-            read(89,*, IOSTAT=ierr) csv_table_strings(i,:)!cadena
-            if (ierr/=0) exit
-            !Extract four strings from cadena
-            i = i + 1
-        end do
-        Nentries = i-1
-        close(89)
-
-    end subroutine extract_strings_from_csv_file
-
     !>@brief:Subroutine to print Arrays by (columns,rows)
     !>Matrix = 2D Array
     subroutine printMatrix(Matrix)
@@ -621,70 +443,6 @@ contains
 
         print *,"";
     end subroutine PrintMatrix
-
-!>@brief: Roates a matrix A using the toration matrix R????
-subroutine RotationMatrix(a,R)
-
-    real, dimension(3), intent(in)    :: a ! normal vector of length opposite the largest angle of a 'bad' element
-    real, dimension(3)                :: an, bn, cx, u, v, w !an/bn normal vectors, cx cross product, u/v/w basis vectors
-    real                              :: dot
-    real, dimension(3,3)              :: T,G !T is the rotation matrix around z-axis !Change of basis matrix
-    real, dimension(3,3), intent(out) :: R !R = G*T*inv_G
-    integer :: d ! dimension of model 2 or 3
-
-    ! Normalise vector
-    an = a/NORM2(a)
-
-    ! normal vector of our cartesian aligned element
-    if (d ==3) then! 3D
-        bn = [ 0, 0, 1 ]
-    else ! 2D
-        bn = [ 0, 1, 0]
-    end if
-
-    ! calculate dot product and cross product
-    dot = dot_product(an,bn)
-    cx = cross_product(an,bn)
-
-    ! find the rotation matrix on cartesian axis around z axis
-    T(1,1) = dot
-    T(1,2) = -NORM2(cx)
-    T(1,3) = 0
-    T(2,1) = NORM2(cx)
-    T(2,2) = dot
-    T(2,3) = 0
-    T(3,1) = 0
-    T(3,2) = 0
-    T(3,3) = 1
-
-
-    if (all(cx(:)==0)) then ! if normal vectors are parallel then no need for new basis
-
-        R = T
-
-    else
-
-        ! new basis
-        u = an ! Normalised vector projection of bn onto an
-        v = (bn - dot*an)/NORM2(bn - dot*an) ! Normalised vector rejection of bn onto an
-        w = cx/NORM2(cx) ! Normalized cross product of an and bn creating the new orthonormal basis
-
-        ! Basis change matrix
-        G(:,1) = u
-        G(:,2) = v
-        G(:,3) = w
-
-        ! Calculate rotation matrix on the element basis
-        R = matmul(G,matmul(T, inverse(G)))
-
-        !write(*,'(A)') 'R='
-        !do i=1,size(R,1)
-        !  write(*,'(20G12.4)') R(i,:)
-        !end do
-    end if
-
-END subroutine RotationMatrix
-
 
     !>@brief:This subroutine reads a nastran file that contains the information defining the 1D path of a well
     !>the input relative filepath should include the file format, for example: well.bdf
@@ -747,15 +505,6 @@ END subroutine RotationMatrix
              end do
          end do
         deallocate(conversor)
-    !Print well to gnuplot format
-! print*, "WELL IN GNUPLOT"
-! do j = 1, size(edges,1)
-! do i = 1, size(edges,2)
-! print *, node(:,edges(j,i))
-! end do
-! end do
-! print *, "-----------------------"
-! read*
     contains
         subroutine get_nodes_edges(Nnodes, Nedges)
             !Get the number of nodes and edges that conform the well
@@ -804,21 +553,6 @@ END subroutine RotationMatrix
       integer, dimension(size(A,1)) :: jpvt
       real, parameter :: tolerance_rank = 1d-12
 
-      ! interface
-      !   !> @brief QR decomposition, returned in A, Q and R mixed, no pivoting!
-      !     subroutine dgeqrf(m, n, MAT, lda, tau, work, lwork, info)
-      !       implicit none
-      !       integer :: m!>Rows of MAT
-      !       integer :: n !>Columns of MAT; Constraint: m >= n > = 0.
-      !       integer :: lda !>The first dimension of MAT
-      !       integer :: lwork!> The size of the work array; 0 == best performance
-      !       integer :: info!>If info = -i, the i-th parameter had an illegal value
-      !       real, dimension(lda,n) :: MAT!>input/output matrix
-      !       real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
-      !       real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
-      !     end subroutine dgeqrf
-      ! end interface
-
       interface
         !> @brief QR decomposition, returned in A, Q and R mixed, with pivoting! (PREFERRED, obviously!)
           subroutine dgeqp3(m, n, MAT, lda, jpvt, tau, work, lwork, info)
@@ -834,21 +568,6 @@ END subroutine RotationMatrix
             integer, dimension(n) :: jpvt!Specifies columns that are not free to move, I guess useful if updating the QR decomposition
           end subroutine dgeqp3
       end interface
-
-      ! interface
-      !     !> @brief Interface to Lapack to show a Q matrix computed using dgeqp3
-      !     subroutine dorgqr(m, n, k, mat, lda, tau, work, lwork, info)
-      !       implicit none
-      !       integer :: m,n !>Rows and colums respectively
-      !       integer :: lda !>The first dimension of a
-      !       integer :: lwork!> The size of the work array; 0 == best performance
-      !       integer :: info!>If info = -i, the i-th parameter had an illegal value
-      !       integer :: k !>The number of elementary reflectors whose product defines the matrix Q. Constraint 0 ≤k≤m if side='L'; 0 ≤k≤n if side='R'.
-      !       real, dimension(m,n) :: MAT!>input/output matrix
-      !       real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
-      !       real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
-      !     end subroutine dorgqr
-      ! end interface
 
       interface
           !> @brief LAPACK subroutine to perform Q times C, Q obtained using dgeqp3
@@ -897,7 +616,6 @@ END subroutine RotationMatrix
       rank = n
       do k = 1, n
         if (abs(A(k,k)) <= tolerance_rank * abs(A(1,1))) then
-! print *, "entry that is affecting the result for the least squares",k
           rank = rank - 1
         end if
       end do
@@ -1131,5 +849,36 @@ version and using & profiling, please configure WITHOUT 'petscdebug'"
         is_PassiveTracer_field = input_name(1:min(len(input_name), 13))=="PassiveTracer"
 
     end function is_PassiveTracer_field
+
+    !>@brief:This subroutine reads a csv file and returns them in an array
+    !>@param csv_table_strings INOUT Allocated array of characters to be used to read the CVS file
+    !>@param path_to_table absolute/relative path to the .csv file
+    !>@param Nentries OUT Number of entries in the table
+    subroutine extract_strings_from_csv_file(csv_table_strings, path_to_table, Nentries)
+        implicit none
+        integer, intent(out) :: Nentries
+        character( len = option_path_len ), intent(in) :: path_to_table
+        character(len=option_path_len), dimension(:,:),  allocatable, intent(out) :: csv_table_strings
+        !Local variables
+        integer :: i, ierr, start
+        !Allocate table
+        allocate(csv_table_strings(10000,4))!This should be enough
+
+        !Open file
+        open(unit= 89, file=trim(path_to_table)//'.csv', status='old', action='read')
+        !CSV table must start with the number of columns by rows
+        !Read the table
+        i = 1
+        start = 1
+        do while (.true.)
+            read(89,*, IOSTAT=ierr) csv_table_strings(i,:)!cadena
+            if (ierr/=0) exit
+            !Extract four strings from cadena
+            i = i + 1
+        end do
+        Nentries = i-1
+        close(89)
+
+    end subroutine extract_strings_from_csv_file
 
 end module multi_tools

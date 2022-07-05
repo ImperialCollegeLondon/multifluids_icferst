@@ -63,7 +63,9 @@ module multi_interpolation
     type(state_type) :: state_old, state_new
 
 contains
-   !> Mehs to mesh interpollation method, in Diamond DG_Galerkin
+   !> Mesh to mesh interpollation method for DG fields, in Diamond DG_Galerkin
+   !> NOTE THAT IT MAY NOT WORK IN PARALLEL... FOR A PARALLEL SAFE YOU CAN USE THE GRANDY INTERPOLATION
+   !> ALTHOUGH IT IS MORE DISSIPATIVE
   subroutine M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, small_finacv, &
             small_colacv, flag)
     implicit none

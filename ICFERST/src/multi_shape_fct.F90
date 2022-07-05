@@ -29,7 +29,6 @@ module shape_functions_prototype
   use shape_functions
   use state_module
   use spud
-  use global_parameters, only: is_porous_media
   use shape_functions_Linear_Quadratic
   use shape_functions_NDim
   use Fields_Allocates, only : allocate, make_mesh

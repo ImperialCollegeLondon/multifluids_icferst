@@ -36,7 +36,7 @@ module multiphase_EOS
     use boundary_conditions, only: get_entire_boundary_condition
     use Field_Options, only: get_external_coordinate_field
     use initialise_fields_module, only: initialise_field_over_regions, initialise_field
-    use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
+    use multi_tools, only: CALC_FACE_ELE, assign_val
     use checkpoint
 
 
