@@ -43,7 +43,7 @@ AutomaticFile = AutoFile
 AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
-showPlot = True
+showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name = 'Concentration'
@@ -195,7 +195,7 @@ if (L2_norm > Tolerance_L2_NORM): Passed = False
 #Check the experiment has finished
 if (AutoNumber < 20): Passed = False
 
-print( L1_norm, L2_norm)
+#print( L1_norm, L2_norm)
 if (Passed): 
     print('Dispersive saline intrusion works OK')
 else:

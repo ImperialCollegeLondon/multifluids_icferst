@@ -1,6 +1,6 @@
 <map id="matrix_operations::smlinngot" name="matrix_operations::smlinngot">
 <area shape="rect" id="node1" title="Calculate the inverse using the LU decomposition L can be provided, speeding up the method to O(n)" alt="" coords="425,39,575,80"/>
-<area shape="rect" id="node2" href="$namespacemulti__interpolation.html#a4f1475bd24977140d41a9601fce62e7f" title="Mehs to mesh interpollation method, in Diamond DG_Galerkin." alt="" coords="229,5,376,47"/>
+<area shape="rect" id="node2" href="$namespacemulti__interpolation.html#a4f1475bd24977140d41a9601fce62e7f" title="Mesh to mesh interpollation method for DG fields, in Diamond DG_Galerkin NOTE THAT IT MAY NOT WORK IN..." alt="" coords="229,5,376,47"/>
 <area shape="rect" id="node4" href="$namespacematrix__operations.html#afe8e6c53cbc0059363705d48a73708d1" title=": This sub finds the inverse of the matrix A and puts it back in A. MAT, MAT2, X and B are working ve..." alt="" coords="228,71,377,112"/>
 <area shape="rect" id="node3" href="$_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="10,13,175,39"/>
 <area shape="rect" id="node5" href="$namespacematrix__operations.html#a7628ec2574e8ee26a9cc526ce1633451" title=": Inversion of the mass matrix. If compacted this is much more efficient" alt="" coords="5,71,180,112"/>

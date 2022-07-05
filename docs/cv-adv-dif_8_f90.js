@@ -1,7 +1,6 @@
 var cv_adv_dif_8_f90 =
 [
     [ "dg_derivs_all", "interfacecv__advection_1_1dg__derivs__all.html", "interfacecv__advection_1_1dg__derivs__all" ],
-    [ "pack_loc_all", "interfacecv__advection_1_1pack__loc__all.html", "interfacecv__advection_1_1pack__loc__all" ],
     [ "calc_sele", "cv-adv-dif_8_f90.html#a9a0d23f536863720989376a298e7bfca", null ],
     [ "cv_assemb", "cv-adv-dif_8_f90.html#a34e0fcace33673c6460aef98e962709e", null ],
     [ "cv_count_faces", "cv-adv-dif_8_f90.html#ae1eba9d13ff146b1bf390a5de461d421", null ],
@@ -11,7 +10,6 @@ var cv_adv_dif_8_f90 =
     [ "dgsimplnorm_all", "cv-adv-dif_8_f90.html#aba06a5f3680d58e1db30e740119dd5dc", null ],
     [ "diffus_cal_coeff", "cv-adv-dif_8_f90.html#a3323eb4932694a86940d81127e40d9fe", null ],
     [ "dump_multiphase", "cv-adv-dif_8_f90.html#ac967cdd9ff5610dfe95e1f50be00c936", null ],
-    [ "face_theta_many", "cv-adv-dif_8_f90.html#afb4e96858b9341a76e72da5321bb4562", null ],
     [ "find_other_side", "cv-adv-dif_8_f90.html#a581f8fe3e0c643ca294adf375008b018", null ],
     [ "generate_laplacian_system", "cv-adv-dif_8_f90.html#a133a322640c972e4b8577bb3a2439357", null ],
     [ "get_diff_coef_divdx", "cv-adv-dif_8_f90.html#a659fc896150d136fb79922d4a3209b9b", null ],
@@ -20,9 +18,8 @@ var cv_adv_dif_8_f90 =
     [ "get_neigbouring_lists", "cv-adv-dif_8_f90.html#a613230535e80cb2894e9b6447ce613e9", null ],
     [ "introduce_c_cv_boundary_conditions", "cv-adv-dif_8_f90.html#aa40294c371735f893e09254f0416ae74", null ],
     [ "mass_conservation_check_and_outfluxes", "cv-adv-dif_8_f90.html#a77201531d5bc443a857dce86befbb61e", null ],
-    [ "onvdlim_ano_many", "cv-adv-dif_8_f90.html#afc0d98d467a15c460d49668d0194344a", null ],
     [ "proj_cv_to_fem", "cv-adv-dif_8_f90.html#afe9ea10242e33e1921ac5526e6827999", null ],
-    [ "put_in_ct_rhs", "cv-adv-dif_8_f90.html#af3ad992b05f1087fdb1d5bcd7d6c500e", null ],
+    [ "put_in_ct_rhs", "cv-adv-dif_8_f90.html#a0fb025d63acaa499d2be38d0a8078d07", null ],
     [ "scvdetnx", "cv-adv-dif_8_f90.html#a7a433d2f6b47e86ffdbc1fc4af1e7a05", null ],
     [ "shock_front_in_ele", "cv-adv-dif_8_f90.html#ae140305e60c328f17beabcae47d8aa6f", null ],
     [ "tri_tet_loccords", "cv-adv-dif_8_f90.html#aad25281c21796ab5cdd1ecf160cdad8f", null ],

@@ -99,7 +99,7 @@ Collaboration diagram for multi_data_types::multi_matrices:</div>
 <div class="dyncontent">
 <div class="center"><img src="structmulti__data__types_1_1multi__matrices__coll__graph.png" border="0" usemap="#multi__data__types_1_1multi__matrices_coll__map" alt="Collaboration graph"/></div>
 <map name="multi__data__types_1_1multi__matrices_coll__map" id="multi__data__types_1_1multi__matrices_coll__map">
-<area shape="rect" title="This type contains all the necessary information to solve =systems, matrices, RHS,..." alt="" coords="35,153,213,195"/>
+<area shape="rect" title="This type contains all the necessary information to solve =systems, matrices, RHS,..." alt="" coords="35,139,213,180"/>
 <area shape="rect" title=" " alt="" coords="5,5,104,32"/>
 <area shape="rect" title=" " alt="" coords="128,5,261,32"/>
 </map>
@@ -127,16 +127,12 @@ Public Attributes</h2></td></tr>
 <tr class="separator:a586b149b7ecb1a715ad64befbc8347cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0c3c224c8165d6793725b2da1a034fa7"><td class="memItemLeft" align="right" valign="top">integer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a0c3c224c8165d6793725b2da1a034fa7">ncolor</a></td></tr>
 <tr class="separator:a0c3c224c8165d6793725b2da1a034fa7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a01c9bcc7d6c7deb201e05de1e3dacbc2"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a01c9bcc7d6c7deb201e05de1e3dacbc2">dgm_petsc</a></td></tr>
-<tr class="separator:a01c9bcc7d6c7deb201e05de1e3dacbc2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abcd1c3ea62e477dfd2c9f54aa8b1bb7c"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#abcd1c3ea62e477dfd2c9f54aa8b1bb7c">c_petsc</a></td></tr>
 <tr class="separator:abcd1c3ea62e477dfd2c9f54aa8b1bb7c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8c8d61085e0c784a5e7818b7b30cf8c9"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a8c8d61085e0c784a5e7818b7b30cf8c9">ct_petsc</a></td></tr>
 <tr class="separator:a8c8d61085e0c784a5e7818b7b30cf8c9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3af914500758552f0946097ade894f32"><td class="memItemLeft" align="right" valign="top">type(petsc_csr_matrix)&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a3af914500758552f0946097ade894f32">pivit_petsc</a></td></tr>
 <tr class="separator:a3af914500758552f0946097ade894f32"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a378f23456af37ee286d72503151c7167"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a378f23456af37ee286d72503151c7167">no_matrix_store</a></td></tr>
-<tr class="separator:a378f23456af37ee286d72503151c7167"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aff9118da70dd8ad1c530d30328bcf37e"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#aff9118da70dd8ad1c530d30328bcf37e">cv_pressure</a></td></tr>
 <tr class="separator:aff9118da70dd8ad1c530d30328bcf37e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5a515185a1ebf3491ac07f919f62da04"><td class="memItemLeft" align="right" valign="top">logical&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1multi__matrices.html#a5a515185a1ebf3491ac07f919f62da04">stored</a> = .false.</td></tr>
@@ -166,12 +162,10 @@ Public Attributes</h2></td></tr>
     <tr><td class="paramname">PIVIT_MAT</td><td>=&gt; null() Mass matrix (matrix form by the sigmas) (storable) </td></tr>
     <tr><td class="paramname">ICOLOR</td><td>=&gt; null() Array used to accelerate the creation of CMC in COLOR_GET_CMC_PHA_FAST </td></tr>
     <tr><td class="paramname">NCOLOR</td><td>Number of colors in ICOLOR </td></tr>
-    <tr><td class="paramname">DGM_PETSC</td><td>Matrix contatining the momemtum terms for Navier-Stokes equation </td></tr>
     <tr><td class="paramname">C_PETSC</td><td>PETSc version of the gradient matrix (storable) </td></tr>
     <tr><td class="paramname">CT_PETSC</td><td>PETSc version of the divergence matrix </td></tr>
     <tr><td class="paramname">PIVIT_PETSC</td><td>PETSc version of the divergence matrix <br  />
  </td></tr>
-    <tr><td class="paramname">NO_MATRIX_STORE</td><td>Flag to whether calculate and use DGM_PETSC or C </td></tr>
     <tr><td class="paramname">CV_pressure</td><td>Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb) </td></tr>
     <tr><td class="paramname">stored</td><td>= .false. Flag to be true when the storable matrices have been stored </td></tr>
     <tr><td class="paramname">compact_PIVIT_MAT</td><td>= .false. Flag to know whether to use a compacted mass matrix or not </td></tr>
@@ -309,20 +303,6 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a01c9bcc7d6c7deb201e05de1e3dacbc2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a01c9bcc7d6c7deb201e05de1e3dacbc2">&#9670;&nbsp;</a></span>dgm_petsc</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">type(petsc_csr_matrix) multi_data_types::multi_matrices::dgm_petsc</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="a7ac7058ed826684628ecbb0de1a63300"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a7ac7058ed826684628ecbb0de1a63300">&#9670;&nbsp;</a></span>face_ele</h2>
 
@@ -387,20 +367,6 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">integer multi_data_types::multi_matrices::ncolor</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a378f23456af37ee286d72503151c7167"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a378f23456af37ee286d72503151c7167">&#9670;&nbsp;</a></span>no_matrix_store</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">logical multi_data_types::multi_matrices::no_matrix_store</td>
         </tr>
       </table>
 </div><div class="memdoc">

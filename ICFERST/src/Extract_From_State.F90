@@ -476,15 +476,17 @@ contains
         !Check quality option to decide mesh type, theta and advection schemes
         option_path = "/geometry/simulation_quality"
         call get_option(trim(option_path), option_path2, stat=i)
-        if (trim(option_path2) == "fast") then
-            simulation_quality = 1
-        else if (trim(option_path2) == "precision") then
-            simulation_quality = 100
-        else if (trim(option_path2) == "discontinuous_pressure") then
-            simulation_quality = 1000
-        else !balanced, the recommended one
-            simulation_quality = 10
-        end if
+        !Currently only fast is available
+        simulation_quality = 1
+        ! if (trim(option_path2) == "fast") then
+        !     simulation_quality = 1
+        ! else if (trim(option_path2) == "precision") then
+        !     simulation_quality = 100
+        ! else if (trim(option_path2) == "discontinuous_pressure") then
+        !     simulation_quality = 1000
+        ! else !balanced, the recommended one
+        !     simulation_quality = 10
+        ! end if
         !Is high order flux with the safest limiter and adaptive Theta
         if (simulation_quality>=10) then
           default_flux_scheme = 5

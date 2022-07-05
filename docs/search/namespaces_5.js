@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['xgb_5finterface_932',['xgb_interface',['../namespacexgb__interface.html',1,'']]]
+  ['xgb_5finterface_915',['xgb_interface',['../namespacexgb__interface.html',1,'']]]
 ];
