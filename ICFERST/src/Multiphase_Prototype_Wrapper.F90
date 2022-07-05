@@ -1202,7 +1202,7 @@ contains
         implicit none
         integer, intent(in) :: nphase, npres, ncomp
         !Local variables
-        integer :: stat, i, k, l, simulation_quality = 10, scalarComponents
+        integer :: stat, i, k, l, scalarComponents
         real :: aux
         character( len = option_path_len ) :: option_path, quality_option, option_name
 
@@ -1212,19 +1212,7 @@ contains
         call add_option(trim(option_path), stat=stat)
         call set_option(trim(option_path), 5)
 
-        !Check quality option to decide mesh type, theta and advection schemes
-        option_path = "/geometry/simulation_quality"
-        call get_option(trim(option_path), quality_option, stat=stat)
-        if (trim(quality_option) == "fast") then
-            simulation_quality = 1
-        else if (trim(quality_option) == "precision") then
-            simulation_quality = 100
-        else if (trim(quality_option) == "discontinuous_pressure") then
-            simulation_quality = 1000
-        else !balanced, the recommended one
-            simulation_quality = 10
-        end if
-
+        !Imposed low order
         !#########GEOMETRY AND PRECISION OPTIONS#################
         !SPRINT_TO_DO Make Fluidity to read the meshes from /geometry/Advance_options instead of having to copy them in the /geometry
         if (have_option("/geometry/Advance_options/mesh::VelocityMesh/")) Then
@@ -1239,22 +1227,7 @@ contains
           call add_option(trim(option_path)//"from_mesh/mesh_shape/element_type", stat=stat)
           call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
           call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
-          if (simulation_quality< 10) then !For fast always P0DG
-            call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 0)
-          else if (simulation_quality < 100) then
-              if (have_option("/porous_media_simulator") .or. have_option("/geometry/simulation_quality/Balanced_P0DG")) then
-                call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 0)
-              else !we use P1 otherwise
-                call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
-              end if
-              call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
-          else if (simulation_quality < 1000) then
-              call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
-              call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
-          else
-              call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
-              call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "bubble")
-          end if
+          call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 0)
           call add_option(trim(option_path)//"from_mesh/stat/exclude_from_stat", stat=stat)
         end if
 
@@ -1266,19 +1239,11 @@ contains
           call add_option(trim(option_path)//"from_mesh", stat=stat)
           call add_option(trim(option_path)//"from_mesh/mesh::CoordinateMesh", stat=stat)
           call add_option(trim(option_path)//"from_mesh/mesh_continuity", stat=stat)
-          if (simulation_quality >= 1000) then
-              call set_option(trim(option_path)//"from_mesh/mesh_continuity", "discontinuous")
-          else
-              call set_option(trim(option_path)//"from_mesh/mesh_continuity", "continuous")
-          end if
+          call set_option(trim(option_path)//"from_mesh/mesh_continuity", "continuous")
           call add_option(trim(option_path)//"from_mesh/mesh_shape/element_type", stat=stat)
           call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
           call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
-          if (simulation_quality >= 100 .and. simulation_quality < 1000) then
-              call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 2)
-          else
-              call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
-          end if
+          call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
           call add_option(trim(option_path)//"from_mesh/stat/exclude_from_stat", stat=stat)
         end if
 

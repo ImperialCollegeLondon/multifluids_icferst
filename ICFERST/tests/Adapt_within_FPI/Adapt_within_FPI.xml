@@ -13,7 +13,7 @@ max_sat1 = stat("mid_discontinuous.stat")["phase1"]["PhaseVolumeFraction"]["max"
 int_sat1 = stat("mid_discontinuous.stat")["phase1"]["PhaseVolumeFraction"]["integral"][-1]</variable>
   </variables>
   <pass_tests>
-    <test name="Assert final max sat 1" language="python">assert(abs(max_sat1 - 0.68) &lt; 0.02)</test>
+    <test name="Assert final max sat 1" language="python">assert(abs(max_sat1 - 0.66) &lt; 0.02)</test>
     <test name="Assert integral saturation 1" language="python">assert(abs(int_sat1 - 0.25) &lt; 0.001)</test>
   </pass_tests>
   <warn_tests/>

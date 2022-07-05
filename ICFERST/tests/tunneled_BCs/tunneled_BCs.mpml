@@ -16,9 +16,7 @@
         </stat>
       </from_file>
     </mesh>
-    <simulation_quality>
-      <string_value>balanced</string_value>
-    </simulation_quality>
+    <simulation_quality/>
   </geometry>
   <solver_options/>
   <io>

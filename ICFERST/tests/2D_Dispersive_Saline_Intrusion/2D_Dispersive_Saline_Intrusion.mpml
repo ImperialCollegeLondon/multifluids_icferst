@@ -16,9 +16,7 @@
         </stat>
       </from_file>
     </mesh>
-    <simulation_quality>
-      <string_value>fast</string_value>
-    </simulation_quality>
+    <simulation_quality/>
   </geometry>
   <solver_options>
     <Non_Linear_Solver>

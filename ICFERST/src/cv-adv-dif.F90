@@ -521,8 +521,6 @@ contains
               VAD_activated = Phase_with_Pc >0
           end if
           flux_limited_vad = have_option("/numerical_methods/flux_limited_vad")
-          !Check whether to use limiters or not
-          call get_option("/geometry/simulation_quality", option_path2, stat=stat)
           logical_igot_theta_flux = IGOT_THETA_FLUX == 1
 
 

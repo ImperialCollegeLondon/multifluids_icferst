@@ -3480,7 +3480,7 @@ end if
     !Now invert the Mass matrix
     if (.not.Mmat%Stored) then
         CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
-      end if
+    end if
     ! solve using a projection method
     call allocate(cdp_tensor,velocity%mesh,"CDP",dim = velocity%dim); call zero(cdp_tensor)
     ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P

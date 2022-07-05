@@ -26,7 +26,7 @@ os.system(binpath + ' ' + path + '/2D_Dispersive_Saline_Intrusion.mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.05
+Tolerance_L1_NORM = 0.07
 Tolerance_L2_NORM = 0.005
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE

@@ -1231,11 +1231,7 @@ geometry =
          },
 
            ## Element pair = P0DGP1(CV). Upwinding and implicit euler;
-            element simulation_quality {
-              element string_value{
-                 "fast"
-              }
-            },
+            element simulation_quality {empty},
 
         ## Settings to change the values specified in simulation_quality.
         ## Only the activated options will overwrite the values decided in simulation_quality

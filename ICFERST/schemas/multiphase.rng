@@ -1510,9 +1510,7 @@ activate this to also output the force_density</a:documentation>
       </element>
       <element name="simulation_quality">
         <a:documentation>Element pair = P0DGP1(CV). Upwinding and implicit euler;</a:documentation>
-        <element name="string_value">
-          <value>fast</value>
-        </element>
+        <empty/>
       </element>
       <optional>
         <element name="Advance_options">

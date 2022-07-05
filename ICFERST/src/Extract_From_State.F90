@@ -469,32 +469,14 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         type (multi_discretization_opts) :: Mdisopt
         !!$ Local variables:
-        integer :: iphase, i, simulation_quality
+        integer :: iphase, i
         character( len = option_path_len ) :: option_path, option_path2
         integer :: default_flux_scheme
         real :: default_theta, default_consv_vel
-        !Check quality option to decide mesh type, theta and advection schemes
-        option_path = "/geometry/simulation_quality"
-        call get_option(trim(option_path), option_path2, stat=i)
         !Currently only fast is available
-        simulation_quality = 1
-        ! if (trim(option_path2) == "fast") then
-        !     simulation_quality = 1
-        ! else if (trim(option_path2) == "precision") then
-        !     simulation_quality = 100
-        ! else if (trim(option_path2) == "discontinuous_pressure") then
-        !     simulation_quality = 1000
-        ! else !balanced, the recommended one
-        !     simulation_quality = 10
-        ! end if
-        !Is high order flux with the safest limiter and adaptive Theta
-        if (simulation_quality>=10) then
-          default_flux_scheme = 5
-          default_theta  = -1.
-        else !Unless fast method secified
-          default_flux_scheme = 1
-          default_theta  = 1.
-        end if
+        !Low order methods
+        default_flux_scheme = 1
+        default_theta  = 1.
         default_consv_vel =0.
         default_consv_vel = 1.
         !####GENERAL TRACER SETTINGS, ALL OF THEM WILL HAVE THE SAME SETTINGS####!SPRINT_TO_DO THESE DEFAULT OPTIONS SHOULD DEPEND ON SIMULATION QUALITY
@@ -524,7 +506,7 @@ contains
         call get_option( trim(option_path)// '/Conservative_formulation_settings::Tracer/conservative_advection',&
                 Mdisopt%t_beta, default = 0.0 )!Default for temperature non-conservative
         call get_option( trim(option_path)// '/Time_Discretisation::Tracer/Theta', &
-            Mdisopt%t_theta, default = default_theta )!By default adaptive !SPRINT_TO_DO THIS HAS TO DEPEND ON THE SIMULATION_QUALITY
+            Mdisopt%t_theta, default = default_theta )!By default adaptive 
         !####GENERAL TRACER SETTINGS, ALL OF THEM WILL HAVE THE SAME SETTINGS####
 
         !!$ Solving Advection Field: Volume fraction
