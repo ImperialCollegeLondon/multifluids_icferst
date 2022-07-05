@@ -176,6 +176,7 @@ var NAVTREEINDEX1 =
 "index.html#selfP":[0,4,3,18],
 "index.html#solv_options":[0,4,3,3],
 "index.html#sourceterm":[0,4,3,14],
+"index.html#state_var":[0,3,1],
 "index.html#test_case":[0,4,4,0],
 "index.html#timestepping":[0,4,3,7],
 "index.html#well_prop":[0,4,1,0],
@@ -248,6 +249,5 @@ var NAVTREEINDEX1 =
 "multi__data__types_8_f90.html#a4ac5449d11858991ac53447f439013ee":[3,0,0,4,27],
 "multi__data__types_8_f90.html#a50fca54e8f260338c4a4ad1187640ef2":[3,0,0,4,41],
 "multi__data__types_8_f90.html#a5641f05bcbbf1c56b952f99ed0cd1f67":[3,0,0,4,32],
-"multi__data__types_8_f90.html#a5ea8066a0ecf9104dd8ca9d9f18e11c9":[3,0,0,4,34],
-"multi__data__types_8_f90.html#a65dde4f9748cb3dd200c328f99304c4e":[3,0,0,4,33]
+"multi__data__types_8_f90.html#a5ea8066a0ecf9104dd8ca9d9f18e11c9":[3,0,0,4,34]
 };

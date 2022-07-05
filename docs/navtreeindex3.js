@@ -1,5 +1,6 @@
 var NAVTREEINDEX3 =
 {
+"multi__shape__fct___n_d_8_f90.html#a9c73030aac153e24a7dda144d9d7bf82":[3,0,0,14,96],
 "multi__shape__fct___n_d_8_f90.html#a9c978f9224bd7a912e1ea02ced195e5d":[3,0,0,14,70],
 "multi__shape__fct___n_d_8_f90.html#aa001da7c1c2a50e7cd0b182f17f6bd1f":[3,0,0,14,42],
 "multi__shape__fct___n_d_8_f90.html#aa05fda8a8f1d9b22a192009519e0ce27":[3,0,0,14,50],
@@ -146,8 +147,8 @@ var NAVTREEINDEX3 =
 "namespacemembers_vars.html":[1,1,2],
 "namespacemembers_w.html":[1,1,0,21],
 "namespacemembers_x.html":[1,1,0,22],
-"namespacemulti__data__types.html":[1,0,5],
 "namespacemulti__data__types.html":[2,0,1],
+"namespacemulti__data__types.html":[1,0,5],
 "namespacemulti__interpolation.html":[1,0,6],
 "namespacemulti__machine__learning.html":[1,0,7],
 "namespacemulti__phreeqc.html":[1,0,8],
@@ -165,14 +166,14 @@ var NAVTREEINDEX3 =
 "namespaceshape__functions__linear__quadratic.html":[1,0,17],
 "namespaceshape__functions__ndim.html":[2,0,4],
 "namespaceshape__functions__ndim.html":[1,0,18],
-"namespaceshape__functions__prototype.html":[1,0,19],
 "namespaceshape__functions__prototype.html":[2,0,5],
+"namespaceshape__functions__prototype.html":[1,0,19],
 "namespacesolvers__module.html":[1,0,20],
 "namespacespact.html":[1,0,21],
 "namespacesparsity__1d.html":[1,0,22],
 "namespacesparsity__nd.html":[1,0,23],
-"namespacexgb__interface.html":[1,0,24],
 "namespacexgb__interface.html":[2,0,6],
+"namespacexgb__interface.html":[1,0,24],
 "pages.html":[],
 "structmulti__data__types_1_1multi__absorption.html":[2,0,1,2],
 "structmulti__data__types_1_1multi__absorption.html#a238bed27be71961d7664c002963de3f4":[2,0,1,2,1],
@@ -248,6 +249,5 @@ var NAVTREEINDEX3 =
 "structmulti__data__types_1_1multi__discretization__opts.html#a4080e4c219c15de504fe5d991153596b":[2,0,1,5,17],
 "structmulti__data__types_1_1multi__discretization__opts.html#a47e114a82e8027f2b29a2a5c2bcae2ee":[2,0,1,5,26],
 "structmulti__data__types_1_1multi__discretization__opts.html#a5a59c16a8644b45e91d77d3ae32a5724":[2,0,1,5,22],
-"structmulti__data__types_1_1multi__discretization__opts.html#a6c4f5d600411268971f8bd7ac6624406":[2,0,1,5,24],
-"structmulti__data__types_1_1multi__discretization__opts.html#a6e93372067b0f256b68137b5daa4a3ce":[2,0,1,5,25]
+"structmulti__data__types_1_1multi__discretization__opts.html#a6c4f5d600411268971f8bd7ac6624406":[2,0,1,5,24]
 };

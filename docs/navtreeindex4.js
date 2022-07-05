@@ -1,5 +1,6 @@
 var NAVTREEINDEX4 =
 {
+"structmulti__data__types_1_1multi__discretization__opts.html#a6e93372067b0f256b68137b5daa4a3ce":[2,0,1,5,25],
 "structmulti__data__types_1_1multi__discretization__opts.html#a6f8c22df9adc867b0acd5209dc2b9729":[2,0,1,5,27],
 "structmulti__data__types_1_1multi__discretization__opts.html#a72ffd65a6510835258c8cfb9fa44d521":[2,0,1,5,19],
 "structmulti__data__types_1_1multi__discretization__opts.html#a783c04192349bcc7485443d9215eb6d1":[2,0,1,5,31],
