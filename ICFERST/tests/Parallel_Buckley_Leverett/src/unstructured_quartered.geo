@@ -42,16 +42,6 @@ Plane Surface(9) = {8};
 //Transfinite Line {1,2,3,4}=8;
 //Transfinite Line {5,6,7,8}=12;
 
-Field[1]=Attractor;
-Field[1].NodesList={1};
-
-Field[2]=MathEval;
-Field[2].F="0.1+0.1*(F1-0.1)";
-
-
-Background Field=2;
-
-
 Physical Line(7) = {5,6,7,8};//inner
 Physical Line(8) = {1,2,3,4};//outer
 
@@ -59,3 +49,6 @@ Physical Surface(11) = {6};
 Physical Surface(12) = {7};
 Physical Surface(13) = {8};
 Physical Surface(14) = {9};
+
+Mesh.MshFileVersion = 2;
+
