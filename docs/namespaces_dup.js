@@ -11,7 +11,6 @@ var namespaces_dup =
     [ "multi_phreeqc", "namespacemulti__phreeqc.html", null ],
     [ "multi_pipes", "namespacemulti__pipes.html", null ],
     [ "multi_sp", "namespacemulti__sp.html", null ],
-    [ "multi_surface_tension", "namespacemulti__surface__tension.html", null ],
     [ "multi_tools", "namespacemulti__tools.html", null ],
     [ "multiphase_1d_engine", "namespacemultiphase__1d__engine.html", null ],
     [ "multiphase_eos", "namespacemultiphase__eos.html", null ],

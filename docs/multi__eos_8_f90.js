@@ -13,7 +13,6 @@ var multi__eos_8_f90 =
     [ "calculate_solute_dispersity", "multi__eos_8_f90.html#ae417127536bdb365fbdde3951524a9d6", null ],
     [ "calculate_suf_sig_diagten_bc", "multi__eos_8_f90.html#a7b4b5e95a2c1b64f376a9c4092d60c0a", null ],
     [ "calculate_u_source_cv", "multi__eos_8_f90.html#ac21530a3f76ed685a2ce5fcb0bb11bd0", null ],
-    [ "calculate_viscosity", "multi__eos_8_f90.html#a26eebc3a39a15f39961c783b8558fbef", null ],
     [ "cap_bulk_rho", "multi__eos_8_f90.html#aa45791df12ab50edf07b075fc8c83335", null ],
     [ "density_polynomial", "multi__eos_8_f90.html#a44aebb6e29a5271abb6ec2b04f213b56", null ],
     [ "diffjwl", "multi__eos_8_f90.html#a7870c763c81a10948617345c3d0ca219", null ],

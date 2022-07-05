@@ -122,12 +122,6 @@ Functions/Subroutines</h2></td></tr>
 <tr class="separator:af233b921efdba4e01b5920ccf509ef29"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a76231fdbfc56035f797b1c21675c02ed"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#a76231fdbfc56035f797b1c21675c02ed">duplicate_petsc_matrix</a> (MAT_A, MAT_B)</td></tr>
 <tr class="separator:a76231fdbfc56035f797b1c21675c02ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab1b067219293fc4e2583394acce02bfa"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#ab1b067219293fc4e2583394acce02bfa">petsc_stokes_solver</a> (packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, pmat, P_all, deltaP, rhs_p, solver_option_path, Dmat)</td></tr>
-<tr class="memdesc:ab1b067219293fc4e2583394acce02bfa"><td class="mdescLeft">&#160;</td><td class="mdescRight">In this subroutine the Schur complement is generated and solved using PETSc to update the pressure field Matrices need to be in petsc format and pmat is the preconditioned matrix, i.e. pmat = A11- A10(AproxA00^-1)A01.  <a href="namespacesolvers__module.html#ab1b067219293fc4e2583394acce02bfa">More...</a><br /></td></tr>
-<tr class="separator:ab1b067219293fc4e2583394acce02bfa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aad076a468a68cdb44f63a6290e9c8159"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#aad076a468a68cdb44f63a6290e9c8159">convert_c_and_ct_mat_to_petsc_format</a> (packed_state, Mdims, Mmat, ndgln, Mspars, NPHASE)</td></tr>
-<tr class="memdesc:aad076a468a68cdb44f63a6290e9c8159"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This subroutine converts the C (gradient) and CT (Divergence) matrices into PETSc format Mainly devoted to be used by the PETSc stokes schur solver This can be used when moving from the ICFERST matrix format to PETSc as reference  <a href="namespacesolvers__module.html#aad076a468a68cdb44f63a6290e9c8159">More...</a><br /></td></tr>
-<tr class="separator:aad076a468a68cdb44f63a6290e9c8159"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>All the subroutines associated to solving non-linear systems, Schur complement, etc. </p>
@@ -314,83 +308,6 @@ Here is the caller graph for this function:</div>
 
 </div>
 </div>
-<a id="aad076a468a68cdb44f63a6290e9c8159"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aad076a468a68cdb44f63a6290e9c8159">&#9670;&nbsp;</a></span>convert_c_and_ct_mat_to_petsc_format()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">subroutine solvers_module::convert_c_and_ct_mat_to_petsc_format </td>
-          <td>(</td>
-          <td class="paramtype">type( state_type ), intent(inout)&#160;</td>
-          <td class="paramname"><em>packed_state</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type(<a class="el" href="structmulti__data__types_1_1multi__dimensions.html">multi_dimensions</a>), intent(in)&#160;</td>
-          <td class="paramname"><em>Mdims</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type(<a class="el" href="structmulti__data__types_1_1multi__matrices.html">multi_matrices</a>), intent(inout)&#160;</td>
-          <td class="paramname"><em>Mmat</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type(<a class="el" href="structmulti__data__types_1_1multi__ndgln.html">multi_ndgln</a>), intent(in)&#160;</td>
-          <td class="paramname"><em>ndgln</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type(<a class="el" href="structmulti__data__types_1_1multi__sparsities.html">multi_sparsities</a>), intent(in)&#160;</td>
-          <td class="paramname"><em>Mspars</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, intent(in)&#160;</td>
-          <td class="paramname"><em>NPHASE</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>: This subroutine converts the C (gradient) and CT (Divergence) matrices into PETSc format Mainly devoted to be used by the PETSc stokes schur solver This can be used when moving from the ICFERST matrix format to PETSc as reference </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
-    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
-    <tr><td class="paramname">Mmat</td><td>Matrices for ICFERST </td></tr>
-    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
-    <tr><td class="paramname">Mspars</td><td>Sparsity of the matrices </td></tr>
-    <tr><td class="paramname">nphase</td><td>number of phases </td></tr>
-  </table>
-  </dd>
-</dl>
-<div class="dynheader">
-Here is the caller graph for this function:</div>
-<div class="dyncontent">
-<div class="center"><img src="namespacesolvers__module_aad076a468a68cdb44f63a6290e9c8159_icgraph.png" border="0" usemap="#namespacesolvers__module_aad076a468a68cdb44f63a6290e9c8159_icgraph" alt=""/></div>
-<map name="namespacesolvers__module_aad076a468a68cdb44f63a6290e9c8159_icgraph" id="namespacesolvers__module_aad076a468a68cdb44f63a6290e9c8159_icgraph">
-<area shape="rect" title=": This subroutine converts the C (gradient) and CT (Divergence) matrices into PETSc format Mainly dev..." alt="" coords="940,5,1123,61"/>
-<area shape="rect" href="namespacesolvers__module.html#ab1b067219293fc4e2583394acce02bfa" title="In this subroutine the Schur complement is generated and solved using PETSc to update the pressure fi..." alt="" coords="724,13,892,54"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,13,676,54"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,13,419,54"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,13,171,54"/>
-</map>
-</div>
-
-</div>
-</div>
 <a id="a76231fdbfc56035f797b1c21675c02ed"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a76231fdbfc56035f797b1c21675c02ed">&#9670;&nbsp;</a></span>duplicate_petsc_matrix()</h2>
 
@@ -570,10 +487,9 @@ Here is the call graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c_cgraph.png" border="0" usemap="#namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c_cgraph" alt=""/></div>
 <map name="namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c_cgraph" id="namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c_cgraph">
-<area shape="rect" title=":In this subroutine we applied some corrections and backtrack_par on the saturations obtained from th..." alt="" coords="5,71,156,112"/>
-<area shape="rect" href="namespacecopy__outof__state.html#a7d6957a54cc1cc0a38a4a7a90bca1f89" title=": We create a potential to optimize F = sum (f**2), so the solution is when this potential reaches a ..." alt="" coords="217,5,401,47"/>
-<area shape="rect" href="namespacesolvers__module.html#a27f681607a9e40b1e99a8f45cd6a940c" title=": This subroutines eliminates the oscillations in the saturation that are bigger than a certain toler..." alt="" coords="204,71,415,112"/>
-<area shape="rect" href="namespacesolvers__module.html#a9bba1ef1495c1a4a47a7eea3f2c17719" title=":This subroutines eliminates the oscillations in the saturation that are bigger than a certain tolera..." alt="" coords="219,136,400,177"/>
+<area shape="rect" title=":In this subroutine we applied some corrections and backtrack_par on the saturations obtained from th..." alt="" coords="5,39,156,80"/>
+<area shape="rect" href="namespacecopy__outof__state.html#a7d6957a54cc1cc0a38a4a7a90bca1f89" title=": We create a potential to optimize F = sum (f**2), so the solution is when this potential reaches a ..." alt="" coords="204,5,388,47"/>
+<area shape="rect" href="namespacesolvers__module.html#a9bba1ef1495c1a4a47a7eea3f2c17719" title=":This subroutines eliminates the oscillations in the saturation that are bigger than a certain tolera..." alt="" coords="205,71,387,112"/>
 </map>
 </div>
 <div class="dynheader">
@@ -666,18 +582,6 @@ Here is the caller graph for this function:</div>
   </table>
   </dd>
 </dl>
-<div class="dynheader">
-Here is the caller graph for this function:</div>
-<div class="dyncontent">
-<div class="center"><img src="namespacesolvers__module_a119325e40cdcd54b1766472b55920364_icgraph.png" border="0" usemap="#namespacesolvers__module_a119325e40cdcd54b1766472b55920364_icgraph" alt=""/></div>
-<map name="namespacesolvers__module_a119325e40cdcd54b1766472b55920364_icgraph" id="namespacesolvers__module_a119325e40cdcd54b1766472b55920364_icgraph">
-<area shape="rect" title="This subroutine provides a new guess based on previous updates and residuals. Use this subroutine to ..." alt="" coords="991,5,1167,61"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a09c428fa5a27cf3407e6a1bcc917f161" title="Generic subroutine that perform the Anderson acceleration solver. This is storing a set of results fo..." alt="" coords="724,20,943,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,13,676,54"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,13,419,54"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,13,171,54"/>
-</map>
-</div>
 
 </div>
 </div>
@@ -765,145 +669,6 @@ Here is the caller graph for this function:</div>
   </table>
   </dd>
 </dl>
-<div class="dynheader">
-Here is the caller graph for this function:</div>
-<div class="dyncontent">
-<div class="center"><img src="namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c_icgraph.png" border="0" usemap="#namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c_icgraph" alt=""/></div>
-<map name="namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c_icgraph" id="namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c_icgraph">
-<area shape="rect" title=": This subroutines eliminates the oscillations in the saturation that are bigger than a certain toler..." alt="" coords="955,35,1165,76"/>
-<area shape="rect" href="namespacesolvers__module.html#a4773b0f364c52ef1ca48a3ead9f6693c" title=":In this subroutine we applied some corrections and backtrack_par on the saturations obtained from th..." alt="" coords="756,5,907,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,35,708,76"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,35,419,76"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,35,171,76"/>
-</map>
-</div>
-
-</div>
-</div>
-<a id="ab1b067219293fc4e2583394acce02bfa"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab1b067219293fc4e2583394acce02bfa">&#9670;&nbsp;</a></span>petsc_stokes_solver()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">subroutine, public solvers_module::petsc_stokes_solver </td>
-          <td>(</td>
-          <td class="paramtype">type( state_type ), intent(inout)&#160;</td>
-          <td class="paramname"><em>packed_state</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type(<a class="el" href="structmulti__data__types_1_1multi__dimensions.html">multi_dimensions</a>), intent(in)&#160;</td>
-          <td class="paramname"><em>Mdims</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type(<a class="el" href="structmulti__data__types_1_1multi__matrices.html">multi_matrices</a>), intent(inout)&#160;</td>
-          <td class="paramname"><em>Mmat</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type(<a class="el" href="structmulti__data__types_1_1multi__ndgln.html">multi_ndgln</a>), intent(in)&#160;</td>
-          <td class="paramname"><em>ndgln</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type(<a class="el" href="structmulti__data__types_1_1multi__sparsities.html">multi_sparsities</a>), intent(in)&#160;</td>
-          <td class="paramname"><em>Mspars</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, intent(in)&#160;</td>
-          <td class="paramname"><em>final_phase</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type(petsc_csr_matrix), intent(inout)&#160;</td>
-          <td class="paramname"><em>pmat</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type( tensor_field ), intent(inout)&#160;</td>
-          <td class="paramname"><em>P_all</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type( vector_field ), intent(inout)&#160;</td>
-          <td class="paramname"><em>deltaP</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type( vector_field ), intent(in)&#160;</td>
-          <td class="paramname"><em>rhs_p</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">character(len=option_path_len), intent(in)&#160;</td>
-          <td class="paramname"><em>solver_option_path</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type(petsc_csr_matrix), intent(inout), optional&#160;</td>
-          <td class="paramname"><em>Dmat</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>In this subroutine the Schur complement is generated and solved using PETSc to update the pressure field Matrices need to be in petsc format and pmat is the preconditioned matrix, i.e. pmat = A11- A10(AproxA00^-1)A01. </p>
-<dl class="section author"><dt>Author</dt><dd>Pablo Salinas </dd></dl>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
-    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
-    <tr><td class="paramname">Mspars</td><td>Sparsity of the matrices </td></tr>
-    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
-    <tr><td class="paramname">final_phase</td><td>This is the final phase to be assembled, in this way we can assemble from phase 1 to final_phase not necessarily being for all the phases </td></tr>
-    <tr><td class="paramname">pmat</td><td>INOUT preconditioned matrix, i.e. pmat = A11- A10(AproxA00^-1)A01 </td></tr>
-    <tr><td class="paramname">P_all</td><td>Pressure field </td></tr>
-    <tr><td class="paramname">deltaP</td><td>Update of pressure from before solving </td></tr>
-    <tr><td class="paramname">rhs_p</td><td>RHS of the Pressure system </td></tr>
-    <tr><td class="paramname">solver_option_path</td><td>Path of the solver to be used to solve here the system </td></tr>
-    <tr><td class="paramname">Dmat</td><td>(optional) is the Matrix multipliying pressure in the continuity equation </td></tr>
-  </table>
-  </dd>
-</dl>
-<div class="dynheader">
-Here is the call graph for this function:</div>
-<div class="dyncontent">
-<div class="center"><img src="namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_cgraph.png" border="0" usemap="#namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_cgraph" alt=""/></div>
-<map name="namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_cgraph" id="namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_cgraph">
-<area shape="rect" title="In this subroutine the Schur complement is generated and solved using PETSc to update the pressure fi..." alt="" coords="5,13,173,54"/>
-<area shape="rect" href="namespacesolvers__module.html#aad076a468a68cdb44f63a6290e9c8159" title=": This subroutine converts the C (gradient) and CT (Divergence) matrices into PETSc format Mainly dev..." alt="" coords="221,5,404,61"/>
-</map>
-</div>
-<div class="dynheader">
-Here is the caller graph for this function:</div>
-<div class="dyncontent">
-<div class="center"><img src="namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_icgraph.png" border="0" usemap="#namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_icgraph" alt=""/></div>
-<map name="namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_icgraph" id="namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_icgraph">
-<area shape="rect" title="In this subroutine the Schur complement is generated and solved using PETSc to update the pressure fi..." alt="" coords="724,5,892,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
-</map>
-</div>
 
 </div>
 </div>
@@ -925,17 +690,6 @@ Here is the caller graph for this function:</div>
 
 <p>In this subroutine the matrix is re-scaled based on the formula D^-0.5 * A * D^-0.5 X'= D^-0.5 b; and next X = D^-0.5 * X'; IMPORTANT: the step X = D^-0.5 * X' needs to be done elsewhere store the diagonal before calling this This should allow to deal with high ranges of viscosity ratio for example A is-written. </p>
 <dl class="section author"><dt>Author</dt><dd>Pablo Salinas </dd></dl>
-<div class="dynheader">
-Here is the caller graph for this function:</div>
-<div class="dyncontent">
-<div class="center"><img src="namespacesolvers__module_af233b921efdba4e01b5920ccf509ef29_icgraph.png" border="0" usemap="#namespacesolvers__module_af233b921efdba4e01b5920ccf509ef29_icgraph" alt=""/></div>
-<map name="namespacesolvers__module_af233b921efdba4e01b5920ccf509ef29_icgraph" id="namespacesolvers__module_af233b921efdba4e01b5920ccf509ef29_icgraph">
-<area shape="rect" title="In this subroutine the matrix is re&#45;scaled based on the formula D^&#45;0.5 * A * D^&#45;0...." alt="" coords="724,5,891,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
-</map>
-</div>
 
 </div>
 </div>

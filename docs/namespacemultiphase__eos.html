@@ -145,9 +145,6 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:ae417127536bdb365fbdde3951524a9d6"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#ae417127536bdb365fbdde3951524a9d6">calculate_solute_dispersity</a> (state, packed_state, Mdims, ndgln, density, SoluteDispersion)</td></tr>
 <tr class="memdesc:ae417127536bdb365fbdde3951524a9d6"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Dispersion for porous media For thermal, the field density needs to be passed down, which ensures that even for boussinesq a reference density is still used  <a href="namespacemultiphase__eos.html#ae417127536bdb365fbdde3951524a9d6">More...</a><br /></td></tr>
 <tr class="separator:ae417127536bdb365fbdde3951524a9d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a26eebc3a39a15f39961c783b8558fbef"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a26eebc3a39a15f39961c783b8558fbef">calculate_viscosity</a> (state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2)</td></tr>
-<tr class="memdesc:a26eebc3a39a15f39961c783b8558fbef"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media  <a href="namespacemultiphase__eos.html#a26eebc3a39a15f39961c783b8558fbef">More...</a><br /></td></tr>
-<tr class="separator:a26eebc3a39a15f39961c783b8558fbef"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a15a1f78f9f889b58b7b9f45de20d5a48"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a15a1f78f9f889b58b7b9f45de20d5a48">update_velocity_absorption</a> (states, ndim, nphase, velocity_absorption)</td></tr>
 <tr class="memdesc:a15a1f78f9f889b58b7b9f45de20d5a48"><td class="mdescLeft">&#160;</td><td class="mdescRight">:&lt;INERTIA ONLY&gt;Computes velocity absorption from diamond information  <a href="namespacemultiphase__eos.html#a15a1f78f9f889b58b7b9f45de20d5a48">More...</a><br /></td></tr>
 <tr class="separator:a15a1f78f9f889b58b7b9f45de20d5a48"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -221,15 +218,15 @@ Here is the caller graph for this function:</div>
 <area shape="rect" title=": Read from diamond and decide which sort of density representation do we have" alt="" coords="1229,107,1404,149"/>
 <area shape="rect" href="namespacemultiphase__eos.html#ab16c45da0af88c69945beac4e3334349" title=": Computes the density for the phases and the derivatives of the density" alt="" coords="989,49,1181,90"/>
 <area shape="rect" href="namespacemultiphase__eos.html#a3c4f57d9c50b3421a8059d73fb260dd5" title=": Computes the density for the components and the derivatives of the density This is were the action ..." alt="" coords="488,107,680,149"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a282f02f39508adfb64d99bf4659af86c" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="993,169,1177,210"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a282f02f39508adfb64d99bf4659af86c" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="993,181,1177,222"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="763,5,928,32"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,173,419,214"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,173,171,214"/>
-<area shape="rect" href="namespacemultiphase__eos.html#ac21530a3f76ed685a2ce5fcb0bb11bd0" title=": This subroutine computed the gravity effect, i.e. rho * g" alt="" coords="749,169,941,210"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="753,234,937,275"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="479,173,689,214"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,290,701,331"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,297,396,324"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,181,419,222"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,181,171,222"/>
+<area shape="rect" href="namespacemultiphase__eos.html#ac21530a3f76ed685a2ce5fcb0bb11bd0" title=": This subroutine computed the gravity effect, i.e. rho * g" alt="" coords="749,181,941,222"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="753,246,937,287"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a55fa432c24197fe110826bd418f89091" title="Calls to generate for Porous media only the Gradient Matrix, the divergence matrix,..." alt="" coords="499,173,669,229"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,305,701,346"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,312,396,339"/>
 </map>
 </div>
 
@@ -485,10 +482,10 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemultiphase__eos_add6fbcd53b92e8dd346a9ac6fbc30055_icgraph.png" border="0" usemap="#namespacemultiphase__eos_add6fbcd53b92e8dd346a9ac6fbc30055_icgraph" alt=""/></div>
 <map name="namespacemultiphase__eos_add6fbcd53b92e8dd346a9ac6fbc30055_icgraph" id="namespacemultiphase__eos_add6fbcd53b92e8dd346a9ac6fbc30055_icgraph">
-<area shape="rect" title=": In this subroutine the capilalry pressure is computed based on the saturation and the formula used" alt="" coords="724,5,916,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" title=": In this subroutine the capilalry pressure is computed based on the saturation and the formula used" alt="" coords="684,13,876,54"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a55fa432c24197fe110826bd418f89091" title="Calls to generate for Porous media only the Gradient Matrix, the divergence matrix,..." alt="" coords="467,5,636,61"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,13,419,54"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,13,171,54"/>
 </map>
 </div>
 
@@ -1106,79 +1103,10 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemultiphase__eos_ac21530a3f76ed685a2ce5fcb0bb11bd0_icgraph.png" border="0" usemap="#namespacemultiphase__eos_ac21530a3f76ed685a2ce5fcb0bb11bd0_icgraph" alt=""/></div>
 <map name="namespacemultiphase__eos_ac21530a3f76ed685a2ce5fcb0bb11bd0_icgraph" id="namespacemultiphase__eos_ac21530a3f76ed685a2ce5fcb0bb11bd0_icgraph">
-<area shape="rect" title=": This subroutine computed the gravity effect, i.e. rho * g" alt="" coords="724,5,916,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
-</map>
-</div>
-
-</div>
-</div>
-<a id="a26eebc3a39a15f39961c783b8558fbef"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a26eebc3a39a15f39961c783b8558fbef">&#9670;&nbsp;</a></span>calculate_viscosity()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">subroutine multiphase_eos::calculate_viscosity </td>
-          <td>(</td>
-          <td class="paramtype">type( state_type ), dimension( : ), intent(in)&#160;</td>
-          <td class="paramname"><em>state</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type( multi_dimensions ), intent(in)&#160;</td>
-          <td class="paramname"><em>Mdims</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type( multi_ndgln ), intent(in)&#160;</td>
-          <td class="paramname"><em>ndgln</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">real, dimension( :, :, :, : ), intent(inout)&#160;</td>
-          <td class="paramname"><em>Momentum_Diffusion</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">type( multi_field ), intent(inout)&#160;</td>
-          <td class="paramname"><em>Momentum_Diffusion2</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
-    <tr><td class="paramname">Mdims</td><td>Number of dimensions </td></tr>
-    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
-    <tr><td class="paramname">Momentum_Diffusion</td><td>Viscosity term for Stokes/Navier-Stokes </td></tr>
-    <tr><td class="paramname">Momentum_Diffusion2</td><td>Shear viscosity? </td></tr>
-  </table>
-  </dd>
-</dl>
-<div class="dynheader">
-Here is the caller graph for this function:</div>
-<div class="dyncontent">
-<div class="center"><img src="namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef_icgraph.png" border="0" usemap="#namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef_icgraph" alt=""/></div>
-<map name="namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef_icgraph" id="namespacemultiphase__eos_a26eebc3a39a15f39961c783b8558fbef_icgraph">
-<area shape="rect" title=": Computes the viscosity effect as a momemtum diffusion, this is zero for porous media" alt="" coords="724,5,916,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" title=": This subroutine computed the gravity effect, i.e. rho * g" alt="" coords="684,13,876,54"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a55fa432c24197fe110826bd418f89091" title="Calls to generate for Porous media only the Gradient Matrix, the divergence matrix,..." alt="" coords="467,5,636,61"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,13,419,54"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,13,171,54"/>
 </map>
 </div>
 
@@ -2106,14 +2034,14 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c_icgraph.png" border="0" usemap="#namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c_icgraph" alt=""/></div>
 <map name="namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c_icgraph" id="namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c_icgraph">
-<area shape="rect" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="989,39,1173,80"/>
-<area shape="rect" href="namespacemultiphase__eos.html#ac21530a3f76ed685a2ce5fcb0bb11bd0" title=": This subroutine computed the gravity effect, i.e. rho * g" alt="" coords="749,5,941,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="753,71,937,112"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="479,5,689,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,64,419,105"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,64,171,105"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,123,701,164"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,130,396,157"/>
+<area shape="rect" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="989,46,1173,87"/>
+<area shape="rect" href="namespacemultiphase__eos.html#ac21530a3f76ed685a2ce5fcb0bb11bd0" title=": This subroutine computed the gravity effect, i.e. rho * g" alt="" coords="749,13,941,54"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="753,78,937,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a55fa432c24197fe110826bd418f89091" title="Calls to generate for Porous media only the Gradient Matrix, the divergence matrix,..." alt="" coords="499,5,669,61"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,78,419,119"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,78,171,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,137,701,178"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,144,396,171"/>
 </map>
 </div>
 
@@ -2187,17 +2115,6 @@ Here is the caller graph for this function:</div>
   </table>
   </dd>
 </dl>
-<div class="dynheader">
-Here is the caller graph for this function:</div>
-<div class="dyncontent">
-<div class="center"><img src="namespacemultiphase__eos_a15a1f78f9f889b58b7b9f45de20d5a48_icgraph.png" border="0" usemap="#namespacemultiphase__eos_a15a1f78f9f889b58b7b9f45de20d5a48_icgraph" alt=""/></div>
-<map name="namespacemultiphase__eos_a15a1f78f9f889b58b7b9f45de20d5a48_icgraph" id="namespacemultiphase__eos_a15a1f78f9f889b58b7b9f45de20d5a48_icgraph">
-<area shape="rect" title=":&lt;INERTIA ONLY&gt;Computes velocity absorption from diamond information" alt="" coords="724,5,903,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
-</map>
-</div>
 
 </div>
 </div>
@@ -2249,17 +2166,6 @@ Here is the caller graph for this function:</div>
   </table>
   </dd>
 </dl>
-<div class="dynheader">
-Here is the caller graph for this function:</div>
-<div class="dyncontent">
-<div class="center"><img src="namespacemultiphase__eos_a98927879ae36867eabec1a9e6a5f22d8_icgraph.png" border="0" usemap="#namespacemultiphase__eos_a98927879ae36867eabec1a9e6a5f22d8_icgraph" alt=""/></div>
-<map name="namespacemultiphase__eos_a98927879ae36867eabec1a9e6a5f22d8_icgraph" id="namespacemultiphase__eos_a98927879ae36867eabec1a9e6a5f22d8_icgraph">
-<area shape="rect" title=":Computes velocity absorption associated to coriolis forces from diamond information" alt="" coords="724,5,935,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
-</map>
-</div>
 
 </div>
 </div>
@@ -2308,10 +2214,10 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemultiphase__eos_a8f7f68ee8d294089b9077c480795eb9c_icgraph.png" border="0" usemap="#namespacemultiphase__eos_a8f7f68ee8d294089b9077c480795eb9c_icgraph" alt=""/></div>
 <map name="namespacemultiphase__eos_a8f7f68ee8d294089b9077c480795eb9c_icgraph" id="namespacemultiphase__eos_a8f7f68ee8d294089b9077c480795eb9c_icgraph">
-<area shape="rect" title=":Computes velocity source from diamond information" alt="" coords="724,5,903,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" title=":Computes velocity source from diamond information" alt="" coords="684,13,863,54"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a55fa432c24197fe110826bd418f89091" title="Calls to generate for Porous media only the Gradient Matrix, the divergence matrix,..." alt="" coords="467,5,636,61"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,13,419,54"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,13,171,54"/>
 </map>
 </div>
 

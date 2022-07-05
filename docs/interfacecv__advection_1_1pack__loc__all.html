@@ -97,274 +97,55 @@ $(document).ready(function(){initNavTree('interfacecv__advection_1_1pack__loc__a
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:aa32cb57414346a3b22d48e2f6ed08567"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacecv__advection_1_1pack__loc__all.html#aa32cb57414346a3b22d48e2f6ed08567">pack_loc_all1</a> (LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3, IGOT_T_PACK, use_volume_frac_T2, nfield)</td></tr>
-<tr class="memdesc:aa32cb57414346a3b22d48e2f6ed08567"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine is for fields that have already size final_phase - 1 Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F to later on apply the limiters on all the fields at once.  <a href="interfacecv__advection_1_1pack__loc__all.html#aa32cb57414346a3b22d48e2f6ed08567">More...</a><br /></td></tr>
-<tr class="separator:aa32cb57414346a3b22d48e2f6ed08567"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac8100da8bf6718865a507e072b9f3977"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacecv__advection_1_1pack__loc__all.html#ac8100da8bf6718865a507e072b9f3977">pack_loc_all2</a> (LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3, IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase, nodi)</td></tr>
-<tr class="memdesc:ac8100da8bf6718865a507e072b9f3977"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subrotuine is for fields that are bigger than final_phase - start_phase Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F to later on apply the limiters on all the fields at once.  <a href="interfacecv__advection_1_1pack__loc__all.html#ac8100da8bf6718865a507e072b9f3977">More...</a><br /></td></tr>
-<tr class="separator:ac8100da8bf6718865a507e072b9f3977"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7e74c3dcd5a537781b3f0a77392094ac"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacecv__advection_1_1pack__loc__all.html#a7e74c3dcd5a537781b3f0a77392094ac">pack_loc_all3</a> (LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3, IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase, nodi)</td></tr>
-<tr class="memdesc:a7e74c3dcd5a537781b3f0a77392094ac"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subrotuine is for fields that are bigger than final_phase - start_phase Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F to later on apply the limiters on all the fields at once. This one is for integer fields.  <a href="interfacecv__advection_1_1pack__loc__all.html#a7e74c3dcd5a537781b3f0a77392094ac">More...</a><br /></td></tr>
-<tr class="separator:a7e74c3dcd5a537781b3f0a77392094ac"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa0052d9d5101c479dc22a82e6af1bf60"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacecv__advection_1_1pack__loc__all.html#aa0052d9d5101c479dc22a82e6af1bf60">pack_loc_all1</a></td></tr>
+<tr class="separator:aa0052d9d5101c479dc22a82e6af1bf60"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9befa736105b9147f04c6c9b8f418015"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacecv__advection_1_1pack__loc__all.html#a9befa736105b9147f04c6c9b8f418015">pack_loc_all2</a></td></tr>
+<tr class="separator:a9befa736105b9147f04c6c9b8f418015"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad8be087916a88719b0404aaf491f1277"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacecv__advection_1_1pack__loc__all.html#ad8be087916a88719b0404aaf491f1277">pack_loc_all3</a></td></tr>
+<tr class="separator:ad8be087916a88719b0404aaf491f1277"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Packs field together to be later on used for high order computations. </p>
 </div><h2 class="groupheader">Member Function/Subroutine Documentation</h2>
-<a id="aa32cb57414346a3b22d48e2f6ed08567"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa32cb57414346a3b22d48e2f6ed08567">&#9670;&nbsp;</a></span>pack_loc_all1()</h2>
+<a id="aa0052d9d5101c479dc22a82e6af1bf60"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa0052d9d5101c479dc22a82e6af1bf60">&#9670;&nbsp;</a></span>pack_loc_all1()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">subroutine cv_advection::pack_loc_all::pack_loc_all1 </td>
-          <td>(</td>
-          <td class="paramtype">real, dimension(:), intent(inout)&#160;</td>
-          <td class="paramname"><em>LOC_F</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">real, dimension(:), intent(in)&#160;</td>
-          <td class="paramname"><em>field1</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">real, dimension(:), intent(in)&#160;</td>
-          <td class="paramname"><em>oldfield1</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">real, dimension(:), intent(in)&#160;</td>
-          <td class="paramname"><em>field2</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">real, dimension(:), intent(in)&#160;</td>
-          <td class="paramname"><em>oldfield2</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">real, dimension(:), intent(in)&#160;</td>
-          <td class="paramname"><em>field3</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">real, dimension(:), intent(in)&#160;</td>
-          <td class="paramname"><em>oldfield3</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">logical, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>IGOT_T_PACK</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">logical, intent(in)&#160;</td>
-          <td class="paramname"><em>use_volume_frac_T2</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, intent(in)&#160;</td>
-          <td class="paramname"><em>nfield</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
+          <td class="memname">cv_advection::pack_loc_all::pack_loc_all1</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>This subroutine is for fields that have already size final_phase - 1 Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F to later on apply the limiters on all the fields at once. </p>
-
 </div>
 </div>
-<a id="ac8100da8bf6718865a507e072b9f3977"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac8100da8bf6718865a507e072b9f3977">&#9670;&nbsp;</a></span>pack_loc_all2()</h2>
+<a id="a9befa736105b9147f04c6c9b8f418015"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9befa736105b9147f04c6c9b8f418015">&#9670;&nbsp;</a></span>pack_loc_all2()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">subroutine cv_advection::pack_loc_all::pack_loc_all2 </td>
-          <td>(</td>
-          <td class="paramtype">real, dimension(:), intent(inout)&#160;</td>
-          <td class="paramname"><em>LOC_F</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">real, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>field1</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">real, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>oldfield1</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">real, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>field2</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">real, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>oldfield2</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">real, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>field3</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">real, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>oldfield3</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">logical, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>IGOT_T_PACK</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">logical, intent(in)&#160;</td>
-          <td class="paramname"><em>use_volume_frac_T2</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, intent(in)&#160;</td>
-          <td class="paramname"><em>start_phase</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, intent(in)&#160;</td>
-          <td class="paramname"><em>final_phase</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, intent(in)&#160;</td>
-          <td class="paramname"><em>nodi</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
+          <td class="memname">cv_advection::pack_loc_all::pack_loc_all2</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>This subrotuine is for fields that are bigger than final_phase - start_phase Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F to later on apply the limiters on all the fields at once. </p>
-
 </div>
 </div>
-<a id="a7e74c3dcd5a537781b3f0a77392094ac"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7e74c3dcd5a537781b3f0a77392094ac">&#9670;&nbsp;</a></span>pack_loc_all3()</h2>
+<a id="ad8be087916a88719b0404aaf491f1277"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad8be087916a88719b0404aaf491f1277">&#9670;&nbsp;</a></span>pack_loc_all3()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">subroutine cv_advection::pack_loc_all::pack_loc_all3 </td>
-          <td>(</td>
-          <td class="paramtype">integer, dimension(:), intent(inout)&#160;</td>
-          <td class="paramname"><em>LOC_F</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>field1</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>oldfield1</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>field2</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>oldfield2</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>field3</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>oldfield3</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">logical, dimension(:,:), intent(in)&#160;</td>
-          <td class="paramname"><em>IGOT_T_PACK</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">logical, intent(in)&#160;</td>
-          <td class="paramname"><em>use_volume_frac_T2</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, intent(in)&#160;</td>
-          <td class="paramname"><em>start_phase</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, intent(in)&#160;</td>
-          <td class="paramname"><em>final_phase</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">integer, intent(in)&#160;</td>
-          <td class="paramname"><em>nodi</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
+          <td class="memname">cv_advection::pack_loc_all::pack_loc_all3</td>
         </tr>
       </table>
 </div><div class="memdoc">
-
-<p>This subrotuine is for fields that are bigger than final_phase - start_phase Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F to later on apply the limiters on all the fields at once. This one is for integer fields. </p>
 
 </div>
 </div>

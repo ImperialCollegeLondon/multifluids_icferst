@@ -1,5 +1,4 @@
 <map id="multi_tools::nvdfunnew_many" name="multi_tools::nvdfunnew_many">
-<area shape="rect" id="node1" title=": The function computes NVDFUNNEW, the normalised value of the advected variable on the face of the c..." alt="" coords="415,13,633,39"/>
-<area shape="rect" id="node2" href="$namespacecv__advection.html#afc0d98d467a15c460d49668d0194344a" title="This sub calculates the limited face values TDADJ(1...SNGI) from the central difference face values T..." alt="" coords="197,5,367,47"/>
-<area shape="rect" id="node3" href="$cv-adv-dif_8_f90.html#a427571cc398104aab11b15662262c017" title="Computes the flux between CVs." alt="" coords="5,13,149,39"/>
+<area shape="rect" id="node1" title=": The function computes NVDFUNNEW, the normalised value of the advected variable on the face of the c..." alt="" coords="223,13,441,39"/>
+<area shape="rect" id="node2" href="$namespacecv__advection.html#afc0d98d467a15c460d49668d0194344a" title="This sub calculates the limited face values TDADJ(1...SNGI) from the central difference face values T..." alt="" coords="5,5,175,47"/>
 </map>

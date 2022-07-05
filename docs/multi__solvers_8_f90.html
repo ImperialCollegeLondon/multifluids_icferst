@@ -138,12 +138,6 @@ Functions/Subroutines</h2></td></tr>
 <tr class="separator:af233b921efdba4e01b5920ccf509ef29"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a76231fdbfc56035f797b1c21675c02ed"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#a76231fdbfc56035f797b1c21675c02ed">solvers_module::duplicate_petsc_matrix</a> (MAT_A, MAT_B)</td></tr>
 <tr class="separator:a76231fdbfc56035f797b1c21675c02ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab1b067219293fc4e2583394acce02bfa"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#ab1b067219293fc4e2583394acce02bfa">solvers_module::petsc_stokes_solver</a> (packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, pmat, P_all, deltaP, rhs_p, solver_option_path, Dmat)</td></tr>
-<tr class="memdesc:ab1b067219293fc4e2583394acce02bfa"><td class="mdescLeft">&#160;</td><td class="mdescRight">In this subroutine the Schur complement is generated and solved using PETSc to update the pressure field Matrices need to be in petsc format and pmat is the preconditioned matrix, i.e. pmat = A11- A10(AproxA00^-1)A01.  <a href="namespacesolvers__module.html#ab1b067219293fc4e2583394acce02bfa">More...</a><br /></td></tr>
-<tr class="separator:ab1b067219293fc4e2583394acce02bfa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aad076a468a68cdb44f63a6290e9c8159"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#aad076a468a68cdb44f63a6290e9c8159">solvers_module::convert_c_and_ct_mat_to_petsc_format</a> (packed_state, Mdims, Mmat, ndgln, Mspars, NPHASE)</td></tr>
-<tr class="memdesc:aad076a468a68cdb44f63a6290e9c8159"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This subroutine converts the C (gradient) and CT (Divergence) matrices into PETSc format Mainly devoted to be used by the PETSc stokes schur solver This can be used when moving from the ICFERST matrix format to PETSc as reference  <a href="namespacesolvers__module.html#aad076a468a68cdb44f63a6290e9c8159">More...</a><br /></td></tr>
-<tr class="separator:aad076a468a68cdb44f63a6290e9c8159"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->
 </div><!-- doc-content -->
