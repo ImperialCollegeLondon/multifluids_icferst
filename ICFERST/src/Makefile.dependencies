@@ -144,8 +144,8 @@ multi_dyncore_dg.o ../include/multiphase_1d_engine.mod: multi_dyncore_dg.F90 \
    ../include/compositional_terms.mod ../include/copy_outof_state.mod \
    ../include/cv_advection.mod ../include/matrix_operations.mod \
    ../include/multi_data_types.mod ../include/multi_pipes.mod \
-   ../include/multi_surface_tension.mod ../include/multi_tools.mod \
-   ../include/multiphase_eos.mod ../include/shape_functions_ndim.mod \
+   ../include/multi_tools.mod ../include/multiphase_eos.mod \
+   ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod ../include/solvers_module.mod \
    ../include/spact.mod
 
@@ -298,37 +298,22 @@ multi_solvers.o ../include/solvers_module.mod: multi_solvers.F90 \
    ../include/shape_functions_linear_quadratic.mod \
    ../include/shape_functions_prototype.mod
 
+../include/sparsity_1d.mod: multi_sparsity.o
+	@true
+
 ../include/sparsity_nd.mod: multi_sparsity.o
 	@true
 
 ../include/spact.mod: multi_sparsity.o
 	@true
 
-../include/sparsity_1d.mod: multi_sparsity.o
-	@true
-
-multi_sparsity.o ../include/sparsity_nd.mod ../include/spact.mod \
-   ../include/sparsity_1d.mod: multi_sparsity.F90 ../../include/confdefs.h \
+multi_sparsity.o ../include/sparsity_1d.mod ../include/sparsity_nd.mod \
+   ../include/spact.mod: multi_sparsity.F90 ../../include/confdefs.h \
    ../../include/fdebug.h ../../include/fldebug.mod ../../include/futils.mod \
    ../../include/global_parameters.mod ../../include/spud.mod \
    ../include/copy_outof_state.mod ../include/cv_advection.mod \
    ../include/multi_data_types.mod ../include/multi_tools.mod \
    ../include/shape_functions_linear_quadratic.mod \
-   ../include/shape_functions_prototype.mod
-
-../include/multi_surface_tension.mod: multi_surface_tension.o
-	@true
-
-multi_surface_tension.o ../include/multi_surface_tension.mod: \
-   multi_surface_tension.F90 ../../include/confdefs.h \
-   ../../include/elements.mod ../../include/fdebug.h \
-   ../../include/field_options.mod ../../include/fields.mod \
-   ../../include/fldebug.mod ../../include/futils.mod \
-   ../../include/parallel_tools.mod ../../include/shape_functions.mod \
-   ../../include/spud.mod ../../include/state_module.mod \
-   ../include/copy_outof_state.mod ../include/cv_advection.mod \
-   ../include/matrix_operations.mod ../include/multi_data_types.mod \
-   ../include/multi_tools.mod ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod
 
 ../include/multi_tools.mod: multi_tools.o

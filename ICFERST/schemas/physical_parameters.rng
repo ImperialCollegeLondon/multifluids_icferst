@@ -5,9 +5,6 @@
       <optional>
         <ref name="gravity_options"/>
       </optional>
-      <optional>
-        <ref name="coriolis_options"/>
-      </optional>
     </element>
   </define>
   <define name="gravity_options">
@@ -17,17 +14,6 @@
         <a:documentation>Acceleration due to gravity. 9.8 m/s^2 on earth.</a:documentation>
         <ref name="real"/>
       </element>
-      <optional>
-        <element name="hydrostatic_pressure_solver">
-          <a:documentation>Solve the gravity component independently from the pressure general solver.
-Not implemented for wells yet. Therefore NOT recommended for wells.
-
-Internally it creates a field named HydrostaticPressure and a mesh with the same name.
-
-NOTE: With this options, pressure boundary conditions must not be hydrostatic.</a:documentation>
-          <empty/>
-        </element>
-      </optional>
       <optional>
         <element name="remove_hydrostatic_contribution">
           <a:documentation>Instead of including rho * g, the hydrostatic contribution is removed

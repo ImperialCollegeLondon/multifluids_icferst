@@ -36,6 +36,5 @@ var multi__eos_8_f90 =
     [ "update_velocity_absorption", "multi__eos_8_f90.html#a15a1f78f9f889b58b7b9f45de20d5a48", null ],
     [ "update_velocity_absorption_coriolis", "multi__eos_8_f90.html#a98927879ae36867eabec1a9e6a5f22d8", null ],
     [ "update_velocity_source", "multi__eos_8_f90.html#a8f7f68ee8d294089b9077c480795eb9c", null ],
-    [ "zeta", "multi__eos_8_f90.html#ae6d5686c281a2913192491061cfcec88", null ],
     [ "flooding_hmin", "multi__eos_8_f90.html#ae1ce91e74714b2c125d7a764aaa79ff3", null ]
 ];

@@ -50,7 +50,7 @@ periodic_boundary_option_path, domain_bbox, domain_volume, surface_radius
   use vtk_cache_module
   use global_parameters, only: OPTION_PATH_LEN, is_active_process, pi, &
     no_active_processes, topology_mesh_name, adaptivity_mesh_name, &
-    periodic_boundary_option_path, domain_bbox, domain_volume, surface_radius, is_porous_media
+    periodic_boundary_option_path, domain_bbox, domain_volume, surface_radius
   use field_options
   use reserve_state_module
   use field_options

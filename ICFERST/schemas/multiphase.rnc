@@ -43,9 +43,7 @@ start =
          },
              (
                 ## Darcy flow simulator
-                element porous_media_simulator{comment}|
-                ## Navier-stokes simulator
-                element inertia_dominated_simulator{comment}
+                element porous_media_simulator{comment}
              ),
          geometry,
 	     solver_options,
@@ -1168,95 +1166,6 @@ start =
 		        }?
          }?,
 
-        ## Magma options
-         element magma_parameters {
-         (
-           ## Set up phase diagram coefficients. For one branch, A1, B1, C1 and eutectic point ae must be set. For two-branch system, A1, B1, C1, A2, B2, C2 needs to be set and ae value will be overwritten.
-            element Phase_diagram_coefficients {
-		(
-		## A1
-            	element A1 {
-               real
-            	},
-		## B1
-            	element B1 {
-               real
-            	},
-		## C1
-            	element C1 {
-               real
-            	},
-		## A2
-            	element A2 {
-               real
-            	}?,
-		## B2
-            	element B2 {
-               real
-            	}?,
-		## C2
-            	element C2 {
-               real
-            	}?,
-	       ## Eutectic point
-	       element ae {
-               real
-            	},
-	       ## Latent heat
-               element latent_heat {
-               real
-                }
-               )
-            }?,
-           ## bulk viscosity is set to mu*phi^(-b), where mu is the shear viscosity. Here coefficient b is set.
-            element bulk_viscosity_exponential_coefficient{
-               real
-            },
-            ## The copling_term follows the Darcy permeability law C=1/a/d^2*mu*phi^(2-b) for lower meltfraction and hindled settling C=1/d^2*mu*phi^(-5)*(1-phi). Here coefficients a, grain size d, coefficients b and the cutting between the two demains needs to be set.
-            element coupling_term_coefficients{
-		(
-		## Power law coefficient a
-            	element coupling_power_coefficent_a {
-               real
-            	},
-		## Power law coefficient b
-            	element coupling_power_coefficent_b {
-               real
-            	},
-		## Grain size
-            	element grain_size {
-               real
-            	},
-		## the range below which the coupling terms follow the Darcy permeability, set this to 1 to make the entire domain Darcy like.
-            	element cut_a {
-               real
-            	},
-		## the range above which the coupling terms follow the Hindered settling
-            	element cut_b {
-               real
-            	}
-	    )
-            }
-            )
-         }?,
-
-        ## Fracking options
-         element femdem_fracture {
-         (
-            ## Specify FEMDEM input file
-            element femdem_file {
-               attribute name { xsd:string }
-            }?,
-	    element oneway_coupling_only {
-	       attribute rank {"0"},
-               ("1way"|"p2way")
-	    }?,
-            element include_pore_pressure {
-               empty
-	    }?
-         )
-         }?,
-
          ## Advanced options that are kept for debugging purposes
          element numerical_methods {
             ## Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field
@@ -1265,16 +1174,6 @@ start =
             ##
             ## This option is useful if your field is suddenly changing after adapting the mesh.
             element do_not_bound_after_adapt {
-               empty
-            }?,
-            ## If selected low order diffusion we use a diffusion that does not take 10%! of the total time only to generate the term
-            ## Currently the results seems a bit off using this diffusion method.
-            element Low_order_diffusion {
-               empty
-            }?,
-            ## This disable the limiters regarless of the precision used
-            ## Limiters are quite expensive so if your simulation is slow it might be worth trying this.
-            element disable_limiters {
                empty
             }?,
             ## VAD is multiplied by the normalised flux. This should help focusing the VAD towards moving directions instead of acting as pure diffusion
@@ -1286,45 +1185,9 @@ start =
             element Strong_BCs_for_P0DG_wells {
                empty
             }?,
-            ## Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods
-            element use_ENO_scheme {
-               empty
-            }?,
-            ## Disable the limiter for velocity when using P0DG. Not for porous media.
-            element disable_P0_limiter {
-               empty
-            }?,
-            ## Use a method to avoid distortion due to boundaries
-            element use_reflect_method {
-               empty
-            }?,
-            ## Use the row-sum method to create a lumped mass matrix.
-            ## For porous media this will not have an effect.
-            ## Also options to convert P1DG into P0DG and introduce the temporal terms into the mass matrix
-            element lump_mass_matrix {
-                ## For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
-                ## the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
-                ## The default value for P1DGP1 => 1e4 and disabled for other element types.
-                ## To disable it manually, set it to negative values.
-               element lump_weight{real}?,
-            ## Introduce in the pivit matrix the temporal terms
-            element get_all_in_mass_matrix {
-               empty}?
-            }?,
-            element no_matrix_store {
-              empty
-            }?,
-            element lump_momentum_inertia {
-              empty
-            }?,
            ## Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
            ## By default this number is 9. Recommended range: 3 to 9.
             element max_sat_its {
-               integer
-            }?,
-           ## Impose a maximum number of iterations for the compositional loop
-           ## By default this number is 1. STILL TESTING THIS PARAMETER
-            element Max_compositional_its {
                integer
             }?,
            ## Decide to solve for nphases-1. This should be faster. Still in DEVELOPMENT.
@@ -1342,10 +1205,6 @@ start =
             ## For porous media only the Darcy velocity is outputed as the normal velocity is actually the force density
             ## activate this to also output the force_density
             element porous_output_force_density{
-               empty
-            }?,
-            ## Use the fast method to create the pressure matrix. Be aware that some methods only work with the slow method
-            element create_P_mat_fast {
                empty
             }?
          }?
@@ -1402,39 +1261,6 @@ geometry =
                 mesh_info,
                 element exclude_from_mesh_adaptivity{empty}?
              }*,
-             ## Specify a different time discretisation method for different fields
-             ## You can use as inputs here: <b>PhaseVolumeFraction, Velocity or Tracer</b>.
-             ## Tracer accounts for Temperature, Concentration, etc.
-             element Time_Discretisation {
-                ##Name of the Field
-                attribute name { xsd:string },
-                 ## Implicit/explicit control (THETA)
-                 ##  =0.  -- explicit
-                 ##  =0.5 -- Crank-Nicolson
-                 ##  =1.  -- implicit
-                 ##  =-1. -- Automatic based on a NVD criterion.
-                element Theta{real}
-             }*,
-             ## Specify a different flux calculation for different fields
-             ## You can use as inputs here: PhaseVolumeFraction or Tracer.
-             ## Tracer accounts for Temperature, Concentration, etc.
-             element Space_Discretisation {
-                ##Name of the Field
-                attribute name { xsd:string },
-                element advection_scheme {
-                  (
-                     ## Straightforward upwinding of the nonlinear velocity.
-                     element upwind {
-                        empty
-                     }|
-                     ## High order method based on a TVD criteria to ensure stability.
-                     element High_order {
-                        limiter_options
-                     }
-                  )}
-
-             }*,
-
              ## Conservative discretisation options
              ## <b>Note that non-conservative does NOT mean that we do not conserve mass</b>
              ## For transport equations this is recommended to be zero.
@@ -1451,21 +1277,7 @@ geometry =
                  element conservative_advection {
                     real
                  }
-             }*,
-            ## By default ICFERST uses a DCVFEM because it is more robust (Salinas et al. 2018),
-            ## nonetheless the classical CVFEM can also be used.
-            element FE_Pressure {
-            (
-            ## This option uses FE to solve the continuity equation. This creates a symmetric Pressure
-            ## matrix which is more stable than the normal CVFEM formulation and more accurate. Nonetheless,
-            ## it may create inconsistencies for multiphase flow and conservative formulations.
-            ##
-            element FEM_continuity_equation {
-                empty
-            }?
-            )
-
-            }?
+             }*
         }?,
 
 
@@ -1720,46 +1532,7 @@ solver_options =
                 }?
               )
            }?
-        }?,
-        ## Specify options associated with the Momentum matrix. Useful mainly for: Stokes, Magma and Solid-fluid coupling flow.
-        element Momemtum_matrix{(
-        ## Use this option if you are triying to solve a system that is spanning many orders of magnitude, for example very high viscosity ratios. The Momemtum system is re-scaled as:
-        ## D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
-        ##
-        ## <b>Recommened for Magma multiphase flows/Solid-fluid coupling</b>
-        element rescale_mom_matrices {
-           empty
-        }?,
-        (
-        ## Use PETSc to create and solve the Schur complement matrix and solve for it
-        element Solve_mom_with_PETSc {
-           empty}|
-        ## Use this option to switch on the Anderson acceleration method for the momentum equation (IC-FERST own Stokes solver). The mass matrix is lumped.
-        ##
-        ## This is ACTIVATED by default for Stokes/Magma flow. <b>Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-7.</b>
-        element solve_mom_iteratively {real,
-        (
-        ## Maximum restart iteration allowed. The default value is 15.
-         element restart_its {
-           integer}?,
-        ## Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.
-         element Max_restarts {
-           integer}?,
-           ## Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, <b>unstable</b> but potentially faster.
-            element Momentum_preconditioner {
-           empty}?,
-           ## Instead of using the mass matrix as preconditioner, use a preconditioner of the BfB type. This includes two pressure solvers
-           ## but it is more efficient that the simple preconditioner (<b>This option disables this feature, NOT RECOMMENDED</b>).
-           ##
-           ## By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1
-           ##
-           ## If Momentum_preconditioner is on then the formula is: (C^t Ad^-1 M^-1 C)^-1 (C^t Ad^-1 A Ad^-1 C) (C^t Ad^-1 M^-1 C)^-1 (<b>Unstable</b>)
-
-            element Disable_advance_preconditioner {
-           empty}?
-        )}
-        )
-       )}?
+        }?
       )}
    )
 
@@ -2604,24 +2377,6 @@ scalar_field_choice =
                       }
                      )
                   }?,
-                  prognostic_scalar_field
-               }|
-               element prescribed {
-                  pressure_mesh_choice,
-                  prescribed_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## Enthalpy field. <b>To be used only with Magma_simulator</b>
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "Enthalpy" },
-            (
-               element prognostic {
-                  pressure_mesh_choice,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -4108,78 +3863,7 @@ phase_properties_options =
                        diagnostic_scalar_field_no_adapt
                     }
                  )
-              }?,
-                ## Stabilisation for Inertia dominated flow.
-                ## LES and Petrov-Galerkin stabilisation are available.
-                element Stabilisation{(
-                   ## Usual LES modeling
-                   element les_model {
-                      ## =0 No LES,
-                      ## =1 Anisotropic element length scale,
-                      ## =2 Take the average length scale h,
-                      ## =3 Take the min length scale h,
-                      ## =4 Take the max length scale h
-                      element model {
-                         integer
-                      },
-                      ## literature sybol: Cs
-                      ##
-                      ## defaults to 0.1
-                      element smagorinsky_coefficient {
-                         real
-                      }?,
-                      (
-                         ## Tensor form
-                         element tensor_form {
-                            empty
-                         }|
-                         ## Stress form
-                         element stress_form {
-                            empty
-                         }
-                      ),
-                      ## defaults to 1.0
-                      element les_theta { real }?
-                   }?,
-                   ## This applies a non-linear shock capturing scheme which
-                   ## may be used to reduce oscillations in velocity or
-                   ## perform implicit LES modelling of turbulence.
-                   element Petrov_Galerkin_stabilisation {
-                      ## What type of Petrov-Galerkin method to use:
-                      ## =1 is the residual squared approach,
-                      ## =2 is max(0, A . grad U * residual ),
-                      ## =3 is the max of 1 and 2 (the most dissipative).
-                      element method {
-                         integer
-                      },
-                      ## [0,1] is the magnitude of the non-linear dissipation.
-                      ## =0.25 is small,
-                      ## =1.0 is large.
-                      ## Defaults to 1.
-                      element nonlinear_velocity_coefficient {
-                         real
-                      }?,
-                      ## [0,1] decides if we include the pressure term in A . grad soln if
-                      ## =0.0 don't include pressure term,
-                      ## =1.0 include the pressure term.
-                      ## Defaults to 1.
-                      element  include_pressure{
-                         real
-                      }?,
-                      (
-                         ## Tensor form
-                         element tensor_form {
-                            empty
-                         }|
-                         ## Stress form
-                         element stress_form {
-                            empty
-                         }
-                   )
-                   }?
-
-
-                )}?
+              }?
                )
               }
             )

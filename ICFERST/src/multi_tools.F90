@@ -29,7 +29,7 @@ module multi_tools
     use futils
     use spud
     use fields
-    use global_parameters, only: OPTION_PATH_LEN, PYTHON_FUNC_LEN, PI, is_porous_media
+    use global_parameters, only: OPTION_PATH_LEN, PYTHON_FUNC_LEN, PI
     use vector_tools
 
     implicit none

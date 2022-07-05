@@ -107,16 +107,14 @@ contains
         Mdims%n_in_pres = Mdims%nphase / Mdims%npres
 
         !!$ Get the vel element type.
-        if (is_porous_media) then!Check that the FPI method is on
-            if (.not. have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration') .and. Mdims%n_in_pres > 1) then
-                ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow."
-            end if
-            !Don't use for single phase porous media flows
-            if (have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration') .and. Mdims%nphase < 2) then
-                !Unless we are using dynamic control of the non-linear iterations in which case it does not matter
-                if (.not.have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations')) then
-                    ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> SHOULD NOT be used for single phase porous media flows without wells."
-                end if
+        if (.not. have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration') .and. Mdims%n_in_pres > 1) then
+            ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow."
+        end if
+        !Don't use for single phase porous media flows
+        if (have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration') .and. Mdims%nphase < 2) then
+            !Unless we are using dynamic control of the non-linear iterations in which case it does not matter
+            if (.not.have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations')) then
+                ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> SHOULD NOT be used for single phase porous media flows without wells."
             end if
         end if
 
@@ -496,7 +494,7 @@ contains
           default_theta  = 1.
         end if
         default_consv_vel =0.
-        if (is_porous_media) default_consv_vel = 1.
+        default_consv_vel = 1.
         !####GENERAL TRACER SETTINGS, ALL OF THEM WILL HAVE THE SAME SETTINGS####!SPRINT_TO_DO THESE DEFAULT OPTIONS SHOULD DEPEND ON SIMULATION QUALITY
         !!$ Concentration and temperature have the same settings for the time being
         !Advanced options
@@ -568,14 +566,13 @@ contains
         ! end do
         !!$ Options below are hardcoded and need to be added into the schema (have been hard-coded for years and no one cared...)
         Mdisopt%t_dg_vel_int_opt = 1 ; Mdisopt%u_dg_vel_int_opt = 4 ; Mdisopt%v_dg_vel_int_opt = 4 ; Mdisopt%w_dg_vel_int_opt = 0
-        if(.not.is_porous_media) Mdisopt%v_dg_vel_int_opt = 1
         Mdisopt%volfra_use_theta_flux = .false. ; Mdisopt%volfra_get_theta_flux = .true.
         Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
         Mdisopt%t_use_theta_flux = .false. ; Mdisopt%t_get_theta_flux = .false.
         !!$ IN/Mdisopt%dg_ele_upwind are options for optimisation of upwinding across faces in the compact_overlapping
         !!$ formulation. The data structure and options for this formulation need to be added later.
         Mdisopt%in_ele_upwind = 3 ; Mdisopt%dg_ele_upwind = 3
-        if (is_porous_media) Mdisopt%in_ele_upwind = Mdisopt%v_disopt
+        Mdisopt%in_ele_upwind = Mdisopt%v_disopt
         !number_advection_iterations are hard coded but I think this is unused and should be removed
         Mdisopt%nits_flux_lim_c = 3; Mdisopt%nits_flux_lim_t = 3
         Mdisopt%nits_flux_lim_comp = 3; Mdisopt%nits_flux_lim_volfra = 3
@@ -854,23 +851,9 @@ contains
             call insert(multicomponent_state(icomp),p2,"PackedFEPressure")
         end do
 
-        if (.not. is_porous_media) then!For porous media we prefentially use CVPressure, therefore this second field is redundant
-          call insert_sfield(packed_state,"CVPressure",1,npres)!Tried to remove this field but some inertia cases were failing...
-          p2=>extract_tensor_field(packed_state,"PackedCVPressure")
-          do ipres = 1, npres
-              p2%val(1,ipres,:)=pressure%val
-          end do
-        end if
         ! dummy field on the pressure mesh, used for evaluating python eos's.
         ! (this could be cleaned up in the future)
         call add_new_memory(packed_state,pressure,"Dummy")
-        if (.not. is_porous_media) then
-          call insert_sfield(packed_state,"FEDensity",1,nphase)
-          d2=>extract_tensor_field(packed_state,"PackedFEDensity")
-          do icomp = 1, ncomp
-              call insert(multicomponent_state(icomp),d2,"PackedFEDensity")
-          end do
-        end if
         call insert_sfield(packed_state,"Density",1,nphase,&
             add_source=.false.)
         !Check for phase 1, but all the phases should have this selected
@@ -886,7 +869,6 @@ contains
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call insert_sfield(packed_state,"Temperature",1,nphase,&
                 add_source=.false.,add_absorption=.false.)
-        if (.not. is_porous_media) call insert_sfield(packed_state,"FETemperature",1,nphase)
         end if
 
         !HH
@@ -904,7 +886,6 @@ contains
             if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
               call insert_sfield(packed_state,trim(option_name),1,nphase,&
               add_source=.false.,add_absorption=.false.)!This introduces memory issues, keep them in state only
-              if (.not. is_porous_media) call insert_sfield(packed_state,"FE"//trim(option_name),1,nphase)
             end if
           end if
         end do
@@ -917,7 +898,6 @@ contains
 
         call insert_sfield(packed_state,"PhaseVolumeFraction",1,nphase,&
             add_source=.true.)
-        if (.not. is_porous_media) call insert_sfield(packed_state,"FEPhaseVolumeFraction",1,nphase)
         if (ncomp>1) then
            call insert_sfield(packed_state,"PhaseVolumeFractionComponentSource",1,nphase)
         end if
@@ -1017,18 +997,16 @@ contains
             call insert_sfield(packed_state,"FEComponentMassFraction",ncomp,nphase)
         end if
 
-        if (is_porous_media) then
-            ovmesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
-            if ( ncomp > 0 ) then
-                ovmesh=>extract_mesh(packed_state,"PressureMesh")
-                do icomp = 1, ncomp
-                    ! Add component absorption (nphase, nphase, cv_nonods)
-                    ! to packed_state and all multicomponent_states
-                    call allocate(ten_field,ovmesh,"ComponentAbsorption",dim=[nphase,nphase])
-                    call insert(multicomponent_state(icomp),ten_field,"ComponentAbsorption")
-                    call deallocate(ten_field)
-                end do
-            end if
+        ovmesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
+        if ( ncomp > 0 ) then
+            ovmesh=>extract_mesh(packed_state,"PressureMesh")
+            do icomp = 1, ncomp
+                ! Add component absorption (nphase, nphase, cv_nonods)
+                ! to packed_state and all multicomponent_states
+                call allocate(ten_field,ovmesh,"ComponentAbsorption",dim=[nphase,nphase])
+                call insert(multicomponent_state(icomp),ten_field,"ComponentAbsorption")
+                call deallocate(ten_field)
+            end do
         end if
 
 
@@ -1300,18 +1278,6 @@ contains
             deallocate(multi_state)
         end if
 
-        !!$ memory allocation for darcy velocity
-!        if(is_porous_media) then!Since this is created as a diagnostic, linking memory gives problems when deallocating the different states
-!            ! allocate darcy velocity[in packed_state]
-!            call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity", dim=[ndim,nphase])
-!            call zero(ten_field)
-!            call insert(packed_state,ten_field,"PackedDarcyVelocity")
-!            call deallocate(ten_field)
-!
-!            do iphase = 1, n_in_pres
-!                call unpack_vfield(state(iphase),packed_state,"DarcyVelocity",iphase)
-!            end do
-!        end if
 
 
         !! // How to add density as a dependant of olddensity,  as an example
@@ -1969,10 +1935,7 @@ contains
         ovmesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")
 
 
-        if (is_porous_media) then
-             call allocate_multi_field( Mdims, multi_absorp%PorousMedia, ovmesh%nodes, field_name="PorousMedia_AbsorptionTerm")
-!            if ( ncomp > 0 ) !"Not ready yet"
-        end if
+        call allocate_multi_field( Mdims, multi_absorp%PorousMedia, ovmesh%nodes, field_name="PorousMedia_AbsorptionTerm")
 
     end subroutine prepare_absorptions
 
@@ -2415,48 +2378,40 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             write(temp_string, '(a, i0, a, E10.3, a, E10.3)' ) "Iterations: ", nonlinear_its, " | Pressure:", inf_norm_pres, " | Mass check:", max_calculate_mass_delta
             output_message = trim(temp_string); temp_string = ''
 
-            if (is_porous_media) then
-                select case (variable_selection)
-                case (2)
-                    write(temp_string, '(a, E10.3,a,i0)' ) "| L_inf:", inf_norm_val
-                case default
-                    if (abs(inf_norm_val) > 1e-30) then
-                        write(temp_string, '(a, E10.3)' ) "| Saturation:", inf_norm_val
-                        output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
-                    end if
-                    if (abs(ts_ref_val) > 1e-30) then
-                        write(temp_string, '(a, E10.3)' ) "| Saturation(Rel L2)::", ts_ref_val
-                        output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
-                    end if
-                    if (abs(inf_norm_temp) > 1e-30) then
-                        write(temp_string, '(a, E10.3)' ) "| Temperature: ",inf_norm_temp
-                        output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
-                    end if
-                    if (abs(inf_norm_conc) > 1e-30) then
-                        write(temp_string, '(a, E10.3)' ) "| Tracer: ", inf_norm_conc
-                        output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
-                    end if
-                    if (abs(Tracers_ref_val) > 1e-30) then
-                        write(temp_string, '(a, E10.3)' ) "| PassiveTracers/Species:",Tracers_ref_val
-                        output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
-                    end if
-                end select
-            else
+            select case (variable_selection)
+            case (2)
                 write(temp_string, '(a, E10.3,a,i0)' ) "| L_inf:", inf_norm_val
-            end if
+            case default
+                if (abs(inf_norm_val) > 1e-30) then
+                    write(temp_string, '(a, E10.3)' ) "| Saturation:", inf_norm_val
+                    output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                end if
+                if (abs(ts_ref_val) > 1e-30) then
+                    write(temp_string, '(a, E10.3)' ) "| Saturation(Rel L2)::", ts_ref_val
+                    output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                end if
+                if (abs(inf_norm_temp) > 1e-30) then
+                    write(temp_string, '(a, E10.3)' ) "| Temperature: ",inf_norm_temp
+                    output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                end if
+                if (abs(inf_norm_conc) > 1e-30) then
+                    write(temp_string, '(a, E10.3)' ) "| Tracer: ", inf_norm_conc
+                    output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                end if
+                if (abs(Tracers_ref_val) > 1e-30) then
+                    write(temp_string, '(a, E10.3)' ) "| PassiveTracers/Species:",Tracers_ref_val
+                    output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                end if
+            end select
 
             !Asssemble finally the output message
             output_message = trim(output_message) // " "// trim(temp_string)
 
             !Automatic non-linear iteration checking
-            if (is_porous_media) then
-                ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
-                    .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_conc < Infinite_norm_tol &
-                    .and. max_calculate_mass_delta < calculate_mass_tol .and. Tracers_ref_val < Infinite_norm_tol &
-                    .and. inf_norm_temp < Infinite_norm_tol) .or. its >= NonLinearIteration )
-            else
-                ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres) .or. its >= NonLinearIteration
-            end if
+            ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
+                .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_conc < Infinite_norm_tol &
+                .and. max_calculate_mass_delta < calculate_mass_tol .and. Tracers_ref_val < Infinite_norm_tol &
+                .and. inf_norm_temp < Infinite_norm_tol) .or. its >= NonLinearIteration )
             !At least two non-linear iterations
             ExitNonLinearLoop =  ExitNonLinearLoop .and. its >= 2
 
@@ -2642,7 +2597,7 @@ contains
         end if
         Cn = 0.; aux = 0.
         !Calculate Cn
-        if (is_porous_media.and. .not.first_time_step) then
+        if (.not.first_time_step) then
             Cn(1) = ts_ref_val/tolerance_between_non_linear
             aux = aux + 1.0
         end if
@@ -3559,11 +3514,7 @@ end subroutine get_DarcyVelocity
             ! Write column headings to file
             counter = 0
             if(itime.eq.1) then
-                if (is_porous_media) then 
-                    write(whole_line,*) "Current Time (s)" // "," // "Current Time (years)" // "," // "Pore Volume"
-                else 
-                    write(whole_line,*) "Current Time (s)" // "," // "Current Time (minutes)" // "," // "Volume"
-                end if
+                write(whole_line,*) "Current Time (s)" // "," // "Current Time (years)" // "," // "Pore Volume"
                 whole_line = trim(whole_line)
                 do ioutlet =1, size(outfluxes%intflux,2)
                     do iphase = 1, size(outfluxes%intflux,1)
@@ -3588,11 +3539,7 @@ end subroutine get_DarcyVelocity
                 write(89,*), trim(whole_line)
             endif
             ! Write the actual numbers to the file now
-            if (is_porous_media) then 
-                write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
-            else 
-                write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(60.) , ",",  outfluxes%porevolume
-            end if
+            write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
             
             whole_line =  trim(numbers)
             do ioutlet =1, size(outfluxes%intflux,2)

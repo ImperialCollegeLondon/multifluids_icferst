@@ -40,16 +40,10 @@ name, e.g. [simulation_name]_0.vtu. Non-standard
 characters in the simulation name should be avoided.</a:documentation>
         <ref name="anystring"/>
       </element>
-      <choice>
-        <element name="porous_media_simulator">
-          <a:documentation>Darcy flow simulator</a:documentation>
-          <ref name="comment"/>
-        </element>
-        <element name="inertia_dominated_simulator">
-          <a:documentation>Navier-stokes simulator</a:documentation>
-          <ref name="comment"/>
-        </element>
-      </choice>
+      <element name="porous_media_simulator">
+        <a:documentation>Darcy flow simulator</a:documentation>
+        <ref name="comment"/>
+      </element>
       <ref name="geometry"/>
       <ref name="solver_options"/>
       <element name="io">
@@ -1429,110 +1423,6 @@ The following must be specified:
         </element>
       </optional>
       <optional>
-        <element name="magma_parameters">
-          <a:documentation>Magma options</a:documentation>
-          <optional>
-            <element name="Phase_diagram_coefficients">
-              <a:documentation>Set up phase diagram coefficients. For one branch, A1, B1, C1 and eutectic point ae must be set. For two-branch system, A1, B1, C1, A2, B2, C2 needs to be set and ae value will be overwritten.</a:documentation>
-              <element name="A1">
-                <a:documentation>A1</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="B1">
-                <a:documentation>B1</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="C1">
-                <a:documentation>C1</a:documentation>
-                <ref name="real"/>
-              </element>
-              <optional>
-                <element name="A2">
-                  <a:documentation>A2</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="B2">
-                  <a:documentation>B2</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="C2">
-                  <a:documentation>C2</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <element name="ae">
-                <a:documentation>Eutectic point</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="latent_heat">
-                <a:documentation>Latent heat</a:documentation>
-                <ref name="real"/>
-              </element>
-            </element>
-          </optional>
-          <element name="bulk_viscosity_exponential_coefficient">
-            <a:documentation>bulk viscosity is set to mu*phi^(-b), where mu is the shear viscosity. Here coefficient b is set.</a:documentation>
-            <ref name="real"/>
-          </element>
-          <element name="coupling_term_coefficients">
-            <a:documentation>The copling_term follows the Darcy permeability law C=1/a/d^2*mu*phi^(2-b) for lower meltfraction and hindled settling C=1/d^2*mu*phi^(-5)*(1-phi). Here coefficients a, grain size d, coefficients b and the cutting between the two demains needs to be set.</a:documentation>
-            <element name="coupling_power_coefficent_a">
-              <a:documentation>Power law coefficient a</a:documentation>
-              <ref name="real"/>
-            </element>
-            <element name="coupling_power_coefficent_b">
-              <a:documentation>Power law coefficient b</a:documentation>
-              <ref name="real"/>
-            </element>
-            <element name="grain_size">
-              <a:documentation>Grain size</a:documentation>
-              <ref name="real"/>
-            </element>
-            <element name="cut_a">
-              <a:documentation>the range below which the coupling terms follow the Darcy permeability, set this to 1 to make the entire domain Darcy like.</a:documentation>
-              <ref name="real"/>
-            </element>
-            <element name="cut_b">
-              <a:documentation>the range above which the coupling terms follow the Hindered settling</a:documentation>
-              <ref name="real"/>
-            </element>
-          </element>
-        </element>
-      </optional>
-      <optional>
-        <element name="femdem_fracture">
-          <a:documentation>Fracking options</a:documentation>
-          <optional>
-            <element name="femdem_file">
-              <a:documentation>Specify FEMDEM input file</a:documentation>
-              <attribute name="name">
-                <data type="string"/>
-              </attribute>
-            </element>
-          </optional>
-          <optional>
-            <element name="oneway_coupling_only">
-              <attribute name="rank">
-                <value>0</value>
-              </attribute>
-              <choice>
-                <value>1way</value>
-                <value>p2way</value>
-              </choice>
-            </element>
-          </optional>
-          <optional>
-            <element name="include_pore_pressure">
-              <empty/>
-            </element>
-          </optional>
-        </element>
-      </optional>
-      <optional>
         <element name="numerical_methods">
           <a:documentation>Advanced options that are kept for debugging purposes</a:documentation>
           <optional>
@@ -1542,20 +1432,6 @@ is run to guarantee physically plausible solutions. Nonetheless this may spread 
 that otherwise might have been cut off. Enable this option to avoid doing this operation.
 
 This option is useful if your field is suddenly changing after adapting the mesh.</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="Low_order_diffusion">
-              <a:documentation>If selected low order diffusion we use a diffusion that does not take 10%! of the total time only to generate the term
-Currently the results seems a bit off using this diffusion method.</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="disable_limiters">
-              <a:documentation>This disable the limiters regarless of the precision used
-Limiters are quite expensive so if your simulation is slow it might be worth trying this.</a:documentation>
               <empty/>
             </element>
           </optional>
@@ -1573,66 +1449,9 @@ Note that this is already imposed for wells when using P0DGP1 and gamma = 0. at 
             </element>
           </optional>
           <optional>
-            <element name="use_ENO_scheme">
-              <a:documentation>Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="disable_P0_limiter">
-              <a:documentation>Disable the limiter for velocity when using P0DG. Not for porous media.</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="use_reflect_method">
-              <a:documentation>Use a method to avoid distortion due to boundaries</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="lump_mass_matrix">
-              <a:documentation>Use the row-sum method to create a lumped mass matrix.
-For porous media this will not have an effect.
-Also options to convert P1DG into P0DG and introduce the temporal terms into the mass matrix</a:documentation>
-              <optional>
-                <element name="lump_weight">
-                  <a:documentation>For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
-the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
-The default value for P1DGP1 =&gt; 1e4 and disabled for other element types.
-To disable it manually, set it to negative values.</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="get_all_in_mass_matrix">
-                  <a:documentation>Introduce in the pivit matrix the temporal terms</a:documentation>
-                  <empty/>
-                </element>
-              </optional>
-            </element>
-          </optional>
-          <optional>
-            <element name="no_matrix_store">
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="lump_momentum_inertia">
-              <empty/>
-            </element>
-          </optional>
-          <optional>
             <element name="max_sat_its">
               <a:documentation>Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
 By default this number is 9. Recommended range: 3 to 9.</a:documentation>
-              <ref name="integer"/>
-            </element>
-          </optional>
-          <optional>
-            <element name="Max_compositional_its">
-              <a:documentation>Impose a maximum number of iterations for the compositional loop
-By default this number is 1. STILL TESTING THIS PARAMETER</a:documentation>
               <ref name="integer"/>
             </element>
           </optional>
@@ -1658,12 +1477,6 @@ By default this number is 1. STILL TESTING THIS PARAMETER</a:documentation>
             <element name="porous_output_force_density">
               <a:documentation>For porous media only the Darcy velocity is outputed as the normal velocity is actually the force density
 activate this to also output the force_density</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="create_P_mat_fast">
-              <a:documentation>Use the fast method to create the pressure matrix. Be aware that some methods only work with the slow method</a:documentation>
               <empty/>
             </element>
           </optional>
@@ -1747,48 +1560,6 @@ Only the activated options will overwrite the values decided in simulation_quali
             </element>
           </zeroOrMore>
           <zeroOrMore>
-            <element name="Time_Discretisation">
-              <a:documentation>Specify a different time discretisation method for different fields
-You can use as inputs here: &lt;b&gt;PhaseVolumeFraction, Velocity or Tracer&lt;/b&gt;.
-Tracer accounts for Temperature, Concentration, etc.</a:documentation>
-              <attribute name="name">
-                <a:documentation>Name of the Field</a:documentation>
-                <data type="string"/>
-              </attribute>
-              <element name="Theta">
-                <a:documentation>Implicit/explicit control (THETA)
- =0.  -- explicit
- =0.5 -- Crank-Nicolson
- =1.  -- implicit
- =-1. -- Automatic based on a NVD criterion.</a:documentation>
-                <ref name="real"/>
-              </element>
-            </element>
-          </zeroOrMore>
-          <zeroOrMore>
-            <element name="Space_Discretisation">
-              <a:documentation>Specify a different flux calculation for different fields
-You can use as inputs here: PhaseVolumeFraction or Tracer.
-Tracer accounts for Temperature, Concentration, etc.</a:documentation>
-              <attribute name="name">
-                <a:documentation>Name of the Field</a:documentation>
-                <data type="string"/>
-              </attribute>
-              <element name="advection_scheme">
-                <choice>
-                  <element name="upwind">
-                    <a:documentation>Straightforward upwinding of the nonlinear velocity.</a:documentation>
-                    <empty/>
-                  </element>
-                  <element name="High_order">
-                    <a:documentation>High order method based on a TVD criteria to ensure stability.</a:documentation>
-                    <ref name="limiter_options"/>
-                  </element>
-                </choice>
-              </element>
-            </element>
-          </zeroOrMore>
-          <zeroOrMore>
             <element name="Conservative_formulation_settings">
               <a:documentation>Conservative discretisation options
 &lt;b&gt;Note that non-conservative does NOT mean that we do not conserve mass&lt;/b&gt;
@@ -1809,21 +1580,6 @@ Tracer accounts for Temperature, Concentration, etc.</a:documentation>
               </element>
             </element>
           </zeroOrMore>
-          <optional>
-            <element name="FE_Pressure">
-              <a:documentation>By default ICFERST uses a DCVFEM because it is more robust (Salinas et al. 2018),
-nonetheless the classical CVFEM can also be used.</a:documentation>
-              <optional>
-                <element name="FEM_continuity_equation">
-                  <a:documentation>This option uses FE to solve the continuity equation. This creates a symmetric Pressure
-matrix which is more stable than the normal CVFEM formulation and more accurate. Nonetheless,
-it may create inconsistencies for multiphase flow and conservative formulations.
-</a:documentation>
-                  <empty/>
-                </element>
-              </optional>
-            </element>
-          </optional>
         </element>
       </optional>
       <optional>
@@ -2114,63 +1870,6 @@ By default dt*1e-3.</a:documentation>
               </optional>
             </element>
           </optional>
-        </element>
-      </optional>
-      <optional>
-        <element name="Momemtum_matrix">
-          <a:documentation>Specify options associated with the Momentum matrix. Useful mainly for: Stokes, Magma and Solid-fluid coupling flow.</a:documentation>
-          <optional>
-            <element name="rescale_mom_matrices">
-              <a:documentation>Use this option if you are triying to solve a system that is spanning many orders of magnitude, for example very high viscosity ratios. The Momemtum system is re-scaled as:
-D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
-
-&lt;b&gt;Recommened for Magma multiphase flows/Solid-fluid coupling&lt;/b&gt;</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <choice>
-            <element name="Solve_mom_with_PETSc">
-              <a:documentation>Use PETSc to create and solve the Schur complement matrix and solve for it</a:documentation>
-              <empty/>
-            </element>
-            <element name="solve_mom_iteratively">
-              <a:documentation>Use this option to switch on the Anderson acceleration method for the momentum equation (IC-FERST own Stokes solver). The mass matrix is lumped.
-
-This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-7.&lt;/b&gt;</a:documentation>
-              <ref name="real"/>
-              <group>
-                <optional>
-                  <element name="restart_its">
-                    <a:documentation>Maximum restart iteration allowed. The default value is 15.</a:documentation>
-                    <ref name="integer"/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="Max_restarts">
-                    <a:documentation>Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.</a:documentation>
-                    <ref name="integer"/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="Momentum_preconditioner">
-                    <a:documentation>Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, &lt;b&gt;unstable&lt;/b&gt; but potentially faster.</a:documentation>
-                    <empty/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="Disable_advance_preconditioner">
-                    <a:documentation>Instead of using the mass matrix as preconditioner, use a preconditioner of the BfB type. This includes two pressure solvers
-but it is more efficient that the simple preconditioner (&lt;b&gt;This option disables this feature, NOT RECOMMENDED&lt;/b&gt;).
-
-By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1
-
-If Momentum_preconditioner is on then the formula is: (C^t Ad^-1 M^-1 C)^-1 (C^t Ad^-1 A Ad^-1 C) (C^t Ad^-1 M^-1 C)^-1 (&lt;b&gt;Unstable&lt;/b&gt;)</a:documentation>
-                    <empty/>
-                  </element>
-                </optional>
-              </group>
-            </element>
-          </choice>
         </element>
       </optional>
     </element>
@@ -3155,28 +2854,6 @@ This imposes the tracer to be between bounds.</a:documentation>
                 </choice>
               </element>
             </optional>
-            <ref name="prognostic_scalar_field"/>
-          </element>
-          <element name="prescribed">
-            <ref name="pressure_mesh_choice"/>
-            <ref name="prescribed_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Enthalpy field. &lt;b&gt;To be used only with Magma_simulator&lt;/b&gt;</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>Enthalpy</value>
-        </attribute>
-        <choice>
-          <element name="prognostic">
-            <ref name="pressure_mesh_choice"/>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
@@ -5017,91 +4694,6 @@ alternating directions. Devised by C.Pain.</a:documentation>
               <ref name="diagnostic_scalar_field_no_adapt"/>
             </element>
           </choice>
-        </element>
-      </optional>
-      <optional>
-        <element name="Stabilisation">
-          <a:documentation>Stabilisation for Inertia dominated flow.
-LES and Petrov-Galerkin stabilisation are available.</a:documentation>
-          <optional>
-            <element name="les_model">
-              <a:documentation>Usual LES modeling</a:documentation>
-              <element name="model">
-                <a:documentation>=0 No LES,
-=1 Anisotropic element length scale,
-=2 Take the average length scale h,
-=3 Take the min length scale h,
-=4 Take the max length scale h</a:documentation>
-                <ref name="integer"/>
-              </element>
-              <optional>
-                <element name="smagorinsky_coefficient">
-                  <a:documentation>literature sybol: Cs
-
-defaults to 0.1</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <choice>
-                <element name="tensor_form">
-                  <a:documentation>Tensor form</a:documentation>
-                  <empty/>
-                </element>
-                <element name="stress_form">
-                  <a:documentation>Stress form</a:documentation>
-                  <empty/>
-                </element>
-              </choice>
-              <optional>
-                <element name="les_theta">
-                  <a:documentation>defaults to 1.0</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-            </element>
-          </optional>
-          <optional>
-            <element name="Petrov_Galerkin_stabilisation">
-              <a:documentation>This applies a non-linear shock capturing scheme which
-may be used to reduce oscillations in velocity or
-perform implicit LES modelling of turbulence.</a:documentation>
-              <element name="method">
-                <a:documentation>What type of Petrov-Galerkin method to use:
-=1 is the residual squared approach,
-=2 is max(0, A . grad U * residual ),
-=3 is the max of 1 and 2 (the most dissipative).</a:documentation>
-                <ref name="integer"/>
-              </element>
-              <optional>
-                <element name="nonlinear_velocity_coefficient">
-                  <a:documentation>[0,1] is the magnitude of the non-linear dissipation.
-=0.25 is small,
-=1.0 is large.
-Defaults to 1.</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="include_pressure">
-                  <a:documentation>[0,1] decides if we include the pressure term in A . grad soln if
-=0.0 don't include pressure term,
-=1.0 include the pressure term.
-Defaults to 1.</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <choice>
-                <element name="tensor_form">
-                  <a:documentation>Tensor form</a:documentation>
-                  <empty/>
-                </element>
-                <element name="stress_form">
-                  <a:documentation>Stress form</a:documentation>
-                  <empty/>
-                </element>
-              </choice>
-            </element>
-          </optional>
         </element>
       </optional>
     </element>

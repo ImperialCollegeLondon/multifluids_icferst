@@ -22,7 +22,7 @@ module multi_SP
     use futils
     use spud
     use fields
-    use global_parameters, only: OPTION_PATH_LEN, PYTHON_FUNC_LEN, PI, is_porous_media
+    use global_parameters, only: OPTION_PATH_LEN, PYTHON_FUNC_LEN, PI
     use vector_tools
     use state_module
     use fields

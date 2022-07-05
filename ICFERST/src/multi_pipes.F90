@@ -533,41 +533,24 @@ contains
                   MAT_NODI = MAT_GL_GL(CV_LILOC)
                   CV_NODI = CV_GL_GL(CV_LILOC)
                   DO IPHASE = 1, final_phase
-                      if (is_porous_media) then
-                              TT1 = upwnd%adv_coef(1,1,IPHASE, MAT_NODI)* MATMUL(upwnd%inv_permeability(:,:,ele) , T1 )
-                              T1TT1 = SUM(T1*TT1)
-                          IF ( Mdims%ndim==3 ) THEN
-                              TT2 = upwnd%adv_coef(1,1,IPHASE, MAT_NODI)* MATMUL(upwnd%inv_permeability(:,:,ele) , T2 )
-                              T1TT2 = SUM( T1*TT2 )
-                              T2TT1 = SUM( T2*TT1 )
-                              T2TT2 = SUM( T2*TT2 )
-                          ELSE
-                              T1TT2 = 0.0
-                              T2TT1 = 0.0
-                              T2TT2 = T1TT1
-                          END IF
-                      else
-                          T1TT1 =SUM(T1*T1)
-                          IF ( Mdims%ndim==3 ) THEN
-                              T1TT2 = SUM( T1*T2 )
-                              T2TT1 = SUM( T2*T1 )
-                              T2TT2 = SUM( T2*T2 )
-                          else
-                              T1TT2 = 0.0
-                              T2TT1 = 0.0
-                              T2TT2 = T1TT1
-                          end if
-                      end if
+                            TT1 = upwnd%adv_coef(1,1,IPHASE, MAT_NODI)* MATMUL(upwnd%inv_permeability(:,:,ele) , T1 )
+                            T1TT1 = SUM(T1*TT1)
+                        IF ( Mdims%ndim==3 ) THEN
+                            TT2 = upwnd%adv_coef(1,1,IPHASE, MAT_NODI)* MATMUL(upwnd%inv_permeability(:,:,ele) , T2 )
+                            T1TT2 = SUM( T1*TT2 )
+                            T2TT1 = SUM( T2*TT1 )
+                            T2TT2 = SUM( T2*TT2 )
+                        ELSE
+                            T1TT2 = 0.0
+                            T2TT1 = 0.0
+                            T2TT2 = T1TT1
+                        END IF
                       DET_SQRT = SQRT( ABS( T1TT1*T2TT2 - T1TT2*T2TT1 ) )
                       INV_SIGMA_ND = 1.0 / MAX( 1.E-25, DET_SQRT)
                       INV_SIGMA(IPHASE,CV_NODI) = INV_SIGMA(IPHASE,CV_NODI) + INV_SIGMA_ND * SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
                       ! For the nano laterals...
-                      if (is_porous_media) then
-                          NN1 = upwnd%adv_coef(1,1,IPHASE, MAT_NODI)* MATMUL(upwnd%inv_permeability(:,:,ele), DIRECTION )
-                          N1NN1 = SUM( DIRECTION*NN1 )
-                      else
-                          N1NN1 = SUM( DIRECTION )
-                      end if
+                        NN1 = upwnd%adv_coef(1,1,IPHASE, MAT_NODI)* MATMUL(upwnd%inv_permeability(:,:,ele), DIRECTION )
+                        N1NN1 = SUM( DIRECTION*NN1 )
                       INV_SIGMA_NANO_ND = 1.0/MAX(1.E-25, N1NN1)
                   END DO
               END DO
@@ -1099,7 +1082,7 @@ contains
 
       !For thermal retrieve, if present, the conductivity of the pipes to calculate the heat loss
       has_conductivity_pipes = .false.
-      if (thermal .and. is_porous_media) then
+      if (thermal ) then
           has_conductivity_pipes = have_option('/porous_media/wells_and_pipes/thermal_well_properties')
           if (has_conductivity_pipes) then
               conductivity_pipes => extract_scalar_field( state(1), "Conductivity" )
@@ -1115,32 +1098,24 @@ contains
             !Only go through the nodes that have a well
             if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
             MAT_NODI = ndgln%mat( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
-            if (is_porous_media) then
-                RSUM_VEC = 0.0
-                do ipres = 1, Mdims%npres
-                  do iphase = 1, final_phase
-                      RSUM_VEC(iphase + (ipres - 1)*final_phase) = RSUM_VEC(iphase + (ipres - 1)*final_phase) +&
-                          upwnd%adv_coef( 1, 1, iphase + (ipres - 1)*Mdims%n_in_pres, MAT_NODI ) / REAL( Mdims%ndim )
-                  end do
-              end do
-            else
-                RSUM_VEC = 1.0
-            end if
+            RSUM_VEC = 0.0
+            do ipres = 1, Mdims%npres
+                do iphase = 1, final_phase
+                    RSUM_VEC(iphase + (ipres - 1)*final_phase) = RSUM_VEC(iphase + (ipres - 1)*final_phase) +&
+                        upwnd%adv_coef( 1, 1, iphase + (ipres - 1)*Mdims%n_in_pres, MAT_NODI ) / REAL( Mdims%ndim )
+                end do
+            end do
             OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) = OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) + RSUM_VEC * MASS_ELE( ELE )
             N( CV_NODI ) = N( CV_NODI ) + MASS_ELE( ELE )
         END DO
       END DO
 
       !Populate SIGMA_INV_APPROX depending on what type of problem we are trying to solve
-      if (is_porous_media) then
-          DO CV_NODI = 1, Mdims%cv_nonods
-              !Only go through the nodes that have a well
-              if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
-              SIGMA_INV_APPROX(:, CV_NODI) = 1.0 / ( OPT_VEL_UPWIND_COEFS_NEW_CV(:, CV_NODI) / N(CV_NODI) )
-          end do
-      else
-          SIGMA_INV_APPROX = 1.0
-      end if
+        DO CV_NODI = 1, Mdims%cv_nonods
+            !Only go through the nodes that have a well
+            if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
+            SIGMA_INV_APPROX(:, CV_NODI) = 1.0 / ( OPT_VEL_UPWIND_COEFS_NEW_CV(:, CV_NODI) / N(CV_NODI) )
+        end do
 
       MASS_PIPE_FOR_COUP = 0.
       CALL MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
@@ -1357,7 +1332,7 @@ contains
                     LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
                         + Mass_CV(CV_NODI) * SOURCT_ALL( iphase, CV_NODI )
                   end do
-                  if (thermal .and. is_porous_media) then !gr  first term goes to 0?
+                  if (thermal) then !gr  first term goes to 0?
                       !In this case for the time-integration term the effective rho Cp is a combination of the porous media
                       ! and the fluids. Here we add the porous media contribution
                       DO IPHASE = wells_first_phase, final_phase*2

@@ -252,7 +252,6 @@ contains
            end if
         end do ! iphase
 
-        ! if (has_boussinesq_aprox .and. .not. is_porous_media) field2 % val = 1.0
         deallocate( Rho, dRhodP, Component_l)
         if (allocated(drhodp_porous)) deallocate(drhodp_porous)
         deallocate( Density_Component, Density_Bulk )
@@ -1556,7 +1555,6 @@ contains
         end do
       else
         !Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
-        if (is_porous_media) then
           !####DIFFUSIVITY FOR POROUS MEDIA ONLY####
           sfield=>extract_scalar_field(state(1),"Porosity")
           den => extract_tensor_field( packed_state,"PackedDensity" )
@@ -1626,36 +1624,6 @@ contains
               end do
             end do
           endif
-        else
-          do iphase = 1, Mdims%nphase
-
-            if (present(TracerName)) then
-              diffusivity => extract_tensor_field( state(iphase), trim(TracerName)//'Diffusivity', stat )
-            else
-              diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-            endif
-            if (stat /= 0) cycle!If no field defined then cycle
-            do ele = 1, Mdims%totele
-              !                     ele_nod = min(size(sfield%val), ele)
-              !t_ele_nod = min(size(tfield%val, 3), ele)
-              do iloc = 1, Mdims%mat_nloc
-                mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-                cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                do idim = 1, Mdims%ndim
-                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-                  node_val( diffusivity, idim, idim, mat_inod )
-                end do
-              end do
-            end do
-          end do
-          !do iphase = 1, Mdims%nphase
-          !    diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-          !    do idim = 1, Mdims%ndim
-          !        ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, iphase )
-          !    end do
-          !end do
-        end if
       end if
       if ( harmonic_average ) then
         ! ScalarAdvectionField_Diffusion = 1.0 / ScalarAdvectionField_Diffusion
@@ -1816,127 +1784,6 @@ contains
       return
     end subroutine calculate_solute_dispersity
 
-    !>@brief: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media
-    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
-    !>@param  Mdims Number of dimensions
-    !>@param  ndgln Global to local variables
-    !>@param Momentum_Diffusion Viscosity term for Stokes/Navier-Stokes
-    !>@param Momentum_Diffusion2 Shear viscosity?
-    subroutine calculate_viscosity( state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2 )
-      implicit none
-      type( multi_dimensions ), intent( in ) :: Mdims
-      type( multi_ndgln ), intent( in ) :: ndgln
-      type( state_type ), dimension( : ), intent( in ) :: state
-      real, dimension( :, :, :, : ), intent( inout ) :: Momentum_Diffusion
-      type( multi_field ), intent( inout ) :: Momentum_Diffusion2
-
-      !Local variables
-      type( tensor_field ), pointer :: t_field, tp_field, tc_field
-      integer :: iphase, icomp, stat, mat_nod, cv_nod, ele
-      type( scalar_field ), pointer :: component, saturation
-      logical :: linearise_viscosity, cg_mesh
-      real, dimension( : ), allocatable :: component_tmp
-      real, dimension( :, :, : ), allocatable :: mu_tmp
-      integer :: iloc, ndim1, ndim2, idim, jdim
-      integer :: multiplier
-
-      real :: exp_zeta_function
-
-  ! DELETE Momentum_Diffusion - START USING THE NEW MEMORY ---
-
-      if ( is_porous_media) then
-         momentum_diffusion=0.0
-      else
-        if (have_option('/material_phase[0]/phase_properties/Viscosity/tensor_field::Viscosity/prescribed/value::WholeMesh/isotropic') &
-         .AND. have_option('/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/stress_form') ) then
-        print *, "WARNING: PLEASE ENSURE THAT YOU USE ANISOTROPIC SYMMETRIC WHEN USING STRESS FORM OF VISCOSITY, Otherwise your results are likely to be wrong"
-        end if
-         momentum_diffusion=0.0
-         t_field => extract_tensor_field( state( 1 ), 'Viscosity', stat )
-         !Multiplier to control the index for the viscosity when the viscosity is constant
-         multiplier = 1
-         if (size(t_field%val,3) == 1)  multiplier = 0
-
-         if ( stat == 0 ) then
-            linearise_viscosity = have_option( '/material_phase[0]/linearise_viscosity' )
-            allocate( component_tmp( Mdims%cv_nloc ), mu_tmp( t_field%dim(1), t_field%dim(2), Mdims%cv_nloc ) )
-            if ( Mdims%ncomp > 1 ) then
-               t_field%val=0.0
-               do icomp = 1, Mdims%ncomp
-                  do iphase = 1, Mdims%nphase
-                     component => extract_scalar_field( state(Mdims%nphase + icomp), 'ComponentMassFractionPhase' // int2str(iphase) )
-                     tc_field => extract_tensor_field( state( Mdims%nphase + icomp ), 'Viscosity' )
-                     tp_field => extract_tensor_field( state( iphase ), 'Viscosity' )
-
-                     ewrite(3,*) 'Component, Phase, Visc_min_max', icomp, iphase, minval( tc_field%val ), maxval( tc_field%val )
-                     do ele = 1, ele_count( tc_field )
-                        component_tmp = ele_val( component, ele )
-                        mu_tmp = ele_val( tc_field, ele )
-                        do iloc = 1, Mdims%cv_nloc
-                           mu_tmp( :, :, iloc ) = mu_tmp( :, :, iloc ) * component_tmp( iloc )
-                        end do
-                        if ( linearise_viscosity ) then
-                           mu_tmp( :, :, 2 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 3 ) )
-                           mu_tmp( :, :, 4 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 6 ) )
-                           mu_tmp( :, :, 5 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 6 ) )
-                           if ( Mdims%cv_nloc == 10 ) then
-                              mu_tmp( :, :, 7 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 10 ) )
-                              mu_tmp( :, :, 8 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 10 ) )
-                              mu_tmp( :, :, 9 ) = 0.5 * ( mu_tmp( :, :, 6 ) + mu_tmp( :, :, 10 ) )
-                           end if
-                        end if
-                        do iloc = 1, Mdims%cv_nloc
-                           cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
-                           mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
-                           momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion(  :, :, iphase, mat_nod ) + mu_tmp( 1, 1, iloc ) ! isotropic only - to be deleted...
-                           cv_nod = cv_nod * multiplier + (1 - multiplier)!index has to be one if viscosity is constant
-                           t_field%val( :, :, cv_nod ) = t_field%val( :, :, cv_nod ) + mu_tmp( :, :, iloc )/dble(Mdims%cv_nloc)
-                        end do
-                     end do
-                  end do
-               end do
-            else
-               cg_mesh = have_option( '/material_phase[0]/phase_properties/Viscosity/tensor_field::Viscosity/diagnostic/mesh::PressureMesh')
-               do iphase = 1, Mdims%nphase
-                  tp_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
-                  do ele = 1, ele_count( tp_field )
-                     mu_tmp = ele_val( tp_field, ele )
-                     if ( linearise_viscosity ) then
-                        mu_tmp( :, :, 2 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 3 ) )
-                        mu_tmp( :, :, 4 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 6 ) )
-                        mu_tmp( :, :, 5 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 6 ) )
-                        if ( Mdims%cv_nloc == 10 ) then
-                           mu_tmp( :, :, 7 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 10 ) )
-                           mu_tmp( :, :, 8 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 10 ) )
-                           mu_tmp( :, :, 9 ) = 0.5 * ( mu_tmp( :, :, 6 ) + mu_tmp( :, :, 10 ) )
-                        end if
-                     end if
-                     do iloc = 1, Mdims%cv_nloc
-                        mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
-                        cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
-                        momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
-                        if(cg_mesh) then
-                          mat_nod = cv_nod * multiplier + (1 - multiplier)! this is for CG
-                        else
-                          mat_nod = mat_nod * multiplier + (1 - multiplier)! this is for DG
-                        end if
-                     end do
-                  end do
-               end do
-            end if
-            deallocate( component_tmp, mu_tmp )
-         end if
-      end if
-
-
-      !!! NEW CODE HERE !!!
-      !!! deal with Momentum_Diffusion2
-
-
-
-      return
-
-    end subroutine calculate_viscosity
 
 
 

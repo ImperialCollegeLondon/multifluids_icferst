@@ -306,7 +306,7 @@ module multi_data_types
     !>@param PIVIT_MAT => null() Mass matrix (matrix form by the sigmas) (storable)
     !>@param ICOLOR => null() Array used to accelerate the creation of CMC in COLOR_GET_CMC_PHA_FAST
     !>@param NCOLOR  Number of colors in ICOLOR
-    !>@param DGM_PETSC Matrix contatining the momemtum terms for Navier-Stokes/Stokes equation
+    !>@param DGM_PETSC Matrix contatining the momemtum terms for Navier-Stokes equation
     !>@param C_PETSC PETSc version of the gradient matrix (storable)
     !>@param CT_PETSC PETSc version of the divergence matrix
     !>@param PIVIT_PETSC PETSc version of the divergence matrix        

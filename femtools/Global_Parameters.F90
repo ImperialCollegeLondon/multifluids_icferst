@@ -169,14 +169,10 @@ module global_parameters
   integer, parameter :: COLOURING_DG2 = 4
   integer, parameter :: NUM_COLOURINGS = 4
 
-  !! Multiphase prototype, reservoir simulator
-  logical :: is_porous_media = .false.
   !! Porous media model initialisation (Gravity capillary equilibration)
   logical :: is_porous_initialisation = .false.
   !! Multiphase prototype, models temperature
   logical :: has_temperature = .false.
-  !! Mutliphase prototype, solve Stokes equations for momentum
-  logical :: solve_stokes
   !! Multiphase prototype, models concentration
   logical :: has_concentration = .false.
   !! Checking if using the P0DG for velocity,

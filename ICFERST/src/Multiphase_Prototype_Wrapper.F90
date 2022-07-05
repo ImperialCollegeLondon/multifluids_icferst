@@ -945,7 +945,7 @@ contains
             FLAbort('PhaseVolumeFraction must be defined for all the phases, including single phase simulations.')
         end do
 
-        if (is_porous_media .and. have_option('/mesh_adaptivity/hr_adaptivity')) then
+        if (have_option('/mesh_adaptivity/hr_adaptivity')) then
             ewrite(1, *) "Preserve regions MUST to be ON. Check multiphase_prototype_wrapper"
             !Ensure that preserve_mesh_regions is on, since otherwise it does not work
             !Don't know how to set exclude_from_vtu to true from the spud options, hence,
@@ -955,55 +955,53 @@ contains
                  "/mesh_adaptivity/hr_adaptivity/preserve_mesh_regions")
             end if
         end if
-        if (is_porous_media) then
-            ewrite(1, *) "For porous media we output only the Darcy Velocity, not the velocity. Check multiphase_prototype_wrapper"
-            !Create a field to store the DarcyVelocity in it
-            do i = 1, nphase
-                option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::DarcyVelocity"
+          ewrite(1, *) "For porous media we output only the Darcy Velocity, not the velocity. Check multiphase_prototype_wrapper"
+          !Create a field to store the DarcyVelocity in it
+          do i = 1, nphase
+              option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::DarcyVelocity"
+              if (.not.have_option(option_path)) then
+                  call add_option(trim(option_path),  stat=stat)
+                  option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::DarcyVelocity/prescribed"
+                  call add_option(trim(option_path)//"/mesh::VelocityMesh",  stat=stat)
+                  call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
+                  call add_option(trim(option_path)//"/value::WholeMesh/no_initial_condition",  stat=stat)
+                  call add_option(trim(option_path)//"/output",  stat=stat)
+                  call add_option(trim(option_path)//"/stat",  stat=stat)
+                  call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
+                  call add_option(trim(option_path)//"/detectors",  stat=stat)
+                  call add_option(trim(option_path)//"/detectors/include_in_detectors",  stat=stat)
+                  call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
+                  !Velocity is the force density which is pretty much useless so we instead show the DarcyVelocity
+                  !do_not_show velocity
+
+                  if (.not.have_option("/numerical_methods/porous_output_force_density") .and.&
+                  .not.have_option("/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu"))&
+                  call copy_option("simulation_name", &
+                      "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu")
+              end if
+
+              !For hysteresis relperms we need to keep track of when the saturation flips from drainage to imbibition
+              !We generate the memory here because we need to be able to interpolate...
+              if (have_option("/material_phase["//int2str(i-1)//&
+              "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then
+                option_path = "/material_phase["// int2str( i -1 )//"]/scalar_field::Saturation_flipping"
                 if (.not.have_option(option_path)) then
-                    call add_option(trim(option_path),  stat=stat)
-                    option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::DarcyVelocity/prescribed"
-                    call add_option(trim(option_path)//"/mesh::VelocityMesh",  stat=stat)
-                    call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
-                    call add_option(trim(option_path)//"/value::WholeMesh/no_initial_condition",  stat=stat)
-                    call add_option(trim(option_path)//"/output",  stat=stat)
-                    call add_option(trim(option_path)//"/stat",  stat=stat)
-                    call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
-                    call add_option(trim(option_path)//"/detectors",  stat=stat)
-                    call add_option(trim(option_path)//"/detectors/include_in_detectors",  stat=stat)
-                    call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
-                    !Velocity is the force density which is pretty much useless so we instead show the DarcyVelocity
-                    !do_not_show velocity
-
-                    if (.not.have_option("/numerical_methods/porous_output_force_density") .and.&
-                    .not.have_option("/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu"))&
-                    call copy_option("simulation_name", &
-                        "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu")
+                  call add_option(trim(option_path),  stat=stat)
+                  option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Saturation_flipping/prescribed"
+                  call add_option(trim(option_path)//"/mesh::PressureMesh",  stat=stat)
+                  call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
+                  call add_option(trim(option_path)//"/value::WholeMesh/no_initial_condition",  stat=stat)
+                  call add_option(trim(option_path)//"/output",  stat=stat)
+                  call add_option(trim(option_path)//"/stat",  stat=stat)
+                  call add_option(trim(option_path)//"/stat/exclude_from_stat",  stat=stat)
+                  call add_option(trim(option_path)//"/detectors",  stat=stat)
+                  call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
+                  call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
+                  call add_option(trim(option_path)//"/consistent_interpolation",  stat=stat)
+                  call copy_option("simulation_name", trim(option_path)//"/output/exclude_from_vtu")
                 end if
-
-                !For hysteresis relperms we need to keep track of when the saturation flips from drainage to imbibition
-                !We generate the memory here because we need to be able to interpolate...
-                if (have_option("/material_phase["//int2str(i-1)//&
-                "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then
-                  option_path = "/material_phase["// int2str( i -1 )//"]/scalar_field::Saturation_flipping"
-                  if (.not.have_option(option_path)) then
-                    call add_option(trim(option_path),  stat=stat)
-                    option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Saturation_flipping/prescribed"
-                    call add_option(trim(option_path)//"/mesh::PressureMesh",  stat=stat)
-                    call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
-                    call add_option(trim(option_path)//"/value::WholeMesh/no_initial_condition",  stat=stat)
-                    call add_option(trim(option_path)//"/output",  stat=stat)
-                    call add_option(trim(option_path)//"/stat",  stat=stat)
-                    call add_option(trim(option_path)//"/stat/exclude_from_stat",  stat=stat)
-                    call add_option(trim(option_path)//"/detectors",  stat=stat)
-                    call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
-                    call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
-                    call add_option(trim(option_path)//"/consistent_interpolation",  stat=stat)
-                    call copy_option("simulation_name", trim(option_path)//"/output/exclude_from_vtu")
-                  end if
-                end if
-            end do
-        end if
+              end if
+          end do
 
         !Add dummy fields to ensure that the well geometries are preserved when the mesh is adapted
         !or to show the wells in paraview
@@ -1348,61 +1346,6 @@ contains
 
         end if
 
-        !For inertia the default for velocity is jacobi with rowmax
-        if (.not. have_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity" ) .and. .not. is_porous_media) then
-          if (GetProcNo() == 1) then
-            print*, "MESSAGE: Using default options for the linear solver for velocity: GMRES(30) + Jacobi(rowmax)"
-          end if
-          option_path = "/solver_options/Linear_solver/Custom_solver_configuration/Velocity/iterative_method::gmres/restart"
-          call add_option(trim(option_path), stat = stat)
-          call set_option(trim(option_path), 30)
-
-          !Preconditioner
-          option_path = "/solver_options/Linear_solver/Custom_solver_configuration/Velocity/preconditioner::jacobi"
-          call add_option(trim(option_path), stat = stat)
-          option_path = "/solver_options/Linear_solver/Custom_solver_configuration/Velocity/preconditioner::jacobi/jacobi_type::rowmax"
-          call add_option(trim(option_path), stat = stat)
-
-          !Convergence settings
-          call add_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/relative_error", stat = stat)
-          call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/relative_error", 1e-10)
-          call add_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/absolute_error", stat = stat)
-          call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/absolute_error", 1e-8)
-          call add_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/max_iterations", stat = stat)
-          call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/max_iterations", 500)
-          !Copy an option that always exists to ensure ignore all solver failues
-          call copy_option("/simulation_name","/solver_options/Linear_solver/Custom_solver_configuration/Velocity/ignore_all_solver_failures")
-        end if
-
-      !   !For the hydrostatic the default is better CG with hypre and shift_positive
-      !   if (.not. have_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure" ) &
-      !   .and. have_option("/physical_parameters/gravity/hydrostatic_pressure_solver")) then
-      !
-      !   option_path = "/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/iterative_method::cg"
-      !   call add_option(trim(option_path), stat = stat)
-      !   !Preconditioner
-      !   option_path = "/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/preconditioner::hypre"
-      !   call add_option(trim(option_path), stat = stat)
-      !
-      !   option_path = trim(option_path)//"/hypre_type::boomeramg"
-      !   call add_option(trim(option_path), stat = stat)
-      !   option_path = trim(option_path)//"/shift_positive_definite  "
-      !   call add_option(trim(option_path), stat = stat)
-      !   !Convergence settings
-      !
-      !   call add_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/relative_error", stat = stat)
-      !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/relative_error", 1e-10)
-      !   call add_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/absolute_error", stat = stat)
-      !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/absolute_error", 1e-8)
-      !   call add_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/max_iterations", stat = stat)
-      !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/max_iterations", 300)
-      !   !Remove null space for this option
-      !   call copy_option("/simulation_name","/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/remove_null_space")
-      !   !Copy an option that always exists to ensure ignore all solver failues
-      !   call copy_option("/simulation_name","/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/ignore_all_solver_failures")
-      !
-      ! end if
-
         !Non_Linear_Solver default settings
         option_path = "/solver_options/Non_Linear_Solver"
         if (.not. have_option(trim(option_path) )) then!The default has to exist
@@ -1633,10 +1576,6 @@ contains
     subroutine get_simulation_type()
         implicit none
         integer :: Vdegree, Pdegree
-        !By default it is inertia dominated
-        is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media')
-        !Decide to solve Stokes equations instead of navier-Stokes
-        solve_stokes = have_option('/stokes_simulator')
         !Has temperature
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
         has_concentration = have_option( '/material_phase[0]/scalar_field::Concentration/' )
@@ -1656,7 +1595,7 @@ contains
         end if
 
         !Check if FEM_continuity_equation is being used for porous media and if so show a warning message
-        if (is_porous_media .and. have_option("/geometry/Advance_options/FE_Pressure/FEM_continuity_equation)")) then
+        if (have_option("/geometry/Advance_options/FE_Pressure/FEM_continuity_equation)")) then
           if (GetProcNo() == 1) then
             FLAbort( "ERROR: FEM_continuity_equation should not be used for porous media. For stability use DCVFEM. If you still want to use it disable this error.")
           end if

@@ -388,7 +388,7 @@ contains
         end if
         !Check if we want to use a compacted mass matrix
         if ((Mmat%CV_pressure .or. have_option('/numerical_methods/simple_mass_matrix')) &
-                    .and. is_porous_media .and. Mdims%npres == 1) then
+                     .and. Mdims%npres == 1) then
         !sprint_to_do for this to work with wells we need to change the sparsity, but that still needs to be done!
             call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', i )
             call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', k )
@@ -437,31 +437,29 @@ contains
             call allocate( metric_tensor, extract_mesh(state(1), topology_mesh_name), 'ErrorMetric' )
         end if
 
-        if (is_porous_media) then
-            !Check that all the elements have permeability defined
-            perm_field => extract_tensor_field(packed_state,"Permeability")
-            auxR = minval(perm_field%val, MASK = perm_field%val> 1e-50)
-            if (abs(log(maxval(perm_field%val)/auxR) )/log(10.)> 12.) then
-              if(getprocno() == 1) then
-                ewrite(0,*) "WARNING: The code supports double precision and your Permeability field is trying to span more than 12 orders of magnitude."
-                ewrite(0,*) "This may lead to convergence errors. Check your permeability values."
-              end if
+        !Check that all the elements have permeability defined
+        perm_field => extract_tensor_field(packed_state,"Permeability")
+        auxR = minval(perm_field%val, MASK = perm_field%val> 1e-50)
+        if (abs(log(maxval(perm_field%val)/auxR) )/log(10.)> 12.) then
+            if(getprocno() == 1) then
+            ewrite(0,*) "WARNING: The code supports double precision and your Permeability field is trying to span more than 12 orders of magnitude."
+            ewrite(0,*) "This may lead to convergence errors. Check your permeability values."
             end if
-            do its = 1, size(perm_field%val,3)
-                do its2 = 1, size(perm_field%val,2)
-                    if (perm_field%val(its2,its2,its)< 1e-30) then
-                        FLExit( "Some elements do not have permebility defined or it is zero. Use a very small value instead, currently the minimum is 1e-30." )
-                    end if
-                end do
-            end do
-
-            !Get into packed state relative permeability, immobile fractions, ...
-            call get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time)
-            !Allocate the memory to obtain the sigmas at the interface between elements
-            call allocate_porous_adv_coefs(Mdims, upwnd)
-            !Ensure that the initial condition for the saturation sum to 1.
-            call Initialise_Saturation_sums_one(Mdims, packed_state, .true.)
         end if
+        do its = 1, size(perm_field%val,3)
+            do its2 = 1, size(perm_field%val,2)
+                if (perm_field%val(its2,its2,its)< 1e-30) then
+                    FLExit( "Some elements do not have permebility defined or it is zero. Use a very small value instead, currently the minimum is 1e-30." )
+                end if
+            end do
+        end do
+
+        !Get into packed state relative permeability, immobile fractions, ...
+        call get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time)
+        !Allocate the memory to obtain the sigmas at the interface between elements
+        call allocate_porous_adv_coefs(Mdims, upwnd)
+        !Ensure that the initial condition for the saturation sum to 1.
+        call Initialise_Saturation_sums_one(Mdims, packed_state, .true.)
 
 
         !!$ Starting Time Loop
@@ -524,10 +522,8 @@ contains
             ! initialise the porous media model if needed. Simulation will stop once gravity capillary equilibration is reached
             !Prepapre the pipes
             if (Mdims%npres > 1) call initialize_pipes_package_and_gamma(state, packed_state, pipes_aux, Mdims, Mspars, ndgln)!Re-read pipe properties such as gamma
-            if (is_porous_media) then
-              call initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
-              if (exit_initialise_porous_media) exit Loop_Time
-            end if
+            call initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
+            if (exit_initialise_porous_media) exit Loop_Time
             !Check first time step
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
 
@@ -609,10 +605,8 @@ contains
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
                 call Calculate_All_Rhos( state, packed_state, Mdims )
 
-                if ( is_porous_media ) then
-                    call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
-                        CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
-                end if
+                call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
+                    CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
 
 
                 ScalarField_Source_Store = 0.0
@@ -655,21 +649,12 @@ contains
                 !#=================================================================================================================
                 !$ Now solving the Momentum Equation ( = Force Balance Equation )
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
-                    if (is_porous_media .and. is_P0DGP1) then 
-                        CALL POROUS_FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
-                            Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
-                            dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
-                            igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                            calculate_mass_delta, outfluxes, pres_its_taken, its, Courant_number)
-                    else
-                        CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
-                            Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
-                            dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
-                            igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                            calculate_mass_delta, outfluxes, pres_its_taken, its, Courant_number)
-                    end if
+                    CALL POROUS_FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
+                        Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
+                        dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
+                        igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
+                        calculate_mass_delta, outfluxes, pres_its_taken, its, Courant_number)
                 end if Conditional_ForceBalanceEquation
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
@@ -707,7 +692,7 @@ contains
                 !#=================================================================================================================
 
                 !!$ Calculate Darcy velocity with the most up-to-date information
-                if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
+                call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
                 !#=================================================================================================================
                 !# End Velocity Update -> Move to ->the rest
                 !#=================================================================================================================
@@ -876,7 +861,6 @@ contains
               ewrite(1,*) "Iterations taken by the pressure linear solver:", pres_its_taken
             end if
             !Store the combination of Nonlinear iterations performed. Only account of SFPI if multiphase porous media flow
-            if (.not. is_porous_media .or. mdims%n_in_pres == 1) SFPI_taken = 0
             FPI_eq_taken = dble(its) + dble(SFPI_taken)/3.!SFPI cost 1/3 roughly, this needs to be revisited when solving for nphases-1
 
             ! If calculating boundary fluxes, dump them to outfluxes.csv
@@ -918,7 +902,7 @@ contains
             !Now we ensure that the time-step is the correct one
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
-            if (is_porous_media .and. getprocno() == 1) then
+            if (getprocno() == 1) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
                     ewrite(0,*) "Courant_number and shock-front Courant number", Courant_number
                 else !printout only in the log
@@ -948,22 +932,11 @@ contains
                 call get_option( '/timestepping/adaptive_timestep/maximum_timestep', maxc, stat, default = 66.e6)
                 call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat, default = 1.1)
                 !For porous media we need to use the Courant number obtained in cv_assemb
-                if (is_porous_media) then
-                  !We use stat here as a normal integer
-                  stat = 1
-                  if (have_option("/timestepping/adaptive_timestep/requested_cfl/Shock_front_CFL")) stat = 2
-                  c = max ( c, Courant_number(stat) )
+                !We use stat here as a normal integer
+                stat = 1
+                if (have_option("/timestepping/adaptive_timestep/requested_cfl/Shock_front_CFL")) stat = 2
+                c = max ( c, Courant_number(stat) )
                     ! ewrite(1,*) "maximum cfl number at", current_time, "s =", c
-                else
-                    do iphase = 1, Mdims%nphase
-                        ! requested cfl
-                        rc_field => extract_scalar_field( state( iphase ), 'RequestedCFL', stat )
-                        if ( stat == 0 ) rc = min( rc, minval( rc_field % val ) )
-                        ! max cfl
-                        cfl => extract_scalar_field( state( iphase ), 'CFLNumber' )
-                        c = max ( c, maxval( cfl % val ) )
-                    end do
-                end if
                 !call get_option( '/timestepping/timestep', dt )
                 !To ensure that we always create a vtu file at the desired time (if requested),
                 !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
@@ -1459,22 +1432,20 @@ contains
                     mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
                 call put_CSR_spars_into_packed_state()
 
-                if (is_porous_media) then
-                    call get_RockFluidProp(state, packed_state, Mdims, ndgln)
-                    call deallocate_porous_adv_coefs(upwnd)
-                    call allocate_porous_adv_coefs(Mdims, upwnd)
-                    !Clean the pipes memory if required
-                    if (Mdims%npres > 1) then
-                        call deallocate_multi_pipe_package(pipes_aux)
-                        call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
-                        call initialize_pipes_package_and_gamma(state, packed_state, pipes_aux, Mdims, Mspars, ndgln)
-                    end if
-                    if (.not. have_option("/numerical_methods/do_not_bound_after_adapt")) then
-                      !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
-                      call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,"PackedPhaseVolumeFraction", for_sat=.true.)
-                    end if
-                    call Set_Saturation_to_sum_one(mdims, packed_state, state)!<= just in case, cap unphysical values if there are still some
+                call get_RockFluidProp(state, packed_state, Mdims, ndgln)
+                call deallocate_porous_adv_coefs(upwnd)
+                call allocate_porous_adv_coefs(Mdims, upwnd)
+                !Clean the pipes memory if required
+                if (Mdims%npres > 1) then
+                    call deallocate_multi_pipe_package(pipes_aux)
+                    call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
+                    call initialize_pipes_package_and_gamma(state, packed_state, pipes_aux, Mdims, Mspars, ndgln)
                 end if
+                if (.not. have_option("/numerical_methods/do_not_bound_after_adapt")) then
+                    !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
+                    call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,"PackedPhaseVolumeFraction", for_sat=.true.)
+                end if
+                call Set_Saturation_to_sum_one(mdims, packed_state, state)!<= just in case, cap unphysical values if there are still some
                 if (.not. have_option("/numerical_methods/do_not_bound_after_adapt")) then
                   if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
                   if (has_concentration) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedConcentration" ,min_max_limits = concentration_min_max_limits_before)
@@ -1579,11 +1550,6 @@ contains
         tfield=>extract_tensor_field(packed_state,"PackedOldFEPressure")
         ntfield=>extract_tensor_field(packed_state,"PackedFEPressure")
         tfield%val=ntfield%val
-        if (.not. is_porous_media) then
-          tfield=>extract_tensor_field(packed_state,"PackedOldCVPressure")
-          ntfield=>extract_tensor_field(packed_state,"PackedCVPressure")
-          tfield%val=ntfield%val
-        end if
     end subroutine copy_packed_new_to_old
 
     !>@brief Copies the linear velocity U into the non-linear velocity field NU

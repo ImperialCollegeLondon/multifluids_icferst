@@ -21,7 +21,7 @@ module sparsity_1D
     use fldebug
 
     use spud
-    use global_parameters, only: option_path_len, is_porous_media
+    use global_parameters, only: option_path_len
     use multi_data_types
 contains
 
@@ -1137,13 +1137,7 @@ contains
 
         !!$ Assuming the DG representation requires the more storage space
         mx_ncolcmc = mx_nface_p1 **3 * cv_nloc * cv_nloc * totele
-        if(is_porous_media) then
             mx_ncoldgm_pha = 1
-        else
-            mx_ncoldgm_pha = ( mxnele + totele ) * ( u_nloc * ndim * nphase) **2    ! for overlapping method =1
-
-                ! for overlapping method =1
-        endif
 
         mx_ncolacv = 3 * mx_nface_p1 * cv_nonods * nphase + cv_nonods * ( nphase - 1 ) * nphase
 
@@ -1191,28 +1185,7 @@ contains
         Mspars%ELE%mid => sparsity%centrm
         Mspars%ELE%col => sparsity%colm
         Mspars%ELE%ncol=size(Mspars%ELE%col)
-        if(.not.(is_porous_media)) then
-            !-
-            !- Computing sparsity for force balance
-            !-
-            mx_ncolele_pha = Mdims%nphase * Mspars%ELE%ncol + ( Mdims%nphase - 1 ) * Mdims%nphase * Mdims%totele
-            allocate( colele_pha( mx_ncolele_pha ) )
-            allocate( finele_pha( Mdims%totele * Mdims%nphase + 1 ) )
-            allocate( midele_pha( Mdims%totele * Mdims%nphase ) )
-            colele_pha = 0 ; finele_pha = 0 ; midele_pha = 0
-            call exten_sparse_multi_phase_old( Mdims%totele, Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, &
-                Mdims%nphase, Mdims%totele * Mdims%nphase, mx_ncolele_pha, &
-                finele_pha, colele_pha, midele_pha )
-            Mspars%DGM_PHA%fin = 0 ; Mspars%DGM_PHA%col = 0 ; Mspars%DGM_PHA%mid = 0
-            call form_dgm_pha_sparsity( Mdims%totele, Mdims%nphase, Mdims%u_nloc, Mdims%nphase * Mdims%u_nonods * Mdims%ndim, &
-                Mdims%ndim, mx_ncoldgm_pha, Mspars%DGM_PHA%ncol, &
-                Mspars%DGM_PHA%col, Mspars%DGM_PHA%fin, Mspars%DGM_PHA%mid, &
-                Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol )
-            ! dealocate colele_pha...
-            deallocate( colele_pha ) ; deallocate( finele_pha ) ; deallocate( midele_pha )
-        else
-            Mspars%DGM_PHA%ncol=0
-        end if
+        Mspars%DGM_PHA%ncol=0
         call resize(Mspars%DGM_PHA%col,Mspars%DGM_PHA%ncol)
         !-
         !- momentum and continuity eqns

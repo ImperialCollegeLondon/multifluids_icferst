@@ -345,7 +345,7 @@ contains
           REAL, dimension(:,:), ALLOCATABLE :: FXGI_ALL, int_UDGI_ALL, A_STAR_X_ALL,VEC_VEL2
           REAL, dimension(:), ALLOCATABLE :: courant_or_minus_one_new, int_XI_LIMIT,&
               P_STAR, U_DOT_GRADF_GI, A_STAR_F, RESIDGI, ELE_LENGTH_SCALE,FEMFGI, RGRAY, DIFF_COEF, COEF,&
-              RSCALE, COEF2, FEMFGI_CENT, FEMFGI_UP, UBCZERO
+              RSCALE, COEF2, FEMFGI_CENT, FEMFGI_UP
 
           !        ===>  LOGICALS  <===
           ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
@@ -549,11 +549,7 @@ contains
           FEM_continuity_equation = have_option( '/geometry/Advance_options/FE_Pressure/FEM_continuity_equation' )
 
           !THETA_VEL_HAT has to be zero for porous media flow
-          if ( is_porous_media ) then
               THETA_VEL_HAT = 0.0
-          else
-              THETA_VEL_HAT = 1.0
-          end if
 
           call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
 
@@ -562,7 +558,7 @@ contains
           call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
              OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL)
           if (.not. present_and_true(solving_compositional)) then
-            if (is_porous_media)  call get_var_from_packed_state(packed_state, CV_Immobile_Fraction = Imble_frac)
+            call get_var_from_packed_state(packed_state, CV_Immobile_Fraction = Imble_frac)
           end if
           !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
           U_ALL => NU_ALL
@@ -608,10 +604,8 @@ contains
           if (present(saturation))&
               call get_entire_boundary_condition(saturation,['weakdirichlet','robin        '],saturation_BCs,WIC_T2_BC_ALL,boundary_second_value=saturation_BCs_robin2)
           call get_entire_boundary_condition(velocity,['weakdirichlet'],velocity_BCs,WIC_U_BC_ALL)
-          if(got_free_surf.or.is_porous_media .or. Mmat%CV_pressure) then
-              pressure => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
-              call get_entire_boundary_condition(pressure,['weakdirichlet','freesurface  '],pressure_BCs,WIC_P_BC_ALL)
-          endif
+          pressure => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
+          call get_entire_boundary_condition(pressure,['weakdirichlet','freesurface  '],pressure_BCs,WIC_P_BC_ALL)
 
           !! reassignments to old arrays, to be discussed
           SUF_T_BC_ALL=>tracer_BCs%val
@@ -665,15 +659,13 @@ contains
           ! Quadratic elements
           QUAD_ELEMENTS = ( ((Mdims%ndim==2).AND.(Mdims%cv_nloc==6)).or.((Mdims%ndim==3).AND.(Mdims%cv_nloc==10)) )
           !Pointer to permeability
-          if ( is_porous_media ) then
-              if (present(Permeability_tensor_field)) then
-                  perm => Permeability_tensor_field
-              else
-              perm=>extract_tensor_field(packed_state,"Permeability")
-              end if
-          end if
+        if (present(Permeability_tensor_field)) then
+            perm => Permeability_tensor_field
+        else
+        perm=>extract_tensor_field(packed_state,"Permeability")
+        end if
           !Initialize Courant number for porous media
-          if (present(Courant_number) .and. is_porous_media) Courant_number = 0.
+          if (present(Courant_number)) Courant_number = 0.
           CVNORMX_ALL=0.0
 
           ! The procity mapped to the CV nodes
@@ -722,7 +714,7 @@ contains
         XC_CV_ALL => psi_ave(1)%ptr%val
         MASS_CV   => psi_int(1)%ptr%val(1,:)
         !This works because GETCT is the first call and therefore we will have later on masses and barycenters
-        if (.not.associated(CV_funs%CV2FE%refcount) .or. .not. is_porous_media) then!This is true after adapt and at the beginning
+        if (.not.associated(CV_funs%CV2FE%refcount) ) then!This is true after adapt and at the beginning
         psi(1)%ptr=>tracer
         psi(2)%ptr=>old_tracer
         call PROJ_CV_TO_FEM(packed_state, &!For porous media we are just pointing memory from PSI to FEMPSI
@@ -924,7 +916,7 @@ contains
                           permeability_jump = .false.
                           !For the discontinuous formulation we want to use the discontinuous method only where there is a permeability jump
                           !elsewhere the normal method should work better as it is also more reliable
-                          if (is_porous_media .and. between_elements) then
+                          if (between_elements) then
                             permeability_jump = abs(perm%val(1,1,ele) - perm%val(1,1,ele2)/perm%val(1,1,ele)) > 1e-8
                           end if
                           !Create local variables to reduce slicing
@@ -1055,72 +1047,51 @@ contains
                               ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
                               !Calling the functions directly instead inside a wrapper saves a around a 5%
                               IF( GOT_T2 ) THEN
-                                  IF( is_porous_media ) THEN
-                                      CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
-                                          LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD, &
-                                          LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
-                                          UGI_COEF_ELE_ALL(:,1:final_phase,:), UGI_COEF_ELE2_ALL(:,1:final_phase,:), &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
-                                          upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
-                                          NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
-                                          T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT), &
-                                          .false.)
-                                      CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
-                                          LOC_T2_I, LOC_T2_J, LOC_FEMT2, &
-                                          LOC_NU, LOC2_NU, SLOC_NU, &
-                                          UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
-                                          upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
-                                          NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
-                                          T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT), &
-                                          .true.)
-                                  else
-                                      call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
-                                          LOC_T2OLD_I, LOC_T2OLD_J, LOC_DENOLD_I, LOC_DENOLD_J, &
-                                          LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
-                                          UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .false. )
-                                      call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQ, INCOME, &
-                                          LOC_T2_I, LOC_T2_J, LOC_DEN_I, LOC_DEN_J, &
-                                          LOC_NU, LOC2_NU, NUGI_ALL, &
-                                          UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .true. )
-                                  end if
+                                CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+                                    LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD, &
+                                    LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
+                                    UGI_COEF_ELE_ALL(:,1:final_phase,:), UGI_COEF_ELE2_ALL(:,1:final_phase,:), &
+                                    upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
+                                    upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
+                                    upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
+                                    NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
+                                    T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT), &
+                                    .false.)
+                                CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
+                                    LOC_T2_I, LOC_T2_J, LOC_FEMT2, &
+                                    LOC_NU, LOC2_NU, SLOC_NU, &
+                                    UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+                                    upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
+                                    upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
+                                    upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
+                                    NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
+                                    T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT), &
+                                    .true.)
                               ELSE
-                                  IF( is_porous_media ) THEN
-                                      CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
-                                          LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD, &
-                                          LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
-                                          UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
-                                          upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
-                                          NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
-                                          TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT), &
-                                          .false.)!Sprint_to_do store for a time-level old values?? Would halve the cost of flux calculation...
-                                      CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
-                                          LOC_T_I, LOC_T_J, LOC_FEMT, &
-                                          LOC_NU, LOC2_NU, SLOC_NU, &
-                                          UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
-                                          upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
-                                          upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
-                                          NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
-                                          TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT), &
-                                          .true.)
-                                  else
-                                      call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
-                                          LOC_TOLD_I, LOC_TOLD_J, LOC_DENOLD_I, LOC_DENOLD_J, &
-                                          LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
-                                          UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .false. )
-                                      call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQ, INCOME, &
-                                          LOC_T_I, LOC_T_J, LOC_DEN_I, LOC_DEN_J, &
-                                          LOC_NU, LOC2_NU, NUGI_ALL, UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .true. )
-                                  end if
+                                CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+                                    LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD, &
+                                    LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
+                                    UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+                                    upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
+                                    upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
+                                    upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
+                                    NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
+                                    TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT), &
+                                    .false.)!Sprint_to_do store for a time-level old values?? Would halve the cost of flux calculation...
+                                CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
+                                    LOC_T_I, LOC_T_J, LOC_FEMT, &
+                                    LOC_NU, LOC2_NU, SLOC_NU, &
+                                    UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+                                    upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
+                                    upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
+                                    upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
+                                    NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
+                                    TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT), &
+                                    .true.)
                               ENDIF
                               !Calculate the courant number for porous media
                               !SPRINT_TO_DO Currently if temperature/Concentration multiphase we are doing this more than once...
-                              if (present(Courant_number) .and. is_porous_media.and. .not. on_domain_boundary) then
+                              if (present(Courant_number) .and..not. on_domain_boundary) then
                                   !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
                                   Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                   !and the shock-front Courant number
@@ -1131,24 +1102,19 @@ contains
                               end if
                               If_GOT_CAPDIFFUS: IF ( VAD_activated ) THEN
                                   IF(SELE == 0) THEN
-                                      CAP_DIFF_COEF_DIVDX = 0.
-                                      if (is_porous_media) then
-                                        !Project permeability at the GI point
-                                        auxR = dot_product(CVNORMX_ALL(:, GI), matmul(perm%val(:,:,ele),CVNORMX_ALL(:, GI) ))
-                                        do iphase =1, final_phase
-                                            rsum_nodi(iphase) = upwnd%inv_adv_coef(1,1,iphase,MAT_NODI)*auxR
-                                        end do
-                                        if (between_elements) auxR = dot_product(CVNORMX_ALL(:, GI), matmul(perm%val(:,:,ele2),CVNORMX_ALL(:, GI) ))
-                                        do iphase =1, final_phase
-                                            rsum_nodj(iphase) = upwnd%inv_adv_coef(1,1,iphase,MAT_NODJ)*auxR
-                                        end do
-                                        CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
-                                            * rsum_nodi*(1.-INCOME) +&
-                                            CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
-                                      else
-                                        CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
-                                        * (1.-INCOME) +CAP_DIFFUSION( :, MAT_NODJ ) * INCOME) /HDC
-                                      end if
+                                    CAP_DIFF_COEF_DIVDX = 0.
+                                    !Project permeability at the GI point
+                                    auxR = dot_product(CVNORMX_ALL(:, GI), matmul(perm%val(:,:,ele),CVNORMX_ALL(:, GI) ))
+                                    do iphase =1, final_phase
+                                        rsum_nodi(iphase) = upwnd%inv_adv_coef(1,1,iphase,MAT_NODI)*auxR
+                                    end do
+                                    if (between_elements) auxR = dot_product(CVNORMX_ALL(:, GI), matmul(perm%val(:,:,ele2),CVNORMX_ALL(:, GI) ))
+                                    do iphase =1, final_phase
+                                        rsum_nodj(iphase) = upwnd%inv_adv_coef(1,1,iphase,MAT_NODJ)*auxR
+                                    end do
+                                    CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
+                                        * rsum_nodi*(1.-INCOME) +&
+                                        CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
                                   ELSE
                                       CAP_DIFF_COEF_DIVDX = 0.0
                                   ENDIF
@@ -1531,7 +1497,7 @@ contains
                     DO IPHASE = 1,final_phase!to avoid slicing sourct_all
                       LOC_CV_RHS_I(iphase) = LOC_CV_RHS_I(iphase)  + Mass_CV(CV_NODI) * SOURCT_ALL( iphase, CV_NODI )
                     end do
-                      if (thermal .and. is_porous_media) then
+                      if (thermal) then
                           !In this case for the time-integration term the effective rho Cp is a combination of the porous media
                           ! and the fluids. Here we add the porous media contribution. Multiplied by the saturation so we use the same
                           !paradigm that for the phases, but in the equations it isn't, but here because we iterate over phases and collapse
@@ -1662,22 +1628,12 @@ contains
         call deallocate(tracer_BCs_robin2)
         call deallocate(density_BCs)
         call deallocate(velocity_BCs)
-        if(got_free_surf .or. is_porous_media .or. Mmat%CV_pressure) call deallocate(pressure_BCs)
+        call deallocate(pressure_BCs)
         if (present(saturation)) then
             call deallocate(saturation_BCs)
             call deallocate(saturation_BCs_robin2)
         end if
         
-        !   IF(GETCT) THEN
-        !       DEALLOCATE( JCOUNT_KLOC )
-        !   ENDIF
-        !   DEALLOCATE(T2UPWIND_MAT_ALL)
-        !   DEALLOCATE(T2OLDUPWIND_MAT_ALL)
-        !   deallocate (FXGI_ALL); deallocate (int_UDGI_ALL); deallocate (A_STAR_X_ALL); deallocate (VEC_VEL2); deallocate (courant_or_minus_one_new)
-        !   deallocate (int_XI_LIMIT); deallocate (P_STAR); deallocate (U_DOT_GRADF_GI); deallocate (A_STAR_F); deallocate (RESIDGI)
-        !   deallocate (ELE_LENGTH_SCALE);deallocate (FEMFGI);deallocate (RGRAY);deallocate (DIFF_COEF);deallocate (COEF);deallocate (RSCALE)
-        !   deallocate (COEF2);deallocate (FEMFGI_CENT);deallocate (FEMFGI_UP);deallocate (UBCZERO)
-
           !These three variables are allocated simultaneously so only one need to be checked
           if (allocated(suf_t_bc)) deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
           if (VAD_activated) deallocate(CAP_DIFFUSION)
@@ -1753,264 +1709,6 @@ contains
             end do
             its=its+1
         end subroutine dump_multiphase
-
-        !---------------------------------------------------------------------------
-        !> @author Chris Pain, Pablo Salinas
-        !> @brief Computes the flux between CVs
-        !---------------------------------------------------------------------------
-        SUBROUTINE GET_INT_T_DEN_new( LIMF )
-            !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
-            IMPLICIT NONE
-            ! Calculate T and DEN on the CV face at quadrature point GI.
-            REAL, DIMENSION ( NFIELD), intent( inout ) :: LIMF
-            !   REAL, DIMENSION( : ), intent( in ) :: TUPWIND_MAT, DENUPWIND_MAT
-            !   REAL, DIMENSION( : ), intent( in ) :: T2UPWIND_MAT
-            ! Local variables
-            ! If UPWIND then use upwind flux between elements else use central.
-            ! If HI_ORDER_HALF then use high order interpolation when around
-            ! a volume frac of 0.5 and gradually apply limiting near 0 and 1.
-            LOGICAL :: DOWNWIND_EXTRAP ! Extrapolate a downwind value for interface tracking.
-            ! Scaling to reduce the downwind bias(=1downwind, =0central)
-            LOGICAL, PARAMETER :: SCALE_DOWN_WIND = .true.
-            ! Non-linear Petrov-Galerkin option for interface tracking...
-            ! =4 is anisotropic downwind diffusion based on a projected 1D system (1st recommend)
-            ! =0 is anisotropic downwind diffusion based on a velocity projection like SUPG
-            ! (2nd recommend, most compressive)
-            ! =2 is isotropic downwind diffusion  (3rd recommend,least compressive)
-            ! =5 is isotropic downwind diffusion with magnitude of =0 option.
-            ! In tests they all produce similar results.
-            !      INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 5
-            INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 3
-            INTEGER, PARAMETER :: UCOMPRESSIVE_version = 1
-            real, parameter :: tolerance = 1.e-10
-            LOGICAL :: NOLIMI
-            INTEGER :: CV_KLOC, &
-                CV_SKLOC, IDIM
-            INTEGER :: IFIELD
-
-            real :: CONVECTION_ADVECTION_COEFF = 1.0 !default behaviour = 1.0
-            real :: CAcoeff = 0.0, NRBC2
-            logical :: ULTRA_COMPRESSIVE = .false.
-            ! No limiting if CV_DISOPT is 6 or 7  (why not just define limt=femt and skip to assembly?)
-            NOLIMI = ( INT( CV_DISOPT / 2 ) == 3 )
-            ! Make a guess at the CV face value of advected field variable and density
-            ! (Depends on discetisation option, CV_DISOPT)
-            UBCZERO=1.0 !-ao
-            SELECT CASE( CV_DISOPT / 2 )
-                !    CASE( 0 ) ! First-order upwinding is achived through the limiting
-                !       FEMFGI     = FVF
-                CASE( 1 ) ! Central differencing [Trapezoidal rule (2 OR 3)]
-                    FEMFGI     = 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
-                CASE DEFAULT ! Finite element approximation (4 OR 5)(6 or 7)(8 or 9)
-                    FEMFGI     = 0.0
-                    Conditional_CV_DISOPT_ELE2: IF ( on_domain_boundary ) THEN
-                        ! Is on boundary of the domain
-                        DO IFIELD=1,NFIELD
-                            IF ( SELE_LOC_WIC_F_BC(IFIELD) /= WIC_T_BC_DIRICHLET ) THEN ! Don't apply a Dirichlet bc
-                                LIMF(IFIELD)    = LOC_F( IFIELD, CV_ILOC )
-                            ELSE
-                                LIMF(IFIELD)    = (1.-F_INCOME(IFIELD))*LOC_F( IFIELD, CV_ILOC )   + F_INCOME(IFIELD)*  SLOC_SUF_F_BC( IFIELD,  CV_SILOC)
-                            END IF
-                        END DO ! END OF DO IFIELD=1,NFIELD
-                    ELSE Conditional_CV_DISOPT_ELE2
-                        ! Extrapolate a downwind value for interface tracking.
-                        DOWNWIND_EXTRAP = ( cv_disopt>=8 )
-                        if (.not. is_porous_media) then 
-                            DO IFIELD=1,NFIELD
-                                IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN
-                                    courant_or_minus_one_new(IFIELD) = abs ( dt * F_ndotq(IFIELD) / hdc )
-                                    int_XI_LIMIT(IFIELD)=MAX(1./max(tolerance,(3.*courant_or_minus_one_new(IFIELD))),2.0)
-                                else
-                                    courant_or_minus_one_new(IFIELD) = -1.0
-                                    int_XI_LIMIT(IFIELD) = 2.0
-                                end if
-                            END DO
-                        end if
-                        IF( .not. between_elements ) THEN
-                            if (.not. is_porous_media) then 
-                                RSCALE  = 1.0 ! Scaling to reduce the downwind bias(=1downwind, =0central)
-                                IF ( SCALE_DOWN_WIND ) THEN
-                                    IF ( DOWNWIND_EXTRAP  ) THEN
-                                        DO IFIELD=1,MIN(2*Mdims%nphase,NFIELD)
-                                            DO IDIM=1,Mdims%ndim
-                                                FXGI_ALL(IDIM,IFIELD) = dot_product(FSdevFuns%NX_ALL(IDIM, : , GI ) , LOC_FEMF(IFIELD,:))
-                                            END DO
-                                            !FEMFGI(IFIELD) = dot_product( CV_funs%scvfen( : , GI ), LOC_FEMF(IFIELD,:)  )
-                                            DO IDIM=1,Mdims%ndim
-                                                int_UDGI_ALL(IDIM,IFIELD) = dot_product(CV_funs%sufen( : , GI ) , LOC_UF(IDIM,IFIELD, :) )
-                                            END DO
-                                        END DO
-                                        IF ( NON_LIN_PETROV_INTERFACE == 0 ) THEN ! NOT Petrov-Galerkin for interface capturing...
-                                            ! no cosine rule :
-                                            DO IFIELD=1,MIN(2*Mdims%nphase,NFIELD) ! It should be Mdims%nphase because interface tracking only applied to the 1st set of fields.
-                                                RSCALE(IFIELD) = 1.0 / PTOLFUN( SQRT( SUM( int_UDGI_ALL(:,IFIELD)**2)   ) )
-                                                DO IDIM = 1, Mdims%ndim
-                                                    VEC_VEL2(IDIM,IFIELD) = SUM( FSdevFuns%INV_JAC(IDIM, 1:Mdims%ndim, GI) * int_UDGI_ALL(1:Mdims%ndim,IFIELD) )
-                                                END DO
-                                                ! normalize the velocity in here:
-                                                ELE_LENGTH_SCALE(IFIELD) = 0.5 * SQRT( SUM(int_UDGI_ALL(:,IFIELD)**2) ) / PTOLFUN( SUM( VEC_VEL2(:,IFIELD)**2 ) )
-                                                ! For discontinuous elements half the length scale...
-                                                IF(DISTCONTINUOUS_METHOD) ELE_LENGTH_SCALE(IFIELD)=0.5*ELE_LENGTH_SCALE(IFIELD)
-                                                ! For quadratic elements...
-                                                IF( QUAD_ELEMENTS ) ELE_LENGTH_SCALE(IFIELD)=0.5*ELE_LENGTH_SCALE(IFIELD)
-                                            END DO
-                                        ELSE ! Interface capturing...
-                                            CONVECTION_ADVECTION_COEFF = Mdisopt%compcoeff
-                                            DO IFIELD=1,MIN(2*Mdims%nphase,NFIELD) ! It should be Mdims%nphase because interface tracking only applied to the 1st set of fields.
-                                                U_DOT_GRADF_GI(IFIELD) = SUM( int_UDGI_ALL(:,IFIELD)*FXGI_ALL(:,IFIELD)  )
-                                                IF ( NON_LIN_PETROV_INTERFACE == 5 ) THEN
-                                                    COEF(IFIELD) = 1.0 / PTOLFUN( SQRT( SUM(FXGI_ALL(IFIELD,:)**2)   ) )
-                                                ELSE
-                                                    COEF(IFIELD) = U_DOT_GRADF_GI(IFIELD) / PTOLFUN( SUM( FXGI_ALL(:,IFIELD)**2 )  )
-                                                END IF
-                                                A_STAR_F(IFIELD) = 0.0
-                                                A_STAR_X_ALL(:,IFIELD) = COEF(IFIELD) * FXGI_ALL(:,IFIELD)
-                                                RESIDGI(IFIELD) = SQRT ( SUM( int_UDGI_ALL(:,IFIELD)**2 )  ) / HDC !HDC is the distance between the nodes
-                                                VEC_VEL2(1:Mdims%ndim,IFIELD) = matmul( FSdevFuns%INV_JAC(:,:,GI), A_STAR_X_ALL(1:Mdims%ndim,IFIELD) )
-                                                ! Needs 0.25 for quadratic elements...Chris
-                                                P_STAR(IFIELD) = 0.5 * HDC / PTOLFUN( SQRT( SUM( A_STAR_X_ALL(:,IFIELD)**2 )))
-                                                !                                      IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                select case (NON_LIN_PETROV_INTERFACE)
-                                                    case ( 1 )     ! standard approach
-                                                        DIFF_COEF(IFIELD) = COEF(IFIELD) * P_STAR(IFIELD) * RESIDGI(IFIELD)
-                                                    case ( 2 )     ! standard approach making it +ve
-                                                        DIFF_COEF(IFIELD) = MAX( 0.0, COEF(IFIELD) * P_STAR(IFIELD) * RESIDGI(IFIELD) )
-                                                    case ( 3 )     ! residual squared approach
-                                                        DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)**2 / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
-                                                    case ( 4 )     ! anisotropic diffusion in the A* direction.
-                                                        COEF2(IFIELD) =  SUM( CVNORMX_ALL(:,GI)*A_STAR_X_ALL(:,IFIELD) )
-                                                    case ( 6 )     ! accurate...
-                                                        P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
-                                                        IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                        RESIDGI(IFIELD)=SUM( int_UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
-                                                        DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)**2 / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
-                                                    case ( 7 )     ! accurate (could be positive or negative)...
-                                                        P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
-                                                        IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                        RESIDGI(IFIELD)=SUM( int_UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
-                                                        DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*int_UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
-                                                            / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
-                                                    case ( 8 )     ! accurate (force to be positive)...
-                                                        P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
-                                                        IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                        RESIDGI(IFIELD)=SUM( int_UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
-                                                        DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*int_UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
-                                                            / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
-                                                        DIFF_COEF(IFIELD) = abs(   DIFF_COEF(IFIELD)  )
-                                                    case ( 9 )     ! accurate (simplified residual squared)...
-                                                        P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
-                                                        IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                        RESIDGI(IFIELD)=SUM( int_UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
-                                                        DIFF_COEF(IFIELD) = P_STAR(IFIELD) * (SUM(CVNORMX_ALL(:,GI)*int_UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc))**2 &
-                                                            / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
-                                                    case default   ! isotropic diffusion with u magnitide
-                                                        DIFF_COEF(IFIELD) = SQRT( SUM( int_UDGI_ALL(:,IFIELD)**2 )) * P_STAR(IFIELD)
-                                                END select
-                                                ! Make the diffusion coefficient negative (compressive)
-                                                DIFF_COEF(IFIELD) = -DIFF_COEF(IFIELD)*CONVECTION_ADVECTION_COEFF
-                                                RSCALE(IFIELD) = 1. / TOLFUN( SUM(CVNORMX_ALL(:,GI)*int_UDGI_ALL(:,IFIELD))   )
-                                            END DO ! END OF DO IFIELD=1,NFIELD
-                                        END IF ! Petrov-Galerkin end of IF(NON_LIN_PETROV_INTERFACE==0) THEN
-                                    END IF ! DOWNWIND_EXTRAP
-                                END IF ! SCALE_DOWN_WIND
-                                FEMFGI=0.0
-                                DO IFIELD=1,NFIELD ! Only perform this loop for the 1st field which is the interface tracking field...
-                                    IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN ! Extrapolate to the downwind value...
-                                        DO CV_KLOC = 1, Mdims%cv_nloc
-                                            IF ( NON_LIN_PETROV_INTERFACE.NE.0 ) THEN
-                                                IF ( NON_LIN_PETROV_INTERFACE == 4 ) THEN ! anisotropic diffusion...
-                                                    RGRAY(IFIELD) = RSCALE(IFIELD) * COEF2(IFIELD) * P_STAR(IFIELD) * SUM( int_UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
-                                                ELSE
-                                                    RGRAY(IFIELD) = - DIFF_COEF(IFIELD) * RSCALE(IFIELD) * SUM( CVNORMX_ALL(:,GI)*FSdevFuns%NX_ALL( :, CV_KLOC, GI )  )
-                                                END IF
-                                            ELSE
-                                                RGRAY(IFIELD) = RSCALE(IFIELD) * ELE_LENGTH_SCALE(IFIELD) * SUM( int_UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
-                                            END IF
-                                            FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (CV_funs%scvfen( CV_KLOC, GI ) + RGRAY(IFIELD))   * LOC_FEMF( IFIELD, CV_KLOC)
-                                        END DO ! ENDOF DO CV_KLOC = 1, Mdims%cv_nloc
-                                    ELSE
-                                        DO CV_KLOC = 1, Mdims%cv_nloc
-                                            FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  CV_funs%scvfen( CV_KLOC, GI ) * LOC_FEMF( IFIELD, CV_KLOC)
-                                        END DO ! ENDOF DO CV_KLOC = 1, Mdims%cv_nloc
-                                    !                              FEMFGI     = 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
-                                    END IF
-                                END DO ! ENDOF DO IFIELD=1,Mdims%nphase
-                            else !For porous media obtain field at GI point
-                                FEMFGI = 0.
-                                forall (IFIELD = 1:nfield, CV_KLOC = 1:Mdims%cv_nloc)
-                                    FEMFGI(IFIELD) = FEMFGI(IFIELD) + CV_funs%scvfen(CV_KLOC,GI)* LOC_FEMF(IFIELD, CV_KLOC)
-                                end forall
-                            end if
-                        ELSE  ! END OF IF( .not. between_elements ) THEN  ---DG saturation across elements
-                            FEMFGI_CENT  = 0.0
-                            FEMFGI_UP    = 0.0
-                            DO CV_SKLOC = 1, Mdims%cv_snloc
-                                ! Central for DG...
-                                FEMFGI_CENT  = FEMFGI_CENT  +  SHAPE_CV_SNL( CV_SKLOC ) * 0.5 * ( SLOC_FEMF( :, CV_SKLOC ) &
-                                    + SLOC2_FEMF( :, CV_SKLOC )    )
-                                ! Standard DG upwinding...
-                                FEMFGI_UP  = FEMFGI_UP  +  SHAPE_CV_SNL( CV_SKLOC ) * ( SLOC2_FEMF( :, CV_SKLOC)  &
-                                    * F_INCOME  + SLOC_FEMF( :, CV_SKLOC) * ( 1. - F_INCOME  ) )
-                            END DO
-                            DO IFIELD=1,NFIELD
-                                IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN ! Extrapolate to the downwind value...
-                                    FEMFGI(IFIELD) = FEMFGI_CENT(IFIELD)
-                                ELSE
-                                    FEMFGI(IFIELD) = FEMFGI_UP(IFIELD)
-
-                                ENDIF
-                            END DO
-                        ENDIF ! ENDOF IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN ELSE
-                        if (.not. is_porous_media) then !Ultra compression unnecessary for porous media
-                            !! ultra compressive operations - C Pain and A Obeysekara
-                            ULTRA_COMPRESSIVE = Mdisopt%compopt
-                            if(ULTRA_COMPRESSIVE) then  !! use ultra-compression of interfaces
-                            CAcoeff=Mdisopt%compoptval !! this coefficient says how ultra-compressive we need to be (default=0.0, very)
-                            !  (CAcoeff of 0.5 is a good in-between)
-
-                            UBCZERO =1.0-F_INCOME  !-ao method (1)
-                            if(BCZERO(1) >= 0.0) NRBC2 = BCZERO(1) !!method (2)
-
-                                select case(UCOMPRESSIVE_version) !! case 1 is the newest and most compressive, so is case 2, case 3 is not compressive at all - 051119
-                                case (1) !! compressive new default - 0411149
-                                FUPWIND_IN  = CAcoeff*FUPWIND_IN  + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, F_CV_NODI  + 2.*(F_CV_NODJ -F_CV_NODI )))
-                                FUPWIND_OUT  = CAcoeff*FUPWIND_OUT  + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, F_CV_NODJ  + 2.*(F_CV_NODI -F_CV_NODJ )))
-                                ! FUPWIND_IN  = NRBC2*FUPWIND_IN  !!051119
-                                ! FUPWIND_OUT  = NRBC2*FUPWIND_OUT
-                                FUPWIND_IN  = UBCZERO *FUPWIND_IN  !!061119 this seems to work
-                                FUPWIND_OUT  =  UBCZERO *FUPWIND_OUT
-                                case (2)!! COMPRESSIVE - older version (october 2019)
-                                FUPWIND_IN  = CAcoeff*FUPWIND_IN  + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODJ -F_CV_NODI )))
-                                FUPWIND_OUT  = CAcoeff*FUPWIND_OUT  + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODI -F_CV_NODJ )))
-                                case (3) !! more dispersive (october 2019)
-                                FUPWIND_IN   = CAcoeff*FUPWIND_IN   +(1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, FEMFGI -F_CV_NODI )))
-                                FUPWIND_OUT  = CAcoeff*FUPWIND_OUT  +(1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, FEMFGI -F_CV_NODJ )))
-                                case (4) !! also doesnt work
-                                FUPWIND_IN  = CAcoeff*FUPWIND_IN  + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI  + 3.*(FEMFGI -F_CV_NODI )))
-                                FUPWIND_OUT  = CAcoeff*FUPWIND_OUT  + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI  + 3.*(FEMFGI -F_CV_NODJ )))
-                                end select
-
-                            end if
-                        end if
-                      !Only compute limited value if the field is not constant in the region
-                      if ( maxval(abs(F_CV_NODI - F_CV_NODJ)/VTOLFUN(F_CV_NODI)) > 1e-8) then
-                        CALL ONVDLIM_ANO_MANY( NFIELD, &
-                            LIMF , FEMFGI , F_INCOME , &
-                            F_CV_NODI , F_CV_NODJ ,int_XI_LIMIT ,  &
-                            FUPWIND_IN , FUPWIND_OUT  , &
-                            DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU)
-                      else !if not just get one value as it is constant
-                        LIMF = F_CV_NODI
-                      end if
-
-                    ENDIF Conditional_CV_DISOPT_ELE2
-
-
-
-            END SELECT
-            RETURN
-        END SUBROUTINE GET_INT_T_DEN_NEW
-
 
         !---------------------------------------------------------------------------
         !> @author Chris Pain, Pablo Salinas, Lluis Via-Estrem, Asiri Obeysekara
@@ -2760,296 +2458,6 @@ contains
         RETURN
     END SUBROUTINE ONVDLIM_ANO_MANY
 
-    !> Checks whether a field is constant or not. Although I think this check is terrible, 
-    !> no alternatives have provided the same functionality so far
-    SUBROUTINE IS_FIELD_CONSTANT(IGOT_T_CONST, IGOT_T_CONST_VALUE, T_ALL, CV_NONODS)
-        !SPRINT_TO_DO THIS SUBROUTINE IS HORRIBLE!!!! we need to find another way of checking if a field is constant!
-        LOGICAL IGOT_T_CONST
-        REAL IGOT_T_CONST_VALUE
-        INTEGER CV_NONODS
-        REAL T_ALL(CV_NONODS)
-        real, parameter :: tolerance = 1.e-10, tolerance2 = 1.e-5
-        ! Local variables...
-        REAL RMAX,RMIN,PERCENT
-        INTEGER I
-
-        RMIN=+1.e+20
-        RMAX=-1.e+20
-        DO I=1,CV_NONODS
-            RMAX=MAX(RMAX, T_ALL(I))
-            RMIN=MIN(RMIN, T_ALL(I))
-        END DO
-
-        PERCENT = ABS(RMAX-RMIN)/MAX(ABS(RMIN),ABS(RMAX),tolerance)
-
-        IGOT_T_CONST=PERCENT < tolerance2
-
-        IGOT_T_CONST_VALUE = RMAX
-        RETURN
-    END SUBROUTINE IS_FIELD_CONSTANT
-
-
-
-
-    !> @brief Copies memory into the same large array to then perform a projection from CV to FE
-    SUBROUTINE PACK_LOC( LOC_F, T_ALL, NPHASE, IPT, IGOT_T_PACK )
-        ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
-        IMPLICIT NONE
-        INTEGER, intent( in ) :: NPHASE
-        ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
-        INTEGER, intent( inout ) :: IPT
-        LOGICAL, DIMENSION(:), intent( in ) :: IGOT_T_PACK
-        REAL, DIMENSION(:), intent( in ) :: T_ALL
-        REAL, DIMENSION(:), intent( inout ) :: LOC_F
-        ! local variables...
-        INTEGER :: IPHASE
-
-        DO IPHASE=1,nphase
-            IF(IGOT_T_PACK(IPHASE)) THEN ! Put into packing vector LOC_F
-                LOC_F(IPT) = T_ALL(IPHASE)
-                IPT=IPT+1
-            ENDIF
-        END DO
-
-        RETURN
-    END SUBROUTINE PACK_LOC
-
-    !> If PACK then UNpack loc_f into T_ALL  as long at IGOT_T==1 and STORE and not already in storage.
-    SUBROUTINE UNPACK_LOC( LOC_F, T_ALL, NPHASE, IPT, IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE)
-        IMPLICIT NONE
-        INTEGER, intent( in ) :: NPHASE
-        !INTEGER, intent( in ) :: GLOBAL_FACE
-        ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
-        INTEGER, intent( inout ) :: IPT
-        LOGICAL, DIMENSION(NPHASE), intent( in ) :: IGOT_T_PACK, IGOT_T_CONST
-        REAL, DIMENSION(NPHASE), intent( inout ) :: T_ALL
-        REAL, DIMENSION(NPHASE), intent( in ) :: IGOT_T_CONST_VALUE
-        REAL, DIMENSION(:), intent( in ) :: LOC_F
-        ! local variables...
-        INTEGER :: IPHASE
-
-
-        DO IPHASE=1,nphase
-            IF(IGOT_T_PACK(IPHASE)) THEN
-                T_ALL(IPHASE) = LOC_F(IPT)
-                IPT=IPT+1
-                if (.not.IGOT_T_CONST(IPHASE)) then
-                    !This option is not considered yet
-                ENDIF
-            ELSE IF(IGOT_T_CONST(IPHASE)) THEN
-                T_ALL(IPHASE) = IGOT_T_CONST_VALUE(IPHASE)
-            ELSE ! Set to 1 as last resort e.g. for T2, T2OLD
-                T_ALL(IPHASE) = 1.0
-            ENDIF
-        END DO
-
-        RETURN
-    END SUBROUTINE UNPACK_LOC
-
-
-    !> If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
-    SUBROUTINE PACK_OR_UNPACK_LOC( LOC_F, T_ALL, NPHASE, NFIELD, IPT, PACK, STORE, IGOT_T )
-        LOGICAL, intent( in ) :: STORE, PACK
-        INTEGER, intent( in ) :: NPHASE, IGOT_T, NFIELD
-        !INTEGER, intent( in ) :: GLOBAL_FACE
-        ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
-        INTEGER, intent( inout ) :: IPT
-        REAL, DIMENSION(NPHASE), intent( inout ) :: T_ALL
-        REAL, DIMENSION(NFIELD), intent( inout ) :: LOC_F
-        ! local variables...
-        LOGICAL :: IN_STORAGE
-
-        IN_STORAGE = .FALSE.
-        IF(STORE) THEN
-            ! IF STORE then look to see if in storage
-            IN_STORAGE = .FALSE.
-        ENDIF
-
-        IF(IGOT_T==1) THEN
-            IF(PACK) THEN
-                ! Pack solution into LOC_F
-                IF(.NOT.IN_STORAGE) THEN
-                    LOC_F(IPT:IPT-1+NPHASE) = T_ALL(:)
-                    IPT=IPT+NPHASE
-                ENDIF
-            ELSE
-                ! Unpack...
-                IF(STORE) THEN
-                    IF(.NOT.IN_STORAGE) THEN ! See if we are already storing limited value
-                    ENDIF
-                    ! Put LOC_F(1:NPHASE, CV_KLOC) = DEN_ALL( 1:NPHASE, CV_NODK ) into storage...
-                    !                      T_ALL = LOC_F ???
-                    IPT=IPT+NPHASE
-                ELSE
-                    ! Put LOC_F(1:NPHASE, CV_KLOC) = DEN_ALL( 1:NPHASE, CV_NODK ) into storage...
-                    T_ALL(:) = LOC_F(IPT:IPT-1+NPHASE)
-                    IPT=IPT+NPHASE
-                ENDIF
-
-            ENDIF ! ENDOF IF(PACK) THEN ELSE
-        ENDIF ! END OF IF(IGOT_T==1) THEN
-        RETURN
-    END SUBROUTINE PACK_OR_UNPACK_LOC
-
-    !> This subroutine is for fields that have already size final_phase - 1
-    !> Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
-    !> to later on apply the limiters on all the fields at once
-    SUBROUTINE PACK_LOC_ALL1( LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3, IGOT_T_PACK, use_volume_frac_T2, nfield )
-        !sprint_to_do Hopefully this reduces slicing
-        IMPLICIT NONE
-        LOGICAL, DIMENSION(:,:), intent( in ) :: IGOT_T_PACK
-        REAL, DIMENSION(:), intent( in ) :: field1, oldfield1, field2, oldfield2, field3, oldfield3
-        REAL, DIMENSION(:), intent( inout ) :: LOC_F
-        logical, intent(in) :: use_volume_frac_T2
-        integer, intent(in) :: nfield
-        ! local variables...
-        INTEGER :: ifield, ipt
-
-        IPT=1;LOC_F = 0.!<= Extremely important to initialise LOC_F here
-        CALL PACK_LOC( LOC_F, field1,    nfield, IPT, IGOT_T_PACK(:,1) )
-        CALL PACK_LOC( LOC_F, oldfield1, nfield, IPT, IGOT_T_PACK(:,2) )
-        CALL PACK_LOC( LOC_F, field2,    nfield, IPT, IGOT_T_PACK(:,3) )
-        CALL PACK_LOC( LOC_F, oldfield2, nfield, IPT, IGOT_T_PACK(:,4) )
-        IF(use_volume_frac_T2) THEN
-          CALL PACK_LOC( LOC_F, field3,  nfield, IPT, IGOT_T_PACK(:,5) )
-          CALL PACK_LOC( LOC_F,oldfield3,nfield, IPT, IGOT_T_PACK(:,6) )
-        ENDIF
-
-    END SUBROUTINE PACK_LOC_ALL1
-
-
-    !>This subrotuine is for fields that are bigger than final_phase - start_phase
-    !> Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
-    !> to later on apply the limiters on all the fields at once
-    !sprint_to_do Hopefully this reduces slicing
-    SUBROUTINE PACK_LOC_ALL2( LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3,&
-            IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase, nodi )
-        !SPRINT_TO_DO THIS ONE IS NOW DEPRECATED!
-        IMPLICIT NONE
-        LOGICAL, DIMENSION(:,:), intent( in ) :: IGOT_T_PACK
-        REAL, DIMENSION(:,:), intent( in ) :: field1, oldfield1, field2, oldfield2, field3, oldfield3
-        REAL, DIMENSION(:), intent( inout ) :: LOC_F
-        logical, intent(in) :: use_volume_frac_T2
-        integer, intent(in) :: start_phase, final_phase, nodi
-        ! local variables...
-        INTEGER :: ipt, nfield
-        nfield = final_phase - start_phase + 1
-
-        IPT=1; LOC_F = 0.!<= Extremely important to initialise LOC_F here
-        CALL PACK_LOC( LOC_F, field1(start_phase : final_phase, nodi),    nfield, IPT, IGOT_T_PACK(:,1) )
-        CALL PACK_LOC( LOC_F, oldfield1(start_phase : final_phase, nodi), nfield, IPT, IGOT_T_PACK(:,2) )
-        CALL PACK_LOC( LOC_F, field2(start_phase : final_phase, nodi),    nfield, IPT, IGOT_T_PACK(:,3) )
-        CALL PACK_LOC( LOC_F, oldfield2(start_phase : final_phase, nodi), nfield, IPT, IGOT_T_PACK(:,4) )
-        IF(use_volume_frac_T2) THEN
-          CALL PACK_LOC( LOC_F, field3(start_phase : final_phase, nodi),  nfield, IPT, IGOT_T_PACK(:,5) )
-          CALL PACK_LOC( LOC_F,oldfield3(start_phase : final_phase, nodi),nfield, IPT, IGOT_T_PACK(:,6) )
-        ENDIF
-
-    END SUBROUTINE PACK_LOC_ALL2
-
-    !>This subrotuine is for fields that are bigger than final_phase - start_phase
-    !> Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the field into LOC_F
-    !> to later on apply the limiters on all the fields at once. This one is for integer fields
-    !sprint_to_do Hopefully this reduces slicing
-    SUBROUTINE PACK_LOC_ALL3( LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3,&
-            IGOT_T_PACK, use_volume_frac_T2, start_phase, final_phase, nodi )
-        !SPRINT_TO_DO THIS ONE IS NOW DEPRECATED!
-        IMPLICIT NONE
-        LOGICAL, DIMENSION(:,:), intent( in ) :: IGOT_T_PACK
-        integer, DIMENSION(:,:), intent( in ) :: field1, oldfield1, field2, oldfield2, field3, oldfield3
-        integer, DIMENSION(:), intent( inout ) :: LOC_F
-        logical, intent(in) :: use_volume_frac_T2
-        integer, intent(in) :: start_phase, final_phase, nodi
-        ! local variables...
-        INTEGER :: ipt, nfield
-        nfield = final_phase - start_phase + 1
-
-        IPT=1; LOC_F = 0.!<= Extremely important to initialise LOC_F here
-        CALL I_PACK_LOC( LOC_F, field1(start_phase : final_phase, nodi),    nfield, IPT, IGOT_T_PACK(:,1) )
-        CALL I_PACK_LOC( LOC_F, oldfield1(start_phase : final_phase, nodi), nfield, IPT, IGOT_T_PACK(:,2) )
-        CALL I_PACK_LOC( LOC_F, field2(start_phase : final_phase, nodi),    nfield, IPT, IGOT_T_PACK(:,3) )
-        CALL I_PACK_LOC( LOC_F, oldfield2(start_phase : final_phase, nodi), nfield, IPT, IGOT_T_PACK(:,4) )
-        IF(use_volume_frac_T2) THEN
-          CALL I_PACK_LOC( LOC_F, field3(start_phase : final_phase, nodi),  nfield, IPT, IGOT_T_PACK(:,5) )
-          CALL I_PACK_LOC( LOC_F,oldfield3(start_phase : final_phase, nodi),nfield, IPT, IGOT_T_PACK(:,6) )
-        ENDIF
-
-      contains
-      !> If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
-        SUBROUTINE I_PACK_LOC( LOC_F, T_ALL, NPHASE, IPT, IGOT_T_PACK )
-            IMPLICIT NONE
-            INTEGER, intent( in ) :: NPHASE
-            ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
-            INTEGER, intent( inout ) :: IPT
-            LOGICAL, DIMENSION(NPHASE), intent( in ) :: IGOT_T_PACK
-            INTEGER, DIMENSION(NPHASE), intent( in ) :: T_ALL
-            INTEGER, DIMENSION(:), intent( inout ) :: LOC_F
-            ! local variables...
-            INTEGER :: IPHASE
-
-            DO IPHASE=1,nphase
-                IF(IGOT_T_PACK(IPHASE)) THEN ! Put into packing vector LOC_F
-                    LOC_F(IPT) = T_ALL(IPHASE)
-                    IPT=IPT+1
-                ENDIF
-            END DO
-
-            RETURN
-        END SUBROUTINE I_PACK_LOC
-    END SUBROUTINE PACK_LOC_ALL3
-
-    !> If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
-    SUBROUTINE I_PACK_LOC( LOC_F, T_ALL, NPHASE, IPT, IGOT_T_PACK )
-        IMPLICIT NONE
-        INTEGER, intent( in ) :: NPHASE
-        ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
-        INTEGER, intent( inout ) :: IPT
-        LOGICAL, DIMENSION(NPHASE), intent( in ) :: IGOT_T_PACK
-        INTEGER, DIMENSION(NPHASE), intent( in ) :: T_ALL
-        INTEGER, DIMENSION(:), intent( inout ) :: LOC_F
-        ! local variables...
-        INTEGER :: IPHASE
-
-        DO IPHASE=1,nphase
-            IF(IGOT_T_PACK(IPHASE)) THEN ! Put into packing vector LOC_F
-                LOC_F(IPT) = T_ALL(IPHASE)
-                IPT=IPT+1
-            ENDIF
-        END DO
-
-        RETURN
-    END SUBROUTINE I_PACK_LOC
-
-    !> If PACK then UNpack loc_f into T_ALL  as long at IGOT_T==1 and STORE and not already in storage.
-    !> Checks if the fields are constant or not, stored in IGOT_T_PACK, based on that introduces the LOC_F into the field
-    !> or use a constant value. This is after the limiters have been applied
-    !This should reduce slicing!
-    SUBROUTINE UNPACK_LOC_ALL( LOC_F, field1, oldfield1, field2, oldfield2, field3, oldfield3,&
-                              IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE, use_volume_frac_T2, nfield)
-        IMPLICIT NONE
-        LOGICAL, DIMENSION(:,:), intent( in ) :: IGOT_T_PACK, IGOT_T_CONST
-        REAL, DIMENSION(:), intent( inout ) :: field1, oldfield1, field2, oldfield2, field3, oldfield3
-        REAL, DIMENSION(:,:), intent( in ) :: IGOT_T_CONST_VALUE
-        REAL, DIMENSION(:), intent( in ) :: LOC_F
-        logical, intent(in) :: use_volume_frac_t2
-        integer, intent(in) :: nfield
-
-        ! local variables...
-        INTEGER :: ifield, ipt
-
-        IPT=1
-        CALL UNPACK_LOC( LOC_F, field1,    nfield, IPT, IGOT_T_PACK(:,1), IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1))
-        CALL UNPACK_LOC( LOC_F, oldfield1, nfield, IPT, IGOT_T_PACK(:,2), IGOT_T_CONST(:,2), IGOT_T_CONST_VALUE(:,2))
-        CALL UNPACK_LOC( LOC_F, field2,    nfield, IPT, IGOT_T_PACK(:,3), IGOT_T_CONST(:,3), IGOT_T_CONST_VALUE(:,3))
-        CALL UNPACK_LOC( LOC_F, oldfield2, nfield, IPT, IGOT_T_PACK(:,4), IGOT_T_CONST(:,4), IGOT_T_CONST_VALUE(:,4))
-        IF ( use_volume_frac_T2 ) THEN
-          CALL UNPACK_LOC( LOC_F, field3,  nfield, IPT, IGOT_T_PACK(:,5), IGOT_T_CONST(:,5), IGOT_T_CONST_VALUE(:,5))
-          CALL UNPACK_LOC( LOC_F,oldfield3,nfield, IPT, IGOT_T_PACK(:,6), IGOT_T_CONST(:,6), IGOT_T_CONST_VALUE(:,6))
-        else
-            field3 = 1.0; oldfield3 = 1.0
-        ENDIF
-
-    END SUBROUTINE UNPACK_LOC_ALL
 
 
 
@@ -3260,7 +2668,7 @@ contains
         ! initialisation and allocation
         !---------------------------------
         !Currently hard-coded. This is not used for porous_media but it is used otherwise
-        do_not_project = is_porous_media
+        do_not_project = .true.
         is_to_update = .not.associated(CV_funs%CV2FE%refcount)!I think this is only true after adapt and at the beginning
         if (.not. do_not_project) then
             do it=1,size(fempsi)
@@ -4012,407 +3420,6 @@ contains
         RETURN
 
     END SUBROUTINE DIFFUS_CAL_COEFF
-
-
-    !> This sub calculates the effective diffusion coefficientd STRESS_IJ_ELE_EXT
-    !> it only works for between element contributions.
-    !> based on a high order scheme.
-    !> The matrix  S_INV_NNX_MAT12 is used to calculate the rows of the matrix with STRESS_IJ_ELE_EXT.
-    !> This implements the stress and tensor form of diffusion and calculates a jump conidition.
-    !> which is in DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
-    !> The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
-    !> look at the manual DG treatment of viscocity.
-    SUBROUTINE LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_ELE_EXT,  S_INV_NNX_MAT12,  &
-        STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
-        U_SNLOC, U_NLOC, CV_SNLOC, NPHASE,  &
-        SBUFEN_REVERSED,SBCVFEN_REVERSED, SDETWEI, SBCVNGI, NDIM, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, DIFF_GI_ADDED, &
-        ON_BOUNDARY, SNORMXN_ALL  )
-        IMPLICIT NONE
-        LOGICAL, intent( in ) :: STRESS_FORM, STRESS_FORM_STAB, ON_BOUNDARY
-        INTEGER, intent( in ) :: U_SNLOC, U_NLOC, CV_SNLOC, NPHASE,  &
-            &                   SBCVNGI, NDIM
-        REAL, intent( in ) :: ZERO_OR_TWO_THIRDS
-        REAL, DIMENSION( NDIM, NDIM, NPHASE, U_SNLOC, 2*U_NLOC ), intent( inout ) :: STRESS_IJ_ELE_EXT
-        REAL, DIMENSION( NDIM, U_SNLOC, 2*U_NLOC ), intent( inout ) :: S_INV_NNX_MAT12
-        REAL, DIMENSION( SBCVNGI, CV_SNLOC ), intent( in ) :: SBCVFEN_REVERSED
-        REAL, DIMENSION( SBCVNGI, U_SNLOC  ), intent( in ) :: SBUFEN_REVERSED
-        REAL, DIMENSION( SBCVNGI ), intent( in ) :: SDETWEI
-        REAL, DIMENSION( NDIM,NDIM,NPHASE,CV_SNLOC ), intent( in ) :: SLOC_UDIFFUSION, SLOC2_UDIFFUSION
-        REAL, DIMENSION( NPHASE,CV_SNLOC ), intent( in ) :: SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION_VOL
-        ! DIFF_GI_ADDED( IDIM, :,:) is for dimension IDIM e.g IDIM=1 corresponds to U
-        ! the rest is for the diffusion tensor.
-        REAL, DIMENSION( NDIM, NDIM,NDIM, NPHASE, SBCVNGI), intent( in ) :: DIFF_GI_ADDED
-        REAL, DIMENSION( NDIM, SBCVNGI ), intent( in ) :: SNORMXN_ALL
-        ! local variables...
-        ! If FAST then use the fast version that is less well tested..
-        LOGICAL, PARAMETER :: FAST = .true.
-
-        REAL, DIMENSION(NDIM,NDIM,NPHASE,SBCVNGI) :: DIFF_GI, DIFF_GI2
-        REAL, DIMENSION(NPHASE,SBCVNGI) :: DIFF_VOL_GI, DIFF_VOL_GI2
-        ! for rapid version of code...
-        REAL, DIMENSION(NDIM,NDIM,NPHASE,U_SNLOC,U_SNLOC) :: MAT_SUFXX
-        REAL, DIMENSION(NDIM,NPHASE,U_SNLOC,U_SNLOC) :: MAT_SUFVOL
-
-        !    REAL, DIMENSION(NDIM,Ndim) :: two_dim
-        !    REAL, DIMENSION(NDIM) :: one_dim
-
-        INTEGER :: IDIM,JDIM,CV_SKLOC
-        INTEGER :: SGI,IPHASE,U_JLOC12,I,U_SILOC,U_SJLOC
-        REAL :: RDUM
-
-
-        !          ALLOCATE( DIFF_GI(NDIM,NDIM,NPHASE,SBCVNGI) )
-        !          ALLOCATE( DIFF_GI2(NDIM,NDIM,NPHASE,SBCVNGI) )
-
-        !          ALLOCATE( DIFF_VOL_GI(NPHASE,SBCVNGI) )
-        !          ALLOCATE( DIFF_VOL_GI2(NPHASE,SBCVNGI) )
-
-        DIFF_GI = 0.0
-        DIFF_VOL_GI = 0.0
-        DO CV_SKLOC = 1, CV_SNLOC
-            DO SGI=1,SBCVNGI
-                DO IPHASE=1, NPHASE
-                    DIFF_GI( 1:NDIM , 1:NDIM, IPHASE, SGI ) = DIFF_GI( 1:NDIM , 1:NDIM, IPHASE, SGI ) &
-                        + SBCVFEN_REVERSED(SGI,CV_SKLOC) * SLOC_UDIFFUSION( 1:NDIM , 1:NDIM , IPHASE, CV_SKLOC )
-
-                    DIFF_VOL_GI( IPHASE, SGI ) = DIFF_VOL_GI( IPHASE, SGI ) &
-                        + SBCVFEN_REVERSED(SGI,CV_SKLOC) * SLOC_UDIFFUSION_VOL( IPHASE, CV_SKLOC )
-                END DO
-            END DO
-        END DO
-        DIFF_GI=MAX(0.0, DIFF_GI)
-        DIFF_VOL_GI=MAX(0.0, DIFF_VOL_GI)
-
-        IF(.NOT.ON_BOUNDARY) THEN
-            ! neighbouring element...
-            DIFF_GI2 = 0.0
-            DIFF_VOL_GI2 = 0.0
-            DO CV_SKLOC = 1, CV_SNLOC
-                DO SGI=1,SBCVNGI
-                    DO IPHASE=1, NPHASE
-                        DIFF_GI2( 1:NDIM, 1:NDIM, IPHASE, SGI )= DIFF_GI2( 1:NDIM, 1:NDIM, IPHASE, SGI ) +SBCVFEN_REVERSED(SGI,CV_SKLOC) &
-                            *SLOC2_UDIFFUSION(1:NDIM, 1:NDIM ,IPHASE, CV_SKLOC)
-
-                        DIFF_VOL_GI2( IPHASE, SGI )= DIFF_VOL_GI2( IPHASE, SGI ) +SBCVFEN_REVERSED(SGI,CV_SKLOC) &
-                            *SLOC2_UDIFFUSION_VOL(IPHASE, CV_SKLOC)
-                    END DO
-                END DO
-            END DO
-            DIFF_GI2=MAX(0.0, DIFF_GI2)
-            DIFF_VOL_GI2=MAX(0.0, DIFF_VOL_GI2)
-
-            DIFF_GI=0.5*(DIFF_GI+DIFF_GI2)
-            DIFF_VOL_GI=0.5*(DIFF_VOL_GI+DIFF_VOL_GI2)
-        ENDIF
-
-
-        IF(STRESS_FORM_STAB) THEN
-
-            DO JDIM=1,NDIM
-                DO IDIM=1,NDIM
-                    DIFF_GI(IDIM, JDIM, :, :) = DIFF_GI(IDIM, JDIM, :, :) &
-                        + SQRT( DIFF_GI_ADDED(IDIM, 1,1, :, :) * DIFF_GI_ADDED(JDIM, 1,1, :, :) )
-
-                END DO
-            END DO
-
-        ELSE
-            DO IDIM=1,NDIM
-                DIFF_GI(IDIM, IDIM, :, :) = DIFF_GI(IDIM, IDIM, :, :) &
-                    +  DIFF_GI_ADDED(IDIM, 1,1, :, :)
-            END DO
-        ENDIF
-
-
-
-        STRESS_IJ_ELE_EXT=0.0
-
-
-        IF(STRESS_FORM) THEN
-            IF(FAST) THEN ! The rapid version
-                MAT_SUFXX=0.0
-                MAT_SUFVOL=0.0
-
-                DO U_SILOC=1,U_SNLOC
-                    DO U_SJLOC=1,U_SNLOC
-                        DO SGI=1,SBCVNGI
-                            DO JDIM=1,NDIM
-                                RDUM = SNORMXN_ALL(JDIM,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)*SBUFEN_REVERSED(SGI,U_SJLOC)*SDETWEI( SGI )
-                                DO IPHASE=1,NPHASE
-                                    DO IDIM=1,NDIM
-                                        ! take -ve as its a surface integral...
-                                        MAT_SUFXX(IDIM,JDIM,IPHASE,U_SILOC,U_SJLOC) = MAT_SUFXX(IDIM,JDIM,IPHASE,U_SILOC,U_SJLOC) &
-                                            -  RDUM*DIFF_GI( IDIM, JDIM, IPHASE, SGI )
-                                    END DO
-                                    MAT_SUFVOL(JDIM,IPHASE,U_SILOC,U_SJLOC) = MAT_SUFVOL(JDIM,IPHASE,U_SILOC,U_SJLOC) &
-                                        -  RDUM*DIFF_VOL_GI( IPHASE, SGI )
-                                END DO
-                            END DO
-                        END DO
-                    END DO
-                END DO
-
-
-
-                DO I=1,U_SNLOC
-                    DO U_JLOC12=1,U_NLOC*2
-                        DO U_SILOC=1,U_SNLOC
-                            DO IPHASE=1,NPHASE
-                                CALL CALC_STRESS_TEN_REDUCE(STRESS_IJ_ELE_EXT( :, :, IPHASE, U_SILOC, U_JLOC12 ), ZERO_OR_TWO_THIRDS, NDIM,    &
-                                    MAT_SUFXX(:,:,IPHASE,U_SILOC,I), MAT_SUFVOL(:,IPHASE,U_SILOC,I),  S_INV_NNX_MAT12( :, I, U_JLOC12 )  )
-
-                            END DO
-                        END DO
-
-                    END DO
-
-                END DO
-            ELSE ! less rapid version...
-                DO U_JLOC12=1,U_NLOC*2
-                    DO U_SILOC=1,U_SNLOC
-                        DO I=1,U_SNLOC
-                            DO SGI=1,SBCVNGI
-                                DO IPHASE=1,NPHASE
-                                    ! take -ve as its a surface integral...
-                                    CALL CALC_STRESS_TEN( STRESS_IJ_ELE_EXT( :, :, IPHASE, U_SILOC, U_JLOC12 ), ZERO_OR_TWO_THIRDS, NDIM, &
-                                        - SNORMXN_ALL(:,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)* SBUFEN_REVERSED(SGI,I)*SDETWEI( SGI ), S_INV_NNX_MAT12( 1:NDIM, I, U_JLOC12 ), DIFF_GI( :, :, IPHASE, SGI ), DIFF_VOL_GI( IPHASE, SGI) )
-                                END DO
-                            END DO
-                        END DO
-
-                    END DO
-                END DO
-            ENDIF
-
-        ELSE ! tensor form of viscocity...
-            IF(FAST) THEN ! The rapid version
-
-                MAT_SUFXX=0.0
-
-                DO U_SILOC=1,U_SNLOC
-                    DO U_SJLOC=1,U_SNLOC
-                        DO SGI=1,SBCVNGI
-                            DO IDIM=1,NDIM
-                                RDUM = SNORMXN_ALL(IDIM,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)*SBUFEN_REVERSED(SGI,U_SJLOC)*SDETWEI( SGI )
-                                DO IPHASE=1,NPHASE
-                                    DO JDIM=1,NDIM
-                                        ! take -ve as its a surface integral...
-                                        MAT_SUFXX(IDIM,JDIM,IPHASE,U_SILOC,U_SJLOC) = MAT_SUFXX(IDIM,JDIM,IPHASE,U_SILOC,U_SJLOC) &
-                                            -  RDUM*DIFF_GI( IDIM, JDIM, IPHASE, SGI )
-                                    END DO
-                                END DO
-                            END DO
-                        END DO
-                    END DO
-                END DO
-                ! STRESS_IJ_ELE_EXT = MAT_SUFX*S_INV_NNX_MAT12
-                DO U_JLOC12=1,U_NLOC*2
-                    DO U_SILOC=1,U_SNLOC
-                        DO I=1,U_SNLOC
-                            DO IPHASE=1,NPHASE
-                                DO IDIM=1,NDIM
-                                    STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) = STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) &
-                                        + SUM(  MAT_SUFXX(IDIM,:,IPHASE, U_SILOC, I) *  S_INV_NNX_MAT12( :, I, U_JLOC12 )  )
-                                END DO
-                            END DO
-                        END DO
-
-                    END DO
-                END DO
-
-            ELSE  ! The rapid version
-
-                DO SGI=1,SBCVNGI
-                    DO U_JLOC12=1,U_NLOC*2
-                        DO U_SILOC=1,U_SNLOC
-
-                            DO I=1,U_SNLOC
-                                DO IPHASE=1,NPHASE
-                                    DO IDIM=1,NDIM
-                                        STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) = STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) &
-                                            - SNORMXN_ALL(IDIM,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)* SBUFEN_REVERSED(SGI,I)*SDETWEI( SGI )  &
-                                            * SUM( DIFF_GI( IDIM, :, IPHASE, SGI ) *  S_INV_NNX_MAT12( :, I, U_JLOC12 ) )
-                                    !                                 * DIFF_GI( IDIM, idim, IPHASE, SGI ) *  S_INV_NNX_MAT12( idim, I, U_JLOC12 )
-                                    END DO
-                                END DO
-                            END DO
-                        END DO
-
-                    END DO
-                END DO
-            ENDIF ! endof if THEN ELSE OF The rapid version
-            ! all other components are the same...
-            DO IDIM=2,NDIM
-                STRESS_IJ_ELE_EXT( IDIM,IDIM, :,:,: ) = STRESS_IJ_ELE_EXT( 1,1, :,:,: )
-            END DO
-
-        ENDIF
-
-        !          CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_SILOC, U_JLOC_EXT ), ZERO_OR_TWO_THIRDS, NDIM, &
-        !               UFENX_ALL( 1:NDIM, U_ILOC, GI ), UFENX_ALL( 1:NDIM, U_JLOC, GI )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
-
-
-        RETURN
-
-    END SUBROUTINE LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR
-
-
-
-
-
-
-
-
-
-
-
-    !> determine stress form of viscocity...
-    SUBROUTINE CALC_STRESS_TEN(STRESS_IJ, ZERO_OR_TWO_THIRDS, NDIM,    &
-        UFENX_ILOC, UFENX_JLOC,  TEN_XX, TEN_VOL )
-        IMPLICIT NONE
-        INTEGER, intent( in )  :: NDIM
-        REAL, DIMENSION( :, :  ), intent( inOUT ) :: STRESS_IJ
-        REAL, DIMENSION( : ), intent( in ) :: UFENX_ILOC
-        REAL, DIMENSION( :,: ), intent( in ) :: TEN_XX
-        ! TEN_VOL is volumetric viscocity - mostly set to zero other than q-scheme or use with kinetic theory
-        REAL, intent( in ) :: TEN_VOL
-        REAL, DIMENSION( : ), intent( in ) :: UFENX_JLOC
-        REAL, intent( in ) :: ZERO_OR_TWO_THIRDS
-        ! Local variables...
-        REAL :: FEN_TEN_XX(NDIM,NDIM),FEN_TEN_VOL(NDIM)
-        INTEGER :: IDIM,JDIM
-
-
-        DO IDIM=1,NDIM
-            FEN_TEN_XX(IDIM,:)=UFENX_ILOC(:) * TEN_XX(IDIM,:)
-        END DO
-        FEN_TEN_VOL(:)=UFENX_ILOC(:) * TEN_VOL
-
-        DO IDIM=1,NDIM
-            STRESS_IJ( IDIM,IDIM ) = STRESS_IJ( IDIM,IDIM ) + SUM( FEN_TEN_XX(IDIM,:) * UFENX_JLOC(:) )
-        END DO
-
-        DO JDIM=1,NDIM
-            DO IDIM=1,NDIM
-                !               STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(JDIM)
-                STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(IDIM)
-            END DO
-        END DO
-
-        DO JDIM=1,NDIM
-            DO IDIM=1,NDIM
-                STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) &
-                    - ZERO_OR_TWO_THIRDS * FEN_TEN_XX(IDIM,IDIM) * UFENX_JLOC(JDIM) &
-                    + FEN_TEN_VOL(IDIM) * UFENX_JLOC(JDIM)
-            END DO
-        END DO
-
-        RETURN
-
-    END SUBROUTINE CALC_STRESS_TEN
-
-
-
-
-    !> determine stress form of viscocity...
-    SUBROUTINE CALC_STRESS_TEN_REDUCE(STRESS_IJ, ZERO_OR_TWO_THIRDS, NDIM,    &
-        FEN_TEN_XX, FEN_TEN_VOL,  UFENX_JLOC  )
-        IMPLICIT NONE
-        INTEGER, intent( in )  :: NDIM
-        REAL, DIMENSION( NDIM, NDIM  ), intent( inOUT ) :: STRESS_IJ
-        REAL, DIMENSION( NDIM, NDIM ), intent( in ) :: FEN_TEN_XX
-        REAL, DIMENSION( NDIM ), intent( in ) :: FEN_TEN_VOL
-        ! TEN_VOL is volumetric viscocity - mostly set to zero other than q-scheme or use with kinetic theory
-        REAL, DIMENSION( NDIM ), intent( in ) :: UFENX_JLOC
-        REAL, intent( in ) :: ZERO_OR_TWO_THIRDS
-        ! Local variables...
-        INTEGER :: IDIM,JDIM
-
-        DO IDIM=1,NDIM
-            STRESS_IJ( IDIM,IDIM ) = STRESS_IJ( IDIM,IDIM ) + SUM( FEN_TEN_XX(IDIM,:) * UFENX_JLOC(:) )
-        END DO
-
-        DO JDIM=1,NDIM
-            DO IDIM=1,NDIM
-                !               STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(JDIM)
-                STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(IDIM)
-            END DO
-        END DO
-
-        DO JDIM=1,NDIM
-            DO IDIM=1,NDIM
-                STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) &
-                    - ZERO_OR_TWO_THIRDS * FEN_TEN_XX(IDIM,IDIM) * UFENX_JLOC(JDIM) &
-                    + FEN_TEN_VOL(IDIM) * UFENX_JLOC(JDIM)
-            END DO
-        END DO
-
-        RETURN
-
-    END SUBROUTINE CALC_STRESS_TEN_REDUCE
-
-
-
-
-    !> Adjust TMIN to take into account different sized CV's.
-    !> if RESET_STORE then reset TMIN to orginal values.
-    SUBROUTINE CAL_LIM_VOL_ADJUST( TMIN_STORE, TMIN, T, TMIN_NOD, RESET_STORE, MASS_CV, &
-        &                         CV_NODI_IPHA, CV_NODJ_IPHA, IPHASE, CV_NONODS, INCOME )
-        implicit none
-        REAL, intent( in ) :: INCOME
-        INTEGER, intent( in ) :: CV_NODI_IPHA, CV_NODJ_IPHA,IPHASE, CV_NONODS
-        LOGICAL, intent( in ) :: RESET_STORE
-        REAL, intent( inout ) :: TMIN_STORE
-        REAL, DIMENSION( : ), intent( inout ) :: TMIN
-        REAL, DIMENSION( : ), intent( in ) :: T
-        INTEGER, DIMENSION( : ), intent( in ) :: TMIN_NOD
-        REAL, DIMENSION( : ), intent( in ) :: MASS_CV
-        ! Local variables...
-        REAL DX1, DX2_MIN, COEFF
-        INTEGER CV_NODI, CV_NODJ
-        LOGICAL, PARAMETER :: DEF_BOUNDED = .FALSE.
-
-        CV_NODI = CV_NODI_IPHA-(IPHASE-1)*CV_NONODS
-        CV_NODJ = CV_NODJ_IPHA-(IPHASE-1)*CV_NONODS
-
-        IF ( RESET_STORE ) THEN
-
-            IF ( INCOME < 0.5 ) THEN
-                TMIN( CV_NODI_IPHA ) = TMIN_STORE
-            ELSE
-                TMIN( CV_NODJ_IPHA ) = TMIN_STORE
-            ENDIF
-
-        ELSE
-
-            DX1 = 0.5 * ( MASS_CV(CV_NODI) + MASS_CV(CV_NODJ) )
-
-            IF ( INCOME < 0.5 ) THEN
-                DX2_MIN = 0.5 * ( MASS_CV( TMIN_NOD(CV_NODI_IPHA)-(IPHASE-1)*CV_NONODS) &
-                    + MASS_CV( CV_NODI) )
-                TMIN_STORE = TMIN(CV_NODI_IPHA)
-                IF ( DEF_BOUNDED ) THEN ! This produces strictly bounded always soln
-                    COEFF = MIN( 1.0, (DX1/DX2_MIN) )
-                ELSE
-                    COEFF = (DX1/DX2_MIN)
-                ENDIF
-                TMIN( CV_NODI_IPHA ) = T(CV_NODI_IPHA) + COEFF * ( TMIN_STORE - T(CV_NODI_IPHA) )
-            ELSE
-                DX2_MIN = 0.5 * ( MASS_CV( TMIN_NOD(CV_NODJ_IPHA)-(IPHASE-1)*CV_NONODS) &
-                    + MASS_CV( CV_NODJ))
-                TMIN_STORE = TMIN(CV_NODJ_IPHA)
-                IF ( DEF_BOUNDED ) THEN ! This produces strictly bounded always soln
-                    COEFF = MIN( 1.0, (DX1/DX2_MIN) )
-                ELSE
-                    COEFF = (DX1/DX2_MIN)
-                END IF
-                TMIN(CV_NODJ_IPHA) = T(CV_NODJ_IPHA) + COEFF * ( TMIN_STORE - T(CV_NODJ_IPHA) )
-            END IF
-
-        END IF
-
-        RETURN
-    END SUBROUTINE CAL_LIM_VOL_ADJUST
 
     !> Form approximate surface normal (NORMX_ALL(1),NORMX_ALL(2),NORMX_ALL(3))
     SUBROUTINE DGSIMPLNORM_ALL( NLOC, SNLOC, NDIM,  &

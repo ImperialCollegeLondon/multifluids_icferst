@@ -36,7 +36,7 @@ module fluids_module
        simulation_start_time, &
        simulation_start_cpu_time, &
        simulation_start_wall_time, &
-       topology_mesh_name, FIELD_NAME_LEN, is_porous_media
+       topology_mesh_name, FIELD_NAME_LEN
   use futils, only: int2str
   use reference_counting, only: print_references
   use parallel_tools
@@ -946,13 +946,6 @@ contains
             ewrite(-1,*) "Warning: you have adaptive timestep adjustment after &&
                           && adapt, but have not set a minimum timestep"
         end if
-    !else
-        ! Timestep adapt
-        ! Commented this in order to avoid duplicate change on dt (or a new change that it is not controlled by IC-FERST)
-        ! if(have_option("/timestepping/adaptive_timestep") .and. .not. is_porous_media) then
-        !    call calc_cflnumber_field_based_dt(state, dt, force_calculation = .true.)
-        !    call set_option("/timestepping/timestep", dt)
-        ! end if
     end if
 
     ! Ocean boundaries

@@ -52,7 +52,7 @@ module solvers_module
 
     public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
          Initialise_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess, &
-         non_porous_ensure_sum_to_one, duplicate_petsc_matrix, scale_PETSc_matrix, petsc_Stokes_solver
+         non_porous_ensure_sum_to_one, duplicate_petsc_matrix, scale_PETSc_matrix
 
 
 contains
@@ -365,11 +365,7 @@ contains
         new_backtrack_par = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
-        if (is_porous_media) then
-          call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .TRUE. )
-        else
-          call non_porous_ensure_sum_to_one(mdims, packed_state, do_not_update_halos = .TRUE.)
-        end if
+        call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .TRUE. )
         sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         Satura =>  sat_field%val(1,:,:)
         !Stablish minimum backtracking parameter
@@ -483,11 +479,7 @@ contains
 
         end if
         !Re-impose physical constraints
-        if (is_porous_media) then
-          call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .FALSE. )
-        else
-          call non_porous_ensure_sum_to_one(Mdims, packed_state, do_not_update_halos = .FALSE.)
-        end if
+        call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .FALSE. )
 
         !Inform of the new backtrack_par parameter used
         new_backtrack_par = backtrack_pars(1)
@@ -1145,108 +1137,7 @@ contains
     end subroutine
 
 
-    !---------------------------------------------------------------------------
-    !> @author Pablo Salinas
-    !> @brief In this subroutine the Schur complement is generated and solved using PETSc to update the pressure field
-    !> Matrices need to be in petsc format and pmat is the preconditioned matrix, i.e. pmat = A11- A10(AproxA00^-1)A01
-    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
-    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
-    !>@param  Mspars Sparsity of the matrices
-    !>@param  ndgln Global to local variables
-    !>@param  final_phase This is the final phase to be assembled, in this way we can assemble from phase 1 to final_phase not necessarily being for all the phases
-    !>@param pmat INOUT preconditioned matrix, i.e. pmat = A11- A10(AproxA00^-1)A01
-    !>@param P_all Pressure field
-    !>@param deltaP Update of pressure from before solving
-    !>@param  rhs_p RHS of the Pressure system
-    !>@param solver_option_path Path of the solver to be used to solve here the system
-    !>@param Dmat (optional) is the Matrix multipliying pressure in the continuity equation
-    subroutine petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, pmat, P_all, deltaP, rhs_p, solver_option_path, Dmat)
-        use Full_Projection
-        use petsc_tools
-        use solvers
-        
-        IMPLICIT NONE
-        type( state_type ), intent( inout ) :: packed_state
-        type(multi_dimensions), intent(in) :: Mdims
-        type(multi_matrices), intent(inout) :: Mmat
-        type(petsc_csr_matrix), intent( inout )::  pmat
-        type( vector_field ), intent(in) :: rhs_p
-        type( vector_field ), INTENT(INOUT) :: deltap
-        type( tensor_field ), INTENT(INOUT) :: P_all
-        character(len=option_path_len), intent(in) :: solver_option_path
-        type(multi_ndgln), intent(in) :: ndgln
-        type(multi_sparsities), intent(in) :: Mspars
-        INTEGER, intent( in ) :: final_phase
-        type(petsc_csr_matrix), optional, intent( inout )::  Dmat
-        !Local variables
-        type(petsc_numbering_type) :: petsc_numbering, petsc_numbering_vel
-        integer :: ierr, literations
-        type (scalar_field) :: scalar_rhs_p, scalar_delta_P
-        type( csr_sparsity ), pointer :: sparsity
-        logical :: has_diffusion_operator
-        ! type(petsc_csr_matrix)::Schur_mat
-        Vec y, b
-        Mat S, Schur_mat
-        KSP ksp_schur
-
-        !Convert the matrices from ICFERST to PETSC format (not ideal...)
-        call Convert_C_and_CT_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase) 
-
-        !generate sparsity so we can communicate with PETSc
-        sparsity=>extract_csr_sparsity(packed_state,"CMatrixSparsity")
-        call allocate(petsc_numbering, node_count(deltaP), deltaP%dim, &
-                            halo=sparsity%row_halo)
-
-        !Scale Mmat%CT_PETSC%M to follow the sign convention of PETSc
-        !SPRINT_TO_DO, IF EVERYTHING WORKS, THEN PROBABLY BETTER FLIP THE SIGN OF THE UPDATE ONLY??
-        call MatScale(Mmat%CT_PETSC%M,real(-1.0, kind = PetscScalar_kind),ierr)
-
-        if(present(Dmat)) then
-            call MatCreateSchurComplement(Mmat%DGM_PETSC%M, Mmat%DGM_PETSC%M, Mmat%C_PETSC%M, Mmat%CT_PETSC%M, Dmat%M, Schur_mat, ierr)
-        else
-    ! workaround bug in petsc 3.8: missing CHKFORTRANNULLOBJECT, so PETSC_NULL_MAT isn't translated to C null
-    ! this however seems to do the trick:
-#if PETSC_VERSION_MINOR>=8
-    S%v = 0
-#else
-    S = PETSC_NULL_OBJECT
-#endif
-            !Because we provide our own pmat = A11- A10(AproxA00^-1)A01 we just populate here with A00 the approx of A00
-            call MatCreateSchurComplement(Mmat%DGM_PETSC%M, Mmat%DGM_PETSC%M, Mmat%C_PETSC%M, Mmat%CT_PETSC%M, S, Schur_mat, ierr)
-        end if
-        !This is to obtain using PETSc the pmat matrix, currently not working
-        !MAT_SCHUR_COMPLEMENT_AINV_DIAG, MAT_SCHUR_COMPLEMENT_AINV_LUMP, or MAT_SCHUR_COMPLEMENT_AINV_BLOCK_DIAG
-        ! call MatSchurComplementSetAinvType(Schur_mat, MAT_SCHUR_COMPLEMENT_AINV_DIAG, ierr)
-        ! call MatSchurComplementGetPmat(Schur_mat, MAT_INITIAL_MATRIX, pmat%M, ierr)
-
-        ! Create KSP (solver_option_path should point to pressure options or the default)
-        call attach_null_space_from_options(Schur_mat, solver_option_path, pmat=pmat%M, petsc_numbering=petsc_numbering)
-        call create_ksp_from_options(ksp_schur,Schur_mat,pmat%M, solver_option_path, isparallel(),petsc_numbering, .true.)
-
-        ! Create RHS and Solution vectors in PETSc format
-        b = PetscNumberingCreateVec(petsc_numbering); call VecDuplicate(b,y,ierr)
-        call field2petsc(rhs_p, petsc_numbering, b)
-        call field2petsc(deltaP, petsc_numbering, y)
-  
-        ! Solve Schur complement system
-        call petsc_solve_core(y, Schur_mat, b, ksp_schur, petsc_numbering, solver_option_path, .true., &
-            literations, nomatrixdump=.true., vector_x0 = deltaP, vfield = deltaP)
-! print *, "Iterations taken", literations
-        !Copy value back
-        call petsc2field(y, petsc_numbering, deltap)
-        ! Destroy all PETSc related variables
-        call petsc_solve_destroy(y, Schur_mat, b, ksp_schur, petsc_numbering, solver_option_path)
-
-        !Flip sign here if we haven't flipped the sign of the Ct matrix before
-        ! deltaP%val = -1.* deltaP%val
-        !Update pressure now
-        P_all%val(1,:,:) = P_all%val(1,:,:) + deltaP%val
-        if (isParallel()) call halo_update(P_all)
-
-    end subroutine
-
     !>@brief: This subroutine converts the C (gradient) and CT (Divergence) matrices into PETSc format
-    !> Mainly devoted to be used by the PETSc stokes schur solver
     !> This can be used when moving from the ICFERST matrix format to PETSc as reference
     !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
     !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
