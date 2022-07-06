@@ -894,22 +894,22 @@ contains
                       Conditional_integration: IF ( INTEGRAT_AT_GI ) THEN
                           between_elements = (ELE2 /= 0) .AND. (ELE2 /= ELE)
                           on_domain_boundary = ( SELE /= 0 )
-                          IF ( between_elements ) THEN
-                              CV_NODJ = ndgln%cv( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                              X_NODJ = ndgln%x( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                              MAT_NODJ = ndgln%mat( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                          ELSE
+                        !   IF ( between_elements ) THEN
+                        !       CV_NODJ = ndgln%cv( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                        !       X_NODJ = ndgln%x( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                        !       MAT_NODJ = ndgln%mat( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                        !   ELSE
                               CV_NODJ = ndgln%cv( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
                               X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
                               MAT_NODJ = ndgln%mat( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
-                          END IF
+                        !   END IF
 
-                          permeability_jump = .false.
-                          !For the discontinuous formulation we want to use the discontinuous method only where there is a permeability jump
-                          !elsewhere the normal method should work better as it is also more reliable
-                          if (between_elements) then
-                            permeability_jump = abs(perm%val(1,1,ele) - perm%val(1,1,ele2)/perm%val(1,1,ele)) > 1e-8
-                          end if
+                        !   permeability_jump = .false.
+                        !   !For the discontinuous formulation we want to use the discontinuous method only where there is a permeability jump
+                        !   !elsewhere the normal method should work better as it is also more reliable
+                        !   if (between_elements) then
+                        !     permeability_jump = abs(perm%val(1,1,ele) - perm%val(1,1,ele2)/perm%val(1,1,ele)) > 1e-8
+                        !   end if
                           !Create local variables to reduce slicing
                           LOC_T_J = T_ALL(1:final_phase, cv_nodj); LOC_TOLD_J = TOLD_ALL(1:final_phase, cv_nodj)
                           LOC_DEN_J =DEN_ALL(1:final_phase, cv_nodj); LOC_DENOLD_J = DENOLD_ALL(1:final_phase, cv_nodj)
@@ -919,26 +919,26 @@ contains
 
                           if((.not.integrate_other_side).or.(CV_NODJ >= CV_NODI)) then
                               ! this is for DG and boundaries of the domain
-                              IF( between_elements ) THEN ! this is for DG
-                                  ! Calculate U_SLOC2LOC, CV_SLOC2LOC:
-                                  CV_SKLOC=0
-                                  DO CV_KLOC=1,Mdims%cv_nloc
-                                      CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
-                                      IF(CV_KLOC2.NE.0) THEN
-                                          CV_SKLOC=CV_SKLOC+1
-                                          CV_SLOC2LOC(CV_SKLOC)=CV_KLOC
-                                          SHAPE_CV_SNL(CV_SKLOC) = CV_funs%scvfen(CV_KLOC,GI)
-                                      ENDIF
-                                  END DO
-                                  U_SKLOC=0
-                                  DO U_KLOC=1,Mdims%u_nloc
-                                      U_KLOC2 = U_OTHER_LOC( U_KLOC )
-                                      IF(U_KLOC2.NE.0) THEN
-                                          U_SKLOC=U_SKLOC+1
-                                          U_SLOC2LOC(U_SKLOC)=U_KLOC
-                                      ENDIF
-                                  END DO
-                              ENDIF ! ENDOF IF( between_elements ) THEN
+                            !   IF( between_elements ) THEN ! this is for DG
+                            !       ! Calculate U_SLOC2LOC, CV_SLOC2LOC:
+                            !       CV_SKLOC=0
+                            !       DO CV_KLOC=1,Mdims%cv_nloc
+                            !           CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
+                            !           IF(CV_KLOC2.NE.0) THEN
+                            !               CV_SKLOC=CV_SKLOC+1
+                            !               CV_SLOC2LOC(CV_SKLOC)=CV_KLOC
+                            !               SHAPE_CV_SNL(CV_SKLOC) = CV_funs%scvfen(CV_KLOC,GI)
+                            !           ENDIF
+                            !       END DO
+                            !       U_SKLOC=0
+                            !       DO U_KLOC=1,Mdims%u_nloc
+                            !           U_KLOC2 = U_OTHER_LOC( U_KLOC )
+                            !           IF(U_KLOC2.NE.0) THEN
+                            !               U_SKLOC=U_SKLOC+1
+                            !               U_SLOC2LOC(U_SKLOC)=U_KLOC
+                            !           ENDIF
+                            !       END DO
+                            !   ENDIF ! ENDOF IF( between_elements ) THEN
                               integrate_other_side_and_not_boundary = integrate_other_side.and.(SELE.LE.0)
                               GLOBAL_FACE = GLOBAL_FACE + 1
                               JMID = Mspars%small_acv%mid(CV_NODJ)
@@ -969,30 +969,30 @@ contains
                                   END IF
                               END DO
                                ! Generate some local F variables ***************
-                              IF (between_elements) THEN
-                                  LOC2_U = 0.
-                                  LOC2_NU = 0.
-                                  LOC2_NUOLD = 0.
-                                  DO U_SKLOC = 1, Mdims%u_snloc
-                                      U_KLOC = U_SLOC2LOC(U_SKLOC)
-                                      U_KLOC2 = U_OTHER_LOC( U_KLOC )
-                                      U_NODK2 = ndgln%u((ELE2-1)*Mdims%u_nloc+U_KLOC2)
-                                      LOC2_U(:, :, U_KLOC) = U_ALL(:, :, U_NODK2)
-                                      LOC2_NU(:, :, U_KLOC) = NU_ALL(:, :, U_NODK2)
-                                      LOC2_NUOLD(:, :, U_KLOC) = NUOLD_ALL(:, :, U_NODK2)
-                                  END DO
-                                  DO CV_SKLOC=1,Mdims%cv_snloc
-                                      CV_KLOC=CV_SLOC2LOC( CV_SKLOC )
-                                      CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
-                                      CV_KNOD2 = ndgln%cv((ELE2-1)*Mdims%cv_nloc+CV_KLOC2)
-                                      LOC2_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_KNOD2)
-                                      LOC2_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_KNOD2)
-                                      IF (use_volume_frac_T2) THEN
-                                          LOC2_FEMT2(:, CV_KLOC) = FEMT2_ALL(:, CV_KNOD2)
-                                          LOC2_FEMT2OLD(:, CV_KLOC) = FEMT2OLD_ALL(:, CV_KNOD2)
-                                      END IF
-                                  END DO
-                              END IF ! ENDOF IF (between_elements) THEN
+                            !   IF (between_elements) THEN
+                            !       LOC2_U = 0.
+                            !       LOC2_NU = 0.
+                            !       LOC2_NUOLD = 0.
+                            !       DO U_SKLOC = 1, Mdims%u_snloc
+                            !           U_KLOC = U_SLOC2LOC(U_SKLOC)
+                            !           U_KLOC2 = U_OTHER_LOC( U_KLOC )
+                            !           U_NODK2 = ndgln%u((ELE2-1)*Mdims%u_nloc+U_KLOC2)
+                            !           LOC2_U(:, :, U_KLOC) = U_ALL(:, :, U_NODK2)
+                            !           LOC2_NU(:, :, U_KLOC) = NU_ALL(:, :, U_NODK2)
+                            !           LOC2_NUOLD(:, :, U_KLOC) = NUOLD_ALL(:, :, U_NODK2)
+                            !       END DO
+                            !       DO CV_SKLOC=1,Mdims%cv_snloc
+                            !           CV_KLOC=CV_SLOC2LOC( CV_SKLOC )
+                            !           CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
+                            !           CV_KNOD2 = ndgln%cv((ELE2-1)*Mdims%cv_nloc+CV_KLOC2)
+                            !           LOC2_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_KNOD2)
+                            !           LOC2_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_KNOD2)
+                            !           IF (use_volume_frac_T2) THEN
+                            !               LOC2_FEMT2(:, CV_KLOC) = FEMT2_ALL(:, CV_KNOD2)
+                            !               LOC2_FEMT2OLD(:, CV_KLOC) = FEMT2OLD_ALL(:, CV_KNOD2)
+                            !           END IF
+                            !       END DO
+                            !   END IF ! ENDOF IF (between_elements) THEN
                               IF ( on_domain_boundary ) THEN
                                   DO U_SKLOC = 1, Mdims%u_snloc
                                       U_KLOC = U_SLOC2LOC( U_SKLOC )
@@ -1019,16 +1019,16 @@ contains
                                           ENDIF
                                       END DO
                                   ENDIF
-                                  CALL DIFFUS_CAL_COEFF( DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
+                                  CALL DIFFUS_CAL_COEFF( DIFF_COEF_DIVDX,  &
                                       Mdims%cv_nloc, Mdims%mat_nloc, final_phase, ndgln%mat, &
                                       CV_funs%scvfen, CV_funs%scvfen, GI, Mdims%ndim, TDIFFUSION, &
                                       HDC, &
                                       AUX_T, LOC_T_I, &
-                                      AUX2_T, LOC_TOLD_I, &
                                       ELE, ELE2, CVNORMX_ALL( :, GI ), &
-                                      DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
+                                      DTX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), &
                                       LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
                                       on_domain_boundary, between_elements )
+                                      
                               ELSE 
                                   DIFF_COEF_DIVDX = 0.0
                                   DIFF_COEFOLD_DIVDX = 0.0
@@ -1099,7 +1099,7 @@ contains
                                     do iphase =1, final_phase
                                         rsum_nodi(iphase) = upwnd%inv_adv_coef(1,1,iphase,MAT_NODI)*auxR
                                     end do
-                                    if (between_elements) auxR = dot_product(CVNORMX_ALL(:, GI), matmul(perm%val(:,:,ele2),CVNORMX_ALL(:, GI) ))
+                                    ! if (between_elements) auxR = dot_product(CVNORMX_ALL(:, GI), matmul(perm%val(:,:,ele2),CVNORMX_ALL(:, GI) ))
                                     do iphase =1, final_phase
                                         rsum_nodj(iphase) = upwnd%inv_adv_coef(1,1,iphase,MAT_NODJ)*auxR
                                     end do
@@ -1342,18 +1342,18 @@ contains
                                           * ( LIMT2 * NDOTQNEW * LOC_T_J * LIMD )
 
                                   endif
-                                  IF ( GET_GTHETA ) THEN
-                                      THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
-                                          + (1.-LIMT2) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
-                                          * ( LOC_TOLD_J - LOC_TOLD_I ) &
-                                          ! Robin bc
-                                          + SdevFuns%DETWEI( GI ) * robin2
-                                      if(integrate_other_side_and_not_boundary) then
-                                          THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
-                                              + (1.-LIMT2) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
-                                              * ( LOC_TOLD_I - LOC_TOLD_J )
-                                      endif
-                                  END IF
+                                !   IF ( GET_GTHETA ) THEN
+                                !       THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
+                                !           + (1.-LIMT2) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
+                                !           * ( LOC_TOLD_J - LOC_TOLD_I ) &
+                                !           ! Robin bc
+                                !           + SdevFuns%DETWEI( GI ) * robin2
+                                !       if(integrate_other_side_and_not_boundary) then
+                                !           THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
+                                !               + (1.-LIMT2) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
+                                !               * ( LOC_TOLD_I - LOC_TOLD_J )
+                                !       endif
+                                !   END IF
                                   ! this is for the internal energy equation source term..
                                   ! This is to introduce the compressibility term due to expansion and therefore the divergence of the velocity is non-zero
                                   !for wells this is not straightforward <= need to CHANGE THIS FOR COMPRESSIBILITY
@@ -1684,50 +1684,50 @@ contains
                     UGI_COEF_ELE_ALL(:, :, U_KLOC) = 1.0
                 END DO
                 !       Conditional_ELE2: IF( ELE2 /= 0 ) THEN
-                Conditional_ELE2: IF( between_elements ) THEN
-                    UDGI2_ALL = 0.0
-                    DO U_SKLOC = 1, Mdims%u_snloc
-                        U_KLOC = U_SLOC2LOC(U_SKLOC)
-                        U_KLOC2 = U_OTHER_LOC( U_KLOC )
-                        !          DO U_KLOC = 1, Mdims%u_nloc
-                        !             U_KLOC2 = U_OTHER_LOC( U_KLOC )
-                        !             IF ( U_KLOC2 /= 0 ) THEN ! MAKE SURE WE DONT NEED THIS...
-                        UDGI2_ALL = UDGI2_ALL + CV_funs%sufen( U_KLOC, GI ) * LOC2_NU(:, :, U_KLOC)
-                        UGI_COEF_ELE2_ALL( :, :, U_KLOC2) = 1.0
-                    !             ENDIF
-                    END DO
-                    IF( ABS( CV_DG_VEL_INT_OPT ) == 1 ) THEN
-                        DT_I=1.0
-                        DT_J=1.0
-                    ELSE IF( ABS(CV_DG_VEL_INT_OPT ) == 2) THEN
-                        DT_I=MAX(1.E-2,LOC_T_I)
-                        DT_J=MAX(1.E-2,LOC_T_J)
-                    ELSE IF( ABS(CV_DG_VEL_INT_OPT ) == 3) THEN
-                        DT_I=LOC_DEN_I*LOC_T_I
-                        DT_J=LOC_DEN_J*LOC_T_J
-                    ENDIF
-                    DO IPHASE = 1, final_phase
-                        UDGI_INT_ALL(:,IPHASE) = (DT_I(IPHASE) * UDGI_ALL(:,IPHASE) + DT_J(IPHASE) * UDGI2_ALL(:, IPHASE)) &
-                            / (DT_I(IPHASE) + DT_J(IPHASE))
-                        IF( CV_DG_VEL_INT_OPT < 0 ) THEN
-                            NDOTQ_INT(IPHASE) = DOT_PRODUCT( CVNORMX_ALL(:, GI), UDGI_INT_ALL( :, IPHASE ) )
-                            IF( NDOTQ_INT(IPHASE) <= 0.0 ) THEN  !Incoming
-                                !   DT_I=1.0
-                                DT_J(IPHASE)=DT_I(IPHASE)+DT_J(IPHASE)
-                            ELSE
-                                DT_I(IPHASE)=DT_I(IPHASE)+DT_J(IPHASE)
-                            !   DT_J=1.0
-                            ENDIF
-                            UDGI_INT_ALL(:,IPHASE) = (DT_I(IPHASE) * UDGI_ALL(:,IPHASE) + &
-                                DT_J(IPHASE) * UDGI2_ALL(:, IPHASE)) / (DT_I(IPHASE) + DT_J(IPHASE))
-                        ENDIF
-                        UDGI_ALL( :, IPHASE ) = UDGI_INT_ALL( :, IPHASE )
-                        UGI_COEF_ELE_ALL(:,IPHASE,:)=DT_I(IPHASE) * UGI_COEF_ELE_ALL(:,IPHASE,:) &
-                            /(DT_I(IPHASE) + DT_J(IPHASE))
-                        UGI_COEF_ELE2_ALL(:,IPHASE,:)=DT_J(IPHASE) * UGI_COEF_ELE2_ALL(:,IPHASE,:) &
-                            /(DT_I(IPHASE) + DT_J(IPHASE))
-                    END DO
-                ENDIF Conditional_ELE2
+                ! Conditional_ELE2: IF( between_elements ) THEN
+                !     UDGI2_ALL = 0.0
+                !     DO U_SKLOC = 1, Mdims%u_snloc
+                !         U_KLOC = U_SLOC2LOC(U_SKLOC)
+                !         U_KLOC2 = U_OTHER_LOC( U_KLOC )
+                !         !          DO U_KLOC = 1, Mdims%u_nloc
+                !         !             U_KLOC2 = U_OTHER_LOC( U_KLOC )
+                !         !             IF ( U_KLOC2 /= 0 ) THEN ! MAKE SURE WE DONT NEED THIS...
+                !         UDGI2_ALL = UDGI2_ALL + CV_funs%sufen( U_KLOC, GI ) * LOC2_NU(:, :, U_KLOC)
+                !         UGI_COEF_ELE2_ALL( :, :, U_KLOC2) = 1.0
+                !     !             ENDIF
+                !     END DO
+                !     IF( ABS( CV_DG_VEL_INT_OPT ) == 1 ) THEN
+                !         DT_I=1.0
+                !         DT_J=1.0
+                !     ELSE IF( ABS(CV_DG_VEL_INT_OPT ) == 2) THEN
+                !         DT_I=MAX(1.E-2,LOC_T_I)
+                !         DT_J=MAX(1.E-2,LOC_T_J)
+                !     ELSE IF( ABS(CV_DG_VEL_INT_OPT ) == 3) THEN
+                !         DT_I=LOC_DEN_I*LOC_T_I
+                !         DT_J=LOC_DEN_J*LOC_T_J
+                !     ENDIF
+                !     DO IPHASE = 1, final_phase
+                !         UDGI_INT_ALL(:,IPHASE) = (DT_I(IPHASE) * UDGI_ALL(:,IPHASE) + DT_J(IPHASE) * UDGI2_ALL(:, IPHASE)) &
+                !             / (DT_I(IPHASE) + DT_J(IPHASE))
+                !         IF( CV_DG_VEL_INT_OPT < 0 ) THEN
+                !             NDOTQ_INT(IPHASE) = DOT_PRODUCT( CVNORMX_ALL(:, GI), UDGI_INT_ALL( :, IPHASE ) )
+                !             IF( NDOTQ_INT(IPHASE) <= 0.0 ) THEN  !Incoming
+                !                 !   DT_I=1.0
+                !                 DT_J(IPHASE)=DT_I(IPHASE)+DT_J(IPHASE)
+                !             ELSE
+                !                 DT_I(IPHASE)=DT_I(IPHASE)+DT_J(IPHASE)
+                !             !   DT_J=1.0
+                !             ENDIF
+                !             UDGI_INT_ALL(:,IPHASE) = (DT_I(IPHASE) * UDGI_ALL(:,IPHASE) + &
+                !                 DT_J(IPHASE) * UDGI2_ALL(:, IPHASE)) / (DT_I(IPHASE) + DT_J(IPHASE))
+                !         ENDIF
+                !         UDGI_ALL( :, IPHASE ) = UDGI_INT_ALL( :, IPHASE )
+                !         UGI_COEF_ELE_ALL(:,IPHASE,:)=DT_I(IPHASE) * UGI_COEF_ELE_ALL(:,IPHASE,:) &
+                !             /(DT_I(IPHASE) + DT_J(IPHASE))
+                !         UGI_COEF_ELE2_ALL(:,IPHASE,:)=DT_J(IPHASE) * UGI_COEF_ELE2_ALL(:,IPHASE,:) &
+                !             /(DT_I(IPHASE) + DT_J(IPHASE))
+                !     END DO
+                ! ENDIF Conditional_ELE2
             ENDIF Conditional_SELE
             NDOTQ =  MATMUL( CVNORMX_ALL(:, GI), UDGI_ALL)
             ! Define whether flux is incoming or outgoing, depending on direction of flow
@@ -1736,29 +1736,29 @@ contains
             do iphase = 1, final_phase
                 NUGI_ALL(:, IPHASE) = matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI ))
             end do
-            IF( between_elements ) THEN
-                ! Reduce by half and take the other half from the other side of element...
-                do iphase = 1, final_phase
-                    NUGI_ALL(:, IPHASE) = 0.5*NUGI_ALL(:, IPHASE) + 0.5*matmul(LOC2_NU( :, IPHASE, : ), CV_funs%sufen( :, GI ))
-                end do
-            end if
+            ! IF( between_elements ) THEN
+            !     ! Reduce by half and take the other half from the other side of element...
+            !     do iphase = 1, final_phase
+            !         NUGI_ALL(:, IPHASE) = 0.5*NUGI_ALL(:, IPHASE) + 0.5*matmul(LOC2_NU( :, IPHASE, : ), CV_funs%sufen( :, GI ))
+            !     end do
+            ! end if
             ! Calculate NDOTQNEW from NDOTQ
             if (not_OLD_VEL) then
                 do iphase = 1, final_phase
                     NDOTQNEW(iphase) = NDOTQ(iphase) + dot_product(matmul( CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, iphase,:)*&
                         ( LOC_U(:,iphase,:)-LOC_NU(:,iphase,:))), CV_funs%sufen( :, GI ))
                 end do
-                IF( between_elements ) THEN
-                    ! We have a discontinuity between elements so integrate along the face...
-                    DO U_SKLOC = 1, Mdims%u_snloc
-                        U_KLOC = U_SLOC2LOC(U_SKLOC)
-                        U_KLOC2 = U_OTHER_LOC( U_KLOC )
-                        DO IDIM = 1, Mdims%ndim
-                            NDOTQNEW=NDOTQNEW + CV_funs%sufen( U_KLOC, GI ) * UGI_COEF_ELE2_ALL(IDIM, :,U_KLOC2) &
-                                * ( LOC2_U(IDIM,:, U_KLOC ) - LOC2_NU(IDIM,:,U_KLOC ) ) * CVNORMX_ALL(IDIM, GI)
-                        END DO
-                    END DO
-                END IF
+                ! IF( between_elements ) THEN
+                !     ! We have a discontinuity between elements so integrate along the face...
+                !     DO U_SKLOC = 1, Mdims%u_snloc
+                !         U_KLOC = U_SLOC2LOC(U_SKLOC)
+                !         U_KLOC2 = U_OTHER_LOC( U_KLOC )
+                !         DO IDIM = 1, Mdims%ndim
+                !             NDOTQNEW=NDOTQNEW + CV_funs%sufen( U_KLOC, GI ) * UGI_COEF_ELE2_ALL(IDIM, :,U_KLOC2) &
+                !                 * ( LOC2_U(IDIM,:, U_KLOC ) - LOC2_NU(IDIM,:,U_KLOC ) ) * CVNORMX_ALL(IDIM, GI)
+                !         END DO
+                !     END DO
+                ! END IF
             end if
             RETURN
         END SUBROUTINE GET_INT_VEL_ORIG_NEW
@@ -2045,17 +2045,17 @@ contains
                             ( LOC_U(:,iv_iphase,:)-LOC_NU(:,iv_iphase,:))), CV_funs%sufen( :, GI ))
                     end do
                 end if
-                IF( between_elements) THEN
-                    ! We have a discontinuity between elements so integrate along the face...
-                    DO iv_u_skloc = 1, Mdims%u_snloc
-                        iv_u_kloc = U_SLOC2LOC(iv_u_skloc)
-                        iv_u_kloc2 = U_OTHER_LOC( iv_u_kloc )
-                        DO iv_idim = 1, Mdims%ndim
-                            NDOTQNEW=NDOTQNEW + CV_funs%sufen( iv_u_kloc, GI ) * UGI_COEF_ELE2_ALL(iv_idim, :,iv_u_kloc2) &
-                                * ( LOC2_U(iv_idim,:, iv_u_kloc ) - LOC2_NU(iv_idim,:,iv_u_kloc ) ) * CVNORMX_ALL(iv_idim, GI)
-                        END DO
-                    END DO
-                END IF
+                ! IF( between_elements) THEN
+                !     ! We have a discontinuity between elements so integrate along the face...
+                !     DO iv_u_skloc = 1, Mdims%u_snloc
+                !         iv_u_kloc = U_SLOC2LOC(iv_u_skloc)
+                !         iv_u_kloc2 = U_OTHER_LOC( iv_u_kloc )
+                !         DO iv_idim = 1, Mdims%ndim
+                !             NDOTQNEW=NDOTQNEW + CV_funs%sufen( iv_u_kloc, GI ) * UGI_COEF_ELE2_ALL(iv_idim, :,iv_u_kloc2) &
+                !                 * ( LOC2_U(iv_idim,:, iv_u_kloc ) - LOC2_NU(iv_idim,:,iv_u_kloc ) ) * CVNORMX_ALL(iv_idim, GI)
+                !         END DO
+                !     END DO
+                ! END IF
             end if
             RETURN
         END SUBROUTINE GET_INT_VEL_POROUS_VEL
@@ -2090,30 +2090,30 @@ contains
                     ICOUNT_KLOC( U_KLOC ) = ICOUNT
                 endif
             END DO
-            IF ( between_elements ) THEN
-                DO U_KLOC =  1, Mdims%u_nloc
-                    U_NODK = ndgln%u( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
-                    JCOUNT = 0
-                    DO COUNT = Mspars%CT%fin( CV_NODI ), Mspars%CT%fin( CV_NODI + 1 ) - 1
-                        IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
-                            JCOUNT = COUNT
-                            EXIT
-                        END IF
-                    END DO
-                    JCOUNT_KLOC2( U_KLOC ) = JCOUNT
-                    if(integrate_other_side) then
-                        ! for integrating just on one side...
-                        ICOUNT = 0
-                        DO COUNT = Mspars%CT%fin( CV_NODJ ), Mspars%CT%fin( CV_NODJ + 1 ) - 1
-                            IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
-                                ICOUNT = COUNT
-                                EXIT
-                            END IF
-                        END DO
-                        ICOUNT_KLOC2( U_KLOC ) = ICOUNT
-                    endif
-                END DO
-            END IF ! endof IF ( between_elements ) THEN
+            ! IF ( between_elements ) THEN
+            !     DO U_KLOC =  1, Mdims%u_nloc
+            !         U_NODK = ndgln%u( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
+            !         JCOUNT = 0
+            !         DO COUNT = Mspars%CT%fin( CV_NODI ), Mspars%CT%fin( CV_NODI + 1 ) - 1
+            !             IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
+            !                 JCOUNT = COUNT
+            !                 EXIT
+            !             END IF
+            !         END DO
+            !         JCOUNT_KLOC2( U_KLOC ) = JCOUNT
+            !         if(integrate_other_side) then
+            !             ! for integrating just on one side...
+            !             ICOUNT = 0
+            !             DO COUNT = Mspars%CT%fin( CV_NODJ ), Mspars%CT%fin( CV_NODJ + 1 ) - 1
+            !                 IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
+            !                     ICOUNT = COUNT
+            !                     EXIT
+            !                 END IF
+            !             END DO
+            !             ICOUNT_KLOC2( U_KLOC ) = ICOUNT
+            !         endif
+            !     END DO
+            ! END IF ! endof IF ( between_elements ) THEN
             IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                 ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
                 DO U_KLOC = 1, Mdims%u_nloc
@@ -2138,30 +2138,30 @@ contains
                         C_ICOUNT_KLOC( U_KLOC ) = ICOUNT
                     endif
                 END DO
-                IF ( between_elements ) THEN
-                    DO U_KLOC =  1, Mdims%u_nloc
-                        U_NODK = ndgln%u( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
-                        JCOUNT = 0
-                        DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
-                            IF ( Mspars%C%col( COUNT ) == CV_NODI ) THEN
-                                JCOUNT = COUNT
-                                EXIT
-                            END IF
-                        END DO
-                        C_JCOUNT_KLOC2( U_KLOC ) = JCOUNT
-                        if(integrate_other_side) then
-                            ! for integrating just on one side...
-                            ICOUNT = 0
-                            DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
-                                IF ( Mspars%C%col( COUNT ) == CV_NODJ ) THEN
-                                    ICOUNT = COUNT
-                                    EXIT
-                                END IF
-                            END DO
-                            C_ICOUNT_KLOC2( U_KLOC ) = ICOUNT
-                        endif
-                    END DO
-                END IF ! endof IF ( between_elements ) THEN
+                ! IF ( between_elements ) THEN
+                !     DO U_KLOC =  1, Mdims%u_nloc
+                !         U_NODK = ndgln%u( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
+                !         JCOUNT = 0
+                !         DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
+                !             IF ( Mspars%C%col( COUNT ) == CV_NODI ) THEN
+                !                 JCOUNT = COUNT
+                !                 EXIT
+                !             END IF
+                !         END DO
+                !         C_JCOUNT_KLOC2( U_KLOC ) = JCOUNT
+                !         if(integrate_other_side) then
+                !             ! for integrating just on one side...
+                !             ICOUNT = 0
+                !             DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
+                !                 IF ( Mspars%C%col( COUNT ) == CV_NODJ ) THEN
+                !                     ICOUNT = COUNT
+                !                     EXIT
+                !                 END IF
+                !             END DO
+                !             C_ICOUNT_KLOC2( U_KLOC ) = ICOUNT
+                !         endif
+                !     END DO
+                ! END IF ! endof IF ( between_elements ) THEN
             ENDIF ! ENDOF IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
         end subroutine get_neigbouring_lists
 
@@ -3096,14 +3096,13 @@ contains
     !> based on a non-linear method and a non-oscillating scheme.
     !> It requires the derivatives of the field obtained using DG_DERIVS_ALL
     !> @ref DG_DERIVS_ALL
-    SUBROUTINE DIFFUS_CAL_COEFF(DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
+    SUBROUTINE DIFFUS_CAL_COEFF(DIFF_COEF_DIVDX,  &
         CV_NLOC, MAT_NLOC, NPHASE, MAT_NDGLN, &
         SMATFEN, SCVFEN, GI, NDIM, TDIFFUSION, &
         HDC, &
         T_CV_NODJ, T_CV_NODI, &
-        TOLD_CV_NODJ, TOLD_CV_NODI, &
         ELE, ELE2, CVNORMX_ALL,  &
-        LOC_DTX_ELE_ALL, LOC_DTOLDX_ELE_ALL, LOC2_DTX_ELE_ALL, LOC2_DTOLDX_ELE_ALL, &
+        LOC_DTX_ELE_ALL, LOC2_DTX_ELE_ALL, &
         LOC_WIC_T_BC, CV_OTHER_LOC, MAT_OTHER_LOC, CV_SNLOC, CV_SLOC2LOC, &
         on_domain_boundary, between_elements )
         IMPLICIT NONE
@@ -3112,9 +3111,8 @@ contains
             &                    CV_SNLOC
         REAL, intent( in ) :: HDC
         LOGICAL, intent( in ) :: on_domain_boundary, between_elements
-        REAL, DIMENSION( NPHASE ), intent( in ) :: T_CV_NODJ, T_CV_NODI, &
-            &                                     TOLD_CV_NODJ, TOLD_CV_NODI
-        REAL, DIMENSION( NPHASE ), intent( inout ) :: DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
+        REAL, DIMENSION( NPHASE ), intent( in ) :: T_CV_NODJ, T_CV_NODI
+        REAL, DIMENSION( NPHASE ), intent( inout ) :: DIFF_COEF_DIVDX
         INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
         INTEGER, DIMENSION( : ), intent( in ) :: CV_SLOC2LOC
         INTEGER, DIMENSION( NPHASE ), intent( in ) :: LOC_WIC_T_BC
@@ -3123,7 +3121,7 @@ contains
         REAL, DIMENSION( :, : ), intent( in ) :: SMATFEN
         REAL, DIMENSION( :, : ), intent( in ) :: SCVFEN
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: TDIFFUSION
-        REAL, DIMENSION( NDIM, NPHASE, CV_NLOC ), intent( in ) :: LOC_DTX_ELE_ALL, LOC_DTOLDX_ELE_ALL, LOC2_DTX_ELE_ALL, LOC2_DTOLDX_ELE_ALL
+        REAL, DIMENSION( NDIM, NPHASE, CV_NLOC ), intent( in ) :: LOC_DTX_ELE_ALL, LOC2_DTX_ELE_ALL
         REAL, DIMENSION( : ), intent( in ) :: CVNORMX_ALL
 
         ! local variables
@@ -3131,11 +3129,12 @@ contains
         ! DIFF_MIN_FRAC is the fraction of the standard diffusion coefficient to use
         ! in the non-linear diffusion scheme. DIFF_MAX_FRAC is the maximum fraction.
         REAL, PARAMETER :: DIFF_MIN_FRAC = 0.05, DIFF_MAX_FRAC = 20.0
-        REAL :: COEF
-        INTEGER :: CV_KLOC, CV_KLOC2, MAT_KLOC, MAT_KLOC2, MAT_NODK, MAT_NODK2, IPHASE, CV_SKLOC
+        INTEGER :: CV_KLOC, CV_KLOC2, MAT_KLOC, MAT_KLOC2, MAT_NODK, MAT_NODK2, IPHASE, CV_SKLOC, idim, jdim
         LOGICAL :: ZER_DIFF
-        REAL, DIMENSION ( NDIM, NPHASE ) :: DTDX_GI_ALL, DTOLDDX_GI_ALL, DTDX_GI2_ALL, DTOLDDX_GI2_ALL
-        REAL, DIMENSION ( NPHASE ) :: N_DOT_DKDT_ALL, N_DOT_DKDTOLD_ALL, N_DOT_DKDT2_ALL, N_DOT_DKDTOLD2_ALL
+        REAL :: COEF
+        real, dimension(ndim) :: vCoef
+        REAL, DIMENSION ( NDIM, NPHASE ) :: DTDX_GI_ALL, DTDX_GI2_ALL
+        REAL, DIMENSION ( NPHASE ) :: N_DOT_DKDT_ALL, N_DOT_DKDT2_ALL
         REAL, DIMENSION ( NPHASE ) :: DIFF_STAND_DIVDX_ALL, DIFF_STAND_DIVDX2_ALL
         REAL, DIMENSION ( NDIM, NDIM, NPHASE ) :: DIFF_GI, DIFF_GI2
 
@@ -3145,76 +3144,66 @@ contains
         Cond_ZerDiff: IF ( ZER_DIFF ) THEN
 
             DIFF_COEF_DIVDX = 0.0
-            DIFF_COEFOLD_DIVDX = 0.0
 
         ELSE
 
-            DTDX_GI_ALL = 0.0 ; DTOLDDX_GI_ALL = 0.0
-            DO CV_KLOC = 1, CV_NLOC
-                DTDX_GI_ALL = DTDX_GI_ALL + SCVFEN( CV_KLOC, GI ) * LOC_DTX_ELE_ALL( :, :, CV_KLOC )
-                DTOLDDX_GI_ALL = DTOLDDX_GI_ALL + SCVFEN( CV_KLOC, GI ) * LOC_DTOLDX_ELE_ALL( :, :, CV_KLOC )
-            END DO
+            DTDX_GI_ALL = 0.0 
+            forall (cv_kloc = 1:cv_nloc, idim = 1:ndim, iphase =1:nphase)
+                DTDX_GI_ALL(idim, iphase) = DTDX_GI_ALL(idim, iphase) + SCVFEN( CV_KLOC, GI ) * LOC_DTX_ELE_ALL( idim, iphase, CV_KLOC )
+            end forall
 
             DIFF_GI = 0.0
             DO MAT_KLOC = 1, MAT_NLOC
                 MAT_NODK = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_KLOC )
-                DO IPHASE = 1, NPHASE
-                    DIFF_GI( :, :, IPHASE ) = DIFF_GI( :, :, IPHASE ) &
-                        + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, :, :, IPHASE )
-                END DO
+                forall (iphase = 1:nphase, idim = 1:ndim, jdim =1:ndim)
+                    DIFF_GI( idim, jdim, IPHASE ) = DIFF_GI( idim, jdim, IPHASE ) &
+                        + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, idim, jdim, IPHASE )
+                end forall
             END DO
             DIFF_GI = MAX( 0.0, DIFF_GI )
 
-            DO IPHASE = 1, NPHASE
-                N_DOT_DKDT_ALL( IPHASE ) = DOT_PRODUCT( CVNORMX_ALL, MATMUL( DIFF_GI( :, :, IPHASE ), DTDX_GI_ALL( :, IPHASE ) ) )
-                N_DOT_DKDTOLD_ALL( IPHASE ) = DOT_PRODUCT( CVNORMX_ALL, MATMUL( DIFF_GI( :, :, IPHASE ), DTOLDDX_GI_ALL( :, IPHASE ) ) )
+            !Projection of the tensorial diffusion coefficient times derivatives
+            N_DOT_DKDT_ALL = 0; DIFF_STAND_DIVDX_ALL = 0.
+            forall (idim = 1:ndim, jdim = 1:ndim, iphase =1:nphase)
+                N_DOT_DKDT_ALL( IPHASE ) = N_DOT_DKDT_ALL( IPHASE ) + CVNORMX_ALL(idim) * DIFF_GI( idim, jdim, IPHASE ) * DTDX_GI_ALL( jdim, IPHASE )
+                DIFF_STAND_DIVDX_ALL( IPHASE ) = DIFF_STAND_DIVDX_ALL( IPHASE ) +  CVNORMX_ALL(idim) * DIFF_GI( idim, jdim, IPHASE ) * CVNORMX_ALL(jdim)/ HDC
+            end forall
 
-                COEF = DOT_PRODUCT( CVNORMX_ALL, MATMUL( DIFF_GI( :, :, IPHASE ), CVNORMX_ALL ) )
-                DIFF_STAND_DIVDX_ALL( IPHASE ) = COEF / HDC
-            END DO
+            ! Conditional_MAT_DISOPT_ELE2: IF ( between_elements ) THEN
+            !     DTDX_GI2_ALL = 0.0 ;
+            !     DO CV_SKLOC=1,CV_SNLOC
+            !         CV_KLOC=CV_SLOC2LOC( CV_SKLOC )
+            !         CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
+            !         DTDX_GI2_ALL = DTDX_GI2_ALL + SCVFEN( CV_KLOC, GI ) *  LOC2_DTX_ELE_ALL( :, :, CV_KLOC )
+            !     END DO
 
-            Conditional_MAT_DISOPT_ELE2: IF ( between_elements ) THEN
-                DTDX_GI2_ALL = 0.0 ; DTOLDDX_GI2_ALL = 0.0
-                DO CV_SKLOC=1,CV_SNLOC
-                    CV_KLOC=CV_SLOC2LOC( CV_SKLOC )
-                    CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
-                    DTDX_GI2_ALL = DTDX_GI2_ALL + SCVFEN( CV_KLOC, GI ) *  LOC2_DTX_ELE_ALL( :, :, CV_KLOC )
-                    DTOLDDX_GI2_ALL = DTOLDDX_GI2_ALL + SCVFEN( CV_KLOC, GI ) * LOC2_DTOLDX_ELE_ALL( :, :, CV_KLOC )
-                END DO
+            !     DIFF_GI2 = 0.0
+            !     DO MAT_KLOC = 1, MAT_NLOC
+            !         MAT_KLOC2 = MAT_OTHER_LOC( MAT_KLOC )
+            !         IF ( MAT_KLOC2 /= 0 ) THEN
+            !             MAT_NODK2 = MAT_NDGLN( ( ELE2 - 1 ) * MAT_NLOC + MAT_KLOC2 )
+            !             DO IPHASE = 1, NPHASE
+            !                 DIFF_GI2( :, :, IPHASE ) = DIFF_GI2( :, :, IPHASE ) &
+            !                     + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK2, :, :, IPHASE )
+            !             END DO
+            !         END IF
+            !     END DO
 
-                DIFF_GI2 = 0.0
-                DO MAT_KLOC = 1, MAT_NLOC
-                    MAT_KLOC2 = MAT_OTHER_LOC( MAT_KLOC )
-                    IF ( MAT_KLOC2 /= 0 ) THEN
-                        MAT_NODK2 = MAT_NDGLN( ( ELE2 - 1 ) * MAT_NLOC + MAT_KLOC2 )
-                        DO IPHASE = 1, NPHASE
-                            DIFF_GI2( :, :, IPHASE ) = DIFF_GI2( :, :, IPHASE ) &
-                                + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK2, :, :, IPHASE )
-                        END DO
-                    END IF
-                END DO
+            !     DO IPHASE = 1, NPHASE
+            !         N_DOT_DKDT2_ALL( IPHASE ) = DOT_PRODUCT( CVNORMX_ALL, MATMUL( DIFF_GI2( :, :, IPHASE ), DTDX_GI2_ALL( :, IPHASE ) ) )
 
-                DO IPHASE = 1, NPHASE
-                    N_DOT_DKDT2_ALL( IPHASE ) = DOT_PRODUCT( CVNORMX_ALL, MATMUL( DIFF_GI2( :, :, IPHASE ), DTDX_GI2_ALL( :, IPHASE ) ) )
-                    N_DOT_DKDTOLD2_ALL( IPHASE ) = DOT_PRODUCT( CVNORMX_ALL, MATMUL( DIFF_GI2( :, :, IPHASE ), DTOLDDX_GI2_ALL( :, IPHASE ) ) )
+            !         COEF = DOT_PRODUCT( CVNORMX_ALL, MATMUL( DIFF_GI2( :, :, IPHASE ), CVNORMX_ALL ) )
+            !         DIFF_STAND_DIVDX2_ALL( IPHASE ) = COEF  /HDC
+            !     END DO
 
-                    COEF = DOT_PRODUCT( CVNORMX_ALL, MATMUL( DIFF_GI2( :, :, IPHASE ), CVNORMX_ALL ) )
-                    DIFF_STAND_DIVDX2_ALL( IPHASE ) = COEF  /HDC
-                END DO
+            !     N_DOT_DKDT_ALL = 0.5 * ( N_DOT_DKDT_ALL + N_DOT_DKDT2_ALL )
 
-                N_DOT_DKDT_ALL = 0.5 * ( N_DOT_DKDT_ALL + N_DOT_DKDT2_ALL )
-                N_DOT_DKDTOLD_ALL = 0.5 * ( N_DOT_DKDTOLD_ALL + N_DOT_DKDTOLD2_ALL )
+            !     DIFF_STAND_DIVDX_ALL = MIN( DIFF_STAND_DIVDX_ALL, DIFF_STAND_DIVDX2_ALL )
 
-                DIFF_STAND_DIVDX_ALL = MIN( DIFF_STAND_DIVDX_ALL, DIFF_STAND_DIVDX2_ALL )
-
-            END IF Conditional_MAT_DISOPT_ELE2
-
+            ! END IF Conditional_MAT_DISOPT_ELE2
 
             DIFF_COEF_DIVDX = MAX( DIFF_MIN_FRAC * DIFF_STAND_DIVDX_ALL, N_DOT_DKDT_ALL / TOLFUN_MANY( T_CV_NODJ - T_CV_NODI ) )
-            DIFF_COEFOLD_DIVDX = MAX( DIFF_MIN_FRAC * DIFF_STAND_DIVDX_ALL, N_DOT_DKDTOLD_ALL / TOLFUN_MANY( TOLD_CV_NODJ - TOLD_CV_NODI ) )
-
             DIFF_COEF_DIVDX = MIN( DIFF_MAX_FRAC * DIFF_STAND_DIVDX_ALL, DIFF_COEF_DIVDX )
-            DIFF_COEFOLD_DIVDX = MIN( DIFF_MAX_FRAC * DIFF_STAND_DIVDX_ALL, DIFF_COEFOLD_DIVDX )
 
         END IF Cond_ZerDiff
 
@@ -3223,7 +3212,6 @@ contains
             DO IPHASE=1,NPHASE
                 IF( LOC_WIC_T_BC( IPHASE ) /= WIC_T_BC_DIRICHLET ) THEN
                     DIFF_COEF_DIVDX( IPHASE ) = 0.0
-                    DIFF_COEFOLD_DIVDX( IPHASE ) = 0.0
                 ENDIF
             END DO
         ENDIF
@@ -3480,21 +3468,21 @@ contains
             IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                 rcon = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
                 DO IPHASE=1,final_phase!Mdims%nphase
-                    IF ( between_elements) THEN
-                        ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
-                        !This is to perform the average between two DG pressures (same mass => 0.5)
-                        auxR = 0.25!<= original!0.5 seems similar, should try up to 2
-                        Mass_corrector = (MASS_ELE( ELE2 ) + auxR * MASS_ELE( ELE ))/( (1.+auxR) *(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
-                        !Mass_corrector = MASS_ELE( ELE2 )/(MASS_ELE( ELE2 ) + MASS_ELE( ELE ) )!<=this seems to work
+                    ! IF ( between_elements) THEN
+                    !     ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
+                    !     !This is to perform the average between two DG pressures (same mass => 0.5)
+                    !     auxR = 0.25!<= original!0.5 seems similar, should try up to 2
+                    !     Mass_corrector = (MASS_ELE( ELE2 ) + auxR * MASS_ELE( ELE ))/( (1.+auxR) *(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
+                    !     !Mass_corrector = MASS_ELE( ELE2 )/(MASS_ELE( ELE2 ) + MASS_ELE( ELE ) )!<=this seems to work
 
-                        Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
-                            = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
-                            + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Mass_corrector
-                    else
+                    !     Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+                    !         = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+                    !         + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Mass_corrector
+                    ! else
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Bound_ele_correct(:, IPHASE, U_KLOC)
-                    endif
+                    ! endif
                 END DO
             ENDIF
             ! flux from the other side (change of sign because normal is -ve)...
@@ -3508,15 +3496,15 @@ contains
                 IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                     RCON_J = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
                     DO IPHASE=1,final_phase!Mdims%nphase
-                        IF ( between_elements ) THEN
-                            Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-                                = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-                                - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Mass_corrector!(1.- Mass_corrector)
-                        else
+                        ! IF ( between_elements ) THEN
+                        !     Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+                        !         = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+                        !         - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Mass_corrector!(1.- Mass_corrector)
+                        ! else
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Bound_ele_correct(:, IPHASE, U_KLOC)!Bound_ele_correct unnecessary here?
-                        endif
+                        ! endif
                     END DO
                 ENDIF
             end if  ! endof if ( integrate_other_side_and_not_boundary ) then
