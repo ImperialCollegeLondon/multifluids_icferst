@@ -1,5 +1,5 @@
 name: icferst 
-base: core18 
+base: core20 
 version: '20.06' 
 summary: Flow simulator with unstructured dynamic mesh optimisation technology 
 description: |
@@ -22,7 +22,7 @@ parts:
       - liblapack-dev 
       - fluidity-dev
       - python-dev
-      - python2.7
+      - python3.8
     stage-packages:
       - libaec0
       - libasn1-8-heimdal

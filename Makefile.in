@@ -616,5 +616,10 @@ install-user-schemata:
 	mkdir -p $(HOME)/.diamond/schemata/
 	echo "Fluidity Markup Language" > $(HOME)/.diamond/schemata/flml
 	echo "$(PWD)/schemas/fluidity_options.rng" >> $(HOME)/.diamond/schemata/flml
+	
+install-icferst-schemata:
+	mkdir -p $(HOME)/.diamond/schemata/
+	echo "ICFERST Markup Language" > $(HOME)/.diamond/schemata/mpml
+	echo "$(PWD)/ICFERST/schemas/multiphase.rng" >> $(HOME)/.diamond/schemata/mpml	
 
 .PHONY: install

@@ -15,7 +15,7 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-
+!> All the subroutines associated to solving non-linear systems, Schur complement, etc.
 module solvers_module
 
     use fldebug
@@ -58,16 +58,25 @@ module solvers_module
 contains
 
 
-  !!>@brief: This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
-  !> The sparcity of the local CV connectivity is in: small_findrm, small_colm.
-  !> ngl_its=max no of global iterations e.g. 100.
-  !> error_tol = tolerance on the iterations.
-  !>
-  !> nloc_its: This iteration is very good at avoiding spreading the modifications too far - however it can stagnate.
-  !> nloc_its2: This iteration is very good at avoiding stagnating but does spread the modifcations far.
-  !> us a single iteration because of this as default...
-  !> nits_nod: iterations at a nod - this iteration is very good at avoiding spreading the modifications too far -
-  !> however it can stagnate.
+    !!>@brief: This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
+    !> The sparcity of the local CV connectivity is in: small_findrm, small_colm.
+    !> ngl_its=max no of global iterations e.g. 100.
+    !> error_tol = tolerance on the iterations.
+    !>
+    !> nloc_its: This iteration is very good at avoiding spreading the modifications too far - however it can stagnate.
+    !> nloc_its2: This iteration is very good at avoiding stagnating but does spread the modifcations far.
+    !> us a single iteration because of this as default...
+    !> nits_nod: iterations at a nod - this iteration is very good at avoiding spreading the modifications too far -
+    !> however it can stagnate.
+    !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  small_findrm  sparcity of the local CV connectivity is in: small_findrm, small_colm.
+    !>@param  small_colm  sparcity of the local CV connectivity is in: small_findrm, small_colm.
+    !>@param  Field_name Name of the field
+    !>@param  for_sat True if doing it for Phase Volume Fraction
+    !>@param  min_max_limits Maximum and minimum values
     subroutine BoundedSolutionCorrections( state, packed_state, &
         Mdims, CV_funs, small_findrm, small_colm, Field_name, &
         for_sat, min_max_limits)
@@ -297,9 +306,27 @@ contains
     end subroutine BoundedSolutionCorrections
 
     !sprint_to_do!not use one global variable
-    !!>@brief:In this subroutine we applied some corrections and backtrack_par on the saturations obtained from the saturation equation
-    !>this idea is based on the paper SPE-173267-MS.
+    !>@brief:In this subroutine we applied some corrections and backtrack_par on the saturations obtained from the saturation equation
+    !>this subroutine is detailed in Salinas et al. 2017 doi:10.1002/fld.4357
     !>The method ensures convergence "independent" of the time step.
+    !>@param nphase Number of phases
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
+    !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  sat_bak Backup of the saturation field
+    !>@param  backtrack_sat Backtrack parameter used
+    !>@param  backtrack_par_from_schema obtained from diamond/input file
+    !>@param  Previous_convergence Convergence obtained in the previous attempt
+    !>@param  satisfactory_convergence If converged true
+    !>@param  new_backtrack_par New obtained backtracking parameter
+    !>@param  Max_sat_its Maximum allowed number of saturation iterations
+    !>@param  its Iterations taken?
+    !>@param  nonlinear_iteration current non_linear iteration
+    !>@param  useful_sats Number of useful iterations of the saturation iteration method
+    !>@param  res residual obtained using the new sigmas obtained with the new saturation in the transport equation
+    !>@param  res_ratio ratio of residuals between to iterations
+    !>@param  first_res residual obtained at the first attemp, used as reference
     subroutine FPI_backtracking(nphase, Mdims, ndgln, state, packed_state, sat_bak, backtrack_sat, backtrack_par_from_schema, &
         Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration, useful_sats, res, &
         res_ratio, first_res)
@@ -466,7 +493,7 @@ contains
         new_backtrack_par = backtrack_pars(1)
 
     contains
-        !!>@brief: Based on a history of convergence and backtracking factors an optimal bracktrack factor is computed
+        !>@brief: Based on a history of convergence and backtracking factors an optimal bracktrack factor is computed
         real function get_optimal_backtrack_par(backtrack_pars, Convergences, Coefficients)
             implicit none
             real, dimension(:), intent(in) ::backtrack_pars, Convergences
@@ -590,7 +617,7 @@ contains
         !            if (abs(backtrack_pars(1)-get_optimal_backtrack_par) < 1d-3 ) get_optimal_backtrack_par = min(get_optimal_backtrack_par*1.01,1.0)
         end function
 
-        !!>@brief: Fitting of two or three points, it solves an easy least squares system
+        !>@brief: Fitting of two or three points, it solves an easy least squares system
         subroutine Cubic_fitting(backtrack_pars, Convergences, Coefficients)
             implicit none
             real, dimension(:), intent(in) ::backtrack_pars, Convergences
@@ -640,8 +667,12 @@ contains
 
     end subroutine FPI_backtracking
 
-    !!>@brief:This subroutines eliminates the oscillations in the saturation that are bigger than a
+    !>@brief:This subroutines eliminates the oscillations in the saturation that are bigger than a
     !>certain tolerance and also sets the saturation to be between bounds
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param do_not_update_halos If true do not update halos, to save time in parallel
     subroutine Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos)
         Implicit none
         !Global variables
@@ -741,8 +772,11 @@ contains
     end subroutine Set_Saturation_to_sum_one
 
 
-    !!>@brief: This subroutines eliminates the oscillations in the saturation that are bigger than a
+    !>@brief: This subroutines eliminates the oscillations in the saturation that are bigger than a
     !> certain tolerance and also sets the saturation to be between bounds
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param do_not_update_halos If true do not update halos, to save time in parallel
      subroutine non_porous_ensure_sum_to_one(Mdims, packed_state, do_not_update_halos)
          Implicit none
          !Global variables
@@ -783,8 +817,10 @@ contains
 
      end subroutine non_porous_ensure_sum_to_one
 
-    !!>@brief:Ensure that the saturations at the beginning sum to one, if they do not
+    !>@brief:Ensure that the saturations at the beginning sum to one, if they do not
     !> all the error is compensated in the scapegoat_phase. Normally the last
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  find_scapegoat_phase  Against which phase we correct the error
     subroutine Initialise_Saturation_sums_one(mdims, packed_state, find_scapegoat_phase)
         Implicit none
         !Global variables
@@ -849,7 +885,13 @@ contains
     end subroutine Initialise_Saturation_sums_one
 
 
-    !!>@brief: The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
+    !>@brief: The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param backtrack_par_factor INOUT backtracking value to use
+    !>@param courant_number_in Courant number and shock front courant number
+    !>@param first_time_step true if the first one
+    !>@param nonlinear_iteration current non-linear iteration
+    !>@param I_am_temperature If doing temperature true (DEPRECATED PROBABLY)
     subroutine auto_backtracking(Mdims, backtrack_par_factor, courant_number_in, first_time_step, nonlinear_iteration, I_am_temperature)
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
@@ -935,23 +977,29 @@ contains
     !> Use this subroutine to speed up any system being solved by looping.
     !> A new guess is computed and returned
     !> Method explained in DOI.10.1137/10078356X
-    !---------------------------------------------------------------------------
+    !>@param N Size if the field of interest. Used also to turn vector/tensor fields into scalar fields internally here
+    !>@param M  Size of the field of iterations available - 2
+    !>@param NewField  New guess obtained by the Anderson Acceleration method
+    !>@param History_field  Past results obtained by the outer solver
+    !>@param stored_residuals  Past residuals obtained as the (- guessed value + G(guess value) )
+    !>@param max_its Maximum number of iterations
+    !>@param prev_small_matrix Contains the previous A'*A, speeds up the method. On exit is updated (M,M)
+    !> Prepared to be passed unallocated from M = 1 and allocated internally
     subroutine get_Anderson_acceleration_new_guess(N, M, NewField, History_field, stored_residuals, max_its, prev_small_matrix,restart_now)
       implicit none
-      integer, intent(in) :: N !> Size if the field of interest. Used also to turn vector/tensor fields into scalar fields internally here
-      integer, intent(in) :: M !> Size of the field of iterations available - 2
-      real, dimension(N), intent(out) :: NewField !> New guess obtained by the Anderson Acceleration method
-      real, dimension(N, M+2), intent(inout) :: History_field !> Past results obtained by the outer solver
-      real, dimension(N, M+1), intent(inout) :: stored_residuals !> Past residuals obtained as the (- guessed value + G(guess value) )
+      integer, intent(in) :: N 
+      integer, intent(in) :: M 
+      real, dimension(N), intent(out) :: NewField 
+      real, dimension(N, M+2), intent(inout) :: History_field 
+      real, dimension(N, M+1), intent(inout) :: stored_residuals 
       integer, optional :: max_its
-      real, dimension(:,:), allocatable, optional, intent(inout) :: prev_small_matrix!> Contains the previous A'*A, speeds up the method. On exit is updated (M,M)
-                                                                        !> Prepared to be passed unallocated from M = 1 and allocated internally
+      real, dimension(:,:), allocatable, optional, intent(inout) :: prev_small_matrix
       logical, intent(inout) :: restart_now
       !Local variables
-      real, dimension(N,M) :: Matrix !> Matrix containing the residuals
-      real, dimension(M,1) :: Small_b !>RHS containing A' * The last residual
-      real, dimension(M) :: auxV !>Temporary array to perform in parallel A'*A
-      real, dimension(M,M) :: Small_matrix !>The resulting from A'*A
+      real, dimension(N,M) :: Matrix ! Matrix containing the residuals
+      real, dimension(M,1) :: Small_b !RHS containing A' * The last residual
+      real, dimension(M) :: auxV !Temporary array to perform in parallel A'*A
+      real, dimension(M,M) :: Small_matrix !The resulting from A'*A
       real, dimension(m+1) :: AA_alphas
       integer :: i, j, Q_rank, ierr, max_its2, start
       real :: auxR
@@ -1101,7 +1149,17 @@ contains
     !> @author Pablo Salinas
     !> @brief In this subroutine the Schur complement is generated and solved using PETSc to update the pressure field
     !> Matrices need to be in petsc format and pmat is the preconditioned matrix, i.e. pmat = A11- A10(AproxA00^-1)A01
-    !---------------------------------------------------------------------------
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  ndgln Global to local variables
+    !>@param  final_phase This is the final phase to be assembled, in this way we can assemble from phase 1 to final_phase not necessarily being for all the phases
+    !>@param pmat INOUT preconditioned matrix, i.e. pmat = A11- A10(AproxA00^-1)A01
+    !>@param P_all Pressure field
+    !>@param deltaP Update of pressure from before solving
+    !>@param  rhs_p RHS of the Pressure system
+    !>@param solver_option_path Path of the solver to be used to solve here the system
+    !>@param Dmat (optional) is the Matrix multipliying pressure in the continuity equation
     subroutine petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, pmat, P_all, deltaP, rhs_p, solver_option_path, Dmat)
         use Full_Projection
         use petsc_tools
@@ -1189,6 +1247,13 @@ contains
 
     !>@brief: This subroutine converts the C (gradient) and CT (Divergence) matrices into PETSc format
     !> Mainly devoted to be used by the PETSc stokes schur solver
+    !> This can be used when moving from the ICFERST matrix format to PETSc as reference
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  ndgln Global to local variables
+    !>@param  Mspars Sparsity of the matrices
+    !>@param nphase number of phases
     SUBROUTINE Convert_C_and_CT_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, &
         Mspars, NPHASE)  ! Element connectivity.
         IMPLICIT NONE

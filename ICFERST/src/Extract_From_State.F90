@@ -17,9 +17,10 @@
 
 #include "fdebug.h"
 
+!> This module enables the multiphase prototype code to interact with state by
+!> copying everything required from state to ICFERST, adaptive time-stepping, 
+!> outfluxes computation, tunneled BCs and Darcy velocity.
 module Copy_Outof_State
-    !! This module enables the multiphase prototype code to interact with state by
-    !! copying everything required from state to the MP-space.
 
     use fldebug
     use state_module
@@ -177,7 +178,7 @@ contains
         return
     end subroutine Get_Primary_Scalars_new
 
-    !> @brief This subroutine calculates the global node numbers requested to operates in the MP-space.
+    !> @brief This subroutine calculates the global node numbers requested to operates in ICFERST.
     subroutine Compute_Node_Global_Numbers( state, ndgln)
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
@@ -583,7 +584,7 @@ contains
     end subroutine Get_Discretisation_Options
 
 
-    !> @brief: Sets the boundary condition, if the time has advance and the BCs changed,
+    !> @brief: Sets the boundary condition, if the time has advanced and the BCs changed,
     !> here they are set to the new time-level
     subroutine update_boundary_conditions( state, stotel, cv_snloc, nphase, &
         &                                 suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer )
@@ -605,7 +606,7 @@ contains
 
         suf_t_bc = 0. ; suf_t_bc_rob1 = 0. ; suf_t_bc_rob2 = 0.
 
-        call set_boundary_conditions_values( state, shift_time = .true. )
+        call set_boundary_conditions_values( state, shift_time = .false. )
 
         pmesh => extract_mesh( state, 'PressureMesh' )
 
@@ -2153,32 +2154,43 @@ end subroutine finalise_multistate
 !> @brief: This subroutine either store variables before the nonlinear timeloop starts, or checks
 !> how the nonlinear iterations are going and depending on that increase the timestep
 !> or decreases the timestep and repeats that timestep
+!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+!>@param  packed_state Linked list with the fields for ICFERST
+!>@param  reference_field  Field stored at the beginning of the non-linear loop to check convergence
+!>@param  old_acctim  Previous actual time
+!>@param  Repeat_time_step, ExitNonLinearLoop
+!>@param  its  Non-linear time iteration WARNING: not to be modified unless VERY sure
+!>@param  nonLinearAdaptTs   Flag controlling if we have adaptive time-step or not
+!>@param  order   Flag controlling what are we doing. 1)Store or get from backup; 2)Calculate and store reference_field;
+!>@param  adapt_mesh_in_FPI, first_time_step
+!>@param  Accum_Courant, Courant_tol, Current_Courant
+!>@param  calculate_mass_delta  1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
 subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, order, calculate_mass_delta, &
     adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Current_Courant, first_time_step)
     Implicit none
     type(multi_dimensions), intent(in) :: Mdims
     type(state_type), intent(inout) :: packed_state
-    real, dimension(:,:,:), allocatable, intent(inout) :: reference_field!> Field stored at the beginning of the non-linear loop to check convergence
-    real, intent(in) :: old_acctim!> Previous actual time
+    real, dimension(:,:,:), allocatable, intent(inout) :: reference_field
+    real, intent(in) :: old_acctim
     logical, intent(inout) :: Repeat_time_step, ExitNonLinearLoop
-    integer, intent(inout) :: its!> Non-linear time iteration WARNING: not to be modified unless VERY sure
-    logical, intent(in) :: nonLinearAdaptTs !> Flag controlling if we have adaptive time-step or not
-    integer, intent(in) :: order !> Flag controlling what are we doing. 1)Store or get from backup; 2)Calculate and store reference_field;
+    integer, intent(inout) :: its
+    logical, intent(in) :: nonLinearAdaptTs 
+    integer, intent(in) :: order 
     logical, optional, intent(in) :: adapt_mesh_in_FPI, first_time_step
     real, optional, intent(in) :: Accum_Courant, Courant_tol, Current_Courant
-    real, dimension(:,:), optional :: calculate_mass_delta!> 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
+    real, dimension(:,:), optional :: calculate_mass_delta
     !Local variables
-    real, dimension(:,:), allocatable :: Tracers_avg!> Average of all the passiveTracers for checking
-    logical :: adapting_within_happening_now !> Do not show convergence if we are adapting the mesh within the FPI and this is the first guess
-    integer, save :: nonlinear_its=0!> Needed for adapt_within_fpi to consider all the non-linear iterations together
-    real, save :: stored_dt = -1 !> Backup of the time-step size
-    logical, save :: adjusted_ts_to_dump = .false.!> Flag to see if we need to modify dt to ensure we match a certain time level
+    real, dimension(:,:), allocatable :: Tracers_avg! Average of all the passiveTracers for checking
+    logical :: adapting_within_happening_now !Do not show convergence if we are adapting the mesh within the FPI and this is the first guess
+    integer, save :: nonlinear_its=0! Needed for adapt_within_fpi to consider all the non-linear iterations together
+    real, save :: stored_dt = -1 ! Backup of the time-step size
+    logical, save :: adjusted_ts_to_dump = .false.! Flag to see if we need to modify dt to ensure we match a certain time level
     logical, save :: have_Active_Tracers
     integer, save :: Ntracers
     real :: dt, auxR, dump_period
     integer :: Aim_num_FPI, auxI, auxJ, incr_threshold, stat1, stat2, nfields, k
-    integer, save :: show_FPI_conv!> Whether printing out to the user convergence or not
+    integer, save :: show_FPI_conv! Whether printing out to the user convergence or not
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
     real, dimension(:,:,:), pointer :: pressure
@@ -2192,14 +2204,14 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     real, save :: dt_by_user = -1
     real :: tolerance_between_non_linear, min_ts, max_ts,&
         Infinite_norm_tol, calculate_mass_tol, inf_norm_pres, Infinite_norm_tol_pres, inf_norm_temp, inf_norm_conc
-    real :: max_calculate_mass_delta !> local variable, holds the maximum mass error
+    real :: max_calculate_mass_delta ! local variable, holds the maximum mass error
     real, dimension(2) :: totally_min_max
-    logical :: PID_controller !> Are we using a Proportional integration derivator controller of the time-step size?
+    logical :: PID_controller ! Are we using a Proportional integration derivator controller of the time-step size?
     !Variables for adaptive time stepping based on non-linear iterations
     real :: Tracers_ref_val, increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val, finish_time
     integer :: variable_selection, NonLinearIteration
     !Variables to convert output time into days if it is very big
-    real, save :: conversor = 1.0 !> Variables to convert output time into days if it is very big
+    real, save :: conversor = 1.0 ! Variables to convert output time into days if it is very big
     character (len = OPTION_PATH_LEN), save :: output_units =' ', option_path
     character(len=PYTHON_FUNC_LEN) :: pyfunc
 
@@ -2690,18 +2702,18 @@ contains
         logical, optional, intent(in) :: reset
         !Local variables
         !Fixed values from the paper, this can be improved, see SPE-182601-MS
-        real, parameter:: Ki = 1.34 !> Exponent associated with the Integrator controller
-        real, parameter:: Kd = 0.01!> Exponent associated with the derivator controller
-        real, parameter:: Kp = 0.001 !> Exponent associated with the proportional controller
+        real, parameter:: Ki = 1.34 ! Exponent associated with the Integrator controller
+        real, parameter:: Kd = 0.01! Exponent associated with the derivator controller
+        real, parameter:: Kp = 0.001 ! Exponent associated with the proportional controller
         real, save :: Cn1 = -1, Cn2 = -1
         real, dimension(3) :: Cn
         real :: aux
         ! 2.0 => too strongly enforce the number of iterations, ignores other criteria
         ! 1.0 => Forces the number of iterations, almost ignore other criteria
         ! 0.6 => soft constrain, it will try but not very much, considers other criteria
-        real, parameter :: impose_FPI_num = 2.0 !>Whether to strongly enforce the number of iterations and ignores other criteria, now on.
+        real, parameter :: impose_FPI_num = 2.0 !Whether to strongly enforce the number of iterations and ignores other criteria, now on.
         real, parameter :: tol = 1e-8
-        logical, parameter :: max_criteria = .false.!>If false, use an average with different weights
+        logical, parameter :: max_criteria = .false.!If false, use an average with different weights
 
 
         if (present_and_true(reset))then
@@ -2764,6 +2776,8 @@ contains
 end subroutine Adaptive_NonLinear
 
 !> Calculate the inf norm of the normalised field, so the field goes from 0 to 1
+!> It requires as inputs the tracer to be used and the reference tracer to normallise, the dumping to be set to 1.0
+!> and totally_min_max which includes the min max values of the field across all processors also for normalisation
 real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, totally_min_max)
     implicit none
     real, dimension(:,:), intent(in) :: tracer, reference_tracer
@@ -2911,6 +2925,19 @@ subroutine copy_packed_new_to_iterated(packed_state, viceversa)
 end subroutine copy_packed_new_to_iterated
 
 !>@DEPRECATED: Gets memory from packed state
+!>This subroutine returns a pointer to the desired values of a variable stored in packed state
+!>All the input variables (but packed_stated) are pointers following the structure of the *_ALL variables
+!>and also all of them are optional, hence you can obtaine whichever you want
+!>######################EXAMPLE OF USAGE OF THIS SUBROUTINE:#####################################
+!>If we want to get the velocity and the phasevolumefraction one should proceed this way:
+!>Define variables:
+!>real, dimension(:,:,:), pointer :: Velocity_pointer
+!>real, dimension(:,:), pointer :: PhaseVolumeFraction_pointer
+!>Assign the pointers
+!>call get_var_from_packed_state(packed_state, Velocity = Velocity_pointer, PhaseVolumeFraction = PhaseVolumeFraction_pointer)
+!>
+!> In this way we only have to introduce the name of the variables we want to get from packed_state
+!########################################################################################
 subroutine get_var_from_packed_state(packed_state,FEDensity,&
     OldFEDensity,IteratedFEDensity,Density,OldDensity,IteratedDensity,PhaseVolumeFraction,&
     OldPhaseVolumeFraction,IteratedPhaseVolumeFraction, Velocity, OldVelocity, IteratedVelocity, &
@@ -2925,19 +2952,6 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term, Concentration,&
     OldConcentration, IteratedConcentration,FEConcentration, OldFEConcentration, IteratedFEConcentration,&
     Enthalpy,OldEnthalpy, IteratedEnthalpy,FEEnthalpy, OldFEEnthalpy, IteratedFEEnthalpy)
-    !This subroutine returns a pointer to the desired values of a variable stored in packed state
-    !All the input variables (but packed_stated) are pointers following the structure of the *_ALL variables
-    !and also all of them are optional, hence you can obtaine whichever you want
-    !######################EXAMPLE OF USAGE OF THIS SUBROUTINE:#####################################
-    !If we want to get the velocity and the phasevolumefraction one should proceed this way:
-    !Define variables:
-    !real, dimension(:,:,:), pointer :: Velocity_pointer
-    !real, dimension(:,:), pointer :: PhaseVolumeFraction_pointer
-    !Assign the pointers
-    !call get_var_from_packed_state(packed_state, Velocity = Velocity_pointer, PhaseVolumeFraction = PhaseVolumeFraction_pointer)
-    !
-    ! In this way we only have to introduce the name of the variables we want to get from packed_state
-    !########################################################################################
     implicit none
     type(state_type), intent(inout) :: packed_state
     real, optional, dimension(:,:,:), pointer :: Velocity, OldVelocity, IteratedVelocity, NonlinearVelocity, OldNonlinearVelocity,&
@@ -3366,20 +3380,25 @@ function GetFEMName(tfield) result(fem_name)
 end function GetFEMName
 
 !>@brief: Subroutine to calculate the integrated mass inside the domain
+!>@param packed_state
+!>@param Mdims
+!>@param mass_ele volume of the element, split into cv_nloc equally sized pieces (barycenter)
+!>@param cv_ndgln local to global of the CV mesh only
+!>@param DEN_ALL density of the field
+!>@param eles_with_pipe list of element that contain a well/pipe
+!>@retval calculate_mass Output field containing all the mass within the domain
 subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_mass, &
     cv_ndgln, DEN_ALL, eles_with_pipe)
 
     implicit none
-
-
     ! Input/output variables
     type(state_type), intent(inout) :: packed_state
     type(multi_dimensions), intent(in) :: Mdims
-    real, dimension( : ), intent(in) :: mass_ele !> volume of the element, split into cv_nloc equally sized pieces (barycenter)
-    real, dimension(:), intent(inout) :: calculate_mass!> Output field containing all the mass within the domain
+    real, dimension( : ), intent(in) :: mass_ele ! volume of the element, split into cv_nloc equally sized pieces (barycenter)
+    real, dimension(:), intent(inout) :: calculate_mass! Output field containing all the mass within the domain
     integer, dimension(:), intent( in ) ::  cv_ndgln
     REAL, DIMENSION( :, : ), intent( in) :: DEN_ALL
-    type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe!> Elements with pipes
+    type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe! Elements with pipes
     ! Local variables
     type (tensor_field), pointer :: saturation
     type (vector_field), pointer :: porosity
@@ -3451,7 +3470,7 @@ logical function have_option_for_any_phase(path, nphase)
 end function have_option_for_any_phase
 
 
-!>@brief: This subroutine calculates the actual Darcy velocity, but with P0DG precision
+!>@brief: This subroutine calculates the actual Darcy velocity, but with P0DG precision only!
 subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
 
     implicit none
@@ -3518,8 +3537,8 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
     !     call halo_update(darcy_velocity(iphase)%ptr)
     ! end do
 end subroutine get_DarcyVelocity
-    !>@brief: Obtain the surface global to local conversor for a scalar field
 
+    !>@brief: Obtain the surface global to local conversor for a scalar field
     subroutine Get_Scalar_SNdgln( sndgln, field  )
       implicit none
       type( scalar_field ), intent( in ) :: field
@@ -3567,6 +3586,9 @@ end subroutine get_DarcyVelocity
     !> up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
     !> (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they
     !> wish to integrate over).
+    !>@param current_time actual time
+    !>@param itime time-level in integer format
+    !>@param outfluxes multi_outfluxes field containing the data required to create the output csv file
     subroutine dump_outflux(current_time, itime, outfluxes)
 
         real,intent(in) :: current_time
@@ -3677,8 +3699,18 @@ end subroutine get_DarcyVelocity
 
     !>@brief: Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a given GI point in a certain element
     !>This subroutine should only be called if SELE is on the BOUNDARY
-    !>Example of Mass_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
+    !>Example of Mass_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMT(iphase)
     !>Example of Vol_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
+    !>@param bcs_outfluxes the total mass entering the domain is captured by 'bcs_outfluxes'
+    !>@param outfluxes multi_outfluxes field containing the data required to create the output csv file
+    !>@param sele current surface element
+    !>@param cv_nodi current control volume
+    !>@param suf_area surface area 
+    !>@param Vol_flux ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMT(iphase)
+    !>@param Mass_flux ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase) (includes tracer and density!)
+    !>@param tracer field being transported/computed
+    !>@param outfluxes_fields to extract also from active/passive tracers
+    !>@param start_phase, end_phase Initial and final phase to be considered here
     subroutine update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi, suf_area, Vol_flux, Mass_flux, tracer, outfluxes_fields, start_phase, end_phase )
       implicit none
       integer, intent(in) :: sele, cv_nodi, start_phase, end_phase
@@ -3728,12 +3760,10 @@ end subroutine get_DarcyVelocity
 
 
 
-    !==Andreas============================================================================================
     !>@brief:--A Subroutine that returns a Logical, either to Enter the Force Balance Eqs or Not         =
     !> given a requested_cfl_pressure it will skip the ForceBalanceEquation that many times              =
     !> while if I have adaptive mesh it will solve the ForceBalanceEquation after each adapt_time_steps  =
     !> The Subroutive also account for delaying adaptivity and swich between cfl_pressure and after_adapt=
-    !=====================================================================================================
     subroutine EnterForceBalanceEquation(EnterSolve, its, itime, acctim, &
                                          t_adapt_threshold, after_adapt, after_adapt_itime, PVF_cfl)
        implicit none
@@ -3786,6 +3816,7 @@ end subroutine get_DarcyVelocity
     !> However, it does not guarantee mass conservation as it uses the value from the previous time-step
     !> although it can still be used for many cases such as ATES, or ventilation.
     !> Overwrites the dirichlet BC values.
+    !> Currently it uses the information from outfluxes so it is MANDATORY to use and request outfluxes for those BCs
     subroutine Impose_connected_BCs(outfluxes, packed_state, Mdims, acctime )
         implicit none
         type (multi_outfluxes), intent(inout) :: outfluxes

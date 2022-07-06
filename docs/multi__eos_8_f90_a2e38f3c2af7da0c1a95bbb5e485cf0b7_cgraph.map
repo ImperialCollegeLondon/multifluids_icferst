@@ -1,0 +1,8 @@
+<map id="calculate_porousmedia_adv_terms" name="calculate_porousmedia_adv_terms">
+<area shape="rect" id="node1" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="5,23,179,65"/>
+<area shape="rect" id="node2" href="$namespacemultiphase__eos.html#a659427fd61af753266767259b441a345" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="227,23,419,65"/>
+<area shape="rect" id="node3" href="$namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="467,23,627,65"/>
+<area shape="rect" id="node4" href="$namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="675,23,829,65"/>
+<area shape="rect" id="node5" href="$multi__eos_8_f90.html#a0f94604be6099dd1304ee7568ad7aac1" title=": Brooks corey model of relperm. This subroutine add a small quantity to the corey function to avoid ..." alt="" coords="877,5,1048,32"/>
+<area shape="rect" id="node6" href="$multi__eos_8_f90.html#afb461540e77781fc8560dcdf98a7ed12" title=":This subroutine calculates the relative permeability for three phases First phase has to be water,..." alt="" coords="905,56,1021,83"/>
+</map>

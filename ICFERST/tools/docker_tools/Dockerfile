@@ -1,28 +1,45 @@
 # DockerFile for a Fludity development container
 
-# Use a Xenial base image# FOR DIFFERENT UBUNTU DISTROS REMEMBER TO CHANGE ALL THE XENIAL INSTANCES!
-FROM ubuntu:xenial
+# Use a focal base image
+FROM ubuntu:focal
 
 # This DockerFile is looked after by
 MAINTAINER Tim Greaves
 
-# Add the Fluidity repository
-RUN echo "deb http://ppa.launchpad.net/fluidity-core/ppa/ubuntu xenial main" > /etc/apt/sources.list.d/fluidity-core-ppa-xenial.list
 
-# Import the Launchpad PPA public key
-RUN gpg --keyserver keyserver.ubuntu.com --recv 0D45605A33BAC3BE
-RUN gpg --export --armor 33BAC3BE | apt-key add -
+# Installs shouldn't expect input
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Update the system
-RUN apt-get update
-RUN apt-get -y dist-upgrade
+# Package updates and installs
+RUN apt-get update && \
+     apt-get -y dist-upgrade && \
+     apt-get -y install gnupg dirmngr && \
+     echo "deb http://ppa.launchpad.net/fluidity-core/ppa/ubuntu focal main" > /etc/apt/sources.list.d/fluidity-core-ppa-focal.list && \
+     gpg --keyserver keyserver.ubuntu.com --recv 0D45605A33BAC3BE && \
+     gpg --export --armor 33BAC3BE | apt-key add - && \
+     apt-get update && \
+     echo "Europe/London" > /etc/timezone && \
+     apt-get -y install fluidity-dev texlive-pstricks texlive texlive-latex-extra texlive-science python3-pip && \
+     rm -rf /var/cache/apt && \
+     rm -rf /var/lib/apt/lists
 
-# Install Fluidity development environment
-RUN apt-get -y install fluidity-dev
+RUN python3 -m pip install --upgrade junit-xml
 
-# Add an icferst user who will be the default user for this container
-RUN adduser --disabled-password --gecos "" icferst
-ENV PETSC_DIR /usr/lib/petscdir/3.6.3
+WORKDIR /usr/local
+RUN curl -fsL https://gmsh.info/bin/Linux/gmsh-4.8.3-Linux64.tgz | tar --strip-components=1 -zxf -
+
+ENV PETSC_DIR /usr/lib/petscdir/3.12
+ENV LDFLAGS -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi
+ENV CPPFLAGS -I/usr/include/hdf5/openmpi
+ENV FCFLAGS -I/usr/include
+ENV OMPI_MCA_btl_vader_single_copy_mechanism none
+ENV OMPI_MCA_rmaps_base_oversubscribe 1
+
+# Add an ICFERST user who will be the default user for this container
+# Make sure the user has a userid matching the host system
+# -- pass this as an argument at build time
+ARG userid=1000
+RUN adduser --disabled-password --gecos "" -u $userid icferst
 
 # Add unzip
 RUN apt-get -y install unzip

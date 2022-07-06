@@ -21,7 +21,7 @@
 !!!!     SHAPE FUNCTIONS SUBRTS             !!!!
 !!!!========================================!!!!
 
-
+!>  SHAPE FUNCTIONS SUBRTS
 module shape_functions_prototype
 
   use fldebug
@@ -35,7 +35,7 @@ module shape_functions_prototype
   use Fields_Allocates, only : allocate, make_mesh
   use multi_data_types
   implicit none
-
+  !> Subroutine to compute the derivatives of the inputed shape functions
     interface DETNLXR_PLUS_U
         module procedure DETNLXR_PLUS_U1
         module procedure DETNLXR_PLUS_U2
@@ -43,17 +43,14 @@ module shape_functions_prototype
 
 contains
 
-!!!
-!!!   SHAPESV AND RELATED SUBRTS & FUNCTIONS
-!!!
-
+   !>SHAPESV AND RELATED SUBRTS & FUNCTIONS
+   !> Shape functions associated with volume integration using both CV basis
+   !> functions CVN as well as FEM basis functions N (and its derivatives NLX, NLY, NLZ)
+   !> also for velocity basis functions UN, UNLX, UNLY, UNLZ
   subroutine shape_cv_n( ndim, cv_ele_type, &
        cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
        n, nlx, nly, nlz, &
        un, unlx, unly, unlz )
-    ! Shape functions associated with volume integration using both CV basis
-    ! functions CVN as well as FEM basis functions N (and its derivatives NLX, NLY, NLZ)
-    ! also for velocity basis functions UN, UNLX, UNLY, UNLZ
     implicit none
     integer, intent( in ) :: ndim, cv_ele_type, cv_ngi, cv_nloc, u_nloc
     real, dimension( cv_nloc, cv_ngi ), intent( inout ) :: cvn
@@ -96,12 +93,12 @@ contains
     !ewrite(3,*) 'Leaving SHAPE_CV_N'
 
   end subroutine shape_cv_n
-
+  
+  !> This subrt defines the sub-control volume and FEM shape functions.
+  !> Shape functions associated with volume integration using both CV basis
+  !> functions CVN as well as FEM basis functions CVFEN (and its derivatives
+  !> CVFENLX, CVFENLY, CVFENLZ)
   subroutine cv_fem_shape_funs(shape_fun, Mdims, GIdims, cv_ele_type, QUAD_OVER_WHOLE_ELE)
-    ! This subrt defines the sub-control volume and FEM shape functions.
-    ! Shape functions associated with volume integration using both CV basis
-    ! functions CVN as well as FEM basis functions CVFEN (and its derivatives
-    ! CVFENLX, CVFENLY, CVFENLZ)
     implicit none
     integer , intent(in) :: cv_ele_type
     type (multi_dimensions), intent(in) :: Mdims
@@ -380,6 +377,11 @@ contains
 
   end subroutine cv_fem_shape_funs
 
+  !>this subroutine generates the FE basis functions, weights and the
+  !>derivatives of the shape functions for a variety of elements on the
+  !>control volume boundaries.
+  !>The routine also generates the shape functions and derivatives
+  !>associated with the CV surfaces and also the FV basis functions.
   SUBROUTINE DET_SUF_ELE_SHAPE( SCVNGI, NFACE, &
        CVFEM_ON_FACE, &
        CV_NLOC, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
@@ -392,15 +394,6 @@ contains
        SBUFENLX, SBUFENLY, SBUFENLZ, &
        CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
        NDIM, CV_ELE_TYPE )
-    !
-    !     - this subroutine generates the FE basis functions, weights and the
-    !     - derivatives of the shape functions for a variety of elements on the
-    !     - control volume boundaries.
-    !     - The routine also generates the shape functions and derivatives
-    !     - associated with the CV surfaces and also the FV basis functions.
-    !     -------------------------------
-    !     - date last modified : 21/02/2012
-    !     -------------------------------
 
     IMPLICIT NONE
 
@@ -462,11 +455,11 @@ contains
   END SUBROUTINE DET_SUF_ELE_SHAPE
 
 
+  !> Compute SBCVFEN from SCVFEN
   subroutine scvfen_2_sbcvfen( cv_nloc, cv_snloc, scvngi, sbcvngi, &
        cv_nloc_cells, cv_snloc_cells, cvfem_on_face, &
        sbcvfen, sbcvfenslx, sbcvfensly, sbcvfenlx, sbcvfenly, sbcvfenlz, sbcvfeweigh, &
        scvfen, scvfenslx, scvfensly, scvfenlx, scvfenly, scvfenlz, scvfeweigh )
-    ! Compute SBCVFEN from SCVFEN
     implicit none
     integer, intent( in ) :: cv_nloc, cv_snloc, scvngi, sbcvngi
     integer, intent( in ) :: cv_nloc_cells, cv_snloc_cells
@@ -569,6 +562,11 @@ contains
 
 
 
+  !> This subroutine generates the FE basis functions, weights and the
+  !> derivatives of the shape functions for a variety of elements on the
+  !> control volume boundaries.
+  !> The routine also generates the shape functions and derivatives
+  !> associated with the CV surfaces and also the FV basis functions.
   subroutine shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
        ufem_on_face, &
        cv_ele_type, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
@@ -577,15 +575,6 @@ contains
        sufenlx, sufenly, sufenlz, &
        ndim )
     implicit none
-    !-
-    !- This subroutine generates the FE basis functions, weights and the
-    !- derivatives of the shape functions for a variety of elements on the
-    !- control volume boundaries.
-    !- The routine also generates the shape functions and derivatives
-    !- associated with the CV surfaces and also the FV basis functions.
-    !-
-    !- date last modified : 29/11/2011
-    !-
     integer, intent( in ) :: u_nloc
     integer, intent( in ) :: scvngi, cv_nloc
     integer, dimension( cv_nloc, scvngi ), intent( inout ) :: cv_neiloc
@@ -759,16 +748,12 @@ contains
   end subroutine shapesv_fem_plus
 
 
+  !>this subroutine generates the FE basis functions, weights and the
+  !>derivatives of the shape functions for a variety of elements.
+  !>The routine also generates the shape functions and derivatives
+  !>associated with the CV surfaces and also the FV basis functions.
   SUBROUTINE FV_1D_QUAD( SCVNGI, CV_NLOC, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
        SCVFENLX, SCVFENLY, SCVFENLZ )
-    !
-    !     - this subroutine generates the FE basis functions, weights and the
-    !     - derivatives of the shape functions for a variety of elements.
-    !     - The routine also generates the shape functions and derivatives
-    !     - associated with the CV surfaces and also the FV basis functions.
-    !     -------------------------------
-    !     - date last modified : 24/05/2003
-    !     -------------------------------
 
     IMPLICIT NONE
 
@@ -844,21 +829,14 @@ contains
 
 
 
+  !>this routine generates the shape functions associated
+  !> with the FV's i.e. their surfaces and volume shape
+  !> functions and derivatives. The surface shape functions
+  !> are the values of the FE volume shape functions evaluated
+  !> on the surfaces of the CV's.
   SUBROUTINE FVQUAD( NGI,    NLOC,    SVNGI,&
        M,      SVN,     SVNLX, &
        SVWEIGH                 )
-    !     --------------------------------------------
-    !
-    !     - this routine generates the shape functions associated
-    !     - with the FV's i.e. their surfaces and volume shape
-    !     - functions and derivatives. The surface shape functions
-    !     - are the values of the FE volume shape functions evaluated
-    !     - on the surfaces of the CV's.
-    !
-    !     -------------------------------
-    !     - date last modified : 07/11/2002
-    !     -------------------------------
-    !
     IMPLICIT NONE
     !
     INTEGER NGI, NLOC, SVNGI
@@ -1036,19 +1014,13 @@ contains
   !
   !
 
+  !> this routine generates the shape functions associated
+  !> with the FV's i.e. their surfaces and volume shape
+  !> functions and derivatives.
   SUBROUTINE FVHEX( NGI,    NLOC,    SVNGI,&
                                 !     - REALS
        M,      SVN,     SVNLX, &
        SVNLY,  SVWEIGH          )
-    !     --------------------------------------------
-    !
-    !     - this routine generates the shape functions associated
-    !     - with the FV's i.e. their surfaces and volume shape
-    !     - functions and derivatives.
-    !
-    !     -------------------------------
-    !     - date last modified : 06/10/2002
-    !     -------------------------------
     !
     IMPLICIT NONE
     !
@@ -1467,17 +1439,17 @@ contains
 
   !
   !
+  !>this routine generates the shape functions associated
+  !>with the FV's i.e. their surfaces and volume shape
+  !>functions and derivatives. The surface shape functions
+  !>are the values of the FE volume shape functions evaluated
+  !>on the surfaces of the CV's.
   SUBROUTINE FVQQUAD( NGI,    NLOC,    SVNGI,&
                                 !     - REALS
        M,      SVN,     SVNLX, &
        SVWEIGH                 )
     !     ---------------------------------------------
     !
-    !     - this routine generates the shape functions associated
-    !     - with the FV's i.e. their surfaces and volume shape
-    !     - functions and derivatives. The surface shape functions
-    !     - are the values of the FE volume shape functions evaluated
-    !     - on the surfaces of the CV's.
     !
     IMPLICIT NONE
     !
@@ -1731,22 +1703,15 @@ contains
     !
   END SUBROUTINE FVQQUAD
 
+  !>this routine generates the shape functions associated
+  !> with the FV's i.e. their surfaces and volume shape
+  !>functions and derivatives. The surface shape functions
+  !> are the values of the FE volume shape functions evaluated
+  !> on the surfaces of the CV's.
   SUBROUTINE FVQHEX( NGI,   NLOC,   SVNGI,&
                                 !     - REALS
        M,     SVN,    SVNLX,&
        SVNLY, SVWEIGH        )
-    !     ------------------------------------------
-    !
-    !     - this routine generates the shape functions associated
-    !     - with the FV's i.e. their surfaces and volume shape
-    !     - functions and derivatives. The surface shape functions
-    !     - are the values of the FE volume shape functions evaluated
-    !     - on the surfaces of the CV's.
-    !
-    !     -------------------------------
-    !     - date last modified : 07/11/2002
-    !     -------------------------------
-    !
     IMPLICIT NONE
     !
     INTEGER NGI, NLOC, SVNGI
@@ -2936,17 +2901,13 @@ contains
 
 
 !!!==============================================================
-
+  
+  !> this subroutine calculates NEILOC which is the
+  !> array containing information given a local node
+  !> and an integration point what is the other opposing
+  !> local node. It contains -1 if on the boundary of
+  !> of the element.
   SUBROUTINE VOLNEI( NEILOC, FEM_NEILOC, NLOC, SVNGI, CV_ELE_TYPE )
-    !--------------------------------------------------------
-    !- this subroutine calculates NEILOC which is the
-    !- array containing information given a local node
-    !- and an integration point what is the other opposing
-    !- local node. It contains -1 if on the boundary of
-    !- of the element.
-    !--------------------------------------------------------
-    !- date last modified : 25/11/2011
-    !--------------------------------------------------------
 
     IMPLICIT NONE
     INTEGER, intent( in ) :: NLOC, SVNGI, CV_ELE_TYPE
@@ -4258,13 +4219,11 @@ contains
     RETURN
   END SUBROUTINE VOLNEI
 
+  !> This subroutine calculates U_ON_FACE, a logical that works    -!
+  !> in a similar way of CV_ON_FACE.                               -!
   subroutine U_Volnei( cv_ele_type, cv_nloc, u_nloc, scvngi, &
        cv_neiloc,   &
        u_on_face )
-    !-----------------------------------------------------------------!
-    !- This subroutine calculates U_ON_FACE, a logical that works    -!
-    !- in a similar way of CV_ON_FACE.                               -!
-    !-----------------------------------------------------------------!
     implicit none
     integer, intent( in ) :: cv_ele_type, cv_nloc, u_nloc, scvngi
     integer, dimension( cv_nloc, scvngi ), intent( in ) :: cv_neiloc
@@ -4307,17 +4266,11 @@ contains
 
 
 
+  !> This subroutine calculates FINDGPTS,COLGPTS,NCOLGPTS
+  !> which contains given a local node ILOC the Gauss pts
+  !> that are used to integrate around this local node.
   SUBROUTINE GAUSSILOC( FINDGPTS, COLGPTS, NCOLGPTS,&
        NEILOC, NLOC, SVNGI )
-    !     ----------------------------------------------------
-    !
-    ! This subroutine calculates FINDGPTS,COLGPTS,NCOLGPTS
-    ! which contains given a local node ILOC the Gauss pts
-    ! that are used to integrate around this local node.
-    !
-    !     -------------------------------
-    !     - date last modified : 12/02/2002
-    !     -------------------------------
 
     implicit none
 
@@ -4355,7 +4308,7 @@ contains
     RETURN
   END SUBROUTINE GAUSSILOC
 
-
+  !> Subroutine to compute the derivatives of the inputed shape functions
   subroutine DETNLXR_PLUS_U1(ELE, X_ALL, XONDGL, weight, cvshape, cvshapelx, ushapelx, DevFuns)
       implicit none
       integer, intent(in) :: ELE
@@ -4378,7 +4331,7 @@ contains
 
   end subroutine DETNLXR_PLUS_U1
 
-
+  !> Subroutine to compute the derivatives of the inputed shape functions
   SUBROUTINE DETNLXR_PLUS_U2( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
        X_NLOC, CV_NLOC, NGI, &
        N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &

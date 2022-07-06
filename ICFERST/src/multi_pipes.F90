@@ -15,7 +15,7 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-
+!>This module contains all the subroutines to assemble and solve for pipes
 module multi_pipes
     use fldebug
     use fields
@@ -56,8 +56,35 @@ module multi_pipes
 
 contains
 
-  !>@brief: This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
-  SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
+    !>@brief: This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
+    !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  final_phase This is the final phase to be assembled, in this way we can assemble from phase 1 to final_phase not necessarily being for all the phases
+    !>@param wells_first_phase Starting phase of the well. For two phases this would be 3.    
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param WIC_T_BC_ALL Boundary conditions for the tracer
+    !>@param WIC_D_BC_ALL Boundary conditions for the density
+    !>@param WIC_U_BC_ALL Boundary conditions for the velocity
+    !>@param SUF_T_BC_ALL Values of the tracer at the surface of the elements?
+    !>@param SUF_D_BC_ALL Values of the density at the surface of the elements?
+    !>@param SUF_U_BC_ALL Values of the velocity at the surface of the elements?
+    !>@param  GETCV_DISC  obtain the transport equation
+    !>@param GETCT obtain the continuity equation
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  DT time-step size
+    !>@param MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE. Conversor or mass of the pipes in CV format??
+    !>@param mass_pipe Mass of the pipes (volume)
+    !>@param MASS_PIPE_FOR_COUP For coupling with the reservoir phase
+    !>@param INV_SIGMA Inverse of the absorption term coupling reservoir and wells
+    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
+    !>@param  eles_with_pipe  Elements that have a pipe
+    !>@param thermal If true we are solving for temperature
+    !>@param CV_BETA ???
+    !>@param bcs_outfluxes Outfluxes that pass boundary conditions, for mass conservation check
+    !>@param  outfluxes  Contains all the fields required to compute the outfluxes of the model and create the outfluxes.csv file. Computed when assembling the continuity equation
+    !>@param assemble_collapsed_to_one_phase Collapses phases and solves for one single temperature. When there is thermal equilibrium
+    SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                   getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
                   INV_SIGMA, upwnd, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase )
       type(state_type), intent(inout) :: packed_state
@@ -941,9 +968,48 @@ contains
       end do
 
   end function sele_from_cv_nod
-  !>@brief: This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
-  !> NOTE final_phase has to be define for the reservoir domain, i.e. for two phase flow it can be either 1 or 2, not 3 or 4.
-  !> We define wells_first_phase as the first phase of the well domain
+
+    !>@brief: This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
+    !> NOTE final_phase has to be define for the reservoir domain, i.e. for two phase flow it can be either 1 or 2, not 3 or 4.
+    !> We define wells_first_phase as the first phase of the well domain
+    !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param tracer tracer to be assembled
+    !>@param den_all, denold_all density and old density. Required like this to apply Boussinesq if required
+    !>@param  final_phase This is the final phase to be assembled, in this way we can assemble from phase 1 to final_phase not necessarily being for all the phases
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
+    !>@param  DERIV   Derivative of the density against the pressure (nphase,Mdims%cv_nonods)
+    !>@param  CV_P ! Control volume pressure, useless for the DCVFEM (1,Mdims%npres,Mdims%cv_nonods)
+    !>@param  SOURCT_ALL  Source term of the tracer equation
+    !>@param  ABSORBT_ALL Absorption to be used here
+    !>@param WIC_T_BC_ALL Boundary conditions for the tracer
+    !>@param WIC_D_BC_ALL Boundary conditions for the density
+    !>@param WIC_U_BC_ALL Boundary conditions for the velocity
+    !>@param SUF_T_BC_ALL Values of the tracer at the surface of the elements?
+    !>@param SUF_D_BC_ALL Values of the density at the surface of the elements?
+    !>@param SUF_U_BC_ALL Values of the velocity at the surface of the elements?
+    !>@param  GETCV_DISC  obtain the transport equation
+    !>@param GETCT obtain the continuity equation
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
+    !>@param  GOT_T2. True if solving for a tracer, false otherwise
+    !>@param  DT time-step size
+    !>@param  pipes_aux  Information required to define wells
+    !>@param  DIAG_SCALE_PRES_COUP  Diagonal scaling of (distributed) pressure matrix (for wells)
+    !>@param  DIAG_SCALE_PRES Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
+    !>@param  MEAN_PORE_CV   Porosity defined control volume wise
+    !>@param  eles_with_pipe  Elements that have a pipe
+    !>@param thermal If true we are solving for temperature
+    !>@param CV_BETA ???
+    !>@param MASS_CV mass of the CVs, the volume
+    !>@param  INV_B   Coupling term of the wells
+    !>@param MASS_ELE MAss of the elements, volume of elements
+    !>@param bcs_outfluxes Outfluxes that pass boundary conditions, for mass conservation check
+    !>@param  outfluxes  Contains all the fields required to compute the outfluxes of the model and create the outfluxes.csv file. Computed when assembling the continuity equation
+    !>@param  porous_heat_coef includes an average of porous and fluid heat coefficients 
+    !>@param assemble_collapsed_to_one_phase Collapses phases and solves for one single temperature. When there is thermal equilibrium
   subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, final_phase, Mdims, ndgln, DERIV, CV_P, &
                   SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL,&
                   getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, &
@@ -1458,7 +1524,22 @@ contains
   end subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY
 
 
-  !>@brief: This sub modifies Mmat%C for 1D pipe modelling
+    !>@brief: This sub modifies Mmat%C for 1D pipe modelling. Works on the momentum equation
+    !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  ndgln Global to local variables
+    !>@param  eles_with_pipe  Elements that have a pipe
+    !>@param GET_PIVIT_MAT If true compute here the Mass matrix for the pipes part, default true.
+    !>@param WIC_P_BC_ALL Boundary conditions for the pressure
+    !>@param SUF_P_BC_ALL Values of the pressure at the surface of the elements?
+    !>@param SIGMA Absorption term coupling reservoir and wells
+    !>@param NU_ALL non-linear velocity
+    !>@param U_SOURCE Source term of the momentum equation defined on the element mesh
+    !>@param U_SOURCE_CV Source term of the momentum equation defined on the CV mesh
+    !>@param  pipes_aux  Information required to define wells
     SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe, GET_PIVIT_MAT, &
         &                         WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL, &
         &                         U_SOURCE, U_SOURCE_CV, pipes_aux)
@@ -1981,11 +2062,16 @@ contains
     !>@brief: In this subroutine the elements that contain pipes are identified
     !> The pipes can either be defined using python (DEPRECATED)
     !> or a nastran file defining the trajectory of each well by points
+    !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
+    !>@param  eles_with_pipe INOUT (allocated inside) Elements that have a pipe
     subroutine retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
         implicit none
         type(state_type), dimension(:), intent(inout) :: state
         type(state_type), intent(in) :: packed_state
-        type(pipe_coords), dimension(:), allocatable, intent(inout) :: eles_with_pipe!>allocated inside
+        type(pipe_coords), dimension(:), allocatable, intent(inout) :: eles_with_pipe
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
         !Local variables
@@ -2282,7 +2368,8 @@ contains
             if (size(pipe_seeds)>0) pipe_seeds = aux_pipe_seeds(1:l)
         end subroutine find_pipe_seeds
 
-        !>@brief: Once a seed for a node is found, this subroutine finds all the nodes that form a well by searching neirhbouring elements only
+        !>@brief: Once a seed for a node is found, this subroutine finds all the nodes that form a well by searching neighbouring elements only
+        !> Strongly recommended not to touch it, it works well and it was HARD...
         subroutine find_nodes_of_well(X, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
             implicit none
             real, dimension(:,:), intent(in) :: X
@@ -2449,27 +2536,6 @@ contains
 
                 end do ele_loop
             end do seeds_loop
-
-
-!print *, "ELEMENT COORDINATES"
-! j = 1
-! do while (visited_eles(1,j) > 0)
-! ele = visited_eles(1,j)
-! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
-! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
-! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
-! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
-! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
-! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
-! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
-! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
-! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
-! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
-! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
-! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
-! j = j + 1
-! end do
-! read*
             !Count useful values
             j = 0
             do while (AUX_eles_with_pipe(j+1)%ele > 0)
@@ -2514,28 +2580,13 @@ contains
                 end do
             end if
 
-            ! !We have to ensure that the python prescribed field is not recalculated
-            ! !this needs to be removed once the memory is properly allocated
-            ! if (first_time .and. getprocno() == 1) then
-            !     first_time = .false.
-            !     if (have_option("porous_media/wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
-            !         call add_option("porous_media/wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
-            ! end if
-            !#######################################################################
-!    !To test the results gnuplot and the run spl'test' w linesp
-!to compare with well plotted from multi_tools: spl'test'  using 1:2:3 with lines palette title "Eles", 'well_coords' with lines
-!do j = 1, size(eles_with_pipe)
-!print *, X(:,eles_with_pipe(j)%pipe_corner_nds1(1))
-!print *, X(:,eles_with_pipe(j)%pipe_corner_nds2(1))
-!end do
-!read*
         end subroutine find_nodes_of_well
 
+        !>This subroutine copies from an input pipe_coords structure into another
+        !>from an starting point to a final point, allocating all the internal
+        !>variables and deallocating the original
+        !>siz is the size of the copy file if it is required ot allocate the file
         subroutine copy_from_pipe_coords(original, copy, start, end, siz)
-            !This subroutine copies from an input pipe_coords structure into another
-            !from an starting point to a final point, allocating all the internal
-            !variables and deallocating the original
-            !siz is the size of the copy file if it is required ot allocate the file
             Implicit none
             integer, intent(in) :: start, end
             type(pipe_coords), dimension(:), allocatable, intent(inout) :: original, copy
@@ -2565,9 +2616,9 @@ contains
         end subroutine copy_from_pipe_coords
 
 
+        !>This either gives the position in the list where element is,
+        !> or the new position to store the information in
         integer function get_pos(ele, visited_eles)
-            !This either gives the position in the list where element is,
-            ! or the new position to store the information in
             integer, intent(in) :: ele
             integer, dimension(2, Mdims%totele), intent(in) :: visited_eles
             !Local variables
@@ -2581,10 +2632,10 @@ contains
         end function get_pos
 
 
+        !> Calculate the pipes within an element...
+        !> Return the pipe corner nodes for each pipe in element.
         SUBROUTINE CALC_PIPES_IN_ELE( X_ALL_CORN, PIPE_INDEX_LOGICAL, NDIM, &
             pipe_corner_nds1, pipe_corner_nds2, npipes )
-            ! Calculate the pipes within an element...
-            ! Return the pipe corner nodes for each pipe in element.
             IMPLICIT NONE
             INTEGER, intent( in ) :: NDIM, npipes
             REAL, intent( in ) :: X_ALL_CORN(NDIM,NDIM+1)
@@ -2743,6 +2794,14 @@ contains
 
     end subroutine retrieve_pipes_coords
 
+    !> This subroutine reads information from diamond and populates the necessary fields
+    !> For P0DGP1 gamma is imposed to be zero at the boundary so the strong BCs work fine
+    !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  pipes_aux INOUT Information required to define wells
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  ndgln Global to local variables
     subroutine initialize_pipes_package_and_gamma(state, packed_state, pipes_aux, Mdims, Mspars, ndgln)
         implicit none
         type(state_type), dimension(:), intent(in) :: state

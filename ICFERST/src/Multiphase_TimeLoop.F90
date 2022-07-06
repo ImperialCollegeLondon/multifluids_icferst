@@ -15,6 +15,18 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
+!----------------------------------------------------------------------------------------
+!> @brief Time-loop module of IC-FERST. This module contains the time-loop and the non-linear loop.
+!> The time-loop consists many steps: 1) Data initialisation including shape functions, memory allocation, sparsity, porous media properties, etc.
+!> 2) Initialisation of the actual time loop. 
+!> 3) Non-linear loop. IC-FERST uses a modified Anderson-acceleration non-linear solver, which is based in a Picard iterative non-linear solver. 
+!> In this way, the different equations are solved independently and coupled through the Anderson non-linear solver. 
+!> First the momentum and continuity equations are assembled and solved for, next the different transport equations are solved, for example: saturation,
+!> temperature, concentration, etc. ActiveTracers and Species are solved within the non-linear solver while PassiveTracers are solved outside the non-linear solver.
+!> 4) Once the non-linear solver has converged, we proceed to jump to the next time-level but first we check if we need to adapt the mesh and/or generate a vtu file.
+!> etc.
+!> 
+!----------------------------------------------------------------------------------------
 module multiphase_time_loop
 
 #ifdef HAVE_PETSC_MODULES
@@ -99,37 +111,51 @@ module multiphase_time_loop
 
 
 contains
-    !> @brief This is the main subroutine. It performs the time-loop and
+
+    !> This is the main subroutine from which everything is called. It performs the time-loop and
     !> therefore calls all the necessary blocks to solve for the system of equations,
-    !> adapt the mesh etc.
+    !> adapt the mesh, etc.
+    !> See Salinas et al. 2016 doi: 10.1002/fld.4357, for a description of the time-loop and non-linear solver
+    !> @param state. Linked list type of memory where all the fields following Fluidity standard are stored
+    !> @param dump_no. Specify the initial number of the vtu files, has to be zero
+    !> @param nonlinear_iterations. Non-linear value. This is required just in case we adapt before the first time-step
+    !> @param dt. Time-step size
+    !> @retval
+    !> @see 
+    !> @ref 
     subroutine MultiFluids_SolveTimeLoop( state, &
         dt, nonlinear_iterations, dump_no )
         implicit none
 
 
-        type( state_type ), dimension( : ), intent( inout ) :: state
-        integer, intent( inout ) :: dump_no, nonlinear_iterations
-        real, intent( inout ) :: dt
+        type( state_type ), dimension( : ), intent( inout ) :: state!> Linked list type of memory where all the fields following Fluidity standard are stored
+        integer, intent( inout ) :: dump_no !> Specify the initial number of the vtu files, has to be zero
+        integer, intent( inout ) :: nonlinear_iterations !> This value is required just in case we adapt before the first time-step
+        real, intent( inout ) :: dt !> Time-step size
+        !Local variables
         !!$ additional state variables for multiphase & multicomponent
-        type(state_type) :: packed_state
-        type(state_type), dimension(:), pointer :: multiphase_state, multicomponent_state
+        type(state_type) :: packed_state!> Linked list type of memory where all the fields following IC-FERST standard are stored, memory is shared with state
+        type(state_type), dimension(:), pointer :: multiphase_state!> Not sure why we need this extra state memory...
+        type(state_type), dimension(:), pointer :: multicomponent_state!> For multicomponents we have this extra state file where the compositional memory is stored
         !!Define shape functions
-        type (multi_shape_funs) :: CV_funs, FE_funs
+        type (multi_shape_funs) :: CV_funs!> Structure containing everything related with the shape functions of the CV mesh
+        type (multi_shape_funs) :: FE_funs!> Structure containing everything related with the shape functions of the FE mesh
         !!$ Primary scalars
-        type(multi_dimensions) :: Mdims
-        type(multi_gi_dimensions) :: CV_GIdims, FE_GIdims
+        type(multi_dimensions) :: Mdims !> Structure that contains all the dimensions that are used throughout the code, dimensions, number of nodes, ...
+        type(multi_gi_dimensions) :: CV_GIdims!> Structure containing everything related with the gauss integration for the CV mesh
+        type(multi_gi_dimensions) :: FE_GIdims!> Structure containing everything related with the gauss integration for the FE mesh
         !!$ Node global numbers
-        type(multi_ndgln) :: ndgln
+        type(multi_ndgln) :: ndgln !> Structure containing information about the node global numbers, conversion from local to global
         !!$ Sparsity patterns
-        type (multi_sparsities) :: Mspars
+        type (multi_sparsities) :: Mspars!> Structure containing the different sparsities for the different data required, CMC matrix, Ct, C, etc...
         !!$ Defining element-pair type and discretisation options and coefficients
-        type (multi_discretization_opts) :: Mdisopt
+        type (multi_discretization_opts) :: Mdisopt !> Defining element-pair type and discretisation options and coefficients
         !!$ Defining the necessary matrices and corresponding RHS
-        type (multi_matrices) :: Mmat
+        type (multi_matrices) :: Mmat !> Structure containing the matrices required to solve for the system
         !!$ Defining variables to calculate the sigmas at the interface for porous media
-        type (porous_adv_coefs) :: upwnd
+        type (porous_adv_coefs) :: upwnd !> Structure containing the information to compute the fluxes for porous media, sigma in the papers but without the permeability
         !!$ Variable storing all the absorptions we may need
-        type(multi_absorption) :: multi_absorp
+        type(multi_absorption) :: multi_absorp !> Structure storing all the absorption terms (term multipliying the velocity in the momentum equation)
         integer :: mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
             mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
         !!$ Defining time- and nonlinear interations-loops variables
@@ -281,7 +307,7 @@ contains
         call pack_multistate( Mdims%npres, state, packed_state, multiphase_state, &
             multicomponent_state )
         call prepare_absorptions(state, Mdims, multi_absorp)
-        call set_boundary_conditions_values(state, shift_time=.true.)
+        call set_boundary_conditions_values(state, shift_time=.false.)
 
         !  Access boundary conditions via a call like
         !  call get_entire_boundary_condition(extract_tensor_field(packed_state,"Packed"//name),["weakdirichlet"],tfield,bc_type_list)
@@ -493,7 +519,7 @@ contains
 
         !HH Initialize all the magma simulation related coefficients
         if (is_magma) then
-          c_phi_length=1e7  !> the number of items of the coupling term coefficients stored in the system
+          c_phi_length=1e7  ! the number of items of the coupling term coefficients stored in the system
           allocate(c_phi_series(c_phi_length))
           call C_generate (c_phi_series, c_phi_length, state, coupling)
           call initialize_magma_parameters(magma_phase_coef,  coupling)
@@ -540,6 +566,7 @@ contains
             call get_option( '/timestepping/current_time', acctim )
             old_acctim = acctim
             acctim = acctim + dt
+            current_time = acctim
             call set_option( '/timestepping/current_time', acctim )
             new_lim = .true.
             ! Added a tolerance of 0.001dt to the condition below that stops us exiting the loop before printing the last time step.
@@ -910,6 +937,7 @@ contains
 
             ! If calculating boundary fluxes, dump them to outfluxes.csv
             if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
+                call get_option( '/timestepping/current_time', acctim )
                 call dump_outflux(acctim,itime,outfluxes)
             endif
             if (nonLinearAdaptTs) then
@@ -922,7 +950,7 @@ contains
                     itime = itime - 1
                     cycle Loop_Time
                 end if
-            end if
+            end if 
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
@@ -931,6 +959,8 @@ contains
             !dT may have changed for the next time level, however for diagnostics we need it as it has been done for this time level
             !therefore we compute it based on the actual difference of time
             call set_option( '/timestepping/timestep', acctim-old_acctim)
+            !Now we ensure that the time-step is the correct one
+            call set_option( '/timestepping/timestep', dt)            
             !Time to compute the self-potential if required
             if (write_all_stats .and. have_option("/porous_media/SelfPotential")) &
                     call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
@@ -938,8 +968,7 @@ contains
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             !calculate_diagnostic_variables_new <= computes other diagnostics such as python-based fields
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
-            !Now we ensure that the time-step is the correct one
-            call set_option( '/timestepping/timestep', dt)
+
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
 
             !Now we ensure that the time-step is the correct one
@@ -1051,7 +1080,7 @@ contains
             else
                 call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
             end if
-            call set_boundary_conditions_values(state, shift_time=.true.)
+            call set_boundary_conditions_values(state, shift_time=.false.)
             if (sig_hup .or. sig_int) then
                 ewrite(1,*) "Caught signal, exiting"
                 exit Loop_Time
@@ -1115,6 +1144,7 @@ contains
 
 
         return
+    
     contains
         !> routine puts various CSR sparsities into packed_state
         subroutine put_CSR_spars_into_packed_state()
@@ -1466,7 +1496,7 @@ contains
                 call pack_multistate(Mdims%npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
                 call prepare_absorptions(state, Mdims, multi_absorp)
-                call set_boundary_conditions_values(state, shift_time=.true.)
+                call set_boundary_conditions_values(state, shift_time=.false.)
                 !!$ Deallocating array variables:
                 deallocate( &
                     !!$ Working arrays

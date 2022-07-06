@@ -24,6 +24,8 @@
 !!!!==============================================!!!!
 
 
+!>Shape function subroutines for multi-dimensions for 
+!>Quadrilaterals, Triangles, Hexaedra and Tetrahedra
 module shape_functions_Linear_Quadratic
 
   use fldebug
@@ -207,14 +209,14 @@ contains
     return
   end subroutine re2dn4
 
+  !> This subrt. computes the shape functions M and N and their
+  !> derivatives at the Gauss points for 3D.
+  !> If LOWQUA, then use one point quadrature else use 8 point quadrature.
+  !>NB.: LX/YP(I) are the local X/Y coordinates of nodal point I.
   subroutine re3dn8( lowqua, ngi, ngi_l, nloc, mloc, &
        m, weight, n, nlx, nly, nlz, &
        sngi, snloc, sweigh, sn, snlx, snly, &
        l1, l2, l3 )
-    ! This subrt. computes the shape functions M and N and their
-    ! derivatives at the Gauss points for 3D.
-    ! If LOWQUA, then use one point quadrature else use 8 point quadrature.
-    !NB.: LX/YP(I) are the local X/Y coordinates of nodal point I.
     implicit none
     logical, intent( in ) :: lowqua
     integer, intent( in ) :: ngi, ngi_l, nloc, mloc
@@ -384,27 +386,27 @@ contains
   end subroutine re3dn8
 
 
+  !> Quadratic variation (2D) for velocity -- 9 node brick element.
+  !> Linear variation (2D) for pressure -- 4 node brick element.
+  !> NB.: We may need to define surface elements for p and (u,v,w).
+  !>
+  !> This is for the 2-D 27node element, which is number as follows
+  !>   |  /Z
+  !>  Y| /
+  !>   |/
+  !>   +-------X
+  !> For Z = -1 ...
+  !>   7   8   9
+  !>   4   5   6
+  !>   1   2   3
+  !> For M the shape functions have local node numbers
+  !> For Z = -1 ...
+  !>    4       3
+  !>
+  !>    1       2
   subroutine re2dn9( lowqua, ngi, ngi_l, nloc, mloc, &
        m, weight, n, nlx, nly, &
        l1, l2 )
-    ! Quadratic variation (2D) for velocity -- 9 node brick element.
-    ! Linear variation (2D) for pressure -- 4 node brick element.
-    ! NB.: We may need to define surface elements for p and (u,v,w).
-    !
-    ! This is for the 2-D 27node element, which is number as follows
-    !   |  /Z
-    !  Y| /
-    !   |/
-    !   +-------X
-    ! For Z = -1 ...
-    !   7   8   9
-    !   4   5   6
-    !   1   2   3
-    ! For M the shape functions have local node numbers
-    ! For Z = -1 ...
-    !    4       3
-    !
-    !    1       2
     implicit none
     logical, intent( in ) :: lowqua
     integer, intent( in ) :: ngi, ngi_l, nloc, mloc
@@ -561,40 +563,40 @@ contains
 
     return
   end subroutine re2dn9
-
+  
+  !> Quadratic variation (3D) for velocity -- 27 node brick element.
+  !> Linear variation (3D) for pressure -- 8 node brick element.
+  !> NB.: We may need to define surface elements for p and (u,v,w).
+  !>
+  !> This is for the 2-D 27node element, which is number as follows
+  !>   |  /Z
+  !>  Y| /
+  !>   |/
+  !>   +-------X
+  !> For Z = -1 ...
+  !>   7   8   9
+  !>   4   5   6
+  !>   1   2   3
+  !> For Z = 0 ...
+  !>   16   17   18
+  !>   13   14   15
+  !>   10   11   12
+  !> For Z = 1 ...
+  !>   25    26   27
+  !>   22    23   24
+  !>   19    20   21
+  !> For M the shape functions have local node numbers
+  !> For Z = -1 ...
+  !>    4       3
+  !>
+  !>    1       2
+  !> For Z = 1 ...
+  !>    8       7
+  !>
+  !>    5       6
   subroutine re3d27( lowqua, ngi, ngi_l, nloc, mloc, &
        m, weight, n, nlx, nly, nlz, &
        l1, l2, l3 )
-    ! Quadratic variation (3D) for velocity -- 27 node brick element.
-    ! Linear variation (3D) for pressure -- 8 node brick element.
-    ! NB.: We may need to define surface elements for p and (u,v,w).
-    !
-    ! This is for the 2-D 27node element, which is number as follows
-    !   |  /Z
-    !  Y| /
-    !   |/
-    !   +-------X
-    ! For Z = -1 ...
-    !   7   8   9
-    !   4   5   6
-    !   1   2   3
-    ! For Z = 0 ...
-    !   16   17   18
-    !   13   14   15
-    !   10   11   12
-    ! For Z = 1 ...
-    !   25    26   27
-    !   22    23   24
-    !   19    20   21
-    ! For M the shape functions have local node numbers
-    ! For Z = -1 ...
-    !    4       3
-    !
-    !    1       2
-    ! For Z = 1 ...
-    !    8       7
-    !
-    !    5       6
     implicit none
     logical, intent( in ) :: lowqua
     integer, intent( in ) :: ngi, ngi_l, nloc, mloc
@@ -822,7 +824,9 @@ contains
 
 
 
-
+   !> Obtains the gauss integration numbers given the input parameters
+   !> use retrieve_ngi instead of this one since it uses data types
+   !> @ref retrieve_ngi
     subroutine retrieve_ngi_old( ndim, cv_ele_type, cv_nloc, u_nloc, &
          cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE)
       implicit none
@@ -1146,13 +1150,19 @@ contains
 
 
   !>@brief: Computes the number of Gauss integration points and all the necessary information
+    !> @param GIdims output Gauss integration numbers
+    !>@param Mdims dimensions of the domain
+    !>@param cv_ele_type type of element, 1D, 2D, 3D, triangle, tetrahedron etc...
+    !>@param QUAD_OVER_WHOLE_ELE if QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
+    !>@param scalar_nloc if present then overwrite the cv_nloc given by Mdims
+    !>@param vector_nloc if present then overwrite the u_nloc given by Mdims
   subroutine retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE, &
        scalar_nloc, vector_nloc )
     implicit none
     type( multi_GI_dimensions ), intent( inout ) :: GIdims
     type( multi_dimensions ), intent( in ) :: Mdims
     integer, intent( in ) :: cv_ele_type
-    logical, intent( in ) :: QUAD_OVER_WHOLE_ELE!>f QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
+    logical, intent( in ) :: QUAD_OVER_WHOLE_ELE!if QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
     integer, intent( in ), optional :: scalar_nloc, vector_nloc
 !!$Local variable
     integer :: cv_nloc, u_nloc
@@ -1590,9 +1600,9 @@ contains
 
 
 
+  !> This computes the weight and points for standard Gaussian quadrature.
+  !> If (GETNDP == T) then get the position of the nodes and neglect the weights.
   subroutine lagrot( weit, quadpos, ndgi, getndp )
-    ! This computes the weight and points for standard Gaussian quadrature.
-    ! If (GETNDP == T) then get the position of the nodes and neglect the weights.
     implicit none
     integer, intent( in ) :: ndgi
     real, dimension( : ), intent( inout ) :: weit, quadpos
@@ -1636,9 +1646,9 @@ contains
   end subroutine lagrot
 
 
+  !>Calculates the derivatives of the shape functions, which are stored into DevFuns%NX_ALL
+  !>and also DevFuns%DETWEI, DevFuns%RA, DevFuns%VOLUME
   subroutine DETNLXR1(ELE, X_ALL, XONDGL, weight, nshape, nshapelx, DevFuns)
-      !Calculates the derivatives of the shape functions, which are stored into DevFuns%NX_ALL
-      !and also DevFuns%DETWEI, DevFuns%RA, DevFuns%VOLUME
       implicit none
       integer, intent(in) :: ELE
       real, dimension(:,:), intent( in ) :: X_ALL
@@ -1657,7 +1667,7 @@ contains
 
   end subroutine DETNLXR1
 
-
+  !>Calculates the derivatives of the shape functions
   SUBROUTINE DETNLXR2( ELE, X_ALL, XONDGL, NLOC, NGI, &
        N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, &
        NX_ALL)
@@ -1683,7 +1693,7 @@ contains
          NX_ALL(1, :,:),NX_ALL(2, :,:),NX_ALL(3, :,:) )
 
   end subroutine DETNLXR2
-
+  !>Calculates the derivatives of the shape functions
   SUBROUTINE DETNLXR3( ELE, X,Y,Z, XONDGL, TOTELE, NONODS, NLOC, NGI, &
        N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
        NX, NY, NZ)
@@ -1841,8 +1851,12 @@ contains
   END SUBROUTINE DETNLXR3
 
 
-
-
+  
+  !> Computes the inverse of the Jacobian of a Finite element
+  !> Example of calling this: 
+  !> 
+  !> Calculate DETWEI, RA, NX, NY, NZ for element ELE
+  !> call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, CV_funs%scvfeweigh, CV_funs%scvfen, CV_funs%scvfenlx_all, SdevFuns)
   SUBROUTINE DETNLXR_INVJAC1( ELE, X_ALL, XONDGL, weight, nshape, nshapelx, DevFuns)
     implicit none
     integer, intent(in) :: ELE
@@ -1864,7 +1878,7 @@ contains
   END SUBROUTINE DETNLXR_INVJAC1
 
 
-
+!> Computes the inverse of the Jacobian of a Finite element
   SUBROUTINE DETNLXR_INVJAC2( ELE, X_ALL,  Mdims, XONDGL,&
        N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, &
        NX_ALL,INV_JAC)
@@ -1893,7 +1907,7 @@ contains
 
 
 
-
+!> Computes the inverse of the Jacobian of a Finite element
   SUBROUTINE DETNLXR_INVJAC3( ELE, X,Y,Z, XONDGL, TOTELE, NONODS, NLOC, NGI, &
        N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
        NX, NY, NZ,&
@@ -2073,10 +2087,10 @@ contains
 
 
 
+  !> This return the Lagrange poly assocaited with node INOD at point LX
+  !> If DIFF then send back the value of this poly differentiated.
   real function lagran( diff, lx, inod, ndnod, nodpos )
     implicit none
-    ! This return the Lagrange poly assocaited with node INOD at point LX
-    ! If DIFF then send back the value of this poly differentiated.
     logical :: diff
     real :: lx
     integer :: inod, ndnod
@@ -2129,13 +2143,13 @@ contains
 
 
 
+  !> If WEIGHT is TRUE in function RGPTWE then return the Gauss-pt weight else
+  !> return the Gauss-pt.  There are ND Gauss points -- we are looking for either
+  !> the weight or the x-coord of the IG'th Gauss point.
   REAL FUNCTION RGPTWE( IG, ND, WEIGHT )
 
     IMPLICIT NONE
 
-    ! If WEIGHT is TRUE in function RGPTWE then return the Gauss-pt weight else
-    ! return the Gauss-pt.  There are ND Gauss points -- we are looking for either
-    ! the weight or the x-coord of the IG'th Gauss point.
 
     INTEGER :: IG, ND
     LOGICAL :: WEIGHT
@@ -2296,10 +2310,10 @@ contains
 
 
 
+  !> determine the 1d shape functions sn and its local derivative slnx.
   subroutine quad_basis_funs_1d(sngi, snloc,  &
        sweigh, sn, snlx )
 
-    ! determine the 1d shape functions sn and its local derivative slnx.
     implicit none
     integer, intent( in ) :: sngi, snloc
     real, dimension( :, : ), intent( inout ) :: sn, snlx
@@ -2343,12 +2357,13 @@ contains
 
 end module shape_functions_Linear_Quadratic
 
-
+!> This module contains subroutines to generate the shape functions for multi dimensions
 module shape_functions_NDim
 
   use fldebug
   use shape_functions_Linear_Quadratic
 
+!> Performs the cross product of two vectors
   interface XPROD
      module procedure XPROD1
      module procedure XPROD2
@@ -2952,9 +2967,9 @@ contains
 
 
 
+  !> test the volumes of idealised triangle
   subroutine test_quad_tet( cv_nloc, cv_ngi, cvn, n, nlx, nly, nlz, &
        cvweight, x, y, z, x_nonods, x_ndgln2, totele )
-    ! test the volumes of idealised triangle
     implicit none
     integer, intent( in ) :: cv_nloc, cv_ngi, x_nonods, totele
     real, dimension( : ), intent( in ) :: x, y, z
@@ -3026,12 +3041,12 @@ contains
 
 
 
+  !> Get the x_ndgln for the nodes of triangles or tetrahedra
   subroutine Compute_XNDGLN_TriTetQuadHex( cv_ele_type, &
        max_totele, max_x_nonods, quad_cv_nloc, &
        totele, x_nonods, &
        x_ndgln, lx, ly, lz, x, y, z, fem_nod, &
        x_ideal, y_ideal, z_ideal, x_ndgln_ideal  )
-    ! Get the x_ndgln for the nodes of triangles or tetrahedra
     implicit none
     integer, intent( in ) :: cv_ele_type, max_totele, max_x_nonods, quad_cv_nloc
     integer, intent( inout ) :: totele, x_nonods
@@ -4081,7 +4096,6 @@ contains
   end subroutine james_quadrature_quad_tet
 
 
-
   SUBROUTINE GET_TANG_BINORM(NX,NY,NZ, T1X,T1Y,T1Z, T2X,T2Y,T2Z, NNODRO)
     implicit none
     INTEGER, intent( in ) ::  NNODRO
@@ -5010,12 +5024,12 @@ contains
   end subroutine Compute_SurfaceShapeFunctions_Triangle_Tetrahedron
 
 
+  !> Compute some local variables for suf_shape_tri_tet
   subroutine dummy_tri_tet( d1, d3, quad_cv_ngi, quad_cv_nloc, &
        dummy_sngi, dummy_snloc, nwicel, &
        cv_nloc, cv_sngi, totele, quad_u_loc_dummy, &
        mloc, dummy_smloc, lowqua, npoly, npoly_ngi )
     implicit none
-    ! Compute some local variables for suf_shape_tri_tet
     logical, intent( in ) :: d1, d3
     integer, intent( inout ) :: quad_cv_ngi
     integer, intent( in ) :: quad_cv_nloc
@@ -5616,7 +5630,7 @@ contains
   end subroutine shape_tri_tet
 
 
-
+  !> Get the shape functions on lines (in 2D) and quadrilateral surfaces in 3D
   subroutine shatri_hex( l1, l2, l3, l4, weight, d3, &
        nloc, ngi, &
        n, nlx, nly, nlz, &
@@ -5704,7 +5718,7 @@ contains
   end subroutine shatri_hex
 
 
-
+  !> get the shape functions for a triangle/tetrahedron
   subroutine shatri( l1, l2, l3, l4, weight, d3, &
        nloc, ngi, &
        n, nlx, nly, nlz )
@@ -5899,7 +5913,7 @@ contains
 
 
 
-
+  !> Generates the shape functions of a cubic triangle
   subroutine shape_triangle_cubic( l1, l2, l3, l4, weight, d3, &
        nloc, ngi, &
        n, nlx, nly, nlz )
@@ -5981,9 +5995,9 @@ contains
 
 
 
+  !> order so that the 1st nodes are on the base for a
+  !> quadratic triangle...
   subroutine base_order_tri(n,nloc,ngi)
-    ! order so that the 1st nodes are on the base for a
-    ! quadratic triangle...
     implicit none
     integer, intent( in ) :: nloc, ngi
     real, dimension( nloc, ngi ), intent( inout ) :: n
@@ -6030,9 +6044,9 @@ contains
 
 
 
+  !> order so that the 1st nodes are on the base of tet for
+  !> a quadratic tet...
   subroutine base_order_tet(n,nloc,ngi)
-    ! order so that the 1st nodes are on the base of tet for
-    ! a quadratic tet...
     implicit none
     integer, intent( in ) :: nloc, ngi
     real, dimension( nloc, ngi ), intent( inout ) :: n
@@ -6066,9 +6080,9 @@ contains
 
 
 
+  !> Compute CVN (CV basis function) for triangles, tetrahedra, quadrilaterals and hexahedra
   subroutine Calc_CVN_TriTetQuadHex( cv_ele_type, totele, cv_nloc, cv_ngi, x_nonods, &
        quad_cv_nloc, x_ndgln, fem_nod, cvn )
-    ! Compute CVN (CV basis function) for triangles, tetrahedra, quadrilaterals and hexahedra
     implicit none
     integer, intent( in ) :: cv_ele_type, totele, cv_nloc, cv_ngi, &
          x_nonods, quad_cv_nloc
@@ -6104,14 +6118,14 @@ contains
   end subroutine Calc_CVN_TriTetQuadHex
 
 
+  !> This subrt computes shape functions. For now, let's just
+  !> define for one element type.
+  !> NB: N may overwrite M if we are not solving for pressure.
   subroutine shape_l_q_quad( lowqua, ngi, nloc, mloc, &
        sngi, snloc, smloc, m, mlx, mly, mlz, &
        weight, n, nlx, nly, nlz, &
        sweigh, sn, snlx, snly, sm, smlx, smly, &
        nwicel, d3 )
-    ! This subrt computes shape functions. For now, let's just
-    ! define for one element type.
-    ! NB: N may overwrite M if we are not solving for pressure.
     implicit none
     logical, intent( in ) :: lowqua
     integer, intent( in ) :: ngi, nloc, mloc, sngi, snloc, smloc
@@ -6178,8 +6192,8 @@ contains
 !!!-                                      -!!!
 
 
+  !> Compute the cv_iloc^{th} shape function value at point (xgi, ygi, zgi)
   real function volume_quad_map( cv_iloc, xgi, ygi, zgi, lx, ly, lz )
-    ! Compute the cv_iloc^{th} shape function value at point (xgi, ygi, zgi)
     implicit none
     integer, intent(in) :: cv_iloc
     real , intent(in) :: xgi, ygi, zgi
@@ -6532,11 +6546,11 @@ contains
 
 
 
+  !> Calculate the normal at the Gauss pts
+  !> Perform x-product. N=T1 x T2
   SUBROUTINE NORMGI( NORMXN, NORMYN, NORMZN, &
        DXDLX, DYDLX, DZDLX, DXDLY, DYDLY, DZDLY, &
        NORMX, NORMY, NORMZ)
-    ! Calculate the normal at the Gauss pts
-    ! Perform x-product. N=T1 x T2
     implicit none
     REAL, intent( inout ) :: NORMXN, NORMYN, NORMZN
     REAL, intent( in )    :: DXDLX, DYDLX, DZDLX, DXDLY, DYDLY, DZDLY
@@ -6560,7 +6574,7 @@ contains
 
   END SUBROUTINE NORMGI
 
-
+  !> Perform the cross product of two vectors
   SUBROUTINE XPROD1( AX, AY, AZ, &
        BX, BY, BZ, &
        CX, CY, CZ )
@@ -6575,7 +6589,7 @@ contains
 
     RETURN
   END subroutine XPROD1
-
+   !> Perform the cross product of two vectors
   SUBROUTINE XPROD2( A, B, C )
     implicit none
     REAL, dimension(:), intent( inout ) :: A!dim 3
@@ -7184,14 +7198,14 @@ contains
 !!!!!!!!
 
 
+  !> This subrt creates the local coordinates and node points for:
+  !> (a) quadratic tetrahedra of unit volume and (b) 27 points of
+  !> the 8 hexahedra  within the 8 linear tetrahedra.
+  !> FEM_NOD is the local numbering of the FEM representation of
+  !> the unit volume quadratic tetrahedron.
   subroutine Make_QTets( totele, quad_cv_nloc, x_nloc, max_x_nonods, x_nonods, &
        x_ndgln_real, lx, ly, lz, x, y, z, fem_nod, &
        xp2, yp2, zp2, x_ndgln_p2 )
-    ! This subrt creates the local coordinates and node points for:
-    ! (a) quadratic tetrahedra of unit volume and (b) 27 points of
-    ! the 8 hexahedra  within the 8 linear tetrahedra.
-    ! FEM_NOD is the local numbering of the FEM representation of
-    ! the unit volume quadratic tetrahedron.
     implicit none
     integer, intent( inout ) :: totele, x_nonods
     integer, intent( in ) :: quad_cv_nloc, x_nloc, max_x_nonods
@@ -8232,12 +8246,12 @@ contains
 
 
 
+  !> This subroutine defines the shape functions M and N and their
+  !> derivatives at the Gauss points
+  !> For 3-D FLOW.
   SUBROUTINE TR2D(LOWQUA,NGI,NLOC,MLOC,&
        M,WEIGHT,N,NLX,NLY, &
        SNGI,SNLOC,SWEIGH,SN,SNLX )
-    !     This subroutine defines the shape functions M and N and their
-    !     derivatives at the Gauss points
-    !     For 3-D FLOW.
     INTEGER , intent(in) :: NGI,NLOC,MLOC
     real, dimension(:), intent(inout) :: WEIGHT, SWEIGH
     real, dimension(:,:), intent(inout) :: M, N, NLX, NLY, SN, SNLX
@@ -8342,8 +8356,7 @@ contains
          N,NLX_ALL(1,:,:),NLX_ALL(2,:,:),NLX_ALL(3,:,:))
 
   end subroutine SHATRInew
-  !
-  !
+
   !>@brief: Work out the shape functions and their derivatives...
   SUBROUTINE SHATRIold(L1, L2, L3, L4, WEIGHT, D3, &
        NLOC,NGI,  &
@@ -8862,10 +8875,20 @@ contains
     !
     RETURN
   END subroutine TRIQUAold
-  !
-  !
-  !
-  !
+
+  !> This subroutine defines a spectal element.
+  !> IPOLY defines the element type and IQADRA the quadrature.
+  !> In 2-D the spectral local node numbering is as..
+  !> 7 8 9
+  !> 4 5 6
+  !> 1 2 3
+  !> For 3-D...
+  !> lz=-1
+  !> 3 4
+  !> 1 2
+  !> and for lz=1
+  !> 7 8
+  !> 5 6
   SUBROUTINE SPECTR(NGI,NLOC,MLOC,&
        &      M,WEIGHT,N,NLX,NLY,NLZ,D3,D2, IPOLY,IQADRA  )
     IMPLICIT NONE
@@ -8880,19 +8903,6 @@ contains
     LOGICAL :: DIFF,NDIFF,D3,D2
     INTEGER :: NDGI,NDNOD,NMDNOD,IGR,IGQ,IGP,KNOD,JNOD,INOD,ILOC
     REAL :: LXGP,LYGP,LZGP
-    ! This subroutine defines a spectal element.
-    ! IPOLY defines the element type and IQADRA the quadrature.
-    ! In 2-D the spectral local node numbering is as..
-    ! 7 8 9
-    ! 4 5 6
-    ! 1 2 3
-    ! For 3-D...
-    ! lz=-1
-    ! 3 4
-    ! 1 2
-    ! and for lz=1
-    ! 7 8
-    ! 5 6
 
     !ewrite(3,*)'inside SPECTR IPOLY,IQADRA', IPOLY,IQADRA
     !
@@ -9112,16 +9122,16 @@ contains
 
 
 
+  !> This sub returns the weights WEIT the quadrature points QUAPOS and
+  !> the node points NODPOS.
+  !> NODAL POISTIONS ******
+  !> NB if GETNDP then find the nodal positions
   SUBROUTINE GTROOT(IPOLY,IQADRA,WEIT,NODPOS,QUAPOS,NDGI,NDNOD)
     IMPLICIT NONE
     INTEGER , intent(inout) :: IPOLY,IQADRA,NDGI,NDNOD
     REAL , dimension(:), intent(inout) :: WEIT,QUAPOS,NODPOS
     !Local variables
     LOGICAL :: GETNDP
-    !     This sub returns the weights WEIT the quadrature points QUAPOS and
-    !     the node points NODPOS.
-    !     NODAL POISTIONS ******
-    !     NB if GETNDP then find the nodal positions
     GETNDP=.TRUE.
     !     Compute standard Lagrange nodal points
     IF(IQADRA.EQ.1) CALL LAGROT(NODPOS,NODPOS,NDNOD,GETNDP)
@@ -9145,14 +9155,14 @@ contains
 
 
 
+  !> INOD contains the node at which the polynomial is associated with
+  !> LXGP is the position at which the polynomial is to be avaluated.\
+  !> If(DIFF) then find the D poly/DX.
   REAL FUNCTION SPECFU(DIFF,LXGP,INOD,NDNOD,IPOLY,NODPOS)
     LOGICAL :: DIFF
     INTEGER :: INOD,NDNOD,IPOLY
     REAL :: LXGP
     real, dimension(:) :: NODPOS
-    !     INOD contains the node at which the polynomial is associated with
-    !     LXGP is the position at which the polynomial is to be avaluated.\
-    !     If(DIFF) then find the D poly/DX.
     !
     IF(IPOLY.EQ.1) SPECFU=LAGRAN(DIFF,LXGP,INOD,NDNOD,NODPOS)
     !
@@ -9165,15 +9175,15 @@ contains
 
 
 
+  !> This computes the weight and points for Chebyshev-Gauss-Lobatto quadrature.
+  !> See page 67 of:Spectral Methods in Fluid Dynamics, C.Canuto
+  !> IF(GETNDP) then get the POSITION OF THE NODES
+  !> AND DONT BOTHER WITH THE WEITS.
   SUBROUTINE CHEROT(WEIT,QUAPOS,NDGI,GETNDP)
     IMPLICIT NONE
     INTEGER , intent(inout) :: NDGI
     REAL, dimension(:), intent(inout) :: WEIT, QUAPOS
     LOGICAL , intent(inout) :: GETNDP
-    !     This computes the weight and points for Chebyshev-Gauss-Lobatto quadrature.
-    !     See page 67 of:Spectral Methods in Fluid Dynamics, C.Canuto
-    !     IF(GETNDP) then get the POSITION OF THE NODES
-    !     AND DONT BOTHER WITH THE WEITS.
     !Local variables
     real , PARAMETER :: PIE=3.141569254
     INTEGER :: IG,J
@@ -9193,13 +9203,13 @@ contains
        QUAPOS(IG)=COS(PIE*REAL(J)/REAL(NDGI-1))
     END DO
   END SUBROUTINE CHEROT
-
+  
+  !> This computes the weight and points for Chebyshev-Gauss-Lobatto quadrature.
+  !> See page 69 of:Spectral Methods in Fluid Dynamics, C.Canuto
+  !> IF(GETNDP) then get the POSITION OF THE NODES
+  !> AND DONT BOTHER WITH THE WEITS.
   SUBROUTINE LEGROT(WEIT,QUAPOS,NDGI,GETNDP)
     IMPLICIT NONE
-    !     This computes the weight and points for Chebyshev-Gauss-Lobatto quadrature.
-    !     See page 69 of:Spectral Methods in Fluid Dynamics, C.Canuto
-    !     IF(GETNDP) then get the POSITION OF THE NODES
-    !     AND DONT BOTHER WITH THE WEITS.
     INTEGER , intent(inout) :: NDGI
     REAL , dimension(:) , intent(inout) :: WEIT,QUAPOS
     LOGICAL , intent(inout) :: GETNDP
@@ -9230,14 +9240,15 @@ contains
   end function plegen
 
 
+  !> Calculate binomial coefficients
   real function binomial_coefficient(K,L)
-    !<! Calculate binomial coefficients
 
     INTEGER K,L
     binomial_coefficient=factorial(K)/(factorial(L)*factorial(K-L))
 
   end function binomial_coefficient
 
+  !> This sub works out the Gauss-Lobatto-Legendre roots.
   SUBROUTINE LROOTS(QUAPOS,NDGI)
     IMPLICIT NONE
     INTEGER :: NDGI
@@ -9245,7 +9256,6 @@ contains
     !Local variables
     REAL ALPHA,BETA,RKEEP
     INTEGER N,I
-    !     This sub works out the Gauss-Lobatto-Legendre roots.
     ALPHA = 0.
     BETA   = 0.
     !
@@ -9259,6 +9269,13 @@ contains
     END DO
   END SUBROUTINE LROOTS
 
+  !> If DIFF then returns the spectral function DIFFERENTIATED W.R.T X
+  !> associated.
+  !> This function returns the spectral function associated
+  !> with node INOD at POINT LX
+  !> NDNOD=no of nodes in 1-D.
+  !> NDGI=no of Gauss pts in 1-D.
+  !> NB The nodes are at the points COS(pie*J/2.) j=0,..,ndgi-1
   REAL FUNCTION CHEBY1(DIFF,LX,INOD,NDNOD,NODPOS)
     IMPLICIT NONE
     INTEGER, intent(inout) :: NDNOD,INOD
@@ -9268,13 +9285,6 @@ contains
     !Local variables
     LOGICAL  ::  DIFF2
     real :: RNX
-    !     If DIFF then returns the spectral function DIFFERENTIATED W.R.T X
-    !     associated.
-    !     This function returns the spectral function associated
-    !     with node INOD at POINT LX
-    !     NDNOD=no of nodes in 1-D.
-    !     NDGI=no of Gauss pts in 1-D.
-    !     NB The nodes are at the points COS(pie*J/2.) j=0,..,ndgi-1
     REAL CJ,CN,HX,XPT
     INTEGER NX,N
 
@@ -9306,6 +9316,13 @@ contains
 
 
 
+  !> If DIFF then returns the spectral function DIFFERENTIATED W.R.T X
+  !> associated.
+  !> This function returns the spectral function associated
+  !> with node INOD at POINT LX
+  !> NDNOD=no of nodes in 1-D.
+  !> NDGI=no of Gauss pts in 1-D.
+  !> NB The nodes are at the points COS(pie*J/2.) j=0,..,ndgi-1
   REAL FUNCTION CHEBY2(DIFF,LX,INOD,NDNOD,NODPOS)
     IMPLICIT NONE
     INTEGER , intent(inout) :: NDNOD,INOD
@@ -9314,13 +9331,6 @@ contains
     REAL, intent(inout) :: LX
     !Local variables
     real :: R,RR,RCONST
-    !     If DIFF then returns the spectral function DIFFERENTIATED W.R.T X
-    !     associated.
-    !     This function returns the spectral function associated
-    !     with node INOD at POINT LX
-    !     NDNOD=no of nodes in 1-D.
-    !     NDGI=no of Gauss pts in 1-D.
-    !     NB The nodes are at the points COS(pie*J/2.) j=0,..,ndgi-1
     REAL CJ,CN,HX,XPT
     IF(.NOT.DIFF) THEN
        IF(ABS(LX-NODPOS(INOD)).LT.1.E-10) THEN
@@ -9362,6 +9372,13 @@ contains
 
 
 
+  !>  If DIFF then return the n'th Chebyshef polynomial
+  !> differentiated w.r.t x.
+  !>  If DIFF2 then form the 2'nd derivative.
+  !>  This sub returns the value of the K'th Chebyshef polynomial at a
+  !>  point XPT.
+  !
+  !>  This formula can be found in:Spectral Methods for Fluid Dynamics, page 66
   REAL FUNCTION TCHEB(N,XPT,DIFF,DIFF2)
     !      use math_utilities
     IMPLICIT NONE
@@ -9372,13 +9389,6 @@ contains
     REAL :: DDT,DT,T,TTEMP,TM1,DTM1,DTEMP,R,RR
     INTEGER :: K,L
     INTEGER :: NI
-    ! If DIFF then return the n'th Chebyshef polynomial
-    ! differentiated w.r.t x.
-    ! If DIFF2 then form the 2'nd derivative.
-    ! This sub returns the value of the K'th Chebyshef polynomial at a
-    ! point XPT.
-    !
-    ! This formula can be found in:Spectral Methods for Fluid Dynamics, page 66
     K=N
     !
     IF((.NOT.DIFF).AND.(.NOT.DIFF2)) THEN
@@ -9444,8 +9454,8 @@ contains
   END FUNCTION TCHEB
 
 
+  !> Calculate n!
   recursive function factorial(n) result(f)
-    ! Calculate n!
     integer :: f
     integer, intent(in) :: n
 
@@ -9459,26 +9469,26 @@ contains
 
 
 
+  !> If DIFF then returns the spectral function DIFFERENTIATED W.R.T X
+  !> associated.
+  !> This function returns the spectral function associated
+  !> with node INOD at POINT LX
+  !> NDNOD=no of nodes in 1-D.
+  !> NDGI=no of Gauss pts in 1-D.
+  !> NB The nodes are at the points COS(pie*J/2.) j=0,..,ndgi-1
   REAL FUNCTION LEGEND(DIFF,LX,INOD,NDNOD,NODPOS)
     INTEGER , intent(inout) :: INOD,NDNOD
     REAL, dimension(:), intent(inout) :: NODPOS
     REAL, intent(inout) :: LX
     LOGICAL , intent(inout) :: DIFF
-    !     If DIFF then returns the spectral function DIFFERENTIATED W.R.T X
-    !     associated.
-    !     This function returns the spectral function associated
-    !     with node INOD at POINT LX
-    !     NDNOD=no of nodes in 1-D.
-    !     NDGI=no of Gauss pts in 1-D.
-    !     NB The nodes are at the points COS(pie*J/2.) j=0,..,ndgi-1
     REAL CJ,CN,HX,XPT
     LEGEND=1.
   END FUNCTION LEGEND
 
 
+  !> determine CV_SLOCLIST
   SUBROUTINE DETERMIN_SLOCLIST( CV_SLOCLIST, CV_NLOC, CV_SNLOC, NFACE,  &
        ndim, cv_ele_type )
-    ! determine CV_SLOCLIST
     IMPLICIT NONE
     INTEGER, intent( in ) :: CV_NLOC, CV_SNLOC, NFACE, ndim, cv_ele_type
     INTEGER, DIMENSION( :, : ), intent( inout ) :: CV_SLOCLIST
@@ -9793,16 +9803,16 @@ contains
 
 
 
+  !> COMPUTES THE GAUSS-LOBATTO COLLOCATION POINTS FOR JACOBI POLYNOMIALS
+  !> 
+  !> N:       DEGREE OF APPROXIMATION
+  !> ALPHA:   PARAMETER IN JACOBI WEIGHT
+  !> BETA:    PARAMETER IN JACOBI WEIGHT
+  !> 
+  !> XJAC:    OUTPUT ARRAY WITH THE GAUSS-LOBATTO ROOTS
+  !> THEY ARE ORDERED FROM LARGEST (+1.0) TO SMALLEST (-1.0)
   SUBROUTINE JACOBL(N,ALPHA,BETA,XJAC)
     IMPLICIT NONE
-    !     COMPUTES THE GAUSS-LOBATTO COLLOCATION POINTS FOR JACOBI POLYNOMIALS
-    !
-    !     N:       DEGREE OF APPROXIMATION
-    !     ALPHA:   PARAMETER IN JACOBI WEIGHT
-    !     BETA:    PARAMETER IN JACOBI WEIGHT
-    !
-    !     XJAC:    OUTPUT ARRAY WITH THE GAUSS-LOBATTO ROOTS
-    !     THEY ARE ORDERED FROM LARGEST (+1.0) TO SMALLEST (-1.0)
     !
     INTEGER , intent(in) :: N
     REAL , intent(inout) :: ALPHA,BETA
@@ -9884,12 +9894,12 @@ contains
   END SUBROUTINE JACOBL
 
 
+  !> 
+  !> COMPUTES THE JACOBI POLYNOMIAL (POLY) AND ITS DERIVATIVE
+  !> (PDER) OF DEGREE  N  AT  X
+  !> 
   SUBROUTINE JACOBF(N,POLY,PDER,POLYM1,PDERM1,POLYM2,PDERM2,X)
     IMPLICIT NONE
-    !
-    !     COMPUTES THE JACOBI POLYNOMIAL (POLY) AND ITS DERIVATIVE
-    !     (PDER) OF DEGREE  N  AT  X
-    !
     INTEGER , intent(in):: N
     REAL , intent(inout) :: POLY, PDER,POLYM1,PDERM1,POLYM2,PDERM2
     real, intent(in) :: X
@@ -9966,7 +9976,7 @@ contains
   end function Volume_TetHex
 
 
-  !!>@brief:Calculates the CVN and CVWEIGH shape functions
+  !>@brief: Calculates the CVN and CVWEIGH shape functions
   !> This subroutine is specially created to be used with compact_overlapping
   subroutine get_CVN_compact_overlapping( cv_ele_type, ndim, cv_ngi, cv_nloc, cvn, cvweigh)!, &
     implicit none

@@ -1,0 +1,4 @@
+<map id="multiphase_eos::get_rockfluidprop" name="multiphase_eos::get_rockfluidprop">
+<area shape="rect" id="node1" title=":Gets the relperm max, the relperm exponent and the immobile fractions and stores them into packed st..." alt="" coords="5,5,160,47"/>
+<area shape="rect" id="node2" href="$multi__eos_8_f90.html#a098f3f1c27b74be5d61f21fcff4c50a7" title=": This internal subroutine checks the if we are flipping from drainage to imbibition,..." alt="" coords="208,13,404,39"/>
+</map>

@@ -15,7 +15,7 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-
+!>This module contains subroutines related to the equations of state and other properties such as relative permeabilities, capillary, flash, etc.
 module multiphase_EOS
 
     use fldebug
@@ -28,7 +28,7 @@ module multiphase_EOS
     use vector_tools
     use python_state
     use Copy_Outof_State
-    use multi_tools !!!!! WHY is the bad_elements type not being picked up by Copy_Outof_State??????
+    use multi_tools 
     use shape_functions_Linear_Quadratic
     use sparse_tools
     use Multiphase_module
@@ -47,7 +47,11 @@ module multiphase_EOS
 
 contains
 
-    !>@brief: Computes the density for the phases and the derivatives of the density
+  !>@brief: Computes the density for the phases and the derivatives of the density
+  !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+  !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+  !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+  !>@param get_RhoCp This flags computes rhoCp instead of rho
     subroutine Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp )
 
         implicit none
@@ -263,6 +267,14 @@ contains
     end subroutine Calculate_All_Rhos
 
     !>@brief: Computes the bulk density for components and the derivatives of the density
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param ncomp number of components
+    !>@param nphase number of phases
+    !>@param cv_nonods number of CV nodes
+    !>@param Density_Component density of a component for compositional modelling
+    !>@param Density (self descriptive)
+    !>@param Density_Cp. Density times Cp
+    !>@param compute_rhoCP This flags computes rhoCp instead of rho
     subroutine Cap_Bulk_Rho( state, ncomp, nphase, &
         cv_nonods, Density_Component, Density, Density_Cp , compute_rhoCP)
 
@@ -327,6 +339,9 @@ contains
 
     !>@brief: Computes the density for the components and the derivatives of the density
     !> This is were the action is actually done, the other calculate rhos are wrappers
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc   
     subroutine Calculate_Component_Rho( state, packed_state, Mdims )
 
       implicit none
@@ -365,6 +380,15 @@ contains
     end subroutine Calculate_Component_Rho
 
     !>@brief: Computes the density and the derivative of the density
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param iphase current phase
+    !>@param icomp current component
+    !>@param nphase number of phases
+    !>@param ncomp number of components
+    !>@param eos_option_path Path in diamond of the EOS to be used
+    !>@param rho density
+    !>@param drhodp. Dderivative of density
     subroutine Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
         nphase, ncomp, eos_option_path, rho, drhodp )
 
@@ -670,7 +694,11 @@ contains
     !> porous media based on the compressibility given in Diamond (ele-wise). We also
     !> calculate the drho/dp term for the porous media which then goes into
     !> the DERIV term in the continuity equation (cv-wise).
-    !---------------------------------------------
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  Mdims Number of dimensions
+    !>@param  cv_ndgln Global to local variables for the CV mesh
+    !>@param drhodp. Derivative of the porous density
     subroutine Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, drhodp_porous )
 
         implicit none
@@ -759,6 +787,7 @@ contains
     end subroutine Density_Polynomial
 
     !>@brief: Read from diamond and decide which sort of density representation do we have
+    !>@param eos_option_path_out Diamond path of the EOS to be used
     subroutine Assign_Equation_of_State( eos_option_path_out )
         implicit none
         character( len = option_path_len ), intent( inout ) :: eos_option_path_out
@@ -809,6 +838,17 @@ contains
 
     !>@brief: Here we compute the absorption for porous media
     !> This is the sigma term defined in the papers and contains The permeability, the relative permeability, the viscosity and the saturation
+    !>@param  nphase Number of phases
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param PorousMedia_absorp INOUT Absorption associated to the porous media
+    !>@param  Mdims Number of dimensions
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  CV_GIdims Gauss integration numbers for CV fields
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  ndgln Global to local variables
+    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media    
+    !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
     subroutine Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, PorousMedia_absorp, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
                                                       upwnd, suf_sig_diagten_bc )
        implicit none
@@ -1104,6 +1144,14 @@ contains
 
 
     !>@brief: Subroutine where the absorption for the porous media is actually computed
+    !>@param  nphase Number of phases
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param PorousMedia_absorp INOUT Absorption associated to the porous media
+    !>@param  Mdims Number of dimensions
+    !>@param  ndgln Global to local variables
+    !>@param SATURA PhasevolumeFraction field
+    !>@param  viscosities viscosity field
+    !>@param  inv_PorousMedia_absorp (optional) INOUT inverse of the absorption term 
     SUBROUTINE calculate_absorption2( nphase, packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA, &
         viscosities, inv_PorousMedia_absorp)
         ! Calculate absorption for momentum eqns
@@ -1157,6 +1205,14 @@ contains
 
 
     !>@brief:Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
+    !>@param  nphase Number of phases
+    !>@param  iphase current phase
+    !>@param  material_absorption INOUT Absorption associated to the porous media
+    !>@param  sat saturation at current CV
+    !>@param  visco viscosity at current CV
+    !>@param  CV_Immobile_fract Immobile fraction at current CV
+    !>@param  Corey_exponent Exponent of the relperm curve at current ELE
+    !>@param  Endpoint_relperm End point of the relperm curve at current ELE
     subroutine get_material_absorption(nphase, iphase, material_absorption, sat, visc, CV_Immobile_fract, &
             Corey_exponent, Endpoint_relperm )
         implicit none
@@ -1179,6 +1235,13 @@ contains
       end subroutine get_material_absorption
 
     !>@brief:Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
+    !>@param  nphase Number of phases
+    !>@param  iphase current phase
+    !>@param  sat saturation at current CV
+    !>@param  CV_Immobile_fract Immobile fraction at current CV
+    !>@param  Corey_exponent Exponent of the relperm curve at current ELE
+    !>@param  Endpoint_relperm End point of the relperm curve at current ELE
+    !>@param  Kr INOUT Relative permeability at current CV
     subroutine get_relperm(nphase, iphase, sat, CV_Immobile_fract, Corey_exponent, Endpoint_relperm, Kr)
         implicit none
         real, INTENT(INOUT) :: Kr
@@ -1249,14 +1312,13 @@ contains
     end subroutine get_relperm
 
     !>@brief: In this subroutine the capilalry pressure is computed based on the saturation and the formula used
+    !>@param packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param ndgln Global to local variables
+    !>@param Totele Total number of elements
+    !>@param cv_nloc Total number of CVs per element
+    !>@param CV_funs Shape functions for the CV mesh
     SUBROUTINE calculate_capillary_pressure( packed_state, &
         NDGLN, totele, cv_nloc, CV_funs)
-
-            ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
-            ! CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE, NPHASE ) are the coefficients
-            ! Capillary pressure coefs have the dims CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE,NPHASE )
-            ! used to calculate the capillary pressure.
-
             IMPLICIT NONE
             type(state_type), intent(inout) :: packed_state
             type(multi_shape_funs) :: CV_funs ! shape function of a reference control volume
@@ -1347,6 +1409,12 @@ contains
     END SUBROUTINE calculate_capillary_pressure
 
     !>@brief:This functions returns the derivative of the capillary pressure with respect to the saturation
+    !>@param Sat Phase Volume fraction at current CV
+    !>@param Pe Entry pressure at current ELE
+    !>@param a Exponent at current ELE
+    !>@param CV_Immobile_Fraction Immobile fraction at current CV
+    !>@param iphase current phase
+    !>@param  nphase Number of phases
     real function Get_DevCapPressure(sat, Pe, a, CV_Immobile_Fraction, iphase, nphase)
         Implicit none
         integer, intent(in) :: iphase, nphase
@@ -1378,6 +1446,11 @@ contains
     end function Get_DevCapPressure
 
     !>@brief: This subroutine computed the gravity effect, i.e. rho * g
+    !>@param  Mdims Number of dimensions
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param den Density field
+    !>@param u_source_cv INOUT Source term having now the gravity term
     subroutine calculate_u_source_cv(Mdims, state, packed_state, den, u_source_cv)
         type(state_type), dimension(:), intent(in) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -1427,14 +1500,21 @@ contains
     end subroutine calculate_u_source_cv
 
     !>@brief: Here we compute component/solute/thermal diffusion coefficient
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  Mdims Number of dimensions    
+    !>@param  ndgln Global to local variables
+    !>@param  ScalarAdvectionField_Diffusion INOUT Field containing the diffusion
+    !>@param divide_by_rho_CP ! If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp
+    !>@param TracerName ! For PassiveTracer with diffusion we pass down the name of the tracer
     subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, TracerName, divide_by_rho_CP)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
-      logical, optional, intent(in) :: divide_by_rho_CP !> If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp
-      character(len=*), optional, intent(in) :: TracerName !> For PassiveTracer with diffusion we pass down the name of the tracer
+      logical, optional, intent(in) :: divide_by_rho_CP 
+      character(len=*), optional, intent(in) :: TracerName 
       !Local variables
       type(scalar_field), pointer :: component, sfield, solid_concentration
       type(tensor_field), pointer :: diffusivity, tfield, den, saturation
@@ -1623,12 +1703,18 @@ contains
 
     !>@brief: Dispersion for porous media
     !> For thermal, the field density needs to be passed down, which ensures that even for boussinesq a reference density is still used
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  Mdims Number of dimensions    
+    !>@param  ndgln Global to local variables
+    !>@param  density Density of the field (If present density means that we need to use a reference density to ensure consistency with the rest of the equation)
+    !>@param SoluteDispersion INOUT The field containing the dispersivity controbution for the given field
     subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, density, SoluteDispersion)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
-      real, dimension(:,:), target, intent(in) :: density !>If present density means that we need to use a reference density to ensure consistency with the rest of the equation
+      real, dimension(:,:), target, intent(in) :: density 
       real, dimension(:, :, :, :), intent(inout) :: SoluteDispersion
       !Local variables
       type(scalar_field), pointer :: component, sfield, ldfield, tdfield
@@ -1731,6 +1817,11 @@ contains
     end subroutine calculate_solute_dispersity
 
     !>@brief: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  Mdims Number of dimensions
+    !>@param  ndgln Global to local variables
+    !>@param Momentum_Diffusion Viscosity term for Stokes/Navier-Stokes
+    !>@param Momentum_Diffusion2 Shear viscosity?
     subroutine calculate_viscosity( state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2 )
       implicit none
       type( multi_dimensions ), intent( in ) :: Mdims
@@ -1861,7 +1952,7 @@ contains
     Contains
       !---------------------------------------------------------------------------
       !> @author Haiyang Hu
-      !> @brief TO BE FILLED BY THE AUTHOR
+      !> @brief Some magma stuf... 
       !---------------------------------------------------------------------------
       real function zeta(a,n,phi)
         implicit none
@@ -1878,7 +1969,11 @@ contains
 
 
     !sprint_to_do, re-use material_absoprtion by updating the values of the input absoprtion
-    !>@brief:Computes velocity absorption from diamond information
+    !>@brief:<INERTIA ONLY>Computes velocity absorption from diamond information
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param ndim Number of dimensions
+    !>@param nphase Number of phases
+    !>@param velocity_absorption Absorption term to be updated here
     subroutine update_velocity_absorption( states, ndim, nphase, velocity_absorption )
 
         implicit none
@@ -1931,7 +2026,11 @@ contains
     end subroutine update_velocity_absorption
 
     !sprint_to_do, re-use material_absoprtion by updating the values of the input absoprtion
-    !>@brief:Computes velocity absorption from diamond information
+    !>@brief:Computes velocity absorption  associated to coriolis forces from diamond information
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param ndim Number of dimensions
+    !>@param nphase Number of phases
+    !>@param velocity_absorption Absorption term to be updated here
     subroutine update_velocity_absorption_coriolis( states, ndim, nphase, velocity_absorption )
 
       implicit none
@@ -1957,6 +2056,8 @@ contains
 
 
     !>@brief:Computes velocity source from diamond information
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param Mdims Data type storing all the dimensionrs describing the mesh, fields, nodes, etc.
     subroutine update_velocity_source( states, Mdims, u_source )
 
         implicit none
@@ -2022,6 +2123,12 @@ contains
     !> The effective inmobile fraction is the min(inmobile,saturation_flipping formula),
     !> being the saturation the value after a succesful non-linear solver convergence!
     !> This NEEDS to be called after a succesful non-linear solver (with update_only)
+     !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
+    !>@param current_time current time in type(real). Only for the first time ever, not for checkpointing, overwrite the saturation flipping value with the initial one
+    !>@param update_only If true then only the Immobile fraction is updated (for Land trapping modelling only)
     subroutine get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time, update_only)
         implicit none
         type( multi_dimensions ), intent( in ) :: Mdims
@@ -2204,6 +2311,9 @@ contains
     !> Saturation_flipping stores both the value and the history, being positive if the phase is increasing and negative if the phase is decreasing.
     !> Therefore its minimum absolute value is non-zero
     !> NOTE: Currently the trapping can only increase, i.e. no thermal effects have been considered
+    !@param sat_flip Store when the saturation has changed from growing to decreasing or the other way round, for land trapping
+    !@param Current saturation at CV
+    !@param Old saturation at CV
     subroutine Update_saturation_flipping(sat_flip, sat, old_Sat)
       implicit none
       real, INTENT(IN) :: sat, old_Sat
@@ -2222,8 +2332,8 @@ contains
     end subroutine
 
     end subroutine get_RockFluidProp
-    !!JWL equation functions
 
+    !>JWL equation functions
     function JWL( A, B, w, R1, R2, E0, p,  roe, ro) result(fro)
         implicit none
         real, intent( in ) ::  A, B, w, R1, R2, E0, p,  roe, ro
@@ -2234,7 +2344,7 @@ contains
     end function JWL
 
 
-
+    !>Diff of JWL equation functions
     function diffJWL(A, B, w, R1, R2, E0, roe, ro)  result(difffro)
         implicit none
         real, intent( in ) ::  A, B, w, R1, R2, E0, roe, ro
@@ -2245,7 +2355,7 @@ contains
     end function diffJWL
 
 
-
+    !>Density of JWL equation functions
     function JWLdensity(eos_coefs, pressure, ro0, JWLn) result(Rho)
         !      implicit none
         real, dimension( : ),   intent( in ) :: eos_coefs
@@ -2305,10 +2415,15 @@ contains
     end function JWLdensity
 
     !>@brief: Initialising porous media models
-    !!> Given a free water level (FWL) we simulate capillary gravity equilibration,
-    !!> control volumes below FWL is kept at residual lighter phase saturation
-    !!> This subroutine is called after each timestep and saturations overidden
-    !!> below FWL with the heavier phase
+    !> Given a free water level (FWL) we simulate capillary gravity equilibration,
+    !> control volumes below FWL is kept at residual lighter phase saturation
+    !> This subroutine is called after each timestep and saturations overidden
+    !> below FWL with the heavier phase
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param exit_initialise_porous_media Activates the option to after initialising stop the simulation
     subroutine initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
 
         implicit none
@@ -2414,7 +2529,12 @@ contains
     end subroutine initialise_porous_media
 
     !>@brief: For boussinesq porous media we need the reference density to ensure consistency when mixing with the porous density/Cp etc.
-    !!> In this subroutine we retrieve the value given a phase, component.
+    !> In this subroutine we retrieve the value given a phase, component.
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param iphase Current phase
+    !>@param icomp current component
+    !>@param nphase Number of phases
     real function retrieve_reference_density(state, packed_state, iphase, icomp, nphase)
       implicit none
       type( state_type ), intent( inout ) :: packed_state
@@ -2509,6 +2629,10 @@ contains
     !>@brief: subroutine to dissolv phase2 into phase1. Currently only for system for phase 1 = water, phase 2 = gas
     !> Dissolve instantaneously the amount introduced in diamond in mol/m3 for CO2 a reference number is 38 mol/m3.
     !> Requires the first phase to have a concentration field
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
     subroutine flash_gas_dissolution(state, packed_state, Mdims, ndgln)
       implicit none
       type(state_type), dimension(:), intent (inout) :: state

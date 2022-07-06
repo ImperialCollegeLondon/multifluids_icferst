@@ -1,0 +1,6 @@
+<map id="solvers_module::fpi_backtracking" name="solvers_module::fpi_backtracking">
+<area shape="rect" id="node1" title=":In this subroutine we applied some corrections and backtrack_par on the saturations obtained from th..." alt="" coords="5,71,156,112"/>
+<area shape="rect" id="node2" href="$namespacecopy__outof__state.html#a7d6957a54cc1cc0a38a4a7a90bca1f89" title=": We create a potential to optimize F = sum (f**2), so the solution is when this potential reaches a ..." alt="" coords="217,5,401,47"/>
+<area shape="rect" id="node3" href="$namespacesolvers__module.html#a27f681607a9e40b1e99a8f45cd6a940c" title=": This subroutines eliminates the oscillations in the saturation that are bigger than a certain toler..." alt="" coords="204,71,415,112"/>
+<area shape="rect" id="node4" href="$namespacesolvers__module.html#a9bba1ef1495c1a4a47a7eea3f2c17719" title=":This subroutines eliminates the oscillations in the saturation that are bigger than a certain tolera..." alt="" coords="219,136,400,177"/>
+</map>

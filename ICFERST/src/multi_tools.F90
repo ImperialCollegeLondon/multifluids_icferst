@@ -16,7 +16,7 @@
 !    USA
 #include "fdebug.h"
 
-
+!> This module contains the generic subroutines required by ICFERST, for example quicksort
 module multi_tools
 
 #ifdef HAVE_PETSC_MODULES
@@ -36,16 +36,6 @@ module multi_tools
 
 #include "petsc_legacy.h"
 
-
-    !>@brief: Type to keep an eye on the quality of the elements
-    !>@DEPRECATED
-    type bad_elements
-        integer :: bad_ele
-        real :: angle
-        real :: perp_height !> perp height from base (assuming an isosceles triangle)
-        real, allocatable, dimension(:,:) :: rotmatrix !> the rotation matrix to 'stretch' the bad element in the direction normal to the big angle
-        real :: base !> length of side opposite the large angle
-    end type
 
 contains
 
@@ -94,7 +84,9 @@ contains
     end function tolfun
 
 
-
+    !>@brief:This function is a tolerance function for a scalar which is used as a denominator.
+    !> If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e.
+    !> the absolute value of A times the sign of B where A is TOLERANCE and B is VALUE.
     PURE function tolfun_many(val) result(v_tolfun)
 
         implicit none
@@ -125,7 +117,9 @@ contains
             ) / 6.0
 
     end function tetvolume
-
+    !>@brief:This function is a tolerance function for a vector which is used as a denominator.
+    !> If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e.
+    !> the absolute value of A times the sign of B where A is TOLERANCE and B is VALUE.
     PURE function vtolfun(val) result(v_tolfun)
 
         implicit none
@@ -531,6 +525,9 @@ contains
     !>1000,0.9
     !>250,0.5
     !>100,0.1
+    !>@param data_array INOUT the data in memory
+    !>@param path_to_table absolute/relative path to the .csv file
+    !>@param extra_data The extra data is composed of one line of headers that we ignore plus one extra line with the data
     subroutine read_csv_table(data_array, path_to_table, extra_data)
         implicit none
         real, dimension(:,:), allocatable, intent(inout) :: data_array
@@ -562,6 +559,9 @@ contains
 
 
     !>@brief:This subroutine reads a csv file and returns them in an array
+    !>@param csv_table_strings INOUT Allocated array of characters to be used to read the CVS file
+    !>@param path_to_table absolute/relative path to the .csv file
+    !>@param Nentries OUT Number of entries in the table
     subroutine extract_strings_from_csv_file(csv_table_strings, path_to_table, Nentries)
         implicit none
         integer, intent(out) :: Nentries
@@ -688,6 +688,9 @@ END subroutine RotationMatrix
 
     !>@brief:This subroutine reads a nastran file that contains the information defining the 1D path of a well
     !>the input relative filepath should include the file format, for example: well.bdf
+    !>@param filepath Relative path to the .bdf file
+    !>@param node INOUT. Nodes stored
+    !>@param edges Edges connecting nodes
     subroutine read_nastran_file(filepath, node, edges)
         implicit none
         character( len = * ), intent(in) :: filepath
@@ -785,18 +788,19 @@ END subroutine RotationMatrix
     !> Subroutine tested and compared with Matlab (not recommended changing it since it is a pain!)
     !> Only for serial: The best option is to solve in each processor the optimisation system by performing
     !> A' * A = A' *b; so the system becomes very small as COLUMS <<< ROWS
-    !---------------------------------------------------------------------------
+    !>@param A Input matrix to decompose, returns the Q and R combined
+    !>@param b Input RHS term, returns the X that minimise the system
     subroutine Least_squares_solver(A, b, rank)
       implicit none
-      real, dimension(:,:), intent(inout) :: A !> Input matrix to decompose, returns the Q and R combined
-      real, dimension(:,:), intent(inout) :: b !> Input RHS term, returns the X that minimise the system
+      real, dimension(:,:), intent(inout) :: A 
+      real, dimension(:,:), intent(inout) :: b 
       integer, intent(inout) :: rank
       !Local variables
       integer :: i, j, k, theta, m, n, nrhs, lda, ldb
       !Parameters for dgegp3 to compute the QR decomposition
-      integer :: info!>If info = -i, the i-th parameter had an illegal value
-      real, dimension(size(A,2)) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
-      real, dimension(3*size(A,1)+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+      integer :: info!If info = -i, the i-th parameter had an illegal value
+      real, dimension(size(A,2)) :: tau!Contains scalar factors of the elementary reflectors for the matrix Q.
+      real, dimension(3*size(A,1)+1) :: work!work is a workspace array, its dimension max(1, lwork).
       integer, dimension(size(A,1)) :: jpvt
       real, parameter :: tolerance_rank = 1d-12
 
@@ -819,15 +823,15 @@ END subroutine RotationMatrix
         !> @brief QR decomposition, returned in A, Q and R mixed, with pivoting! (PREFERRED, obviously!)
           subroutine dgeqp3(m, n, MAT, lda, jpvt, tau, work, lwork, info)
             implicit none
-            integer :: m!>Rows of MAT
-            integer :: n !>Columns of MAT; Constraint: m >= n > = 0.
-            integer :: lda !>The first dimension of MAT
-            integer :: lwork!> The size of the work array; 0 == best performance
-            integer :: info!>If info = -i, the i-th parameter had an illegal value
-            real, dimension(lda,n) :: MAT!>input/output matrix
-            real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
-            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
-            integer, dimension(n) :: jpvt!>Specifies columns that are not free to move, I guess useful if updating the QR decomposition
+            integer :: m!Rows of MAT
+            integer :: n !Columns of MAT; Constraint: m >= n > = 0.
+            integer :: lda !The first dimension of MAT
+            integer :: lwork! The size of the work array; 0 == best performance
+            integer :: info!If info = -i, the i-th parameter had an illegal value
+            real, dimension(lda,n) :: MAT!input/output matrix
+            real, dimension(N) :: tau!Contains scalar factors of the elementary reflectors for the matrix Q.
+            real, dimension(3*n+1) :: work!work is a workspace array, its dimension max(1, lwork).
+            integer, dimension(n) :: jpvt!Specifies columns that are not free to move, I guess useful if updating the QR decomposition
           end subroutine dgeqp3
       end interface
 
@@ -851,16 +855,16 @@ END subroutine RotationMatrix
           subroutine DORMQR(side, trans, m, n, k, MAT, lda, tau, c, ldc, work, lwork, info)
             implicit none
             character(len=1) :: side, trans !> Either L or R (Left right); N or T (T == Transpose)
-            integer :: m,n !>Rows and colums respectively
-            integer :: lda !>The first dimension of a
-            integer :: k !>The number of elementary reflectors whose product defines the matrix Q. Constraint 0 ≤k≤m if side='L'; 0 ≤k≤n if side='R'.
-            integer :: ldc !>The leading dimension of c. Constraint: ldc≥ max(1, m)
-            integer :: lwork!> The size of the work array;For better performance, try using lwork = n*blocksize (if side = 'L') or lwork = m*blocksize (if side = 'R') where blocksize is a machine-dependent value (typically, 16 to 64) required for optimum performance of the blocked algorithm.
-            integer :: info!>If info = -i, the i-th parameter had an illegal value
-            real, dimension(m,n) :: MAT!>input/output matrix
-            real, dimension(ldc,m) :: C !>Overwritten by the product Q*C, QT*C, C*Q, or C*QT (as specified by side and trans).
-            real, dimension(N) :: tau !>Contains scalar factors of the elementary reflectors for the matrix Q.
-            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+            integer :: m,n !Rows and colums respectively
+            integer :: lda !The first dimension of a
+            integer :: k !The number of elementary reflectors whose product defines the matrix Q. Constraint 0 ≤k≤m if side='L'; 0 ≤k≤n if side='R'.
+            integer :: ldc !The leading dimension of c. Constraint: ldc≥ max(1, m)
+            integer :: lwork! The size of the work array;For better performance, try using lwork = n*blocksize (if side = 'L') or lwork = m*blocksize (if side = 'R') where blocksize is a machine-dependent value (typically, 16 to 64) required for optimum performance of the blocked algorithm.
+            integer :: info!If info = -i, the i-th parameter had an illegal value
+            real, dimension(m,n) :: MAT!input/output matrix
+            real, dimension(ldc,m) :: C !Overwritten by the product Q*C, QT*C, C*Q, or C*QT (as specified by side and trans).
+            real, dimension(N) :: tau !Contains scalar factors of the elementary reflectors for the matrix Q.
+            real, dimension(3*n+1) :: work!work is a workspace array, its dimension max(1, lwork).
           end subroutine DORMQR
       end interface
 
@@ -869,13 +873,13 @@ END subroutine RotationMatrix
           subroutine dtrsm(side, uplo, transa, diag, m, n, alpha, mat, lda, b, ldb)
             implicit none
             character(len=1) :: side, uplo, transa, diag !> Either L or R (Left right); N or T (T == Transpose)
-            integer :: m,n !>Rows and colums respectively
-            integer :: lda !>The first dimension of a
-            integer :: info!>If info = -i, the i-th parameter had an illegal value
-            real :: alpha !> alpha is zero, then a is not referenced and b need not be set before entry.
-            integer :: ldb !>The first dimension of b
-            real, dimension(m,n) :: MAT!>input/output matrix
-            real, dimension(m,n) :: B!>input/output matrix
+            integer :: m,n !Rows and colums respectively
+            integer :: lda !The first dimension of a
+            integer :: info!If info = -i, the i-th parameter had an illegal value
+            real :: alpha ! alpha is zero, then a is not referenced and b need not be set before entry.
+            integer :: ldb !The first dimension of b
+            real, dimension(m,n) :: MAT!input/output matrix
+            real, dimension(m,n) :: B!input/output matrix
           end subroutine dtrsm
       end interface
 
@@ -916,6 +920,13 @@ END subroutine RotationMatrix
     !> the only difference with the normal approach is that here the Dummy field is used and the returned field is an array.
     !> IMPORTANT: state is used here, NOT packed_state
     !> It can be used for a given array, scalar_result, scalar fields, vector fields or tensor fields, but only one at a time
+    !>@param  states   Array of Linked list containing all the fields
+    !>@param iphase Current phase
+    !>@param option_path_python Path in the input file to the python code
+    !>@param scalar_result Field to be provided to the python code as initial value
+    !>@param sfield Optional Only one can be picked, depending on the type of field to be used!
+    !>@param vfield Optional Only one can be picked, depending on the type of field to be used!
+    !>@param tfield Optional Only one can be picked, depending on the type of field to be used!
     subroutine multi_compute_python_field(states, iphase, option_path_python, scalar_result, sfield, vfield, tfield)
       implicit none
       type( state_type ), dimension(:), intent( inout ) :: states
