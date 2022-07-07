@@ -408,8 +408,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
                    MeanPoreCV%val, &
-                   mass_Mn_pres, THERMAL, &
-                   .false.,  mass_Mn_pres, &
+                   mass_Mn_pres, THERMAL, mass_Mn_pres, &
                    mass_ele_transp, &
                    TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&
@@ -803,8 +802,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
                    MeanPoreCV%val, &
-                   mass_Mn_pres, .false., &
-                   .true.,  mass_Mn_pres, &
+                   mass_Mn_pres, .false., mass_Mn_pres, &
                    mass_ele_transp, &
                    TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&
@@ -1069,8 +1067,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
                      THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
                      MEAN_PORE_CV, &
-                     mass_Mn_pres, THERMAL, &
-                     .false.,  mass_Mn_pres, &
+                     mass_Mn_pres, THERMAL, mass_Mn_pres, &
                      mass_ele_transp, &          !Capillary variables
                      VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                      Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
@@ -1575,7 +1572,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !>@param  DT Time step size
     !>@param MASS_MN_PRES ???
     !>@param MASS_ELE mass of the elements
-    !>@param got_free_surf ???
     !>@param   MASS_SUF area of the surface of the elements???
     !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
     !>@param V_SOURCE Source term
@@ -1586,11 +1582,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !>@param  UDEN_ALL, UDENOLD_ALL Densities to be used. This is so we can impose the boussinesq approximation??
     !>@param  UDIFFUSION_ALL, UDIFFUSION_VOL_ALL Parameters associated to the diffusion of the velocity for navier-stokes
     !>@param   IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
-    !>@param IPLIKE_GRAD_SOU ??
-    !>@param FEM_continuity_equation This is to use the divergence as the transpose of the gradient matrix. Not conservative but more stable than simple CVFEM
     !>@param  calculate_mass_delta This is to compute mass conservation 
     !>@param  outfluxes variable containing the outfluxes information
-    !>@param DIAG_BIGM_CON, BIGM_CON To assemble the momentum equation of the Navier-stokes equation
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
         velocity, pressure, multi_absorp, eles_with_pipe, pipes_aux, &
@@ -1599,7 +1592,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         CV_P, DEN_ALL, DENOLD_ALL, DERIV, &
         DT, &
         MASS_MN_PRES, MASS_ELE,&
-        got_free_surf,  MASS_SUF, &
+        MASS_SUF, &
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, Courant_number, &
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
@@ -1607,8 +1600,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        IPLIKE_GRAD_SOU, &
-        FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON) !-ao
+        calculate_mass_delta, outfluxes)
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -1626,8 +1618,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type(multi_absorption), intent(inout) :: multi_absorp
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
         type (multi_pipe_package), intent(in) :: pipes_aux
-        INTEGER, intent( in ) :: IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
-        LOGICAL, intent( in ) :: got_free_surf,FEM_continuity_equation
+        INTEGER, intent( in ) :: IGOT_THETA_FLUX
         real, dimension(:,:), intent(in) :: X_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: velocity_absorption
         type( multi_field ), intent( in ) :: U_SOURCE_ALL
@@ -1651,8 +1642,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         type (multi_outfluxes), intent(inout) :: outfluxes
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
-        REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  DIAG_BIGM_CON
-        REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  BIGM_CON
         real, dimension(:), intent(inout) :: Courant_number
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
@@ -1706,8 +1695,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, Mdisopt%volfra_use_theta_flux, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
             MEAN_PORE_CV, &
-            MASS_MN_PRES, THERMAL, &
-            got_free_surf,  MASS_SUF, &
+            MASS_MN_PRES, THERMAL, MASS_SUF, &
             dummy_transp, &
             eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, &
             calculate_mass_delta = calculate_mass_delta, outfluxes = outfluxes,&
@@ -3326,8 +3314,6 @@ SUBROUTINE POROUS_FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
     integer :: its_taken
     integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
     real, dimension(Mdims%totele) :: MASS_ELE
-    REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: DIAG_BIGM_CON
-    REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: BIGM_CON
 
     !Since we save the parameter rescaleVal, we only do this one time
     if (rescaleVal < 0.) then
@@ -3450,13 +3436,12 @@ end if
         velocity%VAL, OLDvelocity%VAL, &
         CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
         DT, MASS_MN_PRES, MASS_ELE,& ! pressure matrix for projection method
-        .false.,  MASS_SUF, SUF_SIG_DIAGTEN_BC, &
+        MASS_SUF, SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, Courant_number, &
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
         IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        0,.false., calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON ) !
-
+        calculate_mass_delta, outfluxes) !
     !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
     if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
 
@@ -3498,7 +3483,8 @@ end if
     CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
     DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
     CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-    pipes_aux, .false.,  MASS_SUF, .false. )
+    pipes_aux, MASS_SUF )
+
 ! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 
     !This section is to impose a pressure of zero at some node (when solving for only a gradient of pressure)

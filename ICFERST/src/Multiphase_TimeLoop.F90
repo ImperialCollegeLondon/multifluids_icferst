@@ -549,9 +549,7 @@ contains
                     exit Loop_Time
                 end if
             end if
-            !!$ FEMDEM...
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
-
             !!$ Start non-linear loop
             first_nonlinear_time_step = .true.
             its = 1
@@ -708,13 +706,10 @@ contains
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, multi_absorp, dt, &
                         suf_sig_diagten_bc, Porosity_field%val, &
-                        !!$
                         0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                         THETA_GDIFF, eles_with_pipe, pipes_aux, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
-                        thermal = .true.,&
-                        ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, nonlinear_iteration = its)
+                        thermal = .true.,saturation=saturation_field, nonlinear_iteration = its)
 
                 END IF Conditional_ScalarAdvectionField
 
@@ -779,8 +774,6 @@ contains
                 end if
                 !#=================================================================================================================
 
-
-
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then
                     ewrite(1,*) "Caught signal, exiting nonlinear loop"
@@ -792,12 +785,12 @@ contains
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 3, calculate_mass_delta, &
                         adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Courant_number(2), first_time_step)
 
-                !Flag the matrices as already calculated (only the storable ones
+                !Flag the matrices as already calculated (only the storable ones)
                 Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI
 
                 if (ExitNonLinearLoop) then
                     if (adapt_mesh_in_FPI) then
-                      !Calculate the acumulated COurant Number
+                      !Calculate the acumulated Courant Number
                         Accum_Courant = Accum_Courant + Courant_number(2)
                         if (Accum_Courant >= Courant_tol .or. first_time_step) then
                             call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 2)
@@ -1149,92 +1142,6 @@ contains
             call insert(packed_state,sparsity,"ElementConnectivity")
         end subroutine put_CSR_spars_into_packed_state
 
-
-
-        subroutine linearise_components()
-            integer :: ist,ip,ele
-            type ( scalar_field ), pointer :: nfield
-            integer, dimension(:), pointer :: nodes
-            real, allocatable, dimension(:) :: comp
-            if (Mdims%ncomp>1) then
-                do ist=1,size(state)
-                    if (has_scalar_field(state(ist),"Density")) then
-                        nfield=>extract_scalar_field(state(ist),"Density")
-                        allocate(comp(ele_loc(nfield,1)))
-                        if (nfield%mesh%shape%degree==2) then
-                            select case(mesh_dim(nfield))
-                                case(1)
-                                    do ele=1,ele_count(nfield)
-                                        nodes=>ele_nodes(nfield,ele)
-                                        comp=ele_val(nfield,ele)
-                                        call set(nfield,nodes(2),0.5*(comp(1)+comp(3)))
-                                    end do
-                                case(2)
-                                    do ele=1,ele_count(nfield)
-                                        nodes=>ele_nodes(nfield,ele)
-                                        comp=ele_val(nfield,ele)
-                                        call set(nfield,nodes(2),0.5*(comp(1)+comp(3)))
-                                        call set(nfield,nodes(4),0.5*(comp(1)+comp(6)))
-                                        call set(nfield,nodes(5),0.5*(comp(3)+comp(6)))
-                                    end do
-                                case(3)
-                                    do ele=1,ele_count(nfield)
-                                        nodes=>ele_nodes(nfield,ele)
-                                        comp=ele_val(nfield,ele)
-                                        call set(nfield,nodes(2),0.5*(comp(1)+comp(3)))
-                                        call set(nfield,nodes(4),0.5*(comp(1)+comp(6)))
-                                        call set(nfield,nodes(5),0.5*(comp(3)+comp(6)))
-                                        call set(nfield,nodes(7),0.5*(comp(1)+comp(10)))
-                                        call set(nfield,nodes(8),0.5*(comp(3)+comp(10)))
-                                        call set(nfield,nodes(9),0.5*(comp(6)+comp(10)))
-                                    end do
-                            end select
-                            deallocate(comp)
-                        end if
-                    end if
-                end do
-            end if
-            do ist=1,size(state)
-                if (has_scalar_field(state(ist),"ComponentMassFractionPhase1")) then
-                    do ip=1,Mdims%nphase
-                        nfield=>extract_scalar_field(state(ist),&
-                            "ComponentMassFractionPhase"//int2str(ip))
-                        allocate(comp(ele_loc(nfield,1)))
-                        if (nfield%mesh%shape%degree==2) then
-                            select case(mesh_dim(nfield))
-                                case(1)
-                                    do ele=1,ele_count(nfield)
-                                        nodes=>ele_nodes(nfield,ele)
-                                        comp=ele_val(nfield,ele)
-                                        call set(nfield,nodes(2),0.5*(comp(1)+comp(3)))
-                                    end do
-                                case(2)
-                                    do ele=1,ele_count(nfield)
-                                        nodes=>ele_nodes(nfield,ele)
-                                        comp=ele_val(nfield,ele)
-                                        call set(nfield,nodes(2),0.5*(comp(1)+comp(3)))
-                                        call set(nfield,nodes(4),0.5*(comp(1)+comp(6)))
-                                        call set(nfield,nodes(5),0.5*(comp(3)+comp(6)))
-                                    end do
-                                case(3)
-                                    do ele=1,ele_count(nfield)
-                                        nodes=>ele_nodes(nfield,ele)
-                                        comp=ele_val(nfield,ele)
-                                        call set(nfield,nodes(2),0.5*(comp(1)+comp(3)))
-                                        call set(nfield,nodes(4),0.5*(comp(1)+comp(6)))
-                                        call set(nfield,nodes(5),0.5*(comp(3)+comp(6)))
-                                        call set(nfield,nodes(7),0.5*(comp(1)+comp(10)))
-                                        call set(nfield,nodes(8),0.5*(comp(3)+comp(10)))
-                                        call set(nfield,nodes(9),0.5*(comp(6)+comp(10)))
-                                    end do
-                            end select
-                            deallocate(comp)
-                        end if
-                    end do
-                end if
-            end do
-        end subroutine linearise_components
-
         !> @brief In this internal subrotuine the generation of output vts and checkpoint are performed
         subroutine create_dump_vtu_and_checkpoints()
 
@@ -1383,7 +1290,6 @@ contains
 #endif
                 call deallocate(multiphase_state)
                 call deallocate(multicomponent_state )
-                !call unlinearise_components()
                 deallocate(multiphase_state)
                 deallocate(multicomponent_state)
                 call deallocate_projection_matrices(CV_funs)
@@ -1471,12 +1377,6 @@ contains
                 end if
                 scvngi_theta = CV_GIdims%scvngi
                 ncv_faces = CV_count_faces( Mdims, Mdisopt%cv_ele_type, CV_GIdims)
-                ! allocate( sum_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                !     sum_one_m_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                !     sum_theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                !     sum_one_m_theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                !     theta_gdiff( Mdims%nphase, Mdims%cv_nonods ), &
-                !     ScalarField_Source_Store( Mdims%nphase, Mdims%cv_nonods ) )
                     allocate( sum_theta_flux( Mdims%nphase, ncv_faces*igot_theta_flux ), &
                         sum_one_m_theta_flux( Mdims%nphase, ncv_faces*igot_theta_flux ), &
                         sum_theta_flux_j( Mdims%nphase, ncv_faces*igot_theta_flux ), &
@@ -1487,8 +1387,6 @@ contains
                 sum_theta_flux = 1. ; sum_one_m_theta_flux = 0.
                 sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
                 ScalarField_Source_Store=0.
-!                allocate(opt_vel_upwind_coefs_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_coefs_new =0.
-!                allocate(opt_vel_upwind_grad_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_grad_new =0.
 
                 !SPRINT_TO_DO THIS SHOULD BE DONE LIKE IT IS FOR POROUS MEDIA, DIFFUSING THE FIELD TO ENSURE MASS CONSERVATION
                 if( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &

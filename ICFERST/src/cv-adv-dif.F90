@@ -116,7 +116,7 @@ contains
     !>@param  VOLFRA_PORE   Porosity field (Mdims%npres,Mdims%totele)
     !>@param  GETCV_DISC  obtain the transport equation
     !>@param GETCT obtain the continuity equation
-    !>@param GET_THETA_FLUX, USE_THETA_FLUX,  got_free_surf???
+    !>@param GET_THETA_FLUX, USE_THETA_FLUX
     !>@param THERMAL true if solving for heat transport 
     !>@param  MEAN_PORE_CV   Porosity defined control volume wise
     !>@param  MASS_ELE_TRANSP Mass of the elements
@@ -148,9 +148,7 @@ contains
           IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
           THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
           MEAN_PORE_CV, &
-          MASS_MN_PRES, THERMAL, &
-          got_free_surf,  MASS_SUF, &
-          MASS_ELE_TRANSP, &
+          MASS_MN_PRES, THERMAL, MASS_SUF, MASS_ELE_TRANSP, &
           TDIFFUSION, &
           saturation, VAD_parameter, Phase_with_Pc, Courant_number,&
           Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
@@ -310,8 +308,7 @@ contains
           REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
           REAL, DIMENSION( :, :, : ), pointer, intent( in ) :: ABSORBT_ALL
           REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE 
-          LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, got_free_surf
-          ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
+          LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL
           REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV 
           REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
           type(tensor_field), intent(in), optional, target :: saturation
@@ -346,7 +343,7 @@ contains
           ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
           logical, PARAMETER :: correct_method_petrov_method= .true.
           LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE
-          logical :: skip, GOT_T2, use_volume_frac_T2, FEM_continuity_equation, logical_igot_theta_flux, zero_vel_BC
+          logical :: skip, GOT_T2, use_volume_frac_T2, logical_igot_theta_flux, zero_vel_BC
           ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
           ! This determins how implicit velocity is in the cty eqn. (from fully implciit =1.0, to do not alter the scheme =0.)
           ! Zhi try THETA_VEL_HAT = 1.0
@@ -513,7 +510,6 @@ contains
           else
               GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .false.
           end if
-          FEM_continuity_equation = have_option( '/geometry/Advance_options/FE_Pressure/FEM_continuity_equation' )
 
           !THETA_VEL_HAT has to be zero for porous media flow
               THETA_VEL_HAT = 0.0
@@ -736,7 +732,6 @@ contains
           IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqns plus RHS
               call zero(Mmat%CT_RHS)
               Mmat%CT = 0.0
-              if ( got_free_surf .and. .not.FEM_continuity_equation ) MASS_SUF=0.0
               if ( Mmat%CV_pressure ) MASS_SUF=0.0
           END IF
           IF ( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion eqns
@@ -1094,27 +1089,6 @@ contains
                               IF( on_domain_boundary ) BCZERO=1.0-INCOME
                               !====================== ACV AND RHS ASSEMBLY ===================
                               Conditional_GETCT2: IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS
-                                  IF ( got_free_surf ) THEN
-                                      IF ( on_domain_boundary ) THEN
-                                          IF ( .not.FEM_continuity_equation ) THEN
-                                              IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_FREE ) THEN ! on the free surface...
-                                                  DO P_JLOC = 1, Mdims%cv_nloc
-                                                      P_JNOD = ndgln%cv( (ELE-1)*Mdims%cv_nloc + P_JLOC )
-                                                      ! Use the same sparcity as the MN matrix...
-                                                      COUNT_SUF = 0
-                                                      DO COUNT = Mspars%CMC%fin( CV_NODI ), Mspars%CMC%fin( CV_NODI + 1 ) - 1
-                                                          IF ( Mspars%CMC%col( COUNT ) == P_JNOD ) THEN
-                                                              COUNT_SUF = COUNT
-                                                              EXIT
-                                                          END IF
-                                                      END DO
-                                                      MM_GRAVTY = CVNORMX_ALL( 3, GI ) * CV_funs%scvfen( P_JLOC, GI ) * SdevFuns%DETWEI(GI) / ( DT**2 * GRAVTY )
-                                                      MASS_SUF( COUNT_SUF ) = MASS_SUF( COUNT_SUF ) + MM_GRAVTY
-                                                  END DO
-                                              END IF
-                                          END IF
-                                      END IF
-                                  END IF
                                   ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
 
                                   CALL PUT_IN_CT_RHS(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
