@@ -3479,7 +3479,7 @@ end if
     if (u_source_all%have_field) call deallocate_multi_field(U_SOURCE_ALL, .true.)
     !Now invert the Mass matrix
     if (.not.Mmat%Stored) then
-        CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
+        CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims , eles_with_pipe)
     end if
     ! solve using a projection method
     call allocate(cdp_tensor,velocity%mesh,"CDP",dim = velocity%dim); call zero(cdp_tensor)
