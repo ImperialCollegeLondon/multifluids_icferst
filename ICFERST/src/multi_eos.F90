@@ -997,11 +997,11 @@ contains
                        if ( global_phase <= Mdims%n_in_pres ) then
                          ! This is the gradient
                          ! Assume d\sigma / dS = 0.0 for the pipes for now
-                         upwnd%adv_coef_grad(1, 1, global_phase, IMAT) = (PorousMedia_absorp2%val( 1,1, global_phase ,IMAT) -&
+                         upwnd%adv_coef_grad(global_phase, IMAT) = (PorousMedia_absorp2%val( 1,1,global_phase ,IMAT) -&
                          PorousMedia_absorp%val( 1,1, global_phase ,IMAT)) / ( SATURA2(compact_phase, ICV ) - SATURA(compact_phase, ICV))
                        end if
                        !Obtaining the inverse the "old way" since if you obtain it directly, some problems appear
-                       upwnd%inv_adv_coef(1, 1, global_phase, IMAT) = 1./upwnd%adv_coef(1, 1, global_phase, IMAT)!sprint_to_do maybe we dont need to store the inverse anymore
+                       upwnd%inv_adv_coef(global_phase, IMAT) = 1./upwnd%adv_coef(1,1,global_phase, IMAT)!sprint_to_do maybe we dont need to store the inverse anymore
                      END DO
                    end do
                  END DO

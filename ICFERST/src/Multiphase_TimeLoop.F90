@@ -152,13 +152,13 @@ contains
             mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
         !!$ Defining time- and nonlinear interations-loops variables
         integer :: itime, dump_period_in_timesteps, final_timestep, &
-            NonLinearIteration, NonLinearIteration_Components, itimeflag
+            NonLinearIteration, itimeflag
         real :: acctim, finish_time, dump_period
         !!$ Defining problem that will be solved
         logical :: have_temperature_field, have_concentration_field, have_component_field, have_extra_DiffusionLikeTerm, &
             solve_force_balance, solve_PhaseVolumeFraction
         !!$ Shape function related fields:
-        integer :: scvngi_theta, igot_t2, igot_theta_flux
+        integer :: igot_t2, igot_theta_flux
         !!$ Adaptivity related fields and options:
         type( tensor_field ) :: metric_tensor
 
@@ -173,15 +173,12 @@ contains
         real, dimension(:), pointer :: mass_ele
         real, dimension( :, : ), pointer :: THETA_GDIFF
         !!$
-        real, dimension( :, : ), pointer :: &
-            ScalarField_Source_Store
-        real, dimension( :, :, : ), allocatable :: &
-            Velocity_Absorption, Temperature_Absorption
+        real, dimension( :, : ), pointer :: ScalarField_Source_Store
         real, dimension( :, : ), allocatable ::sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
-        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter, SFPI_taken, pres_its_taken
+        integer :: stat, python_stat, istate, iphase, icomp, its, its2, adapt_time_steps, cv_inod, SFPI_taken, pres_its_taken
         real, dimension( : ), allocatable :: rsum
         real, dimension(:, :), allocatable :: SUF_SIG_DIAGTEN_BC
-        type( scalar_field ), pointer :: cfl, rc_field
+        type( scalar_field ), pointer :: cfl
         real :: c, rc, minc, maxc, ic, FPI_eq_taken
         !Variables for adaptive time stepping based on non-linear iterations
         logical :: nonLinearAdaptTs, Repeat_time_step, ExitNonLinearLoop
@@ -198,19 +195,16 @@ contains
         !Array to map nodes to region ids
         !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
         !Working pointers
-        type(tensor_field), pointer :: tracer_field, tracer_field2, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
-        type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
+        type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field
+        type(tensor_field), pointer :: pressure_field, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(tensor_field), pointer :: perm_field
-        type(vector_field), pointer :: positions, porosity_field, MeanPoreCV, PythonPhaseVolumeFractionSource
-        type(scalar_field), pointer :: DensitySource, T
+        type(vector_field), pointer :: positions, porosity_field, PythonPhaseVolumeFractionSource
         !Variables that are used to define the pipe pos
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
         type (multi_pipe_package) :: pipes_aux
         !type(scalar_field), pointer :: bathymetry
         logical :: write_all_stats=.true.
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
-        ! Ioutlet counts the number of boundaries over which to calculate the outflux
-        integer :: ioutlet
         type (multi_outfluxes) :: outfluxes
         ! Variables used in the CVGalerkin interpolation calculation
         integer, save :: numberfields_CVGalerkin_interp = -1
@@ -422,9 +416,6 @@ contains
                 have_component_field = .true.
             !!$
             call Calculate_All_Rhos( state, packed_state, Mdims )
-            if( have_component_field ) then
-                call get_option( '/numerical_methods/Max_compositional_its', NonLinearIteration_Components, default = 1 )
-            end if
         end do
 
         if( have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) ) &
@@ -1375,7 +1366,6 @@ contains
                 if( Mdims%ncomp /= 0 )then
                     igot_t2 = 1 ; igot_theta_flux = 1
                 end if
-                scvngi_theta = CV_GIdims%scvngi
                 ncv_faces = CV_count_faces( Mdims, Mdisopt%cv_ele_type, CV_GIdims)
                     allocate( sum_theta_flux( Mdims%nphase, ncv_faces*igot_theta_flux ), &
                         sum_one_m_theta_flux( Mdims%nphase, ncv_faces*igot_theta_flux ), &
