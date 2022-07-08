@@ -298,7 +298,7 @@ contains
           REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
           REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
           REAL, DIMENSION( :, : ), target, intent( inout ) :: DEN_ALL
-          REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL
+          REAL, DIMENSION( :, : ), intent( inout ), target :: DENOLD_ALL
           REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (nphase,Mdims%cv_nonods)
           REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
           REAL, intent( in ) :: DT, CV_THETA, CV_BETA
@@ -352,9 +352,7 @@ contains
           REAL :: HDC, RSUM, W_SUM_ONE1, W_SUM_ONE2, one_m_cv_beta, auxR, NDOTQ_HAT
           REAL, dimension(final_phase) :: ROBIN1, ROBIN2, BCZERO
           !Local copy of tracers and densities
-          real, dimension(:), pointer :: LOC_T_I
-          real, dimension(final_phase) :: LOC_T_J, LOC_TOLD_I, LOC_DEN_J, LOC_DEN_I, LOC_DENOLD_I, &
-              LOC_T2_J, LOC_T2_I, LOC_T2OLD_I, AUX_T
+          real, dimension(:), pointer :: LOC_T_I, LOC_DEN_I, LOC_TOLD_I, LOC_DENOLD_I, LOC_T2_I, LOC_T2OLD_I, LOC_T_J,LOC_T2_J, AUX_T
           REAL :: GRAVTY
           LOGICAL, DIMENSION( Mdims%x_nonods ) :: X_SHARE
           integer, dimension (Mdims%cv_nloc) ::CV_OTHER_LOC, SHAPE_CV_SNL
@@ -382,7 +380,7 @@ contains
           INTEGER :: CV_KNOD2, U_SNODK
           ! nphase Variables:
           real, dimension(final_phase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, NDOTQNEW, &
-              LIMT, LIMT_HAT, FVT, LIMD, LIMDT, LIMT2
+              LIMT, LIMT_HAT, LIMD, LIMDT, LIMT2
           REAL, DIMENSION( Mdims%ndim, final_phase, Mdims%cv_nloc, Mdims%totele ) :: DTX_ELE_ALL
           REAL , DIMENSION( Mdims%ndim, final_phase ) :: NUGI_ALL
           LOGICAL :: integrate_other_side_and_not_boundary
@@ -754,10 +752,10 @@ contains
                   MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
 
                   ! Generate some local variables to reduce slicing (sprint_to_do this is a waste...)
-                  LOC_T_I => T_ALL(1:final_phase, cv_nodi); LOC_TOLD_I = TOLD_ALL(1:final_phase, cv_nodi)
-                  LOC_DEN_I = DEN_ALL(1:final_phase, cv_nodi); LOC_DENOLD_I = DENOLD_ALL(1:final_phase, cv_nodi)
+                  LOC_T_I => T_ALL(1:final_phase, cv_nodi); LOC_TOLD_I => TOLD_ALL(1:final_phase, cv_nodi)
+                  LOC_DEN_I => DEN_ALL(1:final_phase, cv_nodi); LOC_DENOLD_I => DENOLD_ALL(1:final_phase, cv_nodi)
                   if (use_volume_frac_T2) then
-                    LOC_T2_I = T2_ALL(1:final_phase, cv_nodi); LOC_T2OLD_I = T2OLD_ALL(1:final_phase, cv_nodi)
+                    LOC_T2_I => T2_ALL(1:final_phase, cv_nodi); LOC_T2OLD_I => T2OLD_ALL(1:final_phase, cv_nodi)
                   end if
                   ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
                   Loop_GCOUNT: DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
@@ -815,9 +813,9 @@ contains
                         !     permeability_jump = abs(perm%val(1,1,ele) - perm%val(1,1,ele2)/perm%val(1,1,ele)) > 1e-8
                         !   end if
                           !Create local variables to reduce slicing
-                          LOC_T_J = T_ALL(1:final_phase, cv_nodj)
+                          LOC_T_J => T_ALL(1:final_phase, cv_nodj)
                           if (use_volume_frac_T2) then
-                            LOC_T2_J = T2_ALL(1:final_phase, cv_nodj)
+                            LOC_T2_J => T2_ALL(1:final_phase, cv_nodj)
                           end if
 
                           if(CV_NODJ >= CV_NODI) then
@@ -895,7 +893,7 @@ contains
                               If_GOT_DIFFUS2: IF ( GOT_DIFFUS ) THEN
                                   ! This sub caculates the effective diffusion
                                   ! coefficient DIFF_COEF_DIVDX
-                                  AUX_T  =T_ALL(1:final_phase, CV_NODJ)
+                                  AUX_T  =>T_ALL(1:final_phase, CV_NODJ)
                                   LOC_WIC_T_BC_ALL=0
                                   !           IF(SELE.NE.0) THEN
                                   IF(on_domain_boundary) THEN
@@ -982,11 +980,6 @@ contains
                                   CAP_DIFF_COEF_DIVDX = 0.0
                               END IF If_GOT_CAPDIFFUS
                               ! Pack ndotq information:
-                              
-                              !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
-                              ! Calculate T and DEN on the CV face at quadrature point GI.
-                              ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
-                              FVT=LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
 
                               !Use upwinding to obtaing the values                        
                             IF ( on_domain_boundary ) THEN
@@ -997,7 +990,7 @@ contains
                                 ELSE 
                                     LIMT(iphase) = LOC_T_I(iphase) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_T_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
                                 END if
-                                    !Density
+                                !Density
                                 if ( WIC_D_BC_ALL( 1, iphase, SELE ) /= WIC_D_BC_DIRICHLET ) then
                                     LIMD(iphase) = LOC_DEN_I(iphase)
                                 ELSE 
@@ -1133,7 +1126,7 @@ contains
                                   ! Put results into the RHS vector
                                   LOC_CV_RHS_I =  LOC_CV_RHS_I  &
                                          ! subtract 1st order adv. soln.
-                                      + LIMT2 * NDOTQNEW * SdevFuns%DETWEI( GI ) * LIMD * FVT * BCZERO &
+                                      + LIMT2 * NDOTQNEW * SdevFuns%DETWEI( GI ) * LIMDT * BCZERO &
                                       -  SdevFuns%DETWEI( GI ) * ( LIMT2 * NDOTQNEW * LIMDT)
                                   ! Subtract out 1st order term non-conservative adv.
                                       if (VAD_activated) LOC_CV_RHS_I =  LOC_CV_RHS_I &
@@ -1150,7 +1143,7 @@ contains
                                   if(integrate_other_side_and_not_boundary) then
                                       LOC_CV_RHS_J =  LOC_CV_RHS_J  &
                                              ! subtract 1st order adv. soln.
-                                          - LIMT2 * NDOTQNEW * SdevFuns%DETWEI( GI ) * LIMD * FVT * BCZERO &
+                                          - LIMT2 * NDOTQNEW * SdevFuns%DETWEI( GI ) * LIMDT * BCZERO &
                                           +  SdevFuns%DETWEI( GI ) * ( LIMT2 * NDOTQNEW * LIMDT)
                                       if (VAD_activated) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
                                           - LIMT2 * SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
