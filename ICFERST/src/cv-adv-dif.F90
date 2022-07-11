@@ -946,15 +946,10 @@ contains
                                     CAP_DIFF_COEF_DIVDX = 0.
                                     !Project permeability at the GI point
                                     auxR = 0.
-                                    if (has_anisotropic_permeability) then 
-                                        forall (idim = 1:Mdims%ndim, iv_idim = 1:Mdims%ndim)
-                                            auxR = auxR  + CVNORMX_ALL(idim, GI) * perm%val(idim, iv_idim,ele) * CVNORMX_ALL(iv_idim, GI)
-                                        end forall                                        
-                                    else
-                                        do idim =1, Mdims%ndim 
-                                            auxR = auxR + CVNORMX_ALL(idim, GI) * perm%val(idim,idim,ele) * CVNORMX_ALL(idim, GI)
-                                        end do
-                                    end if
+                                    forall (idim = 1:Mdims%ndim, iv_idim = 1:Mdims%ndim)
+                                        auxR = auxR  + CVNORMX_ALL(idim, GI) * perm%val(idim, iv_idim,ele) * CVNORMX_ALL(iv_idim, GI)
+                                    end forall                                        
+
                                     do iphase =1, final_phase
                                         rsum_nodi(iphase) = upwnd%inv_adv_coef(iphase,MAT_NODI)*auxR
                                     end do
