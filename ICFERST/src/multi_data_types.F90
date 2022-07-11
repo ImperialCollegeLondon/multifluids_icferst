@@ -346,9 +346,9 @@ module multi_data_types
     !>@param  adv_coef_grad => null() Gradient of the sigmas at the boundary to calculate fluxes
     !>@param  inv_permeability => null() Gradient of the sigmas at the boundary to calculate fluxes
     type porous_adv_coefs
-        real, dimension(:,:, :, : ), pointer :: adv_coef => null()
-        real, dimension( :, : ), pointer :: inv_adv_coef => null()
-        real, dimension( :, : ), pointer :: adv_coef_grad => null()
+        real, dimension( :, :, :, : ), pointer :: adv_coef => null()
+        real, dimension( :, :, :, : ), pointer :: inv_adv_coef => null()
+        real, dimension( :, :, :, : ), pointer :: adv_coef_grad => null()
         real, dimension( :, :, : ),    pointer :: inv_permeability => null()
     end type porous_adv_coefs
 
@@ -1593,8 +1593,8 @@ contains
         type (multi_dimensions), intent(in)  ::Mdims
 
 !        if (.not.associated(upwnd%adv_coef)) allocate(upwnd%adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
-        if (.not.associated(upwnd%inv_adv_coef)) allocate(upwnd%inv_adv_coef(Mdims%nphase,Mdims%mat_nonods))
-        if (.not.associated(upwnd%adv_coef_grad)) allocate(upwnd%adv_coef_grad(Mdims%nphase,Mdims%mat_nonods))
+        if (.not.associated(upwnd%inv_adv_coef)) allocate(upwnd%inv_adv_coef(1,1,Mdims%nphase,Mdims%mat_nonods))
+        if (.not.associated(upwnd%adv_coef_grad)) allocate(upwnd%adv_coef_grad(1,1,Mdims%nphase,Mdims%mat_nonods))
         if (.not.associated(upwnd%inv_permeability)) allocate(upwnd%inv_permeability(Mdims%ndim,Mdims%ndim,Mdims%totele))
     end subroutine allocate_porous_adv_coefs
     !> Deallocates the memory for the advection coefficients for porous media

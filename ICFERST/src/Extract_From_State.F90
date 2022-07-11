@@ -3365,7 +3365,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
                     imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
                     cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                     do iphase = 1, Mdims%n_in_pres
-                        sat_weight_velocity = upwnd%inv_adv_coef(iphase,imat) * matmul(perm%val(:,:,ele), velocity%val(:,iphase,u_inod))
+                        sat_weight_velocity = upwnd%inv_adv_coef(1,1,iphase,imat) * matmul(perm%val(:,:,ele), velocity%val(:,iphase,u_inod))
                         !P0 darcy velocities per element
                         darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
                             sat_weight_velocity*saturation%val(1,iphase,cv_loc)/R_cv_nloc
@@ -3386,7 +3386,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
                         end do
                         !P0 darcy velocities per element
                         darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
-                            upwnd%inv_adv_coef(iphase,imat) * sat_weight_velocity*saturation%val(1,iphase,cv_loc)/R_cv_nloc
+                            upwnd%inv_adv_coef(1,1,iphase,imat) * sat_weight_velocity*saturation%val(1,iphase,cv_loc)/R_cv_nloc
                     end do
                 end do
             end do

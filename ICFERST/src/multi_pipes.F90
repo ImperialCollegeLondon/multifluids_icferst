@@ -964,7 +964,7 @@ contains
             do ipres = 1, Mdims%npres
                 do iphase = 1, final_phase
                     RSUM_VEC(iphase + (ipres - 1)*final_phase) = RSUM_VEC(iphase + (ipres - 1)*final_phase) +&
-                        upwnd%adv_coef(1,1, iphase + (ipres - 1)*Mdims%n_in_pres, MAT_NODI ) / REAL( Mdims%ndim )
+                        upwnd%adv_coef( 1, 1, iphase + (ipres - 1)*Mdims%n_in_pres, MAT_NODI ) / REAL( Mdims%ndim )
                 end do
             end do
             OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) = OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) + RSUM_VEC * MASS_ELE( ELE )
