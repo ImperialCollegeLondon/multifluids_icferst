@@ -1020,26 +1020,7 @@ contains
                                   IF(SELE == 0) THEN
                                     CAP_DIFF_COEF_DIVDX = 0.
                                     !Project permeability at the GI point
-<<<<<<< HEAD
-                                    auxR = 0.
-                                    forall (idim = 1:Mdims%ndim, iv_idim = 1:Mdims%ndim)
-                                        auxR = auxR  + CVNORMX_ALL(idim, GI) * perm%val(idim, iv_idim,ele) * CVNORMX_ALL(iv_idim, GI)
-                                    end forall                                        
-
-||||||| 7aacb9f54... Further cleanup and optimisations
-                                    auxR = 0.
-                                    if (has_anisotropic_permeability) then 
-                                        forall (idim = 1:Mdims%ndim, iv_idim = 1:Mdims%ndim)
-                                            auxR = auxR  + CVNORMX_ALL(idim, GI) * perm%val(idim, iv_idim,ele) * CVNORMX_ALL(iv_idim, GI)
-                                        end forall                                        
-                                    else
-                                        do idim =1, Mdims%ndim 
-                                            auxR = auxR + CVNORMX_ALL(idim, GI) * perm%val(idim,idim,ele) * CVNORMX_ALL(idim, GI)
-                                        end do
-                                    end if
-=======
                                     auxR = dot_product(CVNORMX_ALL(:, GI), matmul(perm%val(:,:,ele),CVNORMX_ALL(:, GI) ))
->>>>>>> parent of 7aacb9f54... Further cleanup and optimisations
                                     do iphase =1, final_phase
                                         rsum_nodi(iphase) = upwnd%inv_adv_coef(1,1,iphase,MAT_NODI)*auxR
                                     end do
