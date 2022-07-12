@@ -237,7 +237,7 @@ contains
           integer, dimension(:), pointer :: neighbours
           INTEGER, dimension(final_phase) :: LOC_WIC_T_BC_ALL
           !        ===>  GENERIC REALS  <===
-          REAL :: HDC, RSUM, W_SUM_ONE1, W_SUM_ONE2, one_m_cv_beta, auxR
+          REAL :: HDC, RSUM, W_SUM_ONE1, W_SUM_ONE2, auxR
           REAL :: NDOTQ_HAT
           REAL, dimension(final_phase) :: ROBIN1, ROBIN2, BCZERO
           !Local copy of tracers and densities
@@ -457,9 +457,8 @@ contains
               CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_BETA, GOT_DIFFUS
           ewrite(3,*)'GETCV_DISC, GETCT', GETCV_DISC, GETCT
 
-          !cv_beta == 1 means conservative, meaning that everything multiplied by one_m_cv_beta can be ignored
-          one_m_cv_beta = 1.0 - cv_beta
-          conservative_advection = abs(one_m_cv_beta) <= 1e-8
+          !cv_beta == 1 means conservative
+          conservative_advection = abs(1.0 - cv_beta) <= 1e-8
           QUAD_OVER_WHOLE_ELE=.FALSE.
           ! Allocate memory for the control volume surface shape functions, etc.
           IF(GETCT) THEN
@@ -812,7 +811,7 @@ contains
                                     upwnd%inv_adv_coef(1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1:final_phase,MAT_NODJ), &
                                     NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ))
                               ENDIF
-                              !Calculate the courant number for porous media (done only for CT now)
+                              !Calculate the courant number for porous media (done only for CT and Saturation-this latter might be dropped?-)
                               if (present(Courant_number)) then
                                 if (.not. on_domain_boundary) then
                                   !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
@@ -971,7 +970,7 @@ contains
                                       LOC_MAT_II = LOC_MAT_II +  LIMT2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME ) * LIMD! Advection
                                       if (GOT_DIFFUS) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                       if (VAD_activated) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
-                                      if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - LIMT2 * ( ONE_M_CV_BETA ) * &
+                                      if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - LIMT2 * &
                                                                                     SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
                                       if (on_domain_boundary) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * ROBIN2
 
@@ -980,7 +979,7 @@ contains
                                         LOC_MAT_JJ = LOC_MAT_JJ -  LIMT2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD! Advection
                                         if (GOT_DIFFUS) LOC_MAT_JJ = LOC_MAT_JJ + LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                         if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
-                                        if (.not.conservative_advection) LOC_MAT_JJ = LOC_MAT_JJ + LIMT2 * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
+                                        if (.not.conservative_advection) LOC_MAT_JJ = LOC_MAT_JJ + LIMT2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
                                       endif
 
                                       IF ( GET_GTHETA ) THEN
@@ -1004,8 +1003,8 @@ contains
                                           - LIMT2* SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
                                           * ( LOC_T_J - LOC_T_I )
                                       if (.not.conservative_advection) LOC_CV_RHS_I =  LOC_CV_RHS_I &
-                                          - LIMT2 * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD * LOC_T_I &
-                                          + ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) &
+                                          - LIMT2 *  SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD * LOC_T_I &
+                                          + SdevFuns%DETWEI( GI ) &
                                           * ( LIMT2 * NDOTQNEW * LOC_T_I * LIMD )
                                       if (on_domain_boundary) LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           + SdevFuns%DETWEI( GI ) * ROBIN1
@@ -1020,8 +1019,8 @@ contains
                                           - LIMT2 * SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
                                           * ( LOC_T_I - LOC_T_J )
                                       if (.not.conservative_advection) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
-                                          + LIMT2 * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD * LOC_T_J &
-                                          - ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) &
+                                          + LIMT2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD * LOC_T_J &
+                                          - SdevFuns%DETWEI( GI ) &
                                           * ( LIMT2 * NDOTQNEW * LOC_T_J * LIMD )
 
                                   endif
@@ -1111,14 +1110,14 @@ contains
                                 !we divide to remove that term and multiply by the correct term (1-porosity)
                             LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
                             + (CV_BETA * porous_heat_coef_old( CV_NODI ) * T2OLD_ALL(iphase, cv_nodi) &
-                            + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * T2_ALL(iphase, cv_nodi)) &
+                            + (1.0 - cv_beta) * porous_heat_coef( CV_NODI ) * T2_ALL(iphase, cv_nodi)) &
                             * R_PHASE(iphase) * TOLD_ALL(iphase, cv_nodi)* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
                         end do
                       end if
                       do iphase = 1, final_phase
                         LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + DEN_ALL(iphase, cv_nodi) * T2_ALL(iphase, cv_nodi) * R_PHASE(iphase)
                         LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  + (CV_BETA * DENOLD_ALL(iphase, cv_nodi) * T2OLD_ALL(iphase, cv_nodi) + &
-                                (ONE_M_CV_BETA) * DEN_ALL(iphase, cv_nodi) * T2_ALL(iphase, cv_nodi) ) * R_PHASE(iphase) * TOLD_ALL(iphase, cv_nodi)
+                                (1.0 - cv_beta) * DEN_ALL(iphase, cv_nodi) * T2_ALL(iphase, cv_nodi) ) * R_PHASE(iphase) * TOLD_ALL(iphase, cv_nodi)
                       end do
                   ELSE
 
@@ -1128,7 +1127,7 @@ contains
                         LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
                           + Mass_CV( CV_NODI ) * SOURCT_ALL( IPHASE, CV_NODI )&
                           + ( CV_BETA * DENOLD_ALL(iphase, cv_nodi) &
-                          + (ONE_M_CV_BETA) * DEN_ALL(iphase, cv_nodi) ) &
+                          + (1.0 - cv_beta) * DEN_ALL(iphase, cv_nodi) ) &
                           * R_PHASE(IPHASE) * TOLD_ALL(iphase, cv_nodi)
                    END DO
                   END IF
