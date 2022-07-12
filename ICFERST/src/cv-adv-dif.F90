@@ -239,7 +239,6 @@ contains
           LOGICAL, DIMENSION( Mdims%x_nonods ) :: X_SHARE
           integer, dimension (Mdims%cv_nloc) ::CV_OTHER_LOC, SHAPE_CV_SNL
           integer, dimension (Mdims%cv_snloc) :: CV_SLOC2LOC
-          integer, dimension (Mdims%u_nloc) ::U_OTHER_LOC
           integer, dimension (Mdims%u_snloc) :: U_SLOC2LOC
           integer, dimension (Mdims%mat_nloc) ::MAT_OTHER_LOC
           !Allocate only for get_CT
@@ -637,15 +636,13 @@ contains
                       SELE = 0
                       CV_SILOC=0
                       INTEGRAT_AT_GI = .TRUE.
-                      U_OTHER_LOC=0
                       ! CV_OTHER_LOC=0
                       Conditional_CheckingNeighbourhood: IF ( CV_JLOC == -1 ) THEN
                           ! We are on the boundary or next to another element.  Determine CV_OTHER_LOC
                           ! CV_funs%cvfem_on_face(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
                           ! Look for these nodes on the other elements.
-                          CALL FIND_OTHER_SIDE( CV_OTHER_LOC, Mdims%cv_nloc, U_OTHER_LOC, Mdims%u_nloc, &
-                              MAT_OTHER_LOC, INTEGRAT_AT_GI, &
-                              Mdims%x_nloc, Mdims%xu_nloc, ndgln%x, ndgln%xu, &
+                          CALL FIND_OTHER_SIDE( CV_OTHER_LOC, Mdims%cv_nloc, INTEGRAT_AT_GI, &
+                              Mdims%x_nloc, ndgln%x,  &
                               Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, ELE, ELE2,  &
                               Mspars%ELE%fin, Mspars%ELE%col, DISTCONTINUOUS_METHOD )
 
@@ -881,7 +878,7 @@ contains
                                   CALL PUT_IN_CT_RHS(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
                                       final_phase, Mdims, CV_funs, ndgln, Mmat, GI,  &
                                       between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, MASS_ELE, &
-                                      JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
+                                      JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2,  U_SLOC2LOC, CV_SLOC2LOC,&
                                       SdevFuns%DETWEI, CVNORMX_ALL, DEN_ALL(1:final_phase,:), CV_NODI, CV_NODJ, &
                                       WIC_U_BC_ALL, WIC_P_BC_ALL, pressure_BCs%val, &
                                       UGI_COEF_ELE_ALL,  &
@@ -1810,26 +1807,24 @@ contains
 
 
     
-    !> We are on the boundary or next to another element. Determine CV_OTHER_LOC,
-    !> U_OTHER_LOC.
+    !> We are on the boundary or next to another element. Determine CV_OTHER_LOC
     !> CVFEM_ON_FACE(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
     !> Look for these nodes on the other elements.
     !> ELE2=0 also when we are between elements but are trying to integrate across
     !> the middle of a CV.
-    SUBROUTINE FIND_OTHER_SIDE( CV_OTHER_LOC, CV_NLOC, U_OTHER_LOC, U_NLOC,  &
-        MAT_OTHER_LOC, INTEGRAT_AT_GI, &
-        X_NLOC, XU_NLOC, X_NDGLN, XU_NDGLN, &
+    SUBROUTINE FIND_OTHER_SIDE( CV_OTHER_LOC, CV_NLOC,INTEGRAT_AT_GI, &
+        X_NLOC, X_NDGLN, &
         CV_SNLOC, CVFEM_ON_FACE, X_SHARE, ELE, ELE2,  &
         FINELE, COLELE, DISTCONTINUOUS_METHOD )
         IMPLICIT NONE
-        INTEGER, intent( in ) :: CV_NLOC, U_NLOC, X_NLOC, XU_NLOC, &
+        INTEGER, intent( in ) :: CV_NLOC,  X_NLOC,  &
             &                   CV_SNLOC, ELE
-        INTEGER, DIMENSION( : ), intent( in ) :: X_NDGLN, XU_NDGLN
+        INTEGER, DIMENSION( : ), intent( in ) :: X_NDGLN
         LOGICAL, DIMENSION( : ), intent( in ) :: CVFEM_ON_FACE
         INTEGER, DIMENSION( : ), intent( in ) :: FINELE
         INTEGER, DIMENSION( : ), intent( in ) :: COLELE
 
-        INTEGER, DIMENSION( : ), intent( inout ) :: CV_OTHER_LOC, U_OTHER_LOC, MAT_OTHER_LOC
+        INTEGER, DIMENSION( : ), intent( inout ) :: CV_OTHER_LOC
         LOGICAL, DIMENSION( : ), intent( inout ) :: X_SHARE
         INTEGER, intent( inout ) :: ELE2
         LOGICAL, intent( inout ) :: INTEGRAT_AT_GI
@@ -1893,23 +1888,8 @@ contains
                 END IF
             END DO
 
-            U_OTHER_LOC = 0 ! Determine U_OTHER_LOC(U_KLOC)
-            if (.not.is_P0DGP1) then!XU_NDGLN not defined for P0DGP1
-              ! Works for non constant and constant (XU_NLOC=1) vel basis functions...
-              DO U_KLOC = 1, U_NLOC ! Find opposite local node
-                  XU_NODK = XU_NDGLN( ( ELE - 1 ) * XU_NLOC + U_KLOC )
-                  DO U_KLOC2 = 1, U_NLOC
-                      XU_NODK2 = XU_NDGLN(( ELE2 - 1 ) * XU_NLOC + U_KLOC2 )
-                      IF ( ( XU_NODK2 == XU_NODK ) .OR. ( XU_NLOC == 1 ) ) &
-                          U_OTHER_LOC( U_KLOC ) = U_KLOC2
-                  END DO
-              END DO
-            end if
-            MAT_OTHER_LOC = CV_OTHER_LOC
         ELSE
             CV_OTHER_LOC = 0
-            U_OTHER_LOC = 0
-            MAT_OTHER_LOC = 0
         END IF
 
         RETURN
@@ -3175,9 +3155,8 @@ contains
                 ! We are on the boundary or next to another element.  Determine CV_OTHER_LOC
                 ! CV_funs%cvfem_on_face(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
                 ! Look for these nodes on the other elements.
-                CALL FIND_OTHER_SIDE( CV_OTHER_LOC, Mdims%cv_nloc, U_OTHER_LOC, Mdims%u_nloc, &
-                MAT_OTHER_LOC, INTEGRAT_AT_GI, &
-                Mdims%x_nloc, Mdims%xu_nloc, ndgln%x, ndgln%xu, &
+                CALL FIND_OTHER_SIDE( CV_OTHER_LOC, Mdims%cv_nloc, INTEGRAT_AT_GI, &
+                Mdims%x_nloc, ndgln%x,  &
                 Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, ELE, ELE2,  &
                 Mspars%ELE%fin, Mspars%ELE%col, DISTCONTINUOUS_METHOD )
 
