@@ -2051,7 +2051,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     !Local variables
     real, dimension(:,:), allocatable :: Tracers_avg! Average of all the passiveTracers for checking
     logical :: adapting_within_happening_now !Do not show convergence if we are adapting the mesh within the FPI and this is the first guess
-    integer, save :: nonlinear_its=0! Needed for adapt_within_fpi to consider all the non-linear iterations together
     real, save :: stored_dt = -1 ! Backup of the time-step size
     logical, save :: adjusted_ts_to_dump = .false.! Flag to see if we need to modify dt to ensure we match a certain time level
     logical, save :: have_Active_Tracers
@@ -2083,17 +2082,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     character (len = OPTION_PATH_LEN), save :: output_units =' ', option_path
     character(len=PYTHON_FUNC_LEN) :: pyfunc
 
-    !We need an acumulative nonlinear_its if adapting within the FPI we don't want to restart the reference field neither
-    !consider less iterations of the total ones if adapting time using PID
-    if (.not.have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
-        nonlinear_its = its
-    else
-        if (.not.ExitNonLinearLoop) then
-            nonlinear_its = its!Only do something different when we are supposed to exit
-        else !Store when we are in theory finishing
-            nonlinear_its = nonlinear_its + its
-        end if
-    end if
     !ewrite(0,*) "entering"
     !First of all, check if the user wants to do something
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
@@ -2178,7 +2166,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             !we either store the data or we recover it if repeting a timestep
             !Procedure to repeat time-steps
             !If  Repeat_time_step then we recover values, else we store them
-            if (nonlinear_its == 1) call copy_packed_new_to_iterated(packed_state, Repeat_time_step)
+            if (its == 1) call copy_packed_new_to_iterated(packed_state, Repeat_time_step)
         case (2)!Calculate and store reference_field
             !Store variable to check afterwards
             call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
@@ -2287,7 +2275,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
               !Calculate infinite norm, not consider wells
               inf_norm_val = maxval(abs(reference_field(1:Mdims%n_in_pres,:,1)-phasevolumefraction(1:Mdims%n_in_pres,:)))/backtrack_or_convergence
               !Calculate value of the functional (considering wells and reservoir)
-              ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(:,:,1), backtrack_or_convergence, nonlinear_its)
+              ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(:,:,1), backtrack_or_convergence, its)
               backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(:,:,1), backtrack_or_convergence)
             end if
             select case (variable_selection)
@@ -2359,7 +2347,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
            ! end if
 
             !generate output message
-            write(temp_string, '(a, i0, a, E10.3, a, E10.3)' ) "Iterations: ", nonlinear_its, " | Pressure:", inf_norm_pres, " | Mass check:", max_calculate_mass_delta
+            write(temp_string, '(a, i0, a, E10.3, a, E10.3)' ) "Iterations: ", its, " | Pressure:", inf_norm_pres, " | Mass check:", max_calculate_mass_delta
             output_message = trim(temp_string); temp_string = ''
 
             select case (variable_selection)
@@ -2590,7 +2578,7 @@ contains
         aux = aux + 1.0
         !Maybe consider as well aiming to a certain number of FPIs
         if (Aim_num_FPI > 0) then
-            Cn(3) = (dble(nonlinear_its)/dble(Aim_num_FPI))**impose_FPI_num
+            Cn(3) = (dble(its)/dble(Aim_num_FPI))**impose_FPI_num
             aux = aux + 1.0
         end if
         if (max_criteria) then

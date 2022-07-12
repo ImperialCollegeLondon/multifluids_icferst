@@ -910,68 +910,6 @@ contains
             call set_option("/geometry/mesh::P0DG/from_mesh/mesh_continuity", "discontinuous")
         end if
 
-        !SPRINT_TO_DO generilise this to other fields
-        ! if (have_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
-        !     ewrite(1, *) "For adapt within FPI, create necessary backups for storing the saturation. Check multiphase_prototype_wrapper"
-        !     !Create necessary backups for storing the saturation (in a way that it is also adapted)
-        !     do i = 1, nphase
-        !         option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Saturation_bak"
-        !         call copy_option("/material_phase["// int2str( i - 1 )//"]/scalar_field::PhaseVolumeFraction",&
-        !              trim(option_path))
-        !         !Make sure the field is not shown
-        !         if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
-        !             !Copy an option that always exists to ensure we exclude the new field from vtu
-        !             call copy_option("/simulation_name",trim(option_path)//"/prognostic/output/exclude_from_vtu")
-        !         end if
-        !         !Make sure that this field is not the objective of adaptivity
-        !         if (have_option(trim(option_path)//"/prognostic/adaptivity_options")) then
-        !             call delete_option(trim(option_path)//"/prognostic/adaptivity_options")
-        !         end if
-        !     end do
-        ! end if
-
-        if (have_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
-            ewrite(1, *) "For adapt within FPI, create necessary backups for storing the old fields. Check multiphase_prototype_wrapper"
-            !Create necessary backups for storing the saturation (in a way that it is also adapted)
-            do i = 1, nphase * npres
-                !First scalar prognostic fields
-                option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field"
-                fields = option_count("/material_phase["// int2str( i - 1 )//"]/scalar_field")
-                do k = 1, fields
-                  call get_option("/material_phase["// int2str( i - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                  option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::"//trim(option_name)
-                  if (option_name(1:4)=="BAK_") cycle
-                  if (trim(option_name)=="Density" .or. .not.have_option(trim(option_path)//"/prognostic" )) cycle!Nothing to do for density or non prognostic fields
-                  if (have_option(trim(option_path)//"/aliased" )) cycle
-                  option_path_BAK = "/material_phase["// int2str( i - 1 )//"]/scalar_field::BAK_"//trim(option_name)
-                  !If a prognostic field then create backup (for incompressible flows, pressure would not be necessary)
-                  call copy_option(trim(option_path),trim(option_path_BAK))!Better to copy twice and delete options because it is more robust that add_option
-                  !Delete the prognostic section
-                  call delete_option(trim(option_path_BAK)//"/prognostic")
-                  !Now copy the interior of the prognostic as prescribed
-                  call copy_option(trim(option_path)//"/prognostic",trim(option_path_BAK)//"/prescribed")
-                  !Make sure the field is not shown
-                  if (.not.have_option(trim(option_path_BAK)//"/prescribed/output/exclude_from_vtu")) then
-                      !Copy an option that always exists to ensure we exclude the new field from vtu
-                      call copy_option("/simulation_name",trim(option_path_BAK)//"/prescribed/output/exclude_from_vtu")
-                  end if
-                end do
-                !Finally velocity as well
-                option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity"
-                option_path_BAK = "/material_phase["// int2str( i - 1 )//"]/vector_field::BAK_Velocity"
-                call copy_option(trim(option_path),trim(option_path_BAK))
-                !Delete the prognostic section
-                call delete_option(trim(option_path_BAK)//"/prognostic")
-                !Now copy the interior of the prognostic as prescribed
-                call copy_option(trim(option_path)//"/prognostic",trim(option_path_BAK)//"/prescribed")
-                !Make sure the field is not shown
-                if (.not.have_option(trim(option_path_BAK)//"/prescribed/output/exclude_from_vtu")) then
-                    !Copy an option that always exists to ensure we exclude the new field from vtu
-                    call copy_option("/simulation_name",trim(option_path_BAK)//"/prescribed/output/exclude_from_vtu")
-                end if
-            end do
-        end if
-
         !Checking whether the field PhaseVolumeFraction is defined or not. If not a error is output
         do i = 1, nphase
           if (.not. have_option(("/material_phase["// int2str( i - 1 )//"]/scalar_field::PhaseVolumeFraction"))) &
