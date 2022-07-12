@@ -400,7 +400,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    tracer, velocity, density, multi_absorp, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
-                   cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
+                   cv_disopt, cv_dg_vel_int_opt, DT, cv_beta, &
                    SUF_SIG_DIAGTEN_BC, &
                    DERIV%val(1,:,:), P%val, &
                    T_SOURCE, T_ABSORB, VOLFRA_PORE, &
@@ -794,7 +794,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    tracer, velocity, density, multi_absorp, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
-                   cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
+                   cv_disopt, cv_dg_vel_int_opt, DT, cv_beta, &
                    SUF_SIG_DIAGTEN_BC, &
                    DERIV%val(1,:,:), P%val, &
                    T_SOURCE, T_ABSORB, VOLFRA_PORE, &
@@ -1059,7 +1059,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      sat_field, velocity, density, multi_absorp, &
                      DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                      DEN_ALL, DENOLD_ALL, &
-                     Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
+                     Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_beta, &
                      SUF_SIG_DIAGTEN_BC, &
                      DERIV%val(1,:,:), P, &
                      V_SOURCE, V_ABSORB, VOLFRA_PORE, &
@@ -1687,7 +1687,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             tracer, velocity, density, multi_absorp, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             DEN_OR_ONE, DENOLD_OR_ONE, &
-            Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, v_beta, &
+            Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT,v_beta, &
             SUF_SIG_DIAGTEN_BC, &
             DERIV, CV_P, &
             V_SOURCE, V_ABSORB, VOLFRA_PORE, &

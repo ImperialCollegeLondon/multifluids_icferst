@@ -107,7 +107,7 @@ contains
     !>@param  DENOLD_ALL  Density of the field, different memory to the input field density, used to apply the Boussinesq approximation
     !>@param  THETA_GDIFF ! (nphase,Mdims%cv_nonods)
     !>@param  THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-    !>@param  DT, CV_THETA, CV_BETA: Time step size and discretisation options
+    !>@param  DT, CV_BETA: Time step size and discretisation options
     !>@param  SUF_SIG_DIAGTEN_BC. Like upwnd but for the boundary
     !>@param  DERIV   Derivative of the density against the pressure (nphase,Mdims%cv_nonods)
     !>@param  CV_P ! Control volume pressure, useless for the DCVFEM (1,Mdims%npres,Mdims%cv_nonods)
@@ -140,7 +140,7 @@ contains
           tracer, velocity, density, multi_absorp, &
           DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B,&
           DEN_ALL, DENOLD_ALL, &
-          CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, &
+          CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_BETA, &
           SUF_SIG_DIAGTEN_BC, &
           DERIV, CV_P, &
           SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &
@@ -154,123 +154,6 @@ contains
           Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
           porous_heat_coef,porous_heat_coef_old, outfluxes, solving_compositional, nonlinear_iteration,&
           assemble_collapsed_to_one_phase)
-          !  =====================================================================
-          !     In this subroutine the advection terms in the advection-diffusion
-          !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
-          !
-          !     This routine uses a Control Volume (CV) formulation to compute
-          !     the advection terms. The general procedure is as follows:
-          !
-          !        1. For each node-pair, define which node is the donor, which is
-          !           the receptor and define an "upwind" value of the field being
-          !           advected (and the accompanying "density"; see note below)
-          !        2. Calculate the volume flux across the CV face that separates
-          !           these two nodes
-          !        3. Estimate the value of the advected variable at the control
-          !           volume face.
-          !        4. Using information from the donor, receptor and upwind nodes,
-          !           limit the field face value (removes oscillations from the
-          !           solution)
-          !        5. Assemble the fluxes to form the matrix and rhs of the
-          !           advection equation
-          !
-          !     This procedure is implemented by considering the CV to be made up
-          !     of a number of sub-control-volumes, which represent the part of
-          !     the control volume within a given element.  The assembly of terms
-          !     considers each of these sub-CVs in turn, calculating (and limiting)
-          !     the flux across sub-CV faces that are external to the CV...
-          !
-          !     NOTE: Add in note about what density is in this sub!!!
-          !
-          !     To define the "upwind" value of the field variable, which is
-          !     necessary for the limiting scheme, either:
-          !
-          !        A. The upwind value of the field variable to be advected is
-          !           found by interpolation and stored in a matrix (TUPWIND)
-          !        B. The neighbouring nodes are searched for the local maximum
-          !           and minimum
-          !
-          !     The subroutine has several options...
-          !
-          !     Discretisation option
-          !     ---------------------
-          !      - The estimate of the face value may be determined in one of
-          !        several ways.
-          !      - The face value may be centered in time by either a specified
-          !        CV_THETA value, or a non-linear CV_THETA value that is determined
-          !        automatically.
-          !      - The face value may be limited using a univeral-limiter-type
-          !        scheme, or a limited-downwind scheme that is ideal for INTERFACE
-          !        TRACKING.  Alternatively no limiting can be applied.
-          !
-          !     These options are defined by the value of CV_DISOPT, which corresponds
-          !     to the clast digit of the GEM option NDISOT for the field in question.
-          !
-          !     CV_DISOPT=discretisation option in space and time
-          !     ------------------------------------------------------------------
-          !     CV_DISOPT   Method for face-value est.    Time-stepping     Limiting
-          !     ------------------------------------------------------------------
-          !       =0      1st order in space          Theta=specified    UNIVERSAL
-          !       =1      1st order in space          Theta=non-linear   UNIVERSAL
-          !       =2      Trapezoidal rule in space   Theta=specified    UNIVERSAL
-          !       =2 if isotropic limiter then FEM-quadratic & stratification adjust. Theta=non-linear
-          !       =3      Trapezoidal rule in space   Theta=non-linear   UNIVERSAL
-          !       =4      Finite elements in space    Theta=specified    UNIVERSAL
-          !       =5      Finite elements in space    Theta=non-linear   UNIVERSAL
-          !       =6      Finite elements in space    Theta=specified    NONE
-          !       =7      Finite elements in space    =non-linear   NONE
-          !       =8      Finite elements in space    Theta=specified    DOWNWIND+
-          !       =9      Finite elements in space    Theta=non-linear   DOWNWIND+
-          !
-          !     CV_DG_VEL_INT_OPT=interface velocity calculation option between elements
-          !
-          !     Limiting scheme
-          !     ---------------
-          !     The limiting scheme is defined in the subroutine NVDFUNNEW;
-          !     the limited values are computed in subroutine ANONVDLIM/ONVDLIM.
-          !
-          !     ONVDLIM is the original limiting algorithm
-          !
-          !     ANONVDLIM is a new anisoptropic limiting algorithm, which is
-          !     called if either ALOLIM=1 (where ALOLIM is an option flag set
-          !     in this subroutine), or if the interface tracking limiting option
-          !     is selected (CV_DISOPT=8/9).  ***In general ALOLIM appears to be set to 1 (GSC)
-          !
-          !     NOTE: ANONVDLIM only works for TETS; for all other element types
-          !     ONVDLIM is used.
-          !
-          !
-          !     IMPORTANT INPUTS:
-          !     ----------------
-          !
-          !     CSR_ACV   - Matrix for assembling the advection terms (empty on input)
-          !     CV_RHS      - Right-hand side vector for advection-diffusion terms
-          !     X,Y,Z    - Node co-ordinates
-          !     NU       - Nodal velocity component
-          !     T,TOLD   - New and old advected field values at nodes
-          !     DEN,  - New and old "density" at nodes, which is actually a constant
-          !     DENOLD     multiplying the advection diffusion equation for the field
-          !     CV_DISOPT   - The discretisation/limiting option (see above)
-          !     DT       - The time step
-          !     CV_THETA    - The time-stepping discretisation parameter
-          !     CV_BETA     - Conservative(1.)/non-conservative(0.) flag
-          !     ELE_TYP   - Integer flag definining element type
-          !
-          !     IMPORTANT OUTPUTS:
-          !     -----------------
-          !
-          !     CSR_ACV   - Matrix updated to include the advection terms
-          !     CV_RHS      - Right-hand side vector updated to include advection terms
-          !
-          !
-          !     IMPORTANT LOCAL PARAMETERS:
-          !     --------------------------
-          !
-          !     TIMOPT    - Temporal discretisation option, derived from CV_DISOPT.
-          !                (1 for non-linear theta; 0 for theta specified (THETA))
-          !
-          !
-          !***********************************************************************
           ! Inputs/Outputs
           IMPLICIT NONE
           type( state_type ), dimension( : ), intent( inout ) :: state 
@@ -301,7 +184,7 @@ contains
           REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL
           REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (nphase,Mdims%cv_nonods)
           REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-          REAL, intent( in ) :: DT, CV_THETA, CV_BETA
+          REAL, intent( in ) :: DT, CV_BETA
           REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
           REAL, DIMENSION( :, : ), intent( in ) :: DERIV 
           REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
@@ -330,7 +213,6 @@ contains
           !Non-linear iteration count
           integer, optional, intent(in) :: nonlinear_iteration
           ! ###################Local variables############################
-          REAL :: ZERO_OR_TWO_THIRDS
 
           REAL, dimension(:,:), ALLOCATABLE :: FXGI_ALL, int_UDGI_ALL, A_STAR_X_ALL,VEC_VEL2
           REAL, dimension(:), ALLOCATABLE :: courant_or_minus_one_new, int_XI_LIMIT,&
@@ -366,13 +248,12 @@ contains
           integer, dimension(:), pointer :: neighbours
           INTEGER, dimension(final_phase) :: LOC_WIC_T_BC_ALL
           !        ===>  GENERIC REALS  <===
-          REAL :: HDC, RSUM, THERM_FTHETA, W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, cc, one_m_cv_beta, auxR
-          REAL :: R, NDOTQ_HAT, DeltaP
-          REAL, dimension(final_phase) :: FTHETA, FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, &
-              ROBIN1, ROBIN2, BCZERO
+          REAL :: HDC, RSUM, W_SUM_ONE1, W_SUM_ONE2, one_m_cv_beta, auxR
+          REAL :: NDOTQ_HAT
+          REAL, dimension(final_phase) :: ROBIN1, ROBIN2, BCZERO
           !Local copy of tracers and densities
-          real, dimension(final_phase) :: LOC_T_J, LOC_TOLD_J, LOC_T_I, LOC_TOLD_I, LOC_DEN_J, LOC_DENOLD_J, LOC_DEN_I, LOC_DENOLD_I, &
-              LOC_T2_J, LOC_T2OLD_J, LOC_T2_I, LOC_T2OLD_I, AUX_T, AUX2_T
+          real, dimension(final_phase) :: LOC_T_J, LOC_T_I, LOC_TOLD_I, LOC_DEN_I, &
+              LOC_T2_I, LOC_T2OLD_I, AUX_T
           REAL :: GRAVTY
           character( len = option_path_len ) :: option_path2
           LOGICAL, DIMENSION( Mdims%x_nonods ) :: X_SHARE
@@ -392,7 +273,7 @@ contains
           type(vector_field), pointer :: vfield
           REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
           REAL, DIMENSION( :,: ), pointer :: XC_CV_ALL
-          REAL, DIMENSION( Mdims%ndim,final_phase,Mdims%u_nloc ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
+          REAL, DIMENSION( Mdims%ndim,final_phase,Mdims%u_nloc ) :: UGI_COEF_ELE_ALL
           REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
           !###Variables for shape function calculation###
           type (multi_dev_shape_funs) :: SdevFuns
@@ -403,7 +284,7 @@ contains
           INTEGER :: CV_KNOD2, U_SNODK
           ! nphase Variables:
           real, dimension(final_phase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, NDOTQNEW, &
-              LIMT, LIMT_HAT, FVT, LIMD, LIMDT
+              LIMT, LIMT_HAT, LIMD, LIMDT
           real, dimension(final_phase)::LIMT2
           REAL, DIMENSION( Mdims%ndim, final_phase, Mdims%cv_nloc, Mdims%totele ) :: DTX_ELE_ALL, DTOLDX_ELE_ALL
           REAL , DIMENSION( Mdims%ndim, final_phase ) :: NUGI_ALL
@@ -595,9 +476,8 @@ contains
               GOT_DIFFUS = ( R2NORM( TDIFFUSION, size(TDIFFUSION,1) * size(TDIFFUSION,2) * size(TDIFFUSION,3) * size(TDIFFUSION,4)  ) /= 0 )!<=I hate this thing...
               call allor(GOT_DIFFUS)                                                  !it should be if present then true, but it breaks the parallel CWC P1DGP2
           end if
-          call get_option( "/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
-          ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS:', &
-              CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS
+          ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_BETA, GOT_DIFFUS:', &
+              CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_BETA, GOT_DIFFUS
           ewrite(3,*)'GETCV_DISC, GETCT', GETCV_DISC, GETCT
 
           !cv_beta == 1 means conservative, meaning that everything multiplied by one_m_cv_beta can be ignored
@@ -728,7 +608,6 @@ contains
           ! Timopt is 0 if CV_DISOPT is even (theta specified);
           ! Timopt is 1 if CV_DISOPT is odd (non-linear theta scheme)
           TIMOPT = MOD( CV_DISOPT, 2 )
-          FTHETA = 1.!CV_THETA
           IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqns plus RHS
               call zero(Mmat%CT_RHS)
               Mmat%CT = 0.0
@@ -800,9 +679,9 @@ contains
 
                   ! Generate some local variables to reduce slicing (sprint_to_do this is a waste...)
                   LOC_T_I = T_ALL(1:final_phase, cv_nodi); LOC_TOLD_I = TOLD_ALL(1:final_phase, cv_nodi)
-                  LOC_DEN_I =DEN_ALL(1:final_phase, cv_nodi); LOC_DENOLD_I = DENOLD_ALL(1:final_phase, cv_nodi)
+                  LOC_DEN_I =DEN_ALL(1:final_phase, cv_nodi)
                   if (use_volume_frac_T2) then
-                    LOC_T2_I = T2_ALL(1:final_phase, cv_nodi); LOC_T2OLD_I = T2OLD_ALL(1:final_phase, cv_nodi)
+                    LOC_T2_I = T2_ALL(1:final_phase, cv_nodi)
                   end if
                   ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
                   Loop_GCOUNT: DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
@@ -862,11 +741,7 @@ contains
                         !     permeability_jump = abs(perm%val(1,1,ele) - perm%val(1,1,ele2)/perm%val(1,1,ele)) > 1e-8
                         !   end if
                           !Create local variables to reduce slicing
-                          LOC_T_J = T_ALL(1:final_phase, cv_nodj); LOC_TOLD_J = TOLD_ALL(1:final_phase, cv_nodj)
-                          LOC_DEN_J =DEN_ALL(1:final_phase, cv_nodj); LOC_DENOLD_J = DENOLD_ALL(1:final_phase, cv_nodj)
-                          if (use_volume_frac_T2) then
-                            LOC_T2_J = T2_ALL(1:final_phase, cv_nodj); LOC_T2OLD_J = T2OLD_ALL(1:final_phase, cv_nodj)
-                          end if
+                          LOC_T_J = T_ALL(1:final_phase, cv_nodj)
 
                           if((.not.integrate_other_side).or.(CV_NODJ >= CV_NODI)) then
                               ! this is for DG and boundaries of the domain
@@ -956,8 +831,7 @@ contains
                               If_GOT_DIFFUS2: IF ( GOT_DIFFUS ) THEN
                                   ! This sub caculates the effective diffusion
                                   ! coefficient DIFF_COEF_DIVDX
-                                  AUX_T  =T_ALL(1:final_phase, CV_NODJ)
-                                  AUX2_T = TOLD_ALL(1:final_phase, CV_NODJ)
+                                  AUX_T  = T_ALL(1:final_phase, CV_NODJ)
                                   LOC_WIC_T_BC_ALL=0
                                   !           IF(SELE.NE.0) THEN
                                   IF(on_domain_boundary) THEN
@@ -965,7 +839,6 @@ contains
                                           LOC_WIC_T_BC_ALL(IPHASE)=WIC_T_BC_ALL(1, IPHASE, SELE)
                                           IF(LOC_WIC_T_BC_ALL(IPHASE)==WIC_T_BC_DIRICHLET) THEN
                                               AUX_T( IPHASE ) = SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                              AUX2_T( IPHASE )=SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
                                           ENDIF
                                       END DO
                                   ENDIF
@@ -988,9 +861,9 @@ contains
                               !Calling the functions directly instead inside a wrapper saves a around a 5%
                               IF( GOT_T2 ) THEN
                                 CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
-                                    LOC_T2_I, LOC_T2_J, &
+                                    LOC_T2_I, T2_ALL(1:final_phase, cv_nodj), &
                                     LOC_NU, LOC2_NU, SLOC_NU, &
-                                    UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+                                    UGI_COEF_ELE_ALL, &
                                     upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
                                     upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
                                     upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
@@ -999,7 +872,7 @@ contains
                                 CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
                                     LOC_T_I, LOC_T_J, &
                                     LOC_NU, LOC2_NU, SLOC_NU, &
-                                    UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+                                    UGI_COEF_ELE_ALL, &
                                     upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
                                     upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
                                     upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
@@ -1046,13 +919,7 @@ contains
                               ELSE
                                   CAP_DIFF_COEF_DIVDX = 0.0
                               END IF If_GOT_CAPDIFFUS
-                              ! Pack ndotq information:
                               
-                              !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
-                              ! Calculate T and DEN on the CV face at quadrature point GI.
-                              ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
-                              FVT=LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
-
                               !Use upwinding to obtaing the values                        
                             IF ( on_domain_boundary ) THEN
                                 !tracer
@@ -1079,8 +946,8 @@ contains
                                 end do                                                                      
                             else
                                 LIMT=LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
-                                LIMD=LOC_DEN_I*(1.0-INCOME) + LOC_DEN_J*INCOME
-                                if (use_volume_frac_T2) LIMT2=LOC_T2_I*(1.0-INCOME) + LOC_T2_J*INCOME
+                                LIMD=LOC_DEN_I*(1.0-INCOME) + DEN_ALL(1:final_phase, cv_nodj)*INCOME
+                                if (use_volume_frac_T2) LIMT2=LOC_T2_I*(1.0-INCOME) + T2_ALL(1:final_phase, cv_nodj)*INCOME
                             end if
 
                               LIMDT=LIMD*LIMT
@@ -1097,7 +964,7 @@ contains
                                       JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
                                       SdevFuns%DETWEI, CVNORMX_ALL, DEN_ALL(1:final_phase,:), CV_NODI, CV_NODJ, &
                                       WIC_U_BC_ALL, WIC_P_BC_ALL, pressure_BCs%val, &
-                                      UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,  &
+                                      UGI_COEF_ELE_ALL,  &
                                       NDOTQNEW, LIMT, LIMDT, LIMT_HAT, LIMT2, NDOTQ_HAT, &
                                       integrate_other_side_and_not_boundary, &
                                       loc_u, THETA_VEL, &
@@ -1197,7 +1064,7 @@ contains
                                   ! Put results into the RHS vector
                                   LOC_CV_RHS_I =  LOC_CV_RHS_I  &
                                          ! subtract 1st order adv. soln.
-                                      + LIMT2 * NDOTQNEW * SdevFuns%DETWEI( GI ) * LIMD * FVT * BCZERO &
+                                      + LIMT2 * NDOTQNEW * SdevFuns%DETWEI( GI ) * LIMDT * BCZERO &
                                       -  SdevFuns%DETWEI( GI ) * ( LIMT2 * NDOTQNEW * LIMDT)
                                   ! Subtract out 1st order term non-conservative adv.
                                       if (VAD_activated) LOC_CV_RHS_I =  LOC_CV_RHS_I &
@@ -1214,7 +1081,7 @@ contains
                                   if(integrate_other_side_and_not_boundary) then
                                       LOC_CV_RHS_J =  LOC_CV_RHS_J  &
                                              ! subtract 1st order adv. soln.
-                                          - LIMT2 * NDOTQNEW * SdevFuns%DETWEI( GI ) * LIMD * FVT * BCZERO &
+                                          - LIMT2 * NDOTQNEW * SdevFuns%DETWEI( GI ) * LIMDT * BCZERO &
                                           +  SdevFuns%DETWEI( GI ) * ( LIMT2 * NDOTQNEW * LIMDT)
                                       if (VAD_activated) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
                                           - LIMT2 * SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
@@ -1288,7 +1155,7 @@ contains
 
                 ! Generate local variables (to avoid slicing) ***************
                 LOC_T_I = T_ALL(1:final_phase, cv_nodi); LOC_TOLD_I = TOLD_ALL(1:final_phase, cv_nodi)
-                LOC_DEN_I =DEN_ALL(1:final_phase, cv_nodi); LOC_DENOLD_I = DENOLD_ALL(1:final_phase, cv_nodi)
+                LOC_DEN_I =DEN_ALL(1:final_phase, cv_nodi)
                 if (use_volume_frac_T2) then
                   LOC_T2_I = T2_ALL(1:final_phase, cv_nodi); LOC_T2OLD_I = T2OLD_ALL(1:final_phase, cv_nodi)
                 end if
@@ -1321,19 +1188,19 @@ contains
                           * R_PHASE * LOC_TOLD_I* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
 
                       end if
-
-                      LOC_MAT_II = LOC_MAT_II + LOC_DEN_I * LOC_T2_I * R_PHASE
-                      LOC_CV_RHS_I=LOC_CV_RHS_I  + (CV_BETA * LOC_DENOLD_I * LOC_T2OLD_I + &
-                              (ONE_M_CV_BETA) * LOC_DEN_I * LOC_T2_I ) * R_PHASE * LOC_TOLD_I
-
+                      do iphase = 1, final_phase
+                        LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + LOC_DEN_I(iphase) * LOC_T2_I(iphase) * R_PHASE(iphase)
+                        LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  + (CV_BETA * DENOLD_ALL(iphase, cv_nodi) * LOC_T2OLD_I(iphase) + &
+                                (ONE_M_CV_BETA) * LOC_DEN_I(iphase) * LOC_T2_I(iphase) ) * R_PHASE(iphase) * LOC_TOLD_I(iphase)
+                      end do
                   ELSE
 
                     !Diagonal term Vol/dt * rho and accompaniying rhs term
-                    LOC_MAT_II = LOC_MAT_II + LOC_DEN_I * R_PHASE
                     do iphase = 1, final_phase
-                      LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
+                        LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + LOC_DEN_I(iphase) * R_PHASE(iphase)
+                        LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
                           + Mass_CV( CV_NODI ) * SOURCT_ALL( IPHASE, CV_NODI )&
-                          + ( CV_BETA * LOC_DENOLD_I(IPHASE) &
+                          + ( CV_BETA * DENOLD_ALL(iphase, cv_nodi) &
                           + (ONE_M_CV_BETA) * LOC_DEN_I(IPHASE) ) &
                           * R_PHASE(IPHASE) * LOC_TOLD_I(IPHASE)
                    END DO
@@ -1370,9 +1237,9 @@ contains
             DO CV_NODI = 1, Mdims%cv_nonods
               ! Generate local variables (to avoid slicing) ***************
               LOC_T_I = T_ALL(1:final_phase, cv_nodi); LOC_TOLD_I = TOLD_ALL(1:final_phase, cv_nodi)
-              LOC_DEN_I =DEN_ALL(1:final_phase, cv_nodi); LOC_DENOLD_I = DENOLD_ALL(1:final_phase, cv_nodi)
+              LOC_DEN_I =DEN_ALL(1:final_phase, cv_nodi)
               if (use_volume_frac_T2) then
-                LOC_T2_I = T2_ALL(1:final_phase, cv_nodi); LOC_T2OLD_I = T2OLD_ALL(1:final_phase, cv_nodi)
+                LOC_T2_I = T2_ALL(1:final_phase, cv_nodi)
               end if
 
               ct_rhs_phase=0.0 ; DIAG_SCALE_PRES_phase=0.0
@@ -1387,7 +1254,7 @@ contains
                 ct_rhs_phase(iphase)=ct_rhs_phase(iphase) &
                     - R_PRES(1) * ( &
                     + (1.0-W_SUM_ONE1) * LOC_T_I(iphase) - (1.0-W_SUM_ONE2) * LOC_TOLD_I(iphase) &
-                    + (( LOC_TOLD_I(iphase) * ( LOC_DEN_I(iphase) - LOC_DENOLD_I(iphase) ) &
+                    + (( LOC_TOLD_I(iphase) * ( LOC_DEN_I(iphase) - DENOLD_ALL(iphase, cv_nodi) ) &
                     - DERIV( iphase, CV_NODI ) * CV_P( 1, 1, CV_NODI ) ) * T_ALL( iphase, CV_NODI ) ) / LOC_DEN_I(iphase) )
                 DIAG_SCALE_PRES_phase( iphase ) = DIAG_SCALE_PRES_phase( iphase ) &
                     + MEAN_PORE_CV( 1, CV_NODI ) * LOC_T_I( iphase ) * DERIV( iphase, CV_NODI ) / ( DT * LOC_DEN_I(iphase) )
@@ -1518,7 +1385,7 @@ contains
         SUBROUTINE GET_INT_VEL_POROUS_VEL(NDOTQNEW, NDOTQ, INCOME, &
             LOC_T_I, LOC_T_J, &
             LOC_NU, LOC2_NU, SLOC_NU, &
-            UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+            UGI_COEF_ELE_ALL, &
             I_adv_coef, I_adv_coef_grad, &
             J_adv_coef, J_adv_coef_grad, &
             I_inv_adv_coef, J_inv_adv_coef, &
@@ -1530,13 +1397,13 @@ contains
             REAL, DIMENSION( : ), intent( inout ) :: NDOTQNEW, NDOTQ, INCOME
             REAL, DIMENSION( : ), intent( in ) :: LOC_T_I, LOC_T_J
             REAL, DIMENSION( :, :, : ), intent( in ) ::  LOC_NU, LOC2_NU, SLOC_NU
-            REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL!This is for the continuity equation, so we convert V into u
+            REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL!This is for the continuity equation, so we convert V into u
             REAL, DIMENSION( : ), intent( in ) :: I_adv_coef, I_adv_coef_grad, &
                 J_adv_coef, J_adv_coef_grad, I_inv_adv_coef, J_inv_adv_coef
             REAL, DIMENSION( :, :  ), intent( inout ) :: UDGI_ALL
             REAL, intent( in ) :: MASS_CV_I, MASS_CV_J
 
-            UGI_COEF_ELE_ALL=0.0 ; UGI_COEF_ELE2_ALL=0.0
+            UGI_COEF_ELE_ALL=0.0 
             Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
                 !Initialize variables
                 forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
@@ -3138,7 +3005,6 @@ contains
         SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
         WIC_U_BC_ALL, WIC_P_BC_ALL,SUF_P_BC_ALL,&
         UGI_COEF_ELE_ALL,  &
-        UGI_COEF_ELE2_ALL,  &
         NDOTQ, LIMT, LIMDT, LIMT_HAT, LIMT2, &
         NDOTQ_HAT, &
         integrate_other_side_and_not_boundary, &
@@ -3161,7 +3027,7 @@ contains
         INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC, CV_SLOC2LOC
         REAL, DIMENSION( :, :, : ), intent( inout ) :: SUF_P_BC_ALL
         REAL, DIMENSION( : ), intent( inout ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
-        REAL, DIMENSION( :, :, : ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
+        REAL, DIMENSION( :, :, : ), intent( in ) :: UGI_COEF_ELE_ALL
         REAL, DIMENSION( : ), intent( in ) :: SCVDETWEI, MASS_ELE
         REAL, DIMENSION( :, : ), intent( in ) :: CVNORMX_ALL
         REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL
