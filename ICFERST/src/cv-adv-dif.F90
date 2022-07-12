@@ -740,7 +740,7 @@ contains
                               integrate_other_side_and_not_boundary = integrate_other_side.and.(SELE.LE.0)
                               GLOBAL_FACE = GLOBAL_FACE + 1
                               ! Calculate the control volume normals at the Gauss pts. Internal subroutine for speed
-                              CALL SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, between_elements, &
+                              CALL SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, &
                                     ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( :, CV_NODI ), X_NODI, X_NODJ)
                               !Obtain the list of neighbouring nodes
                               IF( GETCT ) call get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
@@ -830,7 +830,8 @@ contains
                                     NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ))
                               ENDIF
                               !Calculate the courant number for porous media (done only for CT now)
-                              if (present(Courant_number) .and..not. on_domain_boundary) then
+                              if (present(Courant_number)) then
+                                if (.not. on_domain_boundary) then
                                   !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
                                   Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                   !and the shock-front Courant number
@@ -838,6 +839,7 @@ contains
                                       !ndotq = velocity * normal
                                       Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                   end if
+                                end if
                               end if
                               If_GOT_CAPDIFFUS: IF ( VAD_activated ) THEN
                                   IF(SELE == 0) THEN
@@ -3235,7 +3237,7 @@ contains
 
                 if(CV_NODJ > CV_NODI) then
                   !Compute SdevFuns%DETWEI and CVNORMX_ALL
-                  CALL SCVDETNX( Mdims, ndgln, X_ALL%val, CV_funs, CV_GIdims, on_domain_boundary, .false., &!NOT FULLY DG FOR THIS METHOD
+                  CALL SCVDETNX( Mdims, ndgln, X_ALL%val, CV_funs, CV_GIdims, on_domain_boundary, &
                   ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL, XC_CV_ALL%val( :, CV_NODI ), X_NODI, X_NODJ)
                   ! Obtain the CV discretised advection/diffusion equations
                   IF(.not. on_domain_boundary) THEN
@@ -3341,7 +3343,7 @@ contains
     !>     ---------------------------------------------------------------
     !>    - date last modified : 25/08/2020
     !>     ---------------------------------------------------------------
-    SUBROUTINE SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, between_elements, ELE, GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD, X_NODJ)
+    SUBROUTINE SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, ELE, GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD, X_NODJ)
       IMPLICIT NONE
       type(multi_dimensions), intent( in ) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
@@ -3352,7 +3354,7 @@ contains
       REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
       REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
       REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
-      logical, intent(in) :: on_domain_boundary, between_elements
+      logical, intent(in) :: on_domain_boundary!, between_elements
       !     - Local variables
       INTEGER :: NODJ,  JLOC
       REAL :: A, B, C
@@ -3380,19 +3382,23 @@ contains
         !To calculate the sign of the normal an average between the center of the continuous CV and the center of mass is used
         !this is required as the center of mass has shown not to be reliable and the center of the continuous CV is a particular point that can lead
         !to failures to obtain the sign (perpendicular vectors in a flat boundary); For discontinuous and boundaries we use the old method
-        IF ( on_domain_boundary .or. between_elements) then!sprint_to_do between elements use both barycentres?
+        IF ( on_domain_boundary ) then!.or. between_elements) then!sprint_to_do between elements use both barycentres?
           POSVGI = POSVGI - (0.8*X_ALL(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
         else !Use centres of the continuous control volumes, i.e. corners of the elements
           POSVGI = X_ALL(1:Mdims%ndim, X_NODJ) - X_ALL(1:Mdims%ndim, X_NOD)
         end if
         !Obtain normal using the rotational of the two vectors
-        CVNORMX_ALL(:,GI) = cross_product(DLX,DLY)
+        ! CVNORMX_ALL(:,GI) = cross_product(DLX,DLY)
+        CVNORMX_ALL(1,GI)=DLX(2)*DLY(3) - DLX(3)*DLY(2)
+        CVNORMX_ALL(2,GI)=DLX(3)*DLY(1) - DLX(1)*DLY(3)
+        CVNORMX_ALL(3,GI)=DLX(1)*DLY(2) - DLX(2)*DLY(1)
+
         !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
-        DETJ = sum(DLX**2.)
+        DETJ = sum(DLX*DLX)
         !Sign and normalisation value
-        A = SIGN( 1.0 / DETJ, sum(CVNORMX_ALL(:,GI) * POSVGI) )
+        ! A = SIGN( 1.0 / DETJ, sum(CVNORMX_ALL(:,GI) * POSVGI) )
         !Normalise
-        CVNORMX_ALL(:,GI) = CVNORMX_ALL(:,GI) * A
+        CVNORMX_ALL(:,GI) = CVNORMX_ALL(:,GI) * SIGN( 1.0 / DETJ, sum(CVNORMX_ALL(:,GI) * POSVGI) )
         !Calculate the determinant times the surface weight at Gauss pnt GI.
         SCVDETWEI(GI) = DETJ*CV_funs%scvfeweigh(GI)
 
