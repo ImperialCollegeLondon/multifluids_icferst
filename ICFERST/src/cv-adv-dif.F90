@@ -217,14 +217,8 @@ contains
           !        ===>  LOGICALS  <===
           ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
           logical, PARAMETER :: integrate_other_side= .true.
-          ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
-          logical, PARAMETER :: correct_method_petrov_method= .true.
           LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE
           logical :: skip, GOT_T2, use_volume_frac_T2, logical_igot_theta_flux, zero_vel_BC
-          ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
-          ! This determins how implicit velocity is in the cty eqn. (from fully implciit =1.0, to do not alter the scheme =0.)
-          ! Zhi try THETA_VEL_HAT = 1.0
-          real :: THETA_VEL_HAT = 1.0
           ! if APPLY_ENO then apply ENO method to T and TOLD
           LOGICAL :: APPLY_ENO
           ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the Mmat%C matrix in here also based on control-volume pressure.
@@ -329,13 +323,11 @@ contains
           type( tensor_field ), pointer :: perm
           real, dimension( : , : ), pointer ::Imble_frac
           !Variables for Vanishing artificial diffusion (VAD)
-          logical :: VAD_activated, between_elements, on_domain_boundary, flux_limited_vad
+          logical :: VAD_activated, between_elements, on_domain_boundary
           !Variable to decide if we are introducing the sum of phases = 1 in Ct or elsewhere
           logical :: Solve_all_phases
           !Variables for get_int_vel_porous_vel
           logical :: permeability_jump
-          real, dimension(Mdims%ndim, Mdims%ndim) :: inv_harmonic_perm
-          real, dimension(final_phase):: rsum_nodi, rsum_nodj
           integer :: COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
           REAL :: MM_GRAVTY
           !Variables for assemble_collapsed_to_one_phase; Note that diffusion parameters etc need
@@ -347,18 +339,14 @@ contains
 
           logical :: have_absorption
           !Variables for get int_vel_porous_vel
-          REAL, DIMENSION( final_phase ) :: HF, HFOLD, GF, PINVTH, QINVTH
           logical :: iv_Incomming_flow
           REAL, DIMENSION(Mdims%ndim) :: iv_SUF_SIG_DIAGTEN_BC_GI
           INTEGER :: iv_u_kloc, iv_u_skloc, iv_cv_kloc, iv_idim, iv_CV_SKLOC, iv_CV_SNODK, iv_CV_SNODK_IPHA, iv_IPHASE, iv_u_kloc2
-          real, dimension(final_phase) :: iv_aux_tensor, iv_sigma_aver, iv_aux_tensor2
-          ! real, dimension(Mdims%ndim, Mdims%ndim) :: iv_ones
           ! ####Variables for outfluxes#####
           logical :: compute_outfluxes
           real, dimension(:, :,:), allocatable :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
           real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
           real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
-          REAL, DIMENSION( :,:,: ), allocatable, target:: SUF_T2_BC_value, SUF_T_BC_ROB2_value
 
 
           !Decide if we are solving for nphases-1
@@ -368,7 +356,6 @@ contains
           if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
               VAD_activated = Phase_with_Pc >0
           end if
-          flux_limited_vad = have_option("/numerical_methods/flux_limited_vad")
           logical_igot_theta_flux = IGOT_THETA_FLUX == 1
 
 
@@ -386,13 +373,9 @@ contains
               GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .false.
           end if
 
-          !THETA_VEL_HAT has to be zero for porous media flow
-              THETA_VEL_HAT = 0.0
-
           call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
 
           !#################SET WORKING VARIABLES#################
-
           call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
              OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL)
           if (.not. present_and_true(solving_compositional)) then
@@ -821,12 +804,12 @@ contains
                                 CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
                                     T2_ALL(1:final_phase, cv_nodj), T2_ALL(1:final_phase, cv_nodj), &
                                     LOC_NU, SLOC_NU, UGI_COEF_ELE_ALL, &
-                                    upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
+                                    upwnd%inv_adv_coef(1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1:final_phase,MAT_NODJ), &
                                     NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ))
                               ELSE
                                 CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
                                     LOC_T_I, LOC_T_J, LOC_NU, SLOC_NU, UGI_COEF_ELE_ALL, &
-                                    upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
+                                    upwnd%inv_adv_coef(1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1:final_phase,MAT_NODJ), &
                                     NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ))
                               ENDIF
                               !Calculate the courant number for porous media (done only for CT now)
@@ -845,24 +828,20 @@ contains
                                   IF(SELE == 0) THEN
                                     CAP_DIFF_COEF_DIVDX = 0.
                                     !Project permeability at the GI point
-                                    auxR = dot_product(CVNORMX_ALL(:, GI), matmul(perm%val(:,:,ele),CVNORMX_ALL(:, GI) ))
-                                    do iphase =1, final_phase
-                                        rsum_nodi(iphase) = upwnd%inv_adv_coef(1,1,iphase,MAT_NODI)*auxR
+                                    auxR = 0.
+                                    do idim = 1, Mdims%ndim
+                                        do iv_idim = 1, Mdims%ndim
+                                            auxR = auxR + CVNORMX_ALL(idim, GI) * perm%val(idim,iv_idim,ele) * CVNORMX_ALL(iv_idim, GI)
+                                        end do 
                                     end do
-                                    ! if (between_elements) auxR = dot_product(CVNORMX_ALL(:, GI), matmul(perm%val(:,:,ele2),CVNORMX_ALL(:, GI) ))
                                     do iphase =1, final_phase
-                                        rsum_nodj(iphase) = upwnd%inv_adv_coef(1,1,iphase,MAT_NODJ)*auxR
+                                        CAP_DIFF_COEF_DIVDX(iphase) = auxR/HDC* (CAP_DIFFUSION( iphase, MAT_NODI )&
+                                            * upwnd%inv_adv_coef(iphase,MAT_NODI)*(1.-INCOME(iphase)) +&
+                                            CAP_DIFFUSION( iphase, MAT_NODJ ) * upwnd%inv_adv_coef(iphase,MAT_NODJ) * INCOME(iphase))
                                     end do
-                                    CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
-                                        * rsum_nodi*(1.-INCOME) +&
-                                        CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
                                   ELSE
                                       CAP_DIFF_COEF_DIVDX = 0.0
                                   ENDIF
-                                  !Used normalised flux to disable/enable VAD for certain directions
-                                  if (flux_limited_vad) CAP_DIFF_COEF_DIVDX(phase_with_pc) = &
-                                    CAP_DIFF_COEF_DIVDX(phase_with_pc) * abs(dot_product(NUGI_ALL(:,phase_with_pc),&
-                                      CVNORMX_ALL(:, GI))/sqrt(sum(NUGI_ALL(:,phase_with_pc)**2.) + 1e-16))
                                   !Distribute the capillary coefficient over the phases to ensure mass conservation
                                   !This is very important as it allows to use the over-relaxation parameter safely
                                   !and reduce the cost of using capillary pressure in several orders of magnitude

@@ -343,12 +343,10 @@ module multi_data_types
     !> Currently they are oversized since apart from the permeability they are not tensors, this should be changed!
     !>@param  adv_coef => null() Sigmas at the boundary to calculate fluxes
     !>@param  inv_adv_coef => null() Inverse of sigmas at the boundary to calculate fluxes
-    !>@param  adv_coef_grad => null() Gradient of the sigmas at the boundary to calculate fluxes
     !>@param  inv_permeability => null() Gradient of the sigmas at the boundary to calculate fluxes
     type porous_adv_coefs
         real, dimension( :, :, :, : ), pointer :: adv_coef => null()
-        real, dimension( :, :, :, : ), pointer :: inv_adv_coef => null()
-        real, dimension( :, :, :, : ), pointer :: adv_coef_grad => null()
+        real, dimension( :, : ), pointer :: inv_adv_coef => null()
         real, dimension( :, :, : ),    pointer :: inv_permeability => null()
     end type porous_adv_coefs
 
@@ -1593,8 +1591,7 @@ contains
         type (multi_dimensions), intent(in)  ::Mdims
 
 !        if (.not.associated(upwnd%adv_coef)) allocate(upwnd%adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
-        if (.not.associated(upwnd%inv_adv_coef)) allocate(upwnd%inv_adv_coef(1,1,Mdims%nphase,Mdims%mat_nonods))
-        if (.not.associated(upwnd%adv_coef_grad)) allocate(upwnd%adv_coef_grad(1,1,Mdims%nphase,Mdims%mat_nonods))
+        if (.not.associated(upwnd%inv_adv_coef)) allocate(upwnd%inv_adv_coef(Mdims%nphase,Mdims%mat_nonods))
         if (.not.associated(upwnd%inv_permeability)) allocate(upwnd%inv_permeability(Mdims%ndim,Mdims%ndim,Mdims%totele))
     end subroutine allocate_porous_adv_coefs
     !> Deallocates the memory for the advection coefficients for porous media
@@ -1605,9 +1602,8 @@ contains
 !        if (associated(upwnd%adv_coef)) deallocate(upwnd%adv_coef)!This memory is pointing to
                                             !multi_absorption%porousMedia as is being deallocated there
         if (associated(upwnd%inv_adv_coef)) deallocate(upwnd%inv_adv_coef)
-        if (associated(upwnd%adv_coef_grad)) deallocate(upwnd%adv_coef_grad)
         if (associated(upwnd%inv_permeability)) deallocate(upwnd%inv_permeability)
-        nullify(upwnd%adv_coef); nullify(upwnd%inv_adv_coef);nullify(upwnd%adv_coef_grad)
+        nullify(upwnd%adv_coef); nullify(upwnd%inv_adv_coef)
     end subroutine deallocate_porous_adv_coefs
 
     !> Allocates the necessary memory for multi_pipe_package

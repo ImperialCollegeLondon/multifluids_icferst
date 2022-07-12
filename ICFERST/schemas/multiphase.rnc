@@ -1168,23 +1168,6 @@ start =
 
          ## Advanced options that are kept for debugging purposes
          element numerical_methods {
-            ## Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field
-            ## is run to guarantee physically plausible solutions. Nonetheless this may spread errors occurred during the interpolation
-            ## that otherwise might have been cut off. Enable this option to avoid doing this operation.
-            ##
-            ## This option is useful if your field is suddenly changing after adapting the mesh.
-            element do_not_bound_after_adapt {
-               empty
-            }?,
-            ## VAD is multiplied by the normalised flux. This should help focusing the VAD towards moving directions instead of acting as pure diffusion
-            element flux_limited_vad {
-               empty
-            }?,
-            ## Impose strong BCs for wells, only on the pressure BCs. Also imposes gamma to be zero at those nodes.
-            ## Note that this is already imposed for wells when using P0DGP1 and gamma = 0. at one pressure BC.
-            element Strong_BCs_for_P0DG_wells {
-               empty
-            }?,
            ## Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
            ## By default this number is 9. Recommended range: 3 to 9.
             element max_sat_its {

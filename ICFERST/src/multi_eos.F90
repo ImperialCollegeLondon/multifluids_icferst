@@ -941,7 +941,7 @@ contains
                n_in_pres = nphase/Mdims%npres
 
                !Initialize variables
-               upwnd%adv_coef_grad=0.0;upwnd%inv_adv_coef=0.0
+               upwnd%inv_adv_coef=0.0
                !Get from packed_state
                call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,&
                    OldPhaseVolumeFraction = OldSatura, CV_Immobile_Fraction = CV_Immobile_Fraction)
@@ -985,27 +985,8 @@ contains
                !Temporary pointer, maybe we should unify memories
                nullify(upwnd%adv_coef)
                upwnd%adv_coef => PorousMedia_absorp%val
-
-               DO ELE = 1, Mdims%totele
-                 DO CV_ILOC = 1, Mdims%cv_nloc
-                   IMAT = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
-                   ICV = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                   do ipres = 1, Mdims%npres
-                     DO IPHASE = 1, n_in_pres
-                       global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
-                       compact_phase = iphase + (ipres - 1)*n_in_pres
-                       if ( global_phase <= Mdims%n_in_pres ) then
-                         ! This is the gradient
-                         ! Assume d\sigma / dS = 0.0 for the pipes for now
-                         upwnd%adv_coef_grad(1, 1, global_phase, IMAT) = (PorousMedia_absorp2%val( 1,1, global_phase ,IMAT) -&
-                         PorousMedia_absorp%val( 1,1, global_phase ,IMAT)) / ( SATURA2(compact_phase, ICV ) - SATURA(compact_phase, ICV))
-                       end if
-                       !Obtaining the inverse the "old way" since if you obtain it directly, some problems appear
-                       upwnd%inv_adv_coef(1, 1, global_phase, IMAT) = 1./upwnd%adv_coef(1, 1, global_phase, IMAT)!sprint_to_do maybe we dont need to store the inverse anymore
-                     END DO
-                   end do
-                 END DO
-               END DO
+               !Obtaining the inverse the "old way" since if you obtain it directly, some problems appear
+               upwnd%inv_adv_coef = 1./upwnd%adv_coef(1, 1, :, :)!sprint_to_do maybe we dont need to store the inverse anymore
 
                deallocate( satura2, Max_sat)
                call deallocate_multi_field(PorousMedia_absorp2, .true.)
