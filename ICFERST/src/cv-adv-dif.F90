@@ -208,29 +208,21 @@ contains
           !Non-linear iteration count
           integer, optional, intent(in) :: nonlinear_iteration
           ! ###################Local variables############################
-
-          REAL, dimension(:,:), ALLOCATABLE :: FXGI_ALL, int_UDGI_ALL, A_STAR_X_ALL,VEC_VEL2
-          REAL, dimension(:), ALLOCATABLE :: courant_or_minus_one_new, int_XI_LIMIT,&
-              P_STAR, U_DOT_GRADF_GI, A_STAR_F, RESIDGI, ELE_LENGTH_SCALE,FEMFGI, RGRAY, DIFF_COEF, COEF,&
-              RSCALE, COEF2, FEMFGI_CENT, FEMFGI_UP
-
+          REAL, dimension(:), ALLOCATABLE :: DIFF_COEF, COEF
           !        ===>  LOGICALS  <===
           ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
           logical, PARAMETER :: integrate_other_side= .true.
           LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE
           logical :: skip, GOT_T2, use_volume_frac_T2, logical_igot_theta_flux, zero_vel_BC
-          ! if APPLY_ENO then apply ENO method to T and TOLD
-          LOGICAL :: APPLY_ENO
           ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the Mmat%C matrix in here also based on control-volume pressure.
-          ! if RECAL_C_CV_RHS, calculate the RHS for the Mmat%C_CV matrix
           logical :: GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
-          LOGICAL :: DISTCONTINUOUS_METHOD, QUAD_ELEMENTS, use_reflect
+          LOGICAL :: DISTCONTINUOUS_METHOD
           !Logical to check if we using a conservative method or not, to save cpu time
           logical :: conservative_advection
           ! GRAVTY is used in the free surface method only...
           !        ===> GENEREIC INTEGERS <===
           INTEGER :: COUNT, ICOUNT, JCOUNT, ELE, ELE2, GI, GCOUNT, SELE, V_SILOC, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
-              CV_NODJ, ISWITCH, CV_NODI, U_NODK, X_NODI,  X_NODJ, CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, CV_SILOC
+              CV_NODJ, CV_NODI, U_NODK, X_NODI,  X_NODJ, CV_INOD, MAT_NODI,  MAT_NODJ, CV_SILOC
           INTEGER :: I, IDIM, U_ILOC, ELE3, k, CV_KLOC, CV_NODK, COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC, iofluxes,&
               IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, ILOOP,JDIM, IGETCT, global_face,J, nb, i_use_volume_frac_t2
           INTEGER, dimension(1) :: IDUM
@@ -470,8 +462,6 @@ contains
               ENDIF
           ENDIF
           DISTCONTINUOUS_METHOD = ( Mdims%cv_nonods == Mdims%totele * Mdims%cv_nloc )
-          ! Quadratic elements
-          QUAD_ELEMENTS = ( ((Mdims%ndim==2).AND.(Mdims%cv_nloc==6)).or.((Mdims%ndim==3).AND.(Mdims%cv_nloc==10)) )
           !Pointer to permeability
         if (present(Permeability_tensor_field)) then
             perm => Permeability_tensor_field
@@ -795,8 +785,6 @@ contains
                               ELSE 
                                   DIFF_COEF_DIVDX = 0.0
                               END IF If_GOT_DIFFUS2
-                              NFACE_ITS = 1
-                              FACE_ITS = 1
                               ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
                               !Calling the functions directly instead inside a wrapper saves a around a 5%
                               IF( GOT_T2 ) THEN
