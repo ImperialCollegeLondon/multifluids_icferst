@@ -237,8 +237,8 @@ contains
           !        ===> GENEREIC INTEGERS <===
           INTEGER :: COUNT, ICOUNT, JCOUNT, ELE, ELE2, GI, GCOUNT, SELE, V_SILOC, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
               CV_NODJ, ISWITCH, CV_NODI, U_NODK, X_NODI,  X_NODJ, CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, CV_SILOC
-          INTEGER :: I, IDIM, U_ILOC, ELE3, k, CV_KLOC, CV_NODK, IFI, COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC, iofluxes,&
-              IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, IPT,ILOOP,IMID,JMID,JDIM, IGETCT, global_face,J, FEM_IT, nb, i_use_volume_frac_t2
+          INTEGER :: I, IDIM, U_ILOC, ELE3, k, CV_KLOC, CV_NODK, COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC, iofluxes,&
+              IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, ILOOP,JDIM, IGETCT, global_face,J, nb, i_use_volume_frac_t2
           INTEGER, dimension(1) :: IDUM
           integer, dimension(:), pointer :: neighbours
           INTEGER, dimension(final_phase) :: LOC_WIC_T_BC_ALL
@@ -247,8 +247,7 @@ contains
           REAL :: NDOTQ_HAT
           REAL, dimension(final_phase) :: ROBIN1, ROBIN2, BCZERO
           !Local copy of tracers and densities
-          real, dimension(final_phase) :: LOC_T_J, LOC_T_I, LOC_TOLD_I, LOC_DEN_I, &
-              LOC_T2_I, LOC_T2OLD_I, AUX_T
+          real, dimension(final_phase) :: LOC_T_J, LOC_T_I, AUX_T
           REAL :: GRAVTY
           character( len = option_path_len ) :: option_path2
           LOGICAL, DIMENSION( Mdims%x_nonods ) :: X_SHARE
@@ -653,14 +652,9 @@ contains
                   CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                   X_NODI = ndgln%x( ( ELE - 1 ) * Mdims%x_nloc  + CV_ILOC )
                   MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                  IMID = Mspars%small_acv%mid(CV_NODI)
 
                   ! Generate some local variables to reduce slicing (sprint_to_do this is a waste...)
-                  LOC_T_I = T_ALL(1:final_phase, cv_nodi); LOC_TOLD_I = TOLD_ALL(1:final_phase, cv_nodi)
-                  LOC_DEN_I =DEN_ALL(1:final_phase, cv_nodi)
-                  if (use_volume_frac_T2) then
-                    LOC_T2_I = T2_ALL(1:final_phase, cv_nodi)
-                  end if
+                  LOC_T_I = T_ALL(1:final_phase, cv_nodi)
                   ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
                   Loop_GCOUNT: DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
                       ! CV_funs%colgpts stores the local Gauss-point number in the ELE
@@ -745,7 +739,6 @@ contains
                             !   ENDIF ! ENDOF IF( between_elements ) THEN
                               integrate_other_side_and_not_boundary = integrate_other_side.and.(SELE.LE.0)
                               GLOBAL_FACE = GLOBAL_FACE + 1
-                              JMID = Mspars%small_acv%mid(CV_NODJ)
                               ! Calculate the control volume normals at the Gauss pts. Internal subroutine for speed
                               CALL SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, between_elements, &
                                     ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( :, CV_NODI ), X_NODI, X_NODJ)
@@ -839,7 +832,7 @@ contains
                               !Calling the functions directly instead inside a wrapper saves a around a 5%
                               IF( GOT_T2 ) THEN
                                 CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
-                                    LOC_T2_I, T2_ALL(1:final_phase, cv_nodj), &
+                                    T2_ALL(1:final_phase, cv_nodj), T2_ALL(1:final_phase, cv_nodj), &
                                     LOC_NU, LOC2_NU, SLOC_NU, &
                                     UGI_COEF_ELE_ALL, &
                                     upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
@@ -909,23 +902,25 @@ contains
                                 END if
                                     !Density
                                 if ( WIC_D_BC_ALL( 1, iphase, SELE ) /= WIC_D_BC_DIRICHLET ) then
-                                    LIMD(iphase) = LOC_DEN_I(iphase)
+                                    LIMD(iphase) = DEN_ALL(iphase, cv_nodi)
                                 ELSE 
-                                    LIMD(iphase) = LOC_DEN_I(iphase) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_D_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                    LIMD(iphase) = DEN_ALL(iphase, cv_nodi) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_D_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
                                 END if  
                                 !Saturation
                                 if (use_volume_frac_T2) then 
                                     if ( WIC_T2_BC_ALL( 1, iphase, SELE ) /= WIC_T_BC_DIRICHLET ) then
-                                    LIMT2(iphase) = LOC_T2_I(iphase)
+                                    LIMT2(iphase) = T2_ALL(iphase, cv_nodi)
                                     ELSE 
-                                    LIMT2(iphase) = LOC_T2_I(iphase) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_T2_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                    LIMT2(iphase) = T2_ALL(iphase, cv_nodi) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_T2_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
                                     END if
                                 end if  
                                 end do                                                                      
                             else
-                                LIMT=LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
-                                LIMD=LOC_DEN_I*(1.0-INCOME) + DEN_ALL(1:final_phase, cv_nodj)*INCOME
-                                if (use_volume_frac_T2) LIMT2=LOC_T2_I*(1.0-INCOME) + T2_ALL(1:final_phase, cv_nodj)*INCOME
+                                do iphase = 1, final_phase
+                                    LIMT(iphase)=LOC_T_I(iphase)*(1.0-INCOME(iphase)) + LOC_T_J(iphase)*INCOME(iphase)
+                                    LIMD(iphase)=DEN_ALL(iphase, cv_nodi)*(1.0-INCOME(iphase)) + DEN_ALL(iphase, cv_nodj)*INCOME(iphase)
+                                    if (use_volume_frac_T2) LIMT2(iphase)=T2_ALL(iphase, cv_nodi)*(1.0-INCOME(iphase)) + T2_ALL(iphase, cv_nodj)*INCOME(iphase)
+                                end do
                             end if
 
                               LIMDT=LIMD*LIMT
@@ -1130,20 +1125,13 @@ contains
           !Add compressibility to the transport equation/add time derivative term
           Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
               Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
-
-                ! Generate local variables (to avoid slicing) ***************
-                LOC_T_I = T_ALL(1:final_phase, cv_nodi); LOC_TOLD_I = TOLD_ALL(1:final_phase, cv_nodi)
-                LOC_DEN_I =DEN_ALL(1:final_phase, cv_nodi)
-                if (use_volume_frac_T2) then
-                  LOC_T2_I = T2_ALL(1:final_phase, cv_nodi); LOC_T2OLD_I = T2OLD_ALL(1:final_phase, cv_nodi)
-                end if
-
-
                   LOC_CV_RHS_I=0.0; LOC_MAT_II =0.
                   R_PHASE = MEAN_PORE_CV( 1, CV_NODI ) * Mass_CV( CV_NODI ) / DT
                   IF ( THERMAL .and. Mdims%npres == 1) THEN
-                      LOC_CV_RHS_I = LOC_CV_RHS_I &
-                          - CV_P( 1, 1, CV_NODI ) * ( Mass_CV( CV_NODI ) / DT ) * ( LOC_T2_I - LOC_T2OLD_I)
+                    do iphase = 1, final_phase
+                        LOC_CV_RHS_I(iphase) = LOC_CV_RHS_I(iphase)  &
+                            - CV_P( 1, 1, CV_NODI ) * ( Mass_CV( CV_NODI ) / DT ) * ( T2_ALL(iphase, cv_nodi)  - T2OLD_ALL(iphase, cv_nodi) )
+                    end do
                   END IF
 
                   IF ( GOT_T2 ) THEN
@@ -1155,32 +1143,33 @@ contains
                           ! and the fluids. Here we add the porous media contribution. Multiplied by the saturation so we use the same
                           !paradigm that for the phases, but in the equations it isn't, but here because we iterate over phases and collapse
                           !this is required
-                          LOC_MAT_II = LOC_MAT_II + porous_heat_coef( CV_NODI ) * LOC_T2_I &
-                                  * R_PHASE * (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
+                        do iphase = 1, final_phase
+                            LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + porous_heat_coef( CV_NODI ) * T2_ALL(iphase, cv_nodi) &
+                                    * R_PHASE(iphase) * (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
 
-                          !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
-                              !we divide to remove that term and multiply by the correct term (1-porosity)
-                          LOC_CV_RHS_I=LOC_CV_RHS_I  &
-                          + (CV_BETA * porous_heat_coef_old( CV_NODI ) * LOC_T2OLD_I &
-                          + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * LOC_T2_I ) &
-                          * R_PHASE * LOC_TOLD_I* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
-
+                            !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
+                                !we divide to remove that term and multiply by the correct term (1-porosity)
+                            LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
+                            + (CV_BETA * porous_heat_coef_old( CV_NODI ) * T2OLD_ALL(iphase, cv_nodi) &
+                            + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * T2_ALL(iphase, cv_nodi)) &
+                            * R_PHASE(iphase) * TOLD_ALL(iphase, cv_nodi)* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
+                        end do
                       end if
                       do iphase = 1, final_phase
-                        LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + LOC_DEN_I(iphase) * LOC_T2_I(iphase) * R_PHASE(iphase)
-                        LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  + (CV_BETA * DENOLD_ALL(iphase, cv_nodi) * LOC_T2OLD_I(iphase) + &
-                                (ONE_M_CV_BETA) * LOC_DEN_I(iphase) * LOC_T2_I(iphase) ) * R_PHASE(iphase) * LOC_TOLD_I(iphase)
+                        LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + DEN_ALL(iphase, cv_nodi) * T2_ALL(iphase, cv_nodi) * R_PHASE(iphase)
+                        LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  + (CV_BETA * DENOLD_ALL(iphase, cv_nodi) * T2OLD_ALL(iphase, cv_nodi) + &
+                                (ONE_M_CV_BETA) * DEN_ALL(iphase, cv_nodi) * T2_ALL(iphase, cv_nodi) ) * R_PHASE(iphase) * TOLD_ALL(iphase, cv_nodi)
                       end do
                   ELSE
 
                     !Diagonal term Vol/dt * rho and accompaniying rhs term
                     do iphase = 1, final_phase
-                        LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + LOC_DEN_I(iphase) * R_PHASE(iphase)
+                        LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + DEN_ALL(iphase, cv_nodi) * R_PHASE(iphase)
                         LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
                           + Mass_CV( CV_NODI ) * SOURCT_ALL( IPHASE, CV_NODI )&
                           + ( CV_BETA * DENOLD_ALL(iphase, cv_nodi) &
-                          + (ONE_M_CV_BETA) * LOC_DEN_I(IPHASE) ) &
-                          * R_PHASE(IPHASE) * LOC_TOLD_I(IPHASE)
+                          + (ONE_M_CV_BETA) * DEN_ALL(iphase, cv_nodi) ) &
+                          * R_PHASE(IPHASE) * TOLD_ALL(iphase, cv_nodi)
                    END DO
                   END IF
 
@@ -1213,13 +1202,6 @@ contains
             W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD !sprint_to_do Unnecessary, should be removed
             DIAG_SCALE_PRES = 0.0
             DO CV_NODI = 1, Mdims%cv_nonods
-              ! Generate local variables (to avoid slicing) ***************
-              LOC_T_I = T_ALL(1:final_phase, cv_nodi); LOC_TOLD_I = TOLD_ALL(1:final_phase, cv_nodi)
-              LOC_DEN_I =DEN_ALL(1:final_phase, cv_nodi)
-              if (use_volume_frac_T2) then
-                LOC_T2_I = T2_ALL(1:final_phase, cv_nodi)
-              end if
-
               ct_rhs_phase=0.0 ; DIAG_SCALE_PRES_phase=0.0
               IPRES=1
               R_PRES(IPRES) = MASS_CV(CV_NODI ) * MEAN_PORE_CV( IPRES, CV_NODI ) / DT
@@ -1231,17 +1213,17 @@ contains
               do iphase = 1, final_phase
                 ct_rhs_phase(iphase)=ct_rhs_phase(iphase) &
                     - R_PRES(1) * ( &
-                    + (1.0-W_SUM_ONE1) * LOC_T_I(iphase) - (1.0-W_SUM_ONE2) * LOC_TOLD_I(iphase) &
-                    + (( LOC_TOLD_I(iphase) * ( LOC_DEN_I(iphase) - DENOLD_ALL(iphase, cv_nodi) ) &
-                    - DERIV( iphase, CV_NODI ) * CV_P( 1, 1, CV_NODI ) ) * T_ALL( iphase, CV_NODI ) ) / LOC_DEN_I(iphase) )
+                    + (1.0-W_SUM_ONE1) * T_ALL(iphase, cv_nodi) - (1.0-W_SUM_ONE2) * TOLD_ALL(iphase, cv_nodi) &
+                    + (( TOLD_ALL(iphase, cv_nodi) * ( DEN_ALL(iphase, cv_nodi) - DENOLD_ALL(iphase, cv_nodi) ) &
+                    - DERIV( iphase, CV_NODI ) * CV_P( 1, 1, CV_NODI ) ) * T_ALL( iphase, CV_NODI ) ) / DEN_ALL(iphase, cv_nodi) )
                 DIAG_SCALE_PRES_phase( iphase ) = DIAG_SCALE_PRES_phase( iphase ) &
-                    + MEAN_PORE_CV( 1, CV_NODI ) * LOC_T_I( iphase ) * DERIV( iphase, CV_NODI ) / ( DT * LOC_DEN_I(iphase) )
+                    + MEAN_PORE_CV( 1, CV_NODI ) * LOC_T_I( iphase ) * DERIV( iphase, CV_NODI ) / ( DT * DEN_ALL(iphase, cv_nodi) )
                 ct_rhs_phase(iphase)=ct_rhs_phase(iphase)  &
-                    + Mass_CV(CV_NODI ) * SOURCT_ALL( iphase, CV_NODI ) / LOC_DEN_I(iphase)
+                    + Mass_CV(CV_NODI ) * SOURCT_ALL( iphase, CV_NODI ) / DEN_ALL(iphase, cv_nodi)
                 IF ( HAVE_ABSORPTION ) THEN
                      DO JPHASE = 1, final_phase
                         ct_rhs_phase(iphase)=ct_rhs_phase(iphase)  &
-                           - Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, JPHASE, CV_NODI ) * LOC_T_I( JPHASE ) / LOC_DEN_I(iphase)
+                           - Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, JPHASE, CV_NODI ) * LOC_T_I( JPHASE ) / DEN_ALL(iphase, cv_nodi)
                    END DO
                 END IF
               end do
