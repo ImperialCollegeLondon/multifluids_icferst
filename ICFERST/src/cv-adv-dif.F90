@@ -753,19 +753,6 @@ contains
                               ELSE
                                   HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-XC_CV_ALL(1:Mdims%ndim,CV_NODJ))**2) )
                               END IF
-                              DO COUNT = Mspars%small_acv%fin( CV_NODI ), Mspars%small_acv%fin( CV_NODI + 1 ) - 1
-                                  IF ( Mspars%small_acv%col( COUNT ) == CV_NODJ ) THEN
-                                      count_out = COUNT
-                                      EXIT
-                                  END IF
-                              END DO
-                              DO COUNT = Mspars%small_acv%fin( CV_NODJ ), Mspars%small_acv%fin( CV_NODJ + 1 ) - 1
-                                  IF ( Mspars%small_acv%col( COUNT ) == CV_NODI ) THEN
-                                      count_in = COUNT
-                                      EXIT
-                                  END IF
-                              END DO
-                               ! Generate some local F variables ***************
                             !   IF (between_elements) THEN
                             !       LOC2_U = 0.
                             !       LOC2_NU = 0.
@@ -833,24 +820,16 @@ contains
                               IF( GOT_T2 ) THEN
                                 CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
                                     T2_ALL(1:final_phase, cv_nodj), T2_ALL(1:final_phase, cv_nodj), &
-                                    LOC_NU, LOC2_NU, SLOC_NU, &
-                                    UGI_COEF_ELE_ALL, &
-                                    upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
-                                    upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
+                                    LOC_NU, SLOC_NU, UGI_COEF_ELE_ALL, &
                                     upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
                                     NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ))
                               ELSE
                                 CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
-                                    LOC_T_I, LOC_T_J, &
-                                    LOC_NU, LOC2_NU, SLOC_NU, &
-                                    UGI_COEF_ELE_ALL, &
-                                    upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
-                                    upwnd%adv_coef(1,1,1:final_phase, MAT_NODJ), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODJ), &
+                                    LOC_T_I, LOC_T_J, LOC_NU, SLOC_NU, UGI_COEF_ELE_ALL, &
                                     upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
                                     NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ))
                               ENDIF
-                              !Calculate the courant number for porous media
-                              !SPRINT_TO_DO Currently if temperature/Concentration multiphase we are doing this more than once...
+                              !Calculate the courant number for porous media (done only for CT now)
                               if (present(Courant_number) .and..not. on_domain_boundary) then
                                   !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
                                   Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
@@ -895,25 +874,25 @@ contains
                             IF ( on_domain_boundary ) THEN
                                 !tracer
                                 do iphase = 1, final_phase
-                                if ( WIC_T_BC_ALL( 1,iphase, SELE ) /= WIC_T_BC_DIRICHLET )then
-                                    LIMT(iphase) = LOC_T_I(iphase)
-                                ELSE 
-                                    LIMT(iphase) = LOC_T_I(iphase) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_T_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                END if
-                                    !Density
-                                if ( WIC_D_BC_ALL( 1, iphase, SELE ) /= WIC_D_BC_DIRICHLET ) then
-                                    LIMD(iphase) = DEN_ALL(iphase, cv_nodi)
-                                ELSE 
-                                    LIMD(iphase) = DEN_ALL(iphase, cv_nodi) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_D_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                END if  
-                                !Saturation
-                                if (use_volume_frac_T2) then 
-                                    if ( WIC_T2_BC_ALL( 1, iphase, SELE ) /= WIC_T_BC_DIRICHLET ) then
-                                    LIMT2(iphase) = T2_ALL(iphase, cv_nodi)
+                                    if ( WIC_T_BC_ALL( 1,iphase, SELE ) /= WIC_T_BC_DIRICHLET )then
+                                        LIMT(iphase) = LOC_T_I(iphase)
                                     ELSE 
-                                    LIMT2(iphase) = T2_ALL(iphase, cv_nodi) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_T2_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                        LIMT(iphase) = LOC_T_I(iphase) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_T_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
                                     END if
-                                end if  
+                                        !Density
+                                    if ( WIC_D_BC_ALL( 1, iphase, SELE ) /= WIC_D_BC_DIRICHLET ) then
+                                        LIMD(iphase) = DEN_ALL(iphase, cv_nodi)
+                                    ELSE 
+                                        LIMD(iphase) = DEN_ALL(iphase, cv_nodi) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_D_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                    END if  
+                                    !Saturation
+                                    if (use_volume_frac_T2) then 
+                                        if ( WIC_T2_BC_ALL( 1, iphase, SELE ) /= WIC_T_BC_DIRICHLET ) then
+                                        LIMT2(iphase) = T2_ALL(iphase, cv_nodi)
+                                        ELSE 
+                                        LIMT2(iphase) = T2_ALL(iphase, cv_nodi) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_T2_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                        END if
+                                    end if  
                                 end do                                                                      
                             else
                                 do iphase = 1, final_phase
@@ -1344,10 +1323,8 @@ contains
         !---------------------------------------------------------------------------
         SUBROUTINE GET_INT_VEL_POROUS_VEL(NDOTQNEW, NDOTQ, INCOME, &
             LOC_T_I, LOC_T_J, &
-            LOC_NU, LOC2_NU, SLOC_NU, &
+            LOC_NU, SLOC_NU, &
             UGI_COEF_ELE_ALL, &
-            I_adv_coef, I_adv_coef_grad, &
-            J_adv_coef, J_adv_coef_grad, &
             I_inv_adv_coef, J_inv_adv_coef, &
             UDGI_ALL,MASS_CV_I, MASS_CV_J)
             !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===
@@ -1356,10 +1333,9 @@ contains
             IMPLICIT NONE
             REAL, DIMENSION( : ), intent( inout ) :: NDOTQNEW, NDOTQ, INCOME
             REAL, DIMENSION( : ), intent( in ) :: LOC_T_I, LOC_T_J
-            REAL, DIMENSION( :, :, : ), intent( in ) ::  LOC_NU, LOC2_NU, SLOC_NU
+            REAL, DIMENSION( :, :, : ), intent( in ) ::  LOC_NU, SLOC_NU
             REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL!This is for the continuity equation, so we convert V into u
-            REAL, DIMENSION( : ), intent( in ) :: I_adv_coef, I_adv_coef_grad, &
-                J_adv_coef, J_adv_coef_grad, I_inv_adv_coef, J_inv_adv_coef
+            REAL, DIMENSION( : ), intent( in ) :: I_inv_adv_coef, J_inv_adv_coef
             REAL, DIMENSION( :, :  ), intent( inout ) :: UDGI_ALL
             REAL, intent( in ) :: MASS_CV_I, MASS_CV_J
 
