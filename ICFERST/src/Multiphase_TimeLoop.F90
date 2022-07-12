@@ -206,7 +206,7 @@ contains
         !Variables that are used to define the pipe pos
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
         type (multi_pipe_package) :: pipes_aux
-        logical :: write_all_stats=.false.! Deecide whether to generate the stat file every time-step or when writing a vtu file only
+        logical :: write_all_stats=.true.! Deecide whether to generate the stat file every time-step or when writing a vtu file only
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
         ! Ioutlet counts the number of boundaries over which to calculate the outflux
         integer :: ioutlet

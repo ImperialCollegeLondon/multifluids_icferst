@@ -2729,7 +2729,9 @@ contains
         real, dimension(:,:), allocatable :: SUF_SIG_DIAGTEN_BC_pha_GI
 
         !If using Mmat%C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
-        if (Mmat%CV_pressure) call introduce_C_CV_boundary_conditions(Bound_ele_correct)
+        !By default no modification is required
+        Bound_ele_correct = 1.0
+        if (on_domain_boundary) call introduce_C_CV_boundary_conditions(Bound_ele_correct)
 
         DO U_KLOC = 1, Mdims%u_nloc
             RCON = SCVDETWEI( GI ) * (  LIMT2 * LIMDT ) &
@@ -2852,8 +2854,7 @@ contains
             logical, save :: have_been_read = .false.
             logical, save :: hydrostatic_bc
             real, save :: top_domain
-            !By default no modification is required
-            Bound_ele_correct = 1.0
+
             if ( .not. have_been_read ) then
               hydrostatic_bc = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/hydrostatic_boundaries' )
               top_domain = maxval(X_ALL(Mdims%ndim, :))
