@@ -242,9 +242,8 @@ contains
           integer, dimension (Mdims%u_snloc) :: U_SLOC2LOC
           integer, dimension (Mdims%mat_nloc) ::MAT_OTHER_LOC
           !Allocate only for get_CT
-          INTEGER, DIMENSION( : ), allocatable :: &
-              JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
-              C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
+          INTEGER, DIMENSION( : ), allocatable :: JCOUNT_KLOC, ICOUNT_KLOC, &
+              C_JCOUNT_KLOC, C_ICOUNT_KLOC
 
           REAL, DIMENSION( : ), allocatable ::  N
           real, dimension (Mdims%cv_nonods) ::  SUM_CV
@@ -453,11 +452,11 @@ contains
           QUAD_OVER_WHOLE_ELE=.FALSE.
           ! Allocate memory for the control volume surface shape functions, etc.
           IF(GETCT) THEN
-              ALLOCATE( JCOUNT_KLOC( Mdims%u_nloc ));ALLOCATE( JCOUNT_KLOC2( Mdims%u_nloc ))
-              ALLOCATE( ICOUNT_KLOC( Mdims%u_nloc ));ALLOCATE( ICOUNT_KLOC2( Mdims%u_nloc ))
+              ALLOCATE( JCOUNT_KLOC( Mdims%u_nloc ))
+              ALLOCATE( ICOUNT_KLOC( Mdims%u_nloc ))
               IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
-                  ALLOCATE( C_JCOUNT_KLOC( Mdims%u_nloc )); ALLOCATE( C_JCOUNT_KLOC2( Mdims%u_nloc ))
-                  ALLOCATE( C_ICOUNT_KLOC( Mdims%u_nloc )); ALLOCATE( C_ICOUNT_KLOC2( Mdims%u_nloc ))
+                  ALLOCATE( C_JCOUNT_KLOC( Mdims%u_nloc ))
+                  ALLOCATE( C_ICOUNT_KLOC( Mdims%u_nloc ))
               ENDIF
           ENDIF
           DISTCONTINUOUS_METHOD = ( Mdims%cv_nonods == Mdims%totele * Mdims%cv_nloc )
@@ -712,8 +711,7 @@ contains
                               CALL SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, &
                                     ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( :, CV_NODI ), X_NODI, X_NODJ)
                               !Obtain the list of neighbouring nodes
-                              IF( GETCT ) call get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
-                                                              C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2 )
+                              IF( GETCT ) call get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC,C_JCOUNT_KLOC, C_ICOUNT_KLOC )
 
                               ! Compute the distance HDC between the nodes either side of the CV face
                               ! (this is needed to compute the local courant number and the non-linear theta)
@@ -878,8 +876,8 @@ contains
                                   CALL PUT_IN_CT_RHS(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
                                       final_phase, Mdims, CV_funs, ndgln, Mmat, GI,  &
                                       between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, MASS_ELE, &
-                                      JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, &
-                                      C_ICOUNT_KLOC, C_ICOUNT_KLOC2,  U_SLOC2LOC, CV_SLOC2LOC,&
+                                      JCOUNT_KLOC, ICOUNT_KLOC, C_JCOUNT_KLOC, &
+                                      C_ICOUNT_KLOC,  U_SLOC2LOC, CV_SLOC2LOC,&
                                       SdevFuns%DETWEI, CVNORMX_ALL, DEN_ALL(1:final_phase,:), CV_NODI, CV_NODJ, &
                                       WIC_U_BC_ALL, WIC_P_BC_ALL, pressure_BCs%val, &
                                       UGI_COEF_ELE_ALL,  &
@@ -1565,11 +1563,11 @@ contains
             RETURN
         END SUBROUTINE GET_INT_VEL_POROUS_VEL
 
-        subroutine get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
-                                        C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2 )
+        subroutine get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC ,&
+                                        C_JCOUNT_KLOC, C_ICOUNT_KLOC )
         implicit none
-            integer, dimension(:), intent(inout):: JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2
-            integer, dimension(:), intent(inout):: C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2
+            integer, dimension(:), intent(inout):: JCOUNT_KLOC, ICOUNT_KLOC
+            integer, dimension(:), intent(inout):: C_JCOUNT_KLOC, C_ICOUNT_KLOC
             !Local variables
             integer :: U_KLOC, U_NODK, JCOUNT, COUNT, ICOUNT
           ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
@@ -2651,8 +2649,8 @@ contains
     !> It also computes the gradient matrix using the DCVFE method
     SUBROUTINE PUT_IN_CT_RHS( GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
         final_phase, Mdims, CV_funs, ndgln, Mmat, GI, between_elements, on_domain_boundary, &
-        ELE, ELE2, SELE, HDC, MASS_ELE, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
-        C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, &
+        ELE, ELE2, SELE, HDC, MASS_ELE, JCOUNT_KLOC, ICOUNT_KLOC, &
+        C_JCOUNT_KLOC, C_ICOUNT_KLOC, &
         U_SLOC2LOC, CV_SLOC2LOC,  &
         SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
         WIC_U_BC_ALL, WIC_P_BC_ALL,SUF_P_BC_ALL,&
@@ -2674,8 +2672,8 @@ contains
         REAL, DIMENSION( :, :, : ), intent( in ) :: loc_u
         LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, between_elements, on_domain_boundary,&
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
-        INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2
-        INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
+        INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, ICOUNT_KLOC
+        INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_ICOUNT_KLOC
         INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC, CV_SLOC2LOC
         REAL, DIMENSION( :, :, : ), intent( inout ) :: SUF_P_BC_ALL
         REAL, DIMENSION( : ), intent( inout ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
