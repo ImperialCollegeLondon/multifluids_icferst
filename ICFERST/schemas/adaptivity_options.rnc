@@ -419,6 +419,18 @@ hr_adaptivity =
                        python_code
                      }
                   )
+            }|
+            ## This option enables the ability to adapt the mesh based on an accumulated shock-front Courant number.
+            ## The mesh will adapt within the non-linear solver to always ensure the optimal position of 
+            ## the mesh idependently of the Courant number. The only exception is at the end of first time-step 
+            ## that it always adapt the mesh.
+            ## 
+            ## To adapt the mesh always introduce a negative value.
+            ## 
+            ## It only works for porous media and requires adapting the mesh for PhaseVolumeFraction
+            ## but not to the last phase.
+            element adapt_mesh_within_FPI {
+               real
             }
          ),
          ## The maximum number of nodes this simulation may use.
