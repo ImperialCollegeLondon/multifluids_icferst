@@ -2175,7 +2175,7 @@ contains
             INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_ILOC2, &
                 CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, &
                 CV_SILOC, CV_SJLOC, CV_SJLOC2, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, &
-                X_INOD, X_SILOC, X_ILOC, IDIM
+                X_INOD, X_SILOC, X_ILOC, IDIM, igi
     
             ewrite(3,*)'in DG_DERIVS'
     
@@ -2202,8 +2202,13 @@ contains
                         CV_NODJ = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
     
                         NN  = SUM( N( CV_ILOC, : ) * N(  CV_JLOC, : ) * DETWEI )
-                        NNX = MATMUL( NX_ALL( :, CV_JLOC, : ), N( CV_ILOC, : )  * DETWEI )
-    
+                        ! NNX = MATMUL( NX_ALL( :, CV_JLOC, : ), N( CV_ILOC, : )  * DETWEI )
+                        NNX = 0.
+                        do idim = 1 , NDIM
+                            do igi = 1, CV_NGI
+                                NNX(idim) = NNX(idim) + NX_ALL( idim, CV_JLOC, igi )* N( CV_ILOC, igi )  * DETWEI(igi)
+                            end do
+                        end do
                         MASELE( CV_ILOC, CV_JLOC, ELE) = MASELE( CV_ILOC, CV_JLOC, ELE ) + NN
     
                         DO IPHASE = 1, NPHASE
@@ -2292,10 +2297,16 @@ contains
                                 NRBC = 1.0
                             END IF
     
-                            ! Have a surface integral on element boundary...
-                            VLM_NORX(:) = MATMUL( SNORMXN( :, : ), &
-                                SDETWE(:) * SBCVFEN( CV_SILOC, : ) * SBCVFEN( CV_SJLOC, : ) )
-    
+
+                            ! ! Have a surface integral on element boundary...
+                            VLM_NORX = 0.
+                            do idim = 1 , NDIM
+                                do igi = 1, SBCVNGI
+                                    VLM_NORX(idim) = VLM_NORX(idim) + SNORMXN( idim, igi ) * &
+                                        SDETWE(igi) * SBCVFEN( CV_SILOC, igi ) * SBCVFEN( CV_SJLOC, igi ) 
+                                end do
+                            end do
+
                             ! add diffusion term...
                             DO IPHASE = 1, NPHASE
                                 IF ( APPLYBC( IPHASE ) ) THEN
@@ -2330,7 +2341,7 @@ contains
                 INV_MASS=MASS
                 !       CALL MATDMATINV( MASS, INV_MASS, CV_NLOC )
                 CALL INVERT( INV_MASS )
-    
+
                 FORALL ( IDIM = 1:NDIM, IPHASE = 1:NPHASE )
     
                     DTX_ELE( IDIM, IPHASE, :, ELE ) = MATMUL( INV_MASS( :, : ), VTX_ELE( IDIM, IPHASE, :, ELE ) )
