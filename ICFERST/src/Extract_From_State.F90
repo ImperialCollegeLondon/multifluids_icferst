@@ -2030,10 +2030,12 @@ end subroutine finalise_multistate
 !>@param  its  Non-linear time iteration WARNING: not to be modified unless VERY sure
 !>@param  nonLinearAdaptTs   Flag controlling if we have adaptive time-step or not
 !>@param  order   Flag controlling what are we doing. 1)Store or get from backup; 2)Calculate and store reference_field;
+!>@param  adapt_mesh_in_FPI, first_time_step
+!>@param  Accum_Courant, Courant_tol, Current_Courant
 !>@param  calculate_mass_delta  1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
 subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, order, calculate_mass_delta, &
-    first_time_step)
+    adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Current_Courant, first_time_step)
     Implicit none
     type(multi_dimensions), intent(in) :: Mdims
     type(state_type), intent(inout) :: packed_state
@@ -2043,10 +2045,12 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     integer, intent(inout) :: its
     logical, intent(in) :: nonLinearAdaptTs 
     integer, intent(in) :: order 
-    logical, optional, intent(in) :: first_time_step
+    logical, optional, intent(in) :: adapt_mesh_in_FPI, first_time_step
+    real, optional, intent(in) :: Accum_Courant, Courant_tol, Current_Courant
     real, dimension(:,:), optional :: calculate_mass_delta
     !Local variables
     real, dimension(:,:), allocatable :: Tracers_avg! Average of all the passiveTracers for checking
+    logical :: adapting_within_happening_now !Do not show convergence if we are adapting the mesh within the FPI and this is the first guess
     integer, save :: nonlinear_its=0! Needed for adapt_within_fpi to consider all the non-linear iterations together
     real, save :: stored_dt = -1 ! Backup of the time-step size
     logical, save :: adjusted_ts_to_dump = .false.! Flag to see if we need to modify dt to ensure we match a certain time level
@@ -2398,11 +2402,18 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             !(Maybe unnecessary) If it is parallel then we want to be consistent between cpus
             if (IsParallel()) call allor(ExitNonLinearLoop)
 
-
-            !Tell the user the number of FPI and final convergence to help improving the parameters
-            if (ExitNonLinearLoop .and. getprocno() == 1) then
-                ewrite(show_FPI_conv,*) trim(output_message)
+            adapting_within_happening_now = .false.
+            if (ExitNonLinearLoop .and. adapt_mesh_in_FPI) then
+              adapting_within_happening_now = Accum_Courant +  Current_Courant >= Courant_tol .or. first_time_step
             end if
+
+            !Do not show convergence if we are adapting the mesh within the FPI and this is the first guess
+            if (.not. adapting_within_happening_now) then
+              !Tell the user the number of FPI and final convergence to help improving the parameters
+              if (ExitNonLinearLoop .and. getprocno() == 1) then
+                  ewrite(show_FPI_conv,*) trim(output_message)
+              end if
+           end if
 
 
            if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Test_mass_consv/stop_at_min_ts")) then
@@ -2414,7 +2425,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
 
 
             !If time adapted based on the non-linear solver then
-            if (nonLinearAdaptTs ) then
+            if (nonLinearAdaptTs .and. .not. adapting_within_happening_now) then!Do not adapt time if we are adapting the mesh within the FPI and
+                                                                    !this is the first guess
                 !If any solver fails to converge (and the user care), we may want to repeat the time-level
                 !without waiting for the last non-linear iteration
                 if (solver_not_converged .and.have_option(&

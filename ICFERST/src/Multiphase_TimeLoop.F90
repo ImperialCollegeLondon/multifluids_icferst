@@ -190,6 +190,10 @@ contains
         integer :: ncv_faces
         !Courant number for porous media
         real, dimension(2) :: Courant_number = -1!Stored like this[Courant_number, Shock-front Courant number]
+        !Variables for adapting the mesh within the FPI solver
+        logical :: adapt_mesh_in_FPI
+        real :: Accum_Courant = 0., Courant_tol
+        !type( scalar_field ) :: Saturation_bak, ConvSats
         integer :: checkpoint_number
         !Array to map nodes to region ids
         !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
@@ -518,6 +522,9 @@ contains
             !Check first time step
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
 
+            ! Adapt mesh within the FPI?
+            adapt_mesh_in_FPI = have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')
+            if (adapt_mesh_in_FPI) call get_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI', Courant_tol, default = -1.)
 
 
             itime = itime + 1
@@ -583,6 +590,8 @@ contains
 
               !for the diagnostic field, now it seems to be working fine...
                 ewrite(2,*) '  NEW ITS', its
+                !if adapt_mesh_in_FPI, relax the convergence criteria, since we only want the approx position of the flow
+                if (adapt_mesh_in_FPI) call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 1)
 
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its, &
@@ -773,11 +782,25 @@ contains
                 !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 3, calculate_mass_delta, &
-                        first_time_step)
+                        adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Courant_number(2), first_time_step)
 
                 !Flag the matrices as already calculated (only the storable ones)
-                Mmat%stored = .true.
-                if (ExitNonLinearLoop) exit Loop_NonLinearIteration
+                Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI
+
+                if (ExitNonLinearLoop) then
+                    if (adapt_mesh_in_FPI) then
+                      !Calculate the acumulated Courant Number
+                        Accum_Courant = Accum_Courant + Courant_number(2)
+                        if (Accum_Courant >= Courant_tol .or. first_time_step) then
+                            call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 2)
+                            Accum_Courant = 0.
+                        else
+                            exit Loop_NonLinearIteration
+                        end if
+                    else
+                        exit Loop_NonLinearIteration
+                    end if
+                end if
                 after_adapt=.false.
                 its = its + 1
                 first_nonlinear_time_step = .false.
@@ -1434,6 +1457,102 @@ contains
         nuold % val = uold % val
     end subroutine set_nu_to_u
 
+    !>@author : Pablo Salinas
+    !>@brief In this subroutine we control all the necessary steps to adapt the mesh within the non-linear loop.
+    !> This is useful to ensure that the mesh is always well placed.
+    !> There are two steps, relaxation of the tolerance in the first loop of the non-linear solver to get a good guess but cheaply,
+    !> and secondly adaptation of the mesh based on the new and old field. For more information see: doi.org/10.1007/s10596-018-9759-z
+    subroutine adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, flag)
+        implicit none
+        logical, intent(inout) :: ExitNonLinearLoop, adapt_mesh_in_FPI
+        integer, intent(inout) :: its !> Non-linear iteration
+        integer, intent(in)    :: flag!> Controls the steps, either 1 or 2.
+        ! Local variables
+        type(scalar_field), pointer :: sat1, sat2
+        type(vector_field), pointer :: vfield1, vfield2
+        integer                     :: iphase, fields, k, i
+        real, save                  :: Inf_tol = -1, non_linear_tol = -1
+        character( len = option_path_len ) :: option_path, option_name
+
+
+        if (Inf_tol<0) then
+          !Store the settings selected by the user
+          call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', non_linear_tol, default = 5e-2)
+          call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',Inf_tol, default = 0.01)
+        end if
+
+        select case (flag)
+            case (1)
+                !Relax the convergence criteria since we don't need much precision at this stage
+                !Since non_linear_tol is they key convergence criterion, we use a relative value and we reduce it half-order
+                call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', min(non_linear_tol*10., 1e-1))
+                if (.not.have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol'))then
+                    !Create the option
+                    call copy_option( '/timestepping/timestep/', &
+                        '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol')
+                end if
+                !10% tolerance provides a good enough result
+                call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',min(Inf_tol*5.,0.1))
+        case default
+            !Three steps
+            !1. Store OldValues into BAK values
+            do iphase = 1, Mdims%nphase
+                !First scalar prognostic fields
+                option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field"
+                fields = option_count("/material_phase["// int2str( iphase - 1 )//"]/scalar_field")
+                do k = 1, fields
+                  call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                  option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field::"//trim(option_name)
+                  if (option_name(1:4)=="BAK_") cycle!Not backed fields!
+                  if (trim(option_name)=="Density" .or. .not.have_option(trim(option_path)//"/prognostic" )) cycle!Nothing to do for density or non prognostic fields
+                  if (have_option(trim(option_path)//"/aliased" )) cycle
+                  sat1 => extract_scalar_field( state(iphase),  "Old"//trim(option_name))
+                  sat2  => extract_scalar_field( state(iphase), "BAK_"//trim(option_name))
+                  sat2%val = sat1%val
+                end do
+                !Finally velocity as well
+                vfield1 => extract_vector_field( state(iphase),  "OldVelocity")
+                vfield2 => extract_vector_field( state(iphase),  "BAK_Velocity")
+                vfield2%val = vfield1%val
+            end do
+
+            !2. Adapt the mesh (bak fields have the same adaptivity options)
+            call adapt_mesh_mp()
+
+            call copy_packed_new_to_old(packed_state)!<= if we don't do this, the results are wrong and I don't know why, after we moved to the new schema...
+            !3. Copy back from BAK fields to Old fields
+            do iphase = 1, Mdims%nphase
+                !First scalar prognostic fields
+                option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field"
+                fields = option_count("/material_phase["// int2str( iphase - 1 )//"]/scalar_field")
+                do k = 1, fields
+                  call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                  option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field::"//trim(option_name)
+                  if (option_name(1:4)=="BAK_") cycle!Not backed fields!
+                  if (trim(option_name)=="Density" .or. .not.have_option(trim(option_path)//"/prognostic" )) cycle!Nothing to do for density or non prognostic fields
+                  if (have_option(trim(option_path)//"/aliased" )) cycle
+                  sat1 => extract_scalar_field( state(iphase),  "Old"//trim(option_name))
+                  sat2  => extract_scalar_field( state(iphase), "BAK_"//trim(option_name))
+                  sat1%val = sat2%val
+                end do
+                !Finally velocity as well
+                vfield1 => extract_vector_field( state(iphase),  "OldVelocity")
+                vfield2 => extract_vector_field( state(iphase),  "BAK_Velocity")
+                vfield2%val = vfield1%val
+            end do
+            !Pointing to porosity again is required
+            porosity_field=>extract_vector_field(packed_state,"Porosity")
+            !Now we have to converge again within the same time-step
+            ExitNonLinearLoop = .false.; its = 1
+            adapt_mesh_in_FPI = .false.
+
+            !Set the original convergence criteria since we are now solving the equations
+            call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', non_linear_tol)
+            call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',Inf_tol)
+
+        end select
+
+    end subroutine adapt_mesh_within_FPI
 
 
 
