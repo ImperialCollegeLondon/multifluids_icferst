@@ -1,15 +1,8 @@
 <map id="multi_data_types::allocate_multi_shape_funs" name="multi_data_types::allocate_multi_shape_funs">
-<area shape="rect" id="node1" title="This subroutine allocates and initialises to zero all the arrays in a multi_shape_funs data type It u..." alt="" coords="1232,253,1427,295"/>
-<area shape="rect" id="node2" href="$namespacecv__advection.html#a34e0fcace33673c6460aef98e962709e" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="993,137,1183,163"/>
-<area shape="rect" id="node6" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,161,419,203"/>
-<area shape="rect" id="node11" href="$namespacesparsity__nd.html#a455ef657aa7fb1aaa3bff1b71aaa24a5" title=" " alt="" coords="992,312,1184,353"/>
-<area shape="rect" id="node3" href="$multi__dyncore__dg_8_f90.html#a2ca070e362a90a07dcb98eada12a622f" title="WARNING: It is currently not working well...better to use Chris&#39; method which uses a RHS." alt="" coords="756,5,944,47"/>
-<area shape="rect" id="node4" href="$namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="758,71,942,112"/>
-<area shape="rect" id="node9" href="$namespacemultiphase__1d__engine.html#aa5819c18b57b8144faa1885776a2cc8b" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="497,129,677,171"/>
-<area shape="rect" id="node10" href="$namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,195,708,236"/>
-<area shape="rect" id="node5" href="$namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="470,12,705,53"/>
-<area shape="rect" id="node8" href="$multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,19,396,46"/>
-<area shape="rect" id="node7" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,161,171,203"/>
-<area shape="rect" id="node12" href="$namespacespact.html#aeaf3853765a92827bf24c599fe79364e" title="Allocate and obtain the sparsity patterns of the two types of matricies for (momentum + cty) and for ..." alt="" coords="777,312,923,353"/>
-<area shape="rect" id="node13" href="$_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="505,362,670,389"/>
+<area shape="rect" id="node1" title="This subroutine allocates and initialises to zero all the arrays in a multi_shape_funs data type It u..." alt="" coords="1115,85,1309,127"/>
+<area shape="rect" id="node2" href="$namespacesparsity__nd.html#a455ef657aa7fb1aaa3bff1b71aaa24a5" title=" " alt="" coords="875,56,1067,97"/>
+<area shape="rect" id="node5" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,64,419,105"/>
+<area shape="rect" id="node3" href="$namespacespact.html#aeaf3853765a92827bf24c599fe79364e" title="Allocate and obtain the sparsity patterns of the two types of matricies for (momentum + cty) and for ..." alt="" coords="681,56,827,97"/>
+<area shape="rect" id="node4" href="$_multiphase___time_loop_8_f90.html#aa42a6f5cdc900bd4a54bb2b7be3975be" title="In this internal subrotuine the generation of output vts and checkpoint are performed." alt="" coords="467,5,633,47"/>
+<area shape="rect" id="node6" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,64,171,105"/>
 </map>

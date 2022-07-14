@@ -99,10 +99,8 @@ $(document).ready(function(){initNavTree('structmulti__data__types_1_1porous__ad
 Public Attributes</h2></td></tr>
 <tr class="memitem:a7dfe3f6172db8a9567e3ddc8224454fa"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#a7dfe3f6172db8a9567e3ddc8224454fa">adv_coef</a> =&gt; null()</td></tr>
 <tr class="separator:a7dfe3f6172db8a9567e3ddc8224454fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:add52cedca92232c0d06b577474b4e3a8"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#add52cedca92232c0d06b577474b4e3a8">inv_adv_coef</a> =&gt; null()</td></tr>
-<tr class="separator:add52cedca92232c0d06b577474b4e3a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adfcceabfbe5ca89e3dc81710be1fa6f4"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#adfcceabfbe5ca89e3dc81710be1fa6f4">adv_coef_grad</a> =&gt; null()</td></tr>
-<tr class="separator:adfcceabfbe5ca89e3dc81710be1fa6f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac396aa058a03a7686982367e895a1a3b"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#ac396aa058a03a7686982367e895a1a3b">inv_adv_coef</a> =&gt; null()</td></tr>
+<tr class="separator:ac396aa058a03a7686982367e895a1a3b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa78a22a9bdf2c3325b1eea2980ad14da"><td class="memItemLeft" align="right" valign="top">real, dimension(:, :, :), pointer&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmulti__data__types_1_1porous__adv__coefs.html#aa78a22a9bdf2c3325b1eea2980ad14da">inv_permeability</a> =&gt; null()</td></tr>
 <tr class="separator:aa78a22a9bdf2c3325b1eea2980ad14da"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -112,7 +110,6 @@ Public Attributes</h2></td></tr>
   <table class="params">
     <tr><td class="paramname">adv_coef</td><td>=&gt; null() Sigmas at the boundary to calculate fluxes </td></tr>
     <tr><td class="paramname">inv_adv_coef</td><td>=&gt; null() Inverse of sigmas at the boundary to calculate fluxes </td></tr>
-    <tr><td class="paramname">adv_coef_grad</td><td>=&gt; null() Gradient of the sigmas at the boundary to calculate fluxes </td></tr>
     <tr><td class="paramname">inv_permeability</td><td>=&gt; null() Gradient of the sigmas at the boundary to calculate fluxes </td></tr>
   </table>
   </dd>
@@ -132,28 +129,14 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="adfcceabfbe5ca89e3dc81710be1fa6f4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#adfcceabfbe5ca89e3dc81710be1fa6f4">&#9670;&nbsp;</a></span>adv_coef_grad</h2>
+<a id="ac396aa058a03a7686982367e895a1a3b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac396aa058a03a7686982367e895a1a3b">&#9670;&nbsp;</a></span>inv_adv_coef</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">real, dimension( :, :, :, : ), pointer multi_data_types::porous_adv_coefs::adv_coef_grad =&gt; null()</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="add52cedca92232c0d06b577474b4e3a8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#add52cedca92232c0d06b577474b4e3a8">&#9670;&nbsp;</a></span>inv_adv_coef</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">real, dimension( :, :, :, : ), pointer multi_data_types::porous_adv_coefs::inv_adv_coef =&gt; null()</td>
+          <td class="memname">real, dimension( :, : ), pointer multi_data_types::porous_adv_coefs::inv_adv_coef =&gt; null()</td>
         </tr>
       </table>
 </div><div class="memdoc">
