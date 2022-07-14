@@ -53,6 +53,7 @@
       </constant>
     </dump_period_in_timesteps>
     <PropertiesFromFile>substances_properties</PropertiesFromFile>
+    <Generate_stat_file/>
   </io>
   <timestepping>
     <current_time>

@@ -119,6 +119,13 @@ start =
             element Courant_number {
                comment
             }?,
+            ## Generate stat file. This file contains walltime, statistics of the fields such as min/max and integral. 
+            ## By default it is off since its computation is not free. For single phase ~ 30% of the total simulation time.
+            ##
+            ## This is normally required for test cases
+            element Generate_stat_file {
+               comment
+            }?,
             ## <b>Generates a .csv file including the volume_flux, rates, etc. across the specified boundaries</b>
             element dump_boundaryflux {
             empty,

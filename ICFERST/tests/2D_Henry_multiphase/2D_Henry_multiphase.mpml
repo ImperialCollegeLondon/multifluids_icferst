@@ -16,9 +16,7 @@
         </stat>
       </from_file>
     </mesh>
-    <simulation_quality>
-      <string_value>balanced</string_value>
-    </simulation_quality>
+    <simulation_quality/>
     <Advance_options>
       <Conservative_formulation_settings name="Tracer">
         <conservative_advection>
@@ -74,6 +72,7 @@
         <integer_value rank="0">1</integer_value>
       </constant>
     </dump_period_in_timesteps>
+    <Generate_stat_file/>
   </io>
   <timestepping>
     <current_time>
@@ -96,7 +95,7 @@
           <mesh name="CoordinateMesh"/>
           <value name="WholeMesh">
             <constant>
-              <real_value shape="2" dim1="dim" rank="1">0 -1</real_value>
+              <real_value rank="1" dim1="dim" shape="2">0 -1</real_value>
             </constant>
           </value>
           <stat>
@@ -124,7 +123,7 @@
         </compressible>
         <boundary_conditions name="right">
           <surface_ids>
-            <integer_value shape="1" rank="1">8</integer_value>
+            <integer_value rank="1" shape="1">8</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -153,7 +152,7 @@
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
-    <scalar_field name="Pressure" rank="0">
+    <scalar_field rank="0" name="Pressure">
       <prognostic>
         <mesh name="PressureMesh"/>
         <hydrostatic_boundaries/>
@@ -164,7 +163,7 @@
         </initial_condition>
         <boundary_conditions name="right">
           <surface_ids>
-            <integer_value shape="1" rank="1">8</integer_value>
+            <integer_value rank="1" shape="1">8</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -178,7 +177,7 @@
         </detectors>
         <adaptivity_options>
           <relative_measure>
-            <scalar_field name="InterpolationErrorBound" rank="0">
+            <scalar_field rank="0" name="InterpolationErrorBound">
               <prescribed>
                 <value name="WholeMesh">
                   <constant>
@@ -200,17 +199,17 @@
         <output/>
       </prognostic>
     </scalar_field>
-    <vector_field name="Velocity" rank="1">
+    <vector_field rank="1" name="Velocity">
       <prognostic>
         <mesh name="VelocityMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value shape="2" dim1="dim" rank="1">0 0</real_value>
+            <real_value rank="1" dim1="dim" shape="2">0 0</real_value>
           </constant>
         </initial_condition>
         <boundary_conditions name="left">
           <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
+            <integer_value rank="1" shape="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -230,7 +229,7 @@
         </boundary_conditions>
         <boundary_conditions name="top_bottom">
           <surface_ids>
-            <integer_value shape="2" rank="1">9 10</integer_value>
+            <integer_value rank="1" shape="2">9 10</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -255,7 +254,7 @@
         <output/>
       </prognostic>
     </vector_field>
-    <scalar_field name="PhaseVolumeFraction" rank="0">
+    <scalar_field rank="0" name="PhaseVolumeFraction">
       <prognostic>
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
@@ -265,7 +264,7 @@
         </initial_condition>
         <boundary_conditions name="rest">
           <surface_ids>
-            <integer_value shape="2" rank="1">9 10</integer_value>
+            <integer_value rank="1" shape="2">9 10</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -276,7 +275,7 @@
         </boundary_conditions>
         <boundary_conditions name="inout">
           <surface_ids>
-            <integer_value shape="2" rank="1">7 8</integer_value>
+            <integer_value rank="1" shape="2">7 8</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -290,7 +289,7 @@
         </detectors>
         <adaptivity_options>
           <absolute_measure>
-            <scalar_field name="InterpolationErrorBound" rank="0">
+            <scalar_field rank="0" name="InterpolationErrorBound">
               <prescribed>
                 <value name="WholeMesh">
                   <constant>
@@ -308,7 +307,7 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
-    <scalar_field name="Concentration" rank="0">
+    <scalar_field rank="0" name="Concentration">
       <prognostic>
         <mesh name="PressureMesh"/>
         <Impose_min_max>
@@ -334,7 +333,7 @@
         </initial_condition>
         <boundary_conditions name="left">
           <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
+            <integer_value rank="1" shape="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -345,7 +344,7 @@
         </boundary_conditions>
         <boundary_conditions name="right">
           <surface_ids>
-            <integer_value shape="1" rank="1">8</integer_value>
+            <integer_value rank="1" shape="1">8</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -356,7 +355,7 @@
         </boundary_conditions>
         <boundary_conditions name="rest">
           <surface_ids>
-            <integer_value shape="2" rank="1">9 10</integer_value>
+            <integer_value rank="1" shape="2">9 10</integer_value>
           </surface_ids>
           <type name="zero_flux"/>
         </boundary_conditions>
@@ -365,7 +364,7 @@
         </detectors>
         <adaptivity_options>
           <absolute_measure>
-            <scalar_field name="InterpolationErrorBound" rank="0">
+            <scalar_field rank="0" name="InterpolationErrorBound">
               <prescribed>
                 <value name="WholeMesh">
                   <constant>
@@ -453,7 +452,7 @@
         </compressible>
         <boundary_conditions name="right">
           <surface_ids>
-            <integer_value shape="1" rank="1">8</integer_value>
+            <integer_value rank="1" shape="1">8</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -482,20 +481,20 @@
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
-    <scalar_field name="Pressure" rank="0">
+    <scalar_field rank="0" name="Pressure">
       <aliased material_phase_name="water" field_name="Pressure"/>
     </scalar_field>
-    <vector_field name="Velocity" rank="1">
+    <vector_field rank="1" name="Velocity">
       <prognostic>
         <mesh name="VelocityMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value shape="2" dim1="dim" rank="1">0 0</real_value>
+            <real_value rank="1" dim1="dim" shape="2">0 0</real_value>
           </constant>
         </initial_condition>
         <boundary_conditions name="left">
           <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
+            <integer_value rank="1" shape="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -515,7 +514,7 @@
         </boundary_conditions>
         <boundary_conditions name="top_bottom">
           <surface_ids>
-            <integer_value shape="2" rank="1">9 10</integer_value>
+            <integer_value rank="1" shape="2">9 10</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -540,7 +539,7 @@
         <output/>
       </prognostic>
     </vector_field>
-    <scalar_field name="PhaseVolumeFraction" rank="0">
+    <scalar_field rank="0" name="PhaseVolumeFraction">
       <prognostic>
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
@@ -550,7 +549,7 @@
         </initial_condition>
         <boundary_conditions name="rest">
           <surface_ids>
-            <integer_value shape="2" rank="1">9 10</integer_value>
+            <integer_value rank="1" shape="2">9 10</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -561,7 +560,7 @@
         </boundary_conditions>
         <boundary_conditions name="inout">
           <surface_ids>
-            <integer_value shape="2" rank="1">7 8</integer_value>
+            <integer_value rank="1" shape="2">7 8</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -643,14 +642,14 @@
       <tensor_field name="MinimumEdgeLengths">
         <anisotropic_symmetric>
           <constant>
-            <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">0.015 0.0 0.0 0.015</real_value>
+            <real_value symmetric="true" rank="2" dim1="dim" dim2="dim" shape="2 2">0.015 0.0 0.0 0.015</real_value>
           </constant>
         </anisotropic_symmetric>
       </tensor_field>
       <tensor_field name="MaximumEdgeLengths">
         <anisotropic_symmetric>
           <constant>
-            <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">0.10 0.0 0.0 0.10</real_value>
+            <real_value symmetric="true" rank="2" dim1="dim" dim2="dim" shape="2 2">0.10 0.0 0.0 0.10</real_value>
           </constant>
         </anisotropic_symmetric>
       </tensor_field>

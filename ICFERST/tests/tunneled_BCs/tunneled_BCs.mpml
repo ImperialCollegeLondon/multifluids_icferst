@@ -28,6 +28,7 @@
         <integer_value rank="0">10</integer_value>
       </constant>
     </dump_period_in_timesteps>
+    <Generate_stat_file/>
     <dump_boundaryflux>
       <surface_ids>
         <integer_value rank="1" shape="1">8</integer_value>
