@@ -1,0 +1,4 @@
+<map id="shock_front_in_ele" name="shock_front_in_ele">
+<area shape="rect" id="node1" title=" " alt="" coords="5,13,149,39"/>
+<area shape="rect" id="node2" href="$namespacecv__advection.html#ae140305e60c328f17beabcae47d8aa6f" title="Detects whether the element has a shockfront or not." alt="" coords="197,5,352,47"/>
+</map>

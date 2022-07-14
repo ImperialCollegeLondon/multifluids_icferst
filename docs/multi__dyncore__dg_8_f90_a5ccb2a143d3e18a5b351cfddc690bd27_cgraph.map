@@ -1,0 +1,4 @@
+<map id="include_wells_and_compressibility_into_rhs" name="include_wells_and_compressibility_into_rhs">
+<area shape="rect" id="node1" title="Include in the pressure matrix the compressibility terms (based on taylor expansion series) to ensure..." alt="" coords="5,5,253,47"/>
+<area shape="rect" id="node2" href="$namespacecopy__outof__state.html#acea2acdccf9091776be013ade24bcd97" title=": Subroutine to check whether an option is true for any phase in diamond, if any is true it returns t..." alt="" coords="301,5,476,47"/>
+</map>

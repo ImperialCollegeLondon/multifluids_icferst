@@ -1,0 +1,8 @@
+<map id="matrix_operations::color_get_cmc_pha" name="matrix_operations::color_get_cmc_pha">
+<area shape="rect" id="node1" title=":Initialize the momentum equation (CMC) and introduces the corresponding values in it...." alt="" coords="5,104,155,145"/>
+<area shape="rect" id="node2" href="$multi__matrix__operations_8_f90.html#a8597eb17dfb6c25871a9cd2291c68f79" title=": form pressure matrix CMC using a colouring approach, requires more memory" alt="" coords="203,111,381,138"/>
+<area shape="rect" id="node3" href="$namespacematrix__operations.html#a963a038e3ea8bafb851ab3f5225a5300" title=": CDP=C*DP" alt="" coords="452,5,601,47"/>
+<area shape="rect" id="node4" href="$namespacematrix__operations.html#ad30d6b55adc62a3c43912ecbfbdb7e58" title=": CV_RHS = CT * U" alt="" coords="452,71,601,112"/>
+<area shape="rect" id="node5" href="$namespacematrix__operations.html#ae03adef605e7047d7fbafecd36d39c0e" title=": DP = (C)^T U_LONG" alt="" coords="445,136,609,177"/>
+<area shape="rect" id="node6" href="$namespacematrix__operations.html#a1fe0d2f2c00d0e6b52d0121904447542" title=": U = BLOCK_MAT * CDP The difference with PHA_BLOCK_MAT_VEC_MANY is that the input CDP is overwritten..." alt="" coords="429,202,624,258"/>
+</map>
