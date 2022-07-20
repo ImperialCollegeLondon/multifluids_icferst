@@ -1442,6 +1442,13 @@ By default this number is 9. Recommended range: 3 to 9.</a:documentation>
             </element>
           </optional>
           <optional>
+            <element name="low_order_diffusion">
+              <a:documentation>Use a low order method to compute diffusion. The current one is very very expensive (~15% of total time for one single tracer). This should be good enough
+for cases where diffusion is not dominant.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
             <element name="solve_nphases_minus_one">
               <a:documentation>Decide to solve for nphases-1. This should be faster. Still in DEVELOPMENT.</a:documentation>
               <empty/>

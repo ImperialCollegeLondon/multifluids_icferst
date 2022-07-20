@@ -1180,6 +1180,11 @@ start =
             element max_sat_its {
                integer
             }?,
+           ## Use a low order method to compute diffusion. The current one is very very expensive (~15% of total time for one single tracer). This should be good enough
+           ## for cases where diffusion is not dominant.
+            element low_order_diffusion {
+               empty
+            }?,            
            ## Decide to solve for nphases-1. This should be faster. Still in DEVELOPMENT.
             element solve_nphases_minus_one {
                empty

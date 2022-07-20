@@ -212,7 +212,7 @@ contains
           !        ===>  LOGICALS  <===
           ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
           logical, PARAMETER :: integrate_other_side= .true.
-          LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE
+          LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE, low_order_diff
           logical :: skip, GOT_T2, use_volume_frac_T2, logical_igot_theta_flux, zero_vel_BC
           ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the Mmat%C matrix in here also based on control-volume pressure.
           logical :: GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
@@ -255,7 +255,6 @@ contains
           REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
           !###Variables for shape function calculation###
           type (multi_dev_shape_funs) :: SdevFuns
-          type (multi_dev_shape_funs) :: FSdevFuns
           ! Variables used in GET_INT_VEL_NEW:
           REAL, DIMENSION ( Mdims%ndim, final_phase, Mdims%u_nloc ) :: LOC_U, LOC2_U, LOC_NU, LOC2_NU
           REAL, DIMENSION ( Mdims%ndim, final_phase, Mdims%u_snloc ) :: SLOC_NU
@@ -442,9 +441,7 @@ contains
               GOT_DIFFUS = ( R2NORM( TDIFFUSION, size(TDIFFUSION,1) * size(TDIFFUSION,2) * size(TDIFFUSION,3) * size(TDIFFUSION,4)  ) /= 0 )!<=I hate this thing...
               call allor(GOT_DIFFUS)                                                  !it should be if present then true, but it breaks the parallel CWC P1DGP2
           end if
-          ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_BETA, GOT_DIFFUS:', &
-              CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_BETA, GOT_DIFFUS
-          ewrite(3,*)'GETCV_DISC, GETCT', GETCV_DISC, GETCT
+          low_order_diff = have_option("/numerical_methods/low_order_diffusion")
 
           !cv_beta == 1 means conservative
           conservative_advection = abs(1.0 - cv_beta) <= 1e-8
@@ -553,7 +550,7 @@ contains
         Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
         CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
         end if
-        IF ( GOT_DIFFUS) call DG_DERIVS_ALL( T_ALL, DTX_ELE_ALL, Mdims, final_phase, ndgln, &
+        IF ( GOT_DIFFUS.and..not. low_order_diff) call DG_DERIVS_ALL( T_ALL, DTX_ELE_ALL, Mdims, final_phase, ndgln, &
                             CV_GIdims, CV_funs, X_ALL, Mmat, WIC_T_BC_ALL, SUF_T_BC_ALL)
           IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqns plus RHS
               call zero(Mmat%CT_RHS)
@@ -774,7 +771,7 @@ contains
                                       ELE, ELE2, CVNORMX_ALL( :, GI ), &
                                       DTX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), &
                                       LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
-                                      on_domain_boundary, between_elements )
+                                      on_domain_boundary, low_order_diff )
                                       
                               ELSE 
                                   DIFF_COEF_DIVDX = 0.0
@@ -2078,6 +2075,11 @@ contains
 
 
        !> calculates derivatives of vector fields
+    !> Currently this subroutine is extremely inefficient since it computes normals and considers full FE
+    !> It is only used for diffusion, some possibilities are:
+    !> First remove high order stuff and just perform the volume and surface integral.
+    !> Next perform the volume integral outside but the sirface integral within the surface loop so we do not need to compute neighbours and
+    !> normals twice...
     SUBROUTINE DG_DERIVS_ALL( T_ALL, DTX_ELE, Mdims, final_phase, ndgln, &
         CV_GIdims, CV_funs,  X_ALL, Mmat, WIC_T_BC_ALL, SUF_T_BC_ALL, P0Mesh)
         REAL, DIMENSION( :, : ), intent( in ) :: T_ALL
@@ -2144,7 +2146,7 @@ contains
             REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
             logical, optional :: P0Mesh ! This is for when using the P0DGP1 element pair to substitute the method to find neighbours
             ! Local variables
-            REAL, DIMENSION( CV_NLOC, CV_NLOC, TOTELE ) :: MASELE
+            REAL, DIMENSION( CV_NLOC, TOTELE ) :: MASELE
             REAL, DIMENSION( NDIM, NPHASE, CV_NLOC, TOTELE ) :: VTX_ELE
             LOGICAL :: D1, D3, APPLYBC( NPHASE )
             REAL, dimension( CV_NGI ) :: DETWEI, RA
@@ -2184,15 +2186,14 @@ contains
     
                         CV_NODJ = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
     
-                        NN  = SUM( N( CV_ILOC, : ) * N(  CV_JLOC, : ) * DETWEI )
-                        ! NNX = MATMUL( NX_ALL( :, CV_JLOC, : ), N( CV_ILOC, : )  * DETWEI )
                         NNX = 0.
                         do idim = 1 , NDIM
                             do igi = 1, CV_NGI
                                 NNX(idim) = NNX(idim) + NX_ALL( idim, CV_JLOC, igi )* N( CV_ILOC, igi )  * DETWEI(igi)
                             end do
                         end do
-                        MASELE( CV_ILOC, CV_JLOC, ELE) = MASELE( CV_ILOC, CV_JLOC, ELE ) + NN
+                        !Lumped mass
+                        MASELE( CV_ILOC, ELE) = MASELE( CV_ILOC, ELE ) + SUM( N( CV_ILOC, : ) * N(  CV_JLOC, : ) * DETWEI )
     
                         DO IPHASE = 1, NPHASE
                             VTX_ELE( :, IPHASE, CV_ILOC, ELE ) = &
@@ -2318,20 +2319,9 @@ contains
             END DO Loop_Elements2
     
     
-            Loop_Elements3: DO ELE = 1, TOTELE
-    
-                MASS( :, : ) = MASELE( :, :, ELE )
-                INV_MASS=MASS
-                !       CALL MATDMATINV( MASS, INV_MASS, CV_NLOC )
-                CALL INVERT( INV_MASS )
-
-                FORALL ( IDIM = 1:NDIM, IPHASE = 1:NPHASE )
-    
-                    DTX_ELE( IDIM, IPHASE, :, ELE ) = MATMUL( INV_MASS( :, : ), VTX_ELE( IDIM, IPHASE, :, ELE ) )
-    
-                END FORALL
-    
-            END DO Loop_Elements3
+            FORALL ( IDIM = 1:NDIM, IPHASE = 1:NPHASE, cv_iloc =1:CV_NLOC, ele = 1: totele )
+                DTX_ELE( IDIM, IPHASE, cv_iloc, ELE ) = VTX_ELE( IDIM, IPHASE, cv_iloc, ELE )/MASELE( cv_iloc, ELE )
+            END FORALL   
     
             ewrite(3,*)'about to leave DG_DERIVS'
     
@@ -2351,13 +2341,13 @@ contains
         ELE, ELE2, CVNORMX_ALL,  &
         LOC_DTX_ELE_ALL, LOC2_DTX_ELE_ALL, &
         LOC_WIC_T_BC, CV_OTHER_LOC, MAT_OTHER_LOC, CV_SNLOC, CV_SLOC2LOC, &
-        on_domain_boundary, between_elements )
+        on_domain_boundary, low_order_diff )
         IMPLICIT NONE
         INTEGER, intent( in ) :: CV_NLOC, MAT_NLOC, NPHASE, &
             &                    GI, NDIM, ELE, ELE2, &
             &                    CV_SNLOC
         REAL, intent( in ) :: HDC
-        LOGICAL, intent( in ) :: on_domain_boundary, between_elements
+        LOGICAL, intent( in ) :: on_domain_boundary, low_order_diff
         REAL, DIMENSION( NPHASE ), intent( in ) :: T_CV_NODJ, T_CV_NODI
         REAL, DIMENSION( NPHASE ), intent( inout ) :: DIFF_COEF_DIVDX
         INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
@@ -2393,28 +2383,35 @@ contains
             DIFF_COEF_DIVDX = 0.0
 
         ELSE
-
-            DTDX_GI_ALL = 0.0 
-            forall (cv_kloc = 1:cv_nloc, idim = 1:ndim, iphase =1:nphase)
-                DTDX_GI_ALL(idim, iphase) = DTDX_GI_ALL(idim, iphase) + SCVFEN( CV_KLOC, GI ) * LOC_DTX_ELE_ALL( idim, iphase, CV_KLOC )
-            end forall
-
             DIFF_GI = 0.0
             DO MAT_KLOC = 1, MAT_NLOC
                 MAT_NODK = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_KLOC )
                 forall (iphase = 1:nphase, idim = 1:ndim, jdim =1:ndim)
-                    DIFF_GI( idim, jdim, IPHASE ) = DIFF_GI( idim, jdim, IPHASE ) &
-                        + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, idim, jdim, IPHASE )
+                DIFF_GI( idim, jdim, IPHASE ) = DIFF_GI( idim, jdim, IPHASE ) &
+                + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, idim, jdim, IPHASE )
                 end forall
             END DO
             DIFF_GI = MAX( 0.0, DIFF_GI )
-
-            !Projection of the tensorial diffusion coefficient times derivatives
-            N_DOT_DKDT_ALL = 0; DIFF_STAND_DIVDX_ALL = 0.
-            forall (idim = 1:ndim, jdim = 1:ndim, iphase =1:nphase)
-                N_DOT_DKDT_ALL( IPHASE ) = N_DOT_DKDT_ALL( IPHASE ) + CVNORMX_ALL(idim) * DIFF_GI( idim, jdim, IPHASE ) * DTDX_GI_ALL( jdim, IPHASE )
-                DIFF_STAND_DIVDX_ALL( IPHASE ) = DIFF_STAND_DIVDX_ALL( IPHASE ) +  CVNORMX_ALL(idim) * DIFF_GI( idim, jdim, IPHASE ) * CVNORMX_ALL(jdim)/ HDC
-            end forall
+            
+            if (.not. low_order_diff) then 
+                DTDX_GI_ALL = 0.0 
+                forall (cv_kloc = 1:cv_nloc, idim = 1:ndim, iphase =1:nphase)
+                    DTDX_GI_ALL(idim, iphase) = DTDX_GI_ALL(idim, iphase) + SCVFEN( CV_KLOC, GI ) * LOC_DTX_ELE_ALL( idim, iphase, CV_KLOC )
+                end forall
+                !Projection of the tensorial diffusion coefficient times derivatives
+                N_DOT_DKDT_ALL = 0; DIFF_STAND_DIVDX_ALL = 0.
+                forall (idim = 1:ndim, jdim = 1:ndim, iphase =1:nphase)
+                    N_DOT_DKDT_ALL( IPHASE ) = N_DOT_DKDT_ALL( IPHASE ) + CVNORMX_ALL(idim) * DIFF_GI( idim, jdim, IPHASE ) * DTDX_GI_ALL( jdim, IPHASE )
+                    DIFF_STAND_DIVDX_ALL( IPHASE ) = DIFF_STAND_DIVDX_ALL( IPHASE ) +  CVNORMX_ALL(idim) * DIFF_GI( idim, jdim, IPHASE ) * CVNORMX_ALL(jdim)/ HDC
+                end forall    
+                DIFF_COEF_DIVDX = MAX( DIFF_MIN_FRAC * DIFF_STAND_DIVDX_ALL, N_DOT_DKDT_ALL / TOLFUN_MANY( T_CV_NODJ - T_CV_NODI ) )
+                DIFF_COEF_DIVDX = MIN( DIFF_MAX_FRAC * DIFF_STAND_DIVDX_ALL, DIFF_COEF_DIVDX )    
+            else
+                DIFF_COEF_DIVDX = 0.
+                forall (idim = 1:ndim, jdim = 1:ndim, iphase =1:nphase)
+                    DIFF_COEF_DIVDX( IPHASE ) = DIFF_COEF_DIVDX( IPHASE ) +  CVNORMX_ALL(idim) * DIFF_GI( idim, jdim, IPHASE ) * CVNORMX_ALL(jdim)/ HDC
+                end forall    
+            end if
 
             ! Conditional_MAT_DISOPT_ELE2: IF ( between_elements ) THEN
             !     DTDX_GI2_ALL = 0.0 ;
@@ -2448,10 +2445,6 @@ contains
             !     DIFF_STAND_DIVDX_ALL = MIN( DIFF_STAND_DIVDX_ALL, DIFF_STAND_DIVDX2_ALL )
 
             ! END IF Conditional_MAT_DISOPT_ELE2
-
-            DIFF_COEF_DIVDX = MAX( DIFF_MIN_FRAC * DIFF_STAND_DIVDX_ALL, N_DOT_DKDT_ALL / TOLFUN_MANY( T_CV_NODJ - T_CV_NODI ) )
-            DIFF_COEF_DIVDX = MIN( DIFF_MAX_FRAC * DIFF_STAND_DIVDX_ALL, DIFF_COEF_DIVDX )
-
         END IF Cond_ZerDiff
 
         !    IF ( SELE /= 0 ) THEN
