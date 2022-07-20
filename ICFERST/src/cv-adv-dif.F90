@@ -354,7 +354,6 @@ contains
             loc_assemble_collapsed_to_one_phase = .true.
           end if
           have_absorption = associated( absorbt_all )
-
           !Check pressure matrix based on Control Volumes
           !If we do not have an index where we have stored Mmat%C_CV, then we need to calculate it
           if (Mmat%CV_pressure) then
@@ -1023,16 +1022,6 @@ contains
                                   ! this is for the internal energy equation source term..
                                   ! This is to introduce the compressibility term due to expansion and therefore the divergence of the velocity is non-zero
                                   !for wells this is not straightforward <= need to CHANGE THIS FOR COMPRESSIBILITY
-                                  IF ( THERMAL .and. Mdims%npres == 1) THEN
-                                      LOC_CV_RHS_I = LOC_CV_RHS_I&
-                                          - CV_P( 1, 1, CV_NODI ) * SdevFuns%DETWEI( GI ) * ( &
-                                           NDOTQNEW * LIMT2 )
-                                      if ( integrate_other_side_and_not_boundary ) then
-                                          LOC_CV_RHS_J = LOC_CV_RHS_J &
-                                              + CV_P( 1, 1, CV_NODJ ) * SdevFuns%DETWEI( GI ) * ( &
-                                              NDOTQNEW * LIMT2 )
-                                      end if
-                                  END IF ! THERMAL
 
                                   do iphase = 1, final_phase
                                       assembly_phase = iphase
@@ -1070,12 +1059,6 @@ contains
               Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
                   LOC_CV_RHS_I=0.0; LOC_MAT_II =0.
                   R_PHASE = MEAN_PORE_CV( 1, CV_NODI ) * Mass_CV( CV_NODI ) / DT
-                  IF ( THERMAL .and. Mdims%npres == 1) THEN
-                    do iphase = 1, final_phase
-                        LOC_CV_RHS_I(iphase) = LOC_CV_RHS_I(iphase)  &
-                            - CV_P( 1, 1, CV_NODI ) * ( Mass_CV( CV_NODI ) / DT ) * ( T2_ALL(iphase, cv_nodi)  - T2OLD_ALL(iphase, cv_nodi) )
-                    end do
-                  END IF
 
                   IF ( GOT_T2 ) THEN
                     DO IPHASE = 1,final_phase!to avoid slicing sourct_all
