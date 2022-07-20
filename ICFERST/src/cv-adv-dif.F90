@@ -422,17 +422,6 @@ contains
               SUF_T2_BC_ROB1_ALL=>saturation_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
               SUF_T2_BC_ROB2_ALL=>saturation_BCs_robin2%val
           end if
-           if (tracer%name == "PackedTemperature" ) then
-              !(tracer%name == "PackedEnthalpy")&
-              ! .or. tracer%name == "PackedConcentration")  then !Not sure if it is required for temperature either...
-              allocate( suf_t_bc( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ), &
-                  suf_t_bc_rob2( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ) )
-              call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, size(tracer_BCs%val,2), &!TEMPORARY, FIXME! sprint_to_do is this call needed?
-                  suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)                                                  !BCs are updated autoamtically
-              SUF_T_BC_ALL=>suf_t_bc
-              SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
-              SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
-          end if
 
           IDUM = 0
           ewrite(3,*) 'In CV_ASSEMB'

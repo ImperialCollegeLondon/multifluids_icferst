@@ -705,6 +705,7 @@ contains
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                     call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
+                    
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, multi_absorp, dt, &
