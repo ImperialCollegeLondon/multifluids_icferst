@@ -1361,9 +1361,9 @@ contains
           if (have_option("/porous_media_simulator")) then
             !Add VAD options
             call add_option(trim(option_path)//"/Vanishing_relaxation", stat=stat)
-            call set_option(trim(option_path)//"/Vanishing_relaxation",-3e2)
-            call add_option(trim(option_path)//"/Vanishing_relaxation/Vanishing_for_transport", stat=stat)
-            call set_option(trim(option_path)//"/Vanishing_relaxation/Vanishing_for_transport",-3e1)
+            call set_option(trim(option_path)//"/Vanishing_relaxation",-1e2)
+            ! call add_option(trim(option_path)//"/Vanishing_relaxation/Vanishing_for_transport", stat=stat)
+            ! call set_option(trim(option_path)//"/Vanishing_relaxation/Vanishing_for_transport",-3e2)
             !If multiphase then the important thing is saturation!
             if ( nphase > 1.) then
               !Set up the non-linear solver to use an automatic backtracking method

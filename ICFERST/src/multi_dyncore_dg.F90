@@ -2017,109 +2017,54 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
      real, dimension(:), intent(in) :: sdetwe
      type(multi_dev_shape_funs), intent(inout) :: Devfuns
      real, dimension(:,:,:), intent(in) :: RHS_field
-     !Local parameters
-     !!Use a finite element projection of the RHS_field, it can only be false for PnDGPn(DG) elements
-     logical, parameter :: Cap_to_FEM = .false.
-     !Use integration by parts to introduce the RHS_field, otherwise it uses the integration by parts twice approach
-     logical, parameter :: Int_by_part_CapPress = .true.
-     !The combination Cap_to_FEM = .false. and Int_by_part_CapPress = .true. seems better for DCVFEM and the same for CVFEM
      !Local variables
      integer :: iphase, cv_inod, u_siloc, cv_jloc,&
-         CV_SJLOC, u_iloc, cv_Xnod
-     real, pointer, dimension(:, :) :: CV_Bound_Shape_Func
-     real, pointer, dimension(:, :) :: CV_Shape_Func
+         CV_SJLOC, u_iloc, cv_Xnod, idim, gi
      real, dimension(Mdims%NDIM) :: NMX_ALL
-     logical :: DISC_PRES ! discontinuous pressure flag, only perform volumetric integral for the continuous pressure method, otherwise an extra surface intergal is needed
-     ! following integration by parts twice which introduces the jump condition see Gomes et al 2016
 
      !Retrieve derivatives of the shape functions
      call DETNLXR_PLUS_U(ELE, X_ALL, X_NDGLN, FE_funs%cvweight, &
      FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns)
-
-     ! discontinuous pressure flag
-     DISC_PRES = ( Mdims%cv_nonods == Mdims%totele * Mdims%cv_nloc )
-
-     !Project to FEM
-     CV_Bound_Shape_Func => FE_funs%sbcvfen
-     CV_Shape_Func => FE_funs%cvfen
-
      !Integration by parts
-     if (Int_by_part_CapPress .or. .not. CAP_to_FEM) then
-       if (iface == 1) then!The volumetric term is added just one time
-         !Firstly we add the volumetric integral
-         DO U_ILOC = 1, Mdims%u_nloc
-           DO CV_JLOC = 1, Mdims%cv_nloc
-             ! -Integral(FE_funs%cvn RHS_field Grad FE_funs%ufen dV)
-             CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
-             DO IPHASE = 1, Mdims%nphase
-               LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
-               !(FE_funs%cvn Grad FE_funs%ufen)
-               + matmul(Devfuns%UFENX_ALL(:,U_ILOC,:),CV_Shape_Func( CV_JLOC, : ) *Devfuns%detwei )&
-               !RHS_field
-               * RHS_field(1, IPHASE, CV_INOD)
-             END DO
-           end do
-         end do
-       end if
-       !Performing the surface integral, -Integral(FE_funs%cvn RHS_field ᐁFE_funs%ufen dV)
-       DO U_SILOC = 1, Mdims%u_snloc
-         U_ILOC = U_SLOC2LOC( U_SILOC )
-         DO CV_SJLOC = 1, Mdims%cv_snloc
-           CV_JLOC = CV_SLOC2LOC( CV_SJLOC )
-           CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
-           NMX_ALL = matmul(SNORMXN_ALL( :, : ), FE_funs%sbufen( U_SILOC, : ) &
-           * CV_Bound_Shape_Func( CV_SJLOC, : ) * SDETWE( : ))
-           if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
-             cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
-           else !If no neighbour then we use the same value.
-             cv_Xnod = CV_INOD
-           end if
-           do iphase = 1, Mdims%nphase
-             LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
-             - NMX_ALL(:) * 0.5*(RHS_field(1, iphase, CV_INOD)+RHS_field(1, iphase, cv_Xnod))
-           end do
-         end do
-       end do
-     else !Volumetric integration only (requires the RHS_field to be in FEM)
-       if (iface ==1) then!The volumetric term is added just one time
-         DO U_ILOC = 1, Mdims%u_nloc
-           DO CV_JLOC = 1, Mdims%cv_nloc
-             ! Integral(Grad FE_funs%cvn RHS_field FE_funs%ufen dV)
-             CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
-             DO IPHASE = 1, Mdims%nphase
-               LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
-               !(Grad FE_funs%cvn FE_funs%ufen)
-               - matmul(Devfuns%CVFENX_ALL(:,CV_JLOC,:),FE_funs%ufen( U_ILOC, : ) *Devfuns%DETWEI )&
-               !RHS_field
-               * RHS_field(1, IPHASE, CV_INOD)
-             END DO
-           end do
-         end do
-       end if
-       !Get neighbouring nodes!SPRINT_TO_DO Use beta instead of the 0.5 for this. Also it seems that dPc/dS grad S is more stable
-       !Also if not dicsontinuous formulation do not perform this operation
-       if (DISC_PRES) then
-         !Get neighbouring nodes
-         !Performing the surface integral, Integral(FE_funs%cvn (Average RHS_field) ᐁFE_funs%ufen dV)
-         DO U_SILOC = 1, Mdims%u_snloc
-           U_ILOC = U_SLOC2LOC( U_SILOC )
-           DO CV_SJLOC = 1, Mdims%cv_snloc
-             CV_JLOC = CV_SLOC2LOC( CV_SJLOC )
-             CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
-             NMX_ALL = matmul(SNORMXN_ALL( :, : ), FE_funs%sbufen( U_SILOC, : ) * FE_funs%sbcvfen( CV_SJLOC, : ) * SDETWE( : ))
-             if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
-               cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
-             else !If no neighbour then we use the same value.
-               cv_Xnod = CV_INOD
-             end if
-             do iphase = 1, Mdims%nphase
-               LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
-               + NMX_ALL(:) * 0.5* (RHS_field(1, iphase, CV_INOD) - RHS_field(1, iphase, cv_Xnod))
-             end do
-           end do
-         end do
-       end if
-     end if
+    if (iface == 1) then!The volumetric term is added just one time
+        !Firstly we add the volumetric integral
+        DO U_ILOC = 1, Mdims%u_nloc
+            DO CV_JLOC = 1, Mdims%cv_nloc
+                ! -Integral(FE_funs%cvn RHS_field Grad FE_funs%ufen dV)
+                CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                forall (iphase=1:Mdims%nphase, idim =1: Mdims%ndim, gi = 1: size(FE_funs%cvfen,2))
+                    LOC_U_RHS( idim, IPHASE, U_ILOC ) = LOC_U_RHS( idim, IPHASE, U_ILOC ) + RHS_field(1, IPHASE, CV_INOD) &!RHS_field
+                    * Devfuns%UFENX_ALL(idim,U_ILOC,gi)*FE_funs%cvfen( CV_JLOC, gi ) *Devfuns%detwei(gi) !(FE_funs%cvn Grad FE_funs%ufen)
+                end forall
+                ! DO IPHASE = 1, Mdims%nphase
+                !     LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
+                !     !(FE_funs%cvn Grad FE_funs%ufen)
+                !     + matmul(Devfuns%UFENX_ALL(:,U_ILOC,:),FE_funs%cvfen( CV_JLOC, : ) *Devfuns%detwei )&
+                !     !RHS_field
+                !     * RHS_field(1, IPHASE, CV_INOD)
+                ! END DO
+            end do
+        end do
+    end if
+    !Performing the surface integral, -Integral(FE_funs%cvn RHS_field ᐁFE_funs%ufen dV)
+    DO U_SILOC = 1, Mdims%u_snloc
+        U_ILOC = U_SLOC2LOC( U_SILOC )
+        DO CV_SJLOC = 1, Mdims%cv_snloc
+            CV_JLOC = CV_SLOC2LOC( CV_SJLOC )
+            CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+            NMX_ALL = matmul(SNORMXN_ALL( :, : ), FE_funs%sbufen( U_SILOC, : ) &
+            * FE_funs%sbcvfen( CV_SJLOC, : ) * SDETWE( : ))
+            if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
+                cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
+            else !If no neighbour then we use the same value.
+                cv_Xnod = CV_INOD
+            end if
+            do iphase = 1, Mdims%nphase
+                LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
+                - NMX_ALL(:) * 0.5*(RHS_field(1, iphase, CV_INOD)+RHS_field(1, iphase, cv_Xnod))
+            end do
+        end do
+    end do
 
  end subroutine Introduce_Grad_RHS_field_term
 
@@ -2286,7 +2231,18 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              else
                  Pe = Pe_aux
              end if
-
+            !  if (associated(Cap_entry_pressure).and..not.present_and_true(for_transport)) then 
+            !     Cap_Exp = 1.!Seems more stable
+            !     do ele = 1, Mdims%totele
+            !         do u_iloc = 1, Mdims%u_nloc
+            !             u_inod = ndgln%u(( ELE - 1 ) * Mdims%u_nloc +u_iloc )
+            !             do cv_iloc = 1, Mdims%cv_nloc
+            !                 cv_nodi = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+            !                 Pe(cv_nodi) = Cap_entry_pressure(Phase_with_Pc, ele)
+            !             end do
+            !         end do
+            !     end do
+            !  end if
          end if
 
          !For transport we don't use the pseudo capillary pressure function
