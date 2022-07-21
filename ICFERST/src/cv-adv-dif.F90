@@ -2373,14 +2373,24 @@ contains
 
         ELSE
             DIFF_GI = 0.0
-            DO MAT_KLOC = 1, MAT_NLOC
-                MAT_NODK = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_KLOC )
-                forall (iphase = 1:nphase, idim = 1:ndim, jdim =1:ndim)
-                DIFF_GI( idim, jdim, IPHASE ) = DIFF_GI( idim, jdim, IPHASE ) &
-                + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, idim, jdim, IPHASE )
-                end forall
-            END DO
-            DIFF_GI = MAX( 0.0, DIFF_GI )
+            if (has_anisotropic_diffusivity) then 
+                DO MAT_KLOC = 1, MAT_NLOC
+                    MAT_NODK = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_KLOC )
+                    forall (iphase = 1:nphase, idim = 1:ndim, jdim =1:ndim)
+                        DIFF_GI( idim, jdim, IPHASE ) = DIFF_GI( idim, jdim, IPHASE ) &
+                        + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, idim, jdim, IPHASE )
+                    end forall
+                END DO
+                DIFF_GI = MAX( 0.0, DIFF_GI )
+            else!if not anisotropic avoid tensor multiplications
+                DO MAT_KLOC = 1, MAT_NLOC
+                    MAT_NODK = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_KLOC )
+                    forall (iphase = 1:nphase, idim = 1:ndim)
+                        DIFF_GI( idim, idim, IPHASE ) = DIFF_GI( idim, idim, IPHASE ) &
+                        + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, idim, idim, IPHASE )
+                    end forall
+                END DO
+            end if
             
             if (.not. low_order_diff) then 
                 DTDX_GI_ALL = 0.0 

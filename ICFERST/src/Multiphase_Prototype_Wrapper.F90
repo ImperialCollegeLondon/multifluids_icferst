@@ -1582,6 +1582,9 @@ contains
                      .or. have_option( "/material_phase[0]/phase_properties/Density/python_state/Boussinesq_approximation")
         !Check if we are using anisotropic permeability
         has_anisotropic_permeability = have_option( "/porous_media/tensor_field::Permeability" )
+        !Check anisotropic diffusivity 
+        has_anisotropic_diffusivity = has_anisotropic_diffusion()
+
         ! Check if Porous media model initialisation
         is_porous_initialisation =  have_option("/porous_media/FWL")
 
@@ -1592,5 +1595,28 @@ contains
           end if
         end if
     end subroutine get_simulation_type
+
+
+
+    logical function has_anisotropic_diffusion()
+      implicit none
+      !Local variables
+      integer :: k, i, ndif, nphase
+      character(len = option_path_len) :: option_path
+      has_anisotropic_diffusion = .false.
+
+      nphase = option_count("/material_phase")
+      do i = 1, Nphase
+        option_path = "/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Thermal_Conductivity/prescribed/value"
+        ndif = option_count(trim(option_path))
+          do k =1, ndif 
+            if (have_option(trim(option_path)//"["// int2str( k - 1 )//"]/anisotropic_asymmetric")) & 
+              has_anisotropic_diffusion = .true.
+              if (have_option(trim(option_path)//"["// int2str( k - 1 )//"]/anisotropic_symmetric")) & 
+              has_anisotropic_diffusion = .true.              
+          end do
+      end do
+
+    end function
 
 end subroutine multiphase_prototype_wrapper
