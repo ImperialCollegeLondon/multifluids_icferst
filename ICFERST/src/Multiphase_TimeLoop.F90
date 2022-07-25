@@ -899,6 +899,8 @@ contains
 
             !Call to create the output vtu files, if required and also checkpoint
             call create_dump_vtu_and_checkpoints()
+            !Generate stat file if requested
+            if (write_stats) call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
 
             call petsc_logging(3,stages,ierrr,default=.true.)
             call petsc_logging(2,stages,ierrr,default=.true., push_no=7)
@@ -1155,7 +1157,6 @@ contains
                     end if
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
                     if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
-                    if (write_stats) call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
@@ -1169,7 +1170,6 @@ contains
                         checkpoint_number=checkpoint_number+1
                     end if
                     if (have_option("/porous_media/SelfPotential"))  call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
-                    if (write_stats) call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
                     if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
