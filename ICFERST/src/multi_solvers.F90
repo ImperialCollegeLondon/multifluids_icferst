@@ -51,8 +51,7 @@ module solvers_module
     private
 
     public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
-         Initialise_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess, &
-         non_porous_ensure_sum_to_one, duplicate_petsc_matrix, scale_PETSc_matrix
+         Initialise_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess
 
 
 contains
@@ -700,14 +699,12 @@ contains
           do ipres = 1, Mdims%npres
               i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
               i_end = ipres * Mdims%nphase/Mdims%npres
-              !Set saturation to be between bounds (FOR BLACK-OIL maybe the limits have to be based on the previous saturation to allow
-              !to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
               do cv_nod = 1, Mdims%cv_nonods
                 if ( .not. node_owned( sat_field, cv_nod ) ) cycle
                 !Do not go out of the wells domain!!!
                 if (ipres>1) then
-                  if(pipe_diameter%val(cv_nod)<=1d-8) cycle
-                end if                      !Do not go out of the wells domain!!!
+                    if(pipe_diameter%val(cv_nod)<=1d-8) cycle
+                end if
                 moveable_sat = 1.0 - sum(CV_Immobile_Fraction(i_start:i_end, cv_nod))
                 !Work in normalized saturation here
                 Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
@@ -763,51 +760,6 @@ contains
 
     end subroutine Set_Saturation_to_sum_one
 
-
-    !>@brief: This subroutines eliminates the oscillations in the saturation that are bigger than a
-    !> certain tolerance and also sets the saturation to be between bounds
-    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
-    !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
-    !>@param do_not_update_halos If true do not update halos, to save time in parallel
-     subroutine non_porous_ensure_sum_to_one(Mdims, packed_state, do_not_update_halos)
-         Implicit none
-         !Global variables
-         type( state_type ), intent(inout) :: packed_state
-         type( multi_dimensions ), intent( in ) :: Mdims
-         logical, optional, intent(in) :: do_not_update_halos
-         !Local variables
-         integer :: iphase, cv_nod, i_start, i_end, ipres
-         real :: correction, sum_of_phases
-         real, dimension(:,:), pointer :: satura
-         type(tensor_field), pointer :: tfield
-
-         tfield => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-         satura =>  tfield%val(1,:,:)
-
-         !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
-         do ipres = 1, Mdims%npres
-             i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
-             i_end = ipres * Mdims%nphase/Mdims%npres
-             !Set saturation to be between bounds
-             do cv_nod = 1, size(satura,2 )
-                 sum_of_phases = sum(satura(i_start:i_end, cv_nod))
-                 correction = (1.0 - sum_of_phases)
-                 !Spread the error to all the phases weighted by their presence in that CV
-                 !Increase the range to look for solutions by allowing oscillations below 0.1 percent
-                 if (abs(correction) > 1d-3) satura(i_start:i_end-1, cv_nod) = (satura(i_start:i_end-1, cv_nod) * (1.0 + correction/sum_of_phases))
-     !if (abs(correction) > 1d-3) satura(i_start:i_end, cv_nod) = (satura(i_start:i_end, cv_nod) * (1.0 + correction/sum_of_phases))
-                 !Make sure saturation is between bounds after the modification
-                 do iphase = i_start, i_end
-                     satura(iphase,cv_nod) =  min(max(0., satura(iphase,cv_nod)),1.0)
-                 end do
-             end do
-         end do
-
-         if (present_and_true(do_not_update_halos)) return
-         !Ensure cosistency across CPUs
-         if (IsParallel())call halo_update(tfield)
-
-     end subroutine non_porous_ensure_sum_to_one
 
     !>@brief:Ensure that the saturations at the beginning sum to one, if they do not
     !> all the error is compensated in the scapegoat_phase. Normally the last
@@ -1085,57 +1037,6 @@ contains
       end if
 
     end subroutine get_Anderson_acceleration_new_guess
-
-    !---------------------------------------------------------------------------
-    !> @author Pablo Salinas
-    !> @brief In this subroutine the matrix is re-scaled based on the formula
-    !> D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
-    !> IMPORTANT: the step X = D^-0.5 * X' needs to be done elsewhere store the diagonal before calling this
-    !> This should allow to deal with high ranges of viscosity ratio for example
-    !> A is-written
-    !---------------------------------------------------------------------------
-    subroutine scale_PETSc_matrix(Mat_petsc)
-      implicit none
-      type(petsc_csr_matrix), intent(inout)::  Mat_petsc !>  System matrix in PETSc format
-      !Local variables
-      integer :: ierr, m, n
-      Vec, target :: scale_diag
-
-      !Proceed to allocate memory for the diagonal of A
-      call MatGetLocalSize(Mat_petsc%M,m, n, ierr)
-      if (isparallel()) then
-        call VecCreateMPI(MPI_COMM_FEMTOOLS, m, PETSC_DETERMINE, scale_diag, ierr)
-      else
-        call VecCreateSeq(MPI_COMM_SELF, m, scale_diag, ierr)
-      end if
-      !Need the matrix ssembled
-      call MatAssemblyBegin(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
-      call MatAssemblyEnd(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
-      !Extract diagonal from A
-      call MatGetDiagonal(Mat_petsc%M, scale_diag, ierr)
-      !Compute sqrt (we do this first to reduce the span induced by high viscosity ratios)
-      call VecSqrtAbs(scale_diag, ierr)
-      !Compute the inverse
-      call VecReciprocal(scale_diag, ierr)
-      !Proceed to re-scale the matrix by doing D^-0.5 * Mat_petsc * D^-0.5
-      call MatDiagonalScale(Mat_petsc%M, scale_diag, scale_diag, ierr)
-      !Deallocate unnecessary memory
-      call VecDestroy(scale_diag, ierr)
-
-    end subroutine scale_PETSc_matrix
-
-    subroutine duplicate_petsc_matrix(MAT_A,MAT_B)
-      type(petsc_csr_matrix), intent(in)::MAT_A
-      type(petsc_csr_matrix), intent(inout)::MAT_B
-      !Local variables
-      integer :: ierr
-
-      call allocate(MAT_B, MAT_A%M, MAT_A%row_numbering, MAT_A%column_numbering, "DGM_PETSC_scaled")
-      call MatDuplicate(MAT_A%M,MAT_COPY_VALUES,MAT_B%M, ierr)!Deep copy
-      call assemble(MAT_B)
-
-    end subroutine
-
 
     !>@brief: This subroutine converts the C (gradient) and CT (Divergence) matrices into PETSc format
     !> This can be used when moving from the ICFERST matrix format to PETSc as reference
