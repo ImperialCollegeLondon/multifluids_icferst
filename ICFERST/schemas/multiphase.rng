@@ -1709,15 +1709,17 @@ If positive, the input value is the entry pressure.
 
 If negative, the input value is Peclet number desired.
 
-&lt;b&gt;Recommended value for Saturation =&gt; -3e2&lt;/b&gt;
+&lt;b&gt;ON BY DEFAULT&lt;/b&gt;. Default value for Saturation =&gt; -1e2
 
-Tip: If running with temperature and single phase disable this setting it to 0.</a:documentation>
+&lt;b&gt;To disable it set the value to ZERO&lt;/b&gt;.</a:documentation>
                   <ref name="real"/>
                   <optional>
                     <element name="Vanishing_for_transport">
-                      <a:documentation>This method can also be applied for a transport equation.
+                      <a:documentation>Activate for all Tracers.
 
-&lt;b&gt;Recommended value for Temperature =&gt; -1e2&lt;/b&gt;</a:documentation>
+&lt;b&gt;Default value is set to ZERO.&lt;/b&gt;
+
+Recommended value =&gt; -1e2</a:documentation>
                       <ref name="real"/>
                     </element>
                   </optional>

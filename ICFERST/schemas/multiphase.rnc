@@ -1396,15 +1396,17 @@ solver_options =
                 ##
                 ## If negative, the input value is Peclet number desired.
                 ##
-                ## <b>Recommended value for Saturation => -3e2</b>
+                ## <b>ON BY DEFAULT</b>. Default value for Saturation => -1e2
                 ##
-                ## Tip: If running with temperature and single phase disable this setting it to 0.
+                ## <b>To disable it set the value to ZERO</b>.
                 element Vanishing_relaxation{
                 real,
                   (
-                    ## This method can also be applied for a transport equation.
+                    ## Activate for all Tracers.
                     ##
-                    ## <b>Recommended value for Temperature => -1e2</b>
+                    ## <b>Default value is set to ZERO.</b>
+                    ## 
+                    ## Recommended value => -1e2
                     element Vanishing_for_transport{
                     real
                     }?
