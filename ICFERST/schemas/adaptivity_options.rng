@@ -464,22 +464,7 @@ Source: Fluidity/ICOM manual draft version 1.2</a:documentation>
       <choice>
         <element name="period_in_timesteps">
           <a:documentation>Adapt period in timesteps.</a:documentation>
-          <choice>
-            <element name="constant">
-              <ref name="integer"/>
-            </element>
-            <element name="python">
-              <a:documentation>Python function prescribing integer input. Functions should be of the form:
-NOTE THE RESULT MUST BE AN INTEGER.
-
- def val(t):
-    # Function code
-    return # Return value
-
-</a:documentation>
-              <ref name="python_code"/>
-            </element>
-          </choice>
+           <ref name="integer"/>
         </element>
         <element name="adapt_mesh_within_FPI">
           <a:documentation>This option enables the ability to adapt the mesh based on an accumulated shock-front Courant number.
