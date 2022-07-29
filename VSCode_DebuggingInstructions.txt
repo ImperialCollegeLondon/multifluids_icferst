@@ -1,0 +1,48 @@
+Instructions compiled with extensive help from Giannis Nikiteas
+
+1) During compilation, use the debugging flag as shown below:
+
+./configure --enable-2d-adaptivity --enable-debugging
+
+2) make all files as normal 
+
+3) In VSCode, install the following extensions:
+3a) Modern FORTRAN (official)
+3b) C/C++ (official)
+3c) FORTRAN breakpoint support by ekibun
+Note: do not install FORTRAN IntelliSense even if you are prompted. The extension is deprecated.
+
+4) In the 'Run and Debug' section (ctrl + shift + D), create a launch.json file
+
+5) Use the following launch.json format below:
+
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "ICFERST debug",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/bin/icferst",
+        "cwd": "${workspaceFolder}/ACH0_5/",
+        "args": ["v3", "PUB_ACH0_5.mpml"],
+        "stopAtEntry": false,
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "setupCommands": [
+          {
+            "description": "Enable pretty-printing for gdb",
+            "text": "-enable-pretty-printing",
+            "ignoreFailures": true
+          }
+        ] 
+      }
+    ]
+  }
+  
+
+Note: 
+VSCode automatically defines the 'workspaceFolder' based on where IC-FERST is being debugged
+'cwd' is the current working directory where the Test mpml file is located
+'args' defines the mpml file. The 'v3' flag is a native IC-FERST flag for enabling all outputs
