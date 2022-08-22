@@ -659,10 +659,8 @@ contains
                         calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling)
                 end if Conditional_ForceBalanceEquation
                 
-                ! velocity_field%val(1,2,:)=0.
-                ! velocity_field%val(2,1,:)=0.
-                ! velocity_field%val(1,1,:)=velocity_field%val(1,1,:)*1e7
-                ! velocity_field%val(1,1,:)=-3.0
+                velocity_field%val=0.
+
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
@@ -1035,7 +1033,8 @@ contains
                 exit Loop_Time
             end if
             first_time_step = .false.
-
+            ! For magma, stop when melt fraction reaches below 0.001
+            if (is_magma .and. maxval(saturation_field%val(1,2,:))<1e-3) exit Loop_Time
         end do Loop_Time
 
 

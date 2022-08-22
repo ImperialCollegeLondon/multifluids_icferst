@@ -458,7 +458,8 @@ contains
           REAL, DIMENSION( :,:,: ), allocatable, target:: SUF_T2_BC_value, SUF_T_BC_ROB2_value
           !Variables for Enthalpy
           logical :: asssembling_enthalpy = .false.
-          real, dimension(:), allocatable :: ENTH_RHS_DIFF_COEF_DIVDX
+          real, dimension(:), allocatable :: ENTH_RHS_DIFF_COEF_DIVDX,ENTH_RHS_DIFF_COEF_DIVDX2
+          real, dimension(final_phase):: T2_only_phi, T2_only_phi_old
 
           !Logical to identify if we are assembling for enthalpy, which requires an special RHS
           asssembling_enthalpy = present(Latent_heat)
@@ -754,7 +755,7 @@ contains
           ENDIF
 
           !Here we prepare the diffusion term for the RHS of the enthalpy equation
-          if (asssembling_enthalpy) allocate(ENTH_RHS_DIFF_COEF_DIVDX (final_phase))
+          if (asssembling_enthalpy) allocate(ENTH_RHS_DIFF_COEF_DIVDX (final_phase),ENTH_RHS_DIFF_COEF_DIVDX2 (final_phase))
 
 
           ndotq = 0. ! ;         ndotqold = 0.
@@ -1339,6 +1340,40 @@ contains
                                       DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
                                       LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
                                       on_domain_boundary, between_elements )
+
+
+                                if (asssembling_enthalpy) then
+                                IF(on_domain_boundary) THEN
+                                    ENTH_RHS_DIFF_COEF_DIVDX = 0.0!This imposes grad = 0 at the boundary
+                                ELSE
+                                    ! AUX_T(1)  =T2_ALL(2, CV_NODJ)
+                                    ! AUX_T(2)  =T2_ALL(2, CV_NODJ)
+                                    ! AUX2_T(1) = T2OLD_ALL(2, CV_NODJ)
+                                    ! AUX2_T(2) = T2OLD_ALL(2, CV_NODJ)
+                                    ! T2_only_phi(1)=LOC_T2_I(2)
+                                    ! T2_only_phi(2)=LOC_T2_I(2)
+                                    ! T2_only_phi_old(1)=LOC_T2OLD_I(2)
+                                    ! T2_only_phi_old(2)=LOC_T2OLD_I(2)
+                                    ! LOC_WIC_T_BC_ALL=0
+                                    ! CALL DIFFUS_CAL_COEFF( ENTH_RHS_DIFF_COEF_DIVDX2, ENTH_RHS_DIFF_COEF_DIVDX,  &
+                                    !   Mdims%cv_nloc, Mdims%mat_nloc, final_phase, ndgln%mat, &
+                                    !   CV_funs%scvfen, CV_funs%scvfen, GI, Mdims%ndim, TDIFFUSION, &
+                                    !   HDC, &
+                                    !   AUX_T, T2_only_phi, &
+                                    !   AUX2_T, T2_only_phi_old, &
+                                    !   ELE, ELE2, CVNORMX_ALL( :, GI ), &
+                                    !   DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
+                                    !   LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
+                                    !   on_domain_boundary, between_elements )
+                                    !   ENTH_RHS_DIFF_COEF_DIVDX=ENTH_RHS_DIFF_COEF_DIVDX
+                                    !   ENTH_RHS_DIFF_COEF_DIVDX(1)=ENTH_RHS_DIFF_COEF_DIVDX(2)
+                                      ENTH_RHS_DIFF_COEF_DIVDX=-DIFF_COEF_DIVDX
+                                    !   if (ELE==130) then 
+                                    !   print *, "Dif1:", DIFF_COEFOLD_DIVDX
+                                    !   print *, "Dif2:", ENTH_RHS_DIFF_COEF_DIVDX
+                                    !   end if 
+                                ENDIF
+                                end if
                               ELSE
                                   DIFF_COEF_DIVDX = 0.0
                                   DIFF_COEFOLD_DIVDX = 0.0
@@ -1467,14 +1502,14 @@ contains
                                   CAP_DIFF_COEF_DIVDX = 0.0
                               END IF If_GOT_CAPDIFFUS
 
-                              if (asssembling_enthalpy) then
-                                IF(on_domain_boundary) THEN
-                                  ENTH_RHS_DIFF_COEF_DIVDX = 0.0!This imposes grad = 0 at the boundary
-                                ELSE
-                                  !Average of the coefficient in shared CVs between elements
-                                  ENTH_RHS_DIFF_COEF_DIVDX = 0.5* ( TDIFFUSION(MAT_NODJ, 1, 1, :)  + TDIFFUSION(MAT_NODI, 1, 1, :)) /HDC
-                                ENDIF
-                              end if
+                            !   if (asssembling_enthalpy) then
+                            !     IF(on_domain_boundary) THEN
+                            !       ENTH_RHS_DIFF_COEF_DIVDX = 0.0!This imposes grad = 0 at the boundary
+                            !     ELSE
+                            !       !Average of the coefficient in shared CVs between elements
+                            !       ENTH_RHS_DIFF_COEF_DIVDX = 0.5* ( TDIFFUSION(MAT_NODJ, 1, 1, :)  + TDIFFUSION(MAT_NODI, 1, 1, :)) /HDC
+                            !     ENDIF
+                            !   end if
 
 
 

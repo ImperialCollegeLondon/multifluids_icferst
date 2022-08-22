@@ -1710,7 +1710,7 @@ contains
 
       !If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp
       if (present_and_true(divide_by_rho_CP)) then
-        tfield => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
+        tfield => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )        
         do iphase = 1, Mdims%nphase
           do ele = 1, Mdims%totele
             do iloc = 1, Mdims%mat_nloc
@@ -2013,12 +2013,14 @@ end if
         real :: phi2
         real :: mus1
 
-        mus1=1e19
+        ! mus1=1e19
+        mus1=19.
         cut=0.1
 
         phi2=min(phi,cut)
         
-        mus_varied=mu+(mus1-mu)*exp(-phi2/(cut-phi2))
+        ! mus_varied=mu+(mus1-mu)*exp(-phi2/(cut-phi2))
+        mus_varied=10.**(-(mus1-log10(mu))/cut*phi2+mus1)
         return
       end function mus_varied
 

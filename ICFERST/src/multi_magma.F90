@@ -468,6 +468,15 @@ contains
   !!
   integer :: CV_ILOC, cv_nodi
   real :: ELE, He
+  !!
+  logical :: simplified_phase_diagram !Using a simplified diagram for validation of the thermal cases
+  real:: p, q
+  simplified_phase_diagram=.true.
+  if  (simplified_phase_diagram) then 
+    p=0.0165
+    q=-11
+  end if
+
     !Temporary until deciding if creating a Cp in packed_state as well
     den => extract_tensor_field( packed_state,"PackedDensity" )
     Cp => extract_scalar_field( state(1), 'TemperatureHeatCapacity')
@@ -491,84 +500,87 @@ contains
     
       
     do cv_nodi = 1, Mdims%cv_nonods
-      Loc_Cp = node_val(Cp,cv_nodi) ! Cp%val(cv_nodi)
-      rho=den%val(1,iphase,cv_nodi)
-      IF (enthalpy%val(1,1,cv_nodi)>get_Enthalpy_Liquidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)) then
-        saturation%val(1,2, cv_nodi)=1.
-        saturation%val(1,1, cv_nodi)=0.
-        if(BulkComposition(cv_nodi)>phase_coef%Ae) then
-          Composition%val(1,1,cv_nodi)=1.0 !solid
-        else
-          Composition%val(1,1,cv_nodi)=0.0
-        end if
-        Composition%Val(1,2,cv_nodi)=BulkComposition(cv_nodi)
-      ELSE IF (enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)) then
-        saturation%val(1,2, cv_nodi)=0.
-        saturation%val(1,1, cv_nodi)=1.
-        Composition%val(1,1,cv_nodi)=BulkComposition(cv_nodi)
-        Composition%val(1,2,cv_nodi)=phase_coef%Ae
-      ELSE
-        if (BulkComposition(cv_nodi) <= phase_coef%Ae) then
-          He=get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)+phase_coef%Lf*BulkComposition(cv_nodi)/phase_coef%Ae
-          if (enthalpy%val(1,1,cv_nodi)<=He) then
-            test_poro=BulkComposition(cv_nodi)*(enthalpy%val(1,1,cv_nodi)-get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef))/(He-get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef))/phase_coef%Ae
-            Composition%val(1,2,cv_nodi)=phase_coef%Ae
-            Composition%val(1,1,cv_nodi)=(BulkComposition(cv_nodi)-test_poro*phase_coef%Ae)/max(1-test_poro,1e-8)
-            Composition%val(1,1,cv_nodi)=max(Composition%val(1,1,cv_nodi),0.)
-            Composition%val(1,1,cv_nodi)=min(Composition%val(1,1,cv_nodi),1.)
+      if (.not. simplified_phase_diagram) then 
+        Loc_Cp = node_val(Cp,cv_nodi) ! Cp%val(cv_nodi)
+        rho=den%val(1,iphase,cv_nodi)
+        IF (enthalpy%val(1,1,cv_nodi)>get_Enthalpy_Liquidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)) then
+          saturation%val(1,2, cv_nodi)=1.
+          saturation%val(1,1, cv_nodi)=0.
+          if(BulkComposition(cv_nodi)>phase_coef%Ae) then
+            Composition%val(1,1,cv_nodi)=1.0 !solid
           else
-            k=1
-            test_poro = 1.0
-            test_poro_prev=0
-            do while (k<Max_its .and. abs(test_poro - test_poro_prev) > phi_min)
-              fx = (phase_coef%Lf/Loc_Cp)*test_poro**3 + (phase_coef%C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro**2 + phase_coef%B1*BulkComposition(cv_nodi)*test_poro + phase_coef%A1*BulkComposition(cv_nodi)**2
-              fdashx=3*phase_coef%Lf/Loc_Cp*test_poro**2+2*(phase_coef%C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro+phase_coef%B1*BulkComposition(cv_nodi)
-              test_poro_prev = test_poro
-              test_poro = test_poro - fx/fdashx
-              k=k+1
-            end do
-            test_poro=max(test_poro, 0.)
-            test_poro=min(test_poro, 1.)
-            Composition%val(1,1,cv_nodi)=0.
-            Composition%val(1,2,cv_nodi)=BulkComposition(cv_nodi)/max(test_poro,1e-8)
+            Composition%val(1,1,cv_nodi)=0.0
           end if
-        else if (BulkComposition(cv_nodi) > phase_coef%Ae) then
-          He=get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)+phase_coef%Lf*(1-BulkComposition(cv_nodi))/(1-phase_coef%Ae)
-          if (enthalpy%val(1,1,cv_nodi)<=He) then
-            test_poro=(1-BulkComposition(cv_nodi))*(enthalpy%val(1,1,cv_nodi)-get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef))/(He-get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef))/(1-phase_coef%Ae)
-            Composition%val(1,2,cv_nodi)=phase_coef%Ae
-            Composition%val(1,1,cv_nodi)=(BulkComposition(cv_nodi)-test_poro*phase_coef%Ae)/max(1-test_poro,1e-8)
-            Composition%val(1,1,cv_nodi)=max(Composition%val(1,1,cv_nodi),0.)
-            Composition%val(1,1,cv_nodi)=min(Composition%val(1,1,cv_nodi),1.)
-          else
-            k=1
-            test_poro = 1.0
-            test_poro_prev=0
-            do while (k<Max_its .and. abs(test_poro - test_poro_prev) > phi_min .and. test_poro<=1)
-              fx= (phase_coef%Lf/Loc_Cp)**test_poro**3+(phase_coef%C2-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp+phase_coef%A2+phase_coef%B2)*test_poro**2+(2*phase_coef%A2*BulkComposition(cv_nodi)-2*phase_coef%A2+&
-              phase_coef%B2*BulkComposition(cv_nodi)-phase_coef%B2)*test_poro+phase_coef%A2*(BulkComposition(cv_nodi)-1)**2
+          Composition%Val(1,2,cv_nodi)=BulkComposition(cv_nodi)
+        ELSE IF (enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)) then
+          saturation%val(1,2, cv_nodi)=0.
+          saturation%val(1,1, cv_nodi)=1.
+          Composition%val(1,1,cv_nodi)=BulkComposition(cv_nodi)
+          Composition%val(1,2,cv_nodi)=phase_coef%Ae
+        ELSE
+          if (BulkComposition(cv_nodi) <= phase_coef%Ae) then
+            He=get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)+phase_coef%Lf*BulkComposition(cv_nodi)/phase_coef%Ae
+            if (enthalpy%val(1,1,cv_nodi)<=He) then
+              test_poro=BulkComposition(cv_nodi)*(enthalpy%val(1,1,cv_nodi)-get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef))/(He-get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef))/phase_coef%Ae
+              Composition%val(1,2,cv_nodi)=phase_coef%Ae
+              Composition%val(1,1,cv_nodi)=(BulkComposition(cv_nodi)-test_poro*phase_coef%Ae)/max(1-test_poro,1e-8)
+              Composition%val(1,1,cv_nodi)=max(Composition%val(1,1,cv_nodi),0.)
+              Composition%val(1,1,cv_nodi)=min(Composition%val(1,1,cv_nodi),1.)
+            else
+              k=1
+              test_poro = 1.0
+              test_poro_prev=0
+              do while (k<Max_its .and. abs(test_poro - test_poro_prev) > phi_min)
+                fx = (phase_coef%Lf/Loc_Cp)*test_poro**3 + (phase_coef%C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro**2 + phase_coef%B1*BulkComposition(cv_nodi)*test_poro + phase_coef%A1*BulkComposition(cv_nodi)**2
+                fdashx=3*phase_coef%Lf/Loc_Cp*test_poro**2+2*(phase_coef%C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro+phase_coef%B1*BulkComposition(cv_nodi)
+                test_poro_prev = test_poro
+                test_poro = test_poro - fx/fdashx
+                k=k+1
+              end do
+              test_poro=max(test_poro, 0.)
+              test_poro=min(test_poro, 1.)
+              Composition%val(1,1,cv_nodi)=0.
+              Composition%val(1,2,cv_nodi)=BulkComposition(cv_nodi)/max(test_poro,1e-8)
+            end if
+          else if (BulkComposition(cv_nodi) > phase_coef%Ae) then
+            He=get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)+phase_coef%Lf*(1-BulkComposition(cv_nodi))/(1-phase_coef%Ae)
+            if (enthalpy%val(1,1,cv_nodi)<=He) then
+              test_poro=(1-BulkComposition(cv_nodi))*(enthalpy%val(1,1,cv_nodi)-get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef))/(He-get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef))/(1-phase_coef%Ae)
+              Composition%val(1,2,cv_nodi)=phase_coef%Ae
+              Composition%val(1,1,cv_nodi)=(BulkComposition(cv_nodi)-test_poro*phase_coef%Ae)/max(1-test_poro,1e-8)
+              Composition%val(1,1,cv_nodi)=max(Composition%val(1,1,cv_nodi),0.)
+              Composition%val(1,1,cv_nodi)=min(Composition%val(1,1,cv_nodi),1.)
+            else
+              k=1
+              test_poro = 1.0
+              test_poro_prev=0
+              do while (k<Max_its .and. abs(test_poro - test_poro_prev) > phi_min .and. test_poro<=1)
+                fx= (phase_coef%Lf/Loc_Cp)**test_poro**3+(phase_coef%C2-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp+phase_coef%A2+phase_coef%B2)*test_poro**2+(2*phase_coef%A2*BulkComposition(cv_nodi)-2*phase_coef%A2+&
+                phase_coef%B2*BulkComposition(cv_nodi)-phase_coef%B2)*test_poro+phase_coef%A2*(BulkComposition(cv_nodi)-1)**2
 
-              fdashx = 3.*(phase_coef%Lf/Loc_Cp)*test_poro**2 + 2.*(phase_coef%C2-enthalpy%val(1,iphase, cv_nodi)/Loc_Cp + phase_coef%A2 + phase_coef%B2)*test_poro +&
-              (2.*phase_coef%A2*BulkComposition(cv_nodi) - 2.*phase_coef%A2 + phase_coef%B2*BulkComposition(cv_nodi) - phase_coef%B2)
+                fdashx = 3.*(phase_coef%Lf/Loc_Cp)*test_poro**2 + 2.*(phase_coef%C2-enthalpy%val(1,iphase, cv_nodi)/Loc_Cp + phase_coef%A2 + phase_coef%B2)*test_poro +&
+                (2.*phase_coef%A2*BulkComposition(cv_nodi) - 2.*phase_coef%A2 + phase_coef%B2*BulkComposition(cv_nodi) - phase_coef%B2)
 
-              test_poro_prev = test_poro!Store to check convergence the previous value
-              test_poro = test_poro - fx/fdashx
-              k=k+1
-            end do
-            test_poro=max(test_poro, 0.)
-            test_poro=min(test_poro, 1.)
-            Composition%val(1,1,cv_nodi)=0.
-            Composition%val(1,2,cv_nodi)=BulkComposition(cv_nodi)/max(test_poro,1e-8)
+                test_poro_prev = test_poro!Store to check convergence the previous value
+                test_poro = test_poro - fx/fdashx
+                k=k+1
+              end do
+              test_poro=max(test_poro, 0.)
+              test_poro=min(test_poro, 1.)
+              Composition%val(1,1,cv_nodi)=0.
+              Composition%val(1,2,cv_nodi)=BulkComposition(cv_nodi)/max(test_poro,1e-8)
+            end if
           end if
-        end if
-        saturation%val(1,2, cv_nodi)=test_poro
-        saturation%val(1,1, cv_nodi)=1.-test_poro
-      END IF
-      ! if (abs(p_position%val(1,cv_nodi)+194.631)<1e-2 .and. abs(p_position%val(2,cv_nodi)-194.631)<1e-2) then 
-      !    print *, 'BC:', BulkComposition(cv_nodi)
-      !    print *, 'hmmm:', Composition%val(1,1,cv_nodi),Composition%val(1,2,cv_nodi)
-      !    print *, 'hmmm:', saturation%val(1,1, cv_nodi), saturation%val(1,2, cv_nodi)
-      ! end if 
+          saturation%val(1,2, cv_nodi)=test_poro
+          saturation%val(1,1, cv_nodi)=1.-test_poro
+        END IF
+      else !Simplified phase diagram for thermal validations
+        if (cv_nodi==5) print *,enthalpy%val(1,1,cv_nodi),BulkComposition(cv_nodi)
+        if (cv_nodi==5) print *,BulkComposition(cv_nodi)*(p*enthalpy%val(1,1,cv_nodi)+q*node_val(Cp,cv_nodi)), (node_val(Cp,cv_nodi)+BulkComposition(cv_nodi)*p*phase_coef%Lf)
+        saturation%val(1,2, cv_nodi)=BulkComposition(cv_nodi)*(p*enthalpy%val(1,1,cv_nodi)+q*node_val(Cp,cv_nodi))/(node_val(Cp,cv_nodi)+BulkComposition(cv_nodi)*p*phase_coef%Lf)
+        saturation%val(1,1, cv_nodi)=1.-saturation%val(1,2, cv_nodi)
+        Composition%val(1,2,cv_nodi)=BulkComposition(cv_nodi)/saturation%val(1,2, cv_nodi)
+      end if
     end do
   end subroutine
 
