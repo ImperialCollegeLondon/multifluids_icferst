@@ -659,8 +659,8 @@ contains
                         calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling)
                 end if Conditional_ForceBalanceEquation
                 
-                velocity_field%val=0.
 
+                
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=3)

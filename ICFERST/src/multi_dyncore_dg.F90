@@ -2416,7 +2416,7 @@ end if
 
               if (rescale_mom_matrices) call scale_PETSc_matrix(Mmat%DGM_PETSC)
               !For a velocity field the diagonal of A needs to be extracted using a vector field
-            !   call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)              
+              call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)              
             end if
 ! call MatView(Mmat%DGM_PETSC%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
             if ( .not. (solve_stokes .or. solve_mom_iteratively) )  call deallocate(Mmat%DGM_PETSC)
@@ -2473,7 +2473,7 @@ end if
           call extract_diagonal(cmc_petsc, diagonal_CMC)
           call scale_PETSc_matrix(cmc_petsc)
         end if
-        ! call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
@@ -2482,8 +2482,8 @@ end if
           if ((solve_stokes .or. solve_mom_iteratively)) then
             if (solve_mom_iteratively) then
                 !Solve Schur complement using our own method
-                ! call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
-                !                               MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its, CMC_scale=cmcscaling)
+                call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
+                                              MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its, CMC_scale=cmcscaling)
             else !Solve Schur complement using PETSc
                 if (is_magma)  then
                     call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, CMC_petsc2, P_all, &

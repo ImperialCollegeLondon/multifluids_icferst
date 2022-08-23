@@ -471,7 +471,7 @@ contains
   !!
   logical :: simplified_phase_diagram !Using a simplified diagram for validation of the thermal cases
   real:: p, q
-  simplified_phase_diagram=.true.
+  simplified_phase_diagram=.false.
   if  (simplified_phase_diagram) then 
     p=0.0165
     q=-11
