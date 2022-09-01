@@ -2291,7 +2291,7 @@ end if
           end if
           if (solve_stokes .or. solve_mom_iteratively) call generate_Pivit_matrix_Stokes(Mdims, Mmat, MASS_ELE, diagonal_A)
           !Now invert the Mass matrix
-          CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
+          CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims, eles_with_pipe )
         end if
 
 

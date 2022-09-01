@@ -792,10 +792,11 @@ contains
 
 
     !>@brief: Inversion of the mass matrix. If compacted this is much more efficient
-    SUBROUTINE Mass_matrix_inversion( PIVIT_MAT, Mdims )
+    SUBROUTINE Mass_matrix_inversion( PIVIT_MAT, Mdims, eles_with_pipe)
         implicit none
         REAL, DIMENSION( : , : , : ), intent( inout ), CONTIGUOUS :: PIVIT_MAT
         type(multi_dimensions), intent(in) :: Mdims
+        type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
         ! Local variables
         logical, save :: lumped_matrix = .false., check_lumped_matrix = .true.
         real :: aux
@@ -804,11 +805,41 @@ contains
         REAL, DIMENSION( : ), allocatable :: B
 
 
+        !If it is compacted and diagonal the inverse is straightforward
         if(size(PIVIT_MAT,1) == 1) then
             !If it is compacted and diagonal the inverse is straightforward
             PIVIT_MAT = 1./PIVIT_MAT
             return
         end if
+
+        !For wells, without changing the sparsity, we still need to have the big block-matrices. However the majority is diagonal > 99%
+        if (Mdims%npres >1) then
+            !We first invert the diagonal of all the elements (>99%)
+            DO ELE = 1, Mdims%TOTELE
+                do k = 1, size(PIVIT_MAT,1)
+                    PIVIT_MAT(k,k,ELE) = 1./PIVIT_MAT(k,k,ELE)
+                end do
+            end do
+             !Then proceed to re-do the ones with elements (<1%)
+            allocate(MAT( Mdims%u_nloc * Mdims%nphase * Mdims%ndim , Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
+            allocate(B( Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
+            DO i = 1, size(eles_with_pipe)
+                ELE = eles_with_pipe(i)%ele!Element with pipe
+                !undo inversion of the diagonal
+                !We have to do this because the list is not necessarily ordered 
+                !and checking might be more expensive than doing/undoing the inversion of the diagonal
+                do k = 1, size(PIVIT_MAT,1)
+                    PIVIT_MAT(k,k,ELE) = 1./PIVIT_MAT(k,k,ELE)
+                end do
+                !Perform block-matrix inversion (Veeery slow)
+                CALL MATINVold( PIVIT_MAT( :, :, ele ), Mdims%u_nloc * Mdims%nphase * Mdims%ndim, MAT, B )
+            end do 
+            deallocate(b)
+            deallocate(MAT)
+            return
+        end if
+
+
 
         !First time only, check if the Mass matrix is lumped. If it is, the inverse can be done much quicker
         if (check_lumped_matrix) then
