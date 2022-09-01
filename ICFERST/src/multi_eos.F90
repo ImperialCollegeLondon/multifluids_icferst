@@ -1521,6 +1521,7 @@ contains
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
       logical, parameter :: harmonic_average=.false.
+      logical :: wiener_conductivity
       real :: expo
 
       ScalarAdvectionField_Diffusion = 0.0
@@ -1594,6 +1595,7 @@ contains
             !weighted average of conductivities Wiener method).
             !Default option is to use a more accurate Hashin and Shtrikman definition:
             !lambda_p+3*lambda_p*(lambda_f-lambda_p)*porosity/(3*lambda_p+(lambda_f-lambda_p)(1-porosity))
+            wiener_conductivity =  have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/Wiener_conductivity')
             saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
             do iphase = 1, Mdims%nphase
               diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
@@ -1605,7 +1607,7 @@ contains
                 do iloc = 1, Mdims%mat_nloc
                   mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                   cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                  if (have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/Wiener_conductivity')) then
+                  if (wiener_conductivity) then
                     do idim = 1, Mdims%ndim
                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
