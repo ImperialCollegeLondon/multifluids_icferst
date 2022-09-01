@@ -1,0 +1,5 @@
+<map id="matrix_operations::mass_matrix_inversion" name="matrix_operations::mass_matrix_inversion">
+<area shape="rect" id="node1" title=": Inversion of the mass matrix. If compacted this is much more efficient" alt="" coords="5,5,180,47"/>
+<area shape="rect" id="node2" href="$namespacematrix__operations.html#afe8e6c53cbc0059363705d48a73708d1" title=": This sub finds the inverse of the matrix A and puts it back in A. MAT, MAT2, X and B are working ve..." alt="" coords="228,5,377,47"/>
+<area shape="rect" id="node3" href="$namespacematrix__operations.html#ad55f3b1531dccfb31fac2aa6022448b5" title="Calculate the inverse using the LU decomposition L can be provided, speeding up the method to O(n)" alt="" coords="425,5,575,47"/>
+</map>
