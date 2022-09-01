@@ -4944,7 +4944,7 @@ end if
         ! in the non-linear diffusion scheme. DIFF_MAX_FRAC is the maximum fraction.
         REAL, PARAMETER :: DIFF_MIN_FRAC = 0.05, DIFF_MAX_FRAC = 20.0
         REAL :: COEF
-        INTEGER :: CV_KLOC, CV_KLOC2, MAT_KLOC, MAT_KLOC2, MAT_NODK, MAT_NODK2, IPHASE, CV_SKLOC
+        INTEGER :: CV_KLOC, CV_KLOC2, MAT_KLOC, MAT_KLOC2, MAT_NODK, MAT_NODK2, IPHASE, CV_SKLOC, idim, jdim
         LOGICAL :: ZER_DIFF
         REAL, DIMENSION ( NDIM, NPHASE ) :: DTDX_GI_ALL, DTOLDDX_GI_ALL, DTDX_GI2_ALL, DTOLDDX_GI2_ALL
         REAL, DIMENSION ( NPHASE ) :: N_DOT_DKDT_ALL, N_DOT_DKDTOLD_ALL, N_DOT_DKDT2_ALL, N_DOT_DKDTOLD2_ALL
@@ -4968,13 +4968,24 @@ end if
             END DO
 
             DIFF_GI = 0.0
-            DO MAT_KLOC = 1, MAT_NLOC
-                MAT_NODK = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_KLOC )
-                DO IPHASE = 1, NPHASE
-                    DIFF_GI( :, :, IPHASE ) = DIFF_GI( :, :, IPHASE ) &
-                        + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, :, :, IPHASE )
+            if (has_anisotropic_diffusivity) then 
+                DO MAT_KLOC = 1, MAT_NLOC
+                    MAT_NODK = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_KLOC )
+                    forall (iphase = 1:nphase, idim = 1:ndim, jdim =1:ndim)
+                        DIFF_GI( idim, jdim, IPHASE ) = DIFF_GI( idim, jdim, IPHASE ) &
+                        + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, idim, jdim, IPHASE )
+                    end forall
                 END DO
-            END DO
+                DIFF_GI = MAX( 0.0, DIFF_GI )
+            else!if not anisotropic avoid tensor multiplications
+                DO MAT_KLOC = 1, MAT_NLOC
+                    MAT_NODK = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_KLOC )
+                    forall (iphase = 1:nphase, idim = 1:ndim)
+                        DIFF_GI( idim, idim, IPHASE ) = DIFF_GI( idim, idim, IPHASE ) &
+                        + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, idim, idim, IPHASE )
+                    end forall
+                END DO
+            end if
             DIFF_GI = MAX( 0.0, DIFF_GI )
 
             DO IPHASE = 1, NPHASE

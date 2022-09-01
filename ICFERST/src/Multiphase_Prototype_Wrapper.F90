@@ -227,6 +227,39 @@
 !> </CODE>
 !> @endhtmlonly
 !> 
+!> \subsection state_var Type of fields and accessing them through state and packed_state
+!> ICFERST uses two types of structures which are effectively linked lists pointing to either scalar_fields, vector_fields or tensor_fields.
+!> The first field is state, which is an array containing as many entries as phases. Within each entry one has all the fields defined in diamond.
+!> These fields are the ones that Fluidity "see" and therefore will perform its operations on it, such as computation of statitstics of the field 
+!> in the .stat file, output it into the .vtu file, perform mesh to mesh interpolation, etc. To access these fields one has to do as follows 
+!> to extract a scalar field:
+!>
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> sfield=>extract_scalar_field(state(iphase),"Density")
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> it can be seen that we use the command extract_scalar_field (substitute scalar by vector or tensor depending on the field), then we use its name
+!> and we use a type(scalar_field), pointer to point to the memory provided by the function extract_scalar_field.
+!> #For more information about scalar_fields, etc. please see the Fluidity manual. As summary, these fields contain its value as sfield%val with as many
+!> entries as the ones on the mesh in which the field was initialised. Common fields are: Pressure, Velocity, PhaseVolumeFraction, Temperature and Concentration.
+!>
+!> The second field is packed_state. Packed_state contains the same fields as state (at least the prognostic ones) and the memory is actually shared. packed_state
+!> however contains the fields as (normally) tensor_fields so all the phases can be accessed naturally. For example for PhaseVolumeFraction we would do as follows:
+!>
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> tfield=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> note that now we are using a tensor_field, we used Packed before the name of the field and packed_state is not an array. The obtained field would have the following
+!> entries: tfield%val(ncomp,nphase,CV_nonods), normally ncomp == 1. For velocity it would be: tfield%val(ndim,nphase,CV_nonods).
 !> \section how_to_use How to use ICFERST
 !> ICFERST is a dimension agnostic code and therefore it is FUNDAMENTAL that the units used, unless otherwise specified, are the S.I. units to ensure 
 !> consistency on the results obtained. 
@@ -1650,6 +1683,9 @@ contains
                      .or. have_option( "/material_phase[0]/phase_properties/Density/python_state/Boussinesq_approximation")
         !Check if we are using anisotropic permeability
         has_anisotropic_permeability = have_option( "/porous_media/tensor_field::Permeability" )
+        !Check anisotropic diffusivity 
+        has_anisotropic_diffusivity = has_anisotropic_diffusion()
+
         ! Check if Porous media model initialisation
         is_porous_initialisation =  have_option("/porous_media/FWL")
 
@@ -1674,6 +1710,28 @@ contains
           end if
         end if
 
-    end subroutine get_simulation_type
+      end subroutine
+
+
+      logical function has_anisotropic_diffusion()
+      implicit none
+      !Local variables
+      integer :: k, i, ndif, nphase
+      character(len = option_path_len) :: option_path
+      has_anisotropic_diffusion = .false.
+
+      nphase = option_count("/material_phase")
+      do i = 1, Nphase
+        option_path = "/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Thermal_Conductivity/prescribed/value"
+        ndif = option_count(trim(option_path))
+          do k =1, ndif 
+            if (have_option(trim(option_path)//"["// int2str( k - 1 )//"]/anisotropic_asymmetric")) & 
+              has_anisotropic_diffusion = .true.
+              if (have_option(trim(option_path)//"["// int2str( k - 1 )//"]/anisotropic_symmetric")) & 
+              has_anisotropic_diffusion = .true.              
+          end do
+      end do
+
+    end function
 
 end subroutine multiphase_prototype_wrapper
