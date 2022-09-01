@@ -104,12 +104,7 @@ module multiphase_time_loop
 #include "petsc_legacy.h"
 
     private
-    !public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
     public :: MultiFluids_SolveTimeLoop, dump_outflux
-    !type(rheology_type), dimension(:), allocatable :: rheology
-
-
-
 contains
 
     !> This is the main subroutine from which everything is called. It performs the time-loop and
@@ -214,8 +209,7 @@ contains
         !Variables that are used to define the pipe pos
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
         type (multi_pipe_package) :: pipes_aux
-        !type(scalar_field), pointer :: bathymetry
-        logical :: write_all_stats=.true.
+        logical :: write_stats
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
         ! Ioutlet counts the number of boundaries over which to calculate the outflux
         integer :: ioutlet
@@ -269,12 +263,12 @@ contains
     end if
 #endif
 
-        !If we are using the fast settings then we save time not always computing the stats
-        ! call get_option("/geometry/simulation_quality", option_name, stat=stat)
-        ! write_all_stats = .not. trim(option_name) == "fast"
-
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
+
+        !Check whether we are writing the stat file or not
+        write_stats = have_option("/io/Generate_stat_file")
+
 
         if (numberfields_CVGalerkin_interp > 0 .and. isParallel()) then
           ewrite(1,*) "WARNING: CVGalerkin projection not well tested for parallel."
@@ -872,7 +866,7 @@ contains
 
                 if (ExitNonLinearLoop) then
                     if (adapt_mesh_in_FPI) then
-                      !Calculate the acumulated COurant Number
+                      !Calculate the acumulated Courant Number
                         Accum_Courant = Accum_Courant + Courant_number(2)
                         if (Accum_Courant >= Courant_tol .or. first_time_step) then
                             call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 2)
@@ -961,18 +955,12 @@ contains
             call set_option( '/timestepping/timestep', acctim-old_acctim)
             !Now we ensure that the time-step is the correct one
             call set_option( '/timestepping/timestep', dt)            
-            !Time to compute the self-potential if required
-            if (write_all_stats .and. have_option("/porous_media/SelfPotential")) &
-                    call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
             !Now compute diagnostics
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             !calculate_diagnostic_variables_new <= computes other diagnostics such as python-based fields
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
 
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
-
-            !Now we ensure that the time-step is the correct one
-            if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
             if (is_porous_media .and. getprocno() == 1) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
@@ -984,6 +972,8 @@ contains
 
             !Call to create the output vtu files, if required and also checkpoint
             call create_dump_vtu_and_checkpoints()
+            !Generate stat file if requested
+            if (write_stats) call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
 
             call petsc_logging(3,stages,ierrr,default=.true.)
             call petsc_logging(2,stages,ierrr,default=.true., push_no=7)
@@ -1336,11 +1326,7 @@ contains
                         checkpoint_number=checkpoint_number+1
                     end if
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
-                    if (.not. write_all_stats) then
-                        if (have_option("/porous_media/SelfPotential")) &
-                            call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
-                        call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
-                    end if
+                    if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     not_to_move_det_yet = .false. ;
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
@@ -1353,11 +1339,7 @@ contains
                             protect_simulation_name=.true.,file_type='.mpml')
                         checkpoint_number=checkpoint_number+1
                     end if
-                    if (.not. write_all_stats) then
-                        if (have_option("/porous_media/SelfPotential")) &
-                            call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
-                        call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
-                    end if
+                    if (have_option("/porous_media/SelfPotential"))  call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
                     if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)

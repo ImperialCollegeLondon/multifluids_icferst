@@ -141,6 +141,15 @@ the final convergence achieved by the FPI solver</a:documentation>
           </element>
         </optional>
         <optional>
+          <element name="Generate_stat_file">
+            <a:documentation>Generate stat file. This file contains walltime, statistics of the fields such as min/max and integral. 
+By default it is off since its computation is not free. For single phase ~ 30% of the total simulation time.
+
+This is normally required for test cases</a:documentation>
+            <ref name="comment"/>
+          </element>
+        </optional>
+        <optional>
           <element name="dump_boundaryflux">
             <a:documentation>&lt;b&gt;Generates a .csv file including the volume_flux, rates, etc. across the specified boundaries&lt;/b&gt;</a:documentation>
             <empty/>
