@@ -208,6 +208,7 @@ var NAVTREEINDEX1 =
 "index.html#selfP":[0,4,3,18],
 "index.html#solv_options":[0,4,3,3],
 "index.html#sourceterm":[0,4,3,14],
+"index.html#state_var":[0,3,1],
 "index.html#test_case":[0,4,4,0],
 "index.html#timestepping":[0,4,3,7],
 "index.html#well_prop":[0,4,1,0],
@@ -248,6 +249,5 @@ var NAVTREEINDEX1 =
 "interfaceshape__functions__prototype_1_1detnlxr__plus__u.html#ae14785163ec7f932088569e5d4e348cc":[2,0,6,0,1],
 "interfacexgb__interface_1_1fortran___x_g_booster_create.html":[2,0,7,0],
 "interfacexgb__interface_1_1fortran___x_g_booster_create.html#abe925d02abac6be331f88b0b8582d1e7":[2,0,7,0,0],
-"interfacexgb__interface_1_1fortran___x_g_booster_free.html":[2,0,7,1],
-"interfacexgb__interface_1_1fortran___x_g_booster_free.html#abdc751f1b2385cc4f9c728ee86dc00c9":[2,0,7,1,0]
+"interfacexgb__interface_1_1fortran___x_g_booster_free.html":[2,0,7,1]
 };

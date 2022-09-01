@@ -1,5 +1,6 @@
 var NAVTREEINDEX4 =
 {
+"namespacemembers_m.html":[1,1,0,11],
 "namespacemembers_n.html":[1,1,0,12],
 "namespacemembers_o.html":[1,1,0,13],
 "namespacemembers_p.html":[1,1,0,14],
@@ -12,8 +13,8 @@ var NAVTREEINDEX4 =
 "namespacemembers_vars.html":[1,1,2],
 "namespacemembers_w.html":[1,1,0,21],
 "namespacemembers_x.html":[1,1,0,22],
-"namespacemulti__data__types.html":[1,0,5],
 "namespacemulti__data__types.html":[2,0,1],
+"namespacemulti__data__types.html":[1,0,5],
 "namespacemulti__interpolation.html":[1,0,6],
 "namespacemulti__machine__learning.html":[1,0,7],
 "namespacemulti__magma.html":[2,0,2],
@@ -248,6 +249,5 @@ var NAVTREEINDEX4 =
 "structmulti__data__types_1_1multi__sparsities.html#a1dcf99fd14047aeeafb29aa3d3d9c285":[2,0,1,13,4],
 "structmulti__data__types_1_1multi__sparsities.html#a1f47003f816c9f365dbc070a75f3b8ff":[2,0,1,13,1],
 "structmulti__data__types_1_1multi__sparsities.html#a2779394be5e4d00e6b6824c2527ee6a2":[2,0,1,13,3],
-"structmulti__data__types_1_1multi__sparsities.html#a71e9ac6555d4e382cc714f1097204af9":[2,0,1,13,7],
-"structmulti__data__types_1_1multi__sparsities.html#a7285ef94c65f7a1a9c953e245794e95d":[2,0,1,13,6]
+"structmulti__data__types_1_1multi__sparsities.html#a71e9ac6555d4e382cc714f1097204af9":[2,0,1,13,7]
 };
