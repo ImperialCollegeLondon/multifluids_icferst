@@ -163,33 +163,26 @@ module form_metric_field
     
   end subroutine p_norm_scale_metric
 
-  subroutine relative_metric(hessian, field, adweit)
+  subroutine relative_metric(metric, field, adweit, p)
     !!< Construct the metric using the relative error formulation.
-    type(tensor_field), intent(inout) :: hessian
+    type(tensor_field), intent(inout) :: metric
     type(scalar_field), intent(in) :: field, adweit
-    integer :: i, idx, dim
-    real :: maxfield, minpsi
-    real, dimension(mesh_dim(field%mesh)) :: minpsi_vector
+    real :: minfield, maxfield
+    !! Norm degree. Defaults to inf-norm.
+    integer, optional, intent(in) :: p
 
-    idx = index(field%name, "%")
-    if (idx == 0) then
-      call get_adapt_opt(trim(field%option_path), "/adaptivity_options/relative_measure/tolerance", minpsi)
-    else
-      read(field%name(idx+1:len(field%name)), *) dim
-      call get_adapt_opt(trim(field%option_path), "/adaptivity_options/relative_measure/tolerance", minpsi_vector)
-      minpsi = minpsi_vector(dim)
-    end if
+    integer :: i
+    real, parameter :: tolerance = 1e-8
 
-    if (have_adapt_opt(trim(field%option_path), "/adaptivity_options/relative_measure/use_global_max")) then
-      call field_stats(field, max=maxfield)
-      do i=1,hessian%mesh%nodes
-        hessian%val(:, :, i) = hessian%val(:, :, i) / (node_val(adweit, i) * max(maxfield, minpsi))
-      end do
-    else
-      do i=1,hessian%mesh%nodes
-        hessian%val(:, :, i) = hessian%val(:, :, i) / (node_val(adweit, i) * max(abs(node_val(field, i)), minpsi))
-      end do
-    end if
+    if(present(p)) call p_norm_scale_metric(metric, p)
+
+    call field_stats(field, min=minfield)
+    call field_stats(field, max=maxfield)
+
+    do i = 1, node_count(metric)
+      call set(metric, i, node_val(metric, i) / ( node_val(adweit, i)*(maxfield-minfield) + tolerance ))
+    end do
+
   end subroutine relative_metric
 
   subroutine bound_metric_anisotropic(hessian, state, stat)

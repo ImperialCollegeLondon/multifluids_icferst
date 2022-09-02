@@ -67,18 +67,15 @@ the error to be 5% (i.e. 0.05)</a:documentation>
                 <ref name="prescribed_scalar_field_no_adapt"/>
               </element>
             </element>
-            <element name="tolerance">
-              <a:documentation>The relative Hessian is calculated according to:
-
-  Q = H / max{ |psi|, psi_min}
-
-where H is the Hessian, psi is the field value and
-psi_min is the tolerance. The tolerance prevents
-division by zero errors.
-
-Source: Fluidity/ICOM manual draft version 1.2</a:documentation>
-              <ref name="real"/>
-            </element>
+            <optional>
+              <element name="p_norm">
+                <a:documentation>By default the interpolation error controlled is the L_inf
+norm. Use this option to specify an alternative L_p norm. See
+Chen Sun and Zu, Mathematics of Computation, Volume 76,
+Number 257, January 2007, pp. 179-204.</a:documentation>
+                <ref name="integer"/>
+              </element>
+            </optional>
           </element>
           <element name="anisotropic_zienkiewicz_zhu">
             <a:documentation>Adapt using the anisotropic strategy of 
