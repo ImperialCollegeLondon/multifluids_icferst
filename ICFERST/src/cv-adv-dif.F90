@@ -355,7 +355,7 @@ contains
           logical, PARAMETER :: integrate_other_side= .true.
           ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
           logical, PARAMETER :: correct_method_petrov_method= .true.
-          LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE, got_diffus_low_order
+          LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE
           logical :: skip, GOT_T2, use_volume_frac_T2, FEM_continuity_equation, logical_igot_theta_flux, zero_vel_BC
           ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
           ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
@@ -682,14 +682,7 @@ contains
               GOT_DIFFUS = ( R2NORM( TDIFFUSION, size(TDIFFUSION,1) * size(TDIFFUSION,2) * size(TDIFFUSION,3) * size(TDIFFUSION,4)  ) /= 0 )!<=I hate this thing...
               call allor(GOT_DIFFUS)                                                  !it should be if present then true, but it breaks the parallel CWC P1DGP2
           end if
-          !If selected low order diffusion we use a diffusion that does not take 10%! of the total time only to generate the term
-          !Currently the results seems a bit off using this diffusion...
-          got_diffus_low_order = .false.
-          if (GOT_DIFFUS) then
-            has_anisotropic_diffusivity =  has_anisotropic_diffusion(tracer)
-            got_diffus_low_order = have_option("/numerical_methods/Low_order_diffusion")
-            GOT_DIFFUS = .not. got_diffus_low_order
-          end if
+          if (GOT_DIFFUS) has_anisotropic_diffusivity =  has_anisotropic_diffusion(tracer)
           call get_option( "/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
           ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS:', &
               CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS
@@ -1600,21 +1593,6 @@ contains
                               ELSE
                                   CAP_DIFF_COEF_DIVDX = 0.0
                               END IF If_GOT_CAPDIFFUS
-                              !Use a low order method to compute diffusion, does not require stabilisation
-                              if (got_diffus_low_order) then 
-                                  do iphase = 1, final_phase
-                                    DIFF_COEF_DIVDX(IPHASE) = 0.5*(TDIFFUSION(MAT_NODI, 1, 1, iphase) &
-                                        + TDIFFUSION(MAT_NODJ, 1, 1, iphase))/HDC
-                                  end do  
-                                  IF ( on_domain_boundary ) THEN
-                                    do iphase = 1, final_phase
-                                      if (WIC_T_BC_ALL(1, IPHASE, SELE) /= WIC_T_BC_DIRICHLET) then 
-                                        DIFF_COEF_DIVDX(iphase) = 0.0
-                                      end if
-                                    end do
-                                  end if  
-                              end if
-
                               ! Pack ndotq information:
                               if (asssembling_enthalpy) then
                                 IF(SELE == 0) THEN
@@ -1870,26 +1848,16 @@ contains
                                                   END IF
                                               END IF
                                           END DO
-                                        else if (got_diffus_low_order) then 
-                                          DO IPHASE=1,final_phase
-                                            IF(WIC_T_BC_ALL(1,iphase,sele) == WIC_T_BC_DIRICHLET) THEN
-                                                LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
-                                                    + LIMT2(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
-                                                    * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1))
-                                            END IF
-                                          END DO
                                         end if
                                       ELSE                                      
                                         !Assemble off-diagonal cv_nodi-cv_nodj
                                         LOC_MAT_IJ = LOC_MAT_IJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD! Advection
                                         if (GOT_DIFFUS) LOC_MAT_IJ = LOC_MAT_IJ - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                        if (got_diffus_low_order) LOC_MAT_IJ = LOC_MAT_IJ - LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                         if (VAD_activated) LOC_MAT_IJ = LOC_MAT_IJ - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         !Assemble off-diagonal cv_nodj-cv_nodi, integrate the other CV side contribution (the sign is changed)...
                                         if(integrate_other_side_and_not_boundary) then
                                           LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * (1. - INCOME) * LIMD! Advection
                                           if (GOT_DIFFUS) LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                          if (got_diffus_low_order) LOC_MAT_JI = LOC_MAT_JI - LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                           if (VAD_activated) LOC_MAT_JI = LOC_MAT_JI - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         end if
 
@@ -1907,7 +1875,6 @@ contains
                                       !Assemble diagonal of the matrix of node cv_nodi
                                       LOC_MAT_II = LOC_MAT_II +  FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME ) * LIMD! Advection
                                       if (GOT_DIFFUS) LOC_MAT_II = LOC_MAT_II + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                      if (got_diffus_low_order) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                       if (VAD_activated) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                       if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - FTHETA_T2 * ( ONE_M_CV_BETA ) * &
                                                                                     SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
@@ -1917,7 +1884,6 @@ contains
                                       if(integrate_other_side_and_not_boundary) then
                                         LOC_MAT_JJ = LOC_MAT_JJ -  FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD! Advection
                                         if (GOT_DIFFUS) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                        if (got_diffus_low_order) LOC_MAT_JJ = LOC_MAT_JJ + LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                         if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         if (.not.conservative_advection) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2_J * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
                                       endif

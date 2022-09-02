@@ -1561,13 +1561,6 @@ This option is useful if your field is suddenly changing after adapting the mesh
             </element>
           </optional>
           <optional>
-            <element name="Low_order_diffusion">
-              <a:documentation>If selected low order diffusion we use a diffusion that does not take 10%! of the total time only to generate the term
-Currently the results seems a bit off using this diffusion method.</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
             <element name="disable_limiters">
               <a:documentation>This disable the limiters regarless of the precision used
 Limiters are quite expensive so if your simulation is slow it might be worth trying this.</a:documentation>

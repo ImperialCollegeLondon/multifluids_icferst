@@ -1276,11 +1276,6 @@ start =
             element do_not_bound_after_adapt {
                empty
             }?,
-            ## If selected low order diffusion we use a diffusion that does not take 10%! of the total time only to generate the term
-            ## Currently the results seems a bit off using this diffusion method.
-            element Low_order_diffusion {
-               empty
-            }?,
             ## This disable the limiters regarless of the precision used
             ## Limiters are quite expensive so if your simulation is slow it might be worth trying this.
             element disable_limiters {
