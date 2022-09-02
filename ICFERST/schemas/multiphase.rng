@@ -141,11 +141,9 @@ the final convergence achieved by the FPI solver</a:documentation>
           </element>
         </optional>
         <optional>
-          <element name="Generate_stat_file">
-            <a:documentation>Generate stat file. This file contains walltime, statistics of the fields such as min/max and integral. 
-By default it is off since its computation is not free. For single phase ~ 30% of the total simulation time.
-
-This is normally required for test cases</a:documentation>
+          <element name="Do_not_generate_stat_file">
+            <a:documentation>Do not generate the stat file. This file contains walltime, statistics of the fields such as min/max and integral. 
+By default it is on, although its computation is not free. For single phase ~ 30% of the total simulation time.</a:documentation>
             <ref name="comment"/>
           </element>
         </optional>
@@ -1559,6 +1557,13 @@ is run to guarantee physically plausible solutions. Nonetheless this may spread 
 that otherwise might have been cut off. Enable this option to avoid doing this operation.
 
 This option is useful if your field is suddenly changing after adapting the mesh.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="Low_order_diffusion">
+              <a:documentation>If selected low order diffusion we use a diffusion that does not take 10%! of the total time only to generate the term
+Currently the results seems a bit off using this diffusion method.</a:documentation>
               <empty/>
             </element>
           </optional>
@@ -4847,30 +4852,31 @@ Introduce the same name as the scalar field being used. For example: Tracer_CO2<
                 </element>
               </zeroOrMore>
             </element>
-          <element name="BW_eos">
-            <a:documentation>Batzle and Wang (1992) EOS
-            Use for basin scale simulations.
-            Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg.
-            NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentation>
-            <optional>
-              <element name="C0">
-                <a:documentation>Reference concentration (in kg/kg, default 0)</a:documentation>
-                <ref name="real"/>
-              </element>
-            </optional>
-            <optional>
-              <element name="T0">
-                <a:documentation>Reference temperature (in K, default 298 K)</a:documentation>
-                <ref name="real"/>
-              </element>
-            </optional>
-            <optional>
-              <element name="P0">
-                <a:documentation>Reference pressure (in Pa, default 1e5 Pa)</a:documentation>
-                <ref name="real"/>
-              </element>
-            </optional>
-          </element>
+            <element name="BW_eos">
+              <a:documentation>Batzle and Wang (1992) EOS
+Use for basin scale simulations.
+Valid for ranges: 5&lt;=P&lt;=100 MPa, 20&lt;=T&lt;=350 degrees Celsius, C&lt;=0.32 kg/kg salinity.
+
+NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentation>
+              <optional>
+                <element name="C0">
+                  <a:documentation>Reference concentration (default 0)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="T0">
+                  <a:documentation>Reference temperature (default 298)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="P0">
+                  <a:documentation>Reference pressure (default 1e5 Pa)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+            </element>
           </choice>
           <optional>
             <element name="Boussinesq_approximation">

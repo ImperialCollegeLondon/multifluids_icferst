@@ -267,7 +267,7 @@ contains
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
 
         !Check whether we are writing the stat file or not
-        write_stats = have_option("/io/Generate_stat_file")
+        write_stats = .not.have_option("/io/Do_not_generate_stat_file")
 
 
         if (numberfields_CVGalerkin_interp > 0 .and. isParallel()) then
