@@ -1683,8 +1683,6 @@ contains
                      .or. have_option( "/material_phase[0]/phase_properties/Density/python_state/Boussinesq_approximation")
         !Check if we are using anisotropic permeability
         has_anisotropic_permeability = have_option( "/porous_media/tensor_field::Permeability" )
-        !Check anisotropic diffusivity 
-        has_anisotropic_diffusivity = has_anisotropic_diffusion()
 
         ! Check if Porous media model initialisation
         is_porous_initialisation =  have_option("/porous_media/FWL")

@@ -529,6 +529,8 @@ contains
           logical :: asssembling_enthalpy = .false.
           real, dimension(:), allocatable :: ENTH_RHS_DIFF_COEF_DIVDX
           real, dimension(:,:), allocatable :: ENTH_RHS_DIFFUSION
+          !Variables to speed up diffusivity computations 
+          logical :: has_anisotropic_diffusivity
           ! !Variables for internal subroutine SCVDETNX (created here for speed)
           ! INTEGER :: SCV_NODJ,  SCV_JLOC
           ! REAL :: SCV_A, SCV_B, SCV_C
@@ -683,7 +685,8 @@ contains
           !If selected low order diffusion we use a diffusion that does not take 10%! of the total time only to generate the term
           !Currently the results seems a bit off using this diffusion...
           got_diffus_low_order = .false.
-          if (GOT_DIFFUS) then 
+          if (GOT_DIFFUS) then
+            has_anisotropic_diffusivity =  has_anisotropic_diffusion(tracer)
             got_diffus_low_order = have_option("/numerical_methods/Low_order_diffusion")
             GOT_DIFFUS = .not. got_diffus_low_order
           end if
@@ -1478,7 +1481,7 @@ contains
                                       ELE, ELE2, CVNORMX_ALL( :, GI ), &
                                       DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
                                       LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
-                                      on_domain_boundary, between_elements )
+                                      on_domain_boundary, between_elements,has_anisotropic_diffusivity )
                               ELSE 
                                   DIFF_COEF_DIVDX = 0.0
                                   DIFF_COEFOLD_DIVDX = 0.0
@@ -2727,6 +2730,31 @@ end if
             its=its+1
         end subroutine dump_multiphase
 
+        logical function has_anisotropic_diffusion(tracer)
+        implicit none
+            !Global variables
+            type(tensor_field), intent(in) :: tracer
+            !Local variables
+            integer :: k, i, ndif, nphase
+            character(len = option_path_len) :: option_path
+            has_anisotropic_diffusion = .false.
+    
+            nphase = option_count("/material_phase")
+            do i = 1, Nphase
+            if (THERMAL) then 
+                option_path = "/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Thermal_Conductivity/prescribed/value"
+            else 
+                option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::"//trim(tracer%name)//"/tensor_field::Diffusivity/prescribed/value"
+            end if
+            ndif = option_count(trim(option_path))
+                do k =1, ndif 
+                if (have_option(trim(option_path)//"["// int2str( k - 1 )//"]/anisotropic_asymmetric")) & 
+                    has_anisotropic_diffusion = .true.
+                    if (have_option(trim(option_path)//"["// int2str( k - 1 )//"]/anisotropic_symmetric")) & 
+                    has_anisotropic_diffusion = .true.              
+                end do
+            end do
+        end function
         !---------------------------------------------------------------------------
         !> @author Chris Pain, Pablo Salinas
         !> @brief Computes the flux between CVs
@@ -4917,13 +4945,13 @@ end if
         ELE, ELE2, CVNORMX_ALL,  &
         LOC_DTX_ELE_ALL, LOC_DTOLDX_ELE_ALL, LOC2_DTX_ELE_ALL, LOC2_DTOLDX_ELE_ALL, &
         LOC_WIC_T_BC, CV_OTHER_LOC, MAT_OTHER_LOC, CV_SNLOC, CV_SLOC2LOC, &
-        on_domain_boundary, between_elements )
+        on_domain_boundary, between_elements, has_anisotropic_diffusivity )
         IMPLICIT NONE
         INTEGER, intent( in ) :: CV_NLOC, MAT_NLOC, NPHASE, &
             &                    GI, NDIM, ELE, ELE2, &
             &                    CV_SNLOC
         REAL, intent( in ) :: HDC
-        LOGICAL, intent( in ) :: on_domain_boundary, between_elements
+        LOGICAL, intent( in ) :: on_domain_boundary, between_elements, has_anisotropic_diffusivity
         REAL, DIMENSION( NPHASE ), intent( in ) :: T_CV_NODJ, T_CV_NODI, &
             &                                     TOLD_CV_NODJ, TOLD_CV_NODI
         REAL, DIMENSION( NPHASE ), intent( inout ) :: DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX

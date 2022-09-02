@@ -194,8 +194,6 @@ module global_parameters
   logical :: has_boussinesq_aprox = .false.
   !! Porous media, anisotropic permeability
   logical :: has_anisotropic_permeability = .false.
-  !! Porous media, anisotropic diffusion
-  logical :: has_anisotropic_diffusivity = .false.  
   
   !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
   real :: backtrack_or_convergence
