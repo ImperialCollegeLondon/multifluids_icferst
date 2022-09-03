@@ -229,10 +229,15 @@ integer :: linternal_smoothing_option
      call PCSetType(prec, PCCOMPOSITE, ierr)
      call PCCompositeSetType(prec, PC_COMPOSITE_MULTIPLICATIVE, ierr)
      ! consisting of outer SOR iterations and the composite PC
+#if PETSC_VERSION_MINOR<=12
+     call PCCompositeAddPC(prec, PCSOR, ierr)     
+     call PCCompositeAddPC(prec, PCCOMPOSITE, ierr)
+     call PCCompositeAddPC(prec, PCSOR, ierr)
+#else
      call PCCompositeAddPCType(prec, PCSOR, ierr)     
      call PCCompositeAddPCType(prec, PCCOMPOSITE, ierr)
      call PCCompositeAddPCType(prec, PCSOR, ierr)
-     
+#endif     
      !set up the forward SOR
      call PCCompositeGetPC(prec, 0, subprec, ierr)
      call PCSORSetSymmetric(subprec,SOR_FORWARD_SWEEP,ierr)
@@ -252,8 +257,13 @@ integer :: linternal_smoothing_option
      call PCCompositeSetType(subprec, PC_COMPOSITE_ADDITIVE, ierr)
      !consisting of the vertical lumped mg, and the internal smoother 
      !which is a shell
+#if PETSC_VERSION_MINOR<=12
+     call PCCompositeAddPC(subprec, PCMG, ierr)
+     call PCCompositeAddPC(subprec, PCSHELL, ierr)
+#else
      call PCCompositeAddPCType(subprec, PCMG, ierr)
      call PCCompositeAddPCType(subprec, PCSHELL, ierr)
+#endif 
      ! set up the vertical_lumped mg
      call PCCompositeGetPC(subprec, 0, subsubprec, ierr)
      call SetupSmoothedAggregation(subsubprec, matrix, ierror, &
@@ -277,8 +287,13 @@ integer :: linternal_smoothing_option
      call PCCompositeSetType(prec, PC_COMPOSITE_ADDITIVE, ierr)
      !consisting of the vertical lumped mg, and the internal smoother 
      !which is a shell
+#if PETSC_VERSION_MINOR<=12
+     call PCCompositeAddPC(prec, PCMG, ierr)
+     call PCCompositeAddPC(prec, PCSHELL, ierr)
+#else
      call PCCompositeAddPCType(prec, PCMG, ierr)
      call PCCompositeAddPCType(prec, PCSHELL, ierr)
+#endif
      ! set up the vertical_lumped mg
      call PCCompositeGetPC(prec, 0, subprec, ierr)
      call SetupSmoothedAggregation(subprec, matrix, ierror, &
@@ -851,7 +866,7 @@ subroutine create_prolongator(P, nrows, ncols, findN, N, R, A, base, omega)
     ! for the moment the prolongator is completely local:
     allocate(onnz(1:nrows))
     onnz=0
-    
+
     call MatCreateAIJ(MPI_COMM_FEMTOOLS, nrows, ncols, PETSC_DECIDE, PETSC_DECIDE, &
       PETSC_NULL_INTEGER(1), dnnz, PETSC_NULL_INTEGER(1), onnz, P, ierr)
     call MatSetOption(P, MAT_USE_INODES, PETSC_FALSE, ierr)

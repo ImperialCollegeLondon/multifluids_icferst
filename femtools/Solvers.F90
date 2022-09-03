@@ -50,13 +50,13 @@ module solvers
 
 ! Module to provide explicit interfaces to matrix solvers.  
 #include "petsc_legacy.h"
-  use petscksp
+  ! use petscksp
 implicit none 
 
-! #if defined(PETSC_USING_F90) && !defined(PETSC_USE_FORTRANKIND)
+#if PETSC_VERSION_MINOR>12
        external KSPMONITORDEFAULT
        external KSPMonitorTrueResidualNorm
-! #endif
+#endif
 
   ! stuff used in the PETSc monitor (see petsc_solve_callback_setup() below)
   integer :: petsc_monitor_iteration = 0
@@ -1795,15 +1795,19 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        '/diagnostics/monitors/preconditioned_residual')) then
         call PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, &
            PETSC_VIEWER_DEFAULT,vf,ierr)
-        ! call KSPMonitorSet(ksp, KSPMonitorDefault, vf, &  !KSPMonitorDefault
-        !    PetscViewerAndFormatDestroy, ierr)
+#if PETSC_VERSION_MINOR<=12
+        call KSPMonitorSet(ksp, KSPMonitorDefault, vf, &  
+           PetscViewerAndFormatDestroy, ierr)
+#endif
     end if
     if (have_option(trim(solver_option_path)// &
        '/diagnostics/monitors/true_residual')) then
         call PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, &
            PETSC_VIEWER_DEFAULT,vf,ierr)
-        ! call KSPMonitorSet(ksp, KSPMonitorTrueResidualNorm, vf, &   !KSPMonitorTrueResidualNorm
-        !    PetscViewerAndFormatDestroy, ierr)
+#if PETSC_VERSION_MINOR<=12
+        call KSPMonitorSet(ksp, KSPMonitorTrueResidualNorm, vf, &   
+           PetscViewerAndFormatDestroy, ierr)
+#endif
     end if
 
     if (have_option(trim(solver_option_path)// &

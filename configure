@@ -12723,7 +12723,7 @@ fi
 $as_echo "$as_me: Using PETSC_DIR=$PETSC_DIR" >&6;}
 
 PETSC_DIR=/usr/lib/petscdir/petsc
-
+PETSC_DIR=/usr/lib/petscdir/3.12
 PETSC_LINK_LIBS=`make -s -f petsc_makefile_old getlinklibs 2> /dev/null || make -s -f petsc_makefile getlinklibs`
 LIBS="$PETSC_LINK_LIBS $LIBS"
 
