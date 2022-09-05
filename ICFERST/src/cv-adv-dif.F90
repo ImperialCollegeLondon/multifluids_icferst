@@ -1588,8 +1588,14 @@ contains
                                   !Distribute the capillary coefficient over the phases to ensure mass conservation
                                   !This is very important as it allows to use the over-relaxation parameter safely
                                   !and reduce the cost of using capillary pressure in several orders of magnitude
-                                  CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
-
+                                  do iphase =1, final_phase
+                                    if (iphase == phase_with_pc) then 
+                                        CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
+                                    else!VAD is actually divided by wetting density so we need to adjust that when doing the other phases
+                                        CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres&
+                                            * Density%val(1,iphase,CV_NODI)/Density%val(1,phase_with_pc,CV_NODI)
+                                    end if
+                                  end do
                               ELSE
                                   CAP_DIFF_COEF_DIVDX = 0.0
                               END IF If_GOT_CAPDIFFUS
