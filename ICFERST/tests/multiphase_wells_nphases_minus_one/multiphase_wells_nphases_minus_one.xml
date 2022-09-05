@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <testproblem>
-  <name>BL_fast_adapt_ts</name>
+  <name>multiphase_wells_nphases_minus_one</name>
   <owner userid="pablo.salinas"/>
   <tags>porous mpml wells wells_complex</tags>
   <problem_definition length="short" nprocs="1">

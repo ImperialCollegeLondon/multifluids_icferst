@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <testproblem>
-  <name>BL_fast_adapt_ts</name>
+  <name>Thermal_wells_analytical</name>
   <owner userid="pablo.salinas"/>
   <tags>porous mpml thermal wells wells_complex tbc</tags>
   <problem_definition length="short" nprocs="1">
