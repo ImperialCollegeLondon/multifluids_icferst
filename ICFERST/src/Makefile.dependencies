@@ -79,7 +79,6 @@ Multiphase_TimeLoop.o ../include/multiphase_time_loop.mod: \
    ../include/multi_interpolation.mod ../include/multi_pipes.mod \
    ../include/multi_sp.mod ../include/multi_tools.mod \
    ../include/multiphase_1d_engine.mod ../include/multiphase_eos.mod \
-   ../include/multiphase_fractures_3d.mod \
    ../include/shape_functions_linear_quadratic.mod ../include/spact.mod
 
 ../include/phreeqcrm.mod: RM_interface.o
@@ -166,19 +165,6 @@ multi_eos.o ../include/multiphase_eos.mod: multi_eos.F90 \
    ../../include/unittest_tools.mod ../../include/vector_tools.mod \
    ../include/copy_outof_state.mod ../include/multi_tools.mod \
    ../include/shape_functions_linear_quadratic.mod
-
-../include/multiphase_fractures_3d.mod: multi_fracture_3D.o
-	@true
-
-multi_fracture_3D.o ../include/multiphase_fractures_3d.mod: \
-   multi_fracture_3D.F90 ../../include/confdefs.h ../../include/elements.mod \
-   ../../include/fdebug.h ../../include/fefields.mod ../../include/fields.mod \
-   ../../include/fldebug.mod ../../include/futils.mod \
-   ../../include/global_parameters.mod ../../include/implicit_solids.mod \
-   ../../include/memory_diagnostics.mod ../../include/quadrature.mod \
-   ../../include/solvers.mod ../../include/sparse_tools.mod \
-   ../../include/spud.mod ../../include/state_module.mod \
-   ../include/copy_outof_state.mod ../include/multi_tools.mod
 
 ../include/multi_interpolation.mod: multi_interpolation.o
 	@true
@@ -312,17 +298,17 @@ multi_solvers.o ../include/solvers_module.mod: multi_solvers.F90 \
    ../include/shape_functions_linear_quadratic.mod \
    ../include/shape_functions_prototype.mod
 
-../include/sparsity_nd.mod: multi_sparsity.o
-	@true
-
 ../include/sparsity_1d.mod: multi_sparsity.o
 	@true
 
 ../include/spact.mod: multi_sparsity.o
 	@true
 
-multi_sparsity.o ../include/sparsity_nd.mod ../include/sparsity_1d.mod \
-   ../include/spact.mod: multi_sparsity.F90 ../../include/confdefs.h \
+../include/sparsity_nd.mod: multi_sparsity.o
+	@true
+
+multi_sparsity.o ../include/sparsity_1d.mod ../include/spact.mod \
+   ../include/sparsity_nd.mod: multi_sparsity.F90 ../../include/confdefs.h \
    ../../include/fdebug.h ../../include/fldebug.mod ../../include/futils.mod \
    ../../include/global_parameters.mod ../../include/spud.mod \
    ../include/copy_outof_state.mod ../include/cv_advection.mod \
