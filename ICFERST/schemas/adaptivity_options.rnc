@@ -56,18 +56,13 @@ adaptivity_options_prognostic_scalar_field =
                      prescribed_scalar_field_no_adapt
                   }
                },
-               ## The relative Hessian is calculated according to:
-               ##
-               ##   Q = H / max{ |psi|, psi_min}
-               ##
-               ## where H is the Hessian, psi is the field value and
-               ## psi_min is the tolerance. The tolerance prevents
-               ## division by zero errors.
-               ##
-               ## Source: Fluidity/ICOM manual draft version 1.2
-               element tolerance {
-                  real
-               }
+               ## By default the interpolation error controlled is the L_inf
+               ## norm. Use this option to specify an alternative L_p norm. See
+               ## Chen Sun and Zu, Mathematics of Computation, Volume 76,
+               ## Number 257, January 2007, pp. 179-204.
+               element p_norm {
+                  integer
+               }?
             }|
             ## Adapt using the anisotropic strategy of 
             ## Formaggia, Perotto, Micheletti.
