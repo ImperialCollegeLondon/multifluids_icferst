@@ -1910,10 +1910,6 @@ contains
 !            if ( ncomp > 0 ) !"Not ready yet"
         end if
 
-        if (is_magma) then
-          call allocate_multi_field( Mdims, multi_absorp%Magma, ovmesh%nodes, field_name="Magma_AbsorptionTerm")
-        end if
-
     end subroutine prepare_absorptions
 
 

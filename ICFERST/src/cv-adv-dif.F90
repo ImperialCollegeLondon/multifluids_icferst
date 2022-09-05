@@ -141,7 +141,6 @@ contains
     !>@param assemble_collapsed_to_one_phase Collapses phases and solves for one single temperature. When there is thermal equilibrium
     !>@param  outfluxes  Contains all the fields required to compute the outfluxes of the model and create the outfluxes.csv file. Computed when assembling the continuity equation
     !>@param  nonlinear_iteration Current non-linear iteration
-    !>@param  Latent_heat   Latent heat for phase change, use for enthalpy modelling
   !---------------------------------------------------------------------------
     SUBROUTINE CV_ASSEMB( state, packed_state, &
           final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -163,7 +162,7 @@ contains
           saturation, VAD_parameter, Phase_with_Pc, Courant_number,&
           Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
           porous_heat_coef,porous_heat_coef_old, outfluxes, solving_compositional, nonlinear_iteration,&
-          assemble_collapsed_to_one_phase, Latent_heat)
+          assemble_collapsed_to_one_phase)
           !  =====================================================================
           !     In this subroutine the advection terms in the advection-diffusion
           !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -340,8 +339,6 @@ contains
           type (multi_outfluxes), optional, intent(inout) :: outfluxes
           !Non-linear iteration count
           integer, optional, intent(in) :: nonlinear_iteration
-          !Variable for magma
-          real, optional :: Latent_heat 
           ! ###################Local variables############################
           REAL :: ZERO_OR_TWO_THIRDS
 
@@ -525,10 +522,6 @@ contains
           real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
           real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
           REAL, DIMENSION( :,:,: ), allocatable, target:: SUF_T2_BC_value, SUF_T_BC_ROB2_value
-          !Variables for Enthalpy
-          logical :: asssembling_enthalpy = .false.
-          real, dimension(:), allocatable :: ENTH_RHS_DIFF_COEF_DIVDX
-          real, dimension(:,:), allocatable :: ENTH_RHS_DIFFUSION
           !Variables to speed up diffusivity computations 
           logical :: has_anisotropic_diffusivity
           ! !Variables for internal subroutine SCVDETNX (created here for speed)
@@ -540,9 +533,6 @@ contains
           ! REAL :: SCV_TWOPI
           ! REAL :: SCV_RGI, SCV_RDUM
           ! real, dimension(3) :: SCV_POSVGI, SCV_BAK
-
-          !Logical to identify if we are assembling for enthalpy, which requires an special RHS
-          asssembling_enthalpy = present(Latent_heat)
 
           !Decide if we are solving for nphases-1
           Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
@@ -853,21 +843,6 @@ contains
               end do
           ENDIF
 
-          !Here we prepare the diffusion term for the RHS of the enthalpy equation
-          !TODO: Maybe this is not needed and TDIFFUSION can be directly used
-          if (asssembling_enthalpy) then
-            allocate(ENTH_RHS_DIFF_COEF_DIVDX (final_phase), ENTH_RHS_DIFFUSION (final_phase, Mdims%mat_nonods))
-            do ele = 1, Mdims%totele
-                do CV_ILOC = 1, Mdims%cv_nloc
-                    CV_NODI = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
-                    MAT_NODI = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
-                    do iphase = 1, final_phase
-                      ENTH_RHS_DIFFUSION(iphase, MAT_NODI) = &
-                          TDIFFUSION(MAT_NODI, 1, 1, iphase)
-                    end do
-                end do
-            end do
-          end if
           ndotq = 0. ! ;         ndotqold = 0.
           ! variables for get_int_tden********************
 
@@ -1599,16 +1574,6 @@ contains
                               ELSE
                                   CAP_DIFF_COEF_DIVDX = 0.0
                               END IF If_GOT_CAPDIFFUS
-                              ! Pack ndotq information:
-                              if (asssembling_enthalpy) then
-                                IF(SELE == 0) THEN
-                                  !Average of the coefficient in shared CVs between elements
-                                  ENTH_RHS_DIFF_COEF_DIVDX = 0.5* (ENTH_RHS_DIFFUSION( :, MAT_NODJ ) + ENTH_RHS_DIFFUSION( :, MAT_NODI )) /HDC
-                                ELSE
-                                  ENTH_RHS_DIFF_COEF_DIVDX = 0.0
-                                ENDIF
-                              end if
-                              ! Pack ndotq information:
                               
                               !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
                               ! Calculate T and DEN on the CV face at quadrature point GI.
@@ -1926,22 +1891,6 @@ contains
                                       if (on_domain_boundary) LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           + SdevFuns%DETWEI( GI ) * ROBIN1
 
-                                      if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
-                                        !Solid phase
-                                        LOC_CV_RHS_I(1) = LOC_CV_RHS_I(1) + &
-                                            Latent_heat * density%val(1, 1, CV_NODI)*SdevFuns%DETWEI(GI) &
-                                        !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * ( LOC_T2_J(2)*LOC_T2_J(1) - LOC_T2_I(2)*LOC_T2_I(1))&
-                                        !Advection term solid
-                                            +  (1. + LIMT2(2)) * NDOTQNEW(1) * LOC_T2_I(1) )
-                                        !Liquid phase
-                                        LOC_CV_RHS_I(2) = LOC_CV_RHS_I(2) + &
-                                            Latent_heat * density%val(1, 2, CV_NODI)*SdevFuns%DETWEI(GI) &
-                                        !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * ( LOC_T2_J(2)**2. - LOC_T2_I(2)**2.) &
-                                        !Advection term fluid
-                                            +   NDOTQNEW(2) * LOC_T2_I(2)**2. )
-                                      end if
 
                                   if(integrate_other_side_and_not_boundary) then
                                       LOC_CV_RHS_J =  LOC_CV_RHS_J  &
@@ -1961,22 +1910,6 @@ contains
                                           * ( FTHETA_T2_J * NDOTQNEW * LOC_T_J * LIMD  &
                                           + ONE_M_FTHETA_T2OLD_J * NDOTQOLD * LIMDOLD * LOC_TOLD_J )
 
-                                      if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
-                                        !Solid phase
-                                        LOC_CV_RHS_J(1) = LOC_CV_RHS_J(1) + &
-                                            Latent_heat * density%val(1, 1, CV_NODJ)*SdevFuns%DETWEI(GI) &
-                                        !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * ( LOC_T2_I(2)*LOC_T2_I(1) - LOC_T2_J(2)*LOC_T2_J(1))&
-                                        !Advection term solid
-                                            +  (1. + LOC_T2_J(2)) * NDOTQNEW(1) * LOC_T2_J(1) )
-                                        !Liquid phase
-                                        LOC_CV_RHS_J(2) = LOC_CV_RHS_J(2) + &
-                                            Latent_heat * density%val(1, 2, CV_NODJ)*SdevFuns%DETWEI(GI) &
-                                        !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * ( LOC_T2_I(2)**2. - LOC_T2_J(2)**2.) &
-                                        !Advection term fluid
-                                            +   NDOTQNEW(2) * LOC_T2_J(2)**2. )
-                                      end if
                                   endif
                                   IF ( GET_GTHETA ) THEN
                                       THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
@@ -2221,7 +2154,6 @@ contains
           if (VAD_activated) deallocate(CAP_DIFFUSION)
           ewrite(3,*) 'Leaving CV_ASSEMB'
           if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
-          if (asssembling_enthalpy) deallocate(ENTH_RHS_DIFFUSION, ENTH_RHS_DIFF_COEF_DIVDX)
 
           RETURN
       contains
