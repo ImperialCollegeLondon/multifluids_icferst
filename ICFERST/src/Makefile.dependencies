@@ -298,17 +298,17 @@ multi_solvers.o ../include/solvers_module.mod: multi_solvers.F90 \
    ../include/shape_functions_linear_quadratic.mod \
    ../include/shape_functions_prototype.mod
 
-../include/sparsity_1d.mod: multi_sparsity.o
-	@true
-
 ../include/spact.mod: multi_sparsity.o
 	@true
 
 ../include/sparsity_nd.mod: multi_sparsity.o
 	@true
 
-multi_sparsity.o ../include/sparsity_1d.mod ../include/spact.mod \
-   ../include/sparsity_nd.mod: multi_sparsity.F90 ../../include/confdefs.h \
+../include/sparsity_1d.mod: multi_sparsity.o
+	@true
+
+multi_sparsity.o ../include/spact.mod ../include/sparsity_nd.mod \
+   ../include/sparsity_1d.mod: multi_sparsity.F90 ../../include/confdefs.h \
    ../../include/fdebug.h ../../include/fldebug.mod ../../include/futils.mod \
    ../../include/global_parameters.mod ../../include/spud.mod \
    ../include/copy_outof_state.mod ../include/cv_advection.mod \
