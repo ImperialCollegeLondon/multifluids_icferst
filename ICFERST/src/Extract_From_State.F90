@@ -119,7 +119,6 @@ contains
                 end if
             end if
         end if
-        is_multifracture = have_option( '/femdem_fracture' ) .or. is_multifracture
 
         positions => extract_vector_field( state, 'Coordinate' )
         pressure_cg_mesh => extract_mesh( state, 'PressureMesh_Continuous' )
@@ -611,80 +610,6 @@ contains
         integer :: nphase,ncomp,ndim,stat,n_in_pres
         real :: auxR
         character( len = option_path_len ) :: option_name
-#ifdef USING_FEMDEM
-        if(have_option('/blasting')) then
-            sfield=>extract_scalar_field(state(1),"SolidConcentration" )
-            call insert(packed_state,sfield,"SolidConcentration")
-            call add_new_memory(packed_state,sfield,"OldSolidConcentration")
-			!call add_new_memory(packed_state,sfield,"shell_volume_fraction")
-
-            vfield=>extract_vector_field(state(1),"delta_U")
-            call insert(packed_state,vfield,"delta_U")
-
-            vfield=>extract_vector_field(state(1),"solid_U")
-            call insert(packed_state,vfield,"solid_U")
-
-            vfield=>extract_vector_field(state(1),"f_x")
-            call insert(packed_state,vfield,"f_x")
-
-            tfield=>extract_tensor_field(state(1),"a_xx")
-            call insert(packed_state,tfield,"a_xx")
-
-            tfield=>extract_tensor_field(state(1),"Viscosity" )
-            call insert(packed_state,tfield,"Viscosity")
-
-!				sfield=>extract_scalar_field(state(1),"DummyT")
- !           call insert(packed_state,sfield,"DummyT")
-
-!				sfield=>extract_scalar_field(state(1),"shell_volume_fraction")
- !           call insert(packed_state,sfield,"shell_volume_fraction")
-
-        else if(have_option('/femdem_fracture')) then
-            if(have_option('/femdem_fracture/oneway_coupling_only')) then!This option do not exist
-                sfield=>extract_scalar_field(state(1),"SolidConcentration")
-                call insert(packed_state,sfield,"SolidConcentration")
-                call add_new_memory(packed_state,sfield,"OldSolidConcentration")
-
-                tfield=>extract_tensor_field(state(1),"Viscosity")
-                call insert(packed_state,tfield,"Viscosity")
-
-                sfield=>extract_scalar_field(state(1),"Dummy")
-                call insert(packed_state,sfield,"Dummy")
-
-!                vfield=>extract_vector_field(state(1),"Darcy_Velocity")
-!                call insert(packed_state,vfield,"Darcy_Velocity")
-
-                sfield=>extract_scalar_field(state(1),"TotalFlux")
-                call insert(packed_state,sfield,"TotalFlux")
-
-		       tfield=>extract_tensor_field(state(1),"FractureMap")
-            	call insert(packed_state,tfield,"FractureMap")
-            else
-                sfield=>extract_scalar_field(state(1),"SolidConcentration")
-                call insert(packed_state,sfield,"SolidConcentration")
-                call add_new_memory(packed_state,sfield,"OldSolidConcentration")
-
-                tfield=>extract_tensor_field(state(1),"Viscosity")
-                call insert(packed_state,tfield,"Viscosity")
-
-                sfield=>extract_scalar_field(state(1),"Dummy")
-                call insert(packed_state, sfield,"Dummy" )
-
-                sfield=>extract_scalar_field(state(1),"TotalFlux")
-                call insert(packed_state,sfield,"TotalFlux")
-
-          	tfield=>extract_tensor_field(state(1),"FractureMap")
-            	call insert(packed_state,tfield,"FractureMap")
-
-  !              vfield=>extract_vector_field(state(1),"delta_U")
-  !              call insert(packed_state,vfield,"delta_U")
-
-  !              vfield=>extract_vector_field(state(1),"solid_U")
-  !              call insert(packed_state,vfield,"solid_U")
-            end if
-        end if
-#endif
-
 
         ncomp=option_count('/material_phase/is_multiphase_component')
         nphase=size(state)-ncomp

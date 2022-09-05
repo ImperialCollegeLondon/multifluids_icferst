@@ -1670,10 +1670,6 @@ contains
         is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media')
         !Decide to solve Stokes equations instead of navier-Stokes
         solve_stokes = have_option('/stokes_simulator')
-        !Flag to set up the coupling with femdem
-        is_multifracture = have_option( '/femdem_fracture' )
-        !Flag to set up blasting
-        is_blasting = have_option( '/blasting' )
         !Has temperature
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
         has_concentration = have_option( '/material_phase[0]/scalar_field::Concentration/' )

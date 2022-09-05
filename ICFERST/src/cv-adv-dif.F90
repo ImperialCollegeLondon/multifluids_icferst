@@ -123,7 +123,7 @@ contains
     !>@param  VOLFRA_PORE   Porosity field (Mdims%npres,Mdims%totele)
     !>@param  GETCV_DISC  obtain the transport equation
     !>@param GETCT obtain the continuity equation
-    !>@param GET_THETA_FLUX, USE_THETA_FLUX,  RETRIEVE_SOLID_CTY, got_free_surf???
+    !>@param GET_THETA_FLUX, USE_THETA_FLUX,  got_free_surf???
     !>@param THERMAL true if solving for heat transport 
     !>@param  MEAN_PORE_CV   Porosity defined control volume wise
     !>@param  MASS_ELE_TRANSP Mass of the elements
@@ -155,7 +155,7 @@ contains
           IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
           THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
           MEAN_PORE_CV, &
-          MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
+          MASS_MN_PRES, THERMAL, &
           got_free_surf,  MASS_SUF, &
           MASS_ELE_TRANSP, &
           TDIFFUSION, &
@@ -317,7 +317,7 @@ contains
           REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
           REAL, DIMENSION( :, :, : ), pointer, intent( in ) :: ABSORBT_ALL
           REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE 
-          LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
+          LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, got_free_surf
           ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
           REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV 
           REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
@@ -439,8 +439,6 @@ contains
           LOGICAL, DIMENSION( final_phase, max(igot_t2*6,4) ) :: IGOT_T_PACK, IGOT_T_CONST!variables for get_int_tden! Set up the fields...
           REAL, DIMENSION(  final_phase, max(igot_t2*6,4) ) :: IGOT_T_CONST_VALUE!variables for get_int_tden! Set up the fields...
           !Working variables
-          real, dimension(:), allocatable :: VOL_FRA_FLUID ! for solid coupling
-          real, dimension(:, :), allocatable :: U_HAT_ALL ! for solid coupling
           real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, X_ALL
           real, dimension(:, :, :), pointer :: U_ALL, NU_ALL, NUOLD_ALL
 
@@ -476,8 +474,7 @@ contains
           real, dimension(final_phase) :: DENOIN_B, CTILIN_B, DENOOU_B, CTILOU_B, FTILIN_B, FTILOU_B
           !! femdem
           type( vector_field ), pointer :: delta_u_all, us_all
-          type( scalar_field ), pointer :: solid_vol_fra
-          real :: theta_cty_solid, VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
+          real :: VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
           type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
           type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
           type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield!, temp_field, concentration_field
@@ -604,21 +601,6 @@ contains
           LIMT2 =1.0; LIMT2OLD = 1.0
           if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
          !################## END OF SET VARIABLES ##################
-
-          IF( GETCT ) THEN
-              IF( RETRIEVE_SOLID_CTY ) THEN
-                  ALLOCATE(VOL_FRA_FLUID(Mdims%cv_nonods))
-                  ALLOCATE(U_HAT_ALL(Mdims%ndim,Mdims%u_nonods))
-                  delta_u_all => extract_vector_field( packed_state, "delta_U" )
-                  u_hat_all = delta_u_all%val + u_all( :, 1, :) ! Mdims%ndim, Mdims%u_nonods
-                  us_all => extract_vector_field( packed_state, "solid_U" )
-                  Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
-                  VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! Mdims%cv_nonods
-                  ! CONV = A*B ! conV is an allocatable target
-                  ! T_ALL=>CONV ! conV is an allocatable target
-                  call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
-              ENDIF
-          ENDIF
           compute_outfluxes = present(calculate_mass_delta) .and. present(outfluxes) .and. GETCT
           if (compute_outfluxes) then
               ! Initialise the calculate_mass variables
@@ -731,7 +713,6 @@ contains
             ! FOR packing as well as for detemining which variables to apply interface tracking**********
             !          STORE=.TRUE.
             STORE=.FALSE.
-            IF( GETCT .AND. RETRIEVE_SOLID_CTY) STORE=.FALSE. ! Avoid storing and retrieving solids voln frac. until we have sorted the code for this.
             IGOT_T_PACK=.TRUE.
             IGOT_T_CONST=.FALSE.
             IGOT_T_CONST_VALUE=0.0
@@ -822,9 +803,6 @@ contains
             ALLOCATE( LIMF( NFIELD ) );ALLOCATE( F_INCOME( NFIELD ), F_NDOTQ( NFIELD ) )
             ALLOCATE( F_CV_NODJ( NFIELD ) , F_CV_NODI( NFIELD ))
         end if
-
-          IF(GETCT.AND.RETRIEVE_SOLID_CTY)  ALLOCATE( LOC_U_HAT(Mdims%ndim, Mdims%u_nloc), LOC2_U_HAT(Mdims%ndim, Mdims%u_nloc) )
-          ! bc's:
 
           !###############Conditional allocations######################
           LIMT_HAT=0.0
@@ -1169,7 +1147,6 @@ contains
                 LOC_U( :, :, U_KLOC)=U_ALL( :, 1:final_phase, U_NODK)
                 LOC_NU( :, :, U_KLOC)=NU_ALL( :, 1:final_phase, U_NODK)
                 LOC_NUOLD( :, :, U_KLOC)=NUOLD_ALL( :, 1:final_phase, U_NODK)
-                IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC_U_HAT( :, U_KLOC)=U_HAT_ALL( 1:final_phase, U_NODK)
               END DO
               Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
 
@@ -1400,7 +1377,6 @@ contains
                                       LOC2_U(:, :, U_KLOC) = U_ALL(:, :, U_NODK2)
                                       LOC2_NU(:, :, U_KLOC) = NU_ALL(:, :, U_NODK2)
                                       LOC2_NUOLD(:, :, U_KLOC) = NUOLD_ALL(:, :, U_NODK2)
-                                      IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC2_U_HAT(:, U_KLOC) = U_HAT_ALL(:, U_NODK2)
                                   END DO
                                   DO CV_SKLOC=1,Mdims%cv_snloc
                                       CV_KLOC=CV_SLOC2LOC( CV_SKLOC )
@@ -1656,26 +1632,6 @@ contains
                                 end if
                               end if
 
-                              IF(GETCT.AND.RETRIEVE_SOLID_CTY) THEN
-                                  NDOTQ_HAT = 0.0
-                                  DO U_KLOC = 1, Mdims%u_nloc
-                                      IF (between_elements) THEN ! Between elements...
-                                          NDOTQ_HAT =  NDOTQ_HAT + CV_funs%sufen( U_KLOC, GI ) * 0.5 * SUM( CVNORMX_ALL(:, GI) * (LOC_U_HAT( :, U_KLOC ) + LOC2_U_HAT( :, U_KLOC )) )
-                                      ELSE
-                                          NDOTQ_HAT =  NDOTQ_HAT + CV_funs%sufen( U_KLOC, GI ) * SUM( CVNORMX_ALL(:, GI) * LOC_U_HAT( :, U_KLOC ) )
-                                      ENDIF
-                                  END DO
-                                  DO IPHASE=1,final_phase
-                                      LIMT_HAT(IPHASE) = MAX(1.E-7,LIMT(IPHASE))
-                                  END DO
-                                  R=SUM(LIMT_HAT)
-                                  LIMT_HAT=LIMT_HAT/R
-                                  !                   if(sele.ne.0) then ! effectively apply the bcs to NDOTQ_HAT
-                                  if(on_domain_boundary) then ! effectively apply the bcs to NDOTQ_HAT
-                                      NDOTQ_HAT =SUM(LIMT_HAT*NDOTQNEW)
-                                  endif
-                              ENDIF
-
                               ! constraint needed for porous media stable flow solution
                               ! if (BETWEEN_ELEMENTS) then!SPRINT_TO_DO REMOVEME
                               !     call sum_saturation_to_unity(mdims%nphase, Imble_frac, LIMT)
@@ -1776,7 +1732,7 @@ contains
                                       UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,  &
                                       NDOTQNEW, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT, NDOTQ_HAT, &
                                       FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
-                                      RETRIEVE_SOLID_CTY,theta_cty_solid, loc_u, THETA_VEL, &
+                                      loc_u, THETA_VEL, &
                                       rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, X_ALL, SUF_D_BC_ALL, gravty)
 
                                   !Only for ipres = 1
@@ -2074,12 +2030,6 @@ contains
                  ! W_SUM_ONE==0 does NOT apply the constraint
               if ( Solve_all_phases) call addto(Mmat%CT_RHS,IPRES,cv_nodi,&
                   - ( W_SUM_ONE1 - W_SUM_ONE2 ) * R_PRES(IPRES))
-              IF(RETRIEVE_SOLID_CTY) THEN
-                  ! VOL_FRA_FLUID is the old voln fraction of total fluid...
-                  ! multiply by solid-voln fraction: (1.-VOL_FRA_FLUID)
-                  call addto(Mmat%CT_RHS,IPRES,cv_nodi,&
-                      + (1.-VOL_FRA_FLUID( CV_NODI )) * R_PRES(IPRES))
-              ENDIF
               do iphase = 1, final_phase
                 ct_rhs_phase(iphase)=ct_rhs_phase(iphase) &
                     - R_PRES(1) * ( &
@@ -5931,7 +5881,6 @@ end if
         NDOTQ, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT, &
         NDOTQ_HAT, &
         FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
-        RETRIEVE_SOLID_CTY,theta_cty_solid, &
         loc_u, THETA_VEL, &
         UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP, X_ALL, SUF_D_BC_ALL, gravty) !<= local memory sent down for speed...
         IMPLICIT NONE
@@ -5944,7 +5893,7 @@ end if
         type(multi_ndgln), intent(in) :: ndgln
         type (multi_matrices), intent(inout) :: Mmat
         REAL, DIMENSION( :, :, : ), intent( in ) :: loc_u
-        LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary,&
+        LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, between_elements, on_domain_boundary,&
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
         INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
         INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
@@ -5959,8 +5908,7 @@ end if
         REAL, intent( in ) :: NDOTQ_HAT
         REAL, DIMENSION( : ), intent( in ) :: THETA_VEL
         integer, dimension(:,:,:) :: WIC_U_BC_ALL, WIC_P_BC_ALL
-        ! LIMT_HAT is the normalised voln fraction
-        REAL, intent( in ) :: theta_cty_solid, HDC
+        REAL, intent( in ) :: HDC
         REAL,  DIMENSION( : ), intent( in ) :: FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J
         ! local memory sent down for speed...
         REAL,  DIMENSION( Mdims%ndim, final_phase ), intent( inout ) :: UDGI_IMP_ALL
@@ -5985,30 +5933,9 @@ end if
         !If using Mmat%C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
         if (Mmat%CV_pressure) call introduce_C_CV_boundary_conditions(Bound_ele_correct)
 
-        IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
-            ! Use backward Euler... (This is for the div uhat term - we subtract what we put in the Mmat%CT matrix and add what we really want)
-            ct_rhs_phase_cv_nodi=ct_rhs_phase_cv_nodi &
-                +   THETA_CTY_SOLID * SCVDETWEI( GI ) * ( LIMT_HAT(:)*NDOTQ(:) - NDOTQ_HAT/REAL(Mdims%nphase) )
-            ! assume cty is satified for solids...
-            ct_rhs_phase_cv_nodi=ct_rhs_phase_cv_nodi &
-                +      (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) * (  LIMT_HAT(:) - LIMT(:) )*NDOTQ(:)
-            ! flux from the other side (change of sign because normal is -ve)...
-            if ( integrate_other_side_and_not_boundary ) then
-                ! assume cty is satified for solids...
-                ct_rhs_phase_cv_nodj=ct_rhs_phase_cv_nodj &
-                    - THETA_CTY_SOLID * SCVDETWEI( GI ) * ( LIMT_HAT*NDOTQ  - NDOTQ_HAT/REAL(Mdims%nphase)  )
-                ! assume cty is satified for solids...
-                ct_rhs_phase_cv_nodj=ct_rhs_phase_cv_nodj &
-                    - (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) * ( LIMT_HAT - LIMT )*NDOTQ
-            end if
-        END IF ! For solid modelling...
         DO U_KLOC = 1, Mdims%u_nloc
             RCON = SCVDETWEI( GI ) * (  FTHETA_T2 * LIMDT + ONE_M_FTHETA_T2OLD * LIMDTOLD * THETA_VEL) &
                 * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
-            IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
-                RCON = RCON + SCVDETWEI( GI ) * (LIMT_HAT - LIMT) &
-                    * CV_funs%sufen( U_KLOC, GI )
-            END IF ! For solid modelling...
             DO IPHASE = 1,final_phase
                 Mmat%CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) = Mmat%CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) &
                     + rcon(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
@@ -6037,10 +5964,6 @@ end if
             if ( integrate_other_side_and_not_boundary ) then
                 RCON_J = SCVDETWEI( GI ) * ( FTHETA_T2_J* LIMDT + ONE_M_FTHETA_T2OLD_J * LIMDTOLD * THETA_VEL)  &
                     * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
-                IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
-                    RCON_J = RCON_J  + SCVDETWEI( GI ) * (LIMT_HAT - LIMT) &
-                        * CV_funs%sufen( U_KLOC, GI )
-                END IF ! For solid modelling...
                 DO IPHASE = 1,final_phase
                     Mmat%CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) = Mmat%CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) &
                         - RCON_J(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
@@ -6097,10 +6020,6 @@ end if
                 U_KLOC2 = U_OTHER_LOC( U_KLOC )
                 RCON = SCVDETWEI( GI ) * (  FTHETA_T2 * LIMDT + ONE_M_FTHETA_T2OLD * LIMDTOLD * THETA_VEL) &
                     * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODI  )
-                IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
-                    RCON    = RCON    + SCVDETWEI( GI )  * (LIMT_HAT - LIMT)  &
-                        * CV_funs%sufen( U_KLOC, GI )
-                END IF ! For solid modelling...
                 DO IPHASE = 1,final_phase
                     Mmat%CT( :, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
                         = Mmat%CT( :, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
@@ -6118,10 +6037,6 @@ end if
                 if ( integrate_other_side_and_not_boundary ) then
                     RCON_J = SCVDETWEI( GI ) * ( FTHETA_T2_J* LIMDT + ONE_M_FTHETA_T2OLD_J * LIMDTOLD * THETA_VEL) &
                         * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
-                    IF(RETRIEVE_SOLID_CTY) THEN ! For solid modelling...
-                        RCON_J    = RCON_J  + SCVDETWEI( GI ) * (LIMT_HAT - LIMT) &
-                            * CV_funs%sufen( U_KLOC, GI )
-                    END IF ! For solid modelling...
                     DO IPHASE=1,final_phase
                         Mmat%CT( :, IPHASE, ICOUNT_KLOC2( U_KLOC2 ) ) &
                             = Mmat%CT( :, IPHASE, ICOUNT_KLOC2( U_KLOC2 ) ) &

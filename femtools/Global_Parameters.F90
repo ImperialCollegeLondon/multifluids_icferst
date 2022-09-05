@@ -173,10 +173,6 @@ module global_parameters
   logical :: is_porous_media = .false.
   !! Porous media model initialisation (Gravity capillary equilibration)
   logical :: is_porous_initialisation = .false.
-  !! Checking multifracture
-  logical :: is_multifracture = .false.
-    !! Checking to see if fracturing is occuring in FEMDEM
-  logical :: is_fracturing = .false.
   !! Multiphase prototype, models temperature
   logical :: has_temperature = .false.
   !! Mutliphase prototype, solve Stokes equations for momentum
@@ -186,8 +182,6 @@ module global_parameters
   !! Checking if using the P0DG for velocity,
   !! special because we need to avoid the use of PressureMesh_Continuous
   logical :: is_P0DGP1 = .false.
-  !! Multiphase prototype, blasting simulator
-  logical :: is_blasting = .false.
   !! Has boussinesq option on
   logical :: has_boussinesq_aprox = .false.
   !! Porous media, anisotropic permeability

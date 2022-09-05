@@ -76,7 +76,6 @@ module multiphase_time_loop
     use spact
     use Compositional_Terms
     use multiphase_EOS
-    use multiphase_fractures_3D
     use Compositional_Terms
     use Copy_Outof_State
     use cv_advection, only : cv_count_faces
@@ -558,18 +557,6 @@ contains
                     exit Loop_Time
                 end if
             end if
-            !!$ FEMDEM...
-#ifdef USING_FEMDEM
-            if ( is_multifracture ) then
-               call fracking(packed_state, state,Mdims%nphase)
-            elseif ( have_option( '/blasting') ) then
-               call blasting( packed_state, Mdims%nphase )
-               call update_blasting_memory( packed_state, state, timestep )
-!            elseif (have_option( '/femdem_thermal') ) then ! Overriting of the temperature source and temperature absorption
-!              call femdemthermal(packed_state, state,Mdims%nphase)
-!			   call update_blasting_memory( packed_state, state, timestep )
-            end if
-#endif
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
 
             !!$ Start non-linear loop
@@ -1344,20 +1331,6 @@ contains
                     call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps/python', pyfunc)
                     call integer_from_python(pyfunc, acctim, adapt_time_steps)
                   end if
-
-                !-ao solid modelling (AMR field for fracturing)
-                if (is_multifracture ) then
-                    if ((is_fracturing) .AND. (itime>1)) then !-asiri- If new fractures surfaces are detected, reduce AMR period and adapt every timestep
-                        adapt_time_steps=1
-                    else if (.not. is_fracturing .AND. ((itime/adapt_time_steps)>5)) then !after intial adapt
-                        adapt_time_steps=50
-                    else
-                        call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps', & !forcing default again (just in case)
-                            adapt_time_steps, default=5 )
-                endif
-                !-ao solid modelling (AMR field for fracturing)
-
-                end if
                 else if (have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
                     do_reallocate_fields = .true.
                     adapt_time_steps = 5!adapt_time_steps requires a default value
