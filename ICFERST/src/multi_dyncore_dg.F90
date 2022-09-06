@@ -230,8 +230,8 @@ contains
                end if
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
-           end if
-	       if ( lcomp > 0 ) then
+               IGOT_T2_loc = 1
+	    else if ( lcomp > 0 ) then
                p => extract_tensor_field( packed_state, "PackedFEPressure" )
                den_all2 => extract_tensor_field( packed_state, "PackedComponentDensity" )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
