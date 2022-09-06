@@ -66,7 +66,7 @@
       <real_value rank="0">0</real_value>
     </current_time>
     <timestep>
-      <real_value rank="0">0.05</real_value>
+      <real_value rank="0">0.01</real_value>
     </timestep>
     <finish_time>
       <real_value rank="0">0.2</real_value>

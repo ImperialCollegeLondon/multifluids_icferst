@@ -2,7 +2,7 @@
 <testproblem>
   <name>BL_fast_adapt_ts</name>
   <owner userid="pablo.salinas"/>
-  <tags>porous mpml adaptive_time testy</tags>
+  <tags>porous mpml adaptive_time</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>python3 ./BL_fast_adapt_ts.py &gt; log</command_line>
   </problem_definition>
