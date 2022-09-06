@@ -28,7 +28,12 @@ var NAVTREE =
       [ "Installation", "index.html#install_sec", [
         [ "Useful scripts", "index.html#Scripts", null ]
       ] ],
-      [ "Formulation", "index.html#Formulation", null ],
+      [ "Documentation", "index.html#Formulation", [
+        [ "Solvers theory", "index.html#solvers_theory", [
+          [ "Linear solvers", "index.html#linear_solvs", null ],
+          [ "Non-linear solver", "index.html#non_linear_solvs", null ]
+        ] ]
+      ] ],
       [ "Structure of the ICFERST code", "index.html#Code_structure", [
         [ "Code Diagram", "index.html#code_Diagram", null ],
         [ "Type of fields and accessing them through state and packed_state", "index.html#state_var", null ]
@@ -37,7 +42,7 @@ var NAVTREE =
         [ "Generation of a model", "index.html#modelgeneration", null ],
         [ "Wells in ICFERST", "index.html#wellmodelling", [
           [ "Well properties in Diamond", "index.html#well_prop", null ],
-          [ "Well modelling as multiphases", "index.html#Wells", null ]
+          [ "Well modelling as multiphase", "index.html#Wells", null ]
         ] ],
         [ "Coupling with XGBoost for machine learning acceleration", "index.html#xgboost", null ],
         [ "Diamond interface", "index.html#diamond", [
@@ -47,6 +52,7 @@ var NAVTREE =
           [ "Solver Options", "index.html#solv_options", null ],
           [ "PID adaptive time-stepping", "index.html#PID", null ],
           [ "Vanishing artificial diffusion", "index.html#VAD", null ],
+          [ "Momentum matrix", "index.html#mom_matrix", null ],
           [ "IO(Input/output)", "index.html#io", null ],
           [ "Timestepping", "index.html#timestepping", null ],
           [ "Physical parameters", "index.html#physical_par", null ],
@@ -101,10 +107,9 @@ var NAVTREEINDEX =
 [
 "_extract___from___state_8_f90.html",
 "_r_m__interface_8_f90.html#aa06999b1b2bf8b9920785359f9ed0593",
-"interfacexgb__interface_1_1fortran___x_g_booster_free.html#abdc751f1b2385cc4f9c728ee86dc00c9",
-"multi__pipes_8_f90.html#a796bc7722164bcb5d114b1afd5b85be5",
-"namespacemembers_m.html",
-"structmulti__data__types_1_1multi__sparsities.html#a7285ef94c65f7a1a9c953e245794e95d"
+"interfacexgb__interface_1_1fortran___x_g_booster_create.html",
+"multi__shape__fct_8_f90.html#a44cad6c56795ad9a5859229904c4cc0a",
+"namespacespact.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

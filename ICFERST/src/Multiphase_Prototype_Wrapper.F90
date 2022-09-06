@@ -114,7 +114,7 @@
 !>
 !> 3) Within scripts_to_make_life_easier there are two scripts to be modified and copied (manually) into /usr/bin to make the use of Diamond and ICFERST much easier.
 !>
-!> \section Formulation Formulation
+!> \section Formulation Documentation
 !>
 !> The formulation of the IC-FERST code is split in:
 !>
@@ -151,12 +151,12 @@
 !> Multigrid works by eliminating the high frequencies of the error using a smoother (typically performing a couple of Jacobi or Gauss-Seidel iterations) and
 !> then moving the residual to a coarser mesh, where the process is repeated and its result is used to improve the result of the finer mesh. This process is recursive
 !> and therefore a set of levels can be used, and therefore, a multigrid method is obtained. Due to its nature, multigrid convergence is independent on the degrees
-!> of freedom. However, elaborate operators need to be taylored for specific system of equations and meshes to obtain an optimal performance. In ICFERST
+!> of freedom. However, elaborate operators need to be tailored for specific system of equations and meshes to obtain an optimal performance. In ICFERST
 !> the use of HYPRE as preconditioner when using the DCVFEM shows excellent performance and it is the recommended (and default choice).
 !> 
 !> \subsubsection non_linear_solvs Non-linear solver
 !> In the previous section we have discussed the use of GMRES and multigrid. These solvers can solve only linear systems of equations
-!> (although multigrid with the Full Approximation Scheme can also solve non-linear system of equations by including the Newton-Taphson method as part of the smoother).
+!> (although multigrid with the Full Approximation Scheme can also solve non-linear system of equations by including the Newton-Raphson method as part of the smoother).
 !> Therefore we also require a non-linear solver to deal with the non-linearities arising when solving the full system of equations. Non-linearities may arise from
 !> Equations of State, relative permeability, capillary pressure, dependence with other fields (for example transport depending on temperature), etc.
 !> 
@@ -164,7 +164,7 @@
 !> pivots around a fixed-point to identify a "direction" to follow in order to obtain the solution. The most famous ones are:
 !>  i) Newton-Raphson: the direction
 !> of the gradient is used to find the solution. If the solution field is continuous the convergence is quadratic. This method requires to generate a Jacobian matrix
-!> and tends to generate bigger and harder metrices to solve for than the alternative.
+!> and tends to generate bigger and harder matrices to solve for than the alternative.
 !> ii) Anderson solver: In this case the system is linearised by freezing all the fields that are not part of the current linear solve. For example
 !> if solving for pressure then all the other fields are constant at that stage. By iterating through the different linear systems, the non-linear system is finally solved.
 !> This approach has typically a first order convergence but in exchange the systems to solve for are easier and smaller.
@@ -270,7 +270,7 @@
 !> \subsection state_var Type of fields and accessing them through state and packed_state
 !> ICFERST uses two types of structures which are effectively linked lists pointing to either scalar_fields, vector_fields or tensor_fields.
 !> The first field is state, which is an array containing as many entries as phases. Within each entry one has all the fields defined in diamond.
-!> These fields are the ones that Fluidity "see" and therefore will perform its operations on it, such as computation of statitstics of the field 
+!> These fields are the ones that Fluidity "see" and therefore will perform its operations on it, such as computation of statistics of the field 
 !> in the .stat file, output it into the .vtu file, perform mesh to mesh interpolation, etc. To access these fields one has to do as follows 
 !> to extract a scalar field:
 !>
@@ -328,15 +328,22 @@
 !> The wells consider a modified Darcy equation to model flow within the pipes, meaning that we are solving the flow within the pipe.
 !> To set up a well the user must define:
 !> - Gamma: Defines which parts of the well are open. This can be used to close some sections dynamically with python.
+!>
 !> - Sigma: Specifies the friction factor. it is recommended to use /porous_media/wells_and_pipes/well_options/calculate_sigma_pipe and specify the
 !> roughness of the material there.
+!>
 !> - DiameterPipe: Specifies the diameter of the well.
+!>
 !> - Thermal properties: The user can specify if the wells may lose heat by specifying the thickness of the pipe and its conductivity value.
-!> - Well colume ids: The user must specify the region ids of the sleeves defining the wells.
+!>
+!> - Well column ids: The user must specify the region ids of the sleeves defining the wells.
+!>
 !> - Well from file or from coordinates to specify as said in @ref wellmodelling the well paths. 
-!> \subsubsection Wells Well modelling as multiphases
-!> Currently, ICFERST model wells by considering that two different domains co-exist and are connected through the nodes of the wells. To define this through diamond
-!> One has to duplicate the number of phases to the ones required to model the system without wells and consider that they are equivalent, for example for two phase
+!>
+!> \subsubsection Wells Well modelling as multiphase
+!> Currently, ICFERST model wells by considering that two different domains co-exist and are connected through the nodes of the wells. 
+!> To define this through diamond, one has to duplicate the number of phases to the ones required to model the system without wells and consider 
+!> that they are equivalent, for example for two phase
 !> phase 1 and 3 are the same. Therefore, the EOS and different properties must be defined equivalently. Another important requirement is that now two Pressure needs to
 !> be solved for, in this case phase 1 and 3 will have a defined pressure and phase 2 and 4 will be aliased with 1 and 3 respectively. Once this is done
 !> the boundary conditions need to be set accordingly
@@ -368,7 +375,12 @@
 !> </CODE>
 !> @endhtmlonly
 !> \subsubsection modifying_diamond Extending and modifying the diamond interface
-!> The current settings for diamond are stored in the folder ICFERST/schemas being multiphase.rnc the main file which calls the other ones.
+!> Diamond requires a file predefining the entries to be created and that can therefore be modified by the user. This is done using a schema. The schema for ICFERST
+!> is stored in ICFERST/schema. Here the main file is multiphase.rnc which calls the other ones as required. Note that there are two files, the .rnc and the .rng. The
+!> .rnc file is to be modified by a developer and then compiled using the tool spud-preprocess. The .rnc file uses a hierarchical language with different operators 
+!> to define whether reals, integers or booleans are required as inputs, as well as different options for the settings. It is recommended to expand the .rnc file based
+!> on pre-existing examples within the .rnc file. 
+!>
 !> To add/remove or modify the schema the .rnc files need to be modified as required and afterwards recompiled using spud-preprocess:
 !> @htmlonly
 !> <CODE>
@@ -401,7 +413,7 @@
 !>\subsubsection PID PID adaptive time-stepping
 !>
 !> The recommended method to adjust the time-step size in ICFERST is to do it based on the stability of the non-linear solver with the addition of the
-!> PID controler (Proportional Integrator Derivator). Adaptive time-stepping methods based on the stability of the non-linear solver normally suffer from
+!> PID controller (Proportional Integrator Derivation). Adaptive time-stepping methods based on the stability of the non-linear solver normally suffer from
 !> the fact that they keep raising the time-step size until they fail, which forces them to repeat a time-level, halve the time-step size and repeat
 !> the process. This is suboptimal. In ICFERST, we use a PID type method based on a requested number of non-linear iterations, where the controller
 !> adjusts the time-step size to try to always have the same number of non-linear iterations, avoiding that problem and being overall more efficient.
@@ -409,9 +421,12 @@
 !> For more information see: <a href="https://www.sciencedirect.com/science/article/pii/S0309170822000641">link Hamzeloo et al 2022.</a>
 !>\subsubsection VAD Vanishing artificial diffusion
 !> The Vanishing Artificial Diffusion (VAD) is devoted to stabilise the system when solving for multiphase flow. It can also be used for transport however 
-!> we have seen that in certain scenarios it may not be beneficial, this could be solved adjusting the parameter but xthis work needs to be done.
+!> we have seen that in certain scenarios it may not be beneficial, this could be solved adjusting the parameter but this work needs to be done.
 !> However, for multiphase it has shown to greatly accelerate the non-linear solver and specially when having capillary pressure in the system.
 !> Unless explicitly imposed, when capillary pressure is active VAD is also active. Moreover, VAD is active if no settings of the non-linear solver are set.
+!> 
+!> Recentely, it has been observed that for big density ratio between the phases it can lead to mass generation.
+!> Therefore it is advised to disable it (set to zero) when the density between the phases is more than one order of magnitude.
 !>
 !> For more information see: <a href="https://www.sciencedirect.com/science/article/pii/S0045782519304001">link Salinas et al 2019.</a>
 !> \subsubsection mom_matrix Momentum matrix
@@ -419,21 +434,28 @@
 !>\subsubsection io IO(Input/output)
 !> In this section the user can specify what to output from ICFERST. 
 !> The outputs of vtu files can either be based on timesteps or time in seconds. 
-!> The user can select to print convergence information and the current courant number, also the user can select from here to generate the outfluxes file
-!> and checkpointing.
+!> The user can select to:
+!> - Print convergence information and the current courant number. 
+!>
+!> - Generate a .csv file (outfluxes) containing the flux across the specified boundary ids
+!>
+!> - Activate the use of Checkpointing (not that currently there is a bug and for restart the mpml file needs to be open with diamond and saved)
+!>
+!> - De-activate the generation of the .stat file. Generating this file is relatively expensive and some time can be saved.
+!>
 !>\subsubsection timestepping Timestepping
 !> The initial time, final time and initial time-step size is selected here. Also a time-stepping method based on a CFL limit can be specified here.
 !> Note that if the time-step is to be adjusted on both the CFL and the non-linear solver, the most limiting one will be used.
 !>\subsubsection physical_par Physical parameters
 !> The user can select the magnitude and direction of the gravity forces as well as select from two options to help with hydrostatic modelling
-!> hydrostatic pressure solver, which requries an extra solver and does not work with Wells or remove hydrostatic contribution, only for single phase.
+!> hydrostatic pressure solver, which requires an extra solver and does not work with Wells or remove hydrostatic contribution, only for single phase.
 !> \subsubsection material_phase Material phase
 !> You can add as many phases as desired in theory, however ICFERST can only do up to three phases (gas, liquid, aqua), doubling to 6 if having wells.
 !> It is important to note that pressure is only solved for the first phase and the other phases are aliased with this phase.
 !> Within each phase the user has to defined its viscosity and different properties based on the modelling requested. PhaseVolumeFraction has to be always defined
 !> even though a single phase model is done. 
 !>
-!> A phase must have a pressure field defined, a Velocity field and a PahseVolumeFraction defined. Also, temperature, 
+!> A phase must have a pressure field defined, a Velocity field and a PhaseVolumeFraction defined. Also, temperature, 
 !> concentration and Passive/ActiveTracers can be defined as well as species. To define a Passive/ActiveTracer the fiel must start with that name, for example
 !> ActiveTracer_Humidity. In this way, n-fields can be solved for. There are some more restricted fields or diagnostic fields that are used by
 !> Fluidity that the user can take advantage of, we recommend the reader to check the Fluidity manual for those.
@@ -454,9 +476,9 @@
 !> dynamically, some users have experienced problems with relative and therefore absolute is recommended.
 !>\subsubsection Mesh2mesh Mesh to Mesh interpolator
 !> Once a new mesh is generated the fields need to be interpolated between meshes. Interpolation between meshes needs to take into account: 
-!> i) Conservation: the integral of the field before and after is the same, ii) Boundeness: the maximum and minimum values before and after the interpolation are the same
+!> i) Conservation: the integral of the field before and after is the same, ii) Boundedness: the maximum and minimum values before and after the interpolation are the same
 !> iii) artificial diffusion: does the interpolator introduces artificial diffusion into the solution?
-!> Within ICFERST, The Galerkin projection fulfils all three but it is expensive as a system of equations needs to be solved for. Consisten interpolation fulfills
+!> Within ICFERST, The Galerkin projection fulfils all three but it is expensive as a system of equations needs to be solved for. Consistent interpolation fulfils
 !> ii) and iii) and Grandy fulfils i) and ii) but not iii).
 !> In this way it is recommended to use Galerkin for scalar fields and velocity and consistent interpolation for wells and pressure.
 !>\subsubsection sourceterm Source and Absorption terms
@@ -469,10 +491,13 @@
 !>
 !> Within this section the user can select
 !> - how often adapt the mesh based on the number of iterations or an accumulated courant number if adapting within the non-linear solver. 
+!>
 !> - Maximum and minimum number of nodes to be used. It is recommended to give a minimum number of nodes per core of at least 1000 to ensure
 !> that parallel simulations can perform well.
+!>
 !> - Gradation: this parameters specifies how bigger an element can be compared to its neighbour.
-!> - Minimum and maximum edge lenghts: it is recommended to ignore the off-diagonal values and consider in the diagonals the precision in metres required.
+!>
+!> - Minimum and maximum edge lengths: it is recommended to ignore the off-diagonal values and consider in the diagonals the precision in metres required.
 !> normally spanning 3 or 4 orders of magnitude is stable.
 !>
 !> Other settings to take into account are adapt at the first time step, which can be used to generate a mesh from a given one or if there is
@@ -482,14 +507,21 @@
 !>  such as density, heat capacity and coductivity of the porous media under porous properties. 
 !> - Permeability: It is recommended that unless the field is anisotropic, the user should use either scalar field or diagonal. In this way ICFERST can optimise
 !> its computation.
+!>
 !> - Dispersion: Specify here the longitudinal and transverse dispersivity (the latter by default 10 times smaller).
+!>
 !> - Porous properties: Specify here the BULK properties of the mineral (bulk = pore space + matrix).
+!>
 !> - Wells and pipes: Specify which regions of the well are open (gamma), friction factor (sigma) and the diameter of the well.
-!> Under thermal well properties the user can also define the conductivity of the pipe and its thinkness so the pipes can also interchange heat where they are close to flow
+!>
+!> Under thermal well properties the user can also define the conductivity of the pipe and its thickness so the pipes can also interchange heat where they are close to flow
 !> - Well options: Use calculate sigma pipe to compute the friction based on the material of the pipe.
+!>
 !> -Well volume ids: The user must specify here the sleeves conforming the well path. If selected lock sleeve nodes, then DMO will lock the nodes within
-!> these regions, ensuring that the result is less oscilatory (although perfectly correct anyway).
+!> these regions, ensuring that the result is less oscillatory (although perfectly correct anyway).
+!>
 !> - Well from file: specify the path to the .bdf file containing the path of the well
+!>
 !> Well from coordinates: alternatively if the well is a straight line, you can specify it just using coordinates.
 !> \subsubsection phreqqc PHREEQC coupling
 !> IC-FERST can run reaction modelling where the reaction part is performed using PHREEQC. To do this first the user must install PHREEQCRM
@@ -514,7 +546,7 @@
 !> \subsubsection pythonscripting Input using python
 !> Diamond enables the user to introduce Boundary Conditions and diagnostic fields, as well as other fields such as SelfPotential parameters
 !> using python code. It is important to note that using a python field is considerably slower than using a field based on region ids, this extra cost is
-!> not unberable but it is neither negligible. Therefore, the use of python fields is only recommended only if strictly necessary.
+!> not unbearable but it is neither negligible. Therefore, the use of python fields is only recommended only if strictly necessary.
 !>
 !> For boundary conditions and simple fields, the python code looks as follow to set up Velocity Boundary Conditions based on time:
 !> @htmlonly
@@ -572,7 +604,7 @@
 !> \subsubsection int_conv Simplified diamond interface
 !> 
 !> The current version of the multiphase schema found within ICFERST/schemas is a simplified version which gets populated internally
-!> so it is compatible with Fluidity. This extra population affects when generating checkpointing files that will not be exactly like
+!> so it is compatible with Fluidity. This extra population affects when generating checkpoint files that will not be exactly like
 !> the original and may need to amended before re-running from a checkpoint (which can be done by opening them and saving). 
 !> It is important to understand that this conversion exists since it may affect some sections of the code. However, 
 !> this has been tried to be kept to a minimum
@@ -600,7 +632,7 @@
 !>
 !> - ATES (Thermal_boussinesq)
 !>
-!> - tunneled BCs (tunneled_BCs)
+!> - tunnelled BCs (tunnelled_BCs)
 !>
 !> - use of Active (Active_tracers) and Passive Tracers (Passive_tracers)
 !>
@@ -665,7 +697,7 @@
 !> </CODE>
 !> @endhtmlonly
 !> where #CPUs is the number of CPUs and INPUT_MESH is a binary msh file using the gmshv2 format. 
-!> This can be obtained using ICFERST from an option in diamond/geometry or from an exodusII file using the python conversor from ICFERST/tools
+!> This can be obtained using ICFERST from an option in diamond/geometry or from an exodusII file using the python converter from ICFERST/tools
 !> Once the mesh is decomposed you can run in parallel using mpirun:
 !> @htmlonly
 !> <CODE>
@@ -677,6 +709,7 @@
 !>
 !> where INPUT is INPUT_mpml is the mpml file as normally done.
 !> As a rule of thumb one wants to have around 15k elements per CPU to have optimal performance.
+
 #include "fdebug.h"
 
 subroutine multiphase_prototype_wrapper() bind(C)

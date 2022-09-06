@@ -1,19 +1,12 @@
 var searchData=
 [
-  ['u_1907',['u',['../structmulti__data__types_1_1multi__ndgln.html#acce603970accee21af488734205b83c3',1,'multi_data_types::multi_ndgln']]],
-  ['u_5fbeta_1908',['u_beta',['../structmulti__data__types_1_1multi__discretization__opts.html#a5a59c16a8644b45e91d77d3ae32a5724',1,'multi_data_types::multi_discretization_opts']]],
-  ['u_5fdg_5fvel_5fint_5fopt_1909',['u_dg_vel_int_opt',['../structmulti__data__types_1_1multi__discretization__opts.html#a3327926924cc07879c8e37d209782051',1,'multi_data_types::multi_discretization_opts']]],
-  ['u_5fele_5ftype_1910',['u_ele_type',['../structmulti__data__types_1_1multi__discretization__opts.html#a6c4f5d600411268971f8bd7ac6624406',1,'multi_data_types::multi_discretization_opts']]],
-  ['u_5fnloc_1911',['u_nloc',['../structmulti__data__types_1_1multi__dimensions.html#a3b5f7c93266276cfe75c98f59caf00e4',1,'multi_data_types::multi_dimensions']]],
-  ['u_5fnonods_1912',['u_nonods',['../structmulti__data__types_1_1multi__dimensions.html#a691f5f5247a403a960a9a14efc78474b',1,'multi_data_types::multi_dimensions']]],
-  ['u_5fon_5fface_1913',['u_on_face',['../structmulti__data__types_1_1multi__shape__funs.html#ab6f48f212bec6ef8142d30e197c26316',1,'multi_data_types::multi_shape_funs']]],
-  ['u_5frhs_1914',['u_rhs',['../structmulti__data__types_1_1multi__matrices.html#a0eaa2cf71c5394f223c49223f20cc40e',1,'multi_data_types::multi_matrices']]],
-  ['u_5fsele_5ftype_1915',['u_sele_type',['../structmulti__data__types_1_1multi__discretization__opts.html#a6e93372067b0f256b68137b5daa4a3ce',1,'multi_data_types::multi_discretization_opts']]],
-  ['u_5fsloclist_1916',['u_sloclist',['../structmulti__data__types_1_1multi__shape__funs.html#a84d850345659abba37075fdaa69fc0b4',1,'multi_data_types::multi_shape_funs']]],
-  ['u_5fsnloc_1917',['u_snloc',['../structmulti__data__types_1_1multi__dimensions.html#a639f4daeee5ad40d8bd634c520fb805d',1,'multi_data_types::multi_dimensions']]],
-  ['u_5ftheta_1918',['u_theta',['../structmulti__data__types_1_1multi__discretization__opts.html#a47e114a82e8027f2b29a2a5c2bcae2ee',1,'multi_data_types::multi_discretization_opts']]],
-  ['ufem_5fon_5fface_1919',['ufem_on_face',['../structmulti__data__types_1_1multi__shape__funs.html#aaa5751333a00c212a5914c725ab55f86',1,'multi_data_types::multi_shape_funs']]],
-  ['ufen_1920',['ufen',['../structmulti__data__types_1_1multi__shape__funs.html#a9d04793e684d29aeb92349811bd35c32',1,'multi_data_types::multi_shape_funs']]],
-  ['ufenlx_5fall_1921',['ufenlx_all',['../structmulti__data__types_1_1multi__shape__funs.html#a743c20c81e1087d348c06ebdf5e9359e',1,'multi_data_types::multi_shape_funs']]],
-  ['ufenx_5fall_1922',['ufenx_all',['../structmulti__data__types_1_1multi__dev__shape__funs.html#abe3b85e295b875e21417f0b4c04316b4',1,'multi_data_types::multi_dev_shape_funs']]]
+  ['v_5fbeta_1843',['v_beta',['../structmulti__data__types_1_1multi__discretization__opts.html#a6f8c22df9adc867b0acd5209dc2b9729',1,'multi_data_types::multi_discretization_opts']]],
+  ['v_5fdg_5fvel_5fint_5fopt_1844',['v_dg_vel_int_opt',['../structmulti__data__types_1_1multi__discretization__opts.html#a87906307fceb07a753e25e4a3787f2fa',1,'multi_data_types::multi_discretization_opts']]],
+  ['v_5fdisopt_1845',['v_disopt',['../structmulti__data__types_1_1multi__discretization__opts.html#ad8022f64bd0484fa92f345be5e2931e7',1,'multi_data_types::multi_discretization_opts']]],
+  ['v_5ftheta_1846',['v_theta',['../structmulti__data__types_1_1multi__discretization__opts.html#a11a32bbf87e672f1ff9cd31e5f9ac9c7',1,'multi_data_types::multi_discretization_opts']]],
+  ['val_1847',['val',['../structmulti__data__types_1_1multi__field.html#a6ff70a0255db6c8865a37b29d808f49c',1,'multi_data_types::multi_field']]],
+  ['velocity_1848',['velocity',['../structmulti__data__types_1_1multi__dev__shape__funs.html#aee842c3c064bd847e471d78d9cd5cba6',1,'multi_data_types::multi_dev_shape_funs::velocity()'],['../structmulti__data__types_1_1multi__absorption.html#a64fc4d412866cf2212b3ec5f611b057a',1,'multi_data_types::multi_absorption::velocity()']]],
+  ['volfra_5fget_5ftheta_5fflux_1849',['volfra_get_theta_flux',['../structmulti__data__types_1_1multi__discretization__opts.html#a783c04192349bcc7485443d9215eb6d1',1,'multi_data_types::multi_discretization_opts']]],
+  ['volfra_5fuse_5ftheta_5fflux_1850',['volfra_use_theta_flux',['../structmulti__data__types_1_1multi__discretization__opts.html#ab9e9a56aed82b1244229acb7fc511994',1,'multi_data_types::multi_discretization_opts']]],
+  ['volume_1851',['volume',['../structmulti__data__types_1_1multi__dev__shape__funs.html#a995ee408eed83d0235763c6b516eed6b',1,'multi_data_types::multi_dev_shape_funs']]]
 ];
