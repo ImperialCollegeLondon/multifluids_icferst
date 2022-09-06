@@ -72,21 +72,13 @@ var menudata={children:[
 {text:"u",url:"namespacemembers_func_u.html#index_u"},
 {text:"v",url:"namespacemembers_func_v.html#index_v"},
 {text:"x",url:"namespacemembers_func_x.html#index_x"}]},
-{text:"Variables",url:"namespacemembers_vars.html",children:[
-{text:"f",url:"namespacemembers_vars.html#index_f"},
-{text:"i",url:"namespacemembers_vars.html#index_i"},
-{text:"n",url:"namespacemembers_vars.html#index_n"},
-{text:"p",url:"namespacemembers_vars.html#index_p"},
-{text:"s",url:"namespacemembers_vars.html#index_s"},
-{text:"t",url:"namespacemembers_vars.html#index_t"},
-{text:"w",url:"namespacemembers_vars.html#index_w"}]}]}]},
+{text:"Variables",url:"namespacemembers_vars.html"}]}]},
 {text:"Data Types List",url:"annotated.html",children:[
 {text:"Data Types List",url:"annotated.html"},
 {text:"Data Types",url:"classes.html"},
 {text:"Data Fields",url:"functions.html",children:[
 {text:"All",url:"functions.html",children:[
 {text:"a",url:"functions.html#index_a"},
-{text:"b",url:"functions_b.html#index_b"},
 {text:"c",url:"functions_c.html#index_c"},
 {text:"d",url:"functions_d.html#index_d"},
 {text:"e",url:"functions_e.html#index_e"},
@@ -110,7 +102,6 @@ var menudata={children:[
 {text:"Functions/Subroutines",url:"functions_func.html"},
 {text:"Variables",url:"functions_vars.html",children:[
 {text:"a",url:"functions_vars.html#index_a"},
-{text:"b",url:"functions_vars_b.html#index_b"},
 {text:"c",url:"functions_vars_c.html#index_c"},
 {text:"d",url:"functions_vars_d.html#index_d"},
 {text:"e",url:"functions_vars_e.html#index_e"},
@@ -153,8 +144,7 @@ var menudata={children:[
 {text:"s",url:"globals.html#index_s"},
 {text:"t",url:"globals.html#index_t"},
 {text:"u",url:"globals.html#index_u"},
-{text:"v",url:"globals.html#index_v"},
-{text:"z",url:"globals.html#index_z"}]},
+{text:"v",url:"globals.html#index_v"}]},
 {text:"Functions/Subroutines",url:"globals_func.html",children:[
 {text:"a",url:"globals_func.html#index_a"},
 {text:"c",url:"globals_func.html#index_c"},
@@ -174,5 +164,4 @@ var menudata={children:[
 {text:"s",url:"globals_func.html#index_s"},
 {text:"t",url:"globals_func.html#index_t"},
 {text:"u",url:"globals_func.html#index_u"},
-{text:"v",url:"globals_func.html#index_v"},
-{text:"z",url:"globals_func.html#index_z"}]}]}]}]}
+{text:"v",url:"globals_func.html#index_v"}]}]}]}]}
