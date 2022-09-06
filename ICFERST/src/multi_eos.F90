@@ -1521,6 +1521,7 @@ contains
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
       logical, parameter :: harmonic_average=.false.
+      logical :: wiener_conductivity
       real :: expo
 
       ScalarAdvectionField_Diffusion = 0.0
@@ -1594,6 +1595,7 @@ contains
             !weighted average of conductivities Wiener method).
             !Default option is to use a more accurate Hashin and Shtrikman definition:
             !lambda_p+3*lambda_p*(lambda_f-lambda_p)*porosity/(3*lambda_p+(lambda_f-lambda_p)(1-porosity))
+            wiener_conductivity =  have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/Wiener_conductivity')
             saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
             do iphase = 1, Mdims%nphase
               diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
@@ -1605,7 +1607,7 @@ contains
                 do iloc = 1, Mdims%mat_nloc
                   mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                   cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                  if (have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/Wiener_conductivity')) then
+                  if (wiener_conductivity) then
                     do idim = 1, Mdims%ndim
                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
@@ -1896,10 +1898,6 @@ contains
                   end do
                end do
             else
-               if (is_magma)  then
-                 saturation => extract_scalar_field(state(2), "PhaseVolumeFraction") !HH melt is the 2nd phase
-                 call get_option('/magma_parameters/bulk_viscosity_exponential_coefficient' , exp_zeta_function)
-               end if
                cg_mesh = have_option( '/material_phase[0]/phase_properties/Viscosity/tensor_field::Viscosity/diagnostic/mesh::PressureMesh')
                do iphase = 1, Mdims%nphase
                   tp_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
@@ -1919,10 +1917,6 @@ contains
                         mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
                         cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
                         momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
-                        !Currently only magma uses momentum_diffusion2
-                        if (iphase==1 .and. is_magma) then !only the solid phase has bulk viscosity
-                          momentum_diffusion2%val(iphase, 1, 1, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))*0 !now turned off
-                        end if
                         if(cg_mesh) then
                           mat_nod = cv_nod * multiplier + (1 - multiplier)! this is for CG
                         else
@@ -1950,19 +1944,6 @@ contains
 
       return
     Contains
-      !---------------------------------------------------------------------------
-      !> @author Haiyang Hu
-      !> @brief Some magma stuf... 
-      !---------------------------------------------------------------------------
-      real function zeta(a,n,phi)
-        implicit none
-        ! bulk viscosity zeta=a*phi^-n
-        real :: a!> TO BE FILLED
-        real :: n!> TO BE FILLED
-        real :: phi!> TO BE FILLED
-        zeta=a*phi**(-n)
-        return
-      end function zeta
 
     end subroutine calculate_viscosity
 

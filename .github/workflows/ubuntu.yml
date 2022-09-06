@@ -3,12 +3,11 @@ name: Build and Test
 on:
   push:
     branches:
-      - pablo_dev
+      - pablo_dev3
       - master
       - magma_dev
       - linfeng_dev
       - geraldine_dev
-      - pablo_dev2
       - phreeqc_link
       - geraldine_dev_new
       - vinicius_dev

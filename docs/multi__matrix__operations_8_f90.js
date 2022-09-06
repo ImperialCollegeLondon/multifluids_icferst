@@ -15,7 +15,7 @@ var multi__matrix__operations_8_f90 =
     [ "ct_mult_with_c", "multi__matrix__operations_8_f90.html#adab9184c4050e9ba8576cde63fa99b5a", null ],
     [ "ct_mult_with_c3", "multi__matrix__operations_8_f90.html#a6aab014a9001ac1cbb2e46bba4171cd9", null ],
     [ "ct_mult_with_c_many", "multi__matrix__operations_8_f90.html#ae03adef605e7047d7fbafecd36d39c0e", null ],
-    [ "mass_matrix_inversion", "multi__matrix__operations_8_f90.html#a7628ec2574e8ee26a9cc526ce1633451", null ],
+    [ "mass_matrix_inversion", "multi__matrix__operations_8_f90.html#a734cb02c01dd1633fecc0ba5117b8f7d", null ],
     [ "mass_matrix_matvec", "multi__matrix__operations_8_f90.html#a501c5d1025991dd3e563d635362b475b", null ],
     [ "matdmatinv", "multi__matrix__operations_8_f90.html#a11255cf3f07959a2d3e20dd8705755fe", null ],
     [ "matinv", "multi__matrix__operations_8_f90.html#a3795359fc116fe5770ad11a89bbccc00", null ],

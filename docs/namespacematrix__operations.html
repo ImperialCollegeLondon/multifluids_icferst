@@ -27,7 +27,7 @@
   <td id="projectlogo"><img alt="Logo" src="IC_FERST_Logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">ICFERST
-   &#160;<span id="projectnumber">22-07</span>
+   &#160;<span id="projectnumber">22-09</span>
    </div>
    <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
@@ -111,9 +111,9 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a8e0ed666ded4084ef9626e11edb7fee1"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacematrix__operations.html#a8e0ed666ded4084ef9626e11edb7fee1">color_get_cmc_pha</a> (Mdims, Mspars, ndgln, Mmat, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, pipes_aux, got_free_surf, MASS_SUF, FEM_continuity_equation)</td></tr>
 <tr class="memdesc:a8e0ed666ded4084ef9626e11edb7fee1"><td class="mdescLeft">&#160;</td><td class="mdescRight">:Initialize the momentum equation (CMC) and introduces the corresponding values in it. COLOR_GET_CMC_PHA_FAST is very memory hungry, so we let the user decide or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage  <a href="namespacematrix__operations.html#a8e0ed666ded4084ef9626e11edb7fee1">More...</a><br /></td></tr>
 <tr class="separator:a8e0ed666ded4084ef9626e11edb7fee1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7628ec2574e8ee26a9cc526ce1633451"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacematrix__operations.html#a7628ec2574e8ee26a9cc526ce1633451">mass_matrix_inversion</a> (PIVIT_MAT, Mdims)</td></tr>
-<tr class="memdesc:a7628ec2574e8ee26a9cc526ce1633451"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Inversion of the mass matrix. If compacted this is much more efficient  <a href="namespacematrix__operations.html#a7628ec2574e8ee26a9cc526ce1633451">More...</a><br /></td></tr>
-<tr class="separator:a7628ec2574e8ee26a9cc526ce1633451"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a734cb02c01dd1633fecc0ba5117b8f7d"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacematrix__operations.html#a734cb02c01dd1633fecc0ba5117b8f7d">mass_matrix_inversion</a> (PIVIT_MAT, Mdims, eles_with_pipe)</td></tr>
+<tr class="memdesc:a734cb02c01dd1633fecc0ba5117b8f7d"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Inversion of the mass matrix. If compacted this is much more efficient  <a href="namespacematrix__operations.html#a734cb02c01dd1633fecc0ba5117b8f7d">More...</a><br /></td></tr>
+<tr class="separator:a734cb02c01dd1633fecc0ba5117b8f7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a501c5d1025991dd3e563d635362b475b"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacematrix__operations.html#a501c5d1025991dd3e563d635362b475b">mass_matrix_matvec</a> (U, BLOCK_MAT, CDP, NDIM, NPHASE, TOTELE, U_NLOC, U_NDGLN)</td></tr>
 <tr class="memdesc:a501c5d1025991dd3e563d635362b475b"><td class="mdescLeft">&#160;</td><td class="mdescRight">: U = Mass_matrix * Vector (tipically vector is Grad * P + RHS and this is used to obtain the velocity)  <a href="namespacematrix__operations.html#a501c5d1025991dd3e563d635362b475b">More...</a><br /></td></tr>
 <tr class="separator:a501c5d1025991dd3e563d635362b475b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1250,8 +1250,8 @@ Here is the caller graph for this function:</div>
 
 </div>
 </div>
-<a id="a7628ec2574e8ee26a9cc526ce1633451"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7628ec2574e8ee26a9cc526ce1633451">&#9670;&nbsp;</a></span>mass_matrix_inversion()</h2>
+<a id="a734cb02c01dd1633fecc0ba5117b8f7d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a734cb02c01dd1633fecc0ba5117b8f7d">&#9670;&nbsp;</a></span>mass_matrix_inversion()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1266,7 +1266,13 @@ Here is the caller graph for this function:</div>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">type(<a class="el" href="structmulti__data__types_1_1multi__dimensions.html">multi_dimensions</a>), intent(in)&#160;</td>
-          <td class="paramname"><em>Mdims</em>&#160;</td>
+          <td class="paramname"><em>Mdims</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(<a class="el" href="structmulti__data__types_1_1pipe__coords.html">pipe_coords</a>), dimension(:), intent(in)&#160;</td>
+          <td class="paramname"><em>eles_with_pipe</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -1280,8 +1286,8 @@ Here is the caller graph for this function:</div>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
-<div class="center"><img src="namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451_cgraph.png" border="0" usemap="#namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451_cgraph" alt=""/></div>
-<map name="namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451_cgraph" id="namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451_cgraph">
+<div class="center"><img src="namespacematrix__operations_a734cb02c01dd1633fecc0ba5117b8f7d_cgraph.png" border="0" usemap="#namespacematrix__operations_a734cb02c01dd1633fecc0ba5117b8f7d_cgraph" alt=""/></div>
+<map name="namespacematrix__operations_a734cb02c01dd1633fecc0ba5117b8f7d_cgraph" id="namespacematrix__operations_a734cb02c01dd1633fecc0ba5117b8f7d_cgraph">
 <area shape="rect" title=": Inversion of the mass matrix. If compacted this is much more efficient" alt="" coords="5,5,180,47"/>
 <area shape="rect" href="namespacematrix__operations.html#afe8e6c53cbc0059363705d48a73708d1" title=": This sub finds the inverse of the matrix A and puts it back in A. MAT, MAT2, X and B are working ve..." alt="" coords="228,5,377,47"/>
 <area shape="rect" href="namespacematrix__operations.html#ad55f3b1531dccfb31fac2aa6022448b5" title="Calculate the inverse using the LU decomposition L can be provided, speeding up the method to O(n)" alt="" coords="425,5,575,47"/>
@@ -1290,8 +1296,8 @@ Here is the call graph for this function:</div>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
-<div class="center"><img src="namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451_icgraph.png" border="0" usemap="#namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451_icgraph" alt=""/></div>
-<map name="namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451_icgraph" id="namespacematrix__operations_a7628ec2574e8ee26a9cc526ce1633451_icgraph">
+<div class="center"><img src="namespacematrix__operations_a734cb02c01dd1633fecc0ba5117b8f7d_icgraph.png" border="0" usemap="#namespacematrix__operations_a734cb02c01dd1633fecc0ba5117b8f7d_icgraph" alt=""/></div>
+<map name="namespacematrix__operations_a734cb02c01dd1633fecc0ba5117b8f7d_icgraph" id="namespacematrix__operations_a734cb02c01dd1633fecc0ba5117b8f7d_icgraph">
 <area shape="rect" title=": Inversion of the mass matrix. If compacted this is much more efficient" alt="" coords="724,5,899,47"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
@@ -1555,7 +1561,7 @@ Here is the caller graph for this function:</div>
 <div class="center"><img src="namespacematrix__operations_afe8e6c53cbc0059363705d48a73708d1_icgraph.png" border="0" usemap="#namespacematrix__operations_afe8e6c53cbc0059363705d48a73708d1_icgraph" alt=""/></div>
 <map name="namespacematrix__operations_afe8e6c53cbc0059363705d48a73708d1_icgraph" id="namespacematrix__operations_afe8e6c53cbc0059363705d48a73708d1_icgraph">
 <area shape="rect" title=": This sub finds the inverse of the matrix A and puts it back in A. MAT, MAT2, X and B are working ve..." alt="" coords="947,5,1096,47"/>
-<area shape="rect" href="namespacematrix__operations.html#a7628ec2574e8ee26a9cc526ce1633451" title=": Inversion of the mass matrix. If compacted this is much more efficient" alt="" coords="724,5,899,47"/>
+<area shape="rect" href="namespacematrix__operations.html#a734cb02c01dd1633fecc0ba5117b8f7d" title=": Inversion of the mass matrix. If compacted this is much more efficient" alt="" coords="724,5,899,47"/>
 <area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
@@ -2083,7 +2089,7 @@ Here is the caller graph for this function:</div>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,173,419,214"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,173,171,214"/>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="1036,180,1201,207"/>
-<area shape="rect" href="namespacematrix__operations.html#a7628ec2574e8ee26a9cc526ce1633451" title=": Inversion of the mass matrix. If compacted this is much more efficient" alt="" coords="753,205,928,246"/>
+<area shape="rect" href="namespacematrix__operations.html#a734cb02c01dd1633fecc0ba5117b8f7d" title=": Inversion of the mass matrix. If compacted this is much more efficient" alt="" coords="753,205,928,246"/>
 </map>
 </div>
 

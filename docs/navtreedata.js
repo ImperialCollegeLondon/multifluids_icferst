@@ -30,7 +30,8 @@ var NAVTREE =
       ] ],
       [ "Formulation", "index.html#Formulation", null ],
       [ "Structure of the ICFERST code", "index.html#Code_structure", [
-        [ "Code Diagram", "index.html#code_Diagram", null ]
+        [ "Code Diagram", "index.html#code_Diagram", null ],
+        [ "Type of fields and accessing them through state and packed_state", "index.html#state_var", null ]
       ] ],
       [ "How to use ICFERST", "index.html#how_to_use", [
         [ "Generation of a model", "index.html#modelgeneration", null ],
@@ -100,10 +101,10 @@ var NAVTREEINDEX =
 [
 "_extract___from___state_8_f90.html",
 "_r_m__interface_8_f90.html#aa06999b1b2bf8b9920785359f9ed0593",
-"interfacexgb__interface_1_1fortran___x_g_booster_load_model.html",
-"multi__pipes_8_f90.html#a7b452d55d681c15cd356bdee00f0c26f",
-"namespacemembers_n.html",
-"structmulti__data__types_1_1multi__sparsities.html#a74ede11a2a5ad035372a4f7ddd74498d"
+"interfacexgb__interface_1_1fortran___x_g_booster_free.html#abdc751f1b2385cc4f9c728ee86dc00c9",
+"multi__pipes_8_f90.html#a796bc7722164bcb5d114b1afd5b85be5",
+"namespacemembers_m.html",
+"structmulti__data__types_1_1multi__sparsities.html#a7285ef94c65f7a1a9c953e245794e95d"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

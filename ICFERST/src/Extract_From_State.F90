@@ -60,7 +60,7 @@ module Copy_Outof_State
 
     public :: Get_Primary_Scalars_new, Compute_Node_Global_Numbers, &
         Get_Ele_Type, Get_Discretisation_Options, inf_norm_scalar_normalised, &
-        update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
+        pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         have_option_for_any_phase, Get_Ele_Type_new,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions, &
@@ -119,7 +119,6 @@ contains
                 end if
             end if
         end if
-        is_multifracture = have_option( '/femdem_fracture' ) .or. is_multifracture
 
         positions => extract_vector_field( state, 'Coordinate' )
         pressure_cg_mesh => extract_mesh( state, 'PressureMesh_Continuous' )
@@ -584,145 +583,6 @@ contains
     end subroutine Get_Discretisation_Options
 
 
-    !> @brief: Sets the boundary condition, if the time has advanced and the BCs changed,
-    !> here they are set to the new time-level
-    subroutine update_boundary_conditions( state, stotel, cv_snloc, nphase, &
-        &                                 suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer )
-        implicit none
-        type( state_type ), dimension( : ), intent( in ) :: state
-        integer, intent( in ) :: stotel, cv_snloc, nphase
-        real, dimension( 1, nphase, stotel * cv_snloc ), intent( inout ) :: suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2
-        !
-        character( len = option_path_len ) :: option_path, option_path2, field_name, name
-        integer :: shape_option(2), iphase, nobcs, kk, k, j , sele, stat
-        integer, dimension( : ), allocatable :: SufID_BC
-        integer, dimension( : ), pointer:: surface_element_list, face_nodes
-        type(tensor_field), intent(inout), target :: tracer
-
-        type( scalar_field ), pointer :: field, field_prot_bc, field_prot1, field_prot2
-        type( scalar_field ), pointer :: field_prot_bc1, field_prot_bc2
-        type( scalar_field ) :: field_prot_bc1f, field_prot_bc2f
-        type( mesh_type ), pointer :: pmesh, surface_mesh
-
-        suf_t_bc = 0. ; suf_t_bc_rob1 = 0. ; suf_t_bc_rob2 = 0.
-
-        call set_boundary_conditions_values( state, shift_time = .false. )
-
-        pmesh => extract_mesh( state, 'PressureMesh' )
-
-        do iphase = 1, nphase
-            !Because the tracer comes from packed state, all the names have attached
-            !packed before the name field: PackedTemperature for example
-            !However here we want to extract the information from state and Therefore
-            !we get the name without the packed in front.
-            field_name = trim(tracer%name(7:))!'Temperature'
-            field => extract_scalar_field( state( iphase ), trim( field_name ) )
-
-            option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
-
-            option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
-
-            nobcs = get_boundary_condition_count( field )
-
-            Loop_BC: do k = 1, nobcs
-
-                option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/surface_ids'
-                shape_option = option_shape( trim( option_path ) )
-                allocate( SufID_BC( 1 : shape_option( 1 ) ) )
-                call get_option( trim( option_path ), SufID_BC )
-
-                option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/'
-
-                Conditional_Field_BC: if( have_option( trim( option_path ) // 'type::dirichlet' ) ) then
-
-                    !BC_Type = 1
-                    field_prot_bc => extract_surface_field( field, k, 'value' )
-
-                    sele = 1
-                    do j = 1, stotel
-                        if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
-                            !wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
-                            face_nodes => ele_nodes( field_prot_bc, sele )
-                            do kk = 1, cv_snloc
-                                suf_t_bc( 1, iphase, ( j - 1 ) * cv_snloc + kk ) = &
-                                    field_prot_bc % val( face_nodes( 1 ) )
-                            end do
-                            sele = sele + 1
-                        end if
-                    end do
-
-                else if( have_option( trim( option_path ) // 'type::robin' ) ) then
-
-                    !BC_Type = 2
-                    if( have_option( trim( option_path ) // 'type::robin/order_zero_coefficient/from_field' ) ) then
-
-                        call get_boundary_condition( field, k, surface_mesh = surface_mesh, &
-                            surface_element_list = surface_element_list )
-
-                        call allocate( field_prot_bc1f, surface_mesh, "Robin1" )
-                        call allocate( field_prot_bc2f, surface_mesh, "Robin2" )
-
-                        call get_option( trim( option_path ) // "type::robin/order_zero_coefficient/from_field/name", name )
-                        field_prot1 => extract_scalar_field( state( iphase ), name, stat )
-                        if(stat /= 0) FLExit( "Could not extract parent field 1. Check options file?" )
-
-                        call get_option( trim( option_path ) // "type::robin/order_one_coefficient/from_field/name", name )
-                        field_prot2 => extract_scalar_field( state( iphase ), name, stat )
-                        if(stat /= 0) FLExit( "Could not extract parent field 2. Check options file?" )
-
-                        call remap_field_to_surface( field_prot1, field_prot_bc1f, surface_element_list )
-                        call remap_field_to_surface( field_prot2, field_prot_bc2f, surface_element_list )
-
-                        ! copy back memory
-                        sele = 1
-                        do j = 1, stotel
-                            if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
-                                !wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
-                                face_nodes => ele_nodes( field_prot_bc1f, sele )
-                                do kk = 1, cv_snloc
-                                    suf_t_bc_rob1( 1, iphase, ( j - 1 ) * cv_snloc + kk ) = &
-                                        field_prot_bc1f % val( face_nodes( 1 ) )
-                                    suf_t_bc_rob2( 1, iphase, ( j - 1 ) * cv_snloc + kk ) = &
-                                        field_prot_bc2f % val( face_nodes( 1 ) )
-                                end do
-                                sele = sele + 1
-                            end if
-                        end do
-
-                        call deallocate( field_prot_bc1f )
-                        call deallocate( field_prot_bc2f )
-
-                    else
-
-                        field_prot_bc1 => extract_surface_field( field, k, 'order_zero_coefficient' )
-                        field_prot_bc2 => extract_surface_field( field, k, 'order_one_coefficient' )
-
-                        sele = 1
-                        do j = 1, stotel
-                            if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
-                                !wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
-                                face_nodes => ele_nodes( field_prot_bc1, sele )
-                                do kk = 1, cv_snloc
-                                    suf_t_bc_rob1( 1, iphase, ( j - 1 ) * cv_snloc + kk ) = &
-                                        field_prot_bc1 % val( face_nodes( 1 ) )
-                                    suf_t_bc_rob2( 1, iphase, ( j - 1 ) * cv_snloc + kk ) = &
-                                        field_prot_bc2 % val( face_nodes( 1 ) )
-                                end do
-                                sele = sele + 1
-                            end if
-                        end do
-
-                    end if
-
-                end if Conditional_Field_BC
-
-                deallocate( SufID_BC )
-
-            end do Loop_BC
-
-        end do
-    end subroutine update_boundary_conditions
-
     !>@brief: This subroutine creates packed_state from state(:) and links the appropiate memory
     !> so it is acessible from both states. This subroutine also introduces fields not used by fludity but required by IC-FERST
     subroutine pack_multistate(npres, state, packed_state, &
@@ -750,80 +610,6 @@ contains
         integer :: nphase,ncomp,ndim,stat,n_in_pres
         real :: auxR
         character( len = option_path_len ) :: option_name
-#ifdef USING_FEMDEM
-        if(have_option('/blasting')) then
-            sfield=>extract_scalar_field(state(1),"SolidConcentration" )
-            call insert(packed_state,sfield,"SolidConcentration")
-            call add_new_memory(packed_state,sfield,"OldSolidConcentration")
-			!call add_new_memory(packed_state,sfield,"shell_volume_fraction")
-
-            vfield=>extract_vector_field(state(1),"delta_U")
-            call insert(packed_state,vfield,"delta_U")
-
-            vfield=>extract_vector_field(state(1),"solid_U")
-            call insert(packed_state,vfield,"solid_U")
-
-            vfield=>extract_vector_field(state(1),"f_x")
-            call insert(packed_state,vfield,"f_x")
-
-            tfield=>extract_tensor_field(state(1),"a_xx")
-            call insert(packed_state,tfield,"a_xx")
-
-            tfield=>extract_tensor_field(state(1),"Viscosity" )
-            call insert(packed_state,tfield,"Viscosity")
-
-!				sfield=>extract_scalar_field(state(1),"DummyT")
- !           call insert(packed_state,sfield,"DummyT")
-
-!				sfield=>extract_scalar_field(state(1),"shell_volume_fraction")
- !           call insert(packed_state,sfield,"shell_volume_fraction")
-
-        else if(have_option('/femdem_fracture')) then
-            if(have_option('/femdem_fracture/oneway_coupling_only')) then!This option do not exist
-                sfield=>extract_scalar_field(state(1),"SolidConcentration")
-                call insert(packed_state,sfield,"SolidConcentration")
-                call add_new_memory(packed_state,sfield,"OldSolidConcentration")
-
-                tfield=>extract_tensor_field(state(1),"Viscosity")
-                call insert(packed_state,tfield,"Viscosity")
-
-                sfield=>extract_scalar_field(state(1),"Dummy")
-                call insert(packed_state,sfield,"Dummy")
-
-!                vfield=>extract_vector_field(state(1),"Darcy_Velocity")
-!                call insert(packed_state,vfield,"Darcy_Velocity")
-
-                sfield=>extract_scalar_field(state(1),"TotalFlux")
-                call insert(packed_state,sfield,"TotalFlux")
-
-		       tfield=>extract_tensor_field(state(1),"FractureMap")
-            	call insert(packed_state,tfield,"FractureMap")
-            else
-                sfield=>extract_scalar_field(state(1),"SolidConcentration")
-                call insert(packed_state,sfield,"SolidConcentration")
-                call add_new_memory(packed_state,sfield,"OldSolidConcentration")
-
-                tfield=>extract_tensor_field(state(1),"Viscosity")
-                call insert(packed_state,tfield,"Viscosity")
-
-                sfield=>extract_scalar_field(state(1),"Dummy")
-                call insert(packed_state, sfield,"Dummy" )
-
-                sfield=>extract_scalar_field(state(1),"TotalFlux")
-                call insert(packed_state,sfield,"TotalFlux")
-
-          	tfield=>extract_tensor_field(state(1),"FractureMap")
-            	call insert(packed_state,tfield,"FractureMap")
-
-  !              vfield=>extract_vector_field(state(1),"delta_U")
-  !              call insert(packed_state,vfield,"delta_U")
-
-  !              vfield=>extract_vector_field(state(1),"solid_U")
-  !              call insert(packed_state,vfield,"solid_U")
-            end if
-        end if
-#endif
-
 
         ncomp=option_count('/material_phase/is_multiphase_component')
         nphase=size(state)-ncomp
@@ -2047,10 +1833,6 @@ contains
         if (is_porous_media) then
              call allocate_multi_field( Mdims, multi_absorp%PorousMedia, ovmesh%nodes, field_name="PorousMedia_AbsorptionTerm")
 !            if ( ncomp > 0 ) !"Not ready yet"
-        end if
-
-        if (is_magma) then
-          call allocate_multi_field( Mdims, multi_absorp%Magma, ovmesh%nodes, field_name="Magma_AbsorptionTerm")
         end if
 
     end subroutine prepare_absorptions

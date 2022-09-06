@@ -76,7 +76,6 @@ module multiphase_time_loop
     use spact
     use Compositional_Terms
     use multiphase_EOS
-    use multiphase_fractures_3D
     use Compositional_Terms
     use Copy_Outof_State
     use cv_advection, only : cv_count_faces
@@ -86,7 +85,6 @@ module multiphase_time_loop
     use vtk_interfaces
     use multi_interpolation
     use multi_pipes
-    use multi_magma
     use multi_SP
     use multi_tools
     use momentum_diagnostic_fields, only: calculate_densities
@@ -104,12 +102,7 @@ module multiphase_time_loop
 #include "petsc_legacy.h"
 
     private
-    !public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
     public :: MultiFluids_SolveTimeLoop, dump_outflux
-    !type(rheology_type), dimension(:), allocatable :: rheology
-
-
-
 contains
 
     !> This is the main subroutine from which everything is called. It performs the time-loop and
@@ -214,8 +207,7 @@ contains
         !Variables that are used to define the pipe pos
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
         type (multi_pipe_package) :: pipes_aux
-        !type(scalar_field), pointer :: bathymetry
-        logical :: write_all_stats=.true.
+        logical :: write_stats
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
         ! Ioutlet counts the number of boundaries over which to calculate the outflux
         integer :: ioutlet
@@ -242,10 +234,6 @@ contains
         integer :: SFPI_its = 0
         integer :: max_sat_its
 
-        real,allocatable, dimension(:) :: c_phi_series
-        integer :: c_phi_length
-        type(coupling_term_coef) :: coupling
-        type(magma_phase_diagram) :: magma_phase_coef
         real :: bulk_power
         character(len = OPTION_PATH_LEN) :: func
         !Variables for passive tracers
@@ -269,12 +257,12 @@ contains
     end if
 #endif
 
-        !If we are using the fast settings then we save time not always computing the stats
-        ! call get_option("/geometry/simulation_quality", option_name, stat=stat)
-        ! write_all_stats = .not. trim(option_name) == "fast"
-
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
+
+        !Check whether we are writing the stat file or not
+        write_stats = .not.have_option("/io/Do_not_generate_stat_file")
+
 
         if (numberfields_CVGalerkin_interp > 0 .and. isParallel()) then
           ewrite(1,*) "WARNING: CVGalerkin projection not well tested for parallel."
@@ -517,18 +505,6 @@ contains
            call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
         end if
 
-        !HH Initialize all the magma simulation related coefficients
-        if (is_magma) then
-          c_phi_length=1e7  ! the number of items of the coupling term coefficients stored in the system
-          allocate(c_phi_series(c_phi_length))
-          call C_generate (c_phi_series, c_phi_length, state, coupling)
-          call initialize_magma_parameters(magma_phase_coef,  coupling)
-          !This is important to specify EnthalpyOld based on the temperature which is easier for the user
-          !WHAT ABOUT THE BCS? FOR THE TIME BEING WE NEED ENTHALPY BCs...
-          call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
-        end if
-
-
         call petsc_logging(3,stages,ierrr,default=.true.)
         call petsc_logging(1,stages,ierrr,default=.true.)
         ! call petsc_logging(1,stages,ierrr,default=.false., push_no=1, stage_name="PRELIM")
@@ -581,18 +557,6 @@ contains
                     exit Loop_Time
                 end if
             end if
-            !!$ FEMDEM...
-#ifdef USING_FEMDEM
-            if ( is_multifracture ) then
-               call fracking(packed_state, state,Mdims%nphase)
-            elseif ( have_option( '/blasting') ) then
-               call blasting( packed_state, Mdims%nphase )
-               call update_blasting_memory( packed_state, state, timestep )
-!            elseif (have_option( '/femdem_thermal') ) then ! Overriting of the temperature source and temperature absorption
-!              call femdemthermal(packed_state, state,Mdims%nphase)
-!			   call update_blasting_memory( packed_state, state, timestep )
-            end if
-#endif
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
 
             !!$ Start non-linear loop
@@ -648,8 +612,6 @@ contains
                     call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
                         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                 end if
-
-                if ( is_magma ) call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln, c_phi_series)
 
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
@@ -719,7 +681,7 @@ contains
 #endif
                   end if
                 end if
-                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma) ) then
+                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
@@ -741,7 +703,7 @@ contains
                 !#=================================================================================================================
 
                 !!$ Solve advection of the scalar 'Temperature':
-                Conditional_ScalarAdvectionField: if( have_temperature_field .and. (.not. is_magma)) then
+                Conditional_ScalarAdvectionField: if( have_temperature_field ) then
 
                     ewrite(3,*)'Now advecting Temperature Field'
                     call set_nu_to_u( packed_state )
@@ -762,35 +724,6 @@ contains
                         thermal = .true.,&
                         ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field, nonlinear_iteration = its)
-
-                else IF (is_magma) then !... in which case we solve for enthalpy instead
-
-                  tracer_field=>extract_tensor_field(packed_state,"PackedEnthalpy")
-                  density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                  saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                  velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                  !Recalculate densities
-                  call Calculate_All_Rhos( state, packed_state, Mdims )
-                  call set_nu_to_u( packed_state )
-                  ewrite(3,*)'Now advecting Enthalpy Field'
-                  call ENTHALPY_ASSEM_SOLVE( state, packed_state, &
-                  Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                  tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                  suf_sig_diagten_bc, Porosity_field%val, &
-                  !!$
-                  0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                  THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                  option_path = '/material_phase[0]/scalar_field::Enthalpy', &
-                  thermal = .false.,saturation=saturation_field, nonlinear_iteration = its, &
-                  magma_phase_coefficients=  magma_phase_coef)
-
-                  ! ! Calculate melt fraction from phase diagram
-                  call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
-                  ! ! Update the temperature field
-                  call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
-                  ! ! Update the composition
-                  call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
-
                 END IF Conditional_ScalarAdvectionField
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
@@ -872,7 +805,7 @@ contains
 
                 if (ExitNonLinearLoop) then
                     if (adapt_mesh_in_FPI) then
-                      !Calculate the acumulated COurant Number
+                      !Calculate the acumulated Courant Number
                         Accum_Courant = Accum_Courant + Courant_number(2)
                         if (Accum_Courant >= Courant_tol .or. first_time_step) then
                             call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 2)
@@ -961,18 +894,12 @@ contains
             call set_option( '/timestepping/timestep', acctim-old_acctim)
             !Now we ensure that the time-step is the correct one
             call set_option( '/timestepping/timestep', dt)            
-            !Time to compute the self-potential if required
-            if (write_all_stats .and. have_option("/porous_media/SelfPotential")) &
-                    call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
             !Now compute diagnostics
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             !calculate_diagnostic_variables_new <= computes other diagnostics such as python-based fields
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
 
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
-
-            !Now we ensure that the time-step is the correct one
-            if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
             if (is_porous_media .and. getprocno() == 1) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
@@ -984,6 +911,8 @@ contains
 
             !Call to create the output vtu files, if required and also checkpoint
             call create_dump_vtu_and_checkpoints()
+            !Generate stat file if requested
+            if (write_stats) call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
 
             call petsc_logging(3,stages,ierrr,default=.true.)
             call petsc_logging(2,stages,ierrr,default=.true., push_no=7)
@@ -1336,11 +1265,7 @@ contains
                         checkpoint_number=checkpoint_number+1
                     end if
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
-                    if (.not. write_all_stats) then
-                        if (have_option("/porous_media/SelfPotential")) &
-                            call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
-                        call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
-                    end if
+                    if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     not_to_move_det_yet = .false. ;
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
@@ -1353,11 +1278,7 @@ contains
                             protect_simulation_name=.true.,file_type='.mpml')
                         checkpoint_number=checkpoint_number+1
                     end if
-                    if (.not. write_all_stats) then
-                        if (have_option("/porous_media/SelfPotential")) &
-                            call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
-                        call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
-                    end if
+                    if (have_option("/porous_media/SelfPotential"))  call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
                     if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
@@ -1410,20 +1331,6 @@ contains
                     call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps/python', pyfunc)
                     call integer_from_python(pyfunc, acctim, adapt_time_steps)
                   end if
-
-                !-ao solid modelling (AMR field for fracturing)
-                if (is_multifracture ) then
-                    if ((is_fracturing) .AND. (itime>1)) then !-asiri- If new fractures surfaces are detected, reduce AMR period and adapt every timestep
-                        adapt_time_steps=1
-                    else if (.not. is_fracturing .AND. ((itime/adapt_time_steps)>5)) then !after intial adapt
-                        adapt_time_steps=50
-                    else
-                        call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps', & !forcing default again (just in case)
-                            adapt_time_steps, default=5 )
-                endif
-                !-ao solid modelling (AMR field for fracturing)
-
-                end if
                 else if (have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
                     do_reallocate_fields = .true.
                     adapt_time_steps = 5!adapt_time_steps requires a default value

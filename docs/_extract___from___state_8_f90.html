@@ -27,7 +27,7 @@
   <td id="projectlogo"><img alt="Logo" src="IC_FERST_Logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">ICFERST
-   &#160;<span id="projectnumber">22-07</span>
+   &#160;<span id="projectnumber">22-09</span>
    </div>
    <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
@@ -126,9 +126,6 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:add060a0a644c1d8db9c718a82d89c852"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#add060a0a644c1d8db9c718a82d89c852">copy_outof_state::get_discretisation_options</a> (state, Mdims, Mdisopt)</td></tr>
 <tr class="memdesc:add060a0a644c1d8db9c718a82d89c852"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This subroutine extract all discretisation options from the schema DISOPT Options: =0 1st order in space Theta=specified UNIVERSAL =1 1st order in space Theta=non-linear UNIVERSAL =2 Trapezoidal rule in space Theta=specified UNIVERSAL =2 if isotropic limiter then FEM-quadratic &amp; stratification adjust. Theta=non-linear =3 Trapezoidal rule in space Theta=non-linear UNIVERSAL =4 Finite elements in space Theta=specified UNIVERSAL =5 Finite elements in space Theta=non-linear UNIVERSAL =6 Finite elements in space Theta=specified NONE =7 Finite elements in space Theta=non-linear NONE =8 Finite elements in space Theta=specified DOWNWIND+INTERFACE TRACKING =9 Finite elements in space Theta=non-linear DOWNWIND+INTERFACE TRACKING  <a href="namespacecopy__outof__state.html#add060a0a644c1d8db9c718a82d89c852">More...</a><br /></td></tr>
 <tr class="separator:add060a0a644c1d8db9c718a82d89c852"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab4280b302a2f45375be2df118ed6d100"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#ab4280b302a2f45375be2df118ed6d100">copy_outof_state::update_boundary_conditions</a> (state, stotel, cv_snloc, nphase, suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)</td></tr>
-<tr class="memdesc:ab4280b302a2f45375be2df118ed6d100"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Sets the boundary condition, if the time has advanced and the BCs changed, here they are set to the new time-level  <a href="namespacecopy__outof__state.html#ab4280b302a2f45375be2df118ed6d100">More...</a><br /></td></tr>
-<tr class="separator:ab4280b302a2f45375be2df118ed6d100"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afca89971343f6586b89f1cddda00b2c8"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#afca89971343f6586b89f1cddda00b2c8">copy_outof_state::pack_multistate</a> (npres, state, packed_state, multiphase_state, multicomponent_state, pmulti_state)</td></tr>
 <tr class="memdesc:afca89971343f6586b89f1cddda00b2c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This subroutine creates packed_state from state(:) and links the appropiate memory so it is acessible from both states. This subroutine also introduces fields not used by fludity but required by IC-FERST  <a href="namespacecopy__outof__state.html#afca89971343f6586b89f1cddda00b2c8">More...</a><br /></td></tr>
 <tr class="separator:afca89971343f6586b89f1cddda00b2c8"><td class="memSeparator" colspan="2">&#160;</td></tr>

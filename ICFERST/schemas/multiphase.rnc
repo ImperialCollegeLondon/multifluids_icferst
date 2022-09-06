@@ -125,6 +125,11 @@ start =
             element Courant_number {
                comment
             }?,
+            ## Do not generate the stat file. This file contains walltime, statistics of the fields such as min/max and integral. 
+            ## By default it is on, although its computation is not free. For single phase ~ 30% of the total simulation time.
+            element Do_not_generate_stat_file {
+               comment
+            }?,
             ## <b>Generates a .csv file including the volume_flux, rates, etc. across the specified boundaries</b>
             element dump_boundaryflux {
             empty,
@@ -1269,11 +1274,6 @@ start =
             ##
             ## This option is useful if your field is suddenly changing after adapting the mesh.
             element do_not_bound_after_adapt {
-               empty
-            }?,
-            ## If selected low order diffusion we use a diffusion that does not take 10%! of the total time only to generate the term
-            ## Currently the results seems a bit off using this diffusion method.
-            element Low_order_diffusion {
                empty
             }?,
             ## This disable the limiters regarless of the precision used

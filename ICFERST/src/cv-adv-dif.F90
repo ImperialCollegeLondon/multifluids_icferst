@@ -123,7 +123,7 @@ contains
     !>@param  VOLFRA_PORE   Porosity field (Mdims%npres,Mdims%totele)
     !>@param  GETCV_DISC  obtain the transport equation
     !>@param GETCT obtain the continuity equation
-    !>@param GET_THETA_FLUX, USE_THETA_FLUX,  RETRIEVE_SOLID_CTY, got_free_surf???
+    !>@param GET_THETA_FLUX, USE_THETA_FLUX,  got_free_surf???
     !>@param THERMAL true if solving for heat transport 
     !>@param  MEAN_PORE_CV   Porosity defined control volume wise
     !>@param  MASS_ELE_TRANSP Mass of the elements
@@ -141,7 +141,6 @@ contains
     !>@param assemble_collapsed_to_one_phase Collapses phases and solves for one single temperature. When there is thermal equilibrium
     !>@param  outfluxes  Contains all the fields required to compute the outfluxes of the model and create the outfluxes.csv file. Computed when assembling the continuity equation
     !>@param  nonlinear_iteration Current non-linear iteration
-    !>@param  Latent_heat   Latent heat for phase change, use for enthalpy modelling
   !---------------------------------------------------------------------------
     SUBROUTINE CV_ASSEMB( state, packed_state, &
           final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -156,14 +155,14 @@ contains
           IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
           THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
           MEAN_PORE_CV, &
-          MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
+          MASS_MN_PRES, THERMAL, &
           got_free_surf,  MASS_SUF, &
           MASS_ELE_TRANSP, &
           TDIFFUSION, &
           saturation, VAD_parameter, Phase_with_Pc, Courant_number,&
           Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
           porous_heat_coef,porous_heat_coef_old, outfluxes, solving_compositional, nonlinear_iteration,&
-          assemble_collapsed_to_one_phase, Latent_heat)
+          assemble_collapsed_to_one_phase)
           !  =====================================================================
           !     In this subroutine the advection terms in the advection-diffusion
           !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -318,7 +317,7 @@ contains
           REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
           REAL, DIMENSION( :, :, : ), pointer, intent( in ) :: ABSORBT_ALL
           REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE 
-          LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
+          LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, got_free_surf
           ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
           REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV 
           REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
@@ -340,8 +339,6 @@ contains
           type (multi_outfluxes), optional, intent(inout) :: outfluxes
           !Non-linear iteration count
           integer, optional, intent(in) :: nonlinear_iteration
-          !Variable for magma
-          real, optional :: Latent_heat 
           ! ###################Local variables############################
           REAL :: ZERO_OR_TWO_THIRDS
 
@@ -355,7 +352,7 @@ contains
           logical, PARAMETER :: integrate_other_side= .true.
           ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
           logical, PARAMETER :: correct_method_petrov_method= .true.
-          LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE, got_diffus_low_order
+          LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE
           logical :: skip, GOT_T2, use_volume_frac_T2, FEM_continuity_equation, logical_igot_theta_flux, zero_vel_BC
           ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
           ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
@@ -442,8 +439,6 @@ contains
           LOGICAL, DIMENSION( final_phase, max(igot_t2*6,4) ) :: IGOT_T_PACK, IGOT_T_CONST!variables for get_int_tden! Set up the fields...
           REAL, DIMENSION(  final_phase, max(igot_t2*6,4) ) :: IGOT_T_CONST_VALUE!variables for get_int_tden! Set up the fields...
           !Working variables
-          real, dimension(:), allocatable :: VOL_FRA_FLUID ! for solid coupling
-          real, dimension(:, :), allocatable :: U_HAT_ALL ! for solid coupling
           real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, X_ALL
           real, dimension(:, :, :), pointer :: U_ALL, NU_ALL, NUOLD_ALL
 
@@ -479,8 +474,7 @@ contains
           real, dimension(final_phase) :: DENOIN_B, CTILIN_B, DENOOU_B, CTILOU_B, FTILIN_B, FTILOU_B
           !! femdem
           type( vector_field ), pointer :: delta_u_all, us_all
-          type( scalar_field ), pointer :: solid_vol_fra
-          real :: theta_cty_solid, VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
+          real :: VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
           type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
           type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
           type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield!, temp_field, concentration_field
@@ -525,10 +519,8 @@ contains
           real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
           real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
           REAL, DIMENSION( :,:,: ), allocatable, target:: SUF_T2_BC_value, SUF_T_BC_ROB2_value
-          !Variables for Enthalpy
-          logical :: asssembling_enthalpy = .false.
-          real, dimension(:), allocatable :: ENTH_RHS_DIFF_COEF_DIVDX
-          real, dimension(:,:), allocatable :: ENTH_RHS_DIFFUSION
+          !Variables to speed up diffusivity computations 
+          logical :: has_anisotropic_diffusivity
           ! !Variables for internal subroutine SCVDETNX (created here for speed)
           ! INTEGER :: SCV_NODJ,  SCV_JLOC
           ! REAL :: SCV_A, SCV_B, SCV_C
@@ -538,9 +530,6 @@ contains
           ! REAL :: SCV_TWOPI
           ! REAL :: SCV_RGI, SCV_RDUM
           ! real, dimension(3) :: SCV_POSVGI, SCV_BAK
-
-          !Logical to identify if we are assembling for enthalpy, which requires an special RHS
-          asssembling_enthalpy = present(Latent_heat)
 
           !Decide if we are solving for nphases-1
           Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
@@ -612,21 +601,6 @@ contains
           LIMT2 =1.0; LIMT2OLD = 1.0
           if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
          !################## END OF SET VARIABLES ##################
-
-          IF( GETCT ) THEN
-              IF( RETRIEVE_SOLID_CTY ) THEN
-                  ALLOCATE(VOL_FRA_FLUID(Mdims%cv_nonods))
-                  ALLOCATE(U_HAT_ALL(Mdims%ndim,Mdims%u_nonods))
-                  delta_u_all => extract_vector_field( packed_state, "delta_U" )
-                  u_hat_all = delta_u_all%val + u_all( :, 1, :) ! Mdims%ndim, Mdims%u_nonods
-                  us_all => extract_vector_field( packed_state, "solid_U" )
-                  Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
-                  VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! Mdims%cv_nonods
-                  ! CONV = A*B ! conV is an allocatable target
-                  ! T_ALL=>CONV ! conV is an allocatable target
-                  call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
-              ENDIF
-          ENDIF
           compute_outfluxes = present(calculate_mass_delta) .and. present(outfluxes) .and. GETCT
           if (compute_outfluxes) then
               ! Initialise the calculate_mass variables
@@ -672,17 +646,6 @@ contains
               SUF_T2_BC_ROB1_ALL=>saturation_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
               SUF_T2_BC_ROB2_ALL=>saturation_BCs_robin2%val
           end if
-           if (tracer%name == "PackedTemperature" ) then
-              !(tracer%name == "PackedEnthalpy")&
-              ! .or. tracer%name == "PackedConcentration")  then !Not sure if it is required for temperature either...
-              allocate( suf_t_bc( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ), &
-                  suf_t_bc_rob2( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ) )
-              call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, size(tracer_BCs%val,2), &!TEMPORARY, FIXME! sprint_to_do is this call needed?
-                  suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)                                                  !BCs are updated autoamtically
-              SUF_T_BC_ALL=>suf_t_bc
-              SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
-              SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
-          end if
 
           IDUM = 0
           ewrite(3,*) 'In CV_ASSEMB'
@@ -691,13 +654,7 @@ contains
               GOT_DIFFUS = ( R2NORM( TDIFFUSION, size(TDIFFUSION,1) * size(TDIFFUSION,2) * size(TDIFFUSION,3) * size(TDIFFUSION,4)  ) /= 0 )!<=I hate this thing...
               call allor(GOT_DIFFUS)                                                  !it should be if present then true, but it breaks the parallel CWC P1DGP2
           end if
-          !If selected low order diffusion we use a diffusion that does not take 10%! of the total time only to generate the term
-          !Currently the results seems a bit off using this diffusion...
-          got_diffus_low_order = .false.
-          if (GOT_DIFFUS) then 
-            got_diffus_low_order = have_option("/numerical_methods/Low_order_diffusion")
-            GOT_DIFFUS = .not. got_diffus_low_order
-          end if
+          if (GOT_DIFFUS) has_anisotropic_diffusivity =  has_anisotropic_diffusion(tracer)
           call get_option( "/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
           ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS:', &
               CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS
@@ -756,7 +713,6 @@ contains
             ! FOR packing as well as for detemining which variables to apply interface tracking**********
             !          STORE=.TRUE.
             STORE=.FALSE.
-            IF( GETCT .AND. RETRIEVE_SOLID_CTY) STORE=.FALSE. ! Avoid storing and retrieving solids voln frac. until we have sorted the code for this.
             IGOT_T_PACK=.TRUE.
             IGOT_T_CONST=.FALSE.
             IGOT_T_CONST_VALUE=0.0
@@ -848,9 +804,6 @@ contains
             ALLOCATE( F_CV_NODJ( NFIELD ) , F_CV_NODI( NFIELD ))
         end if
 
-          IF(GETCT.AND.RETRIEVE_SOLID_CTY)  ALLOCATE( LOC_U_HAT(Mdims%ndim, Mdims%u_nloc), LOC2_U_HAT(Mdims%ndim, Mdims%u_nloc) )
-          ! bc's:
-
           !###############Conditional allocations######################
           LIMT_HAT=0.0
           IF ( VAD_activated) THEN
@@ -868,21 +821,6 @@ contains
               end do
           ENDIF
 
-          !Here we prepare the diffusion term for the RHS of the enthalpy equation
-          !TODO: Maybe this is not needed and TDIFFUSION can be directly used
-          if (asssembling_enthalpy) then
-            allocate(ENTH_RHS_DIFF_COEF_DIVDX (final_phase), ENTH_RHS_DIFFUSION (final_phase, Mdims%mat_nonods))
-            do ele = 1, Mdims%totele
-                do CV_ILOC = 1, Mdims%cv_nloc
-                    CV_NODI = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
-                    MAT_NODI = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
-                    do iphase = 1, final_phase
-                      ENTH_RHS_DIFFUSION(iphase, MAT_NODI) = &
-                          TDIFFUSION(MAT_NODI, 1, 1, iphase)
-                    end do
-                end do
-            end do
-          end if
           ndotq = 0. ! ;         ndotqold = 0.
           ! variables for get_int_tden********************
 
@@ -1209,7 +1147,6 @@ contains
                 LOC_U( :, :, U_KLOC)=U_ALL( :, 1:final_phase, U_NODK)
                 LOC_NU( :, :, U_KLOC)=NU_ALL( :, 1:final_phase, U_NODK)
                 LOC_NUOLD( :, :, U_KLOC)=NUOLD_ALL( :, 1:final_phase, U_NODK)
-                IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC_U_HAT( :, U_KLOC)=U_HAT_ALL( 1:final_phase, U_NODK)
               END DO
               Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
 
@@ -1440,7 +1377,6 @@ contains
                                       LOC2_U(:, :, U_KLOC) = U_ALL(:, :, U_NODK2)
                                       LOC2_NU(:, :, U_KLOC) = NU_ALL(:, :, U_NODK2)
                                       LOC2_NUOLD(:, :, U_KLOC) = NUOLD_ALL(:, :, U_NODK2)
-                                      IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC2_U_HAT(:, U_KLOC) = U_HAT_ALL(:, U_NODK2)
                                   END DO
                                   DO CV_SKLOC=1,Mdims%cv_snloc
                                       CV_KLOC=CV_SLOC2LOC( CV_SKLOC )
@@ -1489,7 +1425,7 @@ contains
                                       ELE, ELE2, CVNORMX_ALL( :, GI ), &
                                       DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
                                       LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
-                                      on_domain_boundary, between_elements )
+                                      on_domain_boundary, between_elements,has_anisotropic_diffusivity )
                               ELSE 
                                   DIFF_COEF_DIVDX = 0.0
                                   DIFF_COEFOLD_DIVDX = 0.0
@@ -1603,36 +1539,17 @@ contains
                                   !Distribute the capillary coefficient over the phases to ensure mass conservation
                                   !This is very important as it allows to use the over-relaxation parameter safely
                                   !and reduce the cost of using capillary pressure in several orders of magnitude
-                                  CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
-
+                                  do iphase =1, final_phase
+                                    if (iphase == phase_with_pc) then 
+                                        CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
+                                    else!VAD is actually divided by wetting density so we need to adjust that when doing the other phases
+                                        CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres&
+                                            * Density%val(1,iphase,CV_NODI)/Density%val(1,phase_with_pc,CV_NODI)
+                                    end if
+                                  end do
                               ELSE
                                   CAP_DIFF_COEF_DIVDX = 0.0
                               END IF If_GOT_CAPDIFFUS
-                              !Use a low order method to compute diffusion, does not require stabilisation
-                              if (got_diffus_low_order) then 
-                                  do iphase = 1, final_phase
-                                    DIFF_COEF_DIVDX(IPHASE) = 0.5*(TDIFFUSION(MAT_NODI, 1, 1, iphase) &
-                                        + TDIFFUSION(MAT_NODJ, 1, 1, iphase))/HDC
-                                  end do  
-                                  IF ( on_domain_boundary ) THEN
-                                    do iphase = 1, final_phase
-                                      if (WIC_T_BC_ALL(1, IPHASE, SELE) /= WIC_T_BC_DIRICHLET) then 
-                                        DIFF_COEF_DIVDX(iphase) = 0.0
-                                      end if
-                                    end do
-                                  end if  
-                              end if
-
-                              ! Pack ndotq information:
-                              if (asssembling_enthalpy) then
-                                IF(SELE == 0) THEN
-                                  !Average of the coefficient in shared CVs between elements
-                                  ENTH_RHS_DIFF_COEF_DIVDX = 0.5* (ENTH_RHS_DIFFUSION( :, MAT_NODJ ) + ENTH_RHS_DIFFUSION( :, MAT_NODI )) /HDC
-                                ELSE
-                                  ENTH_RHS_DIFF_COEF_DIVDX = 0.0
-                                ENDIF
-                              end if
-                              ! Pack ndotq information:
                               
                               !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
                               ! Calculate T and DEN on the CV face at quadrature point GI.
@@ -1714,26 +1631,6 @@ contains
                                   end if
                                 end if
                               end if
-
-                              IF(GETCT.AND.RETRIEVE_SOLID_CTY) THEN
-                                  NDOTQ_HAT = 0.0
-                                  DO U_KLOC = 1, Mdims%u_nloc
-                                      IF (between_elements) THEN ! Between elements...
-                                          NDOTQ_HAT =  NDOTQ_HAT + CV_funs%sufen( U_KLOC, GI ) * 0.5 * SUM( CVNORMX_ALL(:, GI) * (LOC_U_HAT( :, U_KLOC ) + LOC2_U_HAT( :, U_KLOC )) )
-                                      ELSE
-                                          NDOTQ_HAT =  NDOTQ_HAT + CV_funs%sufen( U_KLOC, GI ) * SUM( CVNORMX_ALL(:, GI) * LOC_U_HAT( :, U_KLOC ) )
-                                      ENDIF
-                                  END DO
-                                  DO IPHASE=1,final_phase
-                                      LIMT_HAT(IPHASE) = MAX(1.E-7,LIMT(IPHASE))
-                                  END DO
-                                  R=SUM(LIMT_HAT)
-                                  LIMT_HAT=LIMT_HAT/R
-                                  !                   if(sele.ne.0) then ! effectively apply the bcs to NDOTQ_HAT
-                                  if(on_domain_boundary) then ! effectively apply the bcs to NDOTQ_HAT
-                                      NDOTQ_HAT =SUM(LIMT_HAT*NDOTQNEW)
-                                  endif
-                              ENDIF
 
                               ! constraint needed for porous media stable flow solution
                               ! if (BETWEEN_ELEMENTS) then!SPRINT_TO_DO REMOVEME
@@ -1835,7 +1732,7 @@ contains
                                       UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,  &
                                       NDOTQNEW, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT, NDOTQ_HAT, &
                                       FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
-                                      RETRIEVE_SOLID_CTY,theta_cty_solid, loc_u, THETA_VEL, &
+                                      loc_u, THETA_VEL, &
                                       rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, X_ALL, SUF_D_BC_ALL, gravty)
 
                                   !Only for ipres = 1
@@ -1878,26 +1775,16 @@ contains
                                                   END IF
                                               END IF
                                           END DO
-                                        else if (got_diffus_low_order) then 
-                                          DO IPHASE=1,final_phase
-                                            IF(WIC_T_BC_ALL(1,iphase,sele) == WIC_T_BC_DIRICHLET) THEN
-                                                LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
-                                                    + LIMT2(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
-                                                    * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1))
-                                            END IF
-                                          END DO
                                         end if
                                       ELSE                                      
                                         !Assemble off-diagonal cv_nodi-cv_nodj
                                         LOC_MAT_IJ = LOC_MAT_IJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD! Advection
                                         if (GOT_DIFFUS) LOC_MAT_IJ = LOC_MAT_IJ - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                        if (got_diffus_low_order) LOC_MAT_IJ = LOC_MAT_IJ - LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                         if (VAD_activated) LOC_MAT_IJ = LOC_MAT_IJ - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         !Assemble off-diagonal cv_nodj-cv_nodi, integrate the other CV side contribution (the sign is changed)...
                                         if(integrate_other_side_and_not_boundary) then
                                           LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * (1. - INCOME) * LIMD! Advection
                                           if (GOT_DIFFUS) LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                          if (got_diffus_low_order) LOC_MAT_JI = LOC_MAT_JI - LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                           if (VAD_activated) LOC_MAT_JI = LOC_MAT_JI - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         end if
 
@@ -1915,7 +1802,6 @@ contains
                                       !Assemble diagonal of the matrix of node cv_nodi
                                       LOC_MAT_II = LOC_MAT_II +  FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME ) * LIMD! Advection
                                       if (GOT_DIFFUS) LOC_MAT_II = LOC_MAT_II + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                      if (got_diffus_low_order) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                       if (VAD_activated) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                       if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - FTHETA_T2 * ( ONE_M_CV_BETA ) * &
                                                                                     SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
@@ -1925,7 +1811,6 @@ contains
                                       if(integrate_other_side_and_not_boundary) then
                                         LOC_MAT_JJ = LOC_MAT_JJ -  FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD! Advection
                                         if (GOT_DIFFUS) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                        if (got_diffus_low_order) LOC_MAT_JJ = LOC_MAT_JJ + LIMT2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                         if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         if (.not.conservative_advection) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2_J * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
                                       endif
@@ -1962,22 +1847,6 @@ contains
                                       if (on_domain_boundary) LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           + SdevFuns%DETWEI( GI ) * ROBIN1
 
-                                      if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
-                                        !Solid phase
-                                        LOC_CV_RHS_I(1) = LOC_CV_RHS_I(1) + &
-                                            Latent_heat * density%val(1, 1, CV_NODI)*SdevFuns%DETWEI(GI) &
-                                        !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * ( LOC_T2_J(2)*LOC_T2_J(1) - LOC_T2_I(2)*LOC_T2_I(1))&
-                                        !Advection term solid
-                                            +  (1. + LIMT2(2)) * NDOTQNEW(1) * LOC_T2_I(1) )
-                                        !Liquid phase
-                                        LOC_CV_RHS_I(2) = LOC_CV_RHS_I(2) + &
-                                            Latent_heat * density%val(1, 2, CV_NODI)*SdevFuns%DETWEI(GI) &
-                                        !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * ( LOC_T2_J(2)**2. - LOC_T2_I(2)**2.) &
-                                        !Advection term fluid
-                                            +   NDOTQNEW(2) * LOC_T2_I(2)**2. )
-                                      end if
 
                                   if(integrate_other_side_and_not_boundary) then
                                       LOC_CV_RHS_J =  LOC_CV_RHS_J  &
@@ -1997,22 +1866,6 @@ contains
                                           * ( FTHETA_T2_J * NDOTQNEW * LOC_T_J * LIMD  &
                                           + ONE_M_FTHETA_T2OLD_J * NDOTQOLD * LIMDOLD * LOC_TOLD_J )
 
-                                      if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
-                                        !Solid phase
-                                        LOC_CV_RHS_J(1) = LOC_CV_RHS_J(1) + &
-                                            Latent_heat * density%val(1, 1, CV_NODJ)*SdevFuns%DETWEI(GI) &
-                                        !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * ( LOC_T2_I(2)*LOC_T2_I(1) - LOC_T2_J(2)*LOC_T2_J(1))&
-                                        !Advection term solid
-                                            +  (1. + LOC_T2_J(2)) * NDOTQNEW(1) * LOC_T2_J(1) )
-                                        !Liquid phase
-                                        LOC_CV_RHS_J(2) = LOC_CV_RHS_J(2) + &
-                                            Latent_heat * density%val(1, 2, CV_NODJ)*SdevFuns%DETWEI(GI) &
-                                        !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * ( LOC_T2_I(2)**2. - LOC_T2_J(2)**2.) &
-                                        !Advection term fluid
-                                            +   NDOTQNEW(2) * LOC_T2_J(2)**2. )
-                                      end if
                                   endif
                                   IF ( GET_GTHETA ) THEN
                                       THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
@@ -2177,12 +2030,6 @@ contains
                  ! W_SUM_ONE==0 does NOT apply the constraint
               if ( Solve_all_phases) call addto(Mmat%CT_RHS,IPRES,cv_nodi,&
                   - ( W_SUM_ONE1 - W_SUM_ONE2 ) * R_PRES(IPRES))
-              IF(RETRIEVE_SOLID_CTY) THEN
-                  ! VOL_FRA_FLUID is the old voln fraction of total fluid...
-                  ! multiply by solid-voln fraction: (1.-VOL_FRA_FLUID)
-                  call addto(Mmat%CT_RHS,IPRES,cv_nodi,&
-                      + (1.-VOL_FRA_FLUID( CV_NODI )) * R_PRES(IPRES))
-              ENDIF
               do iphase = 1, final_phase
                 ct_rhs_phase(iphase)=ct_rhs_phase(iphase) &
                     - R_PRES(1) * ( &
@@ -2257,7 +2104,6 @@ contains
           if (VAD_activated) deallocate(CAP_DIFFUSION)
           ewrite(3,*) 'Leaving CV_ASSEMB'
           if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
-          if (asssembling_enthalpy) deallocate(ENTH_RHS_DIFFUSION, ENTH_RHS_DIFF_COEF_DIVDX)
 
           RETURN
       contains
@@ -2738,6 +2584,31 @@ end if
             its=its+1
         end subroutine dump_multiphase
 
+        logical function has_anisotropic_diffusion(tracer)
+        implicit none
+            !Global variables
+            type(tensor_field), intent(in) :: tracer
+            !Local variables
+            integer :: k, i, ndif, nphase
+            character(len = option_path_len) :: option_path
+            has_anisotropic_diffusion = .false.
+    
+            nphase = option_count("/material_phase")
+            do i = 1, Nphase
+            if (THERMAL) then 
+                option_path = "/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Thermal_Conductivity/prescribed/value"
+            else 
+                option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::"//trim(tracer%name)//"/tensor_field::Diffusivity/prescribed/value"
+            end if
+            ndif = option_count(trim(option_path))
+                do k =1, ndif 
+                if (have_option(trim(option_path)//"["// int2str( k - 1 )//"]/anisotropic_asymmetric")) & 
+                    has_anisotropic_diffusion = .true.
+                    if (have_option(trim(option_path)//"["// int2str( k - 1 )//"]/anisotropic_symmetric")) & 
+                    has_anisotropic_diffusion = .true.              
+                end do
+            end do
+        end function
         !---------------------------------------------------------------------------
         !> @author Chris Pain, Pablo Salinas
         !> @brief Computes the flux between CVs
@@ -4725,7 +4596,7 @@ end if
         INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_ILOC2, &
             CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, &
             CV_SILOC, CV_SJLOC, CV_SJLOC2, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, &
-            X_INOD, X_SILOC, X_ILOC, IDIM
+            X_INOD, X_SILOC, X_ILOC, IDIM, igi
 
         ewrite(3,*)'in DG_DERIVS'
 
@@ -4752,8 +4623,13 @@ end if
                     CV_NODJ = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
 
                     NN  = SUM( N( CV_ILOC, : ) * N(  CV_JLOC, : ) * DETWEI )
-                    NNX = MATMUL( NX_ALL( :, CV_JLOC, : ), N( CV_ILOC, : )  * DETWEI )
-
+                    ! NNX = MATMUL( NX_ALL( :, CV_JLOC, : ), N( CV_ILOC, : )  * DETWEI )
+                    NNX = 0.
+                    do idim = 1 , NDIM
+                        do igi = 1, CV_NGI
+                            NNX(idim) = NNX(idim) + NX_ALL( idim, CV_JLOC, igi )* N( CV_ILOC, igi )  * DETWEI(igi)
+                        end do
+                    end do
                     MASELE( CV_ILOC, CV_JLOC, ELE) = MASELE( CV_ILOC, CV_JLOC, ELE ) + NN
 
                     DO IPHASE = 1, NPHASE
@@ -4847,9 +4723,15 @@ end if
                         END IF
 
                         ! Have a surface integral on element boundary...
-                        VLM_NORX(:) = MATMUL( SNORMXN( :, : ), &
-                            SDETWE(:) * SBCVFEN( CV_SILOC, : ) * SBCVFEN( CV_SJLOC, : ) )
-
+                        ! VLM_NORX(:) = MATMUL( SNORMXN( :, : ), &
+                        !     SDETWE(:) * SBCVFEN( CV_SILOC, : ) * SBCVFEN( CV_SJLOC, : ) )
+                        VLM_NORX = 0.
+                        do idim = 1 , NDIM
+                            do igi = 1, SBCVNGI
+                                VLM_NORX(idim) = VLM_NORX(idim) + SNORMXN( idim, igi ) * &
+                                    SDETWE(igi) * SBCVFEN( CV_SILOC, igi ) * SBCVFEN( CV_SJLOC, igi ) 
+                            end do
+                        end do
                         ! add diffusion term...
                         DO IPHASE = 1, NPHASE
                             IF ( APPLYBC( IPHASE ) ) THEN
@@ -4917,13 +4799,13 @@ end if
         ELE, ELE2, CVNORMX_ALL,  &
         LOC_DTX_ELE_ALL, LOC_DTOLDX_ELE_ALL, LOC2_DTX_ELE_ALL, LOC2_DTOLDX_ELE_ALL, &
         LOC_WIC_T_BC, CV_OTHER_LOC, MAT_OTHER_LOC, CV_SNLOC, CV_SLOC2LOC, &
-        on_domain_boundary, between_elements )
+        on_domain_boundary, between_elements, has_anisotropic_diffusivity )
         IMPLICIT NONE
         INTEGER, intent( in ) :: CV_NLOC, MAT_NLOC, NPHASE, &
             &                    GI, NDIM, ELE, ELE2, &
             &                    CV_SNLOC
         REAL, intent( in ) :: HDC
-        LOGICAL, intent( in ) :: on_domain_boundary, between_elements
+        LOGICAL, intent( in ) :: on_domain_boundary, between_elements, has_anisotropic_diffusivity
         REAL, DIMENSION( NPHASE ), intent( in ) :: T_CV_NODJ, T_CV_NODI, &
             &                                     TOLD_CV_NODJ, TOLD_CV_NODI
         REAL, DIMENSION( NPHASE ), intent( inout ) :: DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
@@ -4944,7 +4826,7 @@ end if
         ! in the non-linear diffusion scheme. DIFF_MAX_FRAC is the maximum fraction.
         REAL, PARAMETER :: DIFF_MIN_FRAC = 0.05, DIFF_MAX_FRAC = 20.0
         REAL :: COEF
-        INTEGER :: CV_KLOC, CV_KLOC2, MAT_KLOC, MAT_KLOC2, MAT_NODK, MAT_NODK2, IPHASE, CV_SKLOC
+        INTEGER :: CV_KLOC, CV_KLOC2, MAT_KLOC, MAT_KLOC2, MAT_NODK, MAT_NODK2, IPHASE, CV_SKLOC, idim, jdim
         LOGICAL :: ZER_DIFF
         REAL, DIMENSION ( NDIM, NPHASE ) :: DTDX_GI_ALL, DTOLDDX_GI_ALL, DTDX_GI2_ALL, DTOLDDX_GI2_ALL
         REAL, DIMENSION ( NPHASE ) :: N_DOT_DKDT_ALL, N_DOT_DKDTOLD_ALL, N_DOT_DKDT2_ALL, N_DOT_DKDTOLD2_ALL
@@ -4968,13 +4850,24 @@ end if
             END DO
 
             DIFF_GI = 0.0
-            DO MAT_KLOC = 1, MAT_NLOC
-                MAT_NODK = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_KLOC )
-                DO IPHASE = 1, NPHASE
-                    DIFF_GI( :, :, IPHASE ) = DIFF_GI( :, :, IPHASE ) &
-                        + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, :, :, IPHASE )
+            if (has_anisotropic_diffusivity) then 
+                DO MAT_KLOC = 1, MAT_NLOC
+                    MAT_NODK = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_KLOC )
+                    forall (iphase = 1:nphase, idim = 1:ndim, jdim =1:ndim)
+                        DIFF_GI( idim, jdim, IPHASE ) = DIFF_GI( idim, jdim, IPHASE ) &
+                        + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, idim, jdim, IPHASE )
+                    end forall
                 END DO
-            END DO
+                DIFF_GI = MAX( 0.0, DIFF_GI )
+            else!if not anisotropic avoid tensor multiplications
+                DO MAT_KLOC = 1, MAT_NLOC
+                    MAT_NODK = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_KLOC )
+                    forall (iphase = 1:nphase, idim = 1:ndim)
+                        DIFF_GI( idim, idim, IPHASE ) = DIFF_GI( idim, idim, IPHASE ) &
+                        + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, idim, idim, IPHASE )
+                    end forall
+                END DO
+            end if
             DIFF_GI = MAX( 0.0, DIFF_GI )
 
             DO IPHASE = 1, NPHASE
@@ -5988,7 +5881,6 @@ end if
         NDOTQ, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT, &
         NDOTQ_HAT, &
         FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
-        RETRIEVE_SOLID_CTY,theta_cty_solid, &
         loc_u, THETA_VEL, &
         UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP, X_ALL, SUF_D_BC_ALL, gravty) !<= local memory sent down for speed...
         IMPLICIT NONE
@@ -6001,7 +5893,7 @@ end if
         type(multi_ndgln), intent(in) :: ndgln
         type (multi_matrices), intent(inout) :: Mmat
         REAL, DIMENSION( :, :, : ), intent( in ) :: loc_u
-        LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary,&
+        LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, between_elements, on_domain_boundary,&
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
         INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
         INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
@@ -6016,8 +5908,7 @@ end if
         REAL, intent( in ) :: NDOTQ_HAT
         REAL, DIMENSION( : ), intent( in ) :: THETA_VEL
         integer, dimension(:,:,:) :: WIC_U_BC_ALL, WIC_P_BC_ALL
-        ! LIMT_HAT is the normalised voln fraction
-        REAL, intent( in ) :: theta_cty_solid, HDC
+        REAL, intent( in ) :: HDC
         REAL,  DIMENSION( : ), intent( in ) :: FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J
         ! local memory sent down for speed...
         REAL,  DIMENSION( Mdims%ndim, final_phase ), intent( inout ) :: UDGI_IMP_ALL
@@ -6042,30 +5933,9 @@ end if
         !If using Mmat%C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
         if (Mmat%CV_pressure) call introduce_C_CV_boundary_conditions(Bound_ele_correct)
 
-        IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
-            ! Use backward Euler... (This is for the div uhat term - we subtract what we put in the Mmat%CT matrix and add what we really want)
-            ct_rhs_phase_cv_nodi=ct_rhs_phase_cv_nodi &
-                +   THETA_CTY_SOLID * SCVDETWEI( GI ) * ( LIMT_HAT(:)*NDOTQ(:) - NDOTQ_HAT/REAL(Mdims%nphase) )
-            ! assume cty is satified for solids...
-            ct_rhs_phase_cv_nodi=ct_rhs_phase_cv_nodi &
-                +      (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) * (  LIMT_HAT(:) - LIMT(:) )*NDOTQ(:)
-            ! flux from the other side (change of sign because normal is -ve)...
-            if ( integrate_other_side_and_not_boundary ) then
-                ! assume cty is satified for solids...
-                ct_rhs_phase_cv_nodj=ct_rhs_phase_cv_nodj &
-                    - THETA_CTY_SOLID * SCVDETWEI( GI ) * ( LIMT_HAT*NDOTQ  - NDOTQ_HAT/REAL(Mdims%nphase)  )
-                ! assume cty is satified for solids...
-                ct_rhs_phase_cv_nodj=ct_rhs_phase_cv_nodj &
-                    - (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) * ( LIMT_HAT - LIMT )*NDOTQ
-            end if
-        END IF ! For solid modelling...
         DO U_KLOC = 1, Mdims%u_nloc
             RCON = SCVDETWEI( GI ) * (  FTHETA_T2 * LIMDT + ONE_M_FTHETA_T2OLD * LIMDTOLD * THETA_VEL) &
                 * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
-            IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
-                RCON = RCON + SCVDETWEI( GI ) * (LIMT_HAT - LIMT) &
-                    * CV_funs%sufen( U_KLOC, GI )
-            END IF ! For solid modelling...
             DO IPHASE = 1,final_phase
                 Mmat%CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) = Mmat%CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) &
                     + rcon(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
@@ -6094,10 +5964,6 @@ end if
             if ( integrate_other_side_and_not_boundary ) then
                 RCON_J = SCVDETWEI( GI ) * ( FTHETA_T2_J* LIMDT + ONE_M_FTHETA_T2OLD_J * LIMDTOLD * THETA_VEL)  &
                     * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
-                IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
-                    RCON_J = RCON_J  + SCVDETWEI( GI ) * (LIMT_HAT - LIMT) &
-                        * CV_funs%sufen( U_KLOC, GI )
-                END IF ! For solid modelling...
                 DO IPHASE = 1,final_phase
                     Mmat%CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) = Mmat%CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) &
                         - RCON_J(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
@@ -6154,10 +6020,6 @@ end if
                 U_KLOC2 = U_OTHER_LOC( U_KLOC )
                 RCON = SCVDETWEI( GI ) * (  FTHETA_T2 * LIMDT + ONE_M_FTHETA_T2OLD * LIMDTOLD * THETA_VEL) &
                     * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODI  )
-                IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
-                    RCON    = RCON    + SCVDETWEI( GI )  * (LIMT_HAT - LIMT)  &
-                        * CV_funs%sufen( U_KLOC, GI )
-                END IF ! For solid modelling...
                 DO IPHASE = 1,final_phase
                     Mmat%CT( :, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
                         = Mmat%CT( :, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
@@ -6175,10 +6037,6 @@ end if
                 if ( integrate_other_side_and_not_boundary ) then
                     RCON_J = SCVDETWEI( GI ) * ( FTHETA_T2_J* LIMDT + ONE_M_FTHETA_T2OLD_J * LIMDTOLD * THETA_VEL) &
                         * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
-                    IF(RETRIEVE_SOLID_CTY) THEN ! For solid modelling...
-                        RCON_J    = RCON_J  + SCVDETWEI( GI ) * (LIMT_HAT - LIMT) &
-                            * CV_funs%sufen( U_KLOC, GI )
-                    END IF ! For solid modelling...
                     DO IPHASE=1,final_phase
                         Mmat%CT( :, IPHASE, ICOUNT_KLOC2( U_KLOC2 ) ) &
                             = Mmat%CT( :, IPHASE, ICOUNT_KLOC2( U_KLOC2 ) ) &

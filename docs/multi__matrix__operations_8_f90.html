@@ -27,7 +27,7 @@
   <td id="projectlogo"><img alt="Logo" src="IC_FERST_Logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">ICFERST
-   &#160;<span id="projectnumber">22-07</span>
+   &#160;<span id="projectnumber">22-09</span>
    </div>
    <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
@@ -133,9 +133,9 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a1d78ca7eba32c498b8004c8e140321b7"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="multi__matrix__operations_8_f90.html#a1d78ca7eba32c498b8004c8e140321b7">color_get_cmc_pha_fast</a> (Mdims, Mspars, ndgln, Mmat, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, got_free_surf, MASS_SUF, ndpset, FEM_continuity_equation)</td></tr>
 <tr class="memdesc:a1d78ca7eba32c498b8004c8e140321b7"><td class="mdescLeft">&#160;</td><td class="mdescRight">: form pressure matrix CMC using a colouring approach, requires more memory  <a href="multi__matrix__operations_8_f90.html#a1d78ca7eba32c498b8004c8e140321b7">More...</a><br /></td></tr>
 <tr class="separator:a1d78ca7eba32c498b8004c8e140321b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7628ec2574e8ee26a9cc526ce1633451"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacematrix__operations.html#a7628ec2574e8ee26a9cc526ce1633451">matrix_operations::mass_matrix_inversion</a> (PIVIT_MAT, Mdims)</td></tr>
-<tr class="memdesc:a7628ec2574e8ee26a9cc526ce1633451"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Inversion of the mass matrix. If compacted this is much more efficient  <a href="namespacematrix__operations.html#a7628ec2574e8ee26a9cc526ce1633451">More...</a><br /></td></tr>
-<tr class="separator:a7628ec2574e8ee26a9cc526ce1633451"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a734cb02c01dd1633fecc0ba5117b8f7d"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacematrix__operations.html#a734cb02c01dd1633fecc0ba5117b8f7d">matrix_operations::mass_matrix_inversion</a> (PIVIT_MAT, Mdims, eles_with_pipe)</td></tr>
+<tr class="memdesc:a734cb02c01dd1633fecc0ba5117b8f7d"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Inversion of the mass matrix. If compacted this is much more efficient  <a href="namespacematrix__operations.html#a734cb02c01dd1633fecc0ba5117b8f7d">More...</a><br /></td></tr>
+<tr class="separator:a734cb02c01dd1633fecc0ba5117b8f7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a501c5d1025991dd3e563d635362b475b"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacematrix__operations.html#a501c5d1025991dd3e563d635362b475b">matrix_operations::mass_matrix_matvec</a> (U, BLOCK_MAT, CDP, NDIM, NPHASE, TOTELE, U_NLOC, U_NDGLN)</td></tr>
 <tr class="memdesc:a501c5d1025991dd3e563d635362b475b"><td class="mdescLeft">&#160;</td><td class="mdescRight">: U = Mass_matrix * Vector (tipically vector is Grad * P + RHS and this is used to obtain the velocity)  <a href="namespacematrix__operations.html#a501c5d1025991dd3e563d635362b475b">More...</a><br /></td></tr>
 <tr class="separator:a501c5d1025991dd3e563d635362b475b"><td class="memSeparator" colspan="2">&#160;</td></tr>

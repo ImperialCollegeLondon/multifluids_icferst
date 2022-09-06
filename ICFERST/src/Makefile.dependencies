@@ -60,11 +60,12 @@ Multiphase_TimeLoop.o ../include/multiphase_time_loop.mod: \
    ../../include/checkpoint.mod ../../include/confdefs.h \
    ../../include/diagnostic_fields_new.mod \
    ../../include/diagnostic_fields_wrapper.mod \
-   ../../include/diagnostic_variables.mod ../../include/fdebug.h \
-   ../../include/field_options.mod ../../include/field_priority_lists.mod \
-   ../../include/fields.mod ../../include/fields_allocates.mod \
-   ../../include/fldebug.mod ../../include/fluids_module.mod \
-   ../../include/global_parameters.mod ../../include/memory_diagnostics.mod \
+   ../../include/diagnostic_variables.mod ../../include/embed_python.mod \
+   ../../include/fdebug.h ../../include/field_options.mod \
+   ../../include/field_priority_lists.mod ../../include/fields.mod \
+   ../../include/fields_allocates.mod ../../include/fldebug.mod \
+   ../../include/fluids_module.mod ../../include/global_parameters.mod \
+   ../../include/memory_diagnostics.mod \
    ../../include/momentum_diagnostic_fields.mod \
    ../../include/parallel_tools.mod ../../include/petsc_legacy.h \
    ../../include/populate_state_module.mod \
@@ -75,11 +76,9 @@ Multiphase_TimeLoop.o ../include/multiphase_time_loop.mod: \
    ../../include/vtk_interfaces.mod ../../include/write_state_module.mod \
    ../include/compositional_terms.mod ../include/copy_outof_state.mod \
    ../include/cv_advection.mod ../include/multi_data_types.mod \
-   ../include/multi_interpolation.mod ../include/multi_machine_learning.mod \
-   ../include/multi_magma.mod ../include/multi_pipes.mod \
+   ../include/multi_interpolation.mod ../include/multi_pipes.mod \
    ../include/multi_sp.mod ../include/multi_tools.mod \
    ../include/multiphase_1d_engine.mod ../include/multiphase_eos.mod \
-   ../include/multiphase_fractures_3d.mod \
    ../include/shape_functions_linear_quadratic.mod ../include/spact.mod
 
 ../include/phreeqcrm.mod: RM_interface.o
@@ -144,8 +143,7 @@ multi_dyncore_dg.o ../include/multiphase_1d_engine.mod: multi_dyncore_dg.F90 \
    ../../include/spud.mod ../../include/state_module.mod \
    ../include/compositional_terms.mod ../include/copy_outof_state.mod \
    ../include/cv_advection.mod ../include/matrix_operations.mod \
-   ../include/multi_data_types.mod ../include/multi_machine_learning.mod \
-   ../include/multi_magma.mod ../include/multi_pipes.mod \
+   ../include/multi_data_types.mod ../include/multi_pipes.mod \
    ../include/multi_surface_tension.mod ../include/multi_tools.mod \
    ../include/multiphase_eos.mod ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod ../include/solvers_module.mod \
@@ -167,19 +165,6 @@ multi_eos.o ../include/multiphase_eos.mod: multi_eos.F90 \
    ../../include/unittest_tools.mod ../../include/vector_tools.mod \
    ../include/copy_outof_state.mod ../include/multi_tools.mod \
    ../include/shape_functions_linear_quadratic.mod
-
-../include/multiphase_fractures_3d.mod: multi_fracture_3D.o
-	@true
-
-multi_fracture_3D.o ../include/multiphase_fractures_3d.mod: \
-   multi_fracture_3D.F90 ../../include/confdefs.h ../../include/elements.mod \
-   ../../include/fdebug.h ../../include/fefields.mod ../../include/fields.mod \
-   ../../include/fldebug.mod ../../include/futils.mod \
-   ../../include/global_parameters.mod ../../include/implicit_solids.mod \
-   ../../include/memory_diagnostics.mod ../../include/quadrature.mod \
-   ../../include/solvers.mod ../../include/sparse_tools.mod \
-   ../../include/spud.mod ../../include/state_module.mod \
-   ../include/copy_outof_state.mod ../include/multi_tools.mod
 
 ../include/multi_interpolation.mod: multi_interpolation.o
 	@true
@@ -211,17 +196,8 @@ multi_interpolation.o ../include/multi_interpolation.mod: \
 
 multi_machine_learning.o ../include/multi_machine_learning.mod: \
    multi_machine_learning.F90 ../../include/confdefs.h ../../include/fdebug.h \
+   ../../include/fldebug.mod ../../include/spud.mod \
    ../include/xgb_interface.mod
-
-../include/multi_magma.mod: multi_magma.o
-	@true
-
-multi_magma.o ../include/multi_magma.mod: multi_magma.F90 \
-   ../../include/confdefs.h ../../include/fdebug.h ../../include/fields.mod \
-   ../../include/fldebug.mod ../../include/futils.mod \
-   ../../include/global_parameters.mod ../../include/spud.mod \
-   ../../include/state_module.mod ../../include/vector_tools.mod \
-   ../include/multi_data_types.mod
 
 ../include/matrix_operations.mod: multi_matrix_operations.o
 	@true
@@ -312,27 +288,27 @@ multi_shape_fct_ND.o ../include/shape_functions_linear_quadratic.mod \
 
 multi_solvers.o ../include/solvers_module.mod: multi_solvers.F90 \
    ../../include/confdefs.h ../../include/fdebug.h ../../include/fields.mod \
-   ../../include/fldebug.mod ../../include/global_parameters.mod \
-   ../../include/halo_data_types.mod ../../include/parallel_fields.mod \
-   ../../include/parallel_tools.mod ../../include/petsc_legacy.h \
-   ../../include/petsc_tools.mod ../../include/solvers.mod \
-   ../../include/sparse_tools_petsc.mod ../../include/spud.mod \
-   ../../include/state_module.mod ../include/copy_outof_state.mod \
-   ../include/multi_data_types.mod \
+   ../../include/fldebug.mod ../../include/full_projection.mod \
+   ../../include/global_parameters.mod ../../include/halo_data_types.mod \
+   ../../include/parallel_fields.mod ../../include/parallel_tools.mod \
+   ../../include/petsc_legacy.h ../../include/petsc_tools.mod \
+   ../../include/solvers.mod ../../include/sparse_tools_petsc.mod \
+   ../../include/spud.mod ../../include/state_module.mod \
+   ../include/copy_outof_state.mod ../include/multi_data_types.mod \
    ../include/shape_functions_linear_quadratic.mod \
    ../include/shape_functions_prototype.mod
 
 ../include/spact.mod: multi_sparsity.o
 	@true
 
-../include/sparsity_1d.mod: multi_sparsity.o
-	@true
-
 ../include/sparsity_nd.mod: multi_sparsity.o
 	@true
 
-multi_sparsity.o ../include/spact.mod ../include/sparsity_1d.mod \
-   ../include/sparsity_nd.mod: multi_sparsity.F90 ../../include/confdefs.h \
+../include/sparsity_1d.mod: multi_sparsity.o
+	@true
+
+multi_sparsity.o ../include/spact.mod ../include/sparsity_nd.mod \
+   ../include/sparsity_1d.mod: multi_sparsity.F90 ../../include/confdefs.h \
    ../../include/fdebug.h ../../include/fldebug.mod ../../include/futils.mod \
    ../../include/global_parameters.mod ../../include/spud.mod \
    ../include/copy_outof_state.mod ../include/cv_advection.mod \
