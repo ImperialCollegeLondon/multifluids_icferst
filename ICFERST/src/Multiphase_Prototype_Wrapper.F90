@@ -122,20 +122,60 @@
 !>
 !> 2) Papers published containing the formulation used in IC-FERST: 
 !>
-!> - Jackson et al 2015. doi: 10.2118/163633-PA: Overall concept of ICFERST.
-!> - Gomes et al 2016. doi: 10.1002/fld.4275: Old discretisation, boundary conditions and high order flux calculation.
-!> - Salinas et al 2017a. doi: 10.1002/fld.4357: Non-linear solver with acceleration.
-!> - Salinas et al 2017b. doi: 10.1002/fld.4381: New discretisation, the Double Control Volume Finite Element method.
-!> - Jacquemyn et al 2018. doi: 10.1007/s11004-018-9764-8: Surface-based modelling (generating models for ICFERST)
-!> - Salinas et al 2018a. doi: 10.1016/j.jcp.2017.09.058: Discontinuous formulation.
-!> - Salinas et al 2018b. doi: 10.1007/s10596-018-9759-z: Adapt within FPI and problems associated with large Courant numbers and DMO.
-!> - Salinas et al 2019. doi: 10.1016/j.cma.2019.07.004: Vanishing artificial diffusion (VAD option in diamond).
-!> - Salinas et al 2021. doi: 10.1016/j.geothermics.2021.102089: Well modelling and thermal transport.
-!> - Silva et al. 2022. doi: 10.1016/j.cma.2021.113989: Non-linear solver acceleration with Machine Learning.
-!> - Regnier et al 2022. doi: 10.1007/s10040-022-02481-w: Aquifer thermal energy storage and well modelling.
-!> - Hamzeloo et al 2022. doi: 10.1016/j.advwatres.2022.104189: Tracer modelling and parallel performance.
+!> - <a href="https://onepetro.org/REE/article/18/02/115/206344/Reservoir-Modeling-for-Flow-Simulation-by-Use-of">link Jackson et al 2015.</a> doi: 10.2118/163633-PA: Overall concept of ICFERST.
+!> - <a href="https://onlinelibrary.wiley.com/doi/full/10.1002/fld.4275">link Gomes et al 2016.</a> doi: 10.1002/fld.4275: Old discretisation, boundary conditions and high order flux calculation.
+!> - <a href="https://onlinelibrary.wiley.com/doi/full/10.1002/fld.4357">link Salinas et al 2017a.</a> doi: 10.1002/fld.4357: Non-linear solver with acceleration.
+!> - <a href="https://onlinelibrary.wiley.com/doi/full/10.1002/fld.4381">link Salinas et al 2017b.</a> doi: 10.1002/fld.4381: New discretisation, the Double Control Volume Finite Element method.
+!> - <a href="https://link.springer.com/article/10.1007/s11004-018-9764-8">link Jacquemyn et al 2018.</a> doi: 10.1007/s11004-018-9764-8: Surface-based modelling (generating models for ICFERST)
+!> - <a href="https://www.sciencedirect.com/science/article/pii/S0021999117307313">link Salinas et al 2018a.</a> doi: 10.1016/j.jcp.2017.09.058: Discontinuous formulation.
+!> - <a href="https://link.springer.com/article/10.1007/s10596-018-9759-z">link Salinas et al 2018b.</a> doi: 10.1007/s10596-018-9759-z: Adapt within FPI and problems associated with large Courant numbers and DMO.
+!> - <a href="https://www.sciencedirect.com/science/article/pii/S0045782519304001">link Salinas et al 2019.</a> doi: 10.1016/j.cma.2019.07.004: Vanishing artificial diffusion (VAD option in diamond).
+!> - <a href="https://www.sciencedirect.com/science/article/pii/S0375650521000493">link Salinas et al 2021.</a> doi: 10.1016/j.geothermics.2021.102089: Well modelling and thermal transport.
+!> - <a href="https://www.sciencedirect.com/science/article/pii/S0045782521003200">link Silva et al. 2022.</a> doi: 10.1016/j.cma.2021.113989: Non-linear solver acceleration with Machine Learning.
+!> - <a href="https://link.springer.com/article/10.1007/s10040-022-02481-w">link Regnier et al 2022.</a> doi: 10.1007/s10040-022-02481-w: Aquifer thermal energy storage and well modelling.
+!> - <a href="https://www.sciencedirect.com/science/article/pii/S0309170822000641">link Hamzeloo et al 2022.</a> doi: 10.1016/j.advwatres.2022.104189: Tracer modelling and parallel performance.
+!> 
+!> \subsection solvers_theory Solvers theory
+!> For more information of each specific method a link to the corresponding paper has been added in each section within @ref diamond
+!> \subsubsection linear_solvs Linear solvers
+!> IC-FERST uses PETSc to access a set of linear solvers to solve the systems of equations. The method is the typical one where a Krylov 
+!> subspace method (typically GMRES due to its robustness and flexibility) is used to solve the linear system of equations using a preconditioner based on
+!> on an algebraic multigrid method to ensure a fast convergence.
 !>
-!> The Fluidity manual contains information about the parts done by Fluidity, such as mesh adaptivity, mesh to mesh interpolation, etc.
+!> GMRES works by approximating the solution by the vector in a Krylov subspace with minimal residual and iterating until the solution with the desired quality is achieved. 
+!> For GMRES, the speed of the convergence heavily relies on the conditioning number of the system to be solved for. Moreover, GMRES convergence depends on the number of
+!> degrees of freedom to be solved for. In this way, the use of a preconditioner is used to accelerate the process. Among all the possible accelerators (preconditioners), the fastest
+!> and the only one whose convergence is independent of the number of degrees of freedom is multigrid. Other can be used, such as Jacobi or ILU, but its convergence degrades
+!> as the number of degrees of freedom increases.
+!>
+!> Multigrid works by eliminating the high frequencies of the error using a smoother (typically performing a couple of Jacobi or Gauss-Seidel iterations) and
+!> then moving the residual to a coarser mesh, where the process is repeated and its result is used to improve the result of the finer mesh. This process is recursive
+!> and therefore a set of levels can be used, and therefore, a multigrid method is obtained. Due to its nature, multigrid convergence is independent on the degrees
+!> of freedom. However, elaborate operators need to be taylored for specific system of equations and meshes to obtain an optimal performance. In ICFERST
+!> the use of HYPRE as preconditioner when using the DCVFEM shows excellent performance and it is the recommended (and default choice).
+!> 
+!> \subsubsection non_linear_solvs Non-linear solver
+!> In the previous section we have discussed the use of GMRES and multigrid. These solvers can solve only linear systems of equations
+!> (although multigrid with the Full Approximation Scheme can also solve non-linear system of equations by including the Newton-Taphson method as part of the smoother).
+!> Therefore we also require a non-linear solver to deal with the non-linearities arising when solving the full system of equations. Non-linearities may arise from
+!> Equations of State, relative permeability, capillary pressure, dependence with other fields (for example transport depending on temperature), etc.
+!> 
+!> The typical approach to solve a non-linear system of equations is the use of a fixed-point iterative method. A Fixed-point iterative method, as its name says,
+!> pivots around a fixed-point to identify a "direction" to follow in order to obtain the solution. The most famous ones are:
+!>  i) Newton-Raphson: the direction
+!> of the gradient is used to find the solution. If the solution field is continuous the convergence is quadratic. This method requires to generate a Jacobian matrix
+!> and tends to generate bigger and harder metrices to solve for than the alternative.
+!> ii) Anderson solver: In this case the system is linearised by freezing all the fields that are not part of the current linear solve. For example
+!> if solving for pressure then all the other fields are constant at that stage. By iterating through the different linear systems, the non-linear system is finally solved.
+!> This approach has typically a first order convergence but in exchange the systems to solve for are easier and smaller.
+!>
+!> In both cases and as described so far, the non-linear solvers have only "local" convergence, meaning that the initial guess of the solution needs to be relatively 
+!> close to the final solution for the solver to be able to solve for it. Otherwise the solver will typically diverge, or find a local optimal, obtaining wrong result.
+!> To increase the range of convergence to "global" convergence (note that no non-linear solver has really global convergence as it cannot be guaranteed so the term is
+!> used to describe a wider range than just local convergence) several methods have been developed, backtracking, trust region, double dogleg, just to mention some.
+!> In all these methods, the idea is to correct the prediction to ensure that the solver does not overshoot and also, to try to avoid local minima.
+!> In ICFERST a backtracking method with acceleration is currently implemented to do both, improve the convergence and stability of an Anderson solver.
+!>
 !> \section Code_structure Structure of the ICFERST code
 !> All the ICFERST code is within the folder ICFERST where the test cases, code, tools and schemas for diamond are stored.
 !> Some parts of Fluidity have been slightly modified but in general the Fluidity code is untouched. 
@@ -363,13 +403,18 @@
 !> The recommended method to adjust the time-step size in ICFERST is to do it based on the stability of the non-linear solver with the addition of the
 !> PID controler (Proportional Integrator Derivator). Adaptive time-stepping methods based on the stability of the non-linear solver normally suffer from
 !> the fact that they keep raising the time-step size until they fail, which forces them to repeat a time-level, halve the time-step size and repeat
-!> the process. This is suboptimal, in ICFERST we use a PID type method based on a requested number of non-linear iterations, where the controller
+!> the process. This is suboptimal. In ICFERST, we use a PID type method based on a requested number of non-linear iterations, where the controller
 !> adjusts the time-step size to try to always have the same number of non-linear iterations, avoiding that problem and being overall more efficient.
+!>
+!> For more information see: <a href="https://www.sciencedirect.com/science/article/pii/S0309170822000641">link Hamzeloo et al 2022.</a>
 !>\subsubsection VAD Vanishing artificial diffusion
 !> The Vanishing Artificial Diffusion (VAD) is devoted to stabilise the system when solving for multiphase flow. It can also be used for transport however 
 !> we have seen that in certain scenarios it may not be beneficial, this could be solved adjusting the parameter but xthis work needs to be done.
 !> However, for multiphase it has shown to greatly accelerate the non-linear solver and specially when having capillary pressure in the system.
 !> Unless explicitly imposed, when capillary pressure is active VAD is also active. Moreover, VAD is active if no settings of the non-linear solver are set.
+!>
+!> For more information see: <a href="https://www.sciencedirect.com/science/article/pii/S0045782519304001">link Salinas et al 2019.</a>
+!> \subsubsection mom_matrix Momentum matrix
 !> The momentum_matrix settings are only for stokes and therefore out of the scope of this manual.
 !>\subsubsection io IO(Input/output)
 !> In this section the user can specify what to output from ICFERST. 
@@ -398,11 +443,22 @@
 !> ICFERST accepts three types of BCs all of them weakly enforced (excepting pressure dirichlet for wells): Dirichlet, zero_flux and Robin. If Neumann are required the
 !> recommendation is to use Robin without the dirichlet contribution.
 !>\subsubsection minmax MinMax principle
+!> The minmax principle states that without sources or sinks a field is bounded between its initial value and boundary condition values.
+!> Providing this information when possible ensure first that the results obtain are going to be physically possible (if not specified the concentration
+!> could accumulate in a certain CV endlessly!) and also helps the non-linear solver to achieve convergence faster by constraining the area of search.
 !> For tracer fields, it is HIGHLY recommended to specify the min_max condition since it helps ensure a physical solution as well as accelerate the simulation.
 !>\subsubsection madapt_opt Adaptivity options
-!> Specify this option to adapt the mesh to this field with the requested precision
+!> ICFERST uses a-priori error estimation method based on Cea's lemma. Therefore, it is possible to adjust the mesh to minimise the requested error.
+!> In this part, the user can specify the desired precision of the field. If using absolute this is with the same units, for example 1000 for pressure would be
+!> that the user wants a precision of 1KPa in the results, below this the mesh won't capture it. The relative option does the same but considering the bounds of the field
+!> dynamically, some users have experienced problems with relative and therefore absolute is recommended.
 !>\subsubsection Mesh2mesh Mesh to Mesh interpolator
-!> It is recommended to use Consistent interpolation for wells and pressure, and Galerkin for scalar fields and velocity.
+!> Once a new mesh is generated the fields need to be interpolated between meshes. Interpolation between meshes needs to take into account: 
+!> i) Conservation: the integral of the field before and after is the same, ii) Boundeness: the maximum and minimum values before and after the interpolation are the same
+!> iii) artificial diffusion: does the interpolator introduces artificial diffusion into the solution?
+!> Within ICFERST, The Galerkin projection fulfils all three but it is expensive as a system of equations needs to be solved for. Consisten interpolation fulfills
+!> ii) and iii) and Grandy fulfils i) and ii) but not iii).
+!> In this way it is recommended to use Galerkin for scalar fields and velocity and consistent interpolation for wells and pressure.
 !>\subsubsection sourceterm Source and Absorption terms
 !> A source term can be added to every field. 
 !> The absorption term however is inactive. Only defining a tensor field named UAbsorB on the first phase this can be used. 
@@ -422,8 +478,19 @@
 !> Other settings to take into account are adapt at the first time step, which can be used to generate a mesh from a given one or if there is
 !> an interface at the beginning. The fail safe is on by default and it is not recommended to modify it, similar to the other settings.
 !> \subsubsection porousmedia Porous media settings
-!> In this part the user must specify the petrophysical properties under porosity, permeability, and if needed, Dispersion and rock properties
+!> In this part the user must specify the petrophysical properties under porosity, permeability, and if needed, Dispersion and rock properties 
 !>  such as density, heat capacity and coductivity of the porous media under porous properties. 
+!> - Permeability: It is recommended that unless the field is anisotropic, the user should use either scalar field or diagonal. In this way ICFERST can optimise
+!> its computation.
+!> - Dispersion: Specify here the longitudinal and transverse dispersivity (the latter by default 10 times smaller).
+!> - Porous properties: Specify here the BULK properties of the mineral (bulk = pore space + matrix).
+!> - Wells and pipes: Specify which regions of the well are open (gamma), friction factor (sigma) and the diameter of the well.
+!> Under thermal well properties the user can also define the conductivity of the pipe and its thinkness so the pipes can also interchange heat where they are close to flow
+!> - Well options: Use calculate sigma pipe to compute the friction based on the material of the pipe.
+!> -Well volume ids: The user must specify here the sleeves conforming the well path. If selected lock sleeve nodes, then DMO will lock the nodes within
+!> these regions, ensuring that the result is less oscilatory (although perfectly correct anyway).
+!> - Well from file: specify the path to the .bdf file containing the path of the well
+!> Well from coordinates: alternatively if the well is a straight line, you can specify it just using coordinates.
 !> \subsubsection phreqqc PHREEQC coupling
 !> IC-FERST can run reaction modelling where the reaction part is performed using PHREEQC. To do this first the user must install PHREEQCRM
 !> on the system and compile IC-FERST to support this with the following command:
