@@ -576,7 +576,31 @@
 !> Using diagnostic fields the user can have access to all the fields stored in state (or packed_state, check the description)
 !> which enables the user to perform more complex operations such as alter fields. In this way the python call is performed only once per non-linear loop.
 !> It is important to note that the python code is parallel safe as long as everything is keep in memory, i.e. not trying to read a file.
-!> In this case the example of the code would be as follows:
+!> More information can be found in the Fluidity manual, Appendix B. Here a summary of that content is provided:
+!> Basic commands to manipulate scalar, vector or tensor fields:
+!> - node count The number of nodes in the field.
+!> - element count: The number of elements in the field.
+!>
+!> - dimension: The data dimension (not for ScalarField objects).
+!>
+!> - node val(node): Return the value of the field at node(s). If node is a scalar then the result is the value of the field at that one node. If node is a sequence then the result is the value of the field at each of those nodes. The shape of the result is given for each case below.
+!>
+!> - set(node, val) Set the value(s) of the field at the node(s) specified. If node is a scalar then the value of the field at that one node is set. If node is a sequence then the value of the field at each of those nodes is set. The shape of val must be as given below.
+!>
+!> - addto(node, val) Add value(s) to the field at the node(s) specified. If node is a scalar then the value of the field at that one node is modified. If node is a sequence then the value of the field at each of those nodes is modified. The shape of val must be as given below.
+!>
+!> - ele loc(ele number) Return the number of nodes in element ele_number.
+!>
+!> - ele nodes(ele number) Return the indices of the nodes in element ele_number.
+!>
+!> - ele val(ele number) Return the value of the field at the nodes in element ele_number. This is equivalent to calling field.node_val(field.ele_nodes(ele_number)).
+!>
+!> - ele region id(ele number) Return the region id of element ele_number. This can be used to specify diagnostics which only apply over some portion of the domain.
+!> Examples of fields that can be extracted, considering a single phase state:
+!> CV based fields are scalar fields so if one is solving for Temperature it can be extracted as follows: state.scalar_fields[’Temperature’]
+!> For other fields, such as the coordinate of the field, they can be extracted as follow: state.vector_fields[’Coordinate’].
+!> Finally, tensor fields as: state.tensor_fields[’Viscosity’].
+!> An example of the code would be as follows:
 !> @htmlonly
 !> <CODE>
 !> <PRE>
