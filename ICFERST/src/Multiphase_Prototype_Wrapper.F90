@@ -122,18 +122,18 @@
 !>
 !> 2) Papers published containing the formulation used in IC-FERST: 
 !>
-!> - <a href="https://onepetro.org/REE/article/18/02/115/206344/Reservoir-Modeling-for-Flow-Simulation-by-Use-of">link Jackson et al 2015.</a> doi: 10.2118/163633-PA: Overall concept of ICFERST.
-!> - <a href="https://onlinelibrary.wiley.com/doi/full/10.1002/fld.4275">link Gomes et al 2016.</a> doi: 10.1002/fld.4275: Old discretisation, boundary conditions and high order flux calculation.
-!> - <a href="https://onlinelibrary.wiley.com/doi/full/10.1002/fld.4357">link Salinas et al 2017a.</a> doi: 10.1002/fld.4357: Non-linear solver with acceleration.
-!> - <a href="https://onlinelibrary.wiley.com/doi/full/10.1002/fld.4381">link Salinas et al 2017b.</a> doi: 10.1002/fld.4381: New discretisation, the Double Control Volume Finite Element method.
-!> - <a href="https://link.springer.com/article/10.1007/s11004-018-9764-8">link Jacquemyn et al 2018.</a> doi: 10.1007/s11004-018-9764-8: Surface-based modelling (generating models for ICFERST)
-!> - <a href="https://www.sciencedirect.com/science/article/pii/S0021999117307313">link Salinas et al 2018a.</a> doi: 10.1016/j.jcp.2017.09.058: Discontinuous formulation.
-!> - <a href="https://link.springer.com/article/10.1007/s10596-018-9759-z">link Salinas et al 2018b.</a> doi: 10.1007/s10596-018-9759-z: Adapt within FPI and problems associated with large Courant numbers and DMO.
-!> - <a href="https://www.sciencedirect.com/science/article/pii/S0045782519304001">link Salinas et al 2019.</a> doi: 10.1016/j.cma.2019.07.004: Vanishing artificial diffusion (VAD option in diamond).
-!> - <a href="https://www.sciencedirect.com/science/article/pii/S0375650521000493">link Salinas et al 2021.</a> doi: 10.1016/j.geothermics.2021.102089: Well modelling and thermal transport.
-!> - <a href="https://www.sciencedirect.com/science/article/pii/S0045782521003200">link Silva et al. 2022.</a> doi: 10.1016/j.cma.2021.113989: Non-linear solver acceleration with Machine Learning.
-!> - <a href="https://link.springer.com/article/10.1007/s10040-022-02481-w">link Regnier et al 2022.</a> doi: 10.1007/s10040-022-02481-w: Aquifer thermal energy storage and well modelling.
-!> - <a href="https://www.sciencedirect.com/science/article/pii/S0309170822000641">link Hamzeloo et al 2022.</a> doi: 10.1016/j.advwatres.2022.104189: Tracer modelling and parallel performance.
+!> - <a href="https://onepetro.org/REE/article/18/02/115/206344/Reservoir-Modeling-for-Flow-Simulation-by-Use-of">Jackson et al 2015.</a> doi: 10.2118/163633-PA: Overall concept of ICFERST.
+!> - <a href="https://onlinelibrary.wiley.com/doi/full/10.1002/fld.4275">Gomes et al 2016.</a> doi: 10.1002/fld.4275: Old discretisation, boundary conditions and high order flux calculation.
+!> - <a href="https://onlinelibrary.wiley.com/doi/full/10.1002/fld.4357">Salinas et al 2017a.</a> doi: 10.1002/fld.4357: Non-linear solver with acceleration.
+!> - <a href="https://onlinelibrary.wiley.com/doi/full/10.1002/fld.4381">Salinas et al 2017b.</a> doi: 10.1002/fld.4381: New discretisation, the Double Control Volume Finite Element method.
+!> - <a href="https://link.springer.com/article/10.1007/s11004-018-9764-8">Jacquemyn et al 2018.</a> doi: 10.1007/s11004-018-9764-8: Surface-based modelling (generating models for ICFERST)
+!> - <a href="https://www.sciencedirect.com/science/article/pii/S0021999117307313">Salinas et al 2018a.</a> doi: 10.1016/j.jcp.2017.09.058: Discontinuous formulation.
+!> - <a href="https://link.springer.com/article/10.1007/s10596-018-9759-z">Salinas et al 2018b.</a> doi: 10.1007/s10596-018-9759-z: Adapt within FPI and problems associated with large Courant numbers and DMO.
+!> - <a href="https://www.sciencedirect.com/science/article/pii/S0045782519304001">Salinas et al 2019.</a> doi: 10.1016/j.cma.2019.07.004: Vanishing artificial diffusion (VAD option in diamond).
+!> - <a href="https://www.sciencedirect.com/science/article/pii/S0375650521000493">Salinas et al 2021.</a> doi: 10.1016/j.geothermics.2021.102089: Well modelling and thermal transport.
+!> - <a href="https://www.sciencedirect.com/science/article/pii/S0045782521003200">Silva et al. 2022.</a> doi: 10.1016/j.cma.2021.113989: Non-linear solver acceleration with Machine Learning.
+!> - <a href="https://link.springer.com/article/10.1007/s10040-022-02481-w">Regnier et al 2022.</a> doi: 10.1007/s10040-022-02481-w: Aquifer thermal energy storage and well modelling.
+!> - <a href="https://www.sciencedirect.com/science/article/pii/S0309170822000641">Hamzeloo et al 2022.</a> doi: 10.1016/j.advwatres.2022.104189: Tracer modelling and parallel performance.
 !> 
 !> \subsection solvers_theory Solvers theory
 !> For more information of each specific method a link to the corresponding paper has been added in each section within @ref diamond
