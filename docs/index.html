@@ -467,7 +467,17 @@ Input using python</h3>
  </CODE>
  </p>
 <p>it can be seen that it can load modules. This code will be called and evaluated for every single node in the boundary and the only inputs are Coordinates (X) and time (t).</p>
-<p>Using diagnostic fields the user can have access to all the fields stored in state (or packed_state, check the description) which enables the user to perform more complex operations such as alter fields. In this way the python call is performed only once per non-linear loop. It is important to note that the python code is parallel safe as long as everything is keep in memory, i.e. not trying to read a file. In this case the example of the code would be as follows:  
+<p>Using diagnostic fields the user can have access to all the fields stored in state (or packed_state, check the description) which enables the user to perform more complex operations such as alter fields. In this way the python call is performed only once per non-linear loop. It is important to note that the python code is parallel safe as long as everything is keep in memory, i.e. not trying to read a file. More information can be found in the Fluidity manual, Appendix B. Here a summary of that content is provided: Basic commands to manipulate scalar, vector or tensor fields:</p><ul>
+<li>node count The number of nodes in the field.</li>
+<li>element count: The number of elements in the field.</li>
+<li>dimension: The data dimension (not for ScalarField objects).</li>
+<li>node val(node): Return the value of the field at node(s). If node is a scalar then the result is the value of the field at that one node. If node is a sequence then the result is the value of the field at each of those nodes. The shape of the result is given for each case below.</li>
+<li>set(node, val) Set the value(s) of the field at the node(s) specified. If node is a scalar then the value of the field at that one node is set. If node is a sequence then the value of the field at each of those nodes is set. The shape of val must be as given below.</li>
+<li>addto(node, val) Add value(s) to the field at the node(s) specified. If node is a scalar then the value of the field at that one node is modified. If node is a sequence then the value of the field at each of those nodes is modified. The shape of val must be as given below.</li>
+<li>ele loc(ele number) Return the number of nodes in element ele_number.</li>
+<li>ele nodes(ele number) Return the indices of the nodes in element ele_number.</li>
+<li>ele val(ele number) Return the value of the field at the nodes in element ele_number. This is equivalent to calling field.node_val(field.ele_nodes(ele_number)).</li>
+<li>ele region id(ele number) Return the region id of element ele_number. This can be used to specify diagnostics which only apply over some portion of the domain. Examples of fields that can be extracted, considering a single phase state: CV based fields are scalar fields so if one is solving for Temperature it can be extracted as follows: state.scalar_fields[’Temperature’] For other fields, such as the coordinate of the field, they can be extracted as follow: state.vector_fields[’Coordinate’]. Finally, tensor fields as: state.tensor_fields[’Viscosity’]. An example of the code would be as follows:  
  <CODE>
  <PRE>
  import numpy as np
@@ -486,7 +496,8 @@ Input using python</h3>
    field.set(nodeID, k_inf)
  </PRE>
  </CODE>
-  it can be seen how fields can be extracted from state and then looped over them. Compared to the previous script here we need to use commands such as set to impose the value of the field. This approach is very powerful. To include new fields in diamond that can use this it is recommended to link it using multi_compute_python_field following the procedure done for the SelfPotential fields. For more details of available commands check Fluidity's manual. </p>
+  it can be seen how fields can be extracted from state and then looped over them. Compared to the previous script here we need to use commands such as set to impose the value of the field. This approach is very powerful. To include new fields in diamond that can use this it is recommended to link it using multi_compute_python_field following the procedure done for the SelfPotential fields. For more details of available commands check Fluidity's manual. </li>
+</ul>
 <h3><a class="anchor" id="int_conv"></a>
 Simplified diamond interface</h3>
 <p>The current version of the multiphase schema found within ICFERST/schemas is a simplified version which gets populated internally so it is compatible with Fluidity. This extra population affects when generating checkpoint files that will not be exactly like the original and may need to amended before re-running from a checkpoint (which can be done by opening them and saving). It is important to understand that this conversion exists since it may affect some sections of the code. However, this has been tried to be kept to a minimum and developers can expect a direct connection between diamond and where the option can be found when extracting it.</p>
