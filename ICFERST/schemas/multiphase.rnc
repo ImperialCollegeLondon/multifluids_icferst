@@ -105,6 +105,12 @@ start =
                 )
                }
             ),
+            ## Select this option to include information into the stat file for every timestep. 
+            ## Otherwise, the stat file is only updated when a vtu file is generated.
+            ## This option for certain cases can increase the cost up to 30%
+            element Detailed_stat_file {
+               comment
+            }?,
             ## Path (without the extension) to the .csv file containing the fluid and porous media properties.
             ## <b>NOTE: Properties in the .csv file will overwrite the input from diamond.</b>
             ##

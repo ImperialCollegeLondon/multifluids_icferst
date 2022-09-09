@@ -213,7 +213,7 @@ contains
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
         type (multi_pipe_package) :: pipes_aux
         !type(scalar_field), pointer :: bathymetry
-        logical :: write_all_stats=.true.
+        logical :: write_all_stats=.false.
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
         ! Ioutlet counts the number of boundaries over which to calculate the outflux
         integer :: ioutlet
@@ -263,9 +263,8 @@ contains
     end if
 #endif
 
-        !If we are using the fast settings then we save time not always computing the stats
-        ! call get_option("/geometry/simulation_quality", option_name, stat=stat)
-        ! write_all_stats = .not. trim(option_name) == "fast"
+        !We may not want to compute always the stats
+        write_all_stats = have_option("/io/Detailed_stat_file")
 
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
