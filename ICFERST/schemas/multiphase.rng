@@ -113,6 +113,14 @@ A value of 0 indicates a dump at every timestep.</a:documentation>
           </element>
         </choice>
         <optional>
+          <element name="Detailed_stat_file">
+            <a:documentation>Select this option to include information into the stat file for every timestep. 
+Otherwise, the stat file is only updated when a vtu file is generated.
+This option for certain cases can increase the cost up to 30%</a:documentation>
+            <ref name="comment"/>
+          </element>
+        </optional>
+        <optional>
           <element name="PropertiesFromFile">
             <a:documentation>Path (without the extension) to the .csv file containing the fluid and porous media properties.
 &lt;b&gt;NOTE: Properties in the .csv file will overwrite the input from diamond.&lt;/b&gt;
@@ -137,13 +145,6 @@ the final convergence achieved by the FPI solver</a:documentation>
         <optional>
           <element name="Courant_number">
             <a:documentation>If porous_media, printout the Courant number every time-step</a:documentation>
-            <ref name="comment"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="Do_not_generate_stat_file">
-            <a:documentation>Do not generate the stat file. This file contains walltime, statistics of the fields such as min/max and integral. 
-By default it is on, although its computation is not free. For single phase ~ 30% of the total simulation time.</a:documentation>
             <ref name="comment"/>
           </element>
         </optional>
