@@ -264,7 +264,7 @@ contains
 #endif
 
         !We may not want to compute always the stats
-        write_all_stats = have_option("/io/Detailed_stat_file")
+        write_all_stats = .not.have_option("/io/Sync_stat_file_with_vtu")
 
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
