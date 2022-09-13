@@ -2031,7 +2031,6 @@ end if
           call extract_diagonal(cmc_petsc, diagonal_CMC)
           call scale_PETSc_matrix(cmc_petsc)
         end if
-
         call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
@@ -2052,7 +2051,6 @@ end if
                 call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
             end if
         end if
-        
         !######################## CORRECTION VELOCITY STEP####################################
         !Ensure that the velocity fulfils the continuity equation before moving on
         if (.not. solve_stokes .or. solve_mom_iteratively ) then
@@ -2079,7 +2077,6 @@ end if
             DEALLOCATE( Mmat%PIVIT_MAT )
             nullify(Mmat%PIVIT_MAT)
         end if
-
         !Using associate doesn't seem to be stable enough
         if (((solve_stokes .or. solve_mom_iteratively) &
              .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
@@ -2089,7 +2086,6 @@ end if
 
         if (rescale_mom_matrices)  call deallocate(diagonal_CMC)
         if (associated(UDIFFUSION_VOL_ALL%val)) call deallocate_multi_field(UDIFFUSION_VOL_ALL)
-
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
       contains
@@ -8849,17 +8845,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 end if
             end if
           END DO
-        end do
-
-        !Now ensure that all the processors call MatZeroRows consistently
+        end do      
+        !Now we call MatZeroRows to zero the rows (not the diagonal)
         i = 0
         do k = 1, Mdims%stotel
-          if (isparallel()) call allmax(Impose_strong(k))
-          if (Impose_strong(k) < 0) exit
-          i = i + 1
-        end do
+          if (Impose_strong(k) > 0) i = i + 1
+        end do       
         call MatZeroRows(CMC_petsc%M, i, Impose_strong(1:i), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
-
         !Re-assemble just in case
         CMC_petsc%is_assembled=.false.
         call assemble( CMC_petsc )
