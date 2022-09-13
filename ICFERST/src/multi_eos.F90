@@ -1406,11 +1406,11 @@ contains
         type(tensor_field), pointer :: component_field
         real:: denl1,denl2, dens1, dens2, denl, dens 
         ! temperoral settings for the parameters before it put in Diamond
-        denl1=2600
-        denl2=2200 !2200
+        denl1=2300!2600
+        denl2=2300!2200 !2200
         
-        dens1=3000
-        dens2=2600!2600
+        dens1=2800!3000
+        dens2=2800!2600!2600
 
         use_potential = compute_compaction
         allocate(auxR(Mdims%ndim),auxR2(Mdims%ndim))

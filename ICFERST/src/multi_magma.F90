@@ -637,7 +637,7 @@ contains
           cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
           ! phi = max((1.0-saturation(1,1, cv_inod)),1e-5)
           phi =max(saturation(1,2, cv_inod),max_absorp_phi)
-          mu_l=lcomponent_field%val(cv_inod)*1e4+(1-lcomponent_field%val(cv_inod))*1.   !liquid viscosity scaled with composition from 1 to 1e5
+          mu_l=lcomponent_field%val(cv_inod)*1e0+(1-lcomponent_field%val(cv_inod))*1.   !liquid viscosity scaled with composition from 1 to 1e5
           do iphase =2, Mdims%nphase!Absorption is defined as a term mutiplying the velocity term, not the pressure
             Magma_absorp(1, 1, iphase, mat_nod) = phi/phi2_over_c(phi,mu_l)
             if (present(Magma_absorp_capped)) Magma_absorp_capped(1, 1, iphase, mat_nod) = max(phi,phi_min)/phi2_over_c(max(phi,phi_min),mu_l)

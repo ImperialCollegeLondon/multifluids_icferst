@@ -2048,7 +2048,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         
         integer :: TEST_temperal
         real :: cmcscaling
-        cmcscaling=17! 13 for solid viscosity order 13
+        cmcscaling=133! 13 for solid viscosity order 13
         ! if (is_magma) compute_compaction= .true.  ! For magma only the first phase is assembled for the momentum equation.
 
         ! call get_option("/numerical_methods/max_sat_its", TEST_temperal)
@@ -2692,7 +2692,7 @@ end if
           
           real, optional, intent(inout) :: CMC_scale
           logical, save :: first_step = .true.
-          real :: petsc_error_scale           
+          real :: petsc_error_scale, solver_tolerance_relax_scale           
           integer:: max_nonlinear_iteraion
 
           
@@ -2714,7 +2714,8 @@ end if
                  petsc_error_scale=max(petsc_error_scale,0.2)
             end if
             ! Let the convergence criteria more relaxed on the first non-linear steps and decreases as the iteration increases
-            solver_tolerance=solver_tolerance*10**(-2.*no_nonlinear_iteration/real(max_nonlinear_iteraion-1)+2./real(max_nonlinear_iteraion-1)+2.)
+            solver_tolerance_relax_scale=2.0
+            solver_tolerance=solver_tolerance*10**(-no_nonlinear_iteration*solver_tolerance_relax_scale/real(max_nonlinear_iteraion-1)+solver_tolerance_relax_scale*real(max_nonlinear_iteraion)/real(max_nonlinear_iteraion-1))
             print *, 'no_nonlinear_iteration:', no_nonlinear_iteration
             print *, 'solver_tolerance:', solver_tolerance
             show_FPI_conv = 1
