@@ -984,8 +984,12 @@ END subroutine RotationMatrix
       call get_option("/timestepping/timestep", dt)
       write(buffer,*) dt
       call python_run_string("dt="//trim(buffer))
-      ! Get the code
-      call get_option( trim( option_path_python ) // '/algorithm', pycode )
+      ! Get the code (in some cases it comes under the algorithm part and not in other cases...)
+      if (have_option(trim( option_path_python ) // '/algorithm')) then 
+        call get_option( trim( option_path_python ) // '/algorithm', pycode )
+      else
+        call get_option( trim( option_path_python ), pycode )
+      end if
       ! Run the code
       call python_run_string( trim( pycode ) )
 
