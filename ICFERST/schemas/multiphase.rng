@@ -113,10 +113,10 @@ A value of 0 indicates a dump at every timestep.</a:documentation>
           </element>
         </choice>
         <optional>
-          <element name="Detailed_stat_file">
-            <a:documentation>Select this option to include information into the stat file for every timestep. 
-Otherwise, the stat file is only updated when a vtu file is generated.
-This option for certain cases can increase the cost up to 30%</a:documentation>
+          <element name="Sync_stat_file_with_vtu">
+            <a:documentation>Select this option to only update the stat file whenever a vtu file is created. 
+Otherwise, the stat file is updated every timelevel.
+This option for certain cases can decrease the cost up to 30%</a:documentation>
             <ref name="comment"/>
           </element>
         </optional>
