@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Visc_fingering</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml viscous</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst Visc_fingering.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="max_visc" language="python">from fluidity_tools import stat_parser as stat
+max_visc = stat("Visc_fingering.stat")["phase1"]["Viscosity%magnitude"]["max"][-1]</variable>
+    <variable name="min_visc" language="python">from fluidity_tools import stat_parser as stat
+min_visc = stat("Visc_fingering.stat")["phase1"]["Viscosity%magnitude"]["min"][-1]</variable>
+
+  </variables>
+  <pass_tests>
+    <test name="Assert final max viscosity" language="python">assert(abs(max_visc - 210.94)/210.94 &lt; 0.01)</test>
+    <test name="Assert final min viscosity" language="python">assert(abs(min_visc - 207.73)/207.73 &lt; 0.01)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
