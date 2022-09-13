@@ -1404,13 +1404,15 @@ contains
         type (porous_adv_coefs), optional, intent(inout) :: upwnd
 
         type(tensor_field), pointer :: component_field
-        real:: denl1,denl2, dens1, dens2, denl, dens 
-        ! temperoral settings for the parameters before it put in Diamond
+        real:: denl1,denl2, dens1, dens2, denl, dens , bden
+        type (scalar_field), pointer :: bulk_density
+        ! temperoral settings for the parameters before it put in Diamond        
         denl1=2300!2600
         denl2=2300!2200 !2200
         
         dens1=2800!3000
         dens2=2800!2600!2600
+        bulk_density => extract_scalar_field(state(1), "BulkDensity")
 
         use_potential = compute_compaction
         allocate(auxR(Mdims%ndim),auxR2(Mdims%ndim))
@@ -1462,11 +1464,16 @@ contains
                 do nod = 1, Mdims%cv_nonods
                   denl=denl2*component_field%val(1,2,nod)+denl1*(1-component_field%val(1,2,nod))
                   dens=dens2*component_field%val(1,1,nod)+dens1*(1-component_field%val(1,1,nod))
-                  ! den( 1, nod )=dens
-                  ! den( 2, nod )=denl
+                  ! update the density field for each phase
+                  den( 1, nod )=dens
+                  den( 2, nod )=denl
+
                   g = node_val( gravity_direction, nod ) * gravity_magnitude
                   do idim = 1, Mdims%ndim
-                    u_source_cv( idim, 1, nod ) = (dens-denl)* sat_field%val(1, 1, nod) * g( idim ) !(dens- denl )
+                    ! u_source_cv( idim, 1, nod ) = (dens-denl)* sat_field%val(1, 1, nod) * g( idim ) 
+                    bden=(dens*sat_field%val(1, 1, nod)+ denl*sat_field%val(1, 2, nod)+den( 3, nod )*sat_field%val(1, 3, nod))
+                    bulk_density%val(nod)=bden 
+                    u_source_cv( idim, 1, nod )= bden* g( idim ) 
                   end do
                 end do
 

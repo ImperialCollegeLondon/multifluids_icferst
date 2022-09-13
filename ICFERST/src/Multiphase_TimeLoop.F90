@@ -477,7 +477,7 @@ contains
         end if
 
         !HH Initialize all the magma simulation related coefficients
-        if (have_option("/magma_parameters") ) then
+        if (is_magma) then
           call initialize_magma_parameters(magma_phase_coef,  magma_coupling)
           call magma_Coupling_generate (magma_c_phi_series, state, magma_coupling)
           !This is important to specify EnthalpyOld based on the temperature which is easier for the user
@@ -486,7 +486,7 @@ contains
           call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
 
           ! recalculate the melt fraction and compositions to guarantee that the initial condition is consistent
-          call poro_component_solve(state,packed_state, Mdims, ndgln, magma_phase_coef, initilization=.true.)
+        !   call poro_component_solve(state,packed_state, Mdims, ndgln, magma_phase_coef, initilization=.true.)
         end if
 
 
@@ -774,7 +774,7 @@ contains
                 !The ordering is important to be able to compute the Composition_magma_source term of mass exchange between the concentration between phases
                 IF (is_magma) then
                   !Here we  Calculate melt fraction and component from phase diagram
-                  call poro_component_solve(state,packed_state, Mdims, ndgln, magma_phase_coef)
+                !   call poro_component_solve(state,packed_state, Mdims, ndgln, magma_phase_coef)
                   !we impose backtrack_or_convergence = 1 to ensure that the convergence check works
                   backtrack_or_convergence = 1.0
                   ! ! Update the temperature field
