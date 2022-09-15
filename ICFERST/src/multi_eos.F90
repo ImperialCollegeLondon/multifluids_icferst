@@ -1469,11 +1469,12 @@ contains
                   den( 2, nod )=denl
 
                   g = node_val( gravity_direction, nod ) * gravity_magnitude
+                  bden=(dens*sat_field%val(1, 1, nod)+ denl*sat_field%val(1, 2, nod)+den( 3, nod )*sat_field%val(1, 3, nod))
+                  bulk_density%val(nod)=bden 
                   do idim = 1, Mdims%ndim
                     ! u_source_cv( idim, 1, nod ) = (dens-denl)* sat_field%val(1, 1, nod) * g( idim ) 
-                    bden=(dens*sat_field%val(1, 1, nod)+ denl*sat_field%val(1, 2, nod)+den( 3, nod )*sat_field%val(1, 3, nod))
-                    bulk_density%val(nod)=bden 
-                    u_source_cv( idim, 1, nod )= bden* g( idim ) 
+
+                    u_source_cv( idim, 1, nod )= 500.*0.8*g( idim ) !bden* g( idim ) 
                   end do
                 end do
 

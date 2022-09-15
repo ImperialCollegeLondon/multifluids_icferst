@@ -2049,7 +2049,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type (scalar_field), pointer :: bulk_density
         integer :: TEST_temperal
         real :: cmcscaling
-        cmcscaling=1! 13 for solid viscosity order 13
+        cmcscaling=13! 13 for solid viscosity order 13
         if (is_magma) compute_compaction= .true.  ! For magma only the first phase is assembled for the momentum equation.
 
         ! call get_option("/numerical_methods/max_sat_its", TEST_temperal)
@@ -2462,7 +2462,7 @@ end if
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p, drhog_tensor=drhog_tensor%val)
         else
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p, den=bulk_density)
-            rhs_p%val=rhs_p%val-1.7565e-05 ! for test three phases
+            rhs_p%val=rhs_p%val!-1.7565e-05 ! for test three phases
         end if
         if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
         rhs_p%val = - rhs_p%val! + Mmat%CT_RHS%val
@@ -2863,7 +2863,7 @@ print *, k,':', conv_test
                 call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p, drhog_tensor=drhog_tensor%val)
             else
                 call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p, den=bulk_density)
-                rhs_p%val=rhs_p%val-1.7565e-05
+                rhs_p%val=rhs_p%val!-1.7565e-05
             end if
             if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
             rhs_p%val = - rhs_p%val !Mmat%CT_RHS%val
@@ -2985,13 +2985,13 @@ print *, k,':', conv_test
                     imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
                     cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                     ! the second phase of upwnd%adv_coef containts c/phi
-                    auxR = auxR + (upwnd%adv_coef(1,1,2,imat)/((1.0 + tol  - saturation%val(cv_loc))))/dble(Mdims%cv_nloc)
+                    auxR = auxR + 6.25e10/dble(Mdims%cv_nloc)!(upwnd%adv_coef(1,1,2,imat)/((1.0 + tol  - saturation%val(cv_loc))))/dble(Mdims%cv_nloc)
                 end do
                 !Include now the corresponding element mass
                 auxR = (MASS_ELE(ele)/dble(Mdims%u_nloc)) * auxR
                 !Introduce into the pivit matrix
                 do j = 1, Mdims%u_nloc * final_phase * Mdims%ndim
-                  Mmat%PIVIT_MAT(J, J, ELE) = 2.7973e8 !auxR
+                  Mmat%PIVIT_MAT(J, J, ELE) = auxR
                 end do
             end do
          else if(Pivit_type==3 ) then !Pivit contains -c/phi^2+alpha* diag(A)^-1 * mass
@@ -3044,9 +3044,9 @@ print *, k,':', conv_test
                     ! the second phase of upwnd%adv_coef containts c/phi
                     if (saturation%val(cv_loc)<0.08) then 
                         ! auxR = auxR + 1e-9/dble(Mdims%cv_nloc)/scale_cmc
-                        auxR = auxR +  0.08/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
+                        auxR = auxR +  6.25e10/dble(Mdims%cv_nloc)!0.08/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
                     else
-                        auxR = auxR +  saturation%val(cv_loc)/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
+                        auxR = auxR +  6.25e10/dble(Mdims%cv_nloc)!saturation%val(cv_loc)/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
                     end if
                     ! auxR = auxR +  saturation%val(cv_loc)/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
                 end do
@@ -3058,7 +3058,7 @@ print *, k,':', conv_test
                     u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
                     do i = 1, final_phase*Mdims%ndim
                         j = i + (u_iloc-1)*final_phase*Mdims%ndim
-                        Mmat%PIVIT_MAT(J, J, ELE) = scale_cmc*3.5749e-9!(auxR)!+1./(diagonal_A%val(i,u_inod)*MASS_ELE(ele))  
+                        Mmat%PIVIT_MAT(J, J, ELE) = scale_cmc*(auxR)!+1./(diagonal_A%val(i,u_inod)*MASS_ELE(ele))  
                     end do
                 end do
 
@@ -3288,16 +3288,17 @@ print *, k,':', conv_test
         
         if (present(den)) then 
             allocate(scaled_velocity(1 , 1 , Mdims%u_nonods))
+            scaled_velocity=0.
             do ele = 1, Mdims%totele
                 auxR= 0.
                 do cv_iloc = 1, Mdims%cv_nloc
                     cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                    auxR = auxR + den%val(cv_loc)/dble(Mdims%cv_nloc)
+                    auxR = auxR + den%val(cv_loc)/dble(Mdims%cv_nloc) 
                 end do
-
+                ! auxR = (MASS_ELE(ele)/dble(Mdims%u_nloc)) * auxR ???
                 do u_iloc = 1, Mdims%u_nloc
                     u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
-                    scaled_velocity(1,1,u_inod)=velocity(1,1,u_inod)*auxR
+                    scaled_velocity(1,1,u_inod)=velocity(1,1,u_inod)!*auxR
                 end do
             end do
         end if 
@@ -3312,24 +3313,25 @@ print *, k,':', conv_test
                     Mmat%CT( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
                 END DO
             else
-                DO IPRES = 1, Mdims%npres
-                        CALL CT_MULT2( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
+                if (present(den)) then 
+                    DO IPRES = 1, Mdims%npres
+                        CALL CT_MULT2( rhs_p%val(IPRES,:), scaled_velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
                         Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, &
                         Mmat%CT( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
-                END DO
+                    END DO
+                else
+                    DO IPRES = 1, Mdims%npres
+                            CALL CT_MULT2( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
+                            Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, &
+                            Mmat%CT( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
+                    END DO
+                end if
             end if
         else
-            if (present(den)) then 
-                DO IPRES = 1, Mdims%npres
-                    CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), scaled_velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
+            DO IPRES = 1, Mdims%npres
+                    CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
                     Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, Mmat%C( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
             END DO
-            else
-                DO IPRES = 1, Mdims%npres
-                        CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
-                        Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, Mmat%C( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-                END DO
-            end if
         end if
         deallocate(scaled_velocity)
 
