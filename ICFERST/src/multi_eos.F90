@@ -1473,8 +1473,7 @@ contains
                   bulk_density%val(nod)=bden 
                   do idim = 1, Mdims%ndim
                     ! u_source_cv( idim, 1, nod ) = (dens-denl)* sat_field%val(1, 1, nod) * g( idim ) 
-
-                    u_source_cv( idim, 1, nod )= 500.*0.8*g( idim ) !bden* g( idim ) 
+                    u_source_cv( idim, 1, nod )= (bden-2.033164890741434e+03)* g( idim ) 
                   end do
                 end do
 

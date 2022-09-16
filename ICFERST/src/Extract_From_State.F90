@@ -3515,10 +3515,14 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
     type(tensor_field), pointer :: velocity, saturation, perm
     real, dimension(Mdims%nphase*Mdims%ndim,Mdims%nphase*Mdims%ndim) :: loc_absorp_matrix
     real, dimension(Mdims%ndim) :: sat_weight_velocity
-    real :: auxR
+    real :: auxR, gravity_magnitude
+    real, dimension(Mdims%ndim) :: g
     integer :: cv_iloc, u_iloc, ele, iphase, imat, u_inod, cv_loc, idim, stat
+    type(vector_field), pointer :: gravity_direction
+
+    real :: coe1, coe2   !temperal coefficient for three phases building
     ! Initialisation
-    do iphase = 1, Mdims%n_in_pres
+    do iphase = 1, Mdims%nphase
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
         call zero(darcy_velocity(iphase)%ptr)
     end do
@@ -3526,6 +3530,8 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
     velocity => extract_tensor_field(packed_state,"PackedVelocity")
     saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
     perm=>extract_tensor_field(packed_state,"Permeability", stat )
+    gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
+    call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
     ! Calculation
     do ele = 1, Mdims%totele
         do u_iloc = 1, Mdims%u_nloc
@@ -3533,18 +3539,19 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
             do cv_iloc = 1, Mdims%cv_nloc
                 imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
                 cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                do iphase = 1, Mdims%n_in_pres
-                  if (is_porous_media) then
-                    sat_weight_velocity = upwnd%inv_adv_coef(1,1,iphase,imat) * matmul(perm%val(:,:,ele), velocity%val(:,iphase,u_inod))
-                    !P0 darcy velocities per element
-                    darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
-                    sat_weight_velocity*saturation%val(1,iphase,cv_loc)/real(Mdims%cv_nloc)
-                  else
-                    if (iphase /= 1) then   !We need to add the solid velocity to the fluid velocities
-                      sat_weight_velocity =  upwnd%inv_adv_coef(1,1,iphase,imat) * velocity%val(:,iphase,u_inod)+velocity%val(:,1,u_inod)
-                      darcy_velocity(iphase)%ptr%val(:,u_inod) = darcy_velocity(iphase)%ptr%val(:,u_inod) + sat_weight_velocity/real(Mdims%cv_nloc)
+                g = node_val( gravity_direction, cv_loc ) * gravity_magnitude
+                do iphase = 2, Mdims%nphase
+                    !We need to add the solid velocity to the fluid and volatile velocities 
+                    if (iphase ==2) then 
+                        coe1=4.650241810519828e-12
+                        coe2=-6.835722749649510e-11
+                    else 
+                        coe1=5.953905288704054e-12
+                        coe2=1.930373846597421e-09
                     end if
-                  end if
+                    sat_weight_velocity =  coe1 * velocity%val(:,iphase,u_inod)+velocity%val(:,1,u_inod)+coe2*g
+                    ! sat_weight_velocity =  upwnd%inv_adv_coef(1,1,iphase,imat) * velocity%val(:,iphase,u_inod)+velocity%val(:,1,u_inod)
+                    darcy_velocity(iphase)%ptr%val(:,u_inod) = darcy_velocity(iphase)%ptr%val(:,u_inod) + sat_weight_velocity/real(Mdims%cv_nloc)
                 end do
             end do
         end do

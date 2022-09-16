@@ -2049,7 +2049,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type (scalar_field), pointer :: bulk_density
         integer :: TEST_temperal
         real :: cmcscaling
-        cmcscaling=13! 13 for solid viscosity order 13
+        cmcscaling=0.2! 13 for solid viscosity order 13
         if (is_magma) compute_compaction= .true.  ! For magma only the first phase is assembled for the momentum equation.
 
         ! call get_option("/numerical_methods/max_sat_its", TEST_temperal)
@@ -2184,6 +2184,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end if
         end if
         bulk_density =>extract_scalar_field(state(1),'BulkDensity') 
+        print *, "Bden:",  bulk_density%val (13)
         ! call update_bulk_density (state, packed_state, Mdims, bulk_density)
 
         if ( have_option( '/blasting' ) ) then
@@ -2985,7 +2986,7 @@ print *, k,':', conv_test
                     imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
                     cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                     ! the second phase of upwnd%adv_coef containts c/phi
-                    auxR = auxR + 6.25e10/dble(Mdims%cv_nloc)!(upwnd%adv_coef(1,1,2,imat)/((1.0 + tol  - saturation%val(cv_loc))))/dble(Mdims%cv_nloc)
+                    auxR = auxR + 5.815823918267920e+08/dble(Mdims%cv_nloc)!(upwnd%adv_coef(1,1,2,imat)/((1.0 + tol  - saturation%val(cv_loc))))/dble(Mdims%cv_nloc)
                 end do
                 !Include now the corresponding element mass
                 auxR = (MASS_ELE(ele)/dble(Mdims%u_nloc)) * auxR
@@ -3026,15 +3027,15 @@ print *, k,':', conv_test
              end do
          else if(Pivit_type==4 ) then !Pivit contains (c/phi^2- diag(A)^-1) * mass
             saturation => extract_scalar_field(state(2), "PhaseVolumeFraction")!1 - sat1 = porosity
-            if (maxval(saturation%val)<0.9) scale_cmc=CMC_scale*3.5
-            if (maxval(saturation%val)<0.8) scale_cmc=CMC_scale*10.
-            if (maxval(saturation%val)<0.7) scale_cmc=CMC_scale*30.
-            if (maxval(saturation%val)<0.6) scale_cmc=CMC_scale*60.
-            if (maxval(saturation%val)<0.5) scale_cmc=CMC_scale*90.
-            if (maxval(saturation%val)<0.4) scale_cmc=CMC_scale*120.
-            if (maxval(saturation%val)<0.3) scale_cmc=CMC_scale*150.
-            if (maxval(saturation%val)<0.2) scale_cmc=CMC_scale*180.
-            if (maxval(saturation%val)<0.1) scale_cmc=CMC_scale*210.
+            ! if (maxval(saturation%val)<0.9) scale_cmc=CMC_scale*3.5
+            ! if (maxval(saturation%val)<0.8) scale_cmc=CMC_scale*10.
+            ! if (maxval(saturation%val)<0.7) scale_cmc=CMC_scale*30.
+            ! if (maxval(saturation%val)<0.6) scale_cmc=CMC_scale*60.
+            ! if (maxval(saturation%val)<0.5) scale_cmc=CMC_scale*90.
+            ! if (maxval(saturation%val)<0.4) scale_cmc=CMC_scale*120.
+            ! if (maxval(saturation%val)<0.3) scale_cmc=CMC_scale*150.
+            ! if (maxval(saturation%val)<0.2) scale_cmc=CMC_scale*180.
+            ! if (maxval(saturation%val)<0.1) scale_cmc=CMC_scale*210.
             do ele = 1, Mdims%totele
                 !Perform a CV to P0DG projection. We just take a quarter(P1 3D) of each CV per element
                 auxR = 0.
@@ -3044,9 +3045,9 @@ print *, k,':', conv_test
                     ! the second phase of upwnd%adv_coef containts c/phi
                     if (saturation%val(cv_loc)<0.08) then 
                         ! auxR = auxR + 1e-9/dble(Mdims%cv_nloc)/scale_cmc
-                        auxR = auxR +  6.25e10/dble(Mdims%cv_nloc)!0.08/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
+                        auxR = auxR +  1.719446829982126e-09/dble(Mdims%cv_nloc)!0.08/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
                     else
-                        auxR = auxR +  6.25e10/dble(Mdims%cv_nloc)!saturation%val(cv_loc)/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
+                        auxR = auxR +  1.719446829982126e-09/dble(Mdims%cv_nloc)!saturation%val(cv_loc)/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
                     end if
                     ! auxR = auxR +  saturation%val(cv_loc)/upwnd%capped_adv_coef(1,1,2,imat)/dble(Mdims%cv_nloc)
                 end do
@@ -3058,19 +3059,11 @@ print *, k,':', conv_test
                     u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
                     do i = 1, final_phase*Mdims%ndim
                         j = i + (u_iloc-1)*final_phase*Mdims%ndim
-                        Mmat%PIVIT_MAT(J, J, ELE) = scale_cmc*(auxR)!+1./(diagonal_A%val(i,u_inod)*MASS_ELE(ele))  
+                        Mmat%PIVIT_MAT(J, J, ELE) = scale_cmc*(auxR)*2723.!+1./(diagonal_A%val(i,u_inod)*MASS_ELE(ele))  
                     end do
                 end do
 
             end do
-        else if(Pivit_type==5 ) then !for test and building three-phase system
-            do u_iloc = 1, Mdims%u_nloc
-                u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
-                do i = 1, final_phase*Mdims%ndim
-                    j = i + (u_iloc-1)*final_phase*Mdims%ndim
-                    Mmat%PIVIT_MAT(J, J, ELE) = scale_cmc*3.5749e-9
-                end do
-            end do            
         end if
         end subroutine generate_Pivit_matrix_Stokes
 
@@ -3287,7 +3280,7 @@ print *, k,':', conv_test
         if (present(force_transpose_C)) force_transpose_C2 = force_transpose_C
         
         if (present(den)) then 
-            allocate(scaled_velocity(1 , 1 , Mdims%u_nonods))
+            allocate(scaled_velocity( Mdims%ndim, 1 , Mdims%u_nonods))
             scaled_velocity=0.
             do ele = 1, Mdims%totele
                 auxR= 0.
@@ -3298,7 +3291,7 @@ print *, k,':', conv_test
                 ! auxR = (MASS_ELE(ele)/dble(Mdims%u_nloc)) * auxR ???
                 do u_iloc = 1, Mdims%u_nloc
                     u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
-                    scaled_velocity(1,1,u_inod)=velocity(1,1,u_inod)!*auxR
+                    scaled_velocity(1,1,u_inod)=velocity(1,1,u_inod)*auxR
                 end do
             end do
         end if 
@@ -3349,7 +3342,7 @@ print *, k,':', conv_test
         integer :: idim, iphase, u_inod, darcy_phases
 
 
-        darcy_phases = Mdims%nphase-1
+        darcy_phases = 1 !Mdims%nphase-1
         !We need to redo the PIVIT_matrix
         deallocate(Mmat%PIVIT_MAT)
         if (Mmat%compact_PIVIT_MAT) then!Use a compacted and lumped version of the mass matrix if possible
