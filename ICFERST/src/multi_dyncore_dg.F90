@@ -53,6 +53,7 @@ module multiphase_1D_engine
     use multi_magma
 
     use sparse_tools_petsc
+    use differential_operator_diagnostics
     implicit none
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
@@ -3340,7 +3341,7 @@ print *, k,':', conv_test
         implicit none
         !Local varables
         integer :: idim, iphase, u_inod, darcy_phases
-
+        type(vector_field), pointer:: PressureGrad
 
         darcy_phases = 1 !Mdims%nphase-1
         !We need to redo the PIVIT_matrix
@@ -3374,8 +3375,15 @@ print *, k,':', conv_test
         ! Here we use the updated pressure gradient CDP_tensor which is passed down from velocity correction to calculated the darcy velocity of the liquid phase
         !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
         CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
-        CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:Mdims%nphase,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:Mdims%nphase,:)*0 + CDP_tensor%val,&
-            Mdims%ndim, darcy_phases, Mdims%totele, Mdims%u_nloc, ndgln%u )
+        ! CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:Mdims%nphase,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:Mdims%nphase,:)*0 + CDP_tensor%val,&
+        !     Mdims%ndim, darcy_phases, Mdims%totele, Mdims%u_nloc, ndgln%u )
+        
+        PressureGrad => extract_vector_field(state(1),"Pressuregrad")
+        call calculate_grad(state(1), PressureGrad)
+
+        velocity % VAL(:, 2,:)= PressureGrad%val
+        print *, 'Max gradP:', maxval(PressureGrad%val(1,:)) 
+        velocity % VAL(:, 3,:)= PressureGrad%val
         if (second_compaction_formulation) velocity % VAL(:, 2,:)=velocity % VAL(:, 2,:)+drhog_tensor2%val(:,1,:)
 
       end subroutine get_Darcy_phases_velocity

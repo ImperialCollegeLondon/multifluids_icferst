@@ -3544,12 +3544,12 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
                     !We need to add the solid velocity to the fluid and volatile velocities 
                     if (iphase ==2) then 
                         coe1=4.650241810519828e-12
-                        coe2=-6.835722749649510e-11
+                        coe2=6.8357e-11
                     else 
                         coe1=5.953905288704054e-12
-                        coe2=1.930373846597421e-09
+                        coe2=-1.9304e-09
                     end if
-                    sat_weight_velocity =  coe1 * velocity%val(:,iphase,u_inod)+velocity%val(:,1,u_inod)+coe2*g
+                    sat_weight_velocity =  -coe1 * velocity%val(:,iphase,u_inod)+velocity%val(:,1,u_inod)+coe2*g
                     ! sat_weight_velocity =  upwnd%inv_adv_coef(1,1,iphase,imat) * velocity%val(:,iphase,u_inod)+velocity%val(:,1,u_inod)
                     darcy_velocity(iphase)%ptr%val(:,u_inod) = darcy_velocity(iphase)%ptr%val(:,u_inod) + sat_weight_velocity/real(Mdims%cv_nloc)
                 end do
