@@ -3341,9 +3341,8 @@ print *, k,':', conv_test
         implicit none
         !Local varables
         integer :: idim, iphase, u_inod, darcy_phases
-        type(vector_field), pointer:: PressureGrad
 
-        darcy_phases = 1 !Mdims%nphase-1
+        darcy_phases = Mdims%nphase-1
         !We need to redo the PIVIT_matrix
         deallocate(Mmat%PIVIT_MAT)
         if (Mmat%compact_PIVIT_MAT) then!Use a compacted and lumped version of the mass matrix if possible
@@ -3367,23 +3366,22 @@ print *, k,':', conv_test
         deallocate(U_SOURCE_CV_ALL)
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
         call deallocate(CDP_tensor);
-        call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), darcy_phases/)); call zero(cdp_tensor)
+        call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), 1/)); call zero(cdp_tensor)
 
-        call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, darcy_phases, &
+        call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, 1, &
            Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
         
         ! Here we use the updated pressure gradient CDP_tensor which is passed down from velocity correction to calculated the darcy velocity of the liquid phase
         !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
         CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
-        ! CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:Mdims%nphase,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:Mdims%nphase,:)*0 + CDP_tensor%val,&
-        !     Mdims%ndim, darcy_phases, Mdims%totele, Mdims%u_nloc, ndgln%u )
-        
-        PressureGrad => extract_vector_field(state(1),"Pressuregrad")
-        call calculate_grad(state(1), PressureGrad)
+        !It is obvious this will be true but readability I added the if statement
+        if (Mdims%nphase > 1 ) CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:2,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:2,:)*0 + CDP_tensor%val,&
+        Mdims%ndim, darcy_phases, Mdims%totele, Mdims%u_nloc, ndgln%u )  
+        !For three phases we also compute the third phase. Because we are recomputing using the C matrix obtained from assemb_force_cty
+        !it means we can only do one phase at a time...
+        if (Mdims%nphase > 2 ) CALL Mass_matrix_MATVEC( velocity % VAL(:, 3:3,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,3:3,:)*0 + CDP_tensor%val,&
+            Mdims%ndim, darcy_phases, Mdims%totele, Mdims%u_nloc, ndgln%u )
 
-        velocity % VAL(:, 2,:)= PressureGrad%val
-        print *, 'Max gradP:', maxval(PressureGrad%val(1,:)) 
-        velocity % VAL(:, 3,:)= PressureGrad%val
         if (second_compaction_formulation) velocity % VAL(:, 2,:)=velocity % VAL(:, 2,:)+drhog_tensor2%val(:,1,:)
 
       end subroutine get_Darcy_phases_velocity
