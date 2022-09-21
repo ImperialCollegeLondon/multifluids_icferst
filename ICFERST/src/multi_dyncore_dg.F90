@@ -3348,7 +3348,7 @@ print *, k,':', conv_test
         if (Mmat%compact_PIVIT_MAT) then!Use a compacted and lumped version of the mass matrix if possible
             allocate( Mmat%PIVIT_MAT( 1, 1, Mdims%totele ) )
         else
-            allocate( Mmat%PIVIT_MAT( Mdims%ndim * darcy_phases * Mdims%u_nloc, Mdims%ndim * darcy_phases * Mdims%u_nloc, Mdims%totele ) )
+            allocate( Mmat%PIVIT_MAT( Mdims%ndim * 1 * Mdims%u_nloc, Mdims%ndim * 1 * Mdims%u_nloc, Mdims%totele ) )
         end if
         Mmat%PIVIT_MAT=0.0
         allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods)); U_SOURCE_CV_ALL=0.0
@@ -3376,11 +3376,11 @@ print *, k,':', conv_test
         CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         !It is obvious this will be true but readability I added the if statement
         if (Mdims%nphase > 1 ) CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:2,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:2,:)*0 + CDP_tensor%val,&
-        Mdims%ndim, darcy_phases, Mdims%totele, Mdims%u_nloc, ndgln%u )  
+        Mdims%ndim, 1, Mdims%totele, Mdims%u_nloc, ndgln%u )  
         !For three phases we also compute the third phase. Because we are recomputing using the C matrix obtained from assemb_force_cty
         !it means we can only do one phase at a time...
         if (Mdims%nphase > 2 ) CALL Mass_matrix_MATVEC( velocity % VAL(:, 3:3,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,3:3,:)*0 + CDP_tensor%val,&
-            Mdims%ndim, darcy_phases, Mdims%totele, Mdims%u_nloc, ndgln%u )
+            Mdims%ndim, 1, Mdims%totele, Mdims%u_nloc, ndgln%u )
 
         if (second_compaction_formulation) velocity % VAL(:, 2,:)=velocity % VAL(:, 2,:)+drhog_tensor2%val(:,1,:)
 
