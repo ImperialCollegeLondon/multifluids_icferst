@@ -898,7 +898,7 @@ start =
                      output_options
                       }|
                     element diagnostic {
-                      vector_python_diagnostic_algorithm,
+                      scalar_python_diagnostic_algorithm,
                       diagnostic_scalar_field_no_adapt,
                      output_options
                     }|
@@ -923,7 +923,7 @@ start =
                      output_options
                       }|
                     element diagnostic {
-                      vector_python_diagnostic_algorithm,
+                      scalar_python_diagnostic_algorithm,
                       diagnostic_scalar_field_no_adapt,
                      output_options
                     }|
@@ -945,7 +945,7 @@ start =
                      output_options
                       }|
                     element diagnostic {
-                      vector_python_diagnostic_algorithm,
+                      scalar_python_diagnostic_algorithm,
                       diagnostic_scalar_field_no_adapt,
                      output_options
                     }|
@@ -970,7 +970,7 @@ start =
                             output_options
                           }|
                         element diagnostic {
-                          vector_python_diagnostic_algorithm,
+                          scalar_python_diagnostic_algorithm,
                           diagnostic_scalar_field_no_adapt,
                              output_options
                         }|
