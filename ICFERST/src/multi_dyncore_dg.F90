@@ -7475,7 +7475,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      integer, save :: Cap_pressure_relevant = -1
      integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc, idim
      real :: Pe_aux, parl_max, parl_min, Pe_max, Pe_min
-     real, dimension(:), pointer ::Pe, Cap_exp
+     real, dimension(:), allocatable ::Pe, Cap_exp
      logical :: Artificial_Pe
      real, dimension(:,:,:), pointer :: p
      real, dimension(:,:), pointer :: satura, CV_Immobile_Fraction, Cap_entry_pressure, Cap_exponent, X_ALL
@@ -7665,10 +7665,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      if (.not. is_porous_media) deallocate(CV_Immobile_Fraction)
 
      !Deallocate
-     if (Artificial_Pe) then
-         deallocate(Pe, Cap_exp)
-     end if
-     nullify(Pe, Cap_exp)
+     if (allocated(Pe)) deallocate(Pe)
+     if (allocated(Cap_exp)) deallocate(Cap_exp)
 
  end subroutine getOverrelaxation_parameter
 
