@@ -1087,7 +1087,7 @@ It goes from 0 to 1. If completely opened, set it to 1.</a:documentation>
                     <ref name="output_options"/>
                   </element>
                   <element name="diagnostic">
-                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="scalar_python_diagnostic_algorithm"/>
                     <ref name="diagnostic_scalar_field_no_adapt"/>
                     <ref name="output_options"/>
                   </element>
@@ -1113,7 +1113,7 @@ If none, set it to 1.
                     <ref name="output_options"/>
                   </element>
                   <element name="diagnostic">
-                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="scalar_python_diagnostic_algorithm"/>
                     <ref name="diagnostic_scalar_field_no_adapt"/>
                     <ref name="output_options"/>
                   </element>
@@ -1137,7 +1137,7 @@ If the diameter is &lt;=0 no pipe, else there is pipe.</a:documentation>
                     <ref name="output_options"/>
                   </element>
                   <element name="diagnostic">
-                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="scalar_python_diagnostic_algorithm"/>
                     <ref name="diagnostic_scalar_field_no_adapt"/>
                     <ref name="output_options"/>
                   </element>
@@ -1165,7 +1165,7 @@ This is only required for heat transport</a:documentation>
                         <ref name="output_options"/>
                       </element>
                       <element name="diagnostic">
-                        <ref name="vector_python_diagnostic_algorithm"/>
+                        <ref name="scalar_python_diagnostic_algorithm"/>
                         <ref name="diagnostic_scalar_field_no_adapt"/>
                         <ref name="output_options"/>
                       </element>
