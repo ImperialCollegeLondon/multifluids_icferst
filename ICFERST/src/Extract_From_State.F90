@@ -18,7 +18,7 @@
 #include "fdebug.h"
 
 !> This module enables the multiphase prototype code to interact with state by
-!> copying everything required from state to ICFERST, adaptive time-stepping, 
+!> copying everything required from state to ICFERST, adaptive time-stepping,
 !> outfluxes computation, tunneled BCs and Darcy velocity.
 module Copy_Outof_State
 
@@ -1957,8 +1957,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     real, intent(in) :: old_acctim
     logical, intent(inout) :: Repeat_time_step, ExitNonLinearLoop
     integer, intent(inout) :: its
-    logical, intent(in) :: nonLinearAdaptTs 
-    integer, intent(in) :: order 
+    logical, intent(in) :: nonLinearAdaptTs
+    integer, intent(in) :: order
     logical, optional, intent(in) :: adapt_mesh_in_FPI, first_time_step
     real, optional, intent(in) :: Accum_Courant, Courant_tol, Current_Courant
     real, dimension(:,:), optional :: calculate_mass_delta
@@ -2517,7 +2517,7 @@ contains
         end if
         if (max_criteria) then
             Cn(1) = maxval(Cn)
-        else if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/FPI_only")) then 
+        else if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/FPI_only")) then
             Cn(1)=Cn(3)
         else
             Cn(1) = (sum(Cn)+maxval(Cn))/(aux+1.)
@@ -3388,18 +3388,18 @@ end subroutine get_DarcyVelocity
         character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: tempstring
         character (len = 50) :: simulation_name
         !Ensure consistency for averaged fields in parallel, i.e. not saturation
-        if (isparallel()) then 
-            do ioutlet = 1, size(outfluxes%outlet_id) 
+        if (isparallel()) then
+            do ioutlet = 1, size(outfluxes%outlet_id)
                 do iphase = 1, size(outfluxes%area_outlet,1)
                     call allsum(outfluxes%area_outlet(iphase, ioutlet))
                     do ifields = 1, size(outfluxes%field_names,2)
                         call allsum(outfluxes%avgout(ifields, iphase, ioutlet))
-                    end do 
+                    end do
                 end do
             end do
         end if
         !The writing process is performed only by processor 1
-        if(getprocno() == 1) then 
+        if(getprocno() == 1) then
             call get_option('/simulation_name', simulation_name)
 
             if (itime == 1) then
@@ -3415,14 +3415,14 @@ end subroutine get_DarcyVelocity
                 outfluxes%totout = 0.!If nan then make it zero
             end where
             outfluxes%intflux = outfluxes%intflux + outfluxes%totout(:, :)*dt
-            
+
 
             ! Write column headings to file
             counter = 0
             if(itime.eq.1) then
-                if (is_porous_media) then 
+                if (is_porous_media) then
                     write(whole_line,*) "Current Time (s)" // "," // "Current Time (years)" // "," // "Pore Volume"
-                else 
+                else
                     write(whole_line,*) "Current Time (s)" // "," // "Current Time (minutes)" // "," // "Volume"
                 end if
                 whole_line = trim(whole_line)
@@ -3449,12 +3449,12 @@ end subroutine get_DarcyVelocity
                 write(89,*), trim(whole_line)
             endif
             ! Write the actual numbers to the file now
-            if (is_porous_media) then 
+            if (is_porous_media) then
                 write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
-            else 
+            else
                 write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(60.) , ",",  outfluxes%porevolume
             end if
-            
+
             whole_line =  trim(numbers)
             do ioutlet =1, size(outfluxes%intflux,2)
                 do iphase = 1, size(outfluxes%intflux,1)
@@ -3487,7 +3487,7 @@ end subroutine get_DarcyVelocity
     !>@param outfluxes multi_outfluxes field containing the data required to create the output csv file
     !>@param sele current surface element
     !>@param cv_nodi current control volume
-    !>@param suf_area surface area 
+    !>@param suf_area surface area
     !>@param Vol_flux ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMT(iphase)
     !>@param Mass_flux ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase) (includes tracer and density!)
     !>@param tracer field being transported/computed
@@ -3594,7 +3594,7 @@ end subroutine get_DarcyVelocity
     end subroutine EnterForceBalanceEquation
 
     !>@brief: Using the outfluxes values, it imposes as BC the averaged value of another BC(from within the domain)
-    !> It is a basic method to get this functionality but it will work in parallel. 
+    !> It is a basic method to get this functionality but it will work in parallel.
     !> However, it does not guarantee mass conservation as it uses the value from the previous time-step
     !> although it can still be used for many cases such as ATES, or ventilation.
     !> Overwrites the dirichlet BC values.
@@ -3604,13 +3604,13 @@ end subroutine get_DarcyVelocity
         type (multi_outfluxes), intent(inout) :: outfluxes
         type(multi_dimensions), intent(in) :: Mdims
         type(state_type), intent(in) :: packed_state
-        real, INTENT(IN) :: acctime 
+        real, INTENT(IN) :: acctime
         !local variables
         integer :: iphase, ifields, i,  k, n_bcs, sele, from_BC, pos, field_its, ifield, field_pos, bc_pos
         integer, dimension(Mdims%nphase) :: number_of_BC_ids
         integer, dimension(Mdims%nphase, 5000) :: from_BC_list, to_BC_list
-        real :: period_BC
-        real, dimension(Mdims%nphase, 5000) :: period_BC_list
+        real :: period_BC, offset_BC
+        real, dimension(Mdims%nphase, 5000) :: period_BC_list, offset_BC_list
         integer, dimension(:), allocatable :: to_BC_ids
         integer, dimension(2) :: shape_option
         character( len = option_path_len ) :: option_path, field_name
@@ -3621,39 +3621,42 @@ end subroutine get_DarcyVelocity
 
         ! character(len=FIELD_NAME_LEN) :: bc_type
         !As this is expensive and very unlikely to be used regularly we add a check to see if we need to do this at all.
-        if (do_anything_at_all < 0) return 
+        if (do_anything_at_all < 0) return
         do_anything_at_all = -1
-        from_BC_list = 0; to_BC_list = 0; number_of_BC_ids = 1; period_BC_list = -1
+        from_BC_list = 0; to_BC_list = 0; number_of_BC_ids = 1; period_BC_list = -1; offset_BC_list = 0
         field_its = 0
-        do iphase = 1, Mdims%nphase 
+        do iphase = 1, Mdims%nphase
             do k = 1, option_count("/material_phase[" // int2str(iphase-1) // "]/scalar_field")
                 option_path = "/material_phase["// int2str( iphase - 1)//"]/scalar_field["// int2str( k - 1)//"]/prognostic/"
                 if (have_option(trim(option_path))) then!Only for prognostic fields
                     call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",Field_Name)
-                    if (trim(Field_Name)/="Pressure".and. trim(Field_Name)/="HydrostaticPressure") then                     
+                    if (trim(Field_Name)/="Pressure".and. trim(Field_Name)/="HydrostaticPressure") then
                         n_bcs = option_count(trim(option_path)//"boundary_conditions")
                         found_tunneled_BC = .false.
                         do i = 1, n_bcs
-                            if (have_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//"]/type::dirichlet/tunneled_from_another_BC")) then 
+                            if (have_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//"]/type::dirichlet/tunneled_from_another_BC")) then
                                 call get_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//&
-                                                "]/type::dirichlet/tunneled_from_another_BC/from_BC_id", from_BC)                             
+                                                "]/type::dirichlet/tunneled_from_another_BC/from_BC_id", from_BC)
                                 shape_option=option_shape(trim(option_path)//"boundary_conditions["//int2str(i-1)//&
-                                "]/surface_ids")           
+                                "]/surface_ids")
                                 allocate(to_BC_ids(1:shape_option(1)))
                                 call get_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//&
-                                                "]/surface_ids", to_BC_ids)                                          
+                                                "]/surface_ids", to_BC_ids)
                                 from_BC_list(iphase, number_of_BC_ids(iphase):number_of_BC_ids(iphase)+size(to_BC_ids)-1) = from_BC
                                 to_BC_list(iphase, number_of_BC_ids(iphase):number_of_BC_ids(iphase)+size(to_BC_ids)-1) = to_BC_ids
                                 number_of_BC_ids(iphase) = number_of_BC_ids(iphase) + size(to_BC_ids)
-                                !Check if period BC 
+                                !Check if period BC
                                 call get_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//&
-                                "]/type::dirichlet/tunneled_from_another_BC/period", period_BC, default = -1.) 
+                                "]/type::dirichlet/tunneled_from_another_BC/period", period_BC, default = -1.)
                                 if (period_BC > 0) period_BC_list(iphase, number_of_BC_ids(iphase):number_of_BC_ids(iphase)+size(to_BC_ids)) = period_BC
+                                call get_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//&
+                                "]/type::dirichlet/tunneled_from_another_BC/offset", offset_BC, default = 0.)
+                                if (offset_BC > 0.) offset_BC_list(iphase, number_of_BC_ids(iphase):number_of_BC_ids(iphase)+size(to_BC_ids)) = offset_BC
                                 found_tunneled_BC = .true.
                                 deallocate(to_BC_ids)
                             end if
                         end do
-                        if (found_tunneled_BC) then 
+                        if (found_tunneled_BC) then
                             field_its = field_its + 1
                             Field_Names(field_its) = field_name
                         end if
@@ -3663,16 +3666,16 @@ end subroutine get_DarcyVelocity
         end do
 
         !If we have tunneled BCs then we do stuff!
-        if (maxval(number_of_BC_ids) > 1) then 
+        if (maxval(number_of_BC_ids) > 1) then
 
             !Ensure consistency for averaged fields in parallel, i.e. not saturation
-            if (isparallel()) then 
-                do k = 1, size(outfluxes%outlet_id) 
+            if (isparallel()) then
+                do k = 1, size(outfluxes%outlet_id)
                     do iphase = 1, size(outfluxes%area_outlet,1)
                         call allsum(outfluxes%area_outlet(iphase, k))
                         do ifield = 1, size(outfluxes%field_names,2)
                             call allsum(outfluxes%avgout(ifield, iphase, k))
-                        end do 
+                        end do
                     end do
                 end do
             end if
@@ -3683,7 +3686,7 @@ end subroutine get_DarcyVelocity
                 field_pos = -1
                 !identify field position in outfluxes
                 do k = 1, size(outfluxes%field_names,2)
-                    if(trim(outfluxes%field_names(1,k))==trim(field_names(ifield))) then 
+                    if(trim(outfluxes%field_names(1,k))==trim(field_names(ifield))) then
                         field_pos = k
                         exit
                     end if
@@ -3694,23 +3697,28 @@ end subroutine get_DarcyVelocity
                     if (size(tracer%bc%boundary_condition(k)%surface_element_list)==0) cycle
                     !Identify a representative surface element
                     sele = tracer%bc%boundary_condition(k)%surface_element_list(1)
-                    !Now for each phase identify the position of the boundary condition on the tensor field and impose the value     
+                    !Now for each phase identify the position of the boundary condition on the tensor field and impose the value
                     do iphase = 1, Mdims%nphase
                         BC_pos = 0
-                        if (period_BC_list(iphase, k) < 0 .or. mod(int(acctime/period_BC_list(iphase, k)),2) == 0) then
+                        if (period_BC_list(iphase, k) < 0 .or. mod((acctime+offset_BC_list(iphase, k)),(2*period_BC_list(iphase, k))) < period_BC_list(iphase, k)) then
+                          print*, 'hello'
+                          print *, 'mod:', mod((acctime+offset_BC_list(iphase, k)),(2*period_BC_list(iphase, k)))
+                          print *, 'offset:', offset_BC_list(iphase, k)
+                          print *, 'Field pos:',field_pos
+                          print*, 'k:', k
+                          print*, 'value:',avg_value_for_BC(iphase, 1, field_pos, from_BC_list)
+                          print*, 'Field name', trim(outfluxes%field_names(1,field_pos))
+                          print*, 'Number bc', number_of_BC_ids(iphase)
+                          print*, 'from', from_BC_list(iphase,1:10)
+                          print*, 'to', to_BC_list(iphase,1:10)
+                          print*, 'time:', acctime
+                          print*, 'period', period_BC_list(iphase, k)
+                          print*, 'sele:', sele
                             if (integrate_over_surface_element(tracer, &
                                         sele, to_BC_list(iphase, 1:number_of_BC_ids(iphase)))) BC_pos = k
                             if (BC_pos == 0) cycle
                             tracer%bc%boundary_condition(BC_pos)%scalar_surface_fields(1)%val = &
                                 avg_value_for_BC(iphase, 1, field_pos, from_BC_list)
-                        else 
-                            if (integrate_over_surface_element(tracer, &
-                                        sele, from_BC_list(iphase, 1:number_of_BC_ids(iphase)))) BC_pos = k
-                            if (BC_pos == 0) cycle
-                            do i = 1, number_of_BC_ids(iphase)
-                                tracer%bc%boundary_condition(BC_pos)%scalar_surface_fields(1)%val = &
-                                    avg_value_for_BC(iphase, i, field_pos, TO_BC_list)
-                            end do
                         end if
                     end do
                 end do
@@ -3722,14 +3730,14 @@ end subroutine get_DarcyVelocity
 
         !> Function to extract the average value to be tunneled to the inlet BC
         real function avg_value_for_BC(iphase, kpos, ifield, from_BC_list)
-            implicit none 
+            implicit none
             integer, INTENT(IN) :: iphase, kpos, ifield
             integer, intent(in), dimension(:, :) :: from_BC_list
             !Local variables
             integer, dimension(1) :: pos
-            integer :: iter 
+            integer :: iter
             do iter = 1, size(outfluxes%outlet_id)
-                if (outfluxes%outlet_id(iter)==from_BC_list(iphase, kpos)) then 
+                if (outfluxes%outlet_id(iter)==from_BC_list(iphase, kpos)) then
                     pos = iter
                     exit
                 end if

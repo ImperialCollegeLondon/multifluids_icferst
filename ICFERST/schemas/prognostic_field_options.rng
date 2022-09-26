@@ -53,7 +53,14 @@ It should be fine for ATES simulations and ventilation applications such as air 
               </element>
               <optional>
                 <element name="period">
-                  <a:documentation>Select a period if you want to flip the BC connection. 
+                  <a:documentation>Select a period if you want to flip the BC connection.
+When int(time/period) is odd we flip the BC connection.</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="offset">
+                  <a:documentation>Select a offset if you want to flip the BC connection.
 When int(time/period) is odd we flip the BC connection.</a:documentation>
                   <ref name="real"/>
                 </element>
