@@ -51,20 +51,17 @@ It should be fine for ATES simulations and ventilation applications such as air 
                 <a:documentation>Set here the BC id to use as reference.</a:documentation>
                 <ref name="integer"/>
               </element>
-              <optional>
-                <element name="period">
-                  <a:documentation>Select a period if you want to flip the BC connection.
-When int(time/period) is odd we flip the BC connection.</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="offset">
-                  <a:documentation>Select a offset if you want to flip the BC connection.
-When int(time/period) is odd we flip the BC connection.</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
+              <element name="period">
+                <a:documentation>If no flip required, set to 1e50.
+If you want to flip the BC connection, select a period.</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="offset">
+                <a:documentation>If no flip required, set to 0.
+If you want to flip the BC connection, select an offset.
+Normally, for ATES, for a pair of wells, one well should have offset 0 and one should have offset = period</a:documentation>
+                <ref name="real"/>
+              </element>
             </element>
           </optional>
           <optional>

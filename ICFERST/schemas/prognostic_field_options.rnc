@@ -43,16 +43,17 @@ scalar_boundary_conditions =
                element from_BC_id {
                    integer
                },
-               ## Select a period if you want to flip the BC connection.
-               ## When int(time/period) is odd we flip the BC connection.
+               ## If no flip required, set to 1e50.
+               ## If you want to flip the BC connection, select a period.
                element period {
                    real
-               }?,
-               ## Select a offset if you want to flip the BC connection.
-               ## When int(time/period) is odd we flip the BC connection.
+               },
+               ## If no flip required, set to 0.
+               ## If you want to flip the BC connection, select an offset.
+               ## Normally, for ATES, for a pair of wells, one well should have offset 0 and one should have offset = period
                element offset {
                    real
-               }?
+               }
                    )
                }?,
                ## For multimaterial simulations.

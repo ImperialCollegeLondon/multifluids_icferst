@@ -3606,15 +3606,16 @@ end subroutine get_DarcyVelocity
         type(state_type), intent(in) :: packed_state
         real, INTENT(IN) :: acctime
         !local variables
-        integer :: iphase, ifields, i,  k, n_bcs, sele, from_BC, pos, field_its, ifield, field_pos, bc_pos
+        integer :: iphase, ifields, i,  k, n_bcs, sele, from_BC, pos, field_its, ifield, field_pos
         integer, dimension(Mdims%nphase) :: number_of_BC_ids
-        integer, dimension(Mdims%nphase, 5000) :: from_BC_list, to_BC_list
+        integer, dimension(Mdims%nphase, 2000) :: from_BC_list, to_BC_list
         real :: period_BC, offset_BC
-        real, dimension(Mdims%nphase, 5000) :: period_BC_list, offset_BC_list
+        real, dimension(Mdims%nphase, 2000) :: period_BC_list, offset_BC_list
         integer, dimension(:), allocatable :: to_BC_ids
         integer, dimension(2) :: shape_option
         character( len = option_path_len ) :: option_path, field_name
         character( len = option_path_len ), dimension(100) :: field_names
+        character ( len = option_path_len ), dimension(Mdims%nphase, 2000) :: bc_names
         integer, save :: do_anything_at_all = 1
         logical :: found_tunneled_BC
         type(tensor_field), pointer :: tracer
@@ -3642,18 +3643,21 @@ end subroutine get_DarcyVelocity
                                 allocate(to_BC_ids(1:shape_option(1)))
                                 call get_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//&
                                                 "]/surface_ids", to_BC_ids)
-                                from_BC_list(iphase, number_of_BC_ids(iphase):number_of_BC_ids(iphase)+size(to_BC_ids)-1) = from_BC
-                                to_BC_list(iphase, number_of_BC_ids(iphase):number_of_BC_ids(iphase)+size(to_BC_ids)-1) = to_BC_ids
-                                number_of_BC_ids(iphase) = number_of_BC_ids(iphase) + size(to_BC_ids)
+                                from_BC_list(iphase, i) = from_BC
+                                to_BC_list(iphase, i) = to_BC_ids(1)
                                 !Check if period BC
                                 call get_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//&
                                 "]/type::dirichlet/tunneled_from_another_BC/period", period_BC, default = -1.)
-                                if (period_BC > 0) period_BC_list(iphase, number_of_BC_ids(iphase):number_of_BC_ids(iphase)+size(to_BC_ids)) = period_BC
+                                if (period_BC > 0) period_BC_list(iphase,  i) = period_BC
                                 call get_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//&
                                 "]/type::dirichlet/tunneled_from_another_BC/offset", offset_BC, default = 0.)
-                                if (offset_BC > 0.) offset_BC_list(iphase, number_of_BC_ids(iphase):number_of_BC_ids(iphase)+size(to_BC_ids)) = offset_BC
+                                if (offset_BC > 0.) offset_BC_list(iphase,  i) = offset_BC
+                                call get_option(trim(option_path)//"boundary_conditions["//int2str(i-1)//&
+                                "]/name", bc_names(iphase, i))
                                 found_tunneled_BC = .true.
+                                number_of_BC_ids(iphase) = number_of_BC_ids(iphase) + 1
                                 deallocate(to_BC_ids)
+
                             end if
                         end do
                         if (found_tunneled_BC) then
@@ -3696,29 +3700,21 @@ end subroutine get_DarcyVelocity
                 do k = 1, size(tracer%bc%boundary_condition)
                     if (size(tracer%bc%boundary_condition(k)%surface_element_list)==0) cycle
                     !Identify a representative surface element
-                    sele = tracer%bc%boundary_condition(k)%surface_element_list(1)
                     !Now for each phase identify the position of the boundary condition on the tensor field and impose the value
                     do iphase = 1, Mdims%nphase
-                        BC_pos = 0
-                        if (period_BC_list(iphase, k) < 0 .or. mod((acctime+offset_BC_list(iphase, k)),(2*period_BC_list(iphase, k))) < period_BC_list(iphase, k)) then
-                          print*, 'hello'
-                          print *, 'mod:', mod((acctime+offset_BC_list(iphase, k)),(2*period_BC_list(iphase, k)))
-                          print *, 'offset:', offset_BC_list(iphase, k)
-                          print *, 'Field pos:',field_pos
-                          print*, 'k:', k
-                          print*, 'value:',avg_value_for_BC(iphase, 1, field_pos, from_BC_list)
-                          print*, 'Field name', trim(outfluxes%field_names(1,field_pos))
-                          print*, 'Number bc', number_of_BC_ids(iphase)
-                          print*, 'from', from_BC_list(iphase,1:10)
-                          print*, 'to', to_BC_list(iphase,1:10)
-                          print*, 'time:', acctime
-                          print*, 'period', period_BC_list(iphase, k)
-                          print*, 'sele:', sele
-                            if (integrate_over_surface_element(tracer, &
-                                        sele, to_BC_list(iphase, 1:number_of_BC_ids(iphase)))) BC_pos = k
-                            if (BC_pos == 0) cycle
-                            tracer%bc%boundary_condition(BC_pos)%scalar_surface_fields(1)%val = &
-                                avg_value_for_BC(iphase, 1, field_pos, from_BC_list)
+                        if (mod((acctime+offset_BC_list(iphase, k)),(2*period_BC_list(iphase, k))) < 1.001*period_BC_list(iphase, k)) then
+                          ! Looping over boundary conditions to check that the boundary condition in the bc lists are synced with the bcs in Diamond
+                          do i = 1, size(tracer%bc%boundary_condition)
+                            if(trim(tracer%bc%boundary_condition(i)%name) == trim(bc_names(iphase,k))) then
+                                sele = tracer%bc%boundary_condition(i)%surface_element_list(1)
+                                exit
+                            end if
+                          end do
+                            !If we are not in the boundary where we need to do something
+                            if (.not. integrate_over_surface_element(tracer, &
+                                        sele, to_BC_list(iphase, k:k))) cycle
+                            tracer%bc%boundary_condition(i)%scalar_surface_fields(1)%val = &
+                                avg_value_for_BC(iphase, k, field_pos, from_BC_list)
                         end if
                     end do
                 end do
