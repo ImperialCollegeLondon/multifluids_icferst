@@ -524,9 +524,6 @@ contains
 
         !!$ Time loop
         Loop_Time: do
-            ! For optimiser Halite to stop simulations if required
-            if (have_option('/numerical_methods/stop_simulation')) STOP 11011998
-
             ewrite(2,*) '    NEW DT', itime+1
 
             ! initialise the porous media model if needed. Simulation will stop once gravity capillary equilibration is reached
