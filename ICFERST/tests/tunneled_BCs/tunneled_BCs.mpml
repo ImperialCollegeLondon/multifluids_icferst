@@ -204,6 +204,12 @@
               <from_BC_id>
                 <integer_value rank="0">8</integer_value>
               </from_BC_id>
+              <period>
+                <real_value rank="0">1e50</real_value>
+              </period>
+              <offset>
+                <real_value rank="0">0</real_value>
+              </offset>
             </tunneled_from_another_BC>
             <constant>
               <real_value rank="0">0</real_value>

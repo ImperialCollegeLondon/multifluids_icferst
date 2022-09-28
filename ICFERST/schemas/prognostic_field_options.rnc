@@ -34,7 +34,7 @@ scalar_boundary_conditions =
             	## 1) You need to set the outlet BC in outfluxes, so the averaged value over the surface can be computed and therefore used here.
             	##
             	## 2) The method is not mass conservative as it uses the value from the previous time-step.<b>For adaptive time-stepping a reduced value of increase/decrease is recommended, e.g. 1.1</b>
-            	## 
+            	##
             	## 3) Works in parallel.
             	##
             	## It should be fine for ATES simulations and ventilation applications such as air purifiers.
@@ -42,12 +42,18 @@ scalar_boundary_conditions =
                ## Set here the BC id to use as reference.
                element from_BC_id {
                    integer
-               },               
-               ## Select a period if you want to flip the BC connection. 
-               ## When int(time/period) is odd we flip the BC connection.
+               },
+               ## If no flip required, set to 1e50.
+               ## If you want to flip the BC connection, select a period.
                element period {
                    real
-               }?
+               },
+               ## If no flip required, set to 0.
+               ## If you want to flip the BC connection, select an offset.
+               ## Normally, for ATES, for a pair of wells, one well should have offset 0 and one should have offset = period
+               element offset {
+                   real
+               }
                    )
                }?,
                ## For multimaterial simulations.

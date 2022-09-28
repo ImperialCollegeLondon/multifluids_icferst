@@ -18,14 +18,14 @@
 !----------------------------------------------------------------------------------------
 !> @brief Time-loop module of IC-FERST. This module contains the time-loop and the non-linear loop.
 !> The time-loop consists many steps: 1) Data initialisation including shape functions, memory allocation, sparsity, porous media properties, etc.
-!> 2) Initialisation of the actual time loop. 
-!> 3) Non-linear loop. IC-FERST uses a modified Anderson-acceleration non-linear solver, which is based in a Picard iterative non-linear solver. 
-!> In this way, the different equations are solved independently and coupled through the Anderson non-linear solver. 
+!> 2) Initialisation of the actual time loop.
+!> 3) Non-linear loop. IC-FERST uses a modified Anderson-acceleration non-linear solver, which is based in a Picard iterative non-linear solver.
+!> In this way, the different equations are solved independently and coupled through the Anderson non-linear solver.
 !> First the momentum and continuity equations are assembled and solved for, next the different transport equations are solved, for example: saturation,
 !> temperature, concentration, etc. ActiveTracers and Species are solved within the non-linear solver while PassiveTracers are solved outside the non-linear solver.
 !> 4) Once the non-linear solver has converged, we proceed to jump to the next time-level but first we check if we need to adapt the mesh and/or generate a vtu file.
 !> etc.
-!> 
+!>
 !----------------------------------------------------------------------------------------
 module multiphase_time_loop
 
@@ -119,8 +119,8 @@ contains
     !> @param nonlinear_iterations. Non-linear value. This is required just in case we adapt before the first time-step
     !> @param dt. Time-step size
     !> @retval
-    !> @see 
-    !> @ref 
+    !> @see
+    !> @ref
     subroutine MultiFluids_SolveTimeLoop( state, &
         dt, nonlinear_iterations, dump_no )
         implicit none
@@ -586,7 +586,7 @@ contains
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
 
                 !##########################Impose tunneled BCs############################################################
-                !We impose it once per time-level with the exception of the first time-level where we do it after the second non-linear loop 
+                !We impose it once per time-level with the exception of the first time-level where we do it after the second non-linear loop
                 !This is because we need outfluxes to contain data
                 if ((itime > 1 .and. its == 1 ).or. (itime == 1 .and. its== 2)) &
                                 call Impose_connected_BCs(outfluxes, packed_state, Mdims, acctim )
@@ -888,7 +888,7 @@ contains
                     itime = itime - 1
                     cycle Loop_Time
                 end if
-            end if 
+            end if
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
@@ -898,7 +898,7 @@ contains
             !therefore we compute it based on the actual difference of time
             call set_option( '/timestepping/timestep', acctim-old_acctim)
             !Now we ensure that the time-step is the correct one
-            call set_option( '/timestepping/timestep', dt)            
+            call set_option( '/timestepping/timestep', dt)
             !Time to compute the self-potential if required
             if (write_all_stats .and. have_option("/porous_media/SelfPotential")) &
                     call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
@@ -1082,7 +1082,7 @@ contains
 
 
         return
-    
+
     contains
         !> routine puts various CSR sparsities into packed_state
         subroutine put_CSR_spars_into_packed_state()
