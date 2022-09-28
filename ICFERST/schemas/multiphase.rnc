@@ -890,7 +890,7 @@ start =
                 ## Specify where and how much the well/pipes are opened
                 ## It goes from 0 to 1. If completely opened, set it to 1.
                 ##
-                ## If gamma is specified to -666, the simulation will stop. This is to be used in combination with the optimiser Halite. 
+                ## If gamma is specified to 666, the simulation will stop. This is to be used in combination with the optimiser Halite. 
                 element scalar_field {
                    attribute name { "Gamma" },
                    (
