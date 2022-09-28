@@ -3698,18 +3698,21 @@ end subroutine get_DarcyVelocity
                 !For parallel cases or if by mistake it cannot find field_pos
                 if (field_pos < 0) cycle
                 do k = 1, size(tracer%bc%boundary_condition)
-                    if (size(tracer%bc%boundary_condition(k)%surface_element_list)==0) cycle
+                    !if (size(tracer%bc%boundary_condition(k)%surface_element_list)==0) cycle
                     !Identify a representative surface element
                     !Now for each phase identify the position of the boundary condition on the tensor field and impose the value
                     do iphase = 1, Mdims%nphase
                         if (mod((acctime+offset_BC_list(iphase, k)),(2*period_BC_list(iphase, k))) < 1.001*period_BC_list(iphase, k)) then
                           ! Looping over boundary conditions to check that the boundary condition in the bc lists are synced with the bcs in Diamond
+                          sele = 0
                           do i = 1, size(tracer%bc%boundary_condition)
                             if(trim(tracer%bc%boundary_condition(i)%name) == trim(bc_names(iphase,k))) then
                                 sele = tracer%bc%boundary_condition(i)%surface_element_list(1)
                                 exit
                             end if
                           end do
+                          !for parallel, problem where sometimes sele is set to impossibly high value
+                          if (sele <= 0 .or. sele>Mdims%stotel) cycle
                             !If we are not in the boundary where we need to do something
                             if (.not. integrate_over_surface_element(tracer, &
                                         sele, to_BC_list(iphase, k:k))) cycle
