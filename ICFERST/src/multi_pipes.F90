@@ -2825,7 +2825,7 @@ contains
         !Initialize gamma
         sfield=>extract_scalar_field(state(1),"Gamma",ipres)
         ! This is for Halite optimiser to dynamically stop simulations
-        if (maxval(sfield%val)- 666 < 1e-5) STOP 11011998 
+        if (abs(maxval(sfield%val)- 666) < 1e-5) STOP 11011998 
         
         pipes_aux%GAMMA_PRES_ABS = 0.0
         do ipres = 1, Mdims%npres
