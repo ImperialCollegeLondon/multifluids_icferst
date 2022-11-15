@@ -656,7 +656,7 @@ contains
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
                         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling)
+                        calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling, magma_phase_coef)
                 end if Conditional_ForceBalanceEquation
                 
 

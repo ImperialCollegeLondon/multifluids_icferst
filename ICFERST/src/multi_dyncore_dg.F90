@@ -1942,7 +1942,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
         DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, &
         IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J,&
-        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, magma_coupling)
+        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, magma_coupling,magma_phase_coef)
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -1972,6 +1972,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         integer, intent(inout) :: pres_its_taken
 
         type(coupling_term_coef), intent( in ) :: magma_coupling
+        type(magma_phase_diagram), intent( in ) ::magma_phase_coef
         ! Local Variables
         character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
         character(len=option_path_len) :: solver_option_velocity = "/solver_options/Linear_solver"
@@ -2205,7 +2206,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
           call allocate_multi_field( Mdims, UDIFFUSION_VOL_ALL, Mdims%mat_nonods, mem_type = 1)
         end if
         ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
-        call calculate_viscosity( state, packed_state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL)
+        call calculate_viscosity( state, packed_state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, magma_phase_coef)
 
 
         if (compute_compaction) then

@@ -38,7 +38,7 @@ module multiphase_EOS
     use initialise_fields_module, only: initialise_field_over_regions, initialise_field
     use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
     use checkpoint
-
+    use multi_magma, only: magma_phase_diagram
 
     implicit none
 
@@ -1407,10 +1407,10 @@ contains
         real:: denl1,denl2, dens1, dens2, denl, dens 
         ! temperoral settings for the parameters before it put in Diamond
         denl1=2600
-        denl2=2200 !2200
+        denl2=2200
         
         dens1=3000
-        dens2=2600!2600
+        dens2=2600
 
         use_potential = compute_compaction
         allocate(auxR(Mdims%ndim),auxR2(Mdims%ndim))
@@ -1844,7 +1844,7 @@ contains
     end subroutine calculate_solute_dispersity
 
     !>@brief: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media
-    subroutine calculate_viscosity( state, packed_state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2 )
+    subroutine calculate_viscosity( state, packed_state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2, magma_phase_coef)
       implicit none
       type( multi_dimensions ), intent( in ) :: Mdims
       type( multi_ndgln ), intent( in ) :: ndgln
@@ -1852,6 +1852,7 @@ contains
       type( state_type ), intent( inout ) :: packed_state
       real, dimension( :, :, :, : ), intent( inout ) :: Momentum_Diffusion
       type( multi_field ), intent( inout ) :: Momentum_Diffusion2
+      type(magma_phase_diagram), intent( in ) ::magma_phase_coef
 
       !Local variables
       type( tensor_field ), pointer :: t_field, tp_field, tc_field
@@ -1928,19 +1929,19 @@ contains
                end if
                cg_mesh = have_option( '/material_phase[0]/phase_properties/Viscosity/tensor_field::Viscosity/diagnostic/mesh::PressureMesh')
                do iphase = 1, Mdims%nphase
-                  tp_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
+                  tp_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )                  
                   do ele = 1, ele_count( tp_field )
                      mu_tmp = ele_val( tp_field, ele )
-                     if ( linearise_viscosity ) then
-                        mu_tmp( :, :, 2 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 3 ) )
-                        mu_tmp( :, :, 4 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 6 ) )
-                        mu_tmp( :, :, 5 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 6 ) )
-                        if ( Mdims%cv_nloc == 10 ) then
-                           mu_tmp( :, :, 7 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 10 ) )
-                           mu_tmp( :, :, 8 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 10 ) )
-                           mu_tmp( :, :, 9 ) = 0.5 * ( mu_tmp( :, :, 6 ) + mu_tmp( :, :, 10 ) )
-                        end if
-                     end if
+                    !  if ( linearise_viscosity ) then
+                    !     mu_tmp( :, :, 2 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 3 ) )
+                    !     mu_tmp( :, :, 4 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 6 ) )
+                    !     mu_tmp( :, :, 5 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 6 ) )
+                    !     if ( Mdims%cv_nloc == 10 ) then
+                    !        mu_tmp( :, :, 7 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 10 ) )
+                    !        mu_tmp( :, :, 8 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 10 ) )
+                    !        mu_tmp( :, :, 9 ) = 0.5 * ( mu_tmp( :, :, 6 ) + mu_tmp( :, :, 10 ) )
+                    !     end if
+                    !  end if
                      do iloc = 1, Mdims%cv_nloc
                         mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
                         cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
@@ -1948,21 +1949,16 @@ contains
                         x_inod = ndgln%x ( (ele - 1 ) * Mdims%cv_nloc + iloc )
                         if (is_magma) then
                           if (iphase==1) then !only the solid phase has viscosity terms
-                            mu_tmp( :, :, iloc )=mus_varied(saturation%val(cv_nod), mu_tmp( 1, 1, iloc )) 
+                            ! mu_tmp( :, :, iloc )=mus_varied(saturation%val(cv_nod), mu_tmp( 1, 1, iloc )) 
+                            mu_tmp( :, :, iloc )= magma_phase_coef%mu(1,min(NINT(saturation%val(cv_nod)*1000000)+1,1000000))
                             momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )  !mu_tmp( :, :, iloc )
                             ! if (abs(p_position%val(2,x_inod)-0.)<25 .or. p_position%val(2,x_inod)>875) momentum_diffusion( :, :, iphase, mat_nod )=1e19
                             !Currently only magma uses momentum_diffusion2
-                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc )*1e-1, exp_zeta_function, saturation%val(cv_nod))! make it 1/10
-                            !Saturation scaling of viscosity
-
-                            ! call calculate_viscosity_Schmeling(saturation%val(cv_nod), mu_tmp( 1, 1, iloc ), mus_scale, mub_scale)
-                            ! momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )*mus_scale
-                            ! momentum_diffusion2%val(1, 1, iphase, mat_nod)=mu_tmp( 1, 1, iloc )*mub_scale
+                            ! momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc )*1e-1, exp_zeta_function, saturation%val(cv_nod))! make it 1/10
+                            momentum_diffusion2%val(1, 1, iphase, mat_nod)=magma_phase_coef%mu(2,min(NINT(saturation%val(cv_nod)*1000000)+1,1000000))
 !For testing rescaling of viscosity with the saturation
-if (is_magma) then
 momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion( :, :, iphase, mat_nod ) * max(saturation2%val(cv_nod), 1e-4)!Ensure that it does not dissapear
 momentum_diffusion2%val(:, :, iphase, mat_nod)  = momentum_diffusion2%val(:, :, iphase, mat_nod) * max(saturation2%val(cv_nod), 1e-4)!Ensure that it does not dissapear
-end if
                           else
                             momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
                           end if

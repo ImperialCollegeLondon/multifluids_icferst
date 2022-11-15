@@ -1367,7 +1367,7 @@ contains
                                     !   on_domain_boundary, between_elements )
                                     !   ENTH_RHS_DIFF_COEF_DIVDX=ENTH_RHS_DIFF_COEF_DIVDX
                                     !   ENTH_RHS_DIFF_COEF_DIVDX(1)=ENTH_RHS_DIFF_COEF_DIVDX(2)
-                                      ENTH_RHS_DIFF_COEF_DIVDX=-DIFF_COEF_DIVDX
+                                    !   ENTH_RHS_DIFF_COEF_DIVDX=-DIFF_COEF_DIVDX
                                     !   if (ELE==130) then 
                                     !   print *, "Dif1:", DIFF_COEFOLD_DIVDX
                                     !   print *, "Dif2:", ENTH_RHS_DIFF_COEF_DIVDX
@@ -1502,14 +1502,14 @@ contains
                                   CAP_DIFF_COEF_DIVDX = 0.0
                               END IF If_GOT_CAPDIFFUS
 
-                            !   if (asssembling_enthalpy) then
-                            !     IF(on_domain_boundary) THEN
-                            !       ENTH_RHS_DIFF_COEF_DIVDX = 0.0!This imposes grad = 0 at the boundary
-                            !     ELSE
-                            !       !Average of the coefficient in shared CVs between elements
-                            !       ENTH_RHS_DIFF_COEF_DIVDX = 0.5* ( TDIFFUSION(MAT_NODJ, 1, 1, :)  + TDIFFUSION(MAT_NODI, 1, 1, :)) /HDC
-                            !     ENDIF
-                            !   end if
+                              if (asssembling_enthalpy) then
+                                IF(on_domain_boundary) THEN
+                                  ENTH_RHS_DIFF_COEF_DIVDX = 0.0!This imposes grad = 0 at the boundary
+                                ELSE
+                                  !Average of the coefficient in shared CVs between elements
+                                  ENTH_RHS_DIFF_COEF_DIVDX = 0.5* ( TDIFFUSION(MAT_NODJ, 1, 1, :)  + TDIFFUSION(MAT_NODI, 1, 1, :)) /HDC
+                                ENDIF
+                              end if
 
 
 

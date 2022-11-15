@@ -50,6 +50,7 @@ module multi_magma
       real :: Ae!> Eutectic point
       real :: Ts!> Solidus, uniform solidus si the liquidus at the eutectic point
       real :: Lf!> Latent heat
+      real, dimension(2,1000000) :: mu !> shear and bulk viscositie
     end type magma_phase_diagram
     !------------------------------------------------------------------------------
     !>  The copling_term follows the Darcy permeability law C=1/a/d^2*mu*phi^(2-b)
@@ -69,6 +70,19 @@ contains
     implicit none
     type(magma_phase_diagram) :: phase_coef
     type(coupling_term_coef) :: coupling
+
+    !local variables for initilize the viscosity model
+    real :: B_vis=2.
+    real :: phistar = 0.736
+    real :: gamma = 3.679
+    real :: sigma
+    real :: epsilon = 0.5e-4
+
+    real :: ref_shear = 3e12
+    real :: BS_ratio = 0.25
+    integer :: i
+    real, dimension(1000000) ::phi_range, F
+    sigma=13.-gamma
 
     if (is_magma) then
       call get_option('/magma_parameters/Phase_diagram_coefficients/A1' , phase_coef%A1 )
@@ -94,8 +108,18 @@ contains
 
     phase_coef%Ts=get_Liquidus(phase_coef%Ae,phase_coef)  !Solidus is the liquidus at the ae
 
-
-
+    !Initilize the viscosities based on (Costa2009)
+    do i=1, 1000000
+      phi_range(i) = real(i - 1) / (1000000 - 1)
+    end do
+    phi_range(1)=1e-8
+    phi_range(1000000)=1-1e-8
+    F=(1-epsilon)*erf(3.141592653**0.5/2/(1-epsilon)*phi_range/phistar*(1+(phi_range/phistar)**gamma))
+    phase_coef%mu(1,:)=(1+(phi_range/phistar)**sigma)/(1-F)**(B_vis*phistar)*ref_shear
+    phase_coef%mu(2,:)=phase_coef%mu(1,:)/max(0.2,phi_range)/(1-phi_range)*BS_ratio;
+    phase_coef%mu(1,:)=phase_coef%mu(1,1000000:1:-1)
+    phase_coef%mu(2,:)=phase_coef%mu(2,1000000:1:-1)
+    print *,phase_coef%mu(1,333333),phase_coef%mu(2,333333)
   end subroutine initialize_magma_parameters
 
 
