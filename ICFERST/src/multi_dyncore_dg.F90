@@ -93,7 +93,7 @@ contains
     !>@param  DT Time step size
     !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
     !>@param  VOLFRA_PORE     Porosity field (Mdims%npres,Mdims%totele)
-    !>@param  option_path   Option path of the tracer to be solved for 
+    !>@param  option_path   Option path of the tracer to be solved for
     !>@param  mass_ele_transp Mass of the elements
     !>@param  saturation PhaseVolumeFraction field
     !>@param Permeability_tensor_field Permeability field
@@ -801,7 +801,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    end do
                end if
              end if
-             call assign_val(T_source( iphase, : ),sfield%val)
+             if (stat == 0) call assign_val(T_source( iphase, : ),sfield%val)
            end do
 
            !sprint to do, just pass down the other values...
@@ -922,7 +922,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !>@param  ndgln Global to local variables
     !>@param  Mdisopt Discretisation options
     !>@param  Mmat Matrices for ICFERST
-    !>@param  multi_absorp  Absoprtion of associated with the transport field 
+    !>@param  multi_absorp  Absoprtion of associated with the transport field
     !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
     !>@param  eles_with_pipe Elements that have a pipe
     !>@param  pipes_aux Information required to define wells
@@ -934,7 +934,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !>@param  mass_ele_transp Mass of the elements
     !>@param nonlinear_iteration Current non-linear iteration
     !>@param time_step current time-step
-    !>@param SFPI_its Number of saturation fixed point iterations taken 
+    !>@param SFPI_its Number of saturation fixed point iterations taken
     !>@param Courant_number Global courant number and shock front courant number
     !>@param  THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, multicomponent_state, &
@@ -1630,14 +1630,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
     !>@param  eles_with_pipe Elements that have a pipe
     !>@param  pipes_aux Information required to define wells
-    !>@param  velocity tensor field. Why do we pass it down instead of retrieving it from packed_state... 
-    !>@param  pressure tensor fieldWhy do we pass it down instead of retrieving it from packed_state... 
+    !>@param  velocity tensor field. Why do we pass it down instead of retrieving it from packed_state...
+    !>@param  pressure tensor fieldWhy do we pass it down instead of retrieving it from packed_state...
     !>@param  DT Time step size
     !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
     !>@param V_SOURCE Source term
     !>@param  VOLFRA_PORE     Porosity field (Mdims%npres,Mdims%totele)
     !>@param   IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
-    !>@param  calculate_mass_delta This is to compute mass conservation 
+    !>@param  calculate_mass_delta This is to compute mass conservation
     !>@param  outfluxes variable containing the outfluxes information
     !>@param pres_its_taken Integer containing the number of iterations performed by the solver to solve for pressure
     !>@param nonlinear_its current non-linear iteration
@@ -2740,8 +2740,8 @@ end if
     !>@param  Mdisopt Discretisation options
     !>@param  Mmat Matrices for ICFERST
     !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
-    !>@param  velocity tensor field. Why do we pass it down instead of retrieving it from packed_state... 
-    !>@param  pressure tensor fieldWhy do we pass it down instead of retrieving it from packed_state... 
+    !>@param  velocity tensor field. Why do we pass it down instead of retrieving it from packed_state...
+    !>@param  pressure tensor fieldWhy do we pass it down instead of retrieving it from packed_state...
     !>@param  multi_absorp  Absoprtion of associated with the transport field
     !>@param  eles_with_pipe Elements that have a pipe
     !>@param  pipes_aux Information required to define wells
@@ -2761,7 +2761,7 @@ end if
     !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
     !>@param V_SOURCE Source term
     !>@param  VOLFRA_PORE     Porosity field (Mdims%npres,Mdims%totele)
-    !>@param Courant_number Global courant number and shock front courant number   
+    !>@param Courant_number Global courant number and shock front courant number
     !>@param DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B Variables related with the coupling between the wells and reservoir domain
     !>@param JUST_BL_DIAG_MAT ???
     !>@param  UDEN_ALL, UDENOLD_ALL Densities to be used. This is so we can impose the boussinesq approximation??
@@ -2769,7 +2769,7 @@ end if
     !>@param   IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
     !>@param IPLIKE_GRAD_SOU ??
     !>@param FEM_continuity_equation This is to use the divergence as the transpose of the gradient matrix. Not conservative but more stable than simple CVFEM
-    !>@param  calculate_mass_delta This is to compute mass conservation 
+    !>@param  calculate_mass_delta This is to compute mass conservation
     !>@param  outfluxes variable containing the outfluxes information
     !>@param DIAG_BIGM_CON, BIGM_CON To assemble the momentum equation of the Navier-stokes equation
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
@@ -3220,8 +3220,8 @@ end if
     !>@param  ndgln Global to local variables
     !>@param  Mdisopt Discretisation options
     !>@param  Mmat Matrices for ICFERST
-    !>@param  velocity tensor field. Why do we pass it down instead of retrieving it from packed_state... 
-    !>@param  pressure tensor fiel dWhy do we pass it down instead of retrieving it from packed_state... 
+    !>@param  velocity tensor field. Why do we pass it down instead of retrieving it from packed_state...
+    !>@param  pressure tensor fiel dWhy do we pass it down instead of retrieving it from packed_state...
     !>@param X_ALL Coordinates of the nodes
     !>@param  U_ABSORB  Absoprtion of associated with the transport field
     !>@param U_SOURCE momentum source term on the element mesh
@@ -7415,7 +7415,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 
     !>@brief: This subroutine performs and introduces the gradient of a RHS field (Capillary pressure for example)
-    !> for the momentum equation. It has two options (hard-coded) integrations by parts (activated) or voluemtric integration, 
+    !> for the momentum equation. It has two options (hard-coded) integrations by parts (activated) or voluemtric integration,
     !> For capillary pressure: The capillary pressure is a term introduced as a RHS which affects the effective velocity
     !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
     !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
@@ -8899,12 +8899,12 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 end if
             end if
           END DO
-        end do      
+        end do
         !Now we call MatZeroRows to zero the rows (not the diagonal)
         i = 0
         do k = 1, Mdims%stotel
           if (Impose_strong(k) > 0) i = i + 1
-        end do       
+        end do
         call MatZeroRows(CMC_petsc%M, i, Impose_strong(1:i), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
         !Re-assemble just in case
         CMC_petsc%is_assembled=.false.
