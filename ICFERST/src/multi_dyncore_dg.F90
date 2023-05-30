@@ -692,6 +692,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer :: nconc !> Number of phases with tracer, this works if the phases with concentration start from the first one and are consecutive
            integer :: nconc_in_pres
            type(vector_field) :: solution
+           type(tensor_field), pointer :: old_tracer_field, old_density_field
+           type(vector_field), pointer :: cv_volume
+           real :: total_mass_tracer, mass_tracer, imposed_total_mass, imposed_tracer_value
+           integer :: cv_nod
+
+           old_tracer_field=>extract_tensor_field(packed_state,"PackedOld"//trim(Tracer_name), stat)
+           old_density_field => extract_tensor_field(packed_state,"PackedOldDensity")
+           MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+           cv_volume=> extract_vector_field(packed_state,"CVIntegral")
 
            !Initialise with an out of range value to be able to check it hasn't been
            totally_min_max = 1e30
@@ -740,10 +749,59 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            call get_option( '/material_phase[0]/scalar_field::Concentration/prognostic/temporal_discretisation/' // &
                'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
 
-          !Retrieve source term; sprint_to_do something equivalent should be done for absoprtion
+           do iphase = 1, Mdims%nphase
+
+             if ( ( have_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Total_mass') .and. .not. have_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Tracer_field_value') ) &
+             .or. ( have_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Tracer_field_value') ) .and. .not. have_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Total_mass') ) then
+               FLAbort('In case of a source term based on total mass, both Total_mass and Tracer_field_value need to be defined.')
+             end if
+
+             if ( have_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Tracer_field_value')) then
+               call get_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Tracer_field_value', imposed_tracer_value)
+             end if
+
+             if ( have_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Total_mass')) then
+               call get_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Total_mass', imposed_total_mass)
+             end if
+
+           end do
+
+           !Retrieve source term; sprint_to_do something equivalent should be done for absoprtion
            do iphase = 1, Mdims%nphase !IF THIS WORKS DO THE SAME FOR THE OTHER SCALAR FIELDS
              sfield => extract_scalar_field( state(iphase), trim(Tracer_name)//"Source", stat )
+             if ( have_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Tracer_field_value')) then
+               do cv_nod=1,Mdims%cv_nonods
+                 if (sfield%val(cv_nod)>0.0) then
+                   sfield%val(cv_nod)=imposed_tracer_value
+                 end if
+               end do
+             end if
              if (stat == 0) call assign_val(T_source( iphase, : ),sfield%val)
+
+             if ( have_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Total_mass')) then
+
+               total_mass_tracer = 0.0
+
+               do cv_nod=1,Mdims%cv_nonods
+                 if (node_owned(old_tracer_field,cv_nod)) then
+                    ! Compute mass of salt in CV
+                    mass_tracer = old_density_field%val(1,1,cv_nod) * MeanPoreCV%val(1,cv_nod) * cv_volume%val(1,cv_nod) * old_tracer_field%val(1,1,cv_nod)
+                    total_mass_tracer = total_mass_tracer + mass_tracer
+                 end if
+               end do
+
+               call allsum(total_mass_tracer)
+
+               if (total_mass_tracer >= imposed_total_mass) then
+                   sfield => extract_scalar_field( state(iphase), trim(Tracer_name)//"Source", stat )
+                   do cv_nod=1,Mdims%cv_nonods
+                     if (sfield%val(cv_nod)>0.0) then
+                       sfield%val(cv_nod)=0.0
+                     end if
+                   end do
+               end if
+             end if
+             call assign_val(T_source( iphase, : ),sfield%val)
            end do
 
            !sprint to do, just pass down the other values...
@@ -766,8 +824,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             TDIFFUSION = TDIFFUSION + CDISPERSION
             deallocate(CDISPERSION)
            end if
-
-           MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
            solver_option_path = "/solver_options/Linear_solver"
            if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::Passive_Tracers')) then

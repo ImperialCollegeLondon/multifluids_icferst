@@ -137,7 +137,8 @@ prognostic_scalar_field =
       )+,
       scalar_boundary_conditions*,
 
-        ## Source term
+        ## Source term.
+        ## If "Total_mass" and "Tracer_field_value" options are activated then the source term is based on imposed total mass and tracer field value. In that case, tracer keeps being injected at its prescribed value until reaching the prescribed total mass in the domain. In that case, "Tracer_field_value" has preference over the value imposed in "Source"
       element scalar_field {
          attribute name { "Source" },
          attribute rank { "0" },
@@ -153,24 +154,14 @@ prognostic_scalar_field =
                ),
                diagnostic_scalar_field_no_adapt
             }
-         )
-      }?,
-
-      ## Absorption term
-      element scalar_field {
-         attribute name { "Absorption" },
-         attribute rank { "0" },
-         (
-            element prescribed {
-               prescribed_scalar_field_no_adapt
-            }|
-            element diagnostic {
-               (
-                  scalar_python_diagnostic_algorithm |
-                  internal_algorithm
-               ),
-               diagnostic_scalar_field_no_adapt
-            }
+             ## Imposed value for the tracer
+             element Tracer_field_value {
+                real
+             }?,
+             ## Imposed total mass (kg)
+             element Total_mass {
+                real
+             }?
          )
       }?,
       ## Absorption term

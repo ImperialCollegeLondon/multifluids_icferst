@@ -158,7 +158,7 @@ requires a distinct name for the options dictionary.</a:documentation>
       </zeroOrMore>
       <optional>
         <element name="scalar_field">
-          <a:documentation>Source term</a:documentation>
+          <a:documentation>Source term. If "Total_mass" and "Tracer_field_value" options are activated then the source term is based on imposed total mass and tracer field value. In that case, tracer keeps being injected at its prescribed value until reaching the prescribed total mass in the domain. In that case, "Tracer_field_value" has preference over the value imposed in "Source".</a:documentation>
           <attribute name="name">
             <value>Source</value>
           </attribute>
@@ -178,6 +178,18 @@ requires a distinct name for the options dictionary.</a:documentation>
               <ref name="diagnostic_scalar_field_no_adapt"/>
             </element>
           </choice>
+          <optional>
+            <element name="Tracer_field_value">
+              <a:documentation>Imposed value for the tracer</a:documentation>
+              <ref name="real"/>
+            </element>
+          </optional>
+          <optional>
+            <element name="Total_mass">
+              <a:documentation>Imposed total mass (kg)</a:documentation>
+              <ref name="real"/>
+            </element>
+          </optional>
         </element>
       </optional>
       <optional>
