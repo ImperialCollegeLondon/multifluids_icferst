@@ -177,15 +177,14 @@ AC_F77_WRAPPERS
 
 # Find python to link against.
 AC_ARG_ENABLE(python,
-[AC_HELP_STRING([--enable-python],
-[embed python in fluidity for generic functions.])])
+[AS_HELP_STRING([--enable-python],[embed python in fluidity for generic functions.])])
 
 if test "x$enable_python" != "xno"
 then
     if test -z "$PYTHON_VERSION"; then
       # if PYTHON_VERSION is set we use python$PYTHON_VERSION as the python interpreter
       # if not, if there is no `python` in the path, or there is a `python` but its version is <3
-      # then use `python3` (by setting PETSC_VERSION=3).
+      # then use `python3` (by setting PYTHON_VERSION=3).
       # If there *is* a `python` of version 3, we use that
       AC_CHECK_PROG(have_bare_python, python, "yes")
       if test "x$have_bare_python" = "xyes"; then
@@ -197,36 +196,36 @@ then
         PYTHON_VERSION=3
       fi
     fi
-        mycppflag=$CPPFLAGS
-    AC_PYTHON_DEVEL([>= '3.6'])
-        CPPFLAGS=$mycppflag
+    mycppflag=$CPPFLAGS
+    AX_PYTHON_DEVEL([>= '3.6'])
+    CPPFLAGS=$mycppflag
     # Save variables...
-        if test "x$pythonexists" = "xyes";
-        then
-	    if  test "$fcompiler" = "pgf90"; then
-	        PYTHON_EXTRA_LDFLAGS=${PYTHON_EXTRA_LDFLAGS/-Xlinker/}
-	        PYTHON_EXTRA_LDFLAGS=${PYTHON_EXTRA_LDFLAGS/-export-dynamic/}
-	    fi
-      if test "x$enable_debugging" = "xyes"; then
-        export PYTHON_EXTRA_LDFLAGS=$(echo $PYTHON_EXTRA_LDFLAGS | sed -e 's/-O1/-O0/g' -e 's/-O2/-O0/g' -e 's/-O3/-O0/g')
-      fi
+    if test "x$pythonexists" = "xyes";
+    then
+        if  test "$fcompiler" = "pgf90"; then
+            PYTHON_EXTRA_LDFLAGS=${PYTHON_EXTRA_LDFLAGS/-Xlinker/}
+            PYTHON_EXTRA_LDFLAGS=${PYTHON_EXTRA_LDFLAGS/-export-dynamic/}
+        fi
+        if test "x$enable_debugging" = "xyes"; then
+          export PYTHON_EXTRA_LDFLAGS=$(echo $PYTHON_EXTRA_LDFLAGS | sed -e 's/-O1/-O0/g' -e 's/-O2/-O0/g' -e 's/-O3/-O0/g')
+        fi
         LIBS="$LIBS $PYTHON_LIBS $PYTHON_EXTRA_LDFLAGS $PYTHON_EXTRA_LIBS"
-	    CXXFLAGS="$CXXFLAGS $PYTHON_CPPFLAGS"
-	    CPPFLAGS="$CPPFLAGS $PYTHON_CPPFLAGS"
-            CFLAGS="$CFLAGS $PYTHON_CPPFLAGS"
+        CXXFLAGS="$CXXFLAGS $PYTHON_CPPFLAGS"
+        CPPFLAGS="$CPPFLAGS $PYTHON_CPPFLAGS"
+        CFLAGS="$CFLAGS $PYTHON_CPPFLAGS"
     fi
 
     # Additionally check for numpy
     NUMPY=$($PYTHON -c 'import numpy; print(numpy.get_include())' 2>/dev/null)
     if ! test -z "$NUMPY"; then
-	echo "Numpy is " $NUMPY
-	CXXFLAGS="$CXXFLAGS -DHAVE_NUMPY -I$NUMPY"
+        echo "Numpy is " $NUMPY
+        CXXFLAGS="$CXXFLAGS -DHAVE_NUMPY -I$NUMPY"
         CPPFLAGS="$CPPFLAGS -DHAVE_NUMPY -I$NUMPY"
         CFLAGS="$CFLAGS -DHAVE_NUMPY -I$NUMPY"
         FFLAGS="$FFLAGS -DHAVE_NUMPY -I$NUMPY"
         FCFLAGS="$FCFLAGS -DHAVE_NUMPY -I$NUMPY"
     else
-	echo "Failed to locate Numpy"
+        echo "Failed to locate Numpy"
     fi
     # check for the assess python package used in some tests
     # (see https://github.com/stephankramer/assess/)
@@ -243,12 +242,90 @@ then
 fi
 AC_SUBST(HAVE_PYTHON)
 
-AC_ARG_ENABLE(cgal, [AC_HELP_STRING([--enable-cgal], [turns on use of the CGAL library])])
+AC_ARG_ENABLE(cgal, [AS_HELP_STRING([--enable-cgal],[turns on use of the CGAL library])])
 if test "x$enable_cgal" = "xyes" ; then
   ACX_lib_automagic(CGAL, _ZNK4CGAL6Random8get_seedEv, [HAVE_CGAL=yes; AC_DEFINE(HAVE_LIBCGAL)], AC_MSG_ERROR("Use of CGAL enabled but cannot identify CGAL. Check that it is installed."))
   AC_SUBST(HAVE_CGAL)
   LIBS="$LIBS -lgmp -lmpfr"
 fi
+
+#########################################
+# Find python to link against.
+#AC_ARG_ENABLE(python,
+#[AC_HELP_STRING([--enable-python],
+#[embed python in fluidity for generic functions.])])
+
+#if test "x$enable_python" != "xno"
+#then
+#    if test -z "$PYTHON_VERSION"; then
+#      # if PYTHON_VERSION is set we use python$PYTHON_VERSION as the python interpreter
+#      # if not, if there is no `python` in the path, or there is a `python` but its version is <3
+#      # then use `python3` (by setting PETSC_VERSION=3).
+#      # If there *is* a `python` of version 3, we use that
+#      AC_CHECK_PROG(have_bare_python, python, "yes")
+#      if test "x$have_bare_python" = "xyes"; then
+#        bare_python_is_two=`python -c "import sys; print(sys.version_info.major < 3)"`
+#        if test "x$bare_python_is_two=xTrue"; then
+#          PYTHON_VERSION=3
+#        fi
+#      else
+#        PYTHON_VERSION=3
+#      fi
+#    fi
+#        mycppflag=$CPPFLAGS
+#    AC_PYTHON_DEVEL([>= '3.6'])
+#        CPPFLAGS=$mycppflag
+#    # Save variables...
+#        if test "x$pythonexists" = "xyes";
+#        then
+#	    if  test "$fcompiler" = "pgf90"; then
+#	        PYTHON_EXTRA_LDFLAGS=${PYTHON_EXTRA_LDFLAGS/-Xlinker/}
+#	        PYTHON_EXTRA_LDFLAGS=${PYTHON_EXTRA_LDFLAGS/-export-dynamic/}
+#	    fi
+#      if test "x$enable_debugging" = "xyes"; then
+#        export PYTHON_EXTRA_LDFLAGS=$(echo $PYTHON_EXTRA_LDFLAGS | sed -e 's/-O1/-O0/g' -e 's/-O2/-O0/g' -e 's/-O3/-O0/g')
+#      fi
+#        LIBS="$LIBS $PYTHON_LIBS $PYTHON_EXTRA_LDFLAGS $PYTHON_EXTRA_LIBS"
+#	    CXXFLAGS="$CXXFLAGS $PYTHON_CPPFLAGS"
+#	    CPPFLAGS="$CPPFLAGS $PYTHON_CPPFLAGS"
+#            CFLAGS="$CFLAGS $PYTHON_CPPFLAGS"
+#    fi
+
+#    # Additionally check for numpy
+#    NUMPY=$($PYTHON -c 'import numpy; print(numpy.get_include())' 2>/dev/null)
+#    if ! test -z "$NUMPY"; then
+#	echo "Numpy is " $NUMPY
+#	CXXFLAGS="$CXXFLAGS -DHAVE_NUMPY -I$NUMPY"
+#        CPPFLAGS="$CPPFLAGS -DHAVE_NUMPY -I$NUMPY"
+#        CFLAGS="$CFLAGS -DHAVE_NUMPY -I$NUMPY"
+#        FFLAGS="$FFLAGS -DHAVE_NUMPY -I$NUMPY"
+#        FCFLAGS="$FCFLAGS -DHAVE_NUMPY -I$NUMPY"
+#    else
+#	echo "Failed to locate Numpy"
+#    fi
+#    # check for the assess python package used in some tests
+#    # (see https://github.com/stephankramer/assess/)
+#    $PYTHON -c "import assess" 2>/dev/null
+#    if test $? -eq 0;
+#    then
+#      HAVE_ASSESS=yes
+#      AC_MSG_NOTICE([Successfully imported assess python module])
+#    else
+#      HAVE_ASSESS=no
+#      AC_MSG_NOTICE([Failed to import (optional) python module assess])
+#    fi
+#    AC_SUBST(HAVE_ASSESS)
+#fi
+#AC_SUBST(HAVE_PYTHON)
+
+#AC_ARG_ENABLE(cgal, [AC_HELP_STRING([--enable-cgal], [turns on use of the CGAL library])])
+#if test "x$enable_cgal" = "xyes" ; then
+#  ACX_lib_automagic(CGAL, _ZNK4CGAL6Random8get_seedEv, [HAVE_CGAL=yes; AC_DEFINE(HAVE_LIBCGAL)], AC_MSG_ERROR("Use of CGAL enabled but cannot identify CGAL. Check that it is installed."))
+#  AC_SUBST(HAVE_CGAL)
+#  LIBS="$LIBS -lgmp -lmpfr"
+#fi
+
+###################################
 
 # Find a library which will give us blas and lapack routines
 AC_LANG_PUSH([C])
