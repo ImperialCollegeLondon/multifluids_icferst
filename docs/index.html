@@ -59,7 +59,7 @@ $(function() {
       <div id="nav-sync" class="sync"></div>
     </div>
   </div>
-  <div id="splitbar" style="-moz-user-select:none;" 
+  <div id="splitbar" style="-moz-user-select:none;"
        class="ui-resizable-handle">
   </div>
 </div>
@@ -78,7 +78,7 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
-<iframe src="javascript:void(0)" frameborder="0" 
+<iframe src="javascript:void(0)" frameborder="0"
         name="MSearchResults" id="MSearchResults">
 </iframe>
 </div>
@@ -93,8 +93,8 @@ ReadMe</h1>
 <p>(This text is in <a class="el" href="_multiphase___prototype___wrapper_8_f90.html">Multiphase_Prototype_Wrapper.F90</a>)</p>
 <p>All the contributions to ICFERST in this repository are under AGPL 3.0 license, otherwise refrain from commiting your code to this repository. Each library keeps their original license.</p>
 <p>The executable is named icferst</p>
-<p>The schema for the ICFERST diamond interface is in ICFERST/schemas/multiphase.rmg</p>
-<p>For compilation run the command from the root folder:  
+<p>The schema for the ICFERST diamond interface is in ICFERST/schemas/multiphase.rng</p>
+<p>For compilation run the command from the root folder:
  <CODE>
  <PRE>
 ./configure --enable-2d-adaptivity && make mp!> </PRE>
@@ -104,14 +104,14 @@ ReadMe</h1>
 <p>For more details please see: <a href="http://multifluids.github.io/">http://multifluids.github.io/</a> or <a href="http://www.imperial.ac.uk/earth-science/research/research-groups/norms/">http://www.imperial.ac.uk/earth-science/research/research-groups/norms/</a></p>
 <h1><a class="anchor" id="install_sec"></a>
 Installation</h1>
-<p>1) Download it from github with the following one-line command  
+<p>1) Download it from github with the following one-line command
  <CODE>
  <PRE>
  mkdir ICFERST && cd ICFERST && git init && git remote add -t  main  -f origin git@github.com:Multifluids/icferst.git && git checkout main
  </PRE>
  </CODE>
  </p>
-<p>2) Install dependencies  
+<p>2) Install dependencies
  <CODE>
  <PRE>
  sudo apt-add-repository ppa:fluidity-core/ppa
@@ -120,32 +120,33 @@ Installation</h1>
  </PRE>
  </CODE>
  </p>
-<p>3a) Ubuntu 18.04, modify the .bashrc file in home to include  
+<p>3a) Ubuntu 18.04, modify the .bashrc file in home to include
  <CODE>
  <PRE>
  export PETSC_DIR=/usr/lib/petscdir/3.8.3
  </PRE>
  </CODE>
  </p>
-<p>3b) Ubuntu 20.04, modify the .bashrc file in home to include  
+<p>3b) Ubuntu 20.04, modify the .bashrc file in home to include
  <CODE>
  <PRE>
  export FCFLAGS="-I/usr/include"
  </PRE>
  </CODE>
  </p>
-<p>3b) You may need to explicitly include the python dependencies  
+<p>3b) You may need to explicitly include the python dependencies
  <CODE>
  <PRE>
  export PYTHONPATH=/usr/lib/python3
  </PRE>
  </CODE>
  </p>
-<p>4) Navigate to the root directory of your ICFERST folder  
+<p>4) Navigate to the root directory of your ICFERST folder
  <CODE>
  <PRE>
  cd IC-FERST-FOLDER/
- sudo ./configure --enable-2d-adaptivity && make install
+ ./configure --enable-2d-adaptivity
+ sudo make install
  </PRE>
  </CODE>
  </p>
@@ -194,7 +195,7 @@ Structure of the ICFERST code</h1>
 <p>To simplify and standardize the naming of the variables the structures defined in <a class="el" href="namespacemulti__data__types.html" title="This module contains all the ICFERST structures and associated subroutines (allocate/deallocate) Use ...">multi_data_types</a> are used through the code. Normally one or two of those types are created once and used throughout the code, so it is recommended to check in that section what is each variable and use those types either expanding them or creating more.</p>
 <h2><a class="anchor" id="code_Diagram"></a>
 Code Diagram</h2>
-<p> 
+<p>
  <CODE>
  <PRE>
      ┌─────────────┐     ┌────────────┐    ┌───────────────┐
@@ -245,7 +246,7 @@ Code Diagram</h2>
     │        │ Loop until        │                 ├─────────────┬───────┤  │    └──►│solve system│
     │        │ convergence       │                 │Compositional├───────┴──┤        └────────────┘ ┌─────────────────────────┐
     │        └───────────────────┤                 └─────────────┘          └──────────────────────►│PHREEQC Update Species   │
-    │                            │                                                                  └─────────────────────────┘ 
+    │                            │                                                                  └─────────────────────────┘
     │                            │       ┌──────────────┐       ┌──────────────┐   ┌─────────┐   ┌───────────┐
     │                            ├──────►│PassiveTracers├───────►multi_dyncore ├──►│cv_assemb│──►│multi_pipes│
     │                            │       └──────────────┘       └┬─────────────┘   └─────────┘   └───────────┘
@@ -268,7 +269,7 @@ Code Diagram</h2>
 <h2><a class="anchor" id="state_var"></a>
 Type of fields and accessing them through state and packed_state</h2>
 <p>ICFERST uses two types of structures which are effectively linked lists pointing to either scalar_fields, vector_fields or tensor_fields. The first field is state, which is an array containing as many entries as phases. Within each entry one has all the fields defined in diamond. These fields are the ones that Fluidity "see" and therefore will perform its operations on it, such as computation of statistics of the field in the .stat file, output it into the .vtu file, perform mesh to mesh interpolation, etc. To access these fields one has to do as follows to extract a scalar field:</p>
-<p> 
+<p>
  <CODE>
  <PRE>
  sfield=>extract_scalar_field(state(iphase),"Density")
@@ -277,7 +278,7 @@ Type of fields and accessing them through state and packed_state</h2>
  </p>
 <p>it can be seen that we use the command extract_scalar_field (substitute scalar by vector or tensor depending on the field), then we use its name and we use a type(scalar_field), pointer to point to the memory provided by the function extract_scalar_field. #For more information about scalar_fields, etc. please see the Fluidity manual. As summary, these fields contain its value as sfieldval with as many entries as the ones on the mesh in which the field was initialised. Common fields are: Pressure, Velocity, PhaseVolumeFraction, Temperature and Concentration.</p>
 <p>The second field is packed_state. Packed_state contains the same fields as state (at least the prognostic ones) and the memory is actually shared. packed_state however contains the fields as (normally) tensor_fields so all the phases can be accessed naturally. For example for PhaseVolumeFraction we would do as follows:</p>
-<p> 
+<p>
  <CODE>
  <PRE>
  tfield=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
@@ -315,7 +316,7 @@ Well modelling as multiphase</h3>
 <p>Currently, ICFERST model wells by considering that two different domains co-exist and are connected through the nodes of the wells. To define this through diamond, one has to duplicate the number of phases to the ones required to model the system without wells and consider that they are equivalent, for example for two phase phase 1 and 3 are the same. Therefore, the EOS and different properties must be defined equivalently. Another important requirement is that now two Pressure needs to be solved for, in this case phase 1 and 3 will have a defined pressure and phase 2 and 4 will be aliased with 1 and 3 respectively. Once this is done the boundary conditions need to be set accordingly </p>
 <h2><a class="anchor" id="xgboost"></a>
 Coupling with XGBoost for machine learning acceleration</h2>
-<p>ICFERST can use XGBoost to accelerate the non-linear solver using a pre-trained model based on dimensionless parameters (Silva et al. 2022). In order to activate this option XGBoost needs to be installed and liked with ICFERST, this latter can be done with the following command:  
+<p>ICFERST can use XGBoost to accelerate the non-linear solver using a pre-trained model based on dimensionless parameters (Silva et al. 2022). In order to activate this option XGBoost needs to be installed and liked with ICFERST, this latter can be done with the following command:
  <CODE>
  <PRE>
  ./configure --with-xgboost && make mp
@@ -325,17 +326,17 @@ Coupling with XGBoost for machine learning acceleration</h2>
 <p>Since currently the model is very heavy, it takes 2GBs, the model is not stored online so currently it needs to be requested to ICFERST developers.</p>
 <h2><a class="anchor" id="diamond"></a>
 Diamond interface</h2>
-<p>Using the diamond GUI to configure test cases The input files are “EXAMPLE.mpml”. This files can be either manipulated using diamond a GUI, or a text file. To open the diamond GUI for ICFERST this is an example, found in the examples folder in IC-FERST-FOLDER/legacy_reservoir_prototype/tests/3D_BL  
+<p>Using the diamond GUI to configure test cases The input files are “EXAMPLE.mpml”. This files can be either manipulated using diamond a GUI, or a text file. To open the diamond GUI for ICFERST this is an example, found in the examples folder in IC-FERST-FOLDER/ICFERST/tests/3D_BL
  <CODE>
  <PRE>
- diamond -s IC-FERST-FOLDER/legacy_reservoir_prototype/schemas/multiphase.rng 3D_test.mpml
+ diamond -s IC-FERST-FOLDER/ICFERST/schemas/multiphase.rng 3D_test.mpml
  </PRE>
  </CODE>
   </p>
 <h3><a class="anchor" id="modifying_diamond"></a>
 Extending and modifying the diamond interface</h3>
 <p>Diamond requires a file predefining the entries to be created and that can therefore be modified by the user. This is done using a schema. The schema for ICFERST is stored in ICFERST/schema. Here the main file is multiphase.rnc which calls the other ones as required. Note that there are two files, the .rnc and the .rng. The .rnc file is to be modified by a developer and then compiled using the tool spud-preprocess. The .rnc file uses a hierarchical language with different operators to define whether reals, integers or booleans are required as inputs, as well as different options for the settings. It is recommended to expand the .rnc file based on pre-existing examples within the .rnc file.</p>
-<p>To add/remove or modify the schema the .rnc files need to be modified as required and afterwards recompiled using spud-preprocess:  
+<p>To add/remove or modify the schema the .rnc files need to be modified as required and afterwards recompiled using spud-preprocess:
  <CODE>
  <PRE>
  spud-preprocess multiphase.rnc
@@ -429,7 +430,7 @@ Porous media settings</h3>
 <p>Well from coordinates: alternatively if the well is a straight line, you can specify it just using coordinates. </p>
 <h3><a class="anchor" id="phreqqc"></a>
 PHREEQC coupling</h3>
-<p>IC-FERST can run reaction modelling where the reaction part is performed using PHREEQC. To do this first the user must install PHREEQCRM on the system and compile IC-FERST to support this with the following command:  
+<p>IC-FERST can run reaction modelling where the reaction part is performed using PHREEQC. To do this first the user must install PHREEQCRM on the system and compile IC-FERST to support this with the following command:
  <CODE>
  <PRE>
  ./configure --with-phreeqc && make mp
@@ -446,7 +447,7 @@ Gas dissolution</h3>
 <h3><a class="anchor" id="pythonscripting"></a>
 Input using python</h3>
 <p>Diamond enables the user to introduce Boundary Conditions and diagnostic fields, as well as other fields such as SelfPotential parameters using python code. It is important to note that using a python field is considerably slower than using a field based on region ids, this extra cost is not unbearable but it is neither negligible. Therefore, the use of python fields is only recommended only if strictly necessary.</p>
-<p>For boundary conditions and simple fields, the python code looks as follow to set up Velocity Boundary Conditions based on time:  
+<p>For boundary conditions and simple fields, the python code looks as follow to set up Velocity Boundary Conditions based on time:
  <CODE>
  <PRE>
   # Function code
@@ -456,12 +457,12 @@ Input using python</h3>
    f     = 20./60. #20 breath/min
    angle = np.radians(30.)
    v_ejecta = alpha*np.sin(2.*np.pi*f*t)
-   
+
    if v_ejecta < 0.:
      u = 0.0
    else:
-     u = v_ejecta  * np.cos(angle)  
-   
+     u = v_ejecta  * np.cos(angle)
+
    return u # Return value
  </PRE>
  </CODE>
@@ -477,18 +478,18 @@ Input using python</h3>
 <li>ele loc(ele number) Return the number of nodes in element ele_number.</li>
 <li>ele nodes(ele number) Return the indices of the nodes in element ele_number.</li>
 <li>ele val(ele number) Return the value of the field at the nodes in element ele_number. This is equivalent to calling field.node_val(field.ele_nodes(ele_number)).</li>
-<li>ele region id(ele number) Return the region id of element ele_number. This can be used to specify diagnostics which only apply over some portion of the domain. Examples of fields that can be extracted, considering a single phase state: CV based fields are scalar fields so if one is solving for Temperature it can be extracted as follows: state.scalar_fields[’Temperature’] For other fields, such as the coordinate of the field, they can be extracted as follow: state.vector_fields[’Coordinate’]. Finally, tensor fields as: state.tensor_fields[’Viscosity’]. An example of the code would be as follows:  
+<li>ele region id(ele number) Return the region id of element ele_number. This can be used to specify diagnostics which only apply over some portion of the domain. Examples of fields that can be extracted, considering a single phase state: CV based fields are scalar fields so if one is solving for Temperature it can be extracted as follows: state.scalar_fields[’Temperature’] For other fields, such as the coordinate of the field, they can be extracted as follow: state.vector_fields[’Coordinate’]. Finally, tensor fields as: state.tensor_fields[’Viscosity’]. An example of the code would be as follows:
  <CODE>
  <PRE>
  import numpy as np
- 
+
  C = state.scalar_fields['PassiveTracer_H2O']
  P = 1.01325e+5
- 
+
  T  = state.scalar_fields['Temperature']
  UV = 0.0
  Ref_temp = 20.615+273.15
- 
+
  for nodeID in range(field.node_count):
    #Convert to relative humidity
    RH=0.263*P*C.node_val(nodeID)*1./(np.exp((17.67*(T.node_val(nodeID)-273.15))/(T.node_val(nodeID)-29.65)))
@@ -533,7 +534,7 @@ Applications and tests</h2>
 <h3><a class="anchor" id="test_case"></a>
 Automatic Testing</h3>
 <p>All the test cases are run using Github actions every time a commit is done to master or one of the designated branches defined in the file .github/workflows/ubuntu.yml</p>
-<p>There are two type of test cases. Ones based on a python script comparing against an analytical solution, or the ones based on checking against data obtained from the .stat file (i.e. min/max of fields, integral etc). In all the cases the test is triggered through the xml file and can be tested locally by running the python script in ICFERST/tools testharness_ICFERST.py The most common flags are -n &lt;#CPUs&gt; and -t &lt;TAG_of_test_cases&gt;. An example of running locally the quick test cases would be:  
+<p>There are two type of test cases. Ones based on a python script comparing against an analytical solution, or the ones based on checking against data obtained from the .stat file (i.e. min/max of fields, integral etc). In all the cases the test is triggered through the xml file and can be tested locally by running the python script in ICFERST/tools testharness_ICFERST.py The most common flags are -n &lt;#CPUs&gt; and -t &lt;TAG_of_test_cases&gt;. An example of running locally the quick test cases would be:
  <CODE>
  <PRE>
  python3 testharness_ICFERST.py -n 2 -t tbc </PRE>
@@ -542,13 +543,13 @@ Automatic Testing</h3>
 <p>For every functionality there MUST be a test case checking that functionality, uniquely if possible. </p>
 <h2><a class="anchor" id="Parallel"></a>
 Using ICFERST in parallel</h2>
-<p>ICFERST uses openMPI to run in parallel. The mesh needs to be decomposed initially using the command  
+<p>ICFERST uses openMPI to run in parallel. The mesh needs to be decomposed initially using the command
  <CODE>
  <PRE>
  fldecomp -n #CPUs INPUT_MESH
  </PRE>
  </CODE>
-  where #CPUs is the number of CPUs and INPUT_MESH is a binary msh file using the gmshv2 format. This can be obtained using ICFERST from an option in diamond/geometry or from an exodusII file using the python converter from ICFERST/tools Once the mesh is decomposed you can run in parallel using mpirun:  
+  where #CPUs is the number of CPUs and INPUT_MESH is a binary msh file using the gmshv2 format. This can be obtained using ICFERST from an option in diamond/geometry or from an exodusII file using the python converter from ICFERST/tools Once the mesh is decomposed you can run in parallel using mpirun:
  <CODE>
  <PRE>
  mpirun -n #CPUs icferst INPUT_mpml
