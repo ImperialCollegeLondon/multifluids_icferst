@@ -73,13 +73,13 @@ contains
 
     !local variables for initilize the viscosity model
     real :: B_vis=2.
-    real :: phistar = 0.736
+    real :: phistar = 0.836
     real :: gamma = 3.679
     real :: sigma
     real :: epsilon = 0.5e-4
 
-    real :: ref_shear = 3e12
-    real :: BS_ratio = 0.25
+    real :: ref_shear = 9e12
+    real :: BS_ratio = 0.6
     integer :: i
     real, dimension(1000000) ::phi_range, F
     sigma=13.-gamma
@@ -112,14 +112,15 @@ contains
     do i=1, 1000000
       phi_range(i) = real(i - 1) / (1000000 - 1)
     end do
-    phi_range(1)=1e-8
-    phi_range(1000000)=1-1e-8
+    phi_range(1)=1e-6
+    phi_range(1000000)=1-1e-6
     F=(1-epsilon)*erf(3.141592653**0.5/2/(1-epsilon)*phi_range/phistar*(1+(phi_range/phistar)**gamma))
     phase_coef%mu(1,:)=(1+(phi_range/phistar)**sigma)/(1-F)**(B_vis*phistar)*ref_shear
     phase_coef%mu(2,:)=phase_coef%mu(1,:)/max(0.2,phi_range)/(1-phi_range)*BS_ratio;
     phase_coef%mu(1,:)=phase_coef%mu(1,1000000:1:-1)
     phase_coef%mu(2,:)=phase_coef%mu(2,1000000:1:-1)
-    print *,phase_coef%mu(1,333333),phase_coef%mu(2,333333)
+    print *,'mu:', phase_coef%mu(1,1),phase_coef%mu(1,1000000)
+    print *,'xi:', phase_coef%mu(2,1),phase_coef%mu(2,1000000)
   end subroutine initialize_magma_parameters
 
 
@@ -661,7 +662,7 @@ contains
           cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
           ! phi = max((1.0-saturation(1,1, cv_inod)),1e-5)
           phi =max(saturation(1,2, cv_inod),max_absorp_phi)
-          mu_l=lcomponent_field%val(cv_inod)*1e4+(1-lcomponent_field%val(cv_inod))*1.   !liquid viscosity scaled with composition from 1 to 1e5
+          mu_l=lcomponent_field%val(cv_inod)*3e4+(1-lcomponent_field%val(cv_inod))*1.   !liquid viscosity scaled with composition from 1 to 1e5
           do iphase =2, Mdims%nphase!Absorption is defined as a term mutiplying the velocity term, not the pressure
             Magma_absorp(1, 1, iphase, mat_nod) = phi/phi2_over_c(phi,mu_l)
             if (present(Magma_absorp_capped)) Magma_absorp_capped(1, 1, iphase, mat_nod) = max(phi,phi_min)/phi2_over_c(max(phi,phi_min),mu_l)

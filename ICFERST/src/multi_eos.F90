@@ -1949,13 +1949,13 @@ contains
                         x_inod = ndgln%x ( (ele - 1 ) * Mdims%cv_nloc + iloc )
                         if (is_magma) then
                           if (iphase==1) then !only the solid phase has viscosity terms
-                            ! mu_tmp( :, :, iloc )=mus_varied(saturation%val(cv_nod), mu_tmp( 1, 1, iloc )) 
-                            mu_tmp( :, :, iloc )= magma_phase_coef%mu(1,min(NINT(saturation%val(cv_nod)*1000000)+1,1000000))
+                            mu_tmp( :, :, iloc )=mus_varied(saturation%val(cv_nod), 15e11) !mu_tmp( 1, 1, iloc )
+                            ! mu_tmp( :, :, iloc )= max(min(magma_phase_coef%mu(1,min(NINT(saturation%val(cv_nod)*1000000)+1,1000000)),1e25),7e11)
                             momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )  !mu_tmp( :, :, iloc )
                             ! if (abs(p_position%val(2,x_inod)-0.)<25 .or. p_position%val(2,x_inod)>875) momentum_diffusion( :, :, iphase, mat_nod )=1e19
                             !Currently only magma uses momentum_diffusion2
-                            ! momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc )*1e-1, exp_zeta_function, saturation%val(cv_nod))! make it 1/10
-                            momentum_diffusion2%val(1, 1, iphase, mat_nod)=magma_phase_coef%mu(2,min(NINT(saturation%val(cv_nod)*1000000)+1,1000000))
+                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc )*5e-1, exp_zeta_function, saturation%val(cv_nod))*0.01! make it 1/10
+                            ! momentum_diffusion2%val(1, 1, iphase, mat_nod)=max(min(magma_phase_coef%mu(2,min(NINT(saturation%val(cv_nod)*1000000)+1,1000000)),1e25),7e11)*0
 !For testing rescaling of viscosity with the saturation
 momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion( :, :, iphase, mat_nod ) * max(saturation2%val(cv_nod), 1e-4)!Ensure that it does not dissapear
 momentum_diffusion2%val(:, :, iphase, mat_nod)  = momentum_diffusion2%val(:, :, iphase, mat_nod) * max(saturation2%val(cv_nod), 1e-4)!Ensure that it does not dissapear
@@ -2010,8 +2010,8 @@ momentum_diffusion2%val(:, :, iphase, mat_nod)  = momentum_diffusion2%val(:, :, 
         real :: mus1
 
         ! mus1=1e19
-        mus1=19.
-        cut=0.1
+        mus1=20.
+        cut=0.2
 
         phi2=min(phi,cut)
         
