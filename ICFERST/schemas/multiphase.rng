@@ -1433,6 +1433,37 @@ It requires a Concentration field on the first phase.</a:documentation>
             </element>
           </optional>
           <optional>
+            <element name="Metal_dissolution_precipitation">
+              <a:documentation>This parameter specifies how metal dissolves into the fluid using a partition coefficient (Jackson et al., 2017).
+
+The dissolution is considered instantaneous (flash). The units are kg/kg.
+
+It requires to have 4 scalar fields defined:
+- a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal
+- a static field for the solid metal concentration (e.g., "Metal_solid")
+- a scalar field that serves to define the region where you want dissolution or precipitation to be happening (e.g. "Metal_solid_source_location")
+- a Partition coefficient field (e.g., "Partition_coefficient").</a:documentation>
+              <group>
+                <element name="partition_coefficient_field">
+                  <a:documentation>Name of the partition coefficient field. /!\ The field will have to be defined using python, even if a constant is imposed.</a:documentation>
+                  <data type="string" datatypeLibrary=""/>
+                </element>
+                <element name="tracer_field_solid">
+                  <a:documentation>Name of the tracer that dissolves (solid)</a:documentation>
+                  <data type="string" datatypeLibrary=""/>
+                </element>
+                <element name="tracer_field_solid_source_location">
+                  <a:documentation>Name of the field defining the source location for the tracer that dissolves (solid)</a:documentation>
+                  <data type="string" datatypeLibrary=""/>
+                </element>
+                <element name="tracer_field_fluid">
+                  <a:documentation>Name of the tracer in which tracer_field_solid dissolves into (fluid)</a:documentation>
+                  <data type="string" datatypeLibrary=""/>
+                </element>
+              </group>
+            </element>
+          </optional>
+          <optional>
             <element name="FWL">
               <a:documentation>Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 

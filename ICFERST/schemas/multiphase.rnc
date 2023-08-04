@@ -1168,6 +1168,26 @@ start =
 	           	element tracer_name{string}
 	         	)}
 		        )}?,
+            ## This parameter specifies how metal dissolves into the fluid using a partition coefficient (Jackson et al., 2017).
+            ##
+            ## The dissolution is considered instantaneous (flash). The units are kg/kg.
+            ##
+            ## It requires to have 4 scalar fields defined:
+            ## - a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal
+            ## - a static field for the solid metal concentration (e.g., "Metal_solid")
+            ## - a scalar field that serves to define the region where you want dissolution or precipitation to be happening (e.g. "Metal_solid_source_location")
+            ## - a Partition coefficient field (e.g., "Partition_coefficient").
+             element Metal_dissolution_precipitation {
+              (
+              ## Name of the partition coefficient field. /!\ The field will have to be defined using python, even if a constant is imposed.
+              element partition_coefficient_field{string},
+              ## Name of the tracer that dissolves (solid)
+              element tracer_field_solid{string},
+              ## Name of the field defining the source location for the tracer that dissolves (solid)
+              element tracer_field_solid_source_location{string},
+              ## Name of the tracer in which tracer_field_solid dissolves into (fluid)
+              element tracer_field_fluid{string}
+              )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 	        ##
 	        ## This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.

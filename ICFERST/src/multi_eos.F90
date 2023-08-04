@@ -2706,4 +2706,66 @@ contains
 
     end subroutine flash_gas_dissolution
 
+
+    !>@brief: subroutine to dissolve or precipitate metals using a partition coefficient.
+    !> Dissolve/precipitate instantaneously the amount introduced in diamond in mol/m3 for CO2 a reference number is 38 mol/m3.
+    !> Requires to have 4 scalar fields defined: a liquid metal passive tracer field (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal, a solid metal field (e.g., "Metal_solid"), a scalar field that serves to define the region where you want dissolution or precipitation to be happening (e.g. "Metal_solid_source_location"), and a Partition coefficient field (e.g., "Partition_coefficient").
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
+    subroutine metal_dissolution_precipitation(state, packed_state, Mdims, ndgln)
+      implicit none
+      type(state_type), dimension(:), intent (inout) :: state
+      type(state_type), intent (inout) :: packed_state
+      type(multi_dimensions), intent (in) :: Mdims
+      type(multi_ndgln), intent (in) :: ndgln
+      !Local variables
+      real :: partition_coefficient, I
+      type(tensor_field), pointer :: tracer_field_fluid
+      type (scalar_field), pointer :: tracer_field_solid, sfield, partition_coef_field
+      type(vector_field), pointer :: MeanPoreCV
+      integer :: cv_nod, stat
+      character( len = option_path_len ) :: option_name
+      character( len = option_path_len ), save :: solid_tracer_name, fluid_tracer_name, solid_source_location_tracer_name, partition_coef_field_name
+      logical :: has_imposed_min_limit, has_imposed_max_limit, has_auto_min_limit, has_auto_max_limit
+      real :: min_limit, max_limit
+      !Retrieve values from diamond
+      call get_option("/porous_media/Metal_dissolution_precipitation/partition_coefficient_field", partition_coef_field_name)
+      call get_option("/porous_media/Metal_dissolution_precipitation/tracer_field_solid", solid_tracer_name)
+      call get_option("/porous_media/Metal_dissolution_precipitation/tracer_field_solid_source_location", solid_source_location_tracer_name)
+      call get_option("/porous_media/Metal_dissolution_precipitation/tracer_field_fluid", fluid_tracer_name)
+
+      tracer_field_fluid=>extract_tensor_field(packed_state,"Packed"//trim(fluid_tracer_name), stat)
+
+      if (stat /= 0) then
+        FLAbort("To compute metal dissolution, a PassiveTracer field is required.")
+      end if
+
+      tracer_field_solid => extract_scalar_field(state(1), solid_tracer_name, stat)
+
+      sfield => extract_scalar_field( state(1), trim(solid_source_location_tracer_name)//"Source", stat )
+      partition_coef_field => extract_scalar_field(state(1), partition_coef_field_name, stat)
+      MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+
+      do cv_nod=1,Mdims%cv_nonods
+        ! Calculate total metal concentration
+        if (sfield%val(cv_nod)>0.0) then
+          I = MeanPoreCV%val(1,cv_nod) * tracer_field_fluid%val(1,1,cv_nod) + ( 1 - MeanPoreCV%val(1,cv_nod) ) * tracer_field_solid%val(cv_nod)
+          ! Recompute the fluid metal concentration using the partition coefficient (Jackson et al., 2017 - Eq. (20))
+          tracer_field_fluid%val(1,1,cv_nod) = I / ( partition_coef_field%val(cv_nod) + MeanPoreCV%val(1,cv_nod) * (1-partition_coef_field%val(cv_nod)) )
+          ! Recompute the solid metal concentration using the partition coefficient (Jackson et al., 2017 - Eq. (20))
+          tracer_field_solid%val(cv_nod) = partition_coef_field%val(cv_nod) * tracer_field_fluid%val(1,1,cv_nod)
+        end if
+      end do
+
+      has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/min_limit")
+      has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/max_limit")
+      if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/min_limit", min_limit)
+      if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/max_limit", max_limit)
+
+      tracer_field_fluid%val = max(min(tracer_field_fluid%val,max_limit), min_limit)
+
+    end subroutine metal_dissolution_precipitation
+
 end module multiphase_EOS
