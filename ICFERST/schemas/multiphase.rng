@@ -1441,12 +1441,12 @@ The dissolution/precipitation is considered instantaneous (flash). The units are
 It requires to have 3 scalar fields defined:
 - a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer")
 - a static field for the solid metal concentration (e.g., "Metal_solid" - name has to start with anything but "PassiveTracer"). This field needs to be assigned the option "prescribed" and not "prognostic" in Diamond.
-- a Partition coefficient field (e.g., "Partition_coefficient"). If partition_coef < 1: dissolution. If partition_coef > 1: precipitation.
+- a Partition coefficient field (e.g., "Partition_coefficient"). If partition_coef is lower than 1: dissolution. If partition_coef is greater than 1: precipitation.
 
 It requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.</a:documentation>
               <group>
                 <element name="partition_coefficient_field">
-                  <a:documentation>Name of the partition coefficient field. If partition_coef < 1: dissolution. If partition_coef > 1: precipitation.</a:documentation>
+                  <a:documentation>Name of the partition coefficient field. If partition_coef is lower than 1: dissolution. If partition_coef is greater than 1: precipitation.</a:documentation>
                   <data type="string" datatypeLibrary=""/>
                 </element>
                 <element name="tracer_field_solid">
