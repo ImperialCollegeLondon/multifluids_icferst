@@ -105,7 +105,7 @@ start =
                 )
                }
             ),
-            ## Select this option to only update the stat file whenever a vtu file is created. 
+            ## Select this option to only update the stat file whenever a vtu file is created.
             ## Otherwise, the stat file is updated every timelevel.
             ## This option for certain cases can decrease the cost up to 30%
             element Sync_stat_file_with_vtu {
@@ -890,7 +890,7 @@ start =
                 ## Specify where and how much the well/pipes are opened
                 ## It goes from 0 to 1. If completely opened, set it to 1.
                 ##
-                ## If gamma is specified to 666, the simulation will stop. This is to be used in combination with the optimiser Halite. 
+                ## If gamma is specified to 666, the simulation will stop. This is to be used in combination with the optimiser Halite.
                 element scalar_field {
                    attribute name { "Gamma" },
                    (
@@ -1168,9 +1168,9 @@ start =
 	           	element tracer_name{string}
 	         	)}
 		        )}?,
-            ## This parameter specifies how metal dissolves into the fluid using a partition coefficient (Jackson et al., 2017).
+            ## This parameter specifies how metal dissolves/precipitates using a partition coefficient (Jackson et al., 2017).
             ##
-            ## The dissolution is considered instantaneous (flash). The units are kg/kg.
+            ## The dissolution/precipitation is considered instantaneous (flash). The units are kg/kg for concentrations.
             ##
             ## It requires to have 4 scalar fields defined:
             ## - a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer"), PassiveTracer_Metal

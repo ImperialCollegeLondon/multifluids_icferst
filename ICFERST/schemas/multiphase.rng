@@ -114,7 +114,7 @@ A value of 0 indicates a dump at every timestep.</a:documentation>
         </choice>
         <optional>
           <element name="Sync_stat_file_with_vtu">
-            <a:documentation>Select this option to only update the stat file whenever a vtu file is created. 
+            <a:documentation>Select this option to only update the stat file whenever a vtu file is created.
 Otherwise, the stat file is updated every timelevel.
 This option for certain cases can decrease the cost up to 30%</a:documentation>
             <ref name="comment"/>
@@ -1434,9 +1434,9 @@ It requires a Concentration field on the first phase.</a:documentation>
           </optional>
           <optional>
             <element name="Metal_dissolution_precipitation">
-              <a:documentation>This parameter specifies how metal dissolves into the fluid using a partition coefficient (Jackson et al., 2017).
+              <a:documentation>This parameter specifies how metal dissolves/precipitates using a partition coefficient (Jackson et al., 2017).
 
-The dissolution is considered instantaneous (flash). The units are kg/kg.
+The dissolution/precipitation is considered instantaneous (flash). The units are kg/kg for concentrations.
 
 It requires to have 4 scalar fields defined:
 - a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer")
@@ -3704,12 +3704,12 @@ This imposes the tracer to be between bounds.</a:documentation>
         - - Second is a list of fields that are primarily prescribed,
            but can be aliased. An example is wind velocity.
         - - The list is in order of most frequently used.
-        
+
                 ## Prescribed scalar fields below this
                 element ___Prescribed_fields_below___ {
                    empty
                 }|
-        
+
         Insert new prescribed scalar fields here using the template:
                element scalar_field {
                    attribute rank { "0" },
@@ -3724,11 +3724,11 @@ This imposes the tracer to be between bounds.</a:documentation>
                       }
                    )
                }
-        
+
         - - Last is a list of fields that are primarily diagnostic,
            but can be aliased. An example is Tidal Range.
         - - The list is in order of most frequently used.
-        
+
       -->
       <element name="___Diagnostic_Fields_Below___">
         <a:documentation>Diagnostic scalar fields below this</a:documentation>
@@ -3947,11 +3947,11 @@ Adapting to this field is not recommended</a:documentation>
         </choice>
       </element>
       <!--
-        
+
         - - List of fields that are primarily prognostic,
            but can be aliased.
         - - The list is in order of most frequently used.
-        
+
                 ## Prescribed vector fields below this
                 element ___Prognostic_fields_below___ {
                    empty
@@ -3961,14 +3961,14 @@ Adapting to this field is not recommended</a:documentation>
         - - List of fields that are primarily prescribed,
            but can be aliased.
         - - The list is in order of most frequently used.
-        
+
                 ## Prescribed vector fields below this
                 element ___Prescribed_fields_below___ {
                    empty
                 }|
       -->
       <!--
-        
+
         Insert new prescribed vector fields here using the template:
                element vector_field {
                    attribute rank { "1" },
@@ -3983,11 +3983,11 @@ Adapting to this field is not recommended</a:documentation>
                       }
                    )
                }
-        
+
         - - Last is a list of fields that are primarily diagnostic,
            but can be aliased. An example is Tidal Range.
         - - The list is in order of most frequently used.
-        
+
       -->
       <element name="___Diagnostic_Fields_Below___">
         <a:documentation>Diagnostic vector fields below this</a:documentation>
@@ -4185,18 +4185,18 @@ to impose an absorption term for the momentum equation using a diagnostic tensor
         </choice>
       </element>
       <!--
-        
+
         - - Second is a list of tensor fields that are primarily prescribed,
            but can be aliased.
         - - The list is in order of most frequently used.
-        
+
       -->
       <element name="___Prescribed_fields_below___">
         <a:documentation>Prescribed scalar fields below this</a:documentation>
         <empty/>
       </element>
       <!--
-        
+
         Insert new prescribed tensor fields here using the template:
                element tensor_field {
                    attribute rank { "2" },
@@ -4211,11 +4211,11 @@ to impose an absorption term for the momentum equation using a diagnostic tensor
                       }
                    )
                }|
-        
+
         - - Last is a list of fields that are primarily diagnostic,
            but can be aliased.
         - - The list is in order of most frequently used.
-        
+
       -->
       <element name="___Diagnostic_Fields_Below___">
         <a:documentation>Diagnostic tensor fields below this</a:documentation>
