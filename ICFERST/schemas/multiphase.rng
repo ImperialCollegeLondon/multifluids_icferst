@@ -1439,10 +1439,11 @@ It requires a Concentration field on the first phase.</a:documentation>
 The dissolution is considered instantaneous (flash). The units are kg/kg.
 
 It requires to have 4 scalar fields defined:
-- a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal
-- a static field for the solid metal concentration (e.g., "Metal_solid")
-- a scalar field that serves to define the region where you want dissolution or precipitation to be happening (e.g. "Metal_solid_source_location")
-- a Partition coefficient field (e.g., "Partition_coefficient").</a:documentation>
+- a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer")
+- a static field for the solid metal concentration (e.g., "Metal_solid" - name has to start with anything but "PassiveTracer"). This field needs to be assigned the option "prescribed" and not "prognostic" in Diamond.
+- a Partition coefficient field (e.g., "Partition_coefficient").
+
+It requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.</a:documentation>
               <group>
                 <element name="partition_coefficient_field">
                   <a:documentation>Name of the partition coefficient field. /!\ The field will have to be defined using python, even if a constant is imposed.</a:documentation>
@@ -1450,10 +1451,6 @@ It requires to have 4 scalar fields defined:
                 </element>
                 <element name="tracer_field_solid">
                   <a:documentation>Name of the tracer that dissolves (solid)</a:documentation>
-                  <data type="string" datatypeLibrary=""/>
-                </element>
-                <element name="tracer_field_solid_source_location">
-                  <a:documentation>Name of the field defining the source location for the tracer that dissolves (solid)</a:documentation>
                   <data type="string" datatypeLibrary=""/>
                 </element>
                 <element name="tracer_field_fluid">
