@@ -1172,7 +1172,7 @@ start =
             ##
             ## The dissolution/precipitation is considered instantaneous (flash). The units are kg/kg for concentrations.
             ##
-            ## It requires to have 4 scalar fields defined:
+            ## It requires to have 3 scalar fields defined:
             ## - a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer"), PassiveTracer_Metal
             ## - a static field for the solid metal concentration (e.g., "Metal_solid" - name has to start with anything but "PassiveTracer"). This field needs to be assigned the option "prescribed" and not "prognostic" in Diamond.
             ## - a Partition coefficient field (e.g., "Partition_coefficient").
@@ -1180,11 +1180,11 @@ start =
             ## It requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.
              element Metal_dissolution_precipitation {
               (
-              ## Name of the partition coefficient field. /!\ The field will have to be defined using python, even if a constant is imposed.
+              ## Name of the partition coefficient field. If partition_coef < 1: dissolution. If partition_coef > 1: precipitation.
               element partition_coefficient_field{string},
-              ## Name of the tracer that dissolves (solid).  /!\ Name has to start with anything but "PassiveTracer". We suggest "Metal_solid".
+              ## Name of the solid metal tracer (dissolves into tracer_field_fluid). /!\ Name has to start with anything but "PassiveTracer". We suggest "Metal_solid".
               element tracer_field_solid{string},
-              ## Name of the tracer in which tracer_field_solid dissolves into (fluid). /!\ Name has to start with "PassiveTracer"
+              ## Name of the fluid metal tracer (precipitates into tracer_field_solid). /!\ Name has to start with "PassiveTracer".
               element tracer_field_fluid{string}
               )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
