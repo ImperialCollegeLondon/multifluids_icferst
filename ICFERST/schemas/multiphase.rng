@@ -1442,9 +1442,9 @@ It requires to have 3 scalar fields defined:
 
 - a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer")
 
-- a static field for the solid metal concentration (e.g., "Metal_solid" - name has to start with anything but "PassiveTracer"). This field needs to be assigned the option "prescribed" and not "prognostic" in Diamond.
+- a static field for the solid metal concentration (e.g., "Metal_solid" - name has to start with anything but "PassiveTracer").
 
-- a Partition coefficient field (e.g., "Partition_coefficient"). If partition_coef is lower than 1: dissolution. If partition_coef is greater than 1: precipitation.
+- a Partition coefficient field (e.g., "Partition_coefficient"). If partition_coef is lower than 1: dissolution. If partition_coef is greater than 1: precipitation. This field needs to be assigned the option "prescribed" and not "prognostic" in Diamond.
 
 It requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.</a:documentation>
               <group>
