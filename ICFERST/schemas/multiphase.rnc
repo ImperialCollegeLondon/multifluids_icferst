@@ -1183,7 +1183,7 @@ start =
             ## It requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.
              element Metal_dissolution_precipitation {
               (
-              ## Name of the partition coefficient field. If partition_coef is lower than 1: dissolution. If partition_coef is greater than 1: precipitation.
+              ## Name of the partition coefficient field. If partition_coef is lower than 1: dissolution. If partition_coef is greater than 1: precipitation. /!\ The field will have to be defined using python, even if a constant is imposed.
               element partition_coefficient_field{string},
               ## Name of the solid metal tracer (dissolves into tracer_field_fluid). /!\ Name has to start with anything but "PassiveTracer". We suggest "Metal_solid".
               element tracer_field_solid{string},

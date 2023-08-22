@@ -1449,7 +1449,7 @@ It requires to have 3 scalar fields defined:
 It requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.</a:documentation>
               <group>
                 <element name="partition_coefficient_field">
-                  <a:documentation>Name of the partition coefficient field. If partition_coef is lower than 1: dissolution. If partition_coef is greater than 1: precipitation.</a:documentation>
+                  <a:documentation>Name of the partition coefficient field. If partition_coef is lower than 1: dissolution. If partition_coef is greater than 1: precipitation. /!\ The field will have to be defined using python, even if a constant is imposed.</a:documentation>
                   <data type="string" datatypeLibrary=""/>
                 </element>
                 <element name="tracer_field_solid">
