@@ -1438,20 +1438,58 @@ It requires a Concentration field on the first phase.</a:documentation>
 
 The dissolution/precipitation is considered instantaneous (flash). The units are kg/kg for concentrations.
 
-It requires to have 3 scalar fields defined:
+It requires to have the following scalar fields defined:
 
 - a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer")
 
 - a static field for the solid metal concentration (e.g., "Metal_solid" - name has to start with anything but "PassiveTracer").
 
-- a Partition coefficient field (e.g., "Partition_coefficient"). If partition_coef is lower than 1: dissolution. If partition_coef is greater than 1: precipitation. This field needs to be assigned the option "prescribed" and not "prognostic" in Diamond.
-
-It requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.</a:documentation>
+- a Partition coefficient field (low partition_coef: tendency to dissolution / high partition_coef: tendency to precipitation). Modelling choice here: the partition coefficient is a quadratic function of temperature (T) and salt (c), i.e.,
+&lt;b&gt;partition_coef = K_const + K_c * c + K_T * T + K_c2 * c^2 + + K_T2 * T^2 + K_cT * c*T &lt;/b&gt;.
+Therefore, K_const, K_c, K_T, K_c2, K_T2 and K_cT are fields that need to be defined in Diamond  (/!\ they need to be assigned the option "prescribed" and not "prognostic" in Diamond).
+If a salt tracer field is involved, its name needs to be defined in "Tracer_Salt".
+Also, it is required to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.</a:documentation>
               <group>
-                <element name="partition_coefficient_field">
-                  <a:documentation>Name of the partition coefficient field. If partition_coef is lower than 1: dissolution. If partition_coef is greater than 1: precipitation. /!\ The field will have to be defined using python, even if a constant is imposed.</a:documentation>
+                <element name="K_const_field">
+                  <a:documentation>Name of the K constant coefficient field.</a:documentation>
                   <data type="string" datatypeLibrary=""/>
                 </element>
+                <optional>
+                  <element name="K_c_field">
+                    <a:documentation>Name of the K coefficient field for c.</a:documentation>
+                    <data type="string" datatypeLibrary=""/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="K_T_field">
+                    <a:documentation>Name of the K coefficient field for T.</a:documentation>
+                    <data type="string" datatypeLibrary=""/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="K_c2_field">
+                    <a:documentation>Name of the K coefficient field for c^2.</a:documentation>
+                    <data type="string" datatypeLibrary=""/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="K_T2_field">
+                    <a:documentation>Name of the K coefficient field for T^2.</a:documentation>
+                    <data type="string" datatypeLibrary=""/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="K_cT_field">
+                    <a:documentation>Name of the K coefficient field for c*T.</a:documentation>
+                    <data type="string" datatypeLibrary=""/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="Tracer_Salt">
+                    <a:documentation>Name of the salt tracer. Name is either "Concentration" (if active tracer), or else it has to start with "PassiveTracer" (if passive tracer).</a:documentation>
+                    <data type="string" datatypeLibrary=""/>
+                  </element>
+                </optional>
                 <element name="tracer_field_solid">
                   <a:documentation>Name of the solid metal tracer (dissolves into tracer_field_fluid). /!\ Name has to start with anything but "PassiveTracer". We suggest "Metal_solid".</a:documentation>
                   <data type="string" datatypeLibrary=""/>

@@ -1172,19 +1172,35 @@ start =
             ##
             ## The dissolution/precipitation is considered instantaneous (flash). The units are kg/kg for concentrations.
             ##
-            ## It requires to have 3 scalar fields defined:
+            ## It requires to have the following scalar fields defined:
             ##
             ## - a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer"), PassiveTracer_Metal
             ##
             ## - a static field for the solid metal concentration (e.g., "Metal_solid" - name has to start with anything but "PassiveTracer").
             ##
-            ## - a Partition coefficient field (e.g., "Partition_coefficient"). If partition_coef is lower than 1: dissolution. If partition_coef is greater than 1: precipitation. This field needs to be assigned the option "prescribed" and not "prognostic" in Diamond.
+            ## a Partition coefficient field (low partition_coef: tendency to dissolution / high partition_coef: tendency to precipitation). Modelling choice here: the partition coefficient is a quadratic function of temperature (T) and salt (c), i.e.,
+            ## <b> partition_coef = K_const + K_c * c + K_T * T + K_c2 * c^2 + + K_T2 * T^2 + K_cT * c*T </b>.
+            ## Therefore, K_const, K_c, K_T, K_c2, K_T2 and K_cT are fields that need to be defined in Diamond  (/!\ they need to be assigned the option "prescribed" and not "prognostic" in Diamond).
             ##
-            ## It requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.
+            ## If a salt tracer field is involved, its name needs to be defined in "Tracer_Salt".
+            ##
+            ## Also, it is required to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.
              element Metal_dissolution_precipitation {
               (
-              ## Name of the partition coefficient field. If partition_coef is lower than 1: dissolution. If partition_coef is greater than 1: precipitation. /!\ The field will have to be defined using python, even if a constant is imposed.
-              element partition_coefficient_field{string},
+              ## Name of the K constant coefficient field.
+              element K_const_field{string},
+              ## Name of the K coefficient field for c.
+              element K_c_field{string}?,
+              ## Name of the K coefficient field for T.
+              element K_T_field{string}?,
+              ## Name of the K coefficient field for c^2.
+              element K_c2_field{string}?,
+              ## Name of the K coefficient field for T^2.
+              element K_T2_field{string}?,
+              ## Name of the K coefficient field for c*T.
+              element K_cT_field{string}?,
+              ## Name of the salt tracer. Name is either "Concentration" (if active tracer), or else it has to start with "PassiveTracer" (if passive tracer).
+              element Tracer_Salt{string}?,
               ## Name of the solid metal tracer (dissolves into tracer_field_fluid). /!\ Name has to start with anything but "PassiveTracer". We suggest "Metal_solid".
               element tracer_field_solid{string},
               ## Name of the fluid metal tracer (precipitates into tracer_field_solid). /!\ Name has to start with "PassiveTracer".
