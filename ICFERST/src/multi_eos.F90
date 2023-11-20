@@ -2704,7 +2704,7 @@ contains
 
     !>@brief: subroutine to dissolve or precipitate metals using a partition coefficient.
     !> Dissolve/precipitate instantaneously the amount introduced in diamond in kg/kg.
-    !> Requires to have the following scalar fields defined: a liquid metal passive tracer field (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal, a solid metal field (e.g., "Metal_solid") and a Partition coefficient field, defined as a quadratic function of salt and temperature.
+    !> Requires to have the following scalar fields defined: a liquid metal passive tracer field (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal, a solid metal field (e.g., "Metal_solid") the temperature/salt coefficient fields for the partition coefficient, defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties.
     !> Requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.
     !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
     !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
@@ -2717,41 +2717,45 @@ contains
       type(multi_dimensions), intent (in) :: Mdims
       type(multi_ndgln), intent (in) :: ndgln
       !Local variables
-      real :: partition_coefficient, I, rho_c_solid, rho_c_fluid
+      real :: partition_coefficient, log_partition_coefficient, I, rho_c_solid, rho_c_fluid
       type(tensor_field), pointer :: tracer_field_fluid, density, temperature, Tracer_Salt
-      type (scalar_field), pointer :: tracer_field_solid, density_porous, K_const_field, K_c_field, K_T_field, K_c2_field, K_T2_field, K_cT_field
+      type (scalar_field), pointer :: tracer_field_solid, density_porous, K_const_field, K_c_field, K_T_field, K_c2_field, K_T2_field, K_cT_field, K_A_field
       type(vector_field), pointer :: MeanPoreCV
-      integer :: cv_nod, stat, ele, cv_iloc, p_den
+      integer :: cv_nod, stat, ele, cv_iloc, p_den, K_const_ele, K_c_ele, K_T_ele, K_c2_ele, K_T2_ele, K_cT_ele, K_A_ele
       character( len = option_path_len ) :: option_name
-      character( len = option_path_len ), save :: solid_tracer_name, fluid_tracer_name, K_const_field_name, K_c_field_name, K_T_field_name, K_c2_field_name, K_T2_field_name, K_cT_field_name, Tracer_Salt_name
-      logical :: has_imposed_min_limit, has_imposed_max_limit, has_auto_min_limit, has_auto_max_limit
+      character( len = option_path_len ), save :: solid_tracer_name, fluid_tracer_name, Tracer_Salt_name
+      logical :: has_imposed_min_limit, has_imposed_max_limit, has_auto_min_limit, has_auto_max_limit, has_Tracer_Salt, has_Temperature
       real :: min_limit, max_limit
+
+
+      MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+      density => extract_tensor_field(packed_state,"PackedDensity")
+      density_porous => extract_scalar_field( state(1), "porous_density" )
 
       !Retrieve values from diamond
 
-      if (have_option("/porous_media/Metal_dissolution_precipitation/K_T_field")) then
-        call get_option("/porous_media/Metal_dissolution_precipitation/K_T_field", K_T_field_name)
-      end if
-      if (have_option("/porous_media/Metal_dissolution_precipitation/K_c_field")) then
-        call get_option("/porous_media/Metal_dissolution_precipitation/K_c_field", K_c_field_name)
-      end if
-      if (have_option("/porous_media/Metal_dissolution_precipitation/K_c2_field")) then
-        call get_option("/porous_media/Metal_dissolution_precipitation/K_c2_field", K_c2_field_name)
-      end if
-      if (have_option("/porous_media/Metal_dissolution_precipitation/K_T2_field")) then
-        call get_option("/porous_media/Metal_dissolution_precipitation/K_T2_field", K_T2_field_name)
-      end if
-      if (have_option("/porous_media/Metal_dissolution_precipitation/K_cT_field")) then
-        call get_option("/porous_media/Metal_dissolution_precipitation/K_cT_field", K_cT_field_name)
-      end if
-      if (have_option("/porous_media/Metal_dissolution_precipitation/Tracer_Salt")) then
-        call get_option("/porous_media/Metal_dissolution_precipitation/Tracer_Salt", Tracer_Salt_name)
+      K_A_field => extract_scalar_field(state(1), "K_A")
+      K_c_field => extract_scalar_field(state(1), "K_c")
+      K_T_field => extract_scalar_field(state(1), "K_T")
+      K_c2_field => extract_scalar_field(state(1), "K_c2")
+      K_T2_field => extract_scalar_field(state(1), "K_T2")
+      K_cT_field => extract_scalar_field(state(1), "K_cT")
+      K_const_field => extract_scalar_field(state(1), "K_const")
+
+      has_Temperature = have_option("/material_phase[0]/scalar_field::Temperature/")
+      has_Tracer_Salt = have_option("/porous_media/Metal_dissolution_precipitation/Tracer_Salt")
+
+      if (has_Temperature) then
+        temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
       end if
 
-      call get_option("/porous_media/Metal_dissolution_precipitation/K_const_field", K_const_field_name)
+      if (has_Tracer_Salt) then
+        call get_option("/porous_media/Metal_dissolution_precipitation/Tracer_Salt", Tracer_Salt_name)
+        Tracer_Salt => extract_tensor_field( packed_state,"Packed"//trim(Tracer_Salt_name), stat)
+      end if
+
       call get_option("/porous_media/Metal_dissolution_precipitation/tracer_field_solid", solid_tracer_name)
       call get_option("/porous_media/Metal_dissolution_precipitation/tracer_field_fluid", fluid_tracer_name)
-
 
       tracer_field_fluid=>extract_tensor_field(packed_state,"Packed"//trim(fluid_tracer_name), stat)
 
@@ -2765,45 +2769,6 @@ contains
         FLAbort("To compute metal dissolution/precipitation, a Metal_solid field is required.")
       end if
 
-      ! partition_coef_field => extract_scalar_field(state(1), partition_coef_field_name, stat)
-
-      if (stat /= 0) then
-        FLAbort("To compute metal dissolution/precipitation, a Partition_coefficient field is required.")
-      end if
-
-      if (have_option("/porous_media/Metal_dissolution_precipitation/K_T_field")) then
-        K_T_field => extract_scalar_field(state(1), K_T_field_name, stat)
-      end if
-
-      if (have_option("/porous_media/Metal_dissolution_precipitation/K_c_field")) then
-        K_c_field => extract_scalar_field(state(1), K_c_field_name, stat)
-      end if
-
-      if (have_option("/porous_media/Metal_dissolution_precipitation/K_c2_field")) then
-        K_c2_field => extract_scalar_field(state(1), K_c2_field_name, stat)
-      end if
-
-      if (have_option("/porous_media/Metal_dissolution_precipitation/K_T2_field")) then
-        K_T2_field => extract_scalar_field(state(1), K_T2_field_name, stat)
-      end if
-
-      if (have_option("/porous_media/Metal_dissolution_precipitation/K_cT_field")) then
-        K_cT_field => extract_scalar_field(state(1), K_cT_field_name, stat)
-      end if
-
-      K_const_field => extract_scalar_field(state(1), K_const_field_name, stat)
-
-      MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-      density => extract_tensor_field(packed_state,"PackedDensity")
-      density_porous => extract_scalar_field( state(1), "porous_density" )
-
-      if (have_option("/porous_media/Metal_dissolution_precipitation/K_T_field") .or. have_option("/porous_media/Metal_dissolution_precipitation/K_T2_field") .or. have_option("/porous_media/Metal_dissolution_precipitation/K_cT_field")) then
-        temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
-      end if
-
-      if (have_option("/porous_media/Metal_dissolution_precipitation/Tracer_Salt")) then
-        Tracer_Salt => extract_tensor_field( packed_state,"Packed"//trim(Tracer_Salt_name), stat)
-      end if
 
       ! Make sure the solid and fluid metal concentrations stay between bounds.
 
@@ -2821,35 +2786,40 @@ contains
 
       tracer_field_solid%val = max(min(tracer_field_solid%val,max_limit), min_limit)
 
+
+      ! Calculate the partition coefficient
+
       do ele = 1, Mdims%totele
         p_den = min(size(density_porous%val), ele)
+        K_A_ele = min(size(K_A_field%val), ele)
+        K_c_ele = min(size(K_c_field%val), ele)
+        K_T_ele = min(size(K_T_field%val), ele)
+        K_c2_ele = min(size(K_c2_field%val), ele)
+        K_T2_ele = min(size(K_T2_field%val), ele)
+        K_cT_ele = min(size(K_cT_field%val), ele)
+        K_const_ele = min(size(K_const_field%val), ele)
+
         do cv_iloc = 1, Mdims%cv_nloc
           cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
           ! Calculate the partition coefficient
-          partition_coefficient = K_const_field%val(cv_nod)
+          log_partition_coefficient = K_const_field%val(K_const_ele)
 
-          if (have_option("/porous_media/Metal_dissolution_precipitation/K_c_field")) then
-            partition_coefficient = partition_coefficient + K_c_field%val(cv_nod)*Tracer_Salt%val(1,1,cv_nod)
+          if (has_Tracer_Salt) then
+            log_partition_coefficient = log_partition_coefficient + K_c_field%val(K_c_ele)*Tracer_Salt%val(1,1,cv_nod) + K_c2_field%val(K_c2_ele)*(Tracer_Salt%val(1,1,cv_nod))**2
           end if
 
-          if (have_option("/porous_media/Metal_dissolution_precipitation/K_T_field")) then
-            partition_coefficient = partition_coefficient + K_T_field%val(cv_nod)*temperature%val(1,1,cv_nod)
+          if (has_Temperature) then
+            log_partition_coefficient = log_partition_coefficient + K_T_field%val(K_T_ele)*temperature%val(1,1,cv_nod) + K_T2_field%val(K_T2_ele)*(temperature%val(1,1,cv_nod))**2
           end if
 
-          if (have_option("/porous_media/Metal_dissolution_precipitation/K_c2_field")) then
-            partition_coefficient = partition_coefficient + K_c2_field%val(cv_nod)*(Tracer_Salt%val(1,1,cv_nod))**2
+          if (has_Temperature .and. has_Tracer_Salt) then
+            log_partition_coefficient = log_partition_coefficient + K_cT_field%val(K_cT_ele)*Tracer_Salt%val(1,1,cv_nod)*temperature%val(1,1,cv_nod)
           end if
 
-          if (have_option("/porous_media/Metal_dissolution_precipitation/K_T2_field")) then
-            partition_coefficient = partition_coefficient + K_T2_field%val(cv_nod)*(temperature%val(1,1,cv_nod))**2
-          end if
+          partition_coefficient = K_A_field%val(K_A_ele)*exp(log_partition_coefficient)
 
-          if (have_option("/porous_media/Metal_dissolution_precipitation/K_cT_field")) then
-            partition_coefficient = partition_coefficient + K_cT_field%val(cv_nod)*Tracer_Salt%val(1,1,cv_nod)*temperature%val(1,1,cv_nod)
-          end if
-
-          ! Calculate total metal mass
-          if (partition_coefficient>0.0) then
+          if ( partition_coefficient > 0.0) then
+            ! Calculate total metal mass
             I = MeanPoreCV%val(1,cv_nod) * density%val(1,1,cv_nod) * tracer_field_fluid%val(1,1,cv_nod) + ( 1 - MeanPoreCV%val(1,cv_nod) ) * density_porous%val(p_den ) * tracer_field_solid%val(cv_nod)
             ! Recompute the fluid metal mass using the partition coefficient (Jackson et al., 2017 - Eq. (20))
             rho_c_fluid = I / ( partition_coefficient * (density_porous%val(p_den)/density%val(1,1,cv_nod)) + MeanPoreCV%val(1,cv_nod) * (1-partition_coefficient*(density_porous%val(p_den)/density%val(1,1,cv_nod))) )

@@ -1440,50 +1440,138 @@ The dissolution/precipitation is considered instantaneous (flash). The units are
 
 It requires to have the following scalar fields defined:
 
-- a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer")
+- a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer").
 
 - a static field for the solid metal concentration (e.g., "Metal_solid" - name has to start with anything but "PassiveTracer").
 
-- a Partition coefficient field (low partition_coef: tendency to dissolution / high partition_coef: tendency to precipitation). Modelling choice here: the partition coefficient is a quadratic function of temperature (T) and salt (c), i.e.,
-&lt;b&gt;partition_coef = K_const + K_c * c + K_T * T + K_c2 * c^2 + + K_T2 * T^2 + K_cT * c*T &lt;/b&gt;.
-Therefore, K_const, K_c, K_T, K_c2, K_T2 and K_cT are fields that need to be defined in Diamond  (/!\ they need to be assigned the option "prescribed" and not "prognostic" in Diamond).
+- The temperature/salt coefficient fields for the partition coefficient (K_c, K_T, K_c2, K_T2, K_cT, K_const, K_A), defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties. Physical interpretation of the partition coefficient : Low partition_coef - tendency to dissolution. High partition_coef - tendency to precipitation.
+
+Modelling choice here: the partition coefficient is the following function of temperature (T) and salt (c),
+&lt;b&gt;partition_coef = K_A * exp( K_const + K_c * c + K_T * T + K_c2 * c^2 + + K_T2 * T^2 + K_cT * c*T ) &lt;/b&gt;.
+
 If a salt tracer field is involved, its name needs to be defined in "Tracer_Salt".
+
 Also, it is required to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.</a:documentation>
               <group>
-                <element name="K_const_field">
-                  <a:documentation>Name of the K constant coefficient field.</a:documentation>
-                  <data type="string" datatypeLibrary=""/>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field for the K_A coefficient.</a:documentation>
+                  <attribute name="name">
+                    <value>K_A</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
                 </element>
-                <optional>
-                  <element name="K_c_field">
-                    <a:documentation>Name of the K coefficient field for c.</a:documentation>
-                    <data type="string" datatypeLibrary=""/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="K_T_field">
-                    <a:documentation>Name of the K coefficient field for T.</a:documentation>
-                    <data type="string" datatypeLibrary=""/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="K_c2_field">
-                    <a:documentation>Name of the K coefficient field for c^2.</a:documentation>
-                    <data type="string" datatypeLibrary=""/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="K_T2_field">
-                    <a:documentation>Name of the K coefficient field for T^2.</a:documentation>
-                    <data type="string" datatypeLibrary=""/>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="K_cT_field">
-                    <a:documentation>Name of the K coefficient field for c*T.</a:documentation>
-                    <data type="string" datatypeLibrary=""/>
-                  </element>
-                </optional>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field for the K_const coefficient.</a:documentation>
+                  <attribute name="name">
+                    <value>K_const</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
+                </element>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field for the K_c coefficient.</a:documentation>
+                  <attribute name="name">
+                    <value>K_c</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
+                </element>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field for the K_T coefficient.</a:documentation>
+                  <attribute name="name">
+                    <value>K_T</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
+                </element>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field for the K_c2 coefficient.</a:documentation>
+                  <attribute name="name">
+                    <value>K_c2</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
+                </element>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field for the K_T2 coefficient.</a:documentation>
+                  <attribute name="name">
+                    <value>K_T2</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
+                </element>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field for the K_cT coefficient.</a:documentation>
+                  <attribute name="name">
+                    <value>K_cT</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
+                </element>
                 <optional>
                   <element name="Tracer_Salt">
                     <a:documentation>Name of the salt tracer. Name is either "Concentration" (if active tracer), or else it has to start with "PassiveTracer" (if passive tracer).</a:documentation>

@@ -1174,31 +1174,125 @@ start =
             ##
             ## It requires to have the following scalar fields defined:
             ##
-            ## - a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer"), PassiveTracer_Metal
+            ## - a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer"), PassiveTracer_Metal.
             ##
             ## - a static field for the solid metal concentration (e.g., "Metal_solid" - name has to start with anything but "PassiveTracer").
             ##
-            ## a Partition coefficient field (low partition_coef: tendency to dissolution / high partition_coef: tendency to precipitation). Modelling choice here: the partition coefficient is a quadratic function of temperature (T) and salt (c), i.e.,
-            ## <b> partition_coef = K_const + K_c * c + K_T * T + K_c2 * c^2 + + K_T2 * T^2 + K_cT * c*T </b>.
-            ## Therefore, K_const, K_c, K_T, K_c2, K_T2 and K_cT are fields that need to be defined in Diamond  (/!\ they need to be assigned the option "prescribed" and not "prognostic" in Diamond).
+            ## -  The temperature/salt coefficient fields for the partition coefficient (K_c, K_T, K_c2, K_T2, K_cT, K_const, K_A), defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties. Physical interpretation of the partition coefficient : Low partition_coef - tendency to dissolution. High partition_coef - tendency to precipitation.
+            ##
+            ## Modelling choice here: the partition coefficient is the following function of temperature (T) and salt (c),
+            ## <b> partition_coef = K_A * exp( K_const + K_c * c + K_T * T + K_c2 * c^2 + + K_T2 * T^2 + K_cT * c*T ) </b>.
             ##
             ## If a salt tracer field is involved, its name needs to be defined in "Tracer_Salt".
             ##
             ## Also, it is required to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.
              element Metal_dissolution_precipitation {
               (
-              ## Name of the K constant coefficient field.
-              element K_const_field{string},
-              ## Name of the K coefficient field for c.
-              element K_c_field{string}?,
-              ## Name of the K coefficient field for T.
-              element K_T_field{string}?,
-              ## Name of the K coefficient field for c^2.
-              element K_c2_field{string}?,
-              ## Name of the K coefficient field for T^2.
-              element K_T2_field{string}?,
-              ## Name of the K coefficient field for c*T.
-              element K_cT_field{string}?,
+              ## Specify scalar field for the K_A coefficient.
+              element scalar_field {
+                 attribute name { "K_A" },
+                 (
+                    element prescribed {
+                       material_mesh_choice,
+                       prescribed_scalar_field,
+                       output_options
+                    }|
+                    element aliased {
+                       generic_aliased_field,
+                       output_options
+                    }
+                 )
+              },
+              ## Specify scalar field for the K_const coefficient.
+              element scalar_field {
+                 attribute name { "K_const" },
+                 (
+                    element prescribed {
+                       material_mesh_choice,
+                       prescribed_scalar_field,
+                       output_options
+                    }|
+                    element aliased {
+                       generic_aliased_field,
+                       output_options
+                    }
+                 )
+              },
+              ## Specify scalar field for the K_c coefficient.
+              element scalar_field {
+                 attribute name { "K_c" },
+                 (
+                    element prescribed {
+                       material_mesh_choice,
+                       prescribed_scalar_field,
+                       output_options
+                    }|
+                    element aliased {
+                       generic_aliased_field,
+                       output_options
+                    }
+                 )
+              },
+              ## Specify scalar field for the K_T coefficient.
+              element scalar_field {
+                 attribute name { "K_T" },
+                 (
+                    element prescribed {
+                       material_mesh_choice,
+                       prescribed_scalar_field,
+                       output_options
+                    }|
+                    element aliased {
+                       generic_aliased_field,
+                       output_options
+                    }
+                 )
+              },
+              ## Specify scalar field for the K_c2 coefficient.
+              element scalar_field {
+                 attribute name { "K_c2" },
+                 (
+                    element prescribed {
+                       material_mesh_choice,
+                       prescribed_scalar_field,
+                       output_options
+                    }|
+                    element aliased {
+                       generic_aliased_field,
+                       output_options
+                    }
+                 )
+              },
+              ## Specify scalar field for the K_T2 coefficient.
+              element scalar_field {
+                 attribute name { "K_T2" },
+                 (
+                    element prescribed {
+                       material_mesh_choice,
+                       prescribed_scalar_field,
+                       output_options
+                    }|
+                    element aliased {
+                       generic_aliased_field,
+                       output_options
+                    }
+                 )
+              },
+              ## Specify scalar field for the K_cT coefficient.
+              element scalar_field {
+                 attribute name { "K_cT" },
+                 (
+                    element prescribed {
+                       material_mesh_choice,
+                       prescribed_scalar_field,
+                       output_options
+                    }|
+                    element aliased {
+                       generic_aliased_field,
+                       output_options
+                    }
+                 )
+              },
               ## Name of the salt tracer. Name is either "Concentration" (if active tracer), or else it has to start with "PassiveTracer" (if passive tracer).
               element Tracer_Salt{string}?,
               ## Name of the solid metal tracer (dissolves into tracer_field_fluid). /!\ Name has to start with anything but "PassiveTracer". We suggest "Metal_solid".
