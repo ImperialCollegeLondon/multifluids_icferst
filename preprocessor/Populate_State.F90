@@ -1359,6 +1359,15 @@ contains
         states(1), field_name='SelfPotential')
       end if
     end if
+    if (have_option("/porous_media/Metal_dissolution_precipitation")) then
+      call allocate_and_insert_scalar_field('/porous_media/Metal_dissolution_precipitation/scalar_field::K_A', states(1), field_name='K_A')
+      call allocate_and_insert_scalar_field('/porous_media/Metal_dissolution_precipitation/scalar_field::K_const', states(1), field_name='K_const')
+      call allocate_and_insert_scalar_field('/porous_media/Metal_dissolution_precipitation/scalar_field::K_c', states(1), field_name='K_c')
+      call allocate_and_insert_scalar_field('/porous_media/Metal_dissolution_precipitation/scalar_field::K_T', states(1), field_name='K_T')
+      call allocate_and_insert_scalar_field('/porous_media/Metal_dissolution_precipitation/scalar_field::K_c2', states(1), field_name='K_c2')
+      call allocate_and_insert_scalar_field('/porous_media/Metal_dissolution_precipitation/scalar_field::K_T2', states(1), field_name='K_T2')
+      call allocate_and_insert_scalar_field('/porous_media/Metal_dissolution_precipitation/scalar_field::K_cT', states(1), field_name='K_cT')
+    end if
 
     if (have_option("/porous_media/wells_and_pipes")) then
       call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Gamma', &
