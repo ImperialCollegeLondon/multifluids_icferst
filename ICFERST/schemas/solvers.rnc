@@ -485,7 +485,7 @@ generic_solver_options =
       ## Relative error
       ##
       ## The solver finishes if the preconditioned error becomes smaller than the original preconditioned error times this value.
-      ## Suggested value: 1.0e-10
+      ## Suggested value: 1.0e-10 without wells, 1.0e-13 with wells
       element relative_error {
          real
       },
