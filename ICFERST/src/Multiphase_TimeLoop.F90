@@ -860,7 +860,9 @@ contains
             end if
 
             !Metal dissolution happens here
-            if (have_option("/porous_media/Metal_dissolution_precipitation"))call metal_dissolution_precipitation(state, packed_state, Mdims, ndgln)
+            if (have_option("/porous_media/Metal_dissolution"))call metal_dissolution(state, packed_state, Mdims, ndgln)
+            !Metal precipitation happens here
+            if (have_option("/porous_media/Metal_precipitation"))call metal_precipitation(state, packed_state, Mdims, ndgln, dt)
 
             !Flash dissolution happens here JUST BEFORE get_RockFluidProp
             if (have_option("/porous_media/Gas_dissolution"))call flash_gas_dissolution(state, packed_state, Mdims, ndgln)

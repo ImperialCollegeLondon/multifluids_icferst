@@ -599,7 +599,7 @@ contains
         type(vector_field), pointer :: velocity, position, vfield, ldvfield, tdvfield
         type(tensor_field), pointer :: tfield, p2, d2, drhodp
         type(vector_field) :: porosity, vec_field, porous_density, porous_density_initial, porous_heat_capacity, &
-             Longitudinal_Dispersivity, Transverse_Dispersivity, porous_density_old, K_A, K_const, K_c, K_T, K_c2, K_T2, K_cT
+             Longitudinal_Dispersivity, Transverse_Dispersivity, porous_density_old, K_A, K_const, K_c, K_T, K_c2, K_T2, K_cT, P_A, P_const, P_c, P_T, P_c2, P_T2, P_cT
         type(vector_field) :: p_position, u_position, m_position
         type(tensor_field) :: permeability, ten_field, porous_thermal_conductivity
         type(mesh_type), pointer :: ovmesh, element_mesh
@@ -609,7 +609,7 @@ contains
         integer :: i, iphase, icomp, idim, iele, ipres, fields, k
         integer :: nphase,ncomp,ndim,stat,n_in_pres
         real :: auxR
-        character( len = option_path_len ) :: option_name
+        character( len = option_path_len ) :: option_name, solid_tracer_name
 
         ncomp=option_count('/material_phase/is_multiphase_component')
         nphase=size(state)-ncomp
@@ -769,6 +769,20 @@ contains
             end if
           end if
         end do
+
+        !Here we add the solid metal if metal_dissolution is active
+        if ( have_option("/porous_media/Metal_dissolution/tracer_field_solid") ) then
+          call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name)
+          call insert_sfield(packed_state,solid_tracer_name,1,nphase,&
+          add_source=.false.,add_absorption=.false.)
+        end if
+
+        !Here we add the solid metal if metal_precipitation is active
+        if ( have_option("/porous_media/Metal_precipitation/tracer_field_solid") ) then
+          call get_option("/porous_media/Metal_precipitation/tracer_field_solid", solid_tracer_name)
+          call insert_sfield(packed_state,solid_tracer_name,1,nphase,&
+          add_source=.false.,add_absorption=.false.)
+        end if
 
         if (option_count("/material_phase/scalar_field::Bathymetry")>0) then
             call insert_sfield(packed_state,"Bathymetry",1,nphase,&

@@ -28,7 +28,7 @@ module multiphase_EOS
     use vector_tools
     use python_state
     use Copy_Outof_State
-    use multi_tools 
+    use multi_tools
     use shape_functions_Linear_Quadratic
     use sparse_tools
     use Multiphase_module
@@ -38,6 +38,8 @@ module multiphase_EOS
     use initialise_fields_module, only: initialise_field_over_regions, initialise_field
     use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
     use checkpoint
+    use parallel_tools
+    use parallel_fields
 
 
     implicit none
@@ -341,7 +343,7 @@ contains
     !> This is were the action is actually done, the other calculate rhos are wrappers
     !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
     !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
-    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc   
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
     subroutine Calculate_Component_Rho( state, packed_state, Mdims )
 
       implicit none
@@ -847,7 +849,7 @@ contains
     !>@param  CV_GIdims Gauss integration numbers for CV fields
     !>@param  Mspars Sparsity of the matrices
     !>@param  ndgln Global to local variables
-    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media    
+    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
     !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
     subroutine Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, PorousMedia_absorp, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
                                                       upwnd, suf_sig_diagten_bc )
@@ -1146,7 +1148,7 @@ contains
     !>@param  ndgln Global to local variables
     !>@param SATURA PhasevolumeFraction field
     !>@param  viscosities viscosity field
-    !>@param  inv_PorousMedia_absorp (optional) INOUT inverse of the absorption term 
+    !>@param  inv_PorousMedia_absorp (optional) INOUT inverse of the absorption term
     SUBROUTINE calculate_absorption2( nphase, packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA, &
         viscosities, inv_PorousMedia_absorp)
         ! Calculate absorption for momentum eqns
@@ -1497,7 +1499,7 @@ contains
     !>@brief: Here we compute component/solute/thermal diffusion coefficient
     !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
     !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
-    !>@param  Mdims Number of dimensions    
+    !>@param  Mdims Number of dimensions
     !>@param  ndgln Global to local variables
     !>@param  ScalarAdvectionField_Diffusion INOUT Field containing the diffusion
     !>@param divide_by_rho_CP ! If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp
@@ -1508,8 +1510,8 @@ contains
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
-      logical, optional, intent(in) :: divide_by_rho_CP 
-      character(len=*), optional, intent(in) :: TracerName 
+      logical, optional, intent(in) :: divide_by_rho_CP
+      character(len=*), optional, intent(in) :: TracerName
       !Local variables
       type(scalar_field), pointer :: component, sfield, solid_concentration
       type(tensor_field), pointer :: diffusivity, tfield, den, saturation
@@ -1702,7 +1704,7 @@ contains
     !> For thermal, the field density needs to be passed down, which ensures that even for boussinesq a reference density is still used
     !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
     !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
-    !>@param  Mdims Number of dimensions    
+    !>@param  Mdims Number of dimensions
     !>@param  ndgln Global to local variables
     !>@param  density Density of the field (If present density means that we need to use a reference density to ensure consistency with the rest of the equation)
     !>@param SoluteDispersion INOUT The field containing the dispersivity controbution for the given field
@@ -1711,7 +1713,7 @@ contains
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
-      real, dimension(:,:), target, intent(in) :: density 
+      real, dimension(:,:), target, intent(in) :: density
       real, dimension(:, :, :, :), intent(inout) :: SoluteDispersion
       !Local variables
       type(scalar_field), pointer :: component, sfield, ldfield, tdfield
@@ -2710,7 +2712,7 @@ contains
     !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
     !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
     !>@param  ndgln Global to local variables
-    subroutine metal_dissolution_precipitation(state, packed_state, Mdims, ndgln)
+    subroutine metal_dissolution(state, packed_state, Mdims, ndgln)
       implicit none
       type(state_type), dimension(:), intent (inout) :: state
       type(state_type), intent (inout) :: packed_state
@@ -2725,12 +2727,20 @@ contains
       character( len = option_path_len ) :: option_name
       character( len = option_path_len ), save :: solid_tracer_name, fluid_tracer_name, Tracer_Salt_name
       logical :: has_imposed_min_limit, has_imposed_max_limit, has_auto_min_limit, has_auto_max_limit, has_Tracer_Salt, has_Temperature
-      real :: min_limit, max_limit
+      real :: min_limit, max_limit, ref_rho
+      real, dimension (:), pointer :: mass_ele
+      type(vector_field), pointer :: vfield
 
 
       MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
       density => extract_tensor_field(packed_state,"PackedDensity")
       density_porous => extract_scalar_field( state(1), "porous_density" )
+      vfield => extract_vector_field(packed_state,"MASS_ELE")
+      mass_ele => vfield%val(1,:)
+
+      if (has_boussinesq_aprox) then
+        ref_rho=retrieve_reference_density(state, packed_state, 1, 0, Mdims%nphase)
+      end if
 
       !Retrieve values from diamond
 
@@ -2743,19 +2753,19 @@ contains
       K_const_field => extract_scalar_field(state(1), "K_const")
 
       has_Temperature = have_option("/material_phase[0]/scalar_field::Temperature/")
-      has_Tracer_Salt = have_option("/porous_media/Metal_dissolution_precipitation/Tracer_Salt")
+      has_Tracer_Salt = have_option("/porous_media/Metal_dissolution/Tracer_Salt")
 
       if (has_Temperature) then
         temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
       end if
 
       if (has_Tracer_Salt) then
-        call get_option("/porous_media/Metal_dissolution_precipitation/Tracer_Salt", Tracer_Salt_name)
+        call get_option("/porous_media/Metal_dissolution/Tracer_Salt", Tracer_Salt_name)
         Tracer_Salt => extract_tensor_field( packed_state,"Packed"//trim(Tracer_Salt_name), stat)
       end if
 
-      call get_option("/porous_media/Metal_dissolution_precipitation/tracer_field_solid", solid_tracer_name)
-      call get_option("/porous_media/Metal_dissolution_precipitation/tracer_field_fluid", fluid_tracer_name)
+      call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name)
+      call get_option("/porous_media/Metal_dissolution/tracer_field_fluid", fluid_tracer_name)
 
       tracer_field_fluid=>extract_tensor_field(packed_state,"Packed"//trim(fluid_tracer_name), stat)
 
@@ -2819,15 +2829,27 @@ contains
           partition_coefficient = K_A_field%val(K_A_ele)*exp(log_partition_coefficient)
 
           if ( partition_coefficient > 0.0) then
-            ! Calculate total metal mass
-            I = MeanPoreCV%val(1,cv_nod) * density%val(1,1,cv_nod) * tracer_field_fluid%val(1,1,cv_nod) + ( 1 - MeanPoreCV%val(1,cv_nod) ) * density_porous%val(p_den ) * tracer_field_solid%val(cv_nod)
-            ! Recompute the fluid metal mass using the partition coefficient (Jackson et al., 2017 - Eq. (20))
-            rho_c_fluid = I / ( partition_coefficient * (density_porous%val(p_den)/density%val(1,1,cv_nod)) + MeanPoreCV%val(1,cv_nod) * (1-partition_coefficient*(density_porous%val(p_den)/density%val(1,1,cv_nod))) )
-            ! Recompute the solid metal mass using the partition coefficient (Jackson et al., 2017 - Eq. (20))
-            rho_c_solid = partition_coefficient * (density_porous%val(p_den)/density%val(1,1,cv_nod)) * rho_c_fluid
-            ! Recompute the fluid and solid metal concentrations
-            tracer_field_fluid%val(1,1,cv_nod) = rho_c_fluid / density%val(1,1,cv_nod)
-            tracer_field_solid%val(cv_nod) = rho_c_solid / density_porous%val(p_den )
+
+            if (has_boussinesq_aprox) then
+              ! Calculate total metal mass
+              I = MeanPoreCV%val(1,cv_nod) * ref_rho * tracer_field_fluid%val(1,1,cv_nod) + ( 1 - MeanPoreCV%val(1,cv_nod) ) * density_porous%val(p_den ) * tracer_field_solid%val(cv_nod)
+              ! Recompute the fluid metal mass using the partition coefficient (Jackson et al., 2017 - Eq. (20))
+              rho_c_fluid = I / ( partition_coefficient * (density_porous%val(p_den)/ref_rho) + MeanPoreCV%val(1,cv_nod) * (1-partition_coefficient*(density_porous%val(p_den)/ref_rho)) )
+              ! Recompute the solid metal mass using the partition coefficient (Jackson et al., 2017 - Eq. (20))
+              rho_c_solid = partition_coefficient * (density_porous%val(p_den)/ref_rho) * rho_c_fluid
+              ! Recompute the fluid and solid metal concentrations
+              tracer_field_fluid%val(1,1,cv_nod) = rho_c_fluid / ref_rho
+              tracer_field_solid%val(cv_nod) = rho_c_solid / density_porous%val(p_den )
+            else
+              I = MeanPoreCV%val(1,cv_nod) * density%val(1,1,cv_nod) * tracer_field_fluid%val(1,1,cv_nod) + ( 1 - MeanPoreCV%val(1,cv_nod) ) * density_porous%val(p_den ) * tracer_field_solid%val(cv_nod)
+              ! Recompute the fluid metal mass using the partition coefficient (Jackson et al., 2017 - Eq. (20))
+              rho_c_fluid = I / ( partition_coefficient * (density_porous%val(p_den)/density%val(1,1,cv_nod)) + MeanPoreCV%val(1,cv_nod) * (1-partition_coefficient*(density_porous%val(p_den)/density%val(1,1,cv_nod))) )
+              ! Recompute the solid metal mass using the partition coefficient (Jackson et al., 2017 - Eq. (20))
+              rho_c_solid = partition_coefficient * (density_porous%val(p_den)/density%val(1,1,cv_nod)) * rho_c_fluid
+              ! Recompute the fluid and solid metal concentrations
+              tracer_field_fluid%val(1,1,cv_nod) = rho_c_fluid / density%val(1,1,cv_nod)
+              tracer_field_solid%val(cv_nod) = rho_c_solid / density_porous%val(p_den )
+            end if
           end if
 
         end do
@@ -2849,6 +2871,181 @@ contains
 
       tracer_field_solid%val = max(min(tracer_field_solid%val,max_limit), min_limit)
 
-    end subroutine metal_dissolution_precipitation
+    end subroutine metal_dissolution
+
+    !>@brief: subroutine to dissolve or precipitate metals using a partition coefficient.
+    !> Precipitate the amount introduced in diamond in kg/kg.
+    !> Requires to have the following scalar fields defined: a liquid metal passive tracer field (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal, a solid metal field (e.g., "Metal_solid") the temperature/salt coefficient fields for the precipitation rate, defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties.
+    !> Requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
+    subroutine metal_precipitation(state, packed_state, Mdims, ndgln, dt)
+      implicit none
+      type(state_type), dimension(:), intent (inout) :: state
+      type(state_type), intent (inout) :: packed_state
+      type(multi_dimensions), intent (in) :: Mdims
+      type(multi_ndgln), intent (in) :: ndgln
+      real, intent( in ) :: dt
+      !Local variables
+      real :: precipitation_rate, log_precipitation_rate, I, rho_c_solid, rho_c_fluid, delta_m, m_metal_fluid, m_metal_solid
+      type(tensor_field), pointer :: tracer_field_fluid, density, temperature, Tracer_Salt
+      type (scalar_field), pointer :: tracer_field_solid, density_porous, P_const_field, P_c_field, P_T_field, P_c2_field, P_T2_field, P_cT_field, P_A_field
+      type(vector_field), pointer :: MeanPoreCV, cv_volume
+      integer :: cv_nod, stat, ele, cv_iloc, p_den, P_const_ele, P_c_ele, P_T_ele, P_c2_ele, P_T2_ele, P_cT_ele, P_A_ele
+      character( len = option_path_len ) :: option_name
+      character( len = option_path_len ), save :: solid_tracer_name, fluid_tracer_name, Tracer_Salt_name
+      logical :: has_imposed_min_limit, has_imposed_max_limit, has_auto_min_limit, has_auto_max_limit, has_Tracer_Salt, has_Temperature
+      real :: min_limit, max_limit, ref_rho
+      real, dimension (:), pointer :: mass_ele
+      type(vector_field), pointer :: vfield
+
+
+      MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+      density => extract_tensor_field(packed_state,"PackedDensity")
+      density_porous => extract_scalar_field( state(1), "porous_density" )
+      vfield => extract_vector_field(packed_state,"MASS_ELE")
+      mass_ele => vfield%val(1,:)
+
+      if (has_boussinesq_aprox) then
+        ref_rho=retrieve_reference_density(state, packed_state, 1, 0, Mdims%nphase)
+      end if
+
+      !Retrieve values from diamond
+
+      P_A_field => extract_scalar_field(state(1), "P_A")
+      P_c_field => extract_scalar_field(state(1), "P_c")
+      P_T_field => extract_scalar_field(state(1), "P_T")
+      P_c2_field => extract_scalar_field(state(1), "P_c2")
+      P_T2_field => extract_scalar_field(state(1), "P_T2")
+      P_cT_field => extract_scalar_field(state(1), "P_cT")
+      P_const_field => extract_scalar_field(state(1), "P_const")
+
+      has_Temperature = have_option("/material_phase[0]/scalar_field::Temperature/")
+      has_Tracer_Salt = have_option("/porous_media/Metal_precipitation/Tracer_Salt")
+
+      if (has_Temperature) then
+        temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
+      end if
+
+      if (has_Tracer_Salt) then
+        call get_option("/porous_media/Metal_precipitation/Tracer_Salt", Tracer_Salt_name)
+        Tracer_Salt => extract_tensor_field( packed_state,"Packed"//trim(Tracer_Salt_name), stat)
+      end if
+
+      call get_option("/porous_media/Metal_precipitation/tracer_field_solid", solid_tracer_name)
+      call get_option("/porous_media/Metal_precipitation/tracer_field_fluid", fluid_tracer_name)
+
+      tracer_field_fluid=>extract_tensor_field(packed_state,"Packed"//trim(fluid_tracer_name), stat)
+
+      if (stat /= 0) then
+        FLAbort("To compute metal precipitation, a PassiveTracer field is required.")
+      end if
+
+      tracer_field_solid => extract_scalar_field(state(1), solid_tracer_name, stat)
+
+      if (stat /= 0) then
+        FLAbort("To compute metal precipitation, a Metal_solid field is required.")
+      end if
+
+
+      ! Make sure the solid and fluid metal concentrations stay between bounds.
+
+      has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/min_limit")
+      has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/max_limit")
+      if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/min_limit", min_limit)
+      if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/max_limit", max_limit)
+
+      tracer_field_fluid%val = max(min(tracer_field_fluid%val,max_limit), min_limit)
+
+      has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(solid_tracer_name)//"/prognostic/Impose_min_max/min_limit")
+      has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(solid_tracer_name)//"/prognostic/Impose_min_max/max_limit")
+      if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(solid_tracer_name)//"/prognostic/Impose_min_max/min_limit", min_limit)
+      if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(solid_tracer_name)//"/prognostic/Impose_min_max/max_limit", max_limit)
+
+      tracer_field_solid%val = max(min(tracer_field_solid%val,max_limit), min_limit)
+
+      ! Calculate the precipitation rate
+
+      do ele = 1, Mdims%totele
+        p_den = min(size(density_porous%val), ele)
+        P_A_ele = min(size(P_A_field%val), ele)
+        P_c_ele = min(size(P_c_field%val), ele)
+        P_T_ele = min(size(P_T_field%val), ele)
+        P_c2_ele = min(size(P_c2_field%val), ele)
+        P_T2_ele = min(size(P_T2_field%val), ele)
+        P_cT_ele = min(size(P_cT_field%val), ele)
+        P_const_ele = min(size(P_const_field%val), ele)
+
+        do cv_iloc = 1, Mdims%cv_nloc
+          cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+          ! Calculate the partition coefficient
+          log_precipitation_rate = P_const_field%val(P_const_ele)
+
+          if (has_Tracer_Salt) then
+            log_precipitation_rate = log_precipitation_rate + P_c_field%val(P_c_ele)*Tracer_Salt%val(1,1,cv_nod) + P_c2_field%val(P_c2_ele)*(Tracer_Salt%val(1,1,cv_nod))**2
+          end if
+
+          if (has_Temperature) then
+            log_precipitation_rate = log_precipitation_rate + P_T_field%val(P_T_ele)*temperature%val(1,1,cv_nod) + P_T2_field%val(P_T2_ele)*(temperature%val(1,1,cv_nod))**2
+          end if
+
+          if (has_Temperature .and. has_Tracer_Salt) then
+            log_precipitation_rate = log_precipitation_rate + P_cT_field%val(P_cT_ele)*Tracer_Salt%val(1,1,cv_nod)*temperature%val(1,1,cv_nod)
+          end if
+
+          precipitation_rate = P_A_field%val(P_A_ele)*exp(log_precipitation_rate)
+
+          if ( precipitation_rate > 0.0) then
+            if (has_boussinesq_aprox) then
+              m_metal_solid = ( 1 - MeanPoreCV%val(1,cv_nod) ) * density_porous%val(p_den ) * tracer_field_solid%val(cv_nod) * (Mass_ELE(ele)/mdims%cv_nloc)
+              m_metal_fluid = MeanPoreCV%val(1,cv_nod) * ref_rho * tracer_field_fluid%val(1,1,cv_nod) * (Mass_ELE(ele)/mdims%cv_nloc)
+              ! Calculate delta_m to be added to the solid mass
+              delta_m = precipitation_rate * dt * m_metal_fluid
+              ! Ensure delta_m does not exceed the current fluid metal mass
+              delta_m = MIN(delta_m, m_metal_fluid)
+              ! Recompute the solid and fluid metal mass using the precipitation rate and to ensure mass conservation
+              m_metal_solid = m_metal_solid + delta_m
+              m_metal_fluid = m_metal_fluid - delta_m
+              ! Recompute the concentrations
+              tracer_field_fluid%val(1,1,cv_nod) = m_metal_fluid / ( ref_rho * MeanPoreCV%val(1,cv_nod) * (Mass_ELE(ele)/mdims%cv_nloc) )
+              tracer_field_solid%val(cv_nod) = m_metal_solid / ( density_porous%val(p_den ) * ( 1 - MeanPoreCV%val(1,cv_nod) ) * (Mass_ELE(ele)/mdims%cv_nloc) )
+            else
+              m_metal_solid = ( 1 - MeanPoreCV%val(1,cv_nod) ) * density_porous%val(p_den ) * tracer_field_solid%val(cv_nod) * (Mass_ELE(ele)/mdims%cv_nloc)
+              m_metal_fluid = MeanPoreCV%val(1,cv_nod) * density%val(1,1,cv_nod) * tracer_field_fluid%val(1,1,cv_nod) * (Mass_ELE(ele)/mdims%cv_nloc)
+              ! Calculate delta_m to be added to the solid mass
+              delta_m = precipitation_rate * dt * m_metal_fluid
+              ! Ensure delta_m does not exceed the current fluid metal mass
+              delta_m = MIN(delta_m, m_metal_fluid)
+              ! Recompute the solid and fluid metal mass using the precipitation rate and to ensure mass conservation
+              m_metal_solid = m_metal_solid + delta_m
+              m_metal_fluid = m_metal_fluid - delta_m
+              ! Recompute the concentrations
+              tracer_field_fluid%val(1,1,cv_nod) = m_metal_fluid / ( density%val(1,1,cv_nod) * MeanPoreCV%val(1,cv_nod) * (Mass_ELE(ele)/mdims%cv_nloc) )
+              tracer_field_solid%val(cv_nod) = m_metal_solid / ( density_porous%val(p_den ) * ( 1 - MeanPoreCV%val(1,cv_nod) ) * (Mass_ELE(ele)/mdims%cv_nloc) )
+            end if
+          end if
+
+        end do
+      end do
+
+      ! Make sure the solid and fluid metal concentrations stay between bounds.
+
+      has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/min_limit")
+      has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/max_limit")
+      if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/min_limit", min_limit)
+      if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/max_limit", max_limit)
+
+      tracer_field_fluid%val = max(min(tracer_field_fluid%val,max_limit), min_limit)
+
+      has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(solid_tracer_name)//"/prognostic/Impose_min_max/min_limit")
+      has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(solid_tracer_name)//"/prognostic/Impose_min_max/max_limit")
+      if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(solid_tracer_name)//"/prognostic/Impose_min_max/min_limit", min_limit)
+      if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(solid_tracer_name)//"/prognostic/Impose_min_max/max_limit", max_limit)
+
+      tracer_field_solid%val = max(min(tracer_field_solid%val,max_limit), min_limit)
+
+    end subroutine metal_precipitation
 
 end module multiphase_EOS

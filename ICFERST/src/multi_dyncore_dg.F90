@@ -782,13 +782,23 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                total_mass_tracer = 0.0
 
-               do cv_nod=1,Mdims%cv_nonods
-                 if (node_owned(old_tracer_field,cv_nod)) then
-                    ! Compute mass of salt in CV
-                    mass_tracer = old_density_field%val(1,1,cv_nod) * MeanPoreCV%val(1,cv_nod) * cv_volume%val(1,cv_nod) * old_tracer_field%val(1,1,cv_nod)
-                    total_mass_tracer = total_mass_tracer + mass_tracer
-                 end if
-               end do
+               if (has_boussinesq_aprox) then
+                 do cv_nod=1,Mdims%cv_nonods
+                   if (node_owned(old_tracer_field,cv_nod)) then
+                      ! Compute mass of salt in CV
+                      mass_tracer = retrieve_reference_density(state, packed_state, iphase, lcomp, Mdims%nphase) * MeanPoreCV%val(1,cv_nod) * cv_volume%val(1,cv_nod) * old_tracer_field%val(1,1,cv_nod)
+                      total_mass_tracer = total_mass_tracer + mass_tracer
+                   end if
+                 end do
+               else
+                 do cv_nod=1,Mdims%cv_nonods
+                   if (node_owned(old_tracer_field,cv_nod)) then
+                      ! Compute mass of salt in CV
+                      mass_tracer = old_density_field%val(1,1,cv_nod) * MeanPoreCV%val(1,cv_nod) * cv_volume%val(1,cv_nod) * old_tracer_field%val(1,1,cv_nod)
+                      total_mass_tracer = total_mass_tracer + mass_tracer
+                   end if
+                 end do
+               end if
 
                call allsum(total_mass_tracer)
 
