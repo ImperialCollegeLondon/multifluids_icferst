@@ -584,7 +584,7 @@ contains
             SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
-
+                print *, 'its', its
                 !##########################Impose tunneled BCs############################################################
                 !We impose it once per time-level with the exception of the first time-level where we do it after the second non-linear loop
                 !This is because we need outfluxes to contain data
@@ -659,6 +659,7 @@ contains
                 !$ Now solving the Momentum Equation ( = Force Balance Equation )
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
                     !if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
+                    print *, 'calling FORCE_BAL_CTY_ASSEM_SOLVE'
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
@@ -687,7 +688,7 @@ contains
                   end if
                 end if
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
-
+                    print *, 'calling solve_phaseVolumeFraction'
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &

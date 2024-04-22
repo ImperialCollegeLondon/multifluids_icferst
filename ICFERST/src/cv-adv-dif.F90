@@ -531,13 +531,43 @@ contains
           ! REAL :: SCV_RGI, SCV_RDUM
           ! real, dimension(3) :: SCV_POSVGI, SCV_BAK
 
+          ! Jumanah testing newton based solver
+          type(control_volume_flux_container), dimension(:), allocatable:: cv_flux
+          character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+          integer :: glb_cv, sub_glb_cv, sub_cv_id, its_taken
+          real :: sat_upwind, residual_value
+          type(csr_sparsity), pointer :: sparsity
+          type(tensor_field), pointer :: sat_field
+          type(vector_field) :: solution
+          real, dimension(Mdims%cv_nonods) :: jacobian_row
+
+          print *, 'GETCV_DISC, GETCT: ', GETCV_DISC, GETCT
+          !print *, 'in CV_ASSEMB'
+          !print *, 'cv_flux: ', cv_flux
+          if (GETCV_DISC) then
+              allocate(cv_flux(Mdims%cv_nonods))
+              sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+              sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+              call allocate_global_multiphase_petsc_csr(Mmat%petsc_newton_ACV,sparsity,sat_field, 1)
+              call allocate(Mmat%newton_CV_RHS,1,sat_field%mesh,"RHS")
+              call zero(Mmat%newton_CV_RHS)
+              call allocate(solution,1,sat_field%mesh,"Saturation")
+          end if
+          ! end Jumanah
+
           !Decide if we are solving for nphases-1
           Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
           !Check vanishing artificial diffusion options
           VAD_activated = .false.
+          !print *, 'variable VAD_parameter: ', present(VAD_parameter)
+          !print *, 'variable Phase_with_Pc: ', present(Phase_with_Pc)
+          !stop
+
           if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
               VAD_activated = Phase_with_Pc >0
           end if
+          !print *, 'VAD_activated: ', VAD_activated 
+          !stop
           flux_limited_vad = have_option("/numerical_methods/flux_limited_vad")
           !Check whether to use limiters or not
           call get_option("/geometry/simulation_quality", option_path2, stat=stat)
@@ -955,7 +985,8 @@ contains
         END DO
         MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
         MeanPoreCV%val=MEAN_PORE_CV
-        
+      
+
         if (activate_limiters) then
           ALLOCATE( T2UPWIND_MAT_ALL( 1*i_use_volume_frac_t2:final_phase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( 1*i_use_volume_frac_t2:final_phase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
           IF ( CV_DISOPT < 5 ) THEN
@@ -1196,6 +1227,8 @@ contains
                                       Mmat%FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
                                       ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
                               END IF
+                              !print *, 'ele, ele2: ', ELE, ELE2
+                              !print *, 'SELE: ', SELE
                               INTEGRAT_AT_GI = .NOT.( (ELE==ELE2) .AND. (SELE==0) )
                           END IF
                       END IF Conditional_CheckingNeighbourhood
@@ -1436,6 +1469,8 @@ contains
                               !Calling the functions directly instead inside a wrapper saves a around a 5%
                               IF( GOT_T2 ) THEN
                                   IF( is_porous_media ) THEN
+                                      !print *, 'stopping the run in T2'
+                                      !stop 
                                       CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                                           LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD, &
                                           LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
@@ -1488,6 +1523,40 @@ contains
                                           NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .true.)
+                                      ! jumanah
+                                      ! here want to store the flux (ndotqnew) and saturation (upwind direction)
+                                      ! THETA_VEL is set to 0 for implicit solution
+                                      ! find upwind direction
+                                      ! for now, solve for 1 phase
+                                      sat_upwind = 0.
+                                      if(NDOTQNEW(1) .le. 1.e-16) then
+                                          sat_upwind = LOC_T_J(1)
+                                      else
+                                          sat_upwind = LOC_T_I(1)
+                                      end if
+                                      if (on_domain_boundary) then
+                                          !print *, 'sat on boundary: ', SUF_T_BC_ALL( 1, 1, CV_SILOC + Mdims%cv_snloc*( SELE- 1))
+                                          sat_upwind = SUF_T_BC_ALL( 1, 1, CV_SILOC + Mdims%cv_snloc*( SELE- 1))
+                                      end if
+
+
+!add_flux_to_cv_flux_container(cv_flux, cv_id, ele, cv_id_neighbor, ndotq, ds, volume, saturation, porosity&
+!2188             , saturation_old, saturation_uw)
+
+                                      ! MEAN_PORE_CV( 1, CV_NODI )
+                                      if (GETCV_DISC) then
+                                          !print *, 'INTEGRAT_AT_GI, CV_NODI, ele, CV_NODJ, NDOTQNEW: '&
+                                          !        , INTEGRAT_AT_GI, CV_NODI, ele, CV_NODJ, NDOTQNEW
+                                          ! add flux to node i
+                                          call add_flux_to_cv_flux_container(cv_flux, CV_NODI, ele, CV_NODJ, NDOTQNEW, SdevFuns%DETWEI( GI )&
+                                                  ,MASS_CV(CV_NODI), LOC_T_I(1), MEAN_PORE_CV(1, CV_NODI), LOC_TOLD_I(1), sat_upwind) !NDOTQNEW
+                                          if (CV_NODI .ne. CV_NODJ) then ! avoid doubling fluxes for cv's on domain boundary
+                                              ! add flux to node j
+                                              call add_flux_to_cv_flux_container(cv_flux, CV_NODJ, ele, CV_NODI, -NDOTQNEW, SdevFuns%DETWEI(GI )&
+                                                      ,MASS_CV(CV_NODJ), LOC_T_J(1), MEAN_PORE_CV(1, CV_NODJ), LOC_TOLD_J(1), sat_upwind)
+                                          end if 
+                                      end if 
+                                      ! end jumanah
                                   else
                                       call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                                           LOC_TOLD_I, LOC_TOLD_J, LOC_DENOLD_I, LOC_DENOLD_J, &
@@ -1509,6 +1578,8 @@ contains
                                       Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                   end if
                               end if
+
+                              !print *, 'VAD_activated flag' , VAD_activated
                               If_GOT_CAPDIFFUS: IF ( VAD_activated ) THEN
                                   IF(SELE == 0) THEN
                                       CAP_DIFF_COEF_DIVDX = 0.
@@ -1560,6 +1631,7 @@ contains
                                     call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, FE_funs%scvfeweigh, FE_funs%scvfen, FE_funs%scvfenlx_all, FSdevFuns)
                                 END IF
                               ENDIF
+                              !print *, 'activate_limiters', activate_limiters
                               IF(activate_limiters) THEN
                                 call PACK_LOC_ALL( F_INCOME, INCOME, &
                                     INCOMEOLD, INCOME, INCOMEOLD, & !Tracer, density and T2
@@ -1586,6 +1658,11 @@ contains
 
                               ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
                               FVT=LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
+
+                              !print *, 'FVT ', FVT
+                              !print *, 'INCOME: ', INCOME
+                              !print *, 'use_volume_frac_T2', use_volume_frac_T2
+                              !stop
 
                               if (activate_limiters) then 
                                 CALL UNPACK_LOC_ALL( LIMF, LIMT, LIMTOLD, LIMD, LIMDOLD, LIMT2, LIMT2OLD,&
@@ -1924,6 +2001,44 @@ contains
                   END DO Loop_GCOUNT
               END DO Loop_CV_ILOC
           END DO Loop_Elements
+
+          ! jumanah
+          if (GETCV_DISC) then
+              do glb_cv = 1, Mdims%cv_nonods
+                  !print *, 'glb_cv, total_flux, phase_flux, ', glb_cv,',', cv_flux(glb_cv)%total_flux, ','&
+                  !                      , cv_flux(glb_cv)%phase_flux(1), ',', cv_flux(glb_cv)%phase_flux(2)&
+                  !                      , ',', cv_flux(glb_cv)%total_flux/cv_flux(glb_cv)%cv_volume
+                  !print *, 'sub_cv neighbor count: ', cv_flux(glb_cv)%sub_cv_count
+                  !do sub_glb_cv = 1, cv_flux(glb_cv)%sub_cv_count
+                  !    print*, 'glb_cv, neighbor id, ele, total_flux: ', glb_cv, cv_flux(glb_cv)%sub_cv(sub_glb_cv)%neighbor_glb_id&
+                  !                                        , cv_flux(glb_cv)%sub_cv(sub_glb_cv)%element_id&
+                  !                                        , cv_flux(glb_cv)%sub_cv(sub_glb_cv)%total_flux
+                  !enddo
+                  !call assemble_saturation_residual_component( glb_cv, cv_flux(glb_cv), DT)
+                  residual_value = assemble_saturation_residual_component( glb_cv, cv_flux(glb_cv), DT)
+                  call addto(Mmat%newton_CV_RHS,1, glb_cv, -1.*residual_value)
+                  jacobian_row = assemble_cv_jacobian_row( glb_cv, cv_flux(glb_cv), DT, Mdims%cv_nonods)
+                  ! assign diagonal 
+                  call addto(Mmat%petsc_newton_ACV,1,1, glb_cv, glb_cv, jacobian_row(glb_cv))
+                  ! assign off-diagonal
+                  do sub_cv_id = 1, cv_flux(glb_cv)%sub_cv_count
+                                  ! matrix, phase, phase, i, j, value
+                      call addto( Mmat%petsc_newton_ACV,1,1, glb_cv, cv_flux(glb_cv)%sub_cv(sub_cv_id)%neighbor_glb_id&
+                                , jacobian_row(cv_flux(glb_cv)%sub_cv(sub_cv_id)%neighbor_glb_id))
+                  end do
+              enddo
+              print *, 'cumalative flux: ', sum(cv_flux(:)%total_flux)
+
+              call zero(solution)
+              ! Solve the system: jacobian * del_sat = -residual
+              call petsc_solve(solution,Mmat%petsc_newton_ACV,Mmat%newton_CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+              print *, 'solution: ', solution%val
+              print *, 'its_taken: ', its_taken 
+          end if
+
+          ! end jumanah
+
+
           IF(GET_GTHETA) THEN
               DO CV_NODI = 1, Mdims%cv_nonods
                   THETA_GDIFF(:, CV_NODI) = THETA_GDIFF(:, CV_NODI) / MASS_CV(CV_NODI)
@@ -2078,7 +2193,12 @@ contains
                 call deallocate_multi_shape_funs(FE_funs) !!-ao this is also new
             END IF
         endif
-        
+       
+        ! jumanah
+        ! deallocate cv_flux
+        if (allocated(cv_flux)) deallocate(cv_flux)
+        ! end jumanah
+
         call deallocate(tracer_BCs)
         call deallocate(tracer_BCs_robin2)
         call deallocate(density_BCs)
@@ -2105,8 +2225,134 @@ contains
           ewrite(3,*) 'Leaving CV_ASSEMB'
           if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
 
+
           RETURN
       contains
+
+    ! jumanah .. testing limited to 2D models!!!
+    subroutine add_flux_to_cv_flux_container(cv_flux, cv_id, ele, cv_id_neighbor, ndotq, ds, volume, saturation, porosity&
+            , saturation_old, saturation_uw)
+    ! flux here is captured from NDOTQNEW << test and check if it makes sense
+        
+        IMPLICIT NONE
+        type(control_volume_flux_container), dimension(Mdims%cv_nonods), intent(inout) :: cv_flux
+        INTEGER, intent(in) :: cv_id, ele, cv_id_neighbor
+        real, dimension(final_phase),  intent(in) :: ndotq
+
+        real, intent(in) ::  ds ! cv interface length(2D), area(3D)
+        real, intent(in) :: volume, saturation, porosity, saturation_old, saturation_uw
+
+        !store flux value for cv i
+        cv_flux(cv_id)%total_flux = cv_flux(cv_id)%total_flux + (sum(ndotq(:))*ds)
+        cv_flux(cv_id)%phase_flux(:) = cv_flux(cv_id)%phase_flux(:) + (ndotq(:)*ds)
+        cv_flux(cv_id)%cv_volume = volume
+        cv_flux(cv_id)%cv_saturation = saturation
+        cv_flux(cv_id)%cv_saturation_old = saturation_old
+        cv_flux(cv_id)%cv_porosity = porosity
+
+        ! store flux value for cv j
+        !cv_flux(cv_id_neighbor)%total_flux =  cv_flux(cv_id_neighbor)%total_flux - (sum(ndotq(:))*ds)
+        !cv_flux(cv_id_neighbor)%phase_flux(:) = cv_flux(cv_id_neighbor)%phase_flux(:) - (ndotq(:)*ds)
+
+        cv_flux(cv_id)%sub_cv_count = cv_flux(cv_id)%sub_cv_count + 1
+        call store_componenet_in_sub_cv_flux_container( cv_flux(cv_id)%sub_cv(cv_flux(cv_id)%sub_cv_count)&
+                                                  , cv_id, cv_id_neighbor&
+                                                  , ele, ndotq, ds, saturation_uw)
+
+        !print *, 'cv, volume, saturation, porosity: ', cv_id, volume, saturation, porosity
+        !cv_flux(cv_id_neighbor)%sub_cv_count = cv_flux(cv_id_neighbor)%sub_cv_count + 1
+        !call store_componenet_in_sub_cv_flux_container( cv_flux(cv_id_neighbor)%sub_cv(cv_flux(cv_id_neighbor)%sub_cv_count)&
+        !                                          , cv_id_neighbor, cv_id&
+        !                                          , ele, - ndotq, ds)
+
+    end subroutine add_flux_to_cv_flux_container
+
+    subroutine store_componenet_in_sub_cv_flux_container(sub_cv, cv_id, cv_id_neighbor, ele, ndotq, ds, saturation_uw)
+
+        IMPLICIT NONE
+        !integer, intent(inout) :: sub_cv_count
+        INTEGER, intent(in) :: cv_id, ele, cv_id_neighbor
+        real, dimension(final_phase),  intent(in) :: ndotq
+        type(sub_control_volume) :: sub_cv
+        real, intent(in) ::  ds ! cv interface length(2D), area(3D)
+        real, intent(in) :: saturation_uw
+
+        sub_cv%neighbor_glb_id = cv_id_neighbor
+        sub_cv%total_flux = sum(ndotq(:))*ds
+        sub_cv%phase_flux(:) = ndotq(:)*ds
+        sub_cv%element_id = ele
+        sub_cv%ds = ds
+        sub_cv%cv_saturation_upwind = saturation_uw
+
+        if (cv_id == cv_id_neighbor) then
+            sub_cv%on_boundary = .true.
+            !sub_cv%cv_saturation_upwind = 1.
+        endif
+
+        return 
+    end subroutine store_componenet_in_sub_cv_flux_container
+
+    !subroutine assemble_residual_vector()
+    !end subroutine assemble_residual_vector
+
+    function assemble_saturation_residual_component(cv_id, cv_flux, timestep_size) result(residual)
+
+        type(control_volume_flux_container), intent(in) :: cv_flux
+        INTEGER, intent(in) :: cv_id
+        real, intent(in) :: timestep_size ! DT
+        ! local variables
+        real :: residual
+        integer :: sub_cv_id
+
+        residual = (cv_flux%cv_porosity * cv_flux%cv_volume * cv_flux%cv_saturation)/timestep_size
+        residual = residual - ((cv_flux%cv_porosity * cv_flux%cv_volume * cv_flux%cv_saturation_old)/timestep_size)
+
+        do sub_cv_id = 1, cv_flux%sub_cv_count
+            !print *, 'in sub cv loop'
+            !if (cv_id == 1 .OR. cv_id ==  12 .OR. cv_id == 4) then
+            !    print *, 'cv_id, cv_sat, ele, neighbor_glb_id, sat_uw, flux', cv_id, cv_flux%cv_saturation, cv_flux%sub_cv(sub_cv_id)%element_id&
+            !             , cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id&
+            !             , cv_flux%sub_cv(sub_cv_id)%cv_saturation_upwind, cv_flux%sub_cv(sub_cv_id)%phase_flux(1)
+            !end if  
+            residual = residual + (cv_flux%sub_cv(sub_cv_id)%phase_flux(1)*cv_flux%sub_cv(sub_cv_id)%cv_saturation_upwind)
+        end do
+
+        !print *, 'cv, residual: ', cv_id, residual
+
+        return 
+
+    end function assemble_saturation_residual_component
+
+    function assemble_cv_jacobian_row(cv_id, cv_flux, timestep_size, num_cv) result(jacobian)
+
+        type(control_volume_flux_container), intent(in) :: cv_flux
+        INTEGER, intent(in) :: cv_id, num_cv
+        real, intent(in) :: timestep_size ! DT
+        real, dimension(num_cv) :: jacobian ! test populating this row for each cv
+        ! local variables
+        integer :: sub_cv_id
+ 
+
+        jacobian = 0.
+        jacobian(cv_id) = (cv_flux%cv_porosity * cv_flux%cv_volume)/timestep_size
+        ! loop over cv interfaces with neighbors, account for upwind direction
+        do sub_cv_id = 1, cv_flux%sub_cv_count
+            if (cv_flux%sub_cv(sub_cv_id)%phase_flux(1) > 1.e-16) then
+                jacobian(cv_id) = jacobian(cv_id) + cv_flux%sub_cv(sub_cv_id)%phase_flux(1) 
+            else
+                jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id) = jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)&
+                        + cv_flux%sub_cv(sub_cv_id)%phase_flux(1)
+            end if
+        end do
+
+        !print *, 'cv, jacobian: ', cv_id, jacobian
+
+        return
+    end function assemble_cv_jacobian_row 
+
+
+
+    ! end jumanah
 
     SUBROUTINE APPLY_ENO_2_T(LIMF, T_ALL,TOLD_ALL, FEMT_ALL,FEMTOLD_ALL, INCOME,INCOMEOLD, IGOT_T_PACK, &
         CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC, &
@@ -3334,6 +3580,7 @@ end if
                     END DO
                 END IF
             end if
+
             RETURN
         END SUBROUTINE GET_INT_VEL_POROUS_VEL
 
@@ -3560,6 +3807,11 @@ end if
                     do iphase = 1, Mdims%nphase
                         maxflux= max(maxflux, abs(sum(bcs_outfluxes(iphase, :, 0)))*dt)
                     end do
+
+                    !print *, 'mass inside the domain (tmp1): ', tmp1
+                    !print *, 'mass inside the domain at the beginning of the time-level (tmp2): ', tmp2
+                    !print *, 'mass phase i across boundaries (tmp3): ', tmp3
+                    !print *, 'mass over boundaries: ', bcs_outfluxes(:, :, 0)
 
                     !Calculate possible mass creation inside the code
                     if (tmp2 > 1d-8) then

@@ -2069,8 +2069,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     !Ensure that even adapting the time, the final time is matched
     max_ts = max(min(max_ts, abs(finish_time - acctim)), 1e-8)
     if (stored_dt<0) then!for the first time only
-        call get_option( '/timestepping/timestep', dt )
-        stored_dt = dt
+            call get_option( '/timestepping/timestep', dt )
+            stored_dt = dt
     end if
 
     !To ensure that we always create a vtu file at the desired time,
@@ -2255,6 +2255,11 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             end select
             ! find the maximum mass error to compare with the tolerance below
             ! This is the maximum error of each indivial phase
+            !print *, 'calculate_mass_delta(1,1): ', calculate_mass_delta(1,1)
+            !print *, 'calculate_mass_delta(1,2): ', calculate_mass_delta(1,2)
+            !print *, 'calculate_mass_delta(2,1): ', calculate_mass_delta(2,1)
+            !print *, 'calculate_mass_delta(2,2): ', calculate_mass_delta(2,2)
+
             max_calculate_mass_delta = calculate_mass_delta(1,2)
             !For very tiny time-steps ts_ref_val may not be good as is it a relative value
 !            !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
@@ -2340,6 +2345,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
 
            if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Test_mass_consv/stop_at_min_ts")) then
              if (its >= NonLinearIteration .and. max_calculate_mass_delta > calculate_mass_tol .and. abs(dt - min_ts)/min_ts < 1e-8) THEN
+               print *, 'IN test mass consv'
                ewrite(0,*) trim(output_message)
                FLAbort("WARNING: SIMULATION TERMINATED AS MASS IS NOT BEING CONSERVED AND THE MINIMUM TIME-STEP HAS BEEN REACHED. RE-RUN WITH DIFFERENT SETTINGS.")
              end if

@@ -1014,6 +1014,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              integer, save :: max_allowed_its = -1
              integer :: its_taken
              logical, save :: written_file = .false.
+             ! jumanah Newton solver
+             logical :: newton_solver = .false.
+
              !We check this with the global number of phases per domain
              if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
 
@@ -1107,6 +1110,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
             END IF
 
+            ! Jumanah test Newton solver option
+            newton_solver = have_option( '/solver_options/Non_Linear_Solver/Newton_Solver')
+            print *, 'Newton Solver option: ', newton_solver
+            !if (have_option( '/solver_options/Non_Linear_Solver/Newton_Solver')) then
+            !    print *, 'skip Loop_NonLinearFlux'
+            !    return
+            !end if 
+
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
 
                !To avoid a petsc warning error we need to re-allocate the matrix always
@@ -1139,6 +1150,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                      Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
                      nonlinear_iteration = nonlinear_iteration)
+
+                 ! jumanah newton solver testing
+                 !if (newton_solver) then
 
                  !Make the inf norm of the Courant number across cpus
                  !Normally computed when dealing with the continuity equation but
@@ -1249,6 +1263,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          updating = updating + new_backtrack_par
                          !If the backtrack_par factor is not adaptive, then, just one iteration
                          if (backtrack_par_factor > 0) then
+                             print *, '!If the backtrack_par factor is not adaptive, then, just one iteration'
                              satisfactory_convergence = .true.
                              exit Loop_NonLinearFlux
                          end if

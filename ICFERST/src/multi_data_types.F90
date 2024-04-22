@@ -326,6 +326,10 @@ module multi_data_types
         type(vector_field) :: CT_RHS
         type(petsc_csr_matrix) :: petsc_ACV
         type(vector_field) :: CV_RHS
+        ! begin jumanah
+        type(petsc_csr_matrix) :: petsc_newton_ACV
+        type(vector_field) :: newton_CV_RHS
+        ! end jumanah
         real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()
         integer, dimension(:), pointer :: ICOLOR => null()
         integer :: NCOLOR 
@@ -467,6 +471,41 @@ module multi_data_types
         integer, allocatable, dimension(:) :: pipe_corner_nds1
         integer, allocatable, dimension(:) :: pipe_corner_nds2
      end type pipe_coords
+
+    ! Jumanah: type used for storing fluxes to use in a Newton solver
+    ! this implementation assumes that the control volumes span element boundaries
+    type sub_control_volume
+       !integer :: neighbor_count = 0
+       integer :: neighbor_glb_id
+       integer :: element_id
+       real :: total_flux
+       real, dimension(2) :: phase_flux
+       logical :: on_boundary = .false.
+       real :: ds = 0.
+       real :: volume = 0.
+       real :: cv_saturation_upwind = 0.
+       ! add boundary contributions later
+
+    end type sub_control_volume
+
+    ! Jumanah: type used for storing fluxes to use in a Newton solver
+    type control_volume_flux_container
+        !integer :: id
+        !integer :: element_count = 0
+        integer :: sub_cv_count = 0.
+        integer, allocatable, dimension(:) :: element_id
+        !type(sub_control_volume), allocatable, dimension(:) :: sub_cv
+        type(sub_control_volume), dimension(20) :: sub_cv
+        real :: total_flux = 0.
+        real, dimension(2) :: phase_flux = 0.
+        !real :: flux_2 = 0.
+        real :: cv_saturation = 0.
+        real :: cv_saturation_old = 0.
+        real :: cv_volume = 0.
+        real :: cv_porosity = 0.
+
+    end type control_volume_flux_container
+
 
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3,&
          allocate_multi_field1, allocate_multi_field2
