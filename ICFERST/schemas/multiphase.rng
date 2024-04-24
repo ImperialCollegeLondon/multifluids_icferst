@@ -2069,6 +2069,11 @@ If using Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations 
 non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.</a:documentation>
           <ref name="integer"/>
           <optional>
+            <element name="Newton_Solver">
+              <a:documentation> Testing Newton Solver option </a:documentation>
+            </element>
+          </optional>
+          <optional>
             <element name="Fixed_Point_Iteration">
               <a:documentation>&lt;b&gt;NOTE: For multiphase porous media only. Otherwise this value is ignored.&lt;/b&gt;
 

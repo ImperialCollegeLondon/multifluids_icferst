@@ -162,7 +162,7 @@ contains
           saturation, VAD_parameter, Phase_with_Pc, Courant_number,&
           Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
           porous_heat_coef,porous_heat_coef_old, outfluxes, solving_compositional, nonlinear_iteration,&
-          assemble_collapsed_to_one_phase)
+          assemble_collapsed_to_one_phase, cv_flux)
           !  =====================================================================
           !     In this subroutine the advection terms in the advection-diffusion
           !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -339,7 +339,9 @@ contains
           type (multi_outfluxes), optional, intent(inout) :: outfluxes
           !Non-linear iteration count
           integer, optional, intent(in) :: nonlinear_iteration
-          ! ###################Local variables############################
+          type(control_volume_flux_container), dimension(:), intent(inout), optional :: cv_flux
+
+                ! ###################Local variables############################
           REAL :: ZERO_OR_TWO_THIRDS
 
           REAL, dimension(:,:), ALLOCATABLE :: FXGI_ALL, int_UDGI_ALL, A_STAR_X_ALL,VEC_VEL2
@@ -532,7 +534,7 @@ contains
           ! real, dimension(3) :: SCV_POSVGI, SCV_BAK
 
           ! Jumanah testing newton based solver
-          type(control_volume_flux_container), dimension(:), allocatable:: cv_flux
+          !type(control_volume_flux_container), dimension(:), allocatable:: cv_flux
           character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
           integer :: glb_cv, sub_glb_cv, sub_cv_id, its_taken
           real :: sat_upwind, residual_value
@@ -540,18 +542,23 @@ contains
           type(tensor_field), pointer :: sat_field
           type(vector_field) :: solution
           real, dimension(Mdims%cv_nonods) :: jacobian_row
+          logical :: get_cv_flux = .False.
 
           print *, 'GETCV_DISC, GETCT: ', GETCV_DISC, GETCT
           !print *, 'in CV_ASSEMB'
           !print *, 'cv_flux: ', cv_flux
-          if (GETCV_DISC) then
-              allocate(cv_flux(Mdims%cv_nonods))
+          !if (GETCV_DISC) then
+              !allocate(cv_flux(Mdims%cv_nonods))
+              !sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+              !sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+              !call allocate_global_multiphase_petsc_csr(Mmat%petsc_newton_ACV,sparsity,sat_field, 1)
+              !call allocate(Mmat%newton_CV_RHS,1,sat_field%mesh,"RHS")
+              !call zero(Mmat%newton_CV_RHS)
+              !call allocate(solution,1,sat_field%mesh,"Saturation")
+          if (present(cv_flux)) then
               sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-              sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-              call allocate_global_multiphase_petsc_csr(Mmat%petsc_newton_ACV,sparsity,sat_field, 1)
-              call allocate(Mmat%newton_CV_RHS,1,sat_field%mesh,"RHS")
-              call zero(Mmat%newton_CV_RHS)
               call allocate(solution,1,sat_field%mesh,"Saturation")
+              get_cv_flux = .True.
           end if
           ! end Jumanah
 
@@ -2196,7 +2203,7 @@ contains
        
         ! jumanah
         ! deallocate cv_flux
-        if (allocated(cv_flux)) deallocate(cv_flux)
+        !if (allocated(cv_flux)) deallocate(cv_flux)
         ! end jumanah
 
         call deallocate(tracer_BCs)
@@ -2292,68 +2299,63 @@ contains
         return 
     end subroutine store_componenet_in_sub_cv_flux_container
 
-    !subroutine assemble_residual_vector()
-    !end subroutine assemble_residual_vector
+    !function assemble_saturation_residual_component(cv_id, cv_flux, timestep_size) result(residual)
 
-    function assemble_saturation_residual_component(cv_id, cv_flux, timestep_size) result(residual)
+    !    type(control_volume_flux_container), intent(in) :: cv_flux
+    !    INTEGER, intent(in) :: cv_id
+    !    real, intent(in) :: timestep_size ! DT
+    !    ! local variables
+    !    real :: residual
+    !    integer :: sub_cv_id
 
-        type(control_volume_flux_container), intent(in) :: cv_flux
-        INTEGER, intent(in) :: cv_id
-        real, intent(in) :: timestep_size ! DT
-        ! local variables
-        real :: residual
-        integer :: sub_cv_id
+    !    residual = (cv_flux%cv_porosity * cv_flux%cv_volume * cv_flux%cv_saturation)/timestep_size
+    !    residual = residual - ((cv_flux%cv_porosity * cv_flux%cv_volume * cv_flux%cv_saturation_old)/timestep_size)
 
-        residual = (cv_flux%cv_porosity * cv_flux%cv_volume * cv_flux%cv_saturation)/timestep_size
-        residual = residual - ((cv_flux%cv_porosity * cv_flux%cv_volume * cv_flux%cv_saturation_old)/timestep_size)
+    !    do sub_cv_id = 1, cv_flux%sub_cv_count
+    !        !print *, 'in sub cv loop'
+    !        !if (cv_id == 1 .OR. cv_id ==  12 .OR. cv_id == 4) then
+    !        !    print *, 'cv_id, cv_sat, ele, neighbor_glb_id, sat_uw, flux', cv_id, cv_flux%cv_saturation, cv_flux%sub_cv(sub_cv_id)%element_id&
+    !        !             , cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id&
+    !        !             , cv_flux%sub_cv(sub_cv_id)%cv_saturation_upwind, cv_flux%sub_cv(sub_cv_id)%phase_flux(1)
+    !        !end if  
+    !        residual = residual + (cv_flux%sub_cv(sub_cv_id)%phase_flux(1)*cv_flux%sub_cv(sub_cv_id)%cv_saturation_upwind)
+    !    end do
 
-        do sub_cv_id = 1, cv_flux%sub_cv_count
-            !print *, 'in sub cv loop'
-            !if (cv_id == 1 .OR. cv_id ==  12 .OR. cv_id == 4) then
-            !    print *, 'cv_id, cv_sat, ele, neighbor_glb_id, sat_uw, flux', cv_id, cv_flux%cv_saturation, cv_flux%sub_cv(sub_cv_id)%element_id&
-            !             , cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id&
-            !             , cv_flux%sub_cv(sub_cv_id)%cv_saturation_upwind, cv_flux%sub_cv(sub_cv_id)%phase_flux(1)
-            !end if  
-            residual = residual + (cv_flux%sub_cv(sub_cv_id)%phase_flux(1)*cv_flux%sub_cv(sub_cv_id)%cv_saturation_upwind)
-        end do
+    !    !print *, 'cv, residual: ', cv_id, residual
 
-        !print *, 'cv, residual: ', cv_id, residual
+    !    return 
 
-        return 
+    !end function assemble_saturation_residual_component
 
-    end function assemble_saturation_residual_component
+    !function assemble_cv_jacobian_row(cv_id, cv_flux, timestep_size, num_cv) result(jacobian)
 
-    function assemble_cv_jacobian_row(cv_id, cv_flux, timestep_size, num_cv) result(jacobian)
-
-        type(control_volume_flux_container), intent(in) :: cv_flux
-        INTEGER, intent(in) :: cv_id, num_cv
-        real, intent(in) :: timestep_size ! DT
-        real, dimension(num_cv) :: jacobian ! test populating this row for each cv
-        ! local variables
-        integer :: sub_cv_id
+    !    type(control_volume_flux_container), intent(in) :: cv_flux
+    !    INTEGER, intent(in) :: cv_id, num_cv
+    !    real, intent(in) :: timestep_size ! DT
+    !    real, dimension(num_cv) :: jacobian ! test populating this row for each cv
+    !    ! local variables
+    !    integer :: sub_cv_id
  
 
-        jacobian = 0.
-        jacobian(cv_id) = (cv_flux%cv_porosity * cv_flux%cv_volume)/timestep_size
-        ! loop over cv interfaces with neighbors, account for upwind direction
-        do sub_cv_id = 1, cv_flux%sub_cv_count
-            if (cv_flux%sub_cv(sub_cv_id)%phase_flux(1) > 1.e-16) then
-                jacobian(cv_id) = jacobian(cv_id) + cv_flux%sub_cv(sub_cv_id)%phase_flux(1) 
-            else
-                jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id) = jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)&
-                        + cv_flux%sub_cv(sub_cv_id)%phase_flux(1)
-            end if
-        end do
+    !    jacobian = 0.
+    !    jacobian(cv_id) = (cv_flux%cv_porosity * cv_flux%cv_volume)/timestep_size
+    !    ! loop over cv interfaces with neighbors, account for upwind direction
+    !    do sub_cv_id = 1, cv_flux%sub_cv_count
+    !        if (cv_flux%sub_cv(sub_cv_id)%phase_flux(1) > 1.e-16) then
+    !            jacobian(cv_id) = jacobian(cv_id) + cv_flux%sub_cv(sub_cv_id)%phase_flux(1) 
+    !        else
+    !            jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id) = jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)&
+    !                    + cv_flux%sub_cv(sub_cv_id)%phase_flux(1)
+    !        end if
+    !    end do
 
-        !print *, 'cv, jacobian: ', cv_id, jacobian
+    !    !print *, 'cv, jacobian: ', cv_id, jacobian
 
-        return
-    end function assemble_cv_jacobian_row 
-
-
+    !    return
+    !end function assemble_cv_jacobian_row 
 
     ! end jumanah
-
+      
     SUBROUTINE APPLY_ENO_2_T(LIMF, T_ALL,TOLD_ALL, FEMT_ALL,FEMTOLD_ALL, INCOME,INCOMEOLD, IGOT_T_PACK, &
         CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC, &
         ELE, CV_NONODS, NDIM, NPHASE,  &
@@ -7840,5 +7842,108 @@ end if
     !
     !     return
     ! end subroutine sum_saturation_to_unity
+    subroutine multiphase_transport_setup_and_newton_solve( num_cv, cv_flux, Mmat, DT, packed_state)
+        IMPLICIT NONE
+        ! global variables
+        type(control_volume_flux_container), dimension(:), intent(in):: cv_flux
+        integer, intent(in) :: num_cv
+        type (multi_matrices), intent(inout) :: Mmat
+        real :: DT
+         type( state_type ), intent( inout ) :: packed_state
+
+        ! local variables
+        character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+        type(vector_field) :: solution
+        integer :: glb_cv, sub_cv_id, its_taken
+        real :: residual_value
+        real, dimension(num_cv) :: jacobian_row
+        type(tensor_field), pointer :: sat_field
+
+        print *, 'in multiphase_transport_setup_and_newton_solve'
+        call zero(Mmat%newton_CV_RHS)
+        call zero(Mmat%petsc_newton_ACV)
+        print *, 'after zero!'
+        sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        !print *, '1'
+        !call allocate_global_multiphase_petsc_csr(Mmat%petsc_newton_ACV,sparsity,sat_field,1)
+        !print *, '2'
+        !call allocate(Mmat%newton_CV_RHS,1,sat_field%mesh,"RHS")
+        !print *, '3'
+        !call zero(Mmat%newton_CV_RHS)
+        !print *, '4'
+        !call allocate(solution,1,sat_field%mesh,"Saturation")
+
+        ! setup the jacobian and RHS vector
+        do glb_cv = 1, num_cv
+            residual_value = assemble_saturation_residual_component( glb_cv, cv_flux(glb_cv), DT)
+            call addto(Mmat%newton_CV_RHS,1, glb_cv, -1.*residual_value)
+            jacobian_row = assemble_cv_jacobian_row( glb_cv, cv_flux(glb_cv), DT, num_cv)
+            ! assign diagonal 
+            call addto(Mmat%petsc_newton_ACV,1,1, glb_cv, glb_cv, jacobian_row(glb_cv))
+            ! assign off-diagonal
+            do sub_cv_id = 1, cv_flux(glb_cv)%sub_cv_count
+                            ! matrix, phase, phase, i, j, value
+                call addto( Mmat%petsc_newton_ACV,1,1, glb_cv, cv_flux(glb_cv)%sub_cv(sub_cv_id)%neighbor_glb_id&
+                          , jacobian_row(cv_flux(glb_cv)%sub_cv(sub_cv_id)%neighbor_glb_id))
+            end do
+        enddo
+
+        call allocate(solution,1,sat_field%mesh,"Saturation")
+
+
+        ! solve for delta sat
+        call zero(solution)
+        print *, 'just before solve!'
+        print *, 'I think this is the issue!'
+        ! Solve the system: jacobian * del_sat = -residual
+        call petsc_solve(solution,Mmat%petsc_newton_ACV,Mmat%newton_CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+        print *, 'solution: ', solution%val
+        print *, 'its_taken: ', its_taken
+
+    end subroutine
+
+    function assemble_saturation_residual_component(cv_id, cv_flux, timestep_size) result(residual)
+
+        type(control_volume_flux_container), intent(in) :: cv_flux
+        INTEGER, intent(in) :: cv_id
+        real, intent(in) :: timestep_size ! DT
+        ! local variables
+        real :: residual
+        integer :: sub_cv_id
+
+        residual = (cv_flux%cv_porosity * cv_flux%cv_volume * cv_flux%cv_saturation)/timestep_size
+        residual = residual - ((cv_flux%cv_porosity * cv_flux%cv_volume * cv_flux%cv_saturation_old)/timestep_size)
+
+        do sub_cv_id = 1, cv_flux%sub_cv_count
+            residual = residual + (cv_flux%sub_cv(sub_cv_id)%phase_flux(1)*cv_flux%sub_cv(sub_cv_id)%cv_saturation_upwind)
+        end do
+
+        return
+
+    end function assemble_saturation_residual_component
+
+    function assemble_cv_jacobian_row(cv_id, cv_flux, timestep_size, num_cv) result(jacobian)
+
+        type(control_volume_flux_container), intent(in) :: cv_flux
+        INTEGER, intent(in) :: cv_id, num_cv
+        real, intent(in) :: timestep_size ! DT
+        real, dimension(num_cv) :: jacobian ! test populating this row for each cv
+        ! local variables
+        integer :: sub_cv_id
+
+        jacobian = 0.
+        jacobian(cv_id) = (cv_flux%cv_porosity * cv_flux%cv_volume)/timestep_size
+        ! loop over cv interfaces with neighbors, account for upwind direction
+        do sub_cv_id = 1, cv_flux%sub_cv_count
+            if (cv_flux%sub_cv(sub_cv_id)%phase_flux(1) > 1.e-16) then
+                jacobian(cv_id) = jacobian(cv_id) + cv_flux%sub_cv(sub_cv_id)%phase_flux(1)
+            else
+                jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id) = jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)&
+                        + cv_flux%sub_cv(sub_cv_id)%phase_flux(1)
+            end if
+        end do
+
+        return
+    end function assemble_cv_jacobian_row
 
 end module cv_advection

@@ -1016,6 +1016,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              logical, save :: written_file = .false.
              ! jumanah Newton solver
              logical :: newton_solver = .false.
+             type(control_volume_flux_container), dimension(:), allocatable:: cv_flux
 
              !We check this with the global number of phases per domain
              if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
@@ -1113,10 +1114,43 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             ! Jumanah test Newton solver option
             newton_solver = have_option( '/solver_options/Non_Linear_Solver/Newton_Solver')
             print *, 'Newton Solver option: ', newton_solver
-            !if (have_option( '/solver_options/Non_Linear_Solver/Newton_Solver')) then
-            !    print *, 'skip Loop_NonLinearFlux'
+            if (newton_solver) then
+                call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
+                call allocate_global_multiphase_petsc_csr(Mmat%petsc_newton_ACV,sparsity,sat_field, 1)
+                allocate(cv_flux(Mdims%cv_nonods))
+                call allocate(Mmat%newton_CV_RHS,1,sat_field%mesh,"RHS")
+                call zero(Mmat%newton_CV_RHS)
+                call allocate(solution,1,sat_field%mesh,"Saturation")
+
+                call CV_ASSEMB( state, packed_state, &
+                     n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                     sat_field, velocity, density, multi_absorp, & 
+                     DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                     DEN_ALL, DENOLD_ALL, &
+                     Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
+                     SUF_SIG_DIAGTEN_BC, &
+                     DERIV%val(1,:,:), P, &
+                     V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+                     GETCV_DISC, GETCT, &
+                     IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
+                     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                     MEAN_PORE_CV, &
+                     mass_Mn_pres, THERMAL, &
+                     .false.,  mass_Mn_pres, &   
+                     mass_ele_transp, &          !Capillary variables
+                     VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                     nonlinear_iteration = nonlinear_iteration, cv_flux = cv_flux)
+
+                call multiphase_transport_setup_and_newton_solve( Mdims%cv_nonods, cv_flux &
+                                   , Mmat, DT, packed_state)
+
+                print *, 'skip Loop_NonLinearFlux'
+                print *, 'stopping here!'
+                stop 
             !    return
-            !end if 
+                if(allocated(cv_flux)) deallocate(cv_flux)
+            end if 
 
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
 
