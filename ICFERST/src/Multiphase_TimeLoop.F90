@@ -585,6 +585,7 @@ contains
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 print *, 'its', its
+                print *, '-----------------------'
                 !##########################Impose tunneled BCs############################################################
                 !We impose it once per time-level with the exception of the first time-level where we do it after the second non-linear loop
                 !This is because we need outfluxes to contain data
