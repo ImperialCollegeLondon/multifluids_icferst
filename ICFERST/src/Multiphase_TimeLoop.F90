@@ -249,6 +249,7 @@ contains
         character( len = option_path_len ) :: option_name
         integer :: phreeqc_id
         double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
+        logical :: newton_convergence = .false.
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -586,6 +587,7 @@ contains
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 print *, 'its', its
                 print *, '-----------------------'
+                newton_convergence = .false.
                 !##########################Impose tunneled BCs############################################################
                 !We impose it once per time-level with the exception of the first time-level where we do it after the second non-linear loop
                 !This is because we need outfluxes to contain data
@@ -694,7 +696,11 @@ contains
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
-                        sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
+                        sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, newton_convergence)
+
+                    if (newton_convergence) then
+                       exit Loop_NonLinearIteration 
+                    end if
 
                 end if Conditional_PhaseVolumeFraction
               call petsc_logging(3,stages,ierrr,default=.true.)

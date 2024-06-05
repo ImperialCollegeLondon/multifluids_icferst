@@ -942,7 +942,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, time_step, SFPI_taken, SFPI_its, Courant_number,&
-         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
+         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, newton_convergence)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state, multicomponent_state
              type( state_type ) :: packed_state
@@ -970,6 +970,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              integer, intent(inout) :: SFPI_its
              real, dimension(:), intent(inout) :: Courant_number
              REAL, DIMENSION( :, :), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+             logical :: newton_convergence
 
              ! Local Variables
              LOGICAL, PARAMETER :: THERMAL= .false.
@@ -1017,6 +1018,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              ! jumanah Newton solver
              logical :: newton_solver = .false.
              type(control_volume_flux_container), dimension(:), allocatable:: cv_flux
+             logical :: newton_satisfactory_convergence
+             real, dimension(Mdims%cv_nonods) :: sat_residual, old_iter_saturation, net_flux
+             real :: l2_norm_sat_residual
+             real :: newton_residual_tol, newton_sat_conv_tol
+             integer :: newton_iter, newton_iter_count, newton_iter_max
+
+             !print *,'nphase: ', nphase
+             !stop
 
              !We check this with the global number of phases per domain
              if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
@@ -1113,47 +1122,146 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
             ! Jumanah test Newton solver option
             newton_solver = have_option( '/solver_options/Non_Linear_Solver/Newton_Solver')
-            print *, 'Newton Solver option: ', newton_solver
+            !print *, 'Newton Solver option: ', newton_solver
             if (newton_solver) then
-                call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
-                call allocate_global_multiphase_petsc_csr(Mmat%petsc_newton_ACV,sparsity,sat_field, 1)
-                allocate(cv_flux(Mdims%cv_nonods))
-                call allocate(Mmat%newton_CV_RHS,1,sat_field%mesh,"RHS")
-                call zero(Mmat%newton_CV_RHS)
-                call allocate(solution,1,sat_field%mesh,"Saturation")
+                !call allocate_global_multiphase_petsc_csr(Mmat%petsc_newton_ACV,sparsity,sat_field, 1)
+                !allocate(cv_flux(Mdims%cv_nonods))
+                !call allocate(Mmat%newton_CV_RHS,1,sat_field%mesh,"RHS")
+                !call zero(Mmat%newton_CV_RHS)
+                !call allocate(solution,1,sat_field%mesh,"Saturation")
 
-                call CV_ASSEMB( state, packed_state, &
-                     n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                     sat_field, velocity, density, multi_absorp, & 
-                     DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                     DEN_ALL, DENOLD_ALL, &
-                     Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
-                     SUF_SIG_DIAGTEN_BC, &
-                     DERIV%val(1,:,:), P, &
-                     V_SOURCE, V_ABSORB, VOLFRA_PORE, &
-                     GETCV_DISC, GETCT, &
-                     IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
-                     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                     MEAN_PORE_CV, &
-                     mass_Mn_pres, THERMAL, &
-                     .false.,  mass_Mn_pres, &   
-                     mass_ele_transp, &          !Capillary variables
-                     VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-                     nonlinear_iteration = nonlinear_iteration, cv_flux = cv_flux)
+                !call get_option( '/solver_options/Non_Linear_Solver/Newton_Solver/Backtracking_factor',&
+                 !    backtrack_par_factor, default = 1.0)
+                newton_satisfactory_convergence = .false.
+                newton_residual_tol = 1.e-5
+                newton_sat_conv_tol = 1.e-5
+                newton_iter_count = 0
+                newton_iter_max = 10
+               
 
-                call multiphase_transport_setup_and_newton_solve( Mdims%cv_nonods, cv_flux &
-                                   , Mmat, DT, packed_state)
+                !Loop_Newton: do while (.not. newton_satisfactory_convergence)
+                Loop_Newton: do while (.not. satisfactory_convergence)
 
-                print *, 'skip Loop_NonLinearFlux'
-                print *, 'stopping here!'
-                stop 
-            !    return
-                if(allocated(cv_flux)) deallocate(cv_flux)
-            end if 
+                    newton_iter_count = newton_iter_count + 1
+                    print *, 'newton_iter_count: ', newton_iter_count
+                    !call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, 1) ! remove this later
+                    call allocate_global_multiphase_petsc_csr(Mmat%petsc_newton_ACV,sparsity,sat_field, 1)
+                    allocate(cv_flux(Mdims%cv_nonods))
+                    call allocate(Mmat%newton_CV_RHS,1,sat_field%mesh,"RHS")
+                    call zero(Mmat%newton_CV_RHS)
+                    !call allocate(newton_solution,1,sat_field%mesh,"Saturation")
+
+                    !old_iter_saturation = sat_field%val(1,1,:) ! am I using this?
+
+                    ! this is needed to populate cv_flux
+                    ! GETCV_DISC set to false
+                    call CV_ASSEMB( state, packed_state, &
+                         n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                         sat_field, velocity, density, multi_absorp, & 
+                         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                         DEN_ALL, DENOLD_ALL, &
+                         Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
+                         SUF_SIG_DIAGTEN_BC, &
+                         DERIV%val(1,:,:), P, &
+                         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+                         .false., GETCT, &
+                         IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
+                         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                         MEAN_PORE_CV, &
+                         mass_Mn_pres, THERMAL, &
+                         .false.,  mass_Mn_pres, &   
+                         mass_ele_transp, &          !Capillary variables
+                         VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+                         Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                         nonlinear_iteration = nonlinear_iteration, cv_flux = cv_flux)
+
+
+                    ! check net flux here
+                    !net_flux = 0.
+                    !call get_net_flux( Mdims%cv_nonods, cv_flux, sat_field%val(1,:,:), net_flux, 2)
+                    !print *, 'stopping here'; stop
+
+                    ! use cv_flux to setup and solve transport newton
+                    call multiphase_transport_setup_and_newton_solve( Mdims%cv_nonods, cv_flux &
+                                       , Mmat, DT, packed_state) 
+                    !print *, 'exit here!'
+                    !stop
+                    
+                    ! update the absorption term with the new newton iter saturation
+                    call Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state&
+                             , multi_absorp%PorousMedia, Mdims&
+                             , CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
+
+                    ! update fluxes with new saturation and new absorption term
+                    deallocate(cv_flux)
+                    allocate(cv_flux(Mdims%cv_nonods))
+                    call CV_ASSEMB( state, packed_state, &
+                         n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                         sat_field, velocity, density, multi_absorp, & 
+                         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                         DEN_ALL, DENOLD_ALL, &
+                         Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
+                         SUF_SIG_DIAGTEN_BC, &
+                         DERIV%val(1,:,:), P, &
+                         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+                         .false., GETCT, &
+                         IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
+                         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                         MEAN_PORE_CV, &
+                         mass_Mn_pres, THERMAL, &
+                         .false.,  mass_Mn_pres, &
+                         mass_ele_transp, &          !Capillary variables
+                         VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+                         Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                         nonlinear_iteration = nonlinear_iteration, cv_flux = cv_flux)
+
+                    !print *, 'get residual of sat:',  sat_field%val(1,1,:)
+                    ! residual check for phase 1
+                    call get_phase_saturation_residual( Mdims%cv_nonods, cv_flux, DT, sat_field%val(1,:,:), sat_residual, 1)
+
+                    ! get the residual norm
+                    l2_norm_sat_residual = calc_l2_norm(Mdims%cv_nonods, sat_residual)
+
+                    ! also get the L inf norm
+
+                    its = its + 1
+                    useful_sats = useful_sats + 1
+
+                    if (l2_norm_sat_residual .le. newton_residual_tol) then
+                        !newton_satisfactory_convergence = .True.
+                        satisfactory_convergence = .True.
+                        print *, 'residual converged! value l2 norm ', l2_norm_sat_residual
+                        solver_not_converged = .false.
+                        newton_convergence = .true.
+                    end if 
+
+                    !if (maxval(abs(old_iter_saturation - sat_field%val(1,1,:))) .le. newton_sat_conv_tol) then
+                    !    print *, 'saturation solution converged!'
+                    !    newton_satisfactory_convergence = .True.
+                    !    print *, 'abs max diff: ', maxval(abs(old_iter_saturation - sat_field%val(1,1,:)))
+                    !else
+                    !    print *, 'saturation solution did not converge!'
+                    !end if
+
+                    if(allocated(cv_flux)) deallocate(cv_flux)
+
+                    if(newton_iter_count .ge. newton_iter_max) then
+                        exit Loop_Newton
+                    end if
+                END DO Loop_Newton
+            end if
+
+            !if (newton_satisfactory_convergence) then
+            !   return
+            !end if
+
+            ! end jumanah
 
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
 
+               if (newton_solver) then
+                   exit Loop_NonLinearFlux
+               end if 
                !To avoid a petsc warning error we need to re-allocate the matrix always
                call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
                 !Update solution field to calculate the residual
@@ -1184,9 +1292,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                      Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
                      nonlinear_iteration = nonlinear_iteration)
-
-                 ! jumanah newton solver testing
-                 !if (newton_solver) then
 
                  !Make the inf norm of the Courant number across cpus
                  !Normally computed when dealing with the continuity equation but
@@ -1274,6 +1379,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      end do
                    end if
                  end do
+
+                 ! testing for comparing the convergence -- jumanah
+
+                ! ! residual check
+                ! call get_phase_saturation_residual( Mdims%cv_nonods, cv_flux, DT, sat_field%val(1,1,:), sat_residual)
+                ! ! get the residual norm
+                ! l2_norm_sat_residual = calc_l2_norm(Mdims%cv_nonods, sat_residual)
+                 ! end jumanah
 
                  !Set to zero the fields
                  call zero(Mmat%CV_RHS)
@@ -1381,6 +1494,24 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 
          contains
+
+        ! jumanah newton solver
+        function calc_l2_norm(vec_size, vec_1d) result(val)
+            implicit none
+            integer :: vec_size
+            real, dimension(:), intent(in) :: vec_1d
+            ! output
+            real :: val
+            ! local
+            real :: aux
+
+            aux = dot_product(vec_1d, vec_1d)
+            val = sqrt(aux)/vec_size
+            print *, 'l2 norm of residual: ', val
+
+            return
+
+        end function calc_l2_norm
 
         !!!>@brief: This internal subroutine deals with the components within the Saturation Fixed Point Iteration
         !> WARNING: Still work in progress

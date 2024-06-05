@@ -1997,6 +1997,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     character (len = OPTION_PATH_LEN), save :: output_units =' ', option_path
     character(len=PYTHON_FUNC_LEN) :: pyfunc
 
+    print *, 'in Adaptive_NonLinear routine'
+
     !We need an acumulative nonlinear_its if adapting within the FPI we don't want to restart the reference field neither
     !consider less iterations of the total ones if adapting time using PID
     if (.not.have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then

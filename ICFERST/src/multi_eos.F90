@@ -836,6 +836,32 @@ contains
         return
     end subroutine Assign_Equation_of_State
 
+    ! jumanah testing newton changes
+    !subroutine dsigma_phase_ds( perm, phase_viscosity, saturation, corey_exp)
+    !                       nphase, state, packed_state, PorousMedia_absorp, Mdims&
+    !                     , CV_funs, CV_GIdims, Mspars, ndgln &
+    !                     , upwnd, suf_sig_diagten_bc)
+
+    !    implicit none
+    !    integer, intent(in) :: nphase
+    !    type( state_type ), dimension( : ), intent( inout ) :: state
+    !    type( state_type ), intent( inout ) :: packed_state
+    !    type (multi_field) :: PorousMedia_absorp
+    !    type( multi_dimensions ), intent( in ) :: Mdims
+    !    type(multi_shape_funs), intent(inout) :: CV_funs
+    !    type( multi_gi_dimensions ), intent( in )  :: CV_GIdims
+    !    type (multi_sparsities), intent( in ) :: Mspars
+    !    type(multi_ndgln), intent(in) :: ndgln 
+    !    type (porous_adv_coefs), intent(inout) :: upwnd
+    !    real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
+
+    !    ! local variables
+
+
+
+    !end subroutine dsigma_phase_ds 
+
+
     !>@brief: Here we compute the absorption for porous media
     !> This is the sigma term defined in the papers and contains The permeability, the relative permeability, the viscosity and the saturation
     !>@param  nphase Number of phases
@@ -943,6 +969,8 @@ contains
                    OldPhaseVolumeFraction = OldSatura, CV_Immobile_Fraction = CV_Immobile_Fraction)
                perm=>extract_tensor_field(packed_state,"Permeability")
 
+
+               !print *, 'in abs function, satura: ', Satura
                allocate( satura2( nphase, size(SATURA,2) ) );satura2 = 0.
 
                CALL calculate_absorption2( nphase, packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA(1:Mdims%n_in_pres,:), &
@@ -1000,6 +1028,7 @@ contains
                        upwnd%inv_adv_coef(1, 1, global_phase, IMAT) = 1./upwnd%adv_coef(1, 1, global_phase, IMAT)!sprint_to_do maybe we dont need to store the inverse anymore
                      END DO
                    end do
+                   !print *, 
                  END DO
                END DO
 
@@ -1305,6 +1334,15 @@ contains
         end subroutine relperm_stone
 
     end subroutine get_relperm
+
+    ! jumanah newton
+    ! calculate derivative of relative permeability for 2 phase
+    !SUBROUTINE d_relperm_corey_ds( nphase, iphase, sat, CV_Immobile_fract, Corey_exponent, Endpoint_relperm, Kr)
+
+
+    !end subroutine d_relperm_corey_ds
+    ! end jumanah
+
 
     !>@brief: In this subroutine the capilalry pressure is computed based on the saturation and the formula used
     !>@param packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state

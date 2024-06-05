@@ -472,37 +472,46 @@ module multi_data_types
         integer, allocatable, dimension(:) :: pipe_corner_nds2
      end type pipe_coords
 
-    ! Jumanah: type used for storing fluxes to use in a Newton solver
+    ! Jumanah: type used for storing fluxes to use in the Newton solver
     ! this implementation assumes that the control volumes span element boundaries
     type sub_control_volume
        !integer :: neighbor_count = 0
        integer :: neighbor_glb_id
        integer :: element_id
-       real :: total_flux
+       !real :: total_flux
        real, dimension(2) :: phase_flux
        logical :: on_boundary = .false.
+       real, dimension(2) :: boundary_saturation_upwind = 0.
        real :: ds = 0.
        real :: volume = 0.
-       real :: cv_saturation_upwind = 0.
+       !real, dimension(2) :: cv_saturation_upwind = 0.
        ! add boundary contributions later
+
+       ! I don't want these here.. but neat for passing and accessing values
+       ! re-think sigmas in implementation
+       ! This is not needed if sigma, dsigma_ds is a function calculated from saturation in residual and jacobian
+       ! other here is a reference for adjacent cv
+       real, dimension(2) :: sigma_inv_other = 0.
+       real, dimension(2) :: sigma_other = 0.
+       real, dimension(2) :: dsigma_ds_other = 0.
 
     end type sub_control_volume
 
-    ! Jumanah: type used for storing fluxes to use in a Newton solver
+    ! Jumanah: type used for storing fluxes to use in the Newton solver
     type control_volume_flux_container
-        !integer :: id
-        !integer :: element_count = 0
         integer :: sub_cv_count = 0.
         integer, allocatable, dimension(:) :: element_id
         !type(sub_control_volume), allocatable, dimension(:) :: sub_cv
         type(sub_control_volume), dimension(20) :: sub_cv
-        real :: total_flux = 0.
-        real, dimension(2) :: phase_flux = 0.
-        !real :: flux_2 = 0.
+        !real :: total_flux = 0.
+        !real, dimension(2) :: phase_flux = 0.
         real :: cv_saturation = 0.
-        real :: cv_saturation_old = 0.
+        real, dimension(2) :: cv_saturation_old = 0.
         real :: cv_volume = 0.
         real :: cv_porosity = 0.
+        real, dimension(2) :: sigma_inv = 0.
+        real, dimension(2) :: sigma = 0.
+        real, dimension(2) :: dsigma_ds = 0.
 
     end type control_volume_flux_container
 
