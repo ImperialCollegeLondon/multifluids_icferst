@@ -556,7 +556,7 @@ contains
               !call zero(Mmat%newton_CV_RHS)
               !call allocate(solution,1,sat_field%mesh,"Saturation")
 
-          print *, 'timestep size: ', DT
+          !print *, 'timestep size: ', DT
     
           if (present(cv_flux)) then
               !sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
@@ -1550,7 +1550,8 @@ contains
                                       ! find upwind direction
                                       ! for now, solve for 1 phase
                                       if (get_cv_flux) then
-                                          CALL GET_INT_VEL_POROUS_VEL_cv_flux( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+                                          !CALL GET_INT_VEL_POROUS_VEL_cv_flux( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+                                          CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                                               LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD, &
                                               LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
                                               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
@@ -1560,7 +1561,8 @@ contains
                                               NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                               TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT), &
                                               .false.)!Sprint_to_do store for a time-level old values?? Would halve the cost of flux calculation...
-                                          CALL GET_INT_VEL_POROUS_VEL_cv_flux( NDOTQNEW, NDOTQ, INCOME, &
+                                          !CALL GET_INT_VEL_POROUS_VEL_cv_flux( NDOTQNEW, NDOTQ, INCOME, &
+                                          CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
                                               LOC_T_I, LOC_T_J, LOC_FEMT, &
                                               LOC_NU, LOC2_NU, SLOC_NU, &
                                               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
@@ -2288,11 +2290,6 @@ contains
             END IF
         endif
        
-        ! jumanah
-        ! deallocate cv_flux
-        !if (allocated(cv_flux)) deallocate(cv_flux)
-        ! end jumanah
-
         call deallocate(tracer_BCs)
         call deallocate(tracer_BCs_robin2)
         call deallocate(density_BCs)
@@ -2371,16 +2368,28 @@ contains
         type(sub_control_volume) :: sub_cv
         real, intent(in) ::  ds ! cv interface length(2D), area(3D)
         real, dimension(final_phase), intent(in) :: saturation_uw ! store this only for boundary
+        ! local
+        integer :: phase_id
+
+        
 
         sub_cv%neighbor_glb_id = cv_id_neighbor
-        !sub_cv%total_flux = sum(ndotq(:))*ds
-        sub_cv%phase_flux(:) = ndotq(:)*ds
+        ! this is the total flux = sum_over_phases(saturation*velocity*normal*ds*sigma_inv)
+        ! LATER: replace this loop with dot product! 
+        !do phase_id = 1, final_phase
+        !    sub_cv%total_flux = sub_cv%total_flux + (ndotq(1)*ds*saturation_uw(phase_id))
+        !    print *, 'cv_id, cv_id_neighbor, phase_id, flux: '&
+        !           , cv_id, cv_id_neighbor, phase_id, ndotq(1)*ds*saturation_uw(phase_id)
+            ! ndotq here is velocity*normal*sigma_inv
+        !end do
+        sub_cv%total_flux = (ndotq(1)*ds*saturation_uw(1)) + (ndotq(2)*ds*saturation_uw(2))
+        !sub_cv%phase_flux(:) = ndotq(:)*ds
         sub_cv%element_id = ele
-        sub_cv%ds = ds
+        !sub_cv%ds = ds
         !sub_cv%cv_saturation_upwind = saturation_uw
-        sub_cv%sigma_other = sigma_other
-        sub_cv%sigma_inv_other = sigma_inv_other
-        sub_cv%dsigma_ds_other = dsigma_ds_other
+        !sub_cv%sigma_other = sigma_other
+        !sub_cv%sigma_inv_other = sigma_inv_other
+        !sub_cv%dsigma_ds_other = dsigma_ds_other
 
         if (cv_id == cv_id_neighbor) then
             sub_cv%on_boundary = .true.
@@ -8240,7 +8249,8 @@ end if
     !
     !     return
     ! end subroutine sum_saturation_to_unity
-    subroutine multiphase_transport_setup_and_newton_solve( num_cv, cv_flux, Mmat, DT, packed_state) !, saturation)
+    subroutine multiphase_transport_setup_and_newton_solve( num_cv, cv_flux, Mmat, DT, packed_state&
+                          , viscosities, Corey_exponent)
         IMPLICIT NONE
         ! global variables
         type(control_volume_flux_container), dimension(:), intent(in):: cv_flux
@@ -8248,7 +8258,8 @@ end if
         type (multi_matrices), intent(inout) :: Mmat
         real :: DT
         type( state_type ), intent( inout ) :: packed_state
-        !real, dimension(:), intent(in) :: saturation 
+        real, dimension(:), intent(in) :: viscosities
+        real, dimension(:), intent(in) :: Corey_exponent
 
         ! local variables
         character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
@@ -8257,7 +8268,6 @@ end if
         real :: residual_value
         real, dimension(num_cv) :: jacobian_row
         type(tensor_field), pointer :: sat_field
-        !real, dimension(:) :: saturation
 
         print *, 'in multiphase_transport_setup_and_newton_solve'
         call zero(Mmat%newton_CV_RHS) ! initialize RHS
@@ -8266,10 +8276,14 @@ end if
 
         ! setup the jacobian and RHS vector
         do glb_cv = 1, num_cv
+            ! formulation no. 1 and 2
             !residual_value = assemble_saturation_residual_component( glb_cv, cv_flux(glb_cv), DT, saturation)
-            residual_value = assemble_saturation_residual_component( glb_cv, cv_flux(glb_cv), DT, sat_field%val(1,1,:), 1)
+            ! formulation no. 3
+            residual_value = assemble_saturation_residual_component_fractional_flow( glb_cv, cv_flux(glb_cv), DT&
+                                        , sat_field%val(1,1,:), 1, viscosities(:), Corey_exponent)
             call addto(Mmat%newton_CV_RHS,1, glb_cv, -1.*residual_value)
-            jacobian_row = assemble_cv_jacobian_row( glb_cv, cv_flux(glb_cv), DT, num_cv, sat_field%val(1,1,:))
+            jacobian_row = assemble_cv_jacobian_row( glb_cv, cv_flux(glb_cv), DT, num_cv, sat_field%val(1,1,:)&
+                                        , viscosities(:), Corey_exponent)
             ! assign diagonal 
             call addto(Mmat%petsc_newton_ACV,1,1, glb_cv, glb_cv, jacobian_row(glb_cv))
             ! assign off-diagonal
@@ -8291,10 +8305,9 @@ end if
 
         call deallocate(Mmat%petsc_newton_ACV)
         call deallocate(Mmat%newton_CV_RHS)
-        !call deallocate()
 
         ! update solution
-        sat_field%val(1,1,:) = solution%val(1, :) + sat_field%val(1,1,:)
+        sat_field%val(1,1,:) = max(0., min(1., solution%val(1, :) + sat_field%val(1,1,:)))
         sat_field%val(1,2,:) = 1. - sat_field%val(1,1,:)
 
         !print *, 'iter saturation: ', sat_field%val(1,1,:)
@@ -8321,20 +8334,55 @@ end if
         end do
 
 
-    end subroutine 
+    end subroutine
 
-    function assemble_saturation_residual_component_fractional_flow(cv_id, cv_flux, timestep_size, saturation) result(residual)
+    ! this uses fractional flow formulation
+    subroutine get_phase_saturation_residual_fractional_flow(num_cv, cv_flux, timestep_size, saturation, residual, phase_id&
+            , viscosities, Corey_exponent)
+
+        integer :: num_cv, phase_id
+        type(control_volume_flux_container), dimension(:), intent(in) :: cv_flux
+        real, intent(in) :: timestep_size ! DT
+        real, dimension(:, :), intent(in) :: saturation
+        real, dimension(:), intent(inout) :: residual
+        real, dimension(:), intent(in) :: viscosities
+        real, dimension(:), intent(in) :: Corey_exponent
+
+        ! local
+        integer :: glb_cv
+        !real :: temp_residual
+        !real :: te
+
+        residual = 0.
+        !print *, 'residual: '
+        do glb_cv = 1, num_cv
+            residual(glb_cv) = assemble_saturation_residual_component_fractional_flow(glb_cv, cv_flux(glb_cv), timestep_size&
+                                                    , saturation(phase_id, :), phase_id, viscosities, Corey_exponent)
+            !if (glb_cv == 1 .or. glb_cv == 4 .or. glb_cv == 12) residual(glb_cv) = 0.
+            !print *, 'cv residual, visc: ', glb_cv, residual(glb_cv), viscosities(:, glb_cv)
+            !print *, 'stopping!'; stop
+        end do
+
+    end subroutine
+
+    function assemble_saturation_residual_component_fractional_flow(cv_id, cv_flux, timestep_size, saturation&
+                                        , phase_id, viscosities, Corey_exponent) result(residual)
 
         type(control_volume_flux_container), intent(in) :: cv_flux
-        INTEGER, intent(in) :: cv_id
+        INTEGER, intent(in) :: cv_id, phase_id
         real, dimension(:), intent(in) :: saturation
         real, intent(in) :: timestep_size ! DT
+        real, dimension(:), intent(in) :: viscosities, Corey_exponent
+        
         ! local variables
-        real :: residual, saturation_upwind, sigma_inv_upwind
-        integer :: sub_cv_id, phase_id
+        real :: residual, saturation_uw!, sigma_inv_upwind, 
+        real :: f
+        integer :: sub_cv_id
 
         residual = (cv_flux%cv_porosity * cv_flux%cv_volume * saturation(cv_id))/timestep_size
+        !print *, '1st term: ', residual
         residual = residual - ((cv_flux%cv_porosity * cv_flux%cv_volume * cv_flux%cv_saturation_old(phase_id))/timestep_size)
+        !print *, '2nd term: ', ((cv_flux%cv_porosity * cv_flux%cv_volume * cv_flux%cv_saturation_old(phase_id))/timestep_size)
 
         !for testing purposes, residual of phase 1 
         ! fractional flow term = mobility_phase_1 / (mobility_phase_1 + mobility_phase_2)
@@ -8342,25 +8390,78 @@ end if
         do sub_cv_id = 1, cv_flux%sub_cv_count
             ! get upstream values
             if (cv_flux%sub_cv(sub_cv_id)%on_boundary) then
-                saturation_upwind = cv_flux%sub_cv(sub_cv_id)%boundary_saturation_upwind(phase_id)
-                sigma_inv_upwind = 1. ! fix this later
+                saturation_uw = cv_flux%sub_cv(sub_cv_id)%boundary_saturation_upwind(phase_id)
+                !sigma_inv_upwind = 1. ! fix this later
             else
-                if (cv_flux%sub_cv(sub_cv_id)%phase_flux(phase_id) > 1.e-16) then
-                    saturation_upwind = saturation(cv_id)
-                    sigma_inv_upwind = cv_flux%sigma_inv(phase_id)
+                if (cv_flux%sub_cv(sub_cv_id)%total_flux > 1.e-16) then
+                    saturation_uw = saturation(cv_id)
+                    !sigma_inv_upwind = cv_flux%sigma_inv(phase_id)
                 else
-                    saturation_upwind = saturation(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)
-                    sigma_inv_upwind = cv_flux%sub_cv(sub_cv_id)%sigma_inv_other(phase_id)
+                    saturation_uw = saturation(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)
+                    !sigma_inv_upwind = cv_flux%sub_cv(sub_cv_id)%sigma_inv_other(phase_id)
                 end if
             end if
+            !print *, 'cv id, adj cv, sat uw, f, f*tot_flux:  ', cv_id, saturation_uw
             !print *, saturation_upwind, cv_flux%sub_cv(sub_cv_id)%cv_saturation_upwind
             !residual = residual + (cv_flux%sub_cv(sub_cv_id)%phase_flux(1)*saturation_upwind)
-            residual = residual + (cv_flux%sub_cv(sub_cv_id)%phase_flux(phase_id)*saturation_upwind*sigma_inv_upwind)
+            !residual = residual + (cv_flux%sub_cv(sub_cv_id)%phase_flux(phase_id)*saturation_upwind*sigma_inv_upwind)
+                                         ! phase 1 mu, phase 2 mu, sat value, Corey exponent
+            f = get_phase_fractional_flow(viscosities(1), viscosities(2), saturation_uw, Corey_exponent(1), Corey_exponent(2))
+            residual = residual + ( f * cv_flux%sub_cv(sub_cv_id)%total_flux)
+            !print *, ''
+            !print *, 'cv id, adj cv, sat uw, f, f*tot_flux:  ', cv_id, cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id&
+            !       , saturation_uw, f, f * cv_flux%sub_cv(sub_cv_id)%total_flux
         end do
 
+        !print *, 'stopping'; stop
         return
 
     end function assemble_saturation_residual_component_fractional_flow
+
+
+    function get_phase_fractional_flow( phase1_viscosity, phase2_viscosity, phase1_saturation&
+                                      , phase1_corey_exp, phase2_corey_exp) result(val)
+
+        ! phase 1 viscosity = 1.
+        ! phase 2 viscosity = 1.
+        ! corey exp = 2.
+
+         real :: phase1_viscosity, phase2_viscosity
+         real :: phase1_saturation!, phase2_saturation
+         real :: mobility_1, mobility_2
+         real :: phase1_corey_exp, phase2_corey_exp
+         real :: val
+
+         mobility_1 = phase1_saturation**phase1_corey_exp/phase1_viscosity
+         mobility_2 = (1.-phase1_saturation)**phase2_corey_exp/phase2_viscosity
+
+         val = mobility_1/(mobility_1+mobility_2)
+
+    end function get_phase_fractional_flow
+
+    function get_dphase_fractional_flow_ds( phase1_viscosity, phase2_viscosity, phase1_saturation&
+                                      , phase1_corey_exp, phase2_corey_exp) result(val)
+
+        ! phase 1 viscosity = 1.
+        ! phase 2 viscosity = 1.
+        ! corey exp = 2.
+
+         real :: phase1_viscosity, phase2_viscosity
+         real :: phase1_saturation!, phase2_saturation
+         real :: mobility_1, mobility_2, dmobility1_ds, dmobility2_ds, dtotal_mobility_ds
+         real :: phase1_corey_exp, phase2_corey_exp, total_mobility
+         real :: val
+
+         mobility_1 = phase1_saturation**phase1_corey_exp/phase1_viscosity
+         mobility_2 = (1.-phase1_saturation)**phase2_corey_exp/phase2_viscosity
+         total_mobility = mobility_1+mobility_2
+         dmobility1_ds = (1./phase1_viscosity)*phase1_corey_exp*(phase1_saturation)**(phase1_corey_exp-1.)
+         dmobility2_ds = -(1./phase2_viscosity)*phase2_corey_exp*(1.-phase1_saturation)**(phase2_corey_exp-1.)
+         dtotal_mobility_ds = dmobility1_ds+dmobility1_ds
+
+         val = ((dmobility1_ds*total_mobility)-(dtotal_mobility_ds*mobility_1))/(total_mobility)**2.
+
+    end function get_dphase_fractional_flow_ds
 
     function assemble_saturation_residual_component(cv_id, cv_flux, timestep_size, saturation, phase_id) result(residual)
 
@@ -8381,7 +8482,7 @@ end if
                 saturation_upwind = cv_flux%sub_cv(sub_cv_id)%boundary_saturation_upwind(phase_id)
                 sigma_inv_upwind = 1. ! fix this later
             else
-                if (cv_flux%sub_cv(sub_cv_id)%phase_flux(phase_id) > 1.e-16) then
+                if (cv_flux%sub_cv(sub_cv_id)%total_flux > 1.e-16) then
                     saturation_upwind = saturation(cv_id)
                     sigma_inv_upwind = cv_flux%sigma_inv(phase_id)
                 else
@@ -8391,121 +8492,164 @@ end if
             end if
             !print *, saturation_upwind, cv_flux%sub_cv(sub_cv_id)%cv_saturation_upwind
             !residual = residual + (cv_flux%sub_cv(sub_cv_id)%phase_flux(1)*saturation_upwind)
-            residual = residual + (cv_flux%sub_cv(sub_cv_id)%phase_flux(phase_id)*saturation_upwind*sigma_inv_upwind)
+            ! fix this later ** not used bc of fractional flow formulation
+            !residual = residual + (cv_flux%sub_cv(sub_cv_id)%phase_flux(phase_id)*saturation_upwind*sigma_inv_upwind)
         end do
 
         return
 
     end function assemble_saturation_residual_component
 
-    function assemble_cv_jacobian_row(cv_id, cv_flux, timestep_size, num_cv, saturation) result(jacobian)
+    function assemble_cv_jacobian_row(cv_id, cv_flux, timestep_size, num_cv, saturation, viscosities, Corey_exp) result(jacobian)
 
         type(control_volume_flux_container), intent(in) :: cv_flux
         INTEGER, intent(in) :: cv_id, num_cv
         real, dimension(:), intent(in) :: saturation
         real, intent(in) :: timestep_size ! DT
         real, dimension(num_cv) :: jacobian ! test populating this row for each cv
+        real, dimension(:), intent(in) :: viscosities, Corey_exp
         ! local variables
         integer :: sub_cv_id
-        real :: dsigma_inv_ds
+        real :: saturation_uw, df_ds
+        !real :: dsigma_inv_ds
 
         ! initialize
         jacobian = 0.
         ! add to diagonal
         jacobian(cv_id) = (cv_flux%cv_porosity * cv_flux%cv_volume)/timestep_size
-        ! loop over cv interfaces with neighbors, account for upwind direction
+
+        !print *, 'cv_id, phi, vol, dt: ', cv_id, cv_flux%cv_porosity, cv_flux%cv_volume, timestep_size
+
+        ! loop over cv interfaces with neighbors, account for upwind direction 
         do sub_cv_id = 1, cv_flux%sub_cv_count
-            if (cv_flux%sub_cv(sub_cv_id)%phase_flux(1) > 1.e-16) then
-                dsigma_inv_ds = - cv_flux%dsigma_ds(1)/(cv_flux%sigma(1)**2.)
-                !jacobian(cv_id) = jacobian(cv_id) + cv_flux%sub_cv(sub_cv_id)%phase_flux(1)
-                jacobian(cv_id) = jacobian(cv_id) + (cv_flux%sub_cv(sub_cv_id)%phase_flux(1)&
-                                 * (cv_flux%sigma_inv(1)+(saturation(cv_id)*dsigma_inv_ds)))
+            !if (cv_flux%sub_cv(sub_cv_id)%phase_flux(1) > 1.e-16) then
+            !    dsigma_inv_ds = - cv_flux%dsigma_ds(1)/(cv_flux%sigma(1)**2.)
+            !    !jacobian(cv_id) = jacobian(cv_id) + cv_flux%sub_cv(sub_cv_id)%phase_flux(1)
+            !    jacobian(cv_id) = jacobian(cv_id) + (cv_flux%sub_cv(sub_cv_id)%phase_flux(1)&
+            !                     * (cv_flux%sigma_inv(1)+(saturation(cv_id)*dsigma_inv_ds)))
+            !else
+            !    dsigma_inv_ds = - cv_flux%sub_cv(sub_cv_id)%dsigma_ds_other(1)/(cv_flux%sub_cv(sub_cv_id)%sigma_other(1)**2.)
+            !    !jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id) = jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)&
+            !    !        + cv_flux%sub_cv(sub_cv_id)%phase_flux(1)
+            !    jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id) = jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)&
+            !            + (cv_flux%sub_cv(sub_cv_id)%phase_flux(1) * (cv_flux%sub_cv(sub_cv_id)%sigma_inv_other(1)&
+            !            + (saturation(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)*dsigma_inv_ds)))
+            !end if
+            if (cv_flux%sub_cv(sub_cv_id)%on_boundary) then
+                saturation_uw = cv_flux%sub_cv(sub_cv_id)%boundary_saturation_upwind(1)
+                df_ds = get_dphase_fractional_flow_ds( viscosities(1), viscosities(2), saturation_uw, Corey_exp(1), Corey_exp(2))
+                jacobian(cv_id) = jacobian(cv_id) + (df_ds * cv_flux%sub_cv(sub_cv_id)%total_flux)
             else
-                dsigma_inv_ds = - cv_flux%sub_cv(sub_cv_id)%dsigma_ds_other(1)/(cv_flux%sub_cv(sub_cv_id)%sigma_other(1)**2.)
-                !jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id) = jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)&
-                !        + cv_flux%sub_cv(sub_cv_id)%phase_flux(1)
-                jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id) = jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)&
-                        + (cv_flux%sub_cv(sub_cv_id)%phase_flux(1) * (cv_flux%sub_cv(sub_cv_id)%sigma_inv_other(1)&
-                        + (saturation(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)*dsigma_inv_ds)))
-            end if
+                !print *, 'cv_id, adj cv, total flux: ', cv_id, cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id, cv_flux%sub_cv(sub_cv_id)%total_flux
+                ! use upwind direction to populate the Jacobian terms
+                if (cv_flux%sub_cv(sub_cv_id)%total_flux > 1.e-16) then
+                    !if (cv_id == 1 .and. &
+                    !   cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id == 1) print *, 'here 1'
+                    saturation_uw = saturation(cv_id)
+                    df_ds = get_dphase_fractional_flow_ds( 1., 1., saturation_uw, Corey_exp(1), Corey_exp(2))
+                    jacobian(cv_id) = jacobian(cv_id) + (df_ds * cv_flux%sub_cv(sub_cv_id)%total_flux)
+                else
+                    !if (cv_id == 1 .and. &
+                    !   cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id == 1) print *, 'here 2'
+                    saturation_uw = saturation(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)
+                    !if (cv_flux%sub_cv(sub_cv_id)%on_boundary) saturation_uw = 
+                    df_ds = get_dphase_fractional_flow_ds( 1., 1., saturation_uw, Corey_exp(1), Corey_exp(2))
+                    jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id) = jacobian(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)&
+                                                                        + (df_ds * cv_flux%sub_cv(sub_cv_id)%total_flux)
+                end if
+            end if 
         end do
 
         return
     end function assemble_cv_jacobian_row
 
-    subroutine get_net_flux(num_cv, cv_flux, saturation, net_flux, num_phase)
+    subroutine get_net_flux(num_cv, cv_flux, net_flux) !, saturation, net_flux, num_phase)
 
         integer :: num_cv, num_phase
         type(control_volume_flux_container), dimension(:), intent(in) :: cv_flux
         !real, intent(in) :: timestep_size ! DT
-        real, dimension(:, :), intent(in) :: saturation
+        !real, dimension(:, :), intent(in) :: saturation
         real, dimension(:), intent(inout) :: net_flux
         ! local
-        integer :: glb_cv, phase_id
+        integer :: glb_cv!, phase_id
 
         do glb_cv = 1, num_cv
-            do phase_id = 1, num_phase
-                net_flux(glb_cv) = net_flux(glb_cv) + get_cv_flux_phase( glb_cv, cv_flux(glb_cv)&
-                                                    , saturation(phase_id, :), phase_id)
-            !print *, glb_cv, residual(glb_cv)
-            !print *, 'phase ', phase_id, net_flux(glb_cv)
-            end do
-            !print *, net_flux(glb_cv)
-            !stop
+            !do phase_id = 1, num_phase
+                !net_flux(glb_cv) = net_flux(glb_cv) + get_cv_flux_phase( glb_cv, cv_flux(glb_cv)&
+                !                                    , saturation(phase_id, :), phase_id)
+            !end do
+            net_flux(glb_cv) = get_cv_flux_phase_fractional_flow(glb_cv, cv_flux(glb_cv))
         end do
 
-        !print *, 'net_flux: ', net_flux
-        !stop
-
-        print *, 'net flux: ', net_flux
+        print *, 'net cv flux: ', net_flux
+        print *, 'net domain flux: ', sum(net_flux)
     end subroutine
 
-    function get_cv_flux_phase(cv_id, cv_flux, saturation, phase_id) result(flux)
+     function get_cv_flux_phase_fractional_flow(cv_id, cv_flux) result(flux)
 
-        type(control_volume_flux_container), intent(in) :: cv_flux
-        INTEGER, intent(in) :: cv_id, phase_id
-        real, dimension(:), intent(in) :: saturation
-        !real, intent(in) :: timestep_size ! DT
-        ! local variables
-        real :: flux, saturation_upwind, sigma_inv_upwind
-        integer :: sub_cv_id
+         type(control_volume_flux_container), intent(in) :: cv_flux
+         INTEGER, intent(in) :: cv_id!, phase_id
+         !real, dimension(:), intent(in) :: saturation
+         !real, intent(in) :: timestep_size ! DT
+         ! local variables
+         real :: flux, saturation_upwind, sigma_inv_upwind, f
+         integer :: sub_cv_id
 
-        !residual = (cv_flux%cv_porosity * cv_flux%cv_volume * saturation(cv_id))/timestep_size
-        !residual = residual - ((cv_flux%cv_porosity * cv_flux%cv_volume * cv_flux%cv_saturation_old(phase_id))/timestep_size)
+         flux = 0.
+         do sub_cv_id = 1, cv_flux%sub_cv_count
+             print *, 'cv_id, adj cv, flux: ', cv_id, cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id&
+                    , cv_flux%sub_cv(sub_cv_id)%total_flux
+             flux = flux + cv_flux%sub_cv(sub_cv_id)%total_flux
+         end do
 
-        flux = 0.
-        do sub_cv_id = 1, cv_flux%sub_cv_count
-            ! get upstream values
-            if (cv_flux%sub_cv(sub_cv_id)%on_boundary) then
-                saturation_upwind = cv_flux%sub_cv(sub_cv_id)%boundary_saturation_upwind(phase_id)
-                sigma_inv_upwind = 1. ! fix this later
-            else
-                if (cv_flux%sub_cv(sub_cv_id)%phase_flux(phase_id) > 1.e-16) then
-                    saturation_upwind = saturation(cv_id)
-                    sigma_inv_upwind = cv_flux%sigma_inv(phase_id)
-                else
-                    saturation_upwind = saturation(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)
-                    sigma_inv_upwind = cv_flux%sub_cv(sub_cv_id)%sigma_inv_other(phase_id)
-                end if
-            end if
-            !print *, saturation_upwind, cv_flux%sub_cv(sub_cv_id)%cv_saturation_upwind
-            !residual = residual + (cv_flux%sub_cv(sub_cv_id)%phase_flux(1)*saturation_upwind)
+     end function get_cv_flux_phase_fractional_flow
 
-            ! check if phases have same delta p
-            print *, cv_id, cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id&
-                   , cv_flux%sub_cv(sub_cv_id)%phase_flux(:)
+    !function get_cv_flux_phase(cv_id, cv_flux, saturation, phase_id) result(flux)
 
-            flux = flux + (cv_flux%sub_cv(sub_cv_id)%phase_flux(phase_id)*saturation_upwind*sigma_inv_upwind)
-            !print *, 'cv_id, neighbor_glb_id, flux: '&
-            !       , cv_id, cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id&
-            !       , cv_flux%sub_cv(sub_cv_id)%phase_flux(phase_id)*saturation_upwind*sigma_inv_upwind
+    !    type(control_volume_flux_container), intent(in) :: cv_flux
+    !    INTEGER, intent(in) :: cv_id, phase_id
+    !    real, dimension(:), intent(in) :: saturation
+    !    !real, intent(in) :: timestep_size ! DT
+    !    ! local variables
+    !    real :: flux, saturation_upwind, sigma_inv_upwind
+    !    integer :: sub_cv_id
 
-            print *, 'cv_id, neighbor id, delta p: ', cv_id, cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id&
-                                                    , cv_flux%sub_cv(sub_cv_id)%phase_flux
-        end do
-        !stop
-        !return
-    end function get_cv_flux_phase
+    !    !residual = (cv_flux%cv_porosity * cv_flux%cv_volume * saturation(cv_id))/timestep_size
+    !    !residual = residual - ((cv_flux%cv_porosity * cv_flux%cv_volume * cv_flux%cv_saturation_old(phase_id))/timestep_size)
+
+    !    flux = 0.
+    !    do sub_cv_id = 1, cv_flux%sub_cv_count
+    !        ! get upstream values
+    !        if (cv_flux%sub_cv(sub_cv_id)%on_boundary) then
+    !            saturation_upwind = cv_flux%sub_cv(sub_cv_id)%boundary_saturation_upwind(phase_id)
+    !            sigma_inv_upwind = 1. ! fix this later
+    !        else
+    !            if (cv_flux%sub_cv(sub_cv_id)%phase_flux(phase_id) > 1.e-16) then
+    !                saturation_upwind = saturation(cv_id)
+    !                sigma_inv_upwind = cv_flux%sigma_inv(phase_id)
+    !            else
+    !                saturation_upwind = saturation(cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id)
+    !                sigma_inv_upwind = cv_flux%sub_cv(sub_cv_id)%sigma_inv_other(phase_id)
+    !            end if
+    !        end if
+    !        !print *, saturation_upwind, cv_flux%sub_cv(sub_cv_id)%cv_saturation_upwind
+    !        !residual = residual + (cv_flux%sub_cv(sub_cv_id)%phase_flux(1)*saturation_upwind)
+
+    !        ! check if phases have same delta p
+    !        print *, cv_id, cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id&
+    !               , cv_flux%sub_cv(sub_cv_id)%phase_flux(:)
+
+    !        flux = flux + (cv_flux%sub_cv(sub_cv_id)%phase_flux(phase_id)*saturation_upwind*sigma_inv_upwind)
+    !        !print *, 'cv_id, neighbor_glb_id, flux: '&
+    !        !       , cv_id, cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id&
+    !        !       , cv_flux%sub_cv(sub_cv_id)%phase_flux(phase_id)*saturation_upwind*sigma_inv_upwind
+
+    !        print *, 'cv_id, neighbor id, delta p: ', cv_id, cv_flux%sub_cv(sub_cv_id)%neighbor_glb_id&
+    !                                                , cv_flux%sub_cv(sub_cv_id)%phase_flux
+    !    end do
+    !    !stop
+    !    !return
+    !end function get_cv_flux_phase
 
 
 end module cv_advection

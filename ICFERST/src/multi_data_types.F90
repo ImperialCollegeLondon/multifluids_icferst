@@ -329,6 +329,7 @@ module multi_data_types
         ! begin jumanah
         type(petsc_csr_matrix) :: petsc_newton_ACV
         type(vector_field) :: newton_CV_RHS
+        type(petsc_csr_matrix) :: petsc_ACV2
         ! end jumanah
         real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()
         integer, dimension(:), pointer :: ICOLOR => null()
@@ -478,8 +479,8 @@ module multi_data_types
        !integer :: neighbor_count = 0
        integer :: neighbor_glb_id
        integer :: element_id
-       !real :: total_flux
-       real, dimension(2) :: phase_flux
+       real :: total_flux = 0.
+       !real, dimension(2) :: phase_flux
        logical :: on_boundary = .false.
        real, dimension(2) :: boundary_saturation_upwind = 0.
        real :: ds = 0.
