@@ -249,6 +249,7 @@ contains
         character( len = option_path_len ) :: option_name
         integer :: phreeqc_id
         double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
+        real :: total_mass_metal_before_adapt, total_mass_metal_after_adapt, total_mass_metal_after_correction, total_mass_metal_after_bound
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -827,6 +828,17 @@ contains
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
 
+            if (nonLinearAdaptTs) then
+                !As the value of dt and acctim may have changed we retrieve their values
+                !to make sure that everything is coherent
+                call get_option( '/timestepping/current_time', acctim )
+                call get_option( '/timestepping/timestep', dt)
+                !If repeat timestep we don't want to adapt mesh or dump results
+                if ( Repeat_time_step ) then
+                    itime = itime - 1
+                    cycle Loop_Time
+                end if
+            end if
 
 #ifdef USING_PHREEQC
             call run_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc)
@@ -883,17 +895,7 @@ contains
                 call get_option( '/timestepping/current_time', acctim )
                 call dump_outflux(acctim,itime,outfluxes)
             endif
-            if (nonLinearAdaptTs) then
-                !As the value of dt and acctim may have changed we retrieve their values
-                !to make sure that everything is coherent
-                call get_option( '/timestepping/current_time', acctim )
-                call get_option( '/timestepping/timestep', dt)
-                !If repeat timestep we don't want to adapt mesh or dump results
-                if ( Repeat_time_step ) then
-                    itime = itime - 1
-                    cycle Loop_Time
-                end if
-            end if
+
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
@@ -930,10 +932,27 @@ contains
 
             call petsc_logging(3,stages,ierrr,default=.true.)
             call petsc_logging(2,stages,ierrr,default=.true., push_no=7)
+
+            ! Call to calculate the metal total mass before adapting
+            if (have_option("/porous_media/Metal_dissolution") .or. have_option("/porous_media/Metal_precipitation")) then
+              call total_mass_metal(state, packed_state, Mdims, ndgln, CV_funs, total_mass_metal_before_adapt)
+            end if
+
             ! Call to adapt the mesh if required! If adapting within the FPI then the adaption is controlled elsewhere
             if(acctim >= t_adapt_threshold .and. .not. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
               call adapt_mesh_mp()
             end if
+
+            ! Call to bound the metal concentrations to eliminate nonphysical values + apply correction factor to conserve mass
+            if (have_option("/porous_media/Metal_dissolution") .or. have_option("/porous_media/Metal_precipitation")) then
+              ! Call to bound the metal concentrations to avoid any unphysical value created by adaptivity
+              call bound_metal_concentrations(state, packed_state, Mdims, ndgln)
+              ! Call to calculate the metal total mass after bounding
+              call total_mass_metal(state, packed_state, Mdims, ndgln, CV_funs, total_mass_metal_after_bound)
+              ! Apply correction factor if needed to conserve mass
+              call correction_mass_metal(state, packed_state, Mdims, ndgln, total_mass_metal_before_adapt, total_mass_metal_after_bound)
+            end if
+
             ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
             !!$ Simple adaptive time stepping algorithm
 

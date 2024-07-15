@@ -138,7 +138,8 @@ prognostic_scalar_field =
       scalar_boundary_conditions*,
 
         ## Source term.
-        ## If "Total_mass" and "Tracer_field_value" options are activated then the source term is based on imposed total mass and tracer field value. In that case, tracer keeps being injected at its prescribed value until reaching the prescribed total mass in the domain. In that case, "Tracer_field_value" has preference over the value imposed in "Source"
+        ##   For Concentration or any Tracer except Temperature: If "Total_mass" and "Tracer_field_value" options are activated then the source term is based on imposed total mass and tracer field value. In that case, tracer keeps being injected at its prescribed value until reaching the prescribed total mass in the domain. In that case, "Tracer_field_value" has preference over the value imposed in "Source"
+        ##   For Temperature:  Source term to be imposed in W/m3 (heat production).
       element scalar_field {
          attribute name { "Source" },
          attribute rank { "0" },

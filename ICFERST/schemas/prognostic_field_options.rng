@@ -158,7 +158,9 @@ requires a distinct name for the options dictionary.</a:documentation>
       </zeroOrMore>
       <optional>
         <element name="scalar_field">
-          <a:documentation>Source term. If "Total_mass" and "Tracer_field_value" options are activated then the source term is based on imposed total mass and tracer field value. In that case, tracer keeps being injected at its prescribed value until reaching the prescribed total mass in the domain. In that case, "Tracer_field_value" has preference over the value imposed in "Source".</a:documentation>
+          <a:documentation>Source term.
+            &lt;b&gt;For Concentration or any Tracer except Temperature:&lt;/b&gt; If "Total_mass" and "Tracer_field_value" options are activated then the source term is based on imposed total mass and tracer field value. In that case, tracer keeps being injected at its prescribed value until reaching the prescribed total mass in the domain. In that case, "Tracer_field_value" has preference over the value imposed in "Source"
+            &lt;b&gt;For Temperature:&lt;/b&gt;  Source term to be imposed in W/m3 (heat production).</a:documentation>
           <attribute name="name">
             <value>Source</value>
           </attribute>
