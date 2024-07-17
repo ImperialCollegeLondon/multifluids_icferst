@@ -250,6 +250,7 @@ contains
         integer :: phreeqc_id
         double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
         real :: total_mass_metal_before_adapt, total_mass_metal_after_adapt, total_mass_metal_after_correction, total_mass_metal_after_bound
+        logical :: viscosity_EOS
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -438,6 +439,8 @@ contains
                 call get_option( '/numerical_methods/Max_compositional_its', NonLinearIteration_Components, default = 1 )
             end if
         end do
+
+        call compute_viscosity_EOS( state, Mdims )
 
         if( have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) ) &
             have_extra_DiffusionLikeTerm = .true.
@@ -909,6 +912,8 @@ contains
             !Time to compute the self-potential if required
             if (write_all_stats .and. have_option("/porous_media/SelfPotential")) &
                     call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
+            ! Compute viscosity
+            call compute_viscosity_EOS( state, Mdims )
             !Now compute diagnostics
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             !calculate_diagnostic_variables_new <= computes other diagnostics such as python-based fields

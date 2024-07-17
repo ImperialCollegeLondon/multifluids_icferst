@@ -4979,6 +4979,7 @@ Defaults to zero at machine tolerance (epsilon(0.0)) if not selected.</a:documen
   </define>
   <define name="phase_viscosity">
     <element name="tensor_field">
+      <a:documentation>Viscosity of the current phase (tensor field)</a:documentation>
       <attribute name="name">
         <value>Viscosity</value>
       </attribute>
@@ -4991,12 +4992,12 @@ Defaults to zero at machine tolerance (epsilon(0.0)) if not selected.</a:documen
           <ref name="prescribed_tensor_field_no_adapt"/>
         </element>
         <element name="diagnostic">
-          <a:documentation>For electrical modelling only - holds electrical conductivity</a:documentation>
           <choice>
             <ref name="tensor_python_diagnostic_algorithm"/>
             <ref name="internal_algorithm"/>
+            <ref name="viscosity_EOS_algorithm"/>
           </choice>
-          <ref name="velocity_mesh_choice"/>
+          <ref name="pressure_mesh_choice"/>
           <ref name="diagnostic_tensor_field"/>
         </element>
       </choice>
@@ -5167,11 +5168,11 @@ Introduce the same name as the scalar field being used. For example: Tracer_CO2<
               </zeroOrMore>
             </element>
             <element name="BW_eos">
-              <a:documentation>Batzle and Wang (1992) EOS
-Use for basin scale simulations.
-Valid for ranges: 5&lt;=P&lt;=100 MPa, 20&lt;=T&lt;=350 degrees Celsius, C&lt;=0.32 kg/kg salinity.
+              <a:documentation>Batzle and Wang (1992) EOS.
+  Use for basin scale simulations.
+  Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg salinity.
 
-NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentation>
+  NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentation>
               <optional>
                 <element name="C0">
                   <a:documentation>Reference concentration (default 0)</a:documentation>
@@ -5235,8 +5236,8 @@ Component properties overwrite the ones given for a phase and are mandatory for 
         <a:documentation>Phase density</a:documentation>
       </ref>
       <element name="Viscosity">
-        <a:documentation>Viscosity of the current phase (tensor field)</a:documentation>
-        <ref name="phase_viscosity"/>
+        <a:documentation>Use this option to specify the viscosity of fluids</a:documentation>
+          <ref name="phase_viscosity"/>
         <optional>
           <element name="linearise_viscosity">
             <a:documentation>Linearises a P2 field. Use this if having stability issues with high-order discretisations</a:documentation>
