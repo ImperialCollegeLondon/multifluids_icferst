@@ -1089,6 +1089,17 @@ tensor_python_diagnostic_algorithm =
          }?
       }
    )
+viscosity_EOS_algorithm =
+   (
+        ## Viscosity equation of state.
+        ## This diagnostic is internal - i.e. it is calculated somewhere within
+        ## the main code, and is not wrapped by the automatic diagnostics
+        ## wrappers.
+        element viscosity_BW {
+           attribute name { "Internal" },
+           attribute material_phase_support { "multiple" }
+        }
+     )
 
 # Adaptivity diagnostics
 scalar_edge_lengths_algorithm =
@@ -1707,4 +1718,5 @@ tensor_diagnostic_algorithms |= helmholtz_smoothed_tensor_algorithm
 tensor_diagnostic_algorithms |= helmholtz_anisotropic_smoothed_tensor_algorithm
 tensor_diagnostic_algorithms |= field_tolerance_algorithm
 tensor_diagnostic_algorithms |= tensor_python_diagnostic_algorithm
+tensor_diagnostic_algorithms |= viscosity_EOS_algorithm
 tensor_diagnostic_algorithms |= tensor_difference_algorithm

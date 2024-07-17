@@ -4092,6 +4092,7 @@ surface_integral_stats_vector.surface_integral &=
    )
 
 phase_viscosity =(
+                  ## Use this option to specify the viscosity of fluids
                   element tensor_field {
                      attribute name { "Viscosity" },
                      attribute rank { "2" },
@@ -4100,13 +4101,13 @@ phase_viscosity =(
                             pressure_mesh_choice,
                             prescribed_tensor_field_no_adapt
                         }|
-                        ## For electrical modelling only - holds electrical conductivity
                         element diagnostic {
                            (
                               tensor_python_diagnostic_algorithm |
-                              internal_algorithm
+                              internal_algorithm|
+                              viscosity_EOS_algorithm
                            ),
-                           velocity_mesh_choice,
+                           pressure_mesh_choice,
                            diagnostic_tensor_field
                         }
                      )
@@ -4252,7 +4253,7 @@ element Density{(
                         }|
                         ## Batzle and Wang (1992) EOS
                         ## Use for basin scale simulations.
-                        ## Valid for ranges: 5<=P<=100 MPa, 20<=T<=350 degrees Celsius, C<=0.32 kg/kg salinity.
+                        ## Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg salinity.
                         ##
                         ## NOTE: Reference density is calculated using reference C0, T0, P0.
                         element BW_eos {
@@ -4302,7 +4303,7 @@ phase_properties_options =
 
                 ## Viscosity of the current phase (tensor field)
                 element Viscosity {
-                phase_viscosity,
+                    phase_viscosity,
                     ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
                     element linearise_viscosity {empty}?,
                element viscosity_scheme {

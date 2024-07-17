@@ -872,7 +872,7 @@ contains
        real :: Angle, bad_element_perm_mult, Max_aspect_ratio, height ! the height of an isosceles triangle for the top angle to be equal to the trigger angle
        real, dimension(Mdims%ndim,Mdims%ndim) :: trans_matrix, rot_trans_matrix ! for bad_element permeability transformation matrix
        real, parameter :: pi = acos(0.0) * 2.0 ! Define pi
-       character( len = option_path_len ) :: option_path_python
+       character( len = option_path_len ) :: option_path_python, option_path_viscosity_EOS
 
        perm => extract_tensor_field( packed_state, "Permeability" )
        !Define n_in_pres based on the local version of nphase
@@ -888,10 +888,18 @@ contains
        DO IPHASE = 1, Mdims%nphase!Get viscosity for all the phases
         option_path_python = "/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
         "::Viscosity/diagnostic/algorithm::tensor_python_diagnostic"
+        option_path_viscosity_EOS = "/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
+        "::Viscosity/diagnostic/viscosity_EOS"
           if (have_option(trim(option_path_python)))then
             state_viscosity => extract_tensor_field( state( iphase ), 'Viscosity' )
             call multi_compute_python_field(state, iphase, trim( option_path_python ), tfield = state_viscosity)
             !Copy into state
+            do i = 1, Mdims%cv_nonods
+              viscosities(iphase,i) = state_viscosity%val(1,1,i)
+            end do
+          else if (have_option(trim(option_path_viscosity_EOS))) then
+            call compute_viscosity_EOS( state, Mdims )
+            state_viscosity => extract_tensor_field( state( iphase ), 'Viscosity' )
             do i = 1, Mdims%cv_nonods
               viscosities(iphase,i) = state_viscosity%val(1,1,i)
             end do
@@ -1943,6 +1951,75 @@ contains
     Contains
 
     end subroutine calculate_viscosity
+
+    subroutine compute_viscosity_EOS( state, Mdims )
+      implicit none
+      type( multi_dimensions ), intent( in ) :: Mdims
+      type( state_type ), dimension( : ), intent( inout ) :: state
+      type( tensor_field ), pointer :: t_field
+      integer :: iphase, stat, cv_nod
+      type( scalar_field ), pointer :: temperature, concentration
+      logical :: viscosity_BW, have_temperature_field, have_concentration_field
+
+        do iphase = 1, Mdims%nphase
+          viscosity_BW = have_option("/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
+          "::Viscosity/diagnostic/viscosity_EOS/viscosity_BW::Internal")
+          if (viscosity_BW) then
+            temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
+            have_temperature_field = ( stat == 0 )
+            Concentration => extract_scalar_field( state( iphase ), 'Concentration', stat )
+            have_concentration_field = ( stat == 0 )
+            t_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
+            if (.not. (have_temperature_field)) then
+              FLAbort( "Temperature field needed for BW1992 viscosity EOS." )
+            else
+              do cv_nod=1,Mdims%cv_nonods
+                if (temperature%val(cv_nod) < 273.15) then
+                  t_field%val(1, 1, cv_nod) = 1.e-3
+                  t_field%val(1, 2, cv_nod) = 0.0
+                  t_field%val(1, 3, cv_nod) = 0.0
+                  t_field%val(2, 1, cv_nod) = 0.0
+                  t_field%val(2, 2, cv_nod) = 1.e-3
+                  t_field%val(2, 3, cv_nod) = 0.0
+                  t_field%val(3, 1, cv_nod) = 0.0
+                  t_field%val(3, 2, cv_nod) = 0.0
+                  t_field%val(3, 3, cv_nod) = 1.e-3
+                else
+                  if (have_concentration_field) then
+                    t_field%val(1, 1, cv_nod) = 1e-3 * (0.1 + 0.333*concentration%val(cv_nod) + (1.65 + 91.9 * (concentration%val(cv_nod))**3) * exp(-(0.42 * ((concentration%val(cv_nod))**0.8-0.17)**2 + 0.045) &
+                    * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(1, 2, cv_nod) = 0.0
+                    t_field%val(1, 3, cv_nod) = 0.0
+                    t_field%val(2, 1, cv_nod) = 0.0
+                    t_field%val(2, 2, cv_nod) = 1e-3 * (0.1 + 0.333*concentration%val(cv_nod) + (1.65 + 91.9 * (concentration%val(cv_nod))**3) * exp(-(0.42 * ((concentration%val(cv_nod))**0.8-0.17)**2 + 0.045) &
+                    * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(2, 3, cv_nod) = 0.0
+                    t_field%val(3, 1, cv_nod) = 0.0
+                    t_field%val(3, 2, cv_nod) = 0.0
+                    t_field%val(3, 3, cv_nod) = 1e-3 * (0.1 + 0.333*concentration%val(cv_nod) + (1.65 + 91.9 * (concentration%val(cv_nod))**3) * exp(-(0.42 * ((concentration%val(cv_nod))**0.8-0.17)**2 + 0.045) &
+                    * (temperature%val(cv_nod) - 273.15)**0.8))
+                  else
+                    t_field%val(1, 1, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(1, 2, cv_nod) = 0.0
+                    t_field%val(1, 3, cv_nod) = 0.0
+                    t_field%val(2, 1, cv_nod) = 0.0
+                    t_field%val(2, 2, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(2, 3, cv_nod) = 0.0
+                    t_field%val(3, 1, cv_nod) = 0.0
+                    t_field%val(3, 2, cv_nod) = 0.0
+                    t_field%val(3, 3, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (temperature%val(cv_nod) - 273.15)**0.8))
+                  end if
+                end if
+              end do
+            end if
+
+            ! Make sure viscosity stays between bounds.
+            t_field%val = max(min(t_field%val,1.e-3), 1.e-4)
+          end if
+        end do
+
+    end subroutine compute_viscosity_EOS
+
 
 
 
