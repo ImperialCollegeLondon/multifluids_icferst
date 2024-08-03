@@ -874,6 +874,9 @@ contains
               end do
             end if
 
+            ! Option if we want to have a copied field of the metal field BEFORE the exchange (dissolution or precipitation) happens.
+            call copy_metal_field(state, packed_state, Mdims, ndgln)
+
             !Metal dissolution happens here
             if (have_option("/porous_media/Metal_dissolution"))call metal_dissolution(state, packed_state, Mdims, ndgln)
             !Metal precipitation happens here

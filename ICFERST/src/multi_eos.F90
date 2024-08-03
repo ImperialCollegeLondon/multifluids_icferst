@@ -3302,4 +3302,32 @@ contains
 
     end subroutine correction_mass_metal
 
+    !>@brief: subroutine to copy a Metal Field into a copied field BEFORE the exchange steps happen (dissolution or precipitation). This can be used to have access to a liquid or solid metal field before the exchange step has happened.
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
+    subroutine copy_metal_field(state, packed_state, Mdims, ndgln)
+      implicit none
+      type(state_type), dimension(:), intent (inout) :: state
+      type(state_type), intent (inout) :: packed_state
+      type(multi_dimensions), intent (in) :: Mdims
+      type(multi_ndgln), intent (in) :: ndgln
+      !Local variables
+      type(tensor_field), pointer :: metal_field
+      type(scalar_field), pointer :: metal_field_copied
+      integer :: stat, fields, k
+      character( len = option_path_len ) :: option_name
+      character( len = option_path_len ), save :: metal_field_name
+
+      call get_option("/material_phase[0]/scalar_field::CopiedField_Metal/diagnostic/metal_field_name",metal_field_name)
+
+      if ( have_option( '/material_phase[0]/scalar_field::CopiedField_Metal' ) ) then
+        metal_field=>extract_tensor_field(packed_state,"Packed"//trim(metal_field_name), stat)
+        metal_field_copied=>extract_scalar_field(state(1), "CopiedField_Metal", stat)
+        metal_field_copied%val(:) = metal_field%val(1,1,:)
+      end if
+
+    end subroutine copy_metal_field
+
 end module multiphase_EOS

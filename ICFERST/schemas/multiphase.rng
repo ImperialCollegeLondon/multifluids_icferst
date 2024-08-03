@@ -4178,6 +4178,29 @@ Adapting to this field is not recommended</a:documentation>
           </element>
         </choice>
       </element>
+      <element name="scalar_field">
+        <a:documentation>Copied Field of the Metal Field BEFORE the exchange steps happen (dissolution or precipitation).
+         Name has to start with CopiedField_Metal (e.g., CopiedField_Metal_Cu).</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>CopiedField_Metal</value>
+        </attribute>
+        <choice>
+          <element name="diagnostic">
+            <ref name="internal_algorithm"/>
+              <attribute name="metal_field_name">
+                <data type="string" datatypeLibrary=""/>
+              </attribute>
+            <ref name="pressure_mesh_choice"/>
+            <ref name="diagnostic_scalar_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
     </choice>
     <!--
       Insert new diagnostic scalar fields here using the template:
