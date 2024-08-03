@@ -3322,11 +3322,9 @@ contains
 
       call get_option("/material_phase[0]/scalar_field::CopiedField_Metal/diagnostic/metal_field_name",metal_field_name)
 
-      if ( have_option( '/material_phase[0]/scalar_field::CopiedField_Metal' ) ) then
-        metal_field=>extract_tensor_field(packed_state,"Packed"//trim(metal_field_name), stat)
-        metal_field_copied=>extract_scalar_field(state(1), "CopiedField_Metal", stat)
-        metal_field_copied%val(:) = metal_field%val(1,1,:)
-      end if
+      metal_field=>extract_tensor_field(packed_state,"Packed"//trim(metal_field_name), stat)
+      metal_field_copied=>extract_scalar_field(state(1), "CopiedField_Metal", stat)
+      metal_field_copied%val(:) = metal_field%val(1,1,:)
 
     end subroutine copy_metal_field
 
