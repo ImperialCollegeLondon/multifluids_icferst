@@ -2010,11 +2010,12 @@ contains
                     t_field%val(3, 3, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (temperature%val(cv_nod) - 273.15)**0.8))
                   end if
                 end if
+                ! Make sure viscosity stays between bounds.
+                t_field%val(1, 1, cv_nod) = max(min(t_field%val(1, 1, cv_nod),1.e-3), 1.e-4)
+                t_field%val(2, 2, cv_nod) = max(min(t_field%val(1, 1, cv_nod),1.e-3), 1.e-4)
+                t_field%val(3, 3, cv_nod) = max(min(t_field%val(1, 1, cv_nod),1.e-3), 1.e-4)
               end do
             end if
-
-            ! Make sure viscosity stays between bounds.
-            t_field%val = max(min(t_field%val,1.e-3), 1.e-4)
           end if
         end do
 
