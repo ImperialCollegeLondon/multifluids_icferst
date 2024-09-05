@@ -2808,6 +2808,11 @@ contains
       double precision, dimension(Mdims%cv_nonods) :: K_const_cv, K_c_cv, K_T_cv, K_c2_cv, K_T2_cv, K_cT_cv, K_A_cv, porous_density_cv
       double precision, dimension (Mdims%cv_nonods) ::  SUM_CV
       double precision :: ref_rho
+      double precision, dimension(Mdims%cv_nonods) :: P_const_cv, P_c_cv, P_T_cv, P_c2_cv, P_T2_cv, P_cT_cv, P_A_cv
+      type (scalar_field), pointer :: P_const_field, P_c_field, P_T_field, P_c2_field, P_T2_field, P_cT_field, P_A_field
+      integer :: P_const_ele, P_c_ele, P_T_ele, P_c2_ele, P_T2_ele, P_cT_ele, P_A_ele
+      double precision :: precipitation_rate, log_precipitation_rate, delta_m, m_metal_fluid, m_metal_solid, use_density
+      logical :: has_precipitation
 
       MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
       density => extract_tensor_field(packed_state,"PackedDensity")
@@ -2821,6 +2826,10 @@ contains
 
       !Retrieve values from diamond
 
+      has_Temperature = have_option("/material_phase[0]/scalar_field::Temperature/")
+      has_Tracer_Salt = have_option("/porous_media/Metal_dissolution/Tracer_Salt")
+      has_precipitation = have_option("/porous_media/Metal_precipitation")
+
       K_A_field => extract_scalar_field(state(1), "K_A")
       K_c_field => extract_scalar_field(state(1), "K_c")
       K_T_field => extract_scalar_field(state(1), "K_T")
@@ -2829,8 +2838,16 @@ contains
       K_cT_field => extract_scalar_field(state(1), "K_cT")
       K_const_field => extract_scalar_field(state(1), "K_const")
 
-      has_Temperature = have_option("/material_phase[0]/scalar_field::Temperature/")
-      has_Tracer_Salt = have_option("/porous_media/Metal_dissolution/Tracer_Salt")
+      if (has_precipitation) then
+        P_A_field => extract_scalar_field(state(1), "P_A")
+        P_c_field => extract_scalar_field(state(1), "P_c")
+        P_T_field => extract_scalar_field(state(1), "P_T")
+        P_c2_field => extract_scalar_field(state(1), "P_c2")
+        P_T2_field => extract_scalar_field(state(1), "P_T2")
+        P_cT_field => extract_scalar_field(state(1), "P_cT")
+        P_const_field => extract_scalar_field(state(1), "P_const")
+      end if
+
 
       if (has_Temperature) then
         temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
@@ -2896,6 +2913,44 @@ contains
       K_A_cv(:) = K_A_cv(:) / SUM_CV
       porous_density_cv(:) = porous_density_cv(:) / SUM_CV
 
+      ! Calculate the precipitation rate (CV method)
+      if (has_precipitation) then
+        P_const_cv = 0.0
+        P_c_cv = 0.0
+        P_T_cv = 0.0
+        P_c2_cv = 0.0
+        P_T2_cv = 0.0
+        P_cT_cv = 0.0
+        P_A_cv = 0.0
+        DO ELE = 1, Mdims%totele
+          P_A_ele = min(size(P_A_field%val), ele)
+          P_c_ele = min(size(P_c_field%val), ele)
+          P_T_ele = min(size(P_T_field%val), ele)
+          P_c2_ele = min(size(P_c2_field%val), ele)
+          P_T2_ele = min(size(P_T2_field%val), ele)
+          P_cT_ele = min(size(P_cT_field%val), ele)
+          P_const_ele = min(size(P_const_field%val), ele)
+          DO CV_ILOC = 1, Mdims%cv_nloc
+            cv_nod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+            P_const_cv( cv_nod ) = P_const_cv( cv_nod ) + MASS_ELE( ELE ) * P_const_field%val(P_const_ele)
+            P_c_cv( cv_nod ) = P_c_cv( cv_nod ) + MASS_ELE( ELE ) * P_c_field%val(P_c_ele)
+            P_T_cv( cv_nod ) = P_T_cv( cv_nod ) + MASS_ELE( ELE ) * P_T_field%val(P_T_ele)
+            P_c2_cv( cv_nod ) = P_c2_cv( cv_nod ) + MASS_ELE( ELE ) * P_c2_field%val(P_c2_ele)
+            P_T2_cv( cv_nod ) = P_T2_cv( cv_nod ) + MASS_ELE( ELE ) * P_T2_field%val(P_T2_ele)
+            P_cT_cv( cv_nod ) = P_cT_cv( cv_nod ) + MASS_ELE( ELE ) * P_cT_field%val(P_cT_ele)
+            P_A_cv( cv_nod ) = P_A_cv( cv_nod ) + MASS_ELE( ELE ) * P_A_field%val(P_A_ele)
+          END DO
+        END DO
+        P_const_cv(:) = P_const_cv(:) / SUM_CV
+        P_c_cv(:) = P_c_cv(:) / SUM_CV
+        P_T_cv(:) = P_T_cv(:) / SUM_CV
+        P_c2_cv(:) = P_c2_cv(:) / SUM_CV
+        P_T2_cv(:) = P_T2_cv(:) / SUM_CV
+        P_cT_cv(:) = P_cT_cv(:) / SUM_CV
+        P_A_cv(:) = P_A_cv(:) / SUM_CV
+      end if
+
+
       ! Calculate the partition coefficient (CV method)
 
       do cv_nod=1,Mdims%cv_nonods
@@ -2918,29 +2973,58 @@ contains
 
           partition_coefficient = K_A_cv(cv_nod)*exp(log_partition_coefficient)
 
-          if ( partition_coefficient > 0.0) then
-            if (has_boussinesq_aprox) then
-              ! Calculate total metal mass
-              I = MeanPoreCV%val(1,cv_nod) * ref_rho * tracer_field_fluid%val(1,1,cv_nod) + (  1.d0 - MeanPoreCV%val(1,cv_nod) ) * porous_density_cv( cv_nod ) * tracer_field_solid%val(1,1,cv_nod)
-              ! Recompute the fluid metal rho*c using the partition coefficient (Jackson et al., 2017 - Eq. (20))
-              rho_c_fluid = I / ( partition_coefficient * (porous_density_cv( cv_nod )/ref_rho) + MeanPoreCV%val(1,cv_nod) * ( 1.d0 -partition_coefficient*(porous_density_cv( cv_nod )/ref_rho)) )
-              ! Recompute the solid metal rho*c using the partition coefficient (Jackson et al., 2017 - Eq. (20))
-              rho_c_solid = partition_coefficient * (porous_density_cv( cv_nod )/ref_rho) * rho_c_fluid
-              ! Recompute the fluid and solid metal concentrations
-              tracer_field_fluid%val(1,1,cv_nod) = rho_c_fluid / ref_rho
-              tracer_field_solid%val(1,1,cv_nod) = rho_c_solid / porous_density_cv( cv_nod )
-            else
-              I = MeanPoreCV%val(1,cv_nod) * density%val(1,1,cv_nod) * tracer_field_fluid%val(1,1,cv_nod) + ( 1.d0 - MeanPoreCV%val(1,cv_nod) ) * porous_density_cv( cv_nod ) * tracer_field_solid%val(1,1,cv_nod)
-              ! Recompute the fluid metal rho*c using the partition coefficient (Jackson et al., 2017 - Eq. (20))
-              rho_c_fluid = I / ( partition_coefficient * porous_density_cv( cv_nod )/density%val(1,1,cv_nod) +  MeanPoreCV%val(1,cv_nod) * ( 1.d0 - partition_coefficient*(porous_density_cv( cv_nod )/density%val(1,1,cv_nod))) )
-              ! Recompute the solid metal rho*c using the partition coefficient (Jackson et al., 2017 - Eq. (20))
-              rho_c_solid = partition_coefficient * (porous_density_cv( cv_nod )/density%val(1,1,cv_nod)) * rho_c_fluid
-              ! Recompute the fluid and solid metal concentrations
-              tracer_field_fluid%val(1,1,cv_nod) = rho_c_fluid / density%val(1,1,cv_nod)
-              tracer_field_solid%val(1,1,cv_nod) = rho_c_solid / porous_density_cv( cv_nod )
+          ! Calculate the precipitation rate
+          if (has_precipitation) then
+            log_precipitation_rate = P_const_cv(cv_nod)
+
+            if (has_Tracer_Salt) then
+              log_precipitation_rate = log_precipitation_rate + P_c_cv(cv_nod)*Tracer_Salt%val(1,1,cv_nod) + P_c2_cv(cv_nod)*(Tracer_Salt%val(1,1,cv_nod))**2
             end if
+
+            if (has_Temperature) then
+              log_precipitation_rate = log_precipitation_rate + P_T_cv(cv_nod)*temperature%val(1,1,cv_nod) + P_T2_cv(cv_nod)*(temperature%val(1,1,cv_nod))**2
+            end if
+
+            if (has_Temperature .and. has_Tracer_Salt) then
+              log_precipitation_rate = log_precipitation_rate + P_cT_cv(cv_nod)*Tracer_Salt%val(1,1,cv_nod)*temperature%val(1,1,cv_nod)
+            end if
+
+            precipitation_rate = P_A_cv(cv_nod)*exp(log_precipitation_rate)
+          end if
+
+          ! Determine the density type to use
+          if (has_boussinesq_aprox) then
+              use_density = ref_rho
+          else
+              use_density = density%val(1,1,cv_nod)
+          end if
+
+          if (partition_coefficient > 0.0) then
+              if (has_precipitation) then
+                  if (precipitation_rate <= 0.0) then
+                      ! Calculate total metal mass
+                      I = MeanPoreCV%val(1,cv_nod) * ref_rho * tracer_field_fluid%val(1,1,cv_nod) + (1.d0 - MeanPoreCV%val(1,cv_nod)) * porous_density_cv(cv_nod) * tracer_field_solid%val(1,1,cv_nod)
+                      ! Recompute the fluid metal rho*c using the partition coefficient (Jackson et al., 2017 - Eq. (20))
+                      rho_c_fluid = I / (partition_coefficient * (porous_density_cv(cv_nod)/ref_rho) + MeanPoreCV%val(1,cv_nod) * (1.d0 - partition_coefficient * (porous_density_cv(cv_nod)/ref_rho)))
+                      ! Recompute the solid metal rho*c using the partition coefficient (Jackson et al., 2017 - Eq. (20))
+                      rho_c_solid = partition_coefficient * (porous_density_cv(cv_nod)/ref_rho) * rho_c_fluid
+                      ! Recompute the fluid and solid metal concentrations
+                      tracer_field_fluid%val(1,1,cv_nod) = rho_c_fluid / ref_rho
+                      tracer_field_solid%val(1,1,cv_nod) = rho_c_solid / porous_density_cv(cv_nod)
+                  end if
+              else
+                  ! Calculate total metal mass
+                  I = MeanPoreCV%val(1,cv_nod) * use_density * tracer_field_fluid%val(1,1,cv_nod) + (1.d0 - MeanPoreCV%val(1,cv_nod)) * porous_density_cv(cv_nod) * tracer_field_solid%val(1,1,cv_nod)
+                  ! Recompute the fluid metal rho*c using the partition coefficient (Jackson et al., 2017 - Eq. (20))
+                  rho_c_fluid = I / (partition_coefficient * porous_density_cv(cv_nod)/use_density + MeanPoreCV%val(1,cv_nod) * (1.d0 - partition_coefficient * (porous_density_cv(cv_nod)/use_density)))
+                  ! Recompute the solid metal rho*c using the partition coefficient (Jackson et al., 2017 - Eq. (20))
+                  rho_c_solid = partition_coefficient * (porous_density_cv(cv_nod)/use_density) * rho_c_fluid
+                  ! Recompute the fluid and solid metal concentrations
+                  tracer_field_fluid%val(1,1,cv_nod) = rho_c_fluid / use_density
+                  tracer_field_solid%val(1,1,cv_nod) = rho_c_solid / porous_density_cv(cv_nod)
+              end if
+          end if
         end if
-      end if
 
       end do
 
@@ -2980,6 +3064,11 @@ contains
       type(vector_field), pointer :: vfield
       double precision, dimension(Mdims%cv_nonods) :: P_const_cv, P_c_cv, P_T_cv, P_c2_cv, P_T2_cv, P_cT_cv, P_A_cv, porous_density_cv
       double precision, dimension (Mdims%cv_nonods) ::  SUM_CV
+      type (scalar_field), pointer :: K_const_field, K_c_field, K_T_field, K_c2_field, K_T2_field, K_cT_field, K_A_field
+      integer :: K_const_ele, K_c_ele, K_T_ele, K_c2_ele, K_T2_ele, K_cT_ele, K_A_ele
+      double precision, dimension(Mdims%cv_nonods) :: K_const_cv, K_c_cv, K_T_cv, K_c2_cv, K_T2_cv, K_cT_cv, K_A_cv
+      double precision :: partition_coefficient, log_partition_coefficient, use_density
+      logical :: has_dissolution
 
       MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
       density => extract_tensor_field(packed_state,"PackedDensity")
@@ -2992,7 +3081,11 @@ contains
         ref_rho=retrieve_reference_density(state, packed_state, 1, 0, Mdims%nphase)
       end if
 
-      !Retrieve values from diamond
+      !Retrieve values from Diamond
+
+      has_Temperature = have_option("/material_phase[0]/scalar_field::Temperature/")
+      has_Tracer_Salt = have_option("/porous_media/Metal_precipitation/Tracer_Salt")
+      has_dissolution = have_option("/porous_media/Metal_dissolution")
 
       P_A_field => extract_scalar_field(state(1), "P_A")
       P_c_field => extract_scalar_field(state(1), "P_c")
@@ -3002,8 +3095,15 @@ contains
       P_cT_field => extract_scalar_field(state(1), "P_cT")
       P_const_field => extract_scalar_field(state(1), "P_const")
 
-      has_Temperature = have_option("/material_phase[0]/scalar_field::Temperature/")
-      has_Tracer_Salt = have_option("/porous_media/Metal_precipitation/Tracer_Salt")
+      if (has_dissolution) then
+        K_A_field => extract_scalar_field(state(1), "K_A")
+        K_c_field => extract_scalar_field(state(1), "K_c")
+        K_T_field => extract_scalar_field(state(1), "K_T")
+        K_c2_field => extract_scalar_field(state(1), "K_c2")
+        K_T2_field => extract_scalar_field(state(1), "K_T2")
+        K_cT_field => extract_scalar_field(state(1), "K_cT")
+        K_const_field => extract_scalar_field(state(1), "K_const")
+      end if
 
       if (has_Temperature) then
         temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
@@ -3070,13 +3170,50 @@ contains
       P_A_cv(:) = P_A_cv(:) / SUM_CV
       porous_density_cv(:) = porous_density_cv(:) / SUM_CV
 
+      ! Calculate the partition coefficient (CV method)
+      if (has_dissolution) then
+        K_const_cv = 0.0
+        K_c_cv = 0.0
+        K_T_cv = 0.0
+        K_c2_cv = 0.0
+        K_T2_cv = 0.0
+        K_cT_cv = 0.0
+        K_A_cv = 0.0
+        DO ELE = 1, Mdims%totele
+            K_A_ele = min(size(K_A_field%val), ele)
+            K_c_ele = min(size(K_c_field%val), ele)
+            K_T_ele = min(size(K_T_field%val), ele)
+            K_c2_ele = min(size(K_c2_field%val), ele)
+            K_T2_ele = min(size(K_T2_field%val), ele)
+            K_cT_ele = min(size(K_cT_field%val), ele)
+            K_const_ele = min(size(K_const_field%val), ele)
+          DO CV_ILOC = 1, Mdims%cv_nloc
+            cv_nod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+            K_const_cv( cv_nod ) = K_const_cv( cv_nod ) + MASS_ELE( ELE ) * K_const_field%val(K_const_ele)
+            K_c_cv( cv_nod ) = K_c_cv( cv_nod ) + MASS_ELE( ELE ) * K_c_field%val(K_c_ele)
+            K_T_cv( cv_nod ) = K_T_cv( cv_nod ) + MASS_ELE( ELE ) * K_T_field%val(K_T_ele)
+            K_c2_cv( cv_nod ) = K_c2_cv( cv_nod ) + MASS_ELE( ELE ) * K_c2_field%val(K_c2_ele)
+            K_T2_cv( cv_nod ) = K_T2_cv( cv_nod ) + MASS_ELE( ELE ) * K_T2_field%val(K_T2_ele)
+            K_cT_cv( cv_nod ) = K_cT_cv( cv_nod ) + MASS_ELE( ELE ) * K_cT_field%val(K_cT_ele)
+            K_A_cv( cv_nod ) = K_A_cv( cv_nod ) + MASS_ELE( ELE ) * K_A_field%val(K_A_ele)
+          END DO
+        END DO
+        K_const_cv(:) = K_const_cv(:) / SUM_CV
+        K_c_cv(:) = K_c_cv(:) / SUM_CV
+        K_T_cv(:) = K_T_cv(:) / SUM_CV
+        K_c2_cv(:) = K_c2_cv(:) / SUM_CV
+        K_T2_cv(:) = K_T2_cv(:) / SUM_CV
+        K_cT_cv(:) = K_cT_cv(:) / SUM_CV
+        K_A_cv(:) = K_A_cv(:) / SUM_CV
+      end if
+
       ! Calculate the precipitation rate (CV method)
 
       do cv_nod=1,Mdims%cv_nonods
 
         if (node_owned(tracer_field_fluid,cv_nod)) then
 
-          ! Calculate the partition coefficient
+          ! Calculate the precipitation rate
           log_precipitation_rate = P_const_cv(cv_nod)
 
           if (has_Tracer_Salt) then
@@ -3093,36 +3230,63 @@ contains
 
           precipitation_rate = P_A_cv(cv_nod)*exp(log_precipitation_rate)
 
-          if ( precipitation_rate > 0.0) then
-            if (has_boussinesq_aprox) then
-              m_metal_solid = (  1.d0 - MeanPoreCV%val(1,cv_nod) ) * porous_density_cv(cv_nod ) * tracer_field_solid%val(1,1,cv_nod) * cv_volume%val(1,cv_nod)
-              m_metal_fluid = MeanPoreCV%val(1,cv_nod) * ref_rho * tracer_field_fluid%val(1,1,cv_nod) * cv_volume%val(1,cv_nod)
-              ! Calculate delta_m to be added to the solid mass
-              delta_m = precipitation_rate * dt * m_metal_fluid
-              ! Ensure delta_m does not exceed the current fluid metal mass
-              delta_m = MIN(delta_m, m_metal_fluid)
-              ! Recompute the solid and fluid metal mass using the precipitation rate and to ensure mass conservation
-              m_metal_solid = m_metal_solid + delta_m
-              m_metal_fluid = m_metal_fluid - delta_m
-              ! Recompute the concentrations
-              tracer_field_fluid%val(1,1,cv_nod) = m_metal_fluid / ( ref_rho * MeanPoreCV%val(1,cv_nod) * cv_volume%val(1,cv_nod) )
-              tracer_field_solid%val(1,1,cv_nod) = m_metal_solid / ( porous_density_cv(cv_nod ) * (  1.d0 - MeanPoreCV%val(1,cv_nod) ) * cv_volume%val(1,cv_nod) )
-            else
-              m_metal_solid = (  1.d0 - MeanPoreCV%val(1,cv_nod) ) * porous_density_cv(cv_nod ) * tracer_field_solid%val(1,1,cv_nod) * cv_volume%val(1,cv_nod)
-              m_metal_fluid = MeanPoreCV%val(1,cv_nod) * density%val(1,1,cv_nod) * tracer_field_fluid%val(1,1,cv_nod) * cv_volume%val(1,cv_nod)
-              ! Calculate delta_m to be added to the solid mass
-              delta_m = precipitation_rate * dt * m_metal_fluid
-              ! Ensure delta_m does not exceed the current fluid metal mass
-              delta_m = MIN(delta_m, m_metal_fluid)
-              ! Recompute the solid and fluid metal mass using the precipitation rate and to ensure mass conservation
-              m_metal_solid = m_metal_solid + delta_m
-              m_metal_fluid = m_metal_fluid - delta_m
-              ! Recompute the concentrations
-              tracer_field_fluid%val(1,1,cv_nod) = m_metal_fluid / ( density%val(1,1,cv_nod) * MeanPoreCV%val(1,cv_nod) * cv_volume%val(1,cv_nod) )
-              tracer_field_solid%val(1,1,cv_nod) = m_metal_solid / ( porous_density_cv(cv_nod ) * ( 1.d0 - MeanPoreCV%val(1,cv_nod) ) * cv_volume%val(1,cv_nod) )
+          ! Calculate the partition coefficient
+          if (has_dissolution) then
+            log_partition_coefficient = K_const_cv( cv_nod )
+
+            if (has_Tracer_Salt) then
+              log_partition_coefficient = log_partition_coefficient + K_c_cv(cv_nod)*Tracer_Salt%val(1,1,cv_nod) + K_c2_cv(cv_nod)*(Tracer_Salt%val(1,1,cv_nod))**2
             end if
+
+            if (has_Temperature) then
+              log_partition_coefficient = log_partition_coefficient + K_T_cv(cv_nod)*temperature%val(1,1,cv_nod) + K_T2_cv(cv_nod)*(temperature%val(1,1,cv_nod))**2
+            end if
+
+            if (has_Temperature .and. has_Tracer_Salt) then
+              log_partition_coefficient = log_partition_coefficient + K_cT_cv(cv_nod)*Tracer_Salt%val(1,1,cv_nod)*temperature%val(1,1,cv_nod)
+            end if
+
+            partition_coefficient = K_A_cv(cv_nod)*exp(log_partition_coefficient)
           end if
 
+          ! Determine the density type to use
+          if (has_boussinesq_aprox) then
+              use_density = ref_rho
+          else
+              use_density = density%val(1,1,cv_nod)
+          end if
+
+          if ( precipitation_rate > 0.0) then
+            if ( has_dissolution ) then
+              if (partition_coefficient <= 0.0) then
+                m_metal_solid = (  1.d0 - MeanPoreCV%val(1,cv_nod) ) * porous_density_cv(cv_nod ) * tracer_field_solid%val(1,1,cv_nod) * cv_volume%val(1,cv_nod)
+                m_metal_fluid = MeanPoreCV%val(1,cv_nod) * use_density * tracer_field_fluid%val(1,1,cv_nod) * cv_volume%val(1,cv_nod)
+                ! Calculate delta_m to be added to the solid mass
+                delta_m = precipitation_rate * dt * m_metal_fluid
+                ! Ensure delta_m does not exceed the current fluid metal mass
+                delta_m = MIN(delta_m, m_metal_fluid)
+                ! Recompute the solid and fluid metal mass using the precipitation rate and to ensure mass conservation
+                m_metal_solid = m_metal_solid + delta_m
+                m_metal_fluid = m_metal_fluid - delta_m
+                ! Recompute the concentrations
+                tracer_field_fluid%val(1,1,cv_nod) = m_metal_fluid / ( use_density * MeanPoreCV%val(1,cv_nod) * cv_volume%val(1,cv_nod) )
+                tracer_field_solid%val(1,1,cv_nod) = m_metal_solid / ( porous_density_cv(cv_nod ) * (  1.d0 - MeanPoreCV%val(1,cv_nod) ) * cv_volume%val(1,cv_nod) )
+              end if
+            else
+              m_metal_solid = (  1.d0 - MeanPoreCV%val(1,cv_nod) ) * porous_density_cv(cv_nod ) * tracer_field_solid%val(1,1,cv_nod) * cv_volume%val(1,cv_nod)
+              m_metal_fluid = MeanPoreCV%val(1,cv_nod) * use_density * tracer_field_fluid%val(1,1,cv_nod) * cv_volume%val(1,cv_nod)
+              ! Calculate delta_m to be added to the solid mass
+              delta_m = precipitation_rate * dt * m_metal_fluid
+              ! Ensure delta_m does not exceed the current fluid metal mass
+              delta_m = MIN(delta_m, m_metal_fluid)
+              ! Recompute the solid and fluid metal mass using the precipitation rate and to ensure mass conservation
+              m_metal_solid = m_metal_solid + delta_m
+              m_metal_fluid = m_metal_fluid - delta_m
+              ! Recompute the concentrations
+              tracer_field_fluid%val(1,1,cv_nod) = m_metal_fluid / ( use_density * MeanPoreCV%val(1,cv_nod) * cv_volume%val(1,cv_nod) )
+              tracer_field_solid%val(1,1,cv_nod) = m_metal_solid / ( porous_density_cv(cv_nod ) * (  1.d0 - MeanPoreCV%val(1,cv_nod) ) * cv_volume%val(1,cv_nod) )
+            end if
+          end if
         end if
 
       end do
