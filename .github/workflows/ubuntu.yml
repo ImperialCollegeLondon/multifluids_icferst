@@ -93,7 +93,7 @@ jobs:
     needs: testing
 
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4.1.7
 
       - name: ${{ matrix.name }}
         uses: mikepenz/action-junit-report@v2
