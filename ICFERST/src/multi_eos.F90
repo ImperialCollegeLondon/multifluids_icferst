@@ -1952,6 +1952,9 @@ contains
 
     end subroutine calculate_viscosity
 
+    !> @author Meissam Bahlali
+    !> @brief In this subroutine we compute the viscosity EOS.
+    !> Options for different EOS.
     subroutine compute_viscosity_EOS( state, Mdims )
       implicit none
       type( multi_dimensions ), intent( in ) :: Mdims
@@ -1959,11 +1962,13 @@ contains
       type( tensor_field ), pointer :: t_field
       integer :: iphase, stat, cv_nod
       type( scalar_field ), pointer :: temperature, concentration
-      logical :: viscosity_BW, have_temperature_field, have_concentration_field
+      logical :: viscosity_BW, viscosity_HP, have_temperature_field, have_concentration_field
 
         do iphase = 1, Mdims%nphase
           viscosity_BW = have_option("/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
           "::Viscosity/diagnostic/viscosity_EOS/viscosity_BW::Internal")
+          viscosity_HP = have_option("/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
+          "::Viscosity/diagnostic/viscosity_EOS/viscosity_HP::Internal")
           if (viscosity_BW) then
             temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
             have_temperature_field = ( stat == 0 )
@@ -2014,6 +2019,25 @@ contains
                 t_field%val(1, 1, cv_nod) = max(min(t_field%val(1, 1, cv_nod),1.e-3), 1.e-4)
                 t_field%val(2, 2, cv_nod) = max(min(t_field%val(1, 1, cv_nod),1.e-3), 1.e-4)
                 t_field%val(3, 3, cv_nod) = max(min(t_field%val(1, 1, cv_nod),1.e-3), 1.e-4)
+              end do
+            end if
+          else if (viscosity_HP) then
+            temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
+            have_temperature_field = ( stat == 0 )
+            t_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
+            if (.not. (have_temperature_field)) then
+              FLAbort( "Temperature field needed for HP1978 viscosity EOS." )
+            else
+              do cv_nod=1,Mdims%cv_nonods
+                t_field%val(1, 1, cv_nod) = (2.414e-5) * 10**(247.8 / (temperature%val(cv_nod) - 140.85))
+                t_field%val(1, 2, cv_nod) = 0.0
+                t_field%val(1, 3, cv_nod) = 0.0
+                t_field%val(2, 1, cv_nod) = 0.0
+                t_field%val(2, 2, cv_nod) = (2.414e-5) * 10**(247.8 / (temperature%val(cv_nod) - 140.85))
+                t_field%val(2, 3, cv_nod) = 0.0
+                t_field%val(3, 1, cv_nod) = 0.0
+                t_field%val(3, 2, cv_nod) = 0.0
+                t_field%val(3, 3, cv_nod) = (2.414e-5) * 10**(247.8 / (temperature%val(cv_nod) - 140.85))
               end do
             end if
           end if
@@ -2781,7 +2805,7 @@ contains
 
     end subroutine flash_gas_dissolution
 
-
+    !> @author Meissam Bahlali
     !>@brief: subroutine to dissolve metals using a partition coefficient.
     !> Dissolve/precipitate instantaneously the amount introduced in diamond in kg/kg.
     !> Requires to have the following scalar fields defined: a liquid metal passive tracer field (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal, a solid metal field (e.g., "Metal_solid") the temperature/salt coefficient fields for the partition coefficient, defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties.
@@ -3037,6 +3061,7 @@ contains
 
     end subroutine metal_dissolution
 
+    !> @author Meissam Bahlali
     !>@brief: subroutine to precipitate metals using a precipitation rate.
     !> Precipitate the amount introduced in diamond in kg/kg.
     !> Requires to have the following scalar fields defined: a liquid metal passive tracer field (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal, a solid metal field (e.g., "Metal_solid") the temperature/salt coefficient fields for the precipitation rate, defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties.
@@ -3300,7 +3325,7 @@ contains
 
     end subroutine metal_precipitation
 
-
+    !> @author Meissam Bahlali
     !>@brief: subroutine to calculate the metal total mass (in kg).
     !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
     !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
@@ -3377,6 +3402,7 @@ contains
 
     end subroutine total_mass_metal
 
+    !> @author Meissam Bahlali
     !>@brief: subroutine to bound the metal concentrations after an adapt, in order to avoid unphysical values.
     !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
     !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
@@ -3425,6 +3451,7 @@ contains
 
     end subroutine bound_metal_concentrations
 
+    !> @author Meissam Bahlali
     !>@brief: subroutine to apply a correction factor to the metal concentrations in order to conserve mass if needed.
     !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
     !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
@@ -3467,6 +3494,7 @@ contains
 
     end subroutine correction_mass_metal
 
+    !> @author Meissam Bahlali
     !>@brief: subroutine to copy a Metal Field into a copied field BEFORE the exchange steps happen (dissolution or precipitation). This can be used to have access to a liquid or solid metal field before the exchange step has happened.
     !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
     !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
