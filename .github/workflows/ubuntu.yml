@@ -81,7 +81,7 @@ jobs:
          docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
          docker run -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} /bin/bash -c "${{ matrix.command }} && cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           path: ${{ matrix.release }}-${{ matrix.output }}
 
@@ -93,7 +93,7 @@ jobs:
     needs: testing
 
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
 
       - name: ${{ matrix.name }}
         uses: mikepenz/action-junit-report@v2
