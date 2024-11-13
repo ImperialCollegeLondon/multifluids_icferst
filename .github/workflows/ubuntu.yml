@@ -13,6 +13,7 @@ on:
       - vinicius_dev
       - meissam_dev_new
       - hayley_dev
+      - ruixiao_dev
 jobs:
 
   build:
