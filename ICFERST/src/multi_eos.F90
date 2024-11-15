@@ -596,21 +596,21 @@ contains
             !Calculate the freshwater density
             rho = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*pressure%val(1,1,:)*1e-6 - 2*(temperature % val - 273.15)*pressure%val(1,1,:)*1e-6 + 0.016*((temperature % val - 273.15))**2*pressure%val(1,1,:)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*pressure%val(1,1,:)*1e-6 -0.333*(pressure%val(1,1,:)*1e-6)**2 - 0.002*(temperature % val - 273.15)*(pressure%val(1,1,:)*1e-6)**2))
             !Add the brine contribution
-            rho = rho + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*pressure%val(1,1,:)*1e-6 - 2400*pressure%val(1,1,:)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*pressure%val(1,1,:)*1e-6 + 47*pressure%val(1,1,:)*1e-6*Concentration % val)))
-
+            if (have_concentration_field) rho = rho + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*pressure%val(1,1,:)*1e-6 - 2400*pressure%val(1,1,:)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*pressure%val(1,1,:)*1e-6 + 47*pressure%val(1,1,:)*1e-6*Concentration % val)))
             if (has_boussinesq_aprox) then
               dRhodP = 0.0
             else
               perturbation_pressure = 1.e-5
 
               RhoPlus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 2*(temperature % val - 273.15)*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2))
-              !Add the brine contribution
-              RhoPlus = RhoPlus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val)))
 
               RhoMinus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 2*(temperature % val - 273.15)*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2))
-              !Add the brine contribution
-              RhoMinus = RhoMinus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val)))
-
+              if (have_concentration_field) then 
+                  !Add the brine contribution
+                  RhoPlus = RhoPlus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val)))
+                  !Add the brine contribution
+                  RhoMinus = RhoMinus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val)))
+              end if
               dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             endif
 
@@ -2684,9 +2684,9 @@ contains
         call get_option( trim( eos_option_path ) // '/reference_density', ref_rho )
       elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/BW_eos' ) then
         !!$ Reference density is calculated using reference C0, T0, P0.
-        call get_option( trim( eos_option_path ) // '/C0', ref_C0 )
-        call get_option( trim( eos_option_path ) // '/T0', ref_T0 )
-        call get_option( trim( eos_option_path ) // '/P0', ref_P0 )
+        call get_option( trim( eos_option_path ) // '/T0', ref_T0, default=298.)
+        call get_option( trim( eos_option_path ) // '/P0', ref_P0, default=1e5)
+        call get_option( trim( eos_option_path ) // '/C0', ref_C0 , default=0.)
         !Calculate the reference freshwater density
         ref_rho = 1e3 * ( 1 + 1e-6 * (-80*(ref_T0 - 273.15) - 3.3*((ref_T0 - 273.15))**2 + 0.00175*((ref_T0 - 273.15))**3 + 489*ref_P0*1e-6 - 2*(ref_T0 - 273.15)*ref_P0*1e-6 + 0.016*((ref_T0 - 273.15))**2*ref_P0*1e-6 - 1.3e-5*((ref_T0 - 273.15))**3*ref_P0*1e-6 -0.333*(ref_P0*1e-6)**2 - 0.002*(ref_T0 - 273.15)*(ref_P0*1e-6)**2))
         !Add the reference brine contribution
