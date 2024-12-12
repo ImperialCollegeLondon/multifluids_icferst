@@ -2555,7 +2555,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     if (PID_controller) then
                        auxR = PID_time_controller()
                        !Maybe the PID controller thinks is better to reduce more than just half, up to 0.25
-                       dt = max(max(0.5/decreaseFactor * dt, auxR*dt), min_ts)
+                       dt = max(min(0.5/decreaseFactor * dt, auxR*dt), min_ts)
                        !If PID_controller then update the status
                        auxR = PID_time_controller(reset=.true.)
                      else
