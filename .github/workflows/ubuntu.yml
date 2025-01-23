@@ -84,6 +84,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
+          name: artifact-v4
           path: ${{ matrix.release }}-${{ matrix.output }}
 
   Report:
