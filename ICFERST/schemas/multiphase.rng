@@ -3388,13 +3388,16 @@ This imposes the tracer to be between bounds.</a:documentation>
               </element>
             </choice>
             <ref name="prognostic_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
+            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -3498,13 +3501,16 @@ This imposes the tracer to be between bounds.</a:documentation>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
+            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -3520,13 +3526,16 @@ This imposes the tracer to be between bounds.</a:documentation>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
             <ref name="prognostic_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
+            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -3543,15 +3552,18 @@ Required in porous_media and multiphase problem types</a:documentation>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
             <ref name="prognostic_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="diagnostic">
             <ref name="pressure_mesh_choice"/>
             <ref name="internal_algorithm"/>
             <ref name="diagnostic_scalar_field_no_adapt"/>
+            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -3776,13 +3788,16 @@ This imposes the tracer to be between bounds.</a:documentation>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
+            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -3863,13 +3878,16 @@ This imposes the tracer to be between bounds.</a:documentation>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
+            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -3956,13 +3974,16 @@ This imposes the tracer to be between bounds.</a:documentation>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
+            <ref name="output_options"/>
           </element>
         </choice>
       </element>

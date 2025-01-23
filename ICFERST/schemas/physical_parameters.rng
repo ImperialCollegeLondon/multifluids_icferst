@@ -53,6 +53,13 @@ i)&lt;/b&gt; this option can only be used for single phase and substitute hydros
         <element name="prescribed">
           <ref name="coordinate_mesh_choice"/>
           <ref name="prescribed_vector_field_no_adapt"/>
+          <element name="output">
+            <a:documentation>Specify what is written to dump files.</a:documentation>
+              <element name="exclude_from_vtu">
+                <a:documentation>Exclude this field from dump files.</a:documentation>
+                <empty/>
+              </element>
+          </element>
         </element>
       </element>
     </element>
