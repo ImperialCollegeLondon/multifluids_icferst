@@ -84,7 +84,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: artifact-v4
+          # Use a unique artifact name to avoid conflicts
+          name: ${{ matrix.release }}-test-results-${{ github.run_id }}
           path: ${{ matrix.release }}-${{ matrix.output }}
 
   Report:
@@ -96,6 +97,8 @@ jobs:
 
     steps:
       - uses: actions/download-artifact@v4
+        with:
+          path: ./artifact
 
       - name: ${{ matrix.name }}
         uses: mikepenz/action-junit-report@v2
