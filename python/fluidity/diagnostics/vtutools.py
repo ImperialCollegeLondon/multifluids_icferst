@@ -178,10 +178,10 @@ def ModelPvtuToVtu(pvtu):
   # Step 1: Extract the ghost levels, and check that we have a parallel vtu
   
   result = vtu()
-  ghostLevel = pvtu.ugrid.GetCellData().GetArray("vtkGhostLevels")
+  ghostLevel = pvtu.ugrid.GetCellData().GetArray("vtkGhostType")
   if ghostLevel is None:
     # We have a serial vtu
-    debug.deprint("Warning: input file contains no vtkGhostLevels")
+    debug.deprint("Warning: input file contains no vtkGhostType")
     ghostLevel = [0 for i in range(pvtu.ugrid.GetNumberOfCells())]
   else:
     # We have a parallel vtu
@@ -423,7 +423,7 @@ def PvtuToVtu(pvtu, model = None, oldNodeIdToNew = [], oldCellIdToNew = [],
     if len(fieldlist) > 0 and name not in fieldlist:
       continue
     debug.dprint("Processing cell data " + name)
-    if name == "vtkGhostLevels":
+    if name == "vtkGhostType":
       debug.dprint("Skipping ghost level data")
       continue
     components = oldData.GetNumberOfComponents()

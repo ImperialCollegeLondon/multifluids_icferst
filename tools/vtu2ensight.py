@@ -96,7 +96,7 @@ def addblockid(ug):
 
 def removeghostlevel(reader, ug):
     for i in range(reader.gridreader.GetNumberOfCellArrays()):
-        if (reader.gridreader.GetCellArrayName(i) == "vtkGhostLevels"):
+        if (reader.gridreader.GetCellArrayName(i) == "vtkGhostType"):
             ug.GetCellData().RemoveArray(i)
             break
     return ug
