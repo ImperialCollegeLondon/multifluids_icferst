@@ -1197,6 +1197,7 @@ contains
                 CV_Immobile_fract => CV_Immobile_Fraction%val(:, cv_nod)
                 visc_node = (CV_NOD-1)*one_or_zero + 1
                 DO IPHASE = 1, n_in_pres
+                  ! print *, SATURA(:, CV_NOD)
                     CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * Mdims%cv_nonods
                     call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(1, 1, iphase, mat_nod),&
                         SATURA(:, CV_NOD), viscosities(:,visc_node),CV_Immobile_fract, Corey_exponent,&
@@ -1204,6 +1205,7 @@ contains
                 END DO
             END DO
         END DO
+        ! read*
         ewrite(3,*) 'Leaving calculate_absorption2'
         RETURN
     END SUBROUTINE calculate_absorption2
@@ -1265,7 +1267,7 @@ contains
                 call relperm_corey_epsilon(Kr)
         end select
 
-      contains
+        contains
         !>@brief: Brooks corey model of relperm.
         !>This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
         !>when dividing it to obtain the sigma.

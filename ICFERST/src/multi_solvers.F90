@@ -52,7 +52,8 @@ module solvers_module
 
     public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
          Initialise_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess, &
-         non_porous_ensure_sum_to_one, duplicate_petsc_matrix, scale_PETSc_matrix, petsc_Stokes_solver
+         non_porous_ensure_sum_to_one, duplicate_petsc_matrix, scale_PETSc_matrix, petsc_Stokes_solver,&
+         scale_PETSc_matrix_by_vector
 
 
 contains
@@ -410,9 +411,11 @@ contains
                 !Compare with the Convergence using the first backtrack_par parameter
                 if (new_FPI) Previous_convergence = Convergences(1)
                 !####Check convergence of the method####
-                satisfactory_convergence = (its > Max_sat_its) .or. (first_res / res > Conv_to_achiv) &
-                    .or. (get_Convergence_Functional(Satura, Sat_bak, backtrack_pars(2)) < convergence_tol .and.&
-                    maxval(abs(Sat_bak-Satura(1:nphase,:)))/backtrack_pars(2) < Infinite_norm_tol)!<= exit if final convergence is achieved
+                ! satisfactory_convergence = (its > Max_sat_its) .or. (first_res / res > Conv_to_achiv) &
+                !     .or. (get_Convergence_Functional(Satura, Sat_bak, backtrack_pars(2)) < convergence_tol .and.&
+                !     maxval(abs(Sat_bak-Satura(1:nphase,:)))/backtrack_pars(2) < Infinite_norm_tol)!<= exit if final convergence is achieved
+Infinite_norm_tol = 1e-6                
+satisfactory_convergence = (its > Max_sat_its) .or. maxval(abs(Sat_bak-Satura(1:nphase,:)))/backtrack_pars(2) < Infinite_norm_tol!<= exit if final convergence is achieved
                 if (IsParallel()) call alland(satisfactory_convergence)
                 !If a backtrack_par parameter turns out not to be useful, then undo that iteration
                 Undo_update = its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.
@@ -1093,6 +1096,26 @@ contains
       end if
 
     end subroutine get_Anderson_acceleration_new_guess
+
+
+    !---------------------------------------------------------------------------
+    !> @author Pablo Salinas
+    !> @brief In this subroutine the matrix is divided by vfield
+    !> A is-written
+    !---------------------------------------------------------------------------
+    subroutine scale_PETSc_matrix_by_vector(Mat_petsc, vfield)
+        type(petsc_csr_matrix), intent(inout)::  Mat_petsc 
+        type(vector_field), intent(in) :: vfield
+        ! Local variables
+        Vec :: bvec
+        Integer :: ierr
+
+        bvec=PetscNumberingCreateVec(Mat_petsc%row_numbering)  ! copy vfield to petsc vector
+        call field2petsc(vfield, Mat_petsc%row_numbering, bvec)
+        call MatDiagonalScale(Mat_petsc%M, bvec, PETSC_NULL_VEC, ierr)
+
+    end subroutine
+
 
     !---------------------------------------------------------------------------
     !> @author Pablo Salinas
