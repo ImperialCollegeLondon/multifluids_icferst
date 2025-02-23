@@ -1070,7 +1070,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              else
                  call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
              end if
-max_sat_its = 20  
+! max_sat_its = 20  
              ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
              GET_THETA_FLUX = .FALSE.
              !####Create dummy variables required for_cv_assemb with no memory usage ####
@@ -1250,7 +1250,7 @@ max_sat_its = 20
                    end do
                  end do
 ! print *, solution%val
-! print *, "Residual:", maxval(abs(Mmat%CV_RHS%val))
+! print *,  "NLI",nonlinear_iteration,"SFPIs: ", its ,  "| Residual:", maxval(abs(Mmat%CV_RHS%val))
                 !Copy solution back to sat_field (not ideal...)
                 !   do ipres =1, mdims%npres
                 !     do iphase = 1 , n_in_pres

@@ -364,7 +364,8 @@ contains
         type (tensor_field), pointer :: sat_field
         !Initialize variables
         new_backtrack_par = 1.0
-        new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
+        new_FPI = (its == 1); !new_time_step = (nonlinear_iteration == 1)
+        new_time_step=.false.
         !First, impose physical constrains
         if (is_porous_media) then
           call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .TRUE. )
@@ -413,8 +414,11 @@ contains
                 !####Check convergence of the method####
                 ! satisfactory_convergence = (its > Max_sat_its) .or. (first_res / res > Conv_to_achiv) &
                 !     .or. (get_Convergence_Functional(Satura, Sat_bak, backtrack_pars(2)) < convergence_tol .and.&
-                !     maxval(abs(Sat_bak-Satura(1:nphase,:)))/backtrack_pars(2) < Infinite_norm_tol)!<= exit if final convergence is achieved
-Infinite_norm_tol = 1e-6                
+                !     maxval(abs(Sat_bak-Satura(1:nphase,:)))/backtrack_pars(2) < 1e-6)!<= exit if final convergence is achieved
+                ! satisfactory_convergence = (its > Max_sat_its) &
+                !     .or. maxval(abs(Sat_bak-Satura(1:nphase,:)))/backtrack_pars(2) < Infinite_norm_tol!<= exit if final convergence is achieved
+! print *, maxval(abs(Sat_bak-Satura(1:nphase,:)))/backtrack_pars(2), backtrack_pars(2), Infinite_norm_tol
+! Infinite_norm_tol = 1e-6                
 satisfactory_convergence = (its > Max_sat_its) .or. maxval(abs(Sat_bak-Satura(1:nphase,:)))/backtrack_pars(2) < Infinite_norm_tol!<= exit if final convergence is achieved
                 if (IsParallel()) call alland(satisfactory_convergence)
                 !If a backtrack_par parameter turns out not to be useful, then undo that iteration
@@ -467,10 +471,10 @@ satisfactory_convergence = (its > Max_sat_its) .or. maxval(abs(Sat_bak-Satura(1:
             !Just one local saturation iteration
             satisfactory_convergence = .true.
         end if
-
+! satisfactory_convergence =      satisfactory_convergence .and. its>20
         ewrite(1,*) "backtrack_par factor",backtrack_pars(1)
 
-
+backtrack_pars(1) = 1.0;
         !***Calculate new saturation***
         !Obtain new saturation using the backtracking method
         if (useful_sats < 2 .or. satisfactory_convergence) then
