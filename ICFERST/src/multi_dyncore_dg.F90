@@ -1129,6 +1129,26 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 !    end do
                 !  end do
 
+                call SATURATION_ASSEMB( state, packed_state, &
+                    n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                    sat_field, velocity, density, multi_absorp, &
+                    INV_B,DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
+                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+                    eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, assemble_collapsed_to_one_phase=.false.)
+call assemble(Mmat%petsc_ACV)
+call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
+print *, "=========================================================="
+! print *, Mmat%CV_RHS%val
+do its_taken = 1, Mdims%nphase
+    do Max_sat_its =1, Mdims%cv_nonods
+        print*, its_taken, Max_sat_its, Mmat%CV_RHS%val(its_taken, Max_sat_its)
+    end do
+end do
+print *, "##########################################################"
+call deallocate(Mmat%petsc_ACV)
+call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
+Mmat%CV_RHS%val = 0.
+
                  call ASSEMB_SAT_JAC_AND_RES( state, packed_state, &
                  n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                  sat_field, velocity, density, multi_absorp, &
@@ -1148,8 +1168,17 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                  Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
                  nonlinear_iteration = nonlinear_iteration)
-
-                 !Assemble the matrix and the RHS
+print*, "----------------NUMERICAL JACOBIAN AND RESIDUAL------------------------------"
+call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
+print *, "=========================================================="
+do its_taken = 1, Mdims%nphase
+    do Max_sat_its =1, Mdims%cv_nonods
+        print*, its_taken, Max_sat_its, Mmat%CV_RHS%val(its_taken, Max_sat_its)
+    end do
+end do
+print *, "##########################################################"
+read*
+                !Assemble the matrix and the RHS
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                 !  call CV_ASSEMB( state, packed_state, &
                 !      n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
