@@ -1129,25 +1129,25 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 !    end do
                 !  end do
 
-                call SATURATION_ASSEMB( state, packed_state, &
-                    n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-                    sat_field, velocity, density, multi_absorp, &
-                    INV_B,DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
-                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                    eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, assemble_collapsed_to_one_phase=.false.)
-call assemble(Mmat%petsc_ACV)
-call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
-print *, "=========================================================="
-! print *, Mmat%CV_RHS%val
-do its_taken = 1, Mdims%nphase
-    do Max_sat_its =1, Mdims%cv_nonods
-        print*, its_taken, Max_sat_its, Mmat%CV_RHS%val(its_taken, Max_sat_its)
-    end do
-end do
-print *, "##########################################################"
-call deallocate(Mmat%petsc_ACV)
-call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
-Mmat%CV_RHS%val = 0.
+!                 call SATURATION_ASSEMB( state, packed_state, &
+!                     n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+!                     sat_field, velocity, density, multi_absorp, &
+!                     INV_B,DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
+!                     VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+!                     eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, assemble_collapsed_to_one_phase=.false.)
+! call assemble(Mmat%petsc_ACV)
+! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
+! print *, "=========================================================="
+! ! print *, Mmat%CV_RHS%val
+! do its_taken = 1, Mdims%nphase
+!     do Max_sat_its =1, Mdims%cv_nonods
+!         print*, its_taken, Max_sat_its, Mmat%CV_RHS%val(its_taken, Max_sat_its)
+!     end do
+! end do
+! print *, "##########################################################"
+! call deallocate(Mmat%petsc_ACV)
+! call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
+! Mmat%CV_RHS%val = 0.
 
                  call ASSEMB_SAT_JAC_AND_RES( state, packed_state, &
                  n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
@@ -1168,16 +1168,16 @@ Mmat%CV_RHS%val = 0.
                  VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                  Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
                  nonlinear_iteration = nonlinear_iteration)
-print*, "----------------NUMERICAL JACOBIAN AND RESIDUAL------------------------------"
-call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
-print *, "=========================================================="
-do its_taken = 1, Mdims%nphase
-    do Max_sat_its =1, Mdims%cv_nonods
-        print*, its_taken, Max_sat_its, Mmat%CV_RHS%val(its_taken, Max_sat_its)
-    end do
-end do
-print *, "##########################################################"
-read*
+! print*, "----------------NUMERICAL JACOBIAN AND RESIDUAL------------------------------"
+! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
+! print *, "=========================================================="
+! do its_taken = 1, Mdims%nphase
+!     do Max_sat_its =1, Mdims%cv_nonods
+!         print*, its_taken, Max_sat_its, Mmat%CV_RHS%val(its_taken, Max_sat_its)
+!     end do
+! end do
+! print *, "##########################################################"
+! read*
                 !Assemble the matrix and the RHS
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                 !  call CV_ASSEMB( state, packed_state, &
@@ -1233,6 +1233,7 @@ read*
                         ! residual%val = Mmat%CV_RHS%val - residual%val
                         if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
                         resold = res; res = maxval(abs(Mmat%CV_RHS%val))
+print *, "ITERATION/RES: ", its, res                        
                         ! do iphase = 1, nphase
                         ! !L2 norm of the residual; needs to be done in steps to ensure cosistency in parallel
                         !     aux = dot_product(residual%val(iphase,:),residual%val(iphase,:))
@@ -1304,44 +1305,49 @@ read*
                  !Correct the solution obtained to make sure we are on track towards the final solution
                  ! if (Mdims%ncomp > 0) call update_components()
                  !Correct the solution obtained to make sure we are on track towards the final solution
-                 if (backtrack_par_factor < 1.01) then
-                     !If convergence is not good, then we calculate a new saturation using backtracking
-                     if (.not. satisfactory_convergence) then
+!                  if (backtrack_par_factor < 1.01) then
+!                      !If convergence is not good, then we calculate a new saturation using backtracking
+!                      if (.not. satisfactory_convergence) then
 
-                         !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
-                         call FPI_backtracking(nphase, Mdims, ndgln, state,packed_state, sat_bak(1:nphase, :), backtrack_sat(1:nphase, :), backtrack_par_factor,&
-                             Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
-                             useful_sats,res, res/resold, first_res) !halos are updated within this subroutine
-! call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .FALSE. )
-! if (maxval(abs(Mmat%CV_RHS%val))< 1d-8 .or. its > 20) exit Loop_NonLinearFlux
-                         !Store the accumulated updated done
-                         updating = updating + new_backtrack_par
-                         !If the backtrack_par factor is not adaptive, then, just one iteration
-                         if (backtrack_par_factor > 0) then
-                             satisfactory_convergence = .true.
-                             exit Loop_NonLinearFlux
-                         end if
-                         !This have to be consistent between processors
-                         if (IsParallel())  call alland(satisfactory_convergence)
-                         !If looping again, recalculate
-                         if (.not. satisfactory_convergence) then
-                             !Store old saturation to fully undo an iteration if it is very divergent
-                             backtrack_sat = sat_bak
-                             !Velocity is recalculated through updating the sigmas
-                             if (is_porous_media) call Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
-                                   CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
+!                          !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
+!                          call FPI_backtracking(nphase, Mdims, ndgln, state,packed_state, sat_bak(1:nphase, :), backtrack_sat(1:nphase, :), backtrack_par_factor,&
+!                              Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
+!                              useful_sats,res, res/resold, first_res) !halos are updated within this subroutine
+! ! call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .FALSE. )
+! ! if (maxval(abs(Mmat%CV_RHS%val))< 1d-8 .or. its > 20) exit Loop_NonLinearFlux
+!                          !Store the accumulated updated done
+!                          updating = updating + new_backtrack_par
+!                          !If the backtrack_par factor is not adaptive, then, just one iteration
+!                          if (backtrack_par_factor > 0) then
+!                              satisfactory_convergence = .true.
+!                              exit Loop_NonLinearFlux
+!                          end if
+!                          !This have to be consistent between processors
+!                          if (IsParallel())  call alland(satisfactory_convergence)
+!                          !If looping again, recalculate
+!                          if (.not. satisfactory_convergence) then
+!                              !Store old saturation to fully undo an iteration if it is very divergent
+!                              backtrack_sat = sat_bak
+!                              !Velocity is recalculated through updating the sigmas
+!                              if (is_porous_media) call Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
+!                                    CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
 
-                             !Also recalculate the Over-relaxation parameter
-                            call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
+!                              !Also recalculate the Over-relaxation parameter
+!                             call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
 
-                         else
-                             exit Loop_NonLinearFlux
-                         end if
+!                          else
+!                              exit Loop_NonLinearFlux
+!                          end if
 
-                     end if
-                 else !Just one iteration
-                     if (IsParallel()) call halo_update(sat_field)
-                     exit Loop_NonLinearFlux
+!                      end if
+!                  else !Just one iteration
+!                      if (IsParallel()) call halo_update(sat_field)
+!                      exit Loop_NonLinearFlux
+!                  end if
+                 if (res < 1e-8.or.its > 10) then 
+                    backtrack_or_convergence = 1
+                    if (IsParallel()) call halo_update(sat_field)
+                    exit Loop_NonLinearFlux
                  end if
                  its = its + 1
                  useful_sats = useful_sats + 1
@@ -1530,35 +1536,49 @@ read*
         real, dimension(:), allocatable :: Max_sat
         real, dimension(:,:), pointer :: Satura, OldSatura, CV_Immobile_Fraction
         Integer :: ierr;
-        Real, parameter :: PERT = 1d-6;
+        Real, parameter :: PERT = 1d-3;
         type(vector_field) :: vpert
         !Variables for capillary pressure
         real, dimension(Mdims%cv_nonods) :: OvRelax_param
 
         ! 1) Create unperturbed matrix A
 
+        call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
+        CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
+        !Also recalculate the Over-relaxation parameter
         call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
 
-        call CV_ASSEMB( state, packed_state, &
+        ! call CV_ASSEMB( state, packed_state, &
+        ! Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+        ! sat_field, velocity, density, multi_absorp, &
+        ! DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+        ! DEN_ALL, DENOLD_ALL, &
+        ! Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
+        ! SUF_SIG_DIAGTEN_BC, &
+        ! DERIV, CV_P, &
+        ! SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &
+        ! GETCV_DISC, GETCT, &
+        ! IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
+        ! THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+        ! MEAN_PORE_CV, &
+        ! mass_Mn_pres, THERMAL, &
+        ! .false.,  mass_Mn_pres, &
+        ! mass_ele_transp, &          !Capillary variables
+        ! VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+        ! Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+        ! nonlinear_iteration = nonlinear_iteration)
+!NEXT I SHOULD DO
+! 1)  CREATE RESIDUAL DIRECTLY AND ADD OPTION NOT TO ASSEMBLE THE RESIDUAL
+! 2) ASSEMBLE THE A MATRIX MULTIPLIED BY THE SATURATION DIRECTLY
+! 3) SECANT METHOD? LOADS OF ZEROES EXPECTED, JUST ENFORCE ONE IN DIAGONAL AND ZERO RESIDUAL EVEN BETTER!
+        call SATURATION_ASSEMB( state, packed_state, &
         Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-        sat_field, velocity, density, multi_absorp, &
-        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-        DEN_ALL, DENOLD_ALL, &
-        Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
-        SUF_SIG_DIAGTEN_BC, &
-        DERIV, CV_P, &
-        SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &
-        GETCV_DISC, GETCT, &
-        IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
-        THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-        MEAN_PORE_CV, &
-        mass_Mn_pres, THERMAL, &
-        .false.,  mass_Mn_pres, &
-        mass_ele_transp, &          !Capillary variables
+        sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+        SOURCT_ALL, VOLFRA_PORE, &
         VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-        Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+        eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
         nonlinear_iteration = nonlinear_iteration)
-            
+
         ! Calculate residual with current Saturation guess
         call allocate(residual,Mdims%nphase,sat_field%mesh,"residual")
         vtracer=as_vector(sat_field,dim=2)
@@ -1619,24 +1639,32 @@ read*
         call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
 
         ! Generate the perturbed matrix
-        call CV_ASSEMB( state, packed_state, &
+        ! call CV_ASSEMB( state, packed_state, &
+        ! Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+        ! sat_field, velocity, density, multi_absorp, &
+        ! DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+        ! DEN_ALL, DENOLD_ALL, &
+        ! Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
+        ! SUF_SIG_DIAGTEN_BC, &
+        ! DERIV, CV_P, &
+        ! SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &
+        ! GETCV_DISC, GETCT, &
+        ! IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
+        ! THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+        ! MEAN_PORE_CV, &
+        ! mass_Mn_pres, THERMAL, &
+        ! .false.,  mass_Mn_pres, &
+        ! mass_ele_transp, &          !Capillary variables
+        ! VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+        ! Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+        ! nonlinear_iteration = nonlinear_iteration)
+
+        call SATURATION_ASSEMB(state, packed_state, &
         Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-        sat_field, velocity, density, multi_absorp, &
-        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-        DEN_ALL, DENOLD_ALL, &
-        Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
-        SUF_SIG_DIAGTEN_BC, &
-        DERIV, CV_P, &
-        SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &
-        GETCV_DISC, GETCT, &
-        IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
-        THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-        MEAN_PORE_CV, &
-        mass_Mn_pres, THERMAL, &
-        .false.,  mass_Mn_pres, &
-        mass_ele_transp, &          !Capillary variables
+        sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+        SOURCT_ALL, VOLFRA_PORE, &
         VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-        Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+        eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
         nonlinear_iteration = nonlinear_iteration)
 
         call assemble(Mmat%petsc_ACV)

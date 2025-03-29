@@ -419,7 +419,7 @@ contains
                 !     .or. maxval(abs(Sat_bak-Satura(1:nphase,:)))/backtrack_pars(2) < Infinite_norm_tol!<= exit if final convergence is achieved
 ! print *, maxval(abs(Sat_bak-Satura(1:nphase,:)))/backtrack_pars(2), backtrack_pars(2), Infinite_norm_tol
 ! Infinite_norm_tol = 1e-6                
-satisfactory_convergence = (its > Max_sat_its) .or. maxval(abs(Sat_bak-Satura(1:nphase,:)))/backtrack_pars(2) < Infinite_norm_tol!<= exit if final convergence is achieved
+satisfactory_convergence = (its > Max_sat_its) !.or. maxval(abs(Sat_bak-Satura(1:nphase,:)))/backtrack_pars(2) < Infinite_norm_tol!<= exit if final convergence is achieved
                 if (IsParallel()) call alland(satisfactory_convergence)
                 !If a backtrack_par parameter turns out not to be useful, then undo that iteration
                 Undo_update = its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.

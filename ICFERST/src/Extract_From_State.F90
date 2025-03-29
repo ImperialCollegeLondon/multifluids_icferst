@@ -2313,7 +2313,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
               inf_norm_val = 0.; ts_ref_val = 0.
             else
               !Calculate infinite norm, not consider wells
-              inf_norm_val = maxval(abs(reference_field(1:Mdims%n_in_pres,:,1)-phasevolumefraction(1:Mdims%n_in_pres,:)))/backtrack_or_convergence
+            !   inf_norm_val = maxval(abs(reference_field(1:Mdims%n_in_pres,:,1)-phasevolumefraction(1:Mdims%n_in_pres,:)))/backtrack_or_convergence
+              inf_norm_val = maxval(abs(reference_field(1:Mdims%n_in_pres,:,1)-phasevolumefraction(1:Mdims%n_in_pres,:)))  !! pscpsc add back when backtracking for Newton
               !Calculate value of the functional (considering wells and reservoir)
               ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(:,:,1), backtrack_or_convergence, nonlinear_its)
               backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(:,:,1), backtrack_or_convergence)
