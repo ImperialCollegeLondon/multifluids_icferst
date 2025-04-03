@@ -204,7 +204,7 @@ then
       fi
     fi
         mycppflag=$CPPFLAGS
-    AX_PYTHON_DEVEL([>= '3.6'])
+    AC_PYTHON_DEVEL([>= '3.6'])
         CPPFLAGS=$mycppflag
     # Save variables...
         if test "x$pythonexists" = "xyes";
