@@ -1,2 +1,6 @@
 #venv folders
 *venv
+
+#autoconf temp folders/files/logs
+autom4te.cache
+config.log
