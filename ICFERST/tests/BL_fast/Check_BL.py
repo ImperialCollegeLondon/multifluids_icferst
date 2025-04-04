@@ -44,7 +44,7 @@ AutomaticFile = AutoFile
 AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
-showPlot = False
+showPlot = True
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name = 'phase1::PhaseVolumeFraction'
