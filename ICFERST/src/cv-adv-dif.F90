@@ -7830,9 +7830,9 @@ end if
         Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
         !Check vanishing artificial diffusion options
         VAD_activated = .false.  ! pscpsc when the rest works. activate this again
-        ! if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
-        !     VAD_activated = Phase_with_Pc >0
-        ! end if
+        if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
+            VAD_activated = Phase_with_Pc >0
+        end if
 
         loc_assemble_collapsed_to_one_phase = .false.
         if (present_and_true(assemble_collapsed_to_one_phase)) then
@@ -8040,8 +8040,8 @@ end if
                                   end do
                                   do iphase =1, final_phase
                                       CAP_DIFF_COEF_DIVDX(iphase) = auxR/HDC* (CAP_DIFFUSION( iphase, MAT_NODI )&
-                                          * upwnd%inv_adv_coef(iphase,1,1,MAT_NODI)*(1.-INCOME(iphase)) +&
-                                          CAP_DIFFUSION( iphase, MAT_NODJ ) * upwnd%inv_adv_coef(iphase,1,1,MAT_NODJ) * INCOME(iphase))
+                                          * upwnd%inv_adv_coef(1,1,iphase,MAT_NODI)*(1.-INCOME(iphase)) +&
+                                          CAP_DIFFUSION( iphase, MAT_NODJ ) * upwnd%inv_adv_coef(1,1,iphase,MAT_NODJ) * INCOME(iphase))
                                   end do
                                 ELSE
                                     CAP_DIFF_COEF_DIVDX = 0.0
@@ -8099,22 +8099,22 @@ end if
                                 IF ( .not.on_domain_boundary) THEN
                                   !Assemble off-diagonal cv_nodi-cv_nodj
                                   LOC_MAT_IJ = LOC_MAT_IJ + SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMDT! Advection
-                                  ! if (VAD_activated) LOC_MAT_IJ = LOC_MAT_IJ - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                  if (VAD_activated) LOC_MAT_IJ = LOC_MAT_IJ - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LOC_T_I
                                   !Assemble off-diagonal cv_nodj-cv_nodi, integrate the other CV side contribution (the sign is changed)...
                                   if(integrate_other_side_and_not_boundary) then
                                     LOC_MAT_JI = LOC_MAT_JI - SdevFuns%DETWEI( GI ) * NDOTQNEW * (1. - INCOME) * LIMDT! Advection
-                                    ! if (VAD_activated) LOC_MAT_JI = LOC_MAT_JI - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                    if (VAD_activated) LOC_MAT_JI = LOC_MAT_JI - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LOC_T_J
                                   end if
                                 END IF ! endif of IF ( on_domain_boundary ) THEN ELSE
 
                                 !Assemble diagonal of the matrix of node cv_nodi
                                 LOC_MAT_II = LOC_MAT_II +  SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME ) * LIMDT! Advection
-                                ! if (VAD_activated) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                if (VAD_activated) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LOC_T_I
 
                                 !Assemble diagonal of the matrix of node cv_nodj
                                 if(integrate_other_side_and_not_boundary) then
                                   LOC_MAT_JJ = LOC_MAT_JJ -  SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMDT! Advection
-                                  ! if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                  if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LOC_T_J
                                 endif
 
                             END IF  ! ENDOF IF ( GETMAT ) THEN
@@ -8123,14 +8123,14 @@ end if
                             if (getResidual)  then 
                               LOC_RES_I =  LOC_RES_I + SdevFuns%DETWEI( GI ) * ( NDOTQNEW * LIMDT)
                               ! Subtract out 1st order term non-conservative adv.
-                                  ! if (VAD_activated) LOC_RES_I =  LOC_RES_I &
-                                  !     - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
-                                  !     * ( LOC_T_J - LOC_T_I )
+                                  if (VAD_activated) LOC_RES_I =  LOC_RES_I &
+                                      - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
+                                      * (( LOC_T_J - LOC_T_I ) - (LOC_T_J - LOC_T_I)) ! <= pscpsc double check, definetively one part of brackets should be previous non-linear iteration solution
                               if(integrate_other_side_and_not_boundary) then
                                 LOC_RES_J =  LOC_RES_J  - SdevFuns%DETWEI( GI ) * (  NDOTQNEW * LIMDT)
-                                  ! if (VAD_activated) LOC_RES_J =  LOC_RES_J  &
-                                  !     -  SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
-                                  !     * ( LOC_T_I - LOC_T_J )
+                                  if (VAD_activated) LOC_RES_J =  LOC_RES_J  &
+                                      -  SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
+                                      * (( LOC_T_I - LOC_T_J ) - (LOC_T_J - LOC_T_I)) ! <= pscpsc double check, definetively one part of brackets should be previous non-linear iteration solution
                               endif
                             endif
                             ! this is for the internal energy equation source term..
