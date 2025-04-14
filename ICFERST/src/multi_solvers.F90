@@ -1104,7 +1104,7 @@ backtrack_pars(1) = 1.0;
 
     !---------------------------------------------------------------------------
     !> @author Pablo Salinas
-    !> @brief In this subroutine the matrix is divided by vfield
+    !> @brief In this subroutine the matrix is multiplied by vfield
     !> A is-written
     !---------------------------------------------------------------------------
     subroutine scale_PETSc_matrix_by_vector(Mat_petsc, vfield)

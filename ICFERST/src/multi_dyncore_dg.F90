@@ -1344,7 +1344,7 @@ print *, "ITERATION/RES: ", its, res
 !                      if (IsParallel()) call halo_update(sat_field)
 !                      exit Loop_NonLinearFlux
 !                  end if
-                 if (res < 1e-8.or.its > 10) then 
+                 if (res < 1e-8.or.its > 0) then 
                     backtrack_or_convergence = 1
                     if (IsParallel()) call halo_update(sat_field)
                     exit Loop_NonLinearFlux
@@ -1526,16 +1526,14 @@ print *, "ITERATION/RES: ", its, res
         !Non-linear iteration count
         integer, optional, intent(in) :: nonlinear_iteration
         ! ###################Local variables############################
-        real, dimension( :, : ), allocatable :: satura2, satura_bak
-        type(vector_field)  :: residual
         type(petsc_csr_matrix) :: petsc_ACV2
-        Integer :: ele, cv_iloc, iphase,icv
+        Integer :: cv_inod
         !Working fields
         type(csr_sparsity), pointer :: sparsity
         real, dimension(:), allocatable :: Max_sat
         real, dimension(:,:), pointer :: Satura, OldSatura, CV_Immobile_Fraction
         Integer :: ierr;
-        Real, parameter :: PERT = 1d-3;
+        Real, parameter :: PERT = 1d-5;
         type(vector_field) :: vpert
         !Variables for capillary pressure
         real, dimension(Mdims%cv_nonods) :: OvRelax_param
@@ -1547,28 +1545,9 @@ print *, "ITERATION/RES: ", its, res
         !Also recalculate the Over-relaxation parameter
         call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
 
-        ! call CV_ASSEMB( state, packed_state, &
-        ! Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-        ! sat_field, velocity, density, multi_absorp, &
-        ! DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-        ! DEN_ALL, DENOLD_ALL, &
-        ! Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
-        ! SUF_SIG_DIAGTEN_BC, &
-        ! DERIV, CV_P, &
-        ! SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &
-        ! GETCV_DISC, GETCT, &
-        ! IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
-        ! THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-        ! MEAN_PORE_CV, &
-        ! mass_Mn_pres, THERMAL, &
-        ! .false.,  mass_Mn_pres, &
-        ! mass_ele_transp, &          !Capillary variables
-        ! VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-        ! Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-        ! nonlinear_iteration = nonlinear_iteration)
 !NEXT I SHOULD DO
-! 1) OPTIMISE: I) AVOID DUPLICATING SATURATION, SHOULD BE AN INPUT OF Calculate_PorousMedia_AbsorptionTerms AND getOverrelaxation_parameter
-! 2) OPTIMISE: II) RESIDUAL FIELD SHOULD BE REMOVED. CV_RHS DOES THAT, MATRICES SHOULD BE AN INPUT OF SATURATION_ASSEMB SO I DON'T NEED TO REALLOCATE THEM SO OFTEN
+! 2) OPTIMISE: II) MAYBE NOT NEEDED IF ONLY ONE NEWTON PERO PICARD => MATRICES SHOULD BE AN INPUT OF SATURATION_ASSEMB SO I DON'T NEED TO REALLOCATE THEM SO OFTEN
+! 3) ADD OVER_RELAXATION
 ! 4) SECANT METHOD? LOADS OF ZEROES EXPECTED, JUST ENFORCE ONE IN DIAGONAL AND ZERO RESIDUAL EVEN BETTER!
         call SATURATION_ASSEMB( state, packed_state, &
         Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
@@ -1579,10 +1558,7 @@ print *, "ITERATION/RES: ", its, res
         nonlinear_iteration = nonlinear_iteration, getResidual = .true.)
 
         ! Calculate residual with current Saturation guess
-        call allocate(residual,Mdims%nphase,sat_field%mesh,"residual")
-        !Now residual is calculated as Residual = RHS - A*X0
         call assemble(Mmat%petsc_ACV)
-        residual%val = Mmat%CV_RHS%val! - residual%val  // pscpsc remove residual field, Mmat%CV_RHS should do instead
         ! Store matrix
         sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
         call duplicate_petsc_matrix(Mmat%petsc_ACV, PETSC_ACV2)
@@ -1592,44 +1568,22 @@ print *, "ITERATION/RES: ", its, res
         call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,&
             OldPhaseVolumeFraction = OldSatura, CV_Immobile_Fraction = CV_Immobile_Fraction)
 
-        allocate( satura_bak(Mdims%nphase, size(SATURA,2) ) )
-        satura_bak = satura;
-
-        allocate( satura2(Mdims%nphase, size(SATURA,2) ) ); SATURA2 = Satura
+        !Introduce perturbation. Make sure that the perturbation is between bounds
         call allocate(vpert,Mdims%nphase,sat_field%mesh,"vpert"); vpert%val = 0d0;
-
-        !Introduce perturbation, positive for the increasing and negative for decreasing phase
-        !Make sure that the perturbation is between bounds
-        allocate(Max_sat(Mdims%nphase))
-        ! do ele = 1, Mdims%totele
-        !     do cv_iloc = 1, Mdims%cv_nloc
-        !         icv = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-        !         Max_sat(:) = 1. - sum(CV_Immobile_Fraction(:, icv)) + CV_Immobile_Fraction(:, icv)
-        !         DO IPHASE = 1, Mdims%nphase
-        !             Satura(IPHASE, icv)  = SATURA(IPHASE, icv)  + sign(PERT, satura2(iphase, icv)-OldSatura(iphase, icv))
-        !             vpert%val(IPHASE,icv)= vpert%val(IPHASE,icv)+ sign(PERT, satura2(iphase, icv)-OldSatura(iphase, icv))
-        !           !If out of bounds then we perturbate in the opposite direction
-        !           if (Satura(IPHASE, icv) > Max_sat(iphase) .or. &
-        !               Satura(IPHASE, icv) < CV_Immobile_Fraction(iphase, icv)) then
-        !               vpert%val(IPHASE,icv)= vpert%val(IPHASE,icv)- 2. * sign(PERT, satura2(iphase, icv)-OldSatura(iphase, icv))
-        !               SATURA2(IPHASE, icv) = Satura(IPHASE, icv)  - 2. * sign(PERT, satura2(iphase, icv)-OldSatura(iphase, icv))
-        !           end if
-        !         end do
-        !     end do
-        ! end do
-
-        Satura(1,:) = Satura(1,:) + PERT  ! Test simple perturbation first
-        Satura(2,:) = Satura(2,:) - PERT
-        vpert%val(1,:) = PERT        ! Test simple perturbation first
-        vpert%val(2,:) = -PERT 
-        ! ! Copy back the field
-        ! Satura =SATURA2
-        vpert%val = 1d0/vpert%val
+        do cv_inod = 1, Mdims%cv_nonods
+          where (satura(:, cv_inod) - PERT > CV_Immobile_Fraction(:, cv_inod))
+            vpert%val(:,cv_inod) = -PERT
+          elsewhere
+            vpert%val(:,cv_inod) = PERT
+          end where
+        end do
+        ! Apply perturbation
+        Satura = Satura + vpert%val
+        ! Recalculate parameters
         call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
-        !Also recalculate the Over-relaxation parameter
         call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
-
+        ! Calculate perturbated matrix
         call SATURATION_ASSEMB(state, packed_state, &
         Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
         sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
@@ -1637,27 +1591,18 @@ print *, "ITERATION/RES: ", its, res
         VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
         eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
         nonlinear_iteration = nonlinear_iteration, getResidual = .false.)
-
-        call assemble(Mmat%petsc_ACV)
+        ! Undo perturbation
+        Satura = Satura - vpert%val
         ! Compute Jacobian as (A-A_pertb/pertb)
+        call assemble(Mmat%petsc_ACV)
         ! 1) A - A_pertb (Note that petsc_ACV is the perturbed matrix)
         call MatAYPX(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, SAME_NONZERO_PATTERN, ierr)
         ! 2) Divide by the perturbation (it is row-wise)
-        ! call MatScale(Mmat%petsc_ACV%M, real(1d0/PERT, kind = PetscScalar_kind), ierr)
+        vpert%val = 1d0/vpert%val
         call scale_PETSc_matrix_by_vector(Mmat%petsc_ACV, vpert)
-        ! This below will not always work, need to do it per row...
-        ! call MatScale(Mmat%petsc_ACV%M,real(1/PERT, kind = PetscScalar_kind),ierr)
-        ! Restore field satura
-        satura = satura_bak
-        
-        ! Store residual in the RHS memory for CV systems
-        Mmat%CV_RHS%val = residual%val
-! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
-! read*
+
         ! Clean up memory
-        deallocate(satura2, satura_bak, max_sat)
-        if (associated(petsc_ACV2%refcount)) call deallocate(petsc_ACV2)
-        call deallocate(vpert); call deallocate(residual);
+        call deallocate(petsc_ACV2);call deallocate(vpert);
     end subroutine ASSEMB_SAT_JAC_AND_RES
 
     !>@brief:In this subroutine the components are solved for all the phases.
