@@ -148,6 +148,9 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a26eebc3a39a15f39961c783b8558fbef"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a26eebc3a39a15f39961c783b8558fbef">calculate_viscosity</a> (state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2)</td></tr>
 <tr class="memdesc:a26eebc3a39a15f39961c783b8558fbef"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media  <a href="namespacemultiphase__eos.html#a26eebc3a39a15f39961c783b8558fbef">More...</a><br /></td></tr>
 <tr class="separator:a26eebc3a39a15f39961c783b8558fbef"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aba2170c291d049cf032d6b1a253aa276"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#aba2170c291d049cf032d6b1a253aa276">compute_viscosity_eos</a> (state, Mdims)</td></tr>
+<tr class="memdesc:aba2170c291d049cf032d6b1a253aa276"><td class="mdescLeft">&#160;</td><td class="mdescRight">In this subroutine we compute the viscosity EOS. Options for different EOS.  <a href="namespacemultiphase__eos.html#aba2170c291d049cf032d6b1a253aa276">More...</a><br /></td></tr>
+<tr class="separator:aba2170c291d049cf032d6b1a253aa276"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a15a1f78f9f889b58b7b9f45de20d5a48"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a15a1f78f9f889b58b7b9f45de20d5a48">update_velocity_absorption</a> (states, ndim, nphase, velocity_absorption)</td></tr>
 <tr class="memdesc:a15a1f78f9f889b58b7b9f45de20d5a48"><td class="mdescLeft">&#160;</td><td class="mdescRight">:&lt;INERTIA ONLY&gt;Computes velocity absorption from diamond information  <a href="namespacemultiphase__eos.html#a15a1f78f9f889b58b7b9f45de20d5a48">More...</a><br /></td></tr>
 <tr class="separator:a15a1f78f9f889b58b7b9f45de20d5a48"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -181,6 +184,24 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a439637e5906b37a16646c186d7fc0daf"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a439637e5906b37a16646c186d7fc0daf">flash_gas_dissolution</a> (state, packed_state, Mdims, ndgln)</td></tr>
 <tr class="memdesc:a439637e5906b37a16646c186d7fc0daf"><td class="mdescLeft">&#160;</td><td class="mdescRight">: subroutine to dissolv phase2 into phase1. Currently only for system for phase 1 = water, phase 2 = gas Dissolve instantaneously the amount introduced in diamond in mol/m3 for CO2 a reference number is 38 mol/m3. Requires the first phase to have a concentration field  <a href="namespacemultiphase__eos.html#a439637e5906b37a16646c186d7fc0daf">More...</a><br /></td></tr>
 <tr class="separator:a439637e5906b37a16646c186d7fc0daf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7403abd4f0f6b2a8237aaa49bee9081e"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a7403abd4f0f6b2a8237aaa49bee9081e">metal_dissolution</a> (state, packed_state, Mdims, ndgln)</td></tr>
+<tr class="memdesc:a7403abd4f0f6b2a8237aaa49bee9081e"><td class="mdescLeft">&#160;</td><td class="mdescRight">: subroutine to dissolve metals using a partition coefficient. Dissolve/precipitate instantaneously the amount introduced in diamond in kg/kg. Requires to have the following scalar fields defined: a liquid metal passive tracer field (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal, a solid metal field (e.g., "Metal_solid") the temperature/salt coefficient fields for the partition coefficient, defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties. Requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.  <a href="namespacemultiphase__eos.html#a7403abd4f0f6b2a8237aaa49bee9081e">More...</a><br /></td></tr>
+<tr class="separator:a7403abd4f0f6b2a8237aaa49bee9081e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad552bb5fe3f1a7753cb81faaf6097893"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#ad552bb5fe3f1a7753cb81faaf6097893">metal_precipitation</a> (state, packed_state, Mdims, ndgln, dt)</td></tr>
+<tr class="memdesc:ad552bb5fe3f1a7753cb81faaf6097893"><td class="mdescLeft">&#160;</td><td class="mdescRight">: subroutine to precipitate metals using a precipitation rate. Precipitate the amount introduced in diamond in kg/kg. Requires to have the following scalar fields defined: a liquid metal passive tracer field (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal, a solid metal field (e.g., "Metal_solid") the temperature/salt coefficient fields for the precipitation rate, defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties. Requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.  <a href="namespacemultiphase__eos.html#ad552bb5fe3f1a7753cb81faaf6097893">More...</a><br /></td></tr>
+<tr class="separator:ad552bb5fe3f1a7753cb81faaf6097893"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2c4ed816844055b0ed8990bbbc37f11a"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a2c4ed816844055b0ed8990bbbc37f11a">total_mass_metal</a> (state, packed_state, Mdims, ndgln, CV_funs, metal_total_mass)</td></tr>
+<tr class="memdesc:a2c4ed816844055b0ed8990bbbc37f11a"><td class="mdescLeft">&#160;</td><td class="mdescRight">: subroutine to calculate the metal total mass (in kg).  <a href="namespacemultiphase__eos.html#a2c4ed816844055b0ed8990bbbc37f11a">More...</a><br /></td></tr>
+<tr class="separator:a2c4ed816844055b0ed8990bbbc37f11a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac8db613abbe75c163af30406a36bfc49"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#ac8db613abbe75c163af30406a36bfc49">bound_metal_concentrations</a> (state, packed_state, Mdims, ndgln)</td></tr>
+<tr class="memdesc:ac8db613abbe75c163af30406a36bfc49"><td class="mdescLeft">&#160;</td><td class="mdescRight">: subroutine to bound the metal concentrations after an adapt, in order to avoid unphysical values.  <a href="namespacemultiphase__eos.html#ac8db613abbe75c163af30406a36bfc49">More...</a><br /></td></tr>
+<tr class="separator:ac8db613abbe75c163af30406a36bfc49"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2e3f9c0b2e55a90103c72b4570f45e48"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a2e3f9c0b2e55a90103c72b4570f45e48">correction_mass_metal</a> (state, packed_state, Mdims, ndgln, total_mass_before, total_mass_after)</td></tr>
+<tr class="memdesc:a2e3f9c0b2e55a90103c72b4570f45e48"><td class="mdescLeft">&#160;</td><td class="mdescRight">: subroutine to apply a correction factor to the metal concentrations in order to conserve mass if needed.  <a href="namespacemultiphase__eos.html#a2e3f9c0b2e55a90103c72b4570f45e48">More...</a><br /></td></tr>
+<tr class="separator:a2e3f9c0b2e55a90103c72b4570f45e48"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a84fa5e7155dc42f6e8365fc6a0dfd899"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a84fa5e7155dc42f6e8365fc6a0dfd899">copy_metal_field</a> (state, packed_state, Mdims, ndgln)</td></tr>
+<tr class="memdesc:a84fa5e7155dc42f6e8365fc6a0dfd899"><td class="mdescLeft">&#160;</td><td class="mdescRight">: subroutine to copy a Metal Field into a copied field BEFORE the exchange steps happen (dissolution or precipitation). This can be used to have access to a liquid or solid metal field before the exchange step has happened.  <a href="namespacemultiphase__eos.html#a84fa5e7155dc42f6e8365fc6a0dfd899">More...</a><br /></td></tr>
+<tr class="separator:a84fa5e7155dc42f6e8365fc6a0dfd899"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
@@ -218,18 +239,84 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemultiphase__eos_ac13395594592fe917fc20b7c3c2b7a5d_icgraph.png" border="0" usemap="#namespacemultiphase__eos_ac13395594592fe917fc20b7c3c2b7a5d_icgraph" alt=""/></div>
 <map name="namespacemultiphase__eos_ac13395594592fe917fc20b7c3c2b7a5d_icgraph" id="namespacemultiphase__eos_ac13395594592fe917fc20b7c3c2b7a5d_icgraph">
-<area shape="rect" title=": Read from diamond and decide which sort of density representation do we have" alt="" coords="1229,107,1404,149"/>
-<area shape="rect" href="namespacemultiphase__eos.html#ab16c45da0af88c69945beac4e3334349" title=": Computes the density for the phases and the derivatives of the density" alt="" coords="989,49,1181,90"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a3c4f57d9c50b3421a8059d73fb260dd5" title=": Computes the density for the components and the derivatives of the density This is were the action ..." alt="" coords="488,107,680,149"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a282f02f39508adfb64d99bf4659af86c" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="993,169,1177,210"/>
-<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="763,5,928,32"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,173,419,214"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,173,171,214"/>
-<area shape="rect" href="namespacemultiphase__eos.html#ac21530a3f76ed685a2ce5fcb0bb11bd0" title=": This subroutine computed the gravity effect, i.e. rho * g" alt="" coords="749,169,941,210"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="753,234,937,275"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="479,173,689,214"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,290,701,331"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,297,396,324"/>
+<area shape="rect" title=": Read from diamond and decide which sort of density representation do we have" alt="" coords="1125,107,1284,149"/>
+<area shape="rect" href="namespacemultiphase__eos.html#ab16c45da0af88c69945beac4e3334349" title=": Computes the density for the phases and the derivatives of the density" alt="" coords="904,49,1077,90"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a3c4f57d9c50b3421a8059d73fb260dd5" title=": Computes the density for the components and the derivatives of the density This is were the action ..." alt="" coords="443,107,616,149"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a282f02f39508adfb64d99bf4659af86c" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="909,282,1073,323"/>
+<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="695,5,843,32"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,297,376,338"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,297,152,338"/>
+<area shape="rect" href="namespacemultiphase__eos.html#ac21530a3f76ed685a2ce5fcb0bb11bd0" title=": This subroutine computed the gravity effect, i.e. rho * g" alt="" coords="683,413,856,454"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="686,478,853,519"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a7403abd4f0f6b2a8237aaa49bee9081e" title=": subroutine to dissolve metals using a partition coefficient. Dissolve/precipitate instantaneously t..." alt="" coords="453,173,606,214"/>
+<area shape="rect" href="namespacemultiphase__eos.html#ad552bb5fe3f1a7753cb81faaf6097893" title=": subroutine to precipitate metals using a precipitation rate. Precipitate the amount introduced in d..." alt="" coords="453,238,606,279"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a2c4ed816844055b0ed8990bbbc37f11a" title=": subroutine to calculate the metal total mass (in kg)." alt="" coords="696,282,843,323"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#aa5819c18b57b8144faa1885776a2cc8b" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="687,347,851,389"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="433,406,625,447"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="424,523,635,565"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="219,531,357,557"/>
+</map>
+</div>
+
+</div>
+</div>
+<a id="ac8db613abbe75c163af30406a36bfc49"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac8db613abbe75c163af30406a36bfc49">&#9670;&nbsp;</a></span>bound_metal_concentrations()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine multiphase_eos::bound_metal_concentrations </td>
+          <td>(</td>
+          <td class="paramtype">type(state_type), dimension(:), intent(inout)&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(state_type), intent(inout)&#160;</td>
+          <td class="paramname"><em>packed_state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(multi_dimensions), intent(in)&#160;</td>
+          <td class="paramname"><em>Mdims</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(multi_ndgln), intent(in)&#160;</td>
+          <td class="paramname"><em>ndgln</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>: subroutine to bound the metal concentrations after an adapt, in order to avoid unphysical values. </p>
+<dl class="section author"><dt>Author</dt><dd>Meissam Bahlali </dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+  </table>
+  </dd>
+</dl>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacemultiphase__eos_ac8db613abbe75c163af30406a36bfc49_icgraph.png" border="0" usemap="#namespacemultiphase__eos_ac8db613abbe75c163af30406a36bfc49_icgraph" alt=""/></div>
+<map name="namespacemultiphase__eos_ac8db613abbe75c163af30406a36bfc49_icgraph" id="namespacemultiphase__eos_ac8db613abbe75c163af30406a36bfc49_icgraph">
+<area shape="rect" title=": subroutine to bound the metal concentrations after an adapt, in order to avoid unphysical values." alt="" coords="424,5,580,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
 </map>
 </div>
 
@@ -531,8 +618,7 @@ Here is the caller graph for this function:</div>
   <table class="params">
     <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
     <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
-    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc <br  />
- </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
   </table>
   </dd>
 </dl>
@@ -622,8 +708,7 @@ Here is the caller graph for this function:</div>
   <table class="params">
     <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
     <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
-    <tr><td class="paramname">Mdims</td><td>Number of dimensions <br  />
- </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Number of dimensions </td></tr>
     <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
     <tr><td class="paramname">ScalarAdvectionField_Diffusion</td><td>INOUT Field containing the diffusion </td></tr>
     <tr><td class="paramname">divide_by_rho_CP</td><td>! If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp </td></tr>
@@ -811,8 +896,7 @@ Here is the caller graph for this function:</div>
     <tr><td class="paramname">CV_GIdims</td><td>Gauss integration numbers for CV fields </td></tr>
     <tr><td class="paramname">Mspars</td><td>Sparsity of the matrices </td></tr>
     <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
-    <tr><td class="paramname">upwnd</td><td>Sigmas to compute the fluxes at the interphase for porous media <br  />
- </td></tr>
+    <tr><td class="paramname">upwnd</td><td>Sigmas to compute the fluxes at the interphase for porous media </td></tr>
     <tr><td class="paramname">SUF_SIG_DIAGTEN_BC</td><td>Like upwnd but for the boundary </td></tr>
   </table>
   </dd>
@@ -822,15 +906,16 @@ Here is the call graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemultiphase__eos_a1d4a7655cae6c58eae3fc141d80d5639_cgraph.png" border="0" usemap="#namespacemultiphase__eos_a1d4a7655cae6c58eae3fc141d80d5639_cgraph" alt=""/></div>
 <map name="namespacemultiphase__eos_a1d4a7655cae6c58eae3fc141d80d5639_cgraph" id="namespacemultiphase__eos_a1d4a7655cae6c58eae3fc141d80d5639_cgraph">
-<area shape="rect" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="5,64,233,105"/>
-<area shape="rect" href="multi__eos_8_f90.html#a2e38f3c2af7da0c1a95bbb5e485cf0b7" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="281,5,455,47"/>
-<area shape="rect" href="multi__eos_8_f90.html#a7b4b5e95a2c1b64f376a9c4092d60c0a" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="503,71,715,98"/>
-<area shape="rect" href="multi__eos_8_f90.html#aa152716c3e7e6d83fb9b90b26a9c7be7" title=": For porous media, just sets the viscosity as a scalar" alt="" coords="315,122,421,149"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a659427fd61af753266767259b441a345" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="513,5,705,47"/>
-<area shape="rect" href="namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="763,35,923,76"/>
-<area shape="rect" href="namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="971,35,1125,76"/>
-<area shape="rect" href="multi__eos_8_f90.html#a0f94604be6099dd1304ee7568ad7aac1" title=": Brooks corey model of relperm. This subroutine add a small quantity to the corey function to avoid ..." alt="" coords="1173,17,1344,43"/>
-<area shape="rect" href="multi__eos_8_f90.html#afb461540e77781fc8560dcdf98a7ed12" title=":This subroutine calculates the relative permeability for three phases First phase has to be water,..." alt="" coords="1201,67,1317,94"/>
+<area shape="rect" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="5,93,208,135"/>
+<area shape="rect" href="multi__eos_8_f90.html#a2e38f3c2af7da0c1a95bbb5e485cf0b7" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="264,5,419,47"/>
+<area shape="rect" href="multi__eos_8_f90.html#a7b4b5e95a2c1b64f376a9c4092d60c0a" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="475,71,668,98"/>
+<area shape="rect" href="namespacemultiphase__eos.html#aba2170c291d049cf032d6b1a253aa276" title="In this subroutine we compute the viscosity EOS. Options for different EOS." alt="" coords="256,123,427,164"/>
+<area shape="rect" href="multi__eos_8_f90.html#aa152716c3e7e6d83fb9b90b26a9c7be7" title=": For porous media, just sets the viscosity as a scalar" alt="" coords="292,189,391,215"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a659427fd61af753266767259b441a345" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="485,5,658,47"/>
+<area shape="rect" href="namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="716,35,859,76"/>
+<area shape="rect" href="namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="907,35,1045,76"/>
+<area shape="rect" href="multi__eos_8_f90.html#a0f94604be6099dd1304ee7568ad7aac1" title=": Brooks corey model of relperm. This subroutine add a small quantity to the corey function to avoid ..." alt="" coords="1093,17,1245,43"/>
+<area shape="rect" href="multi__eos_8_f90.html#afb461540e77781fc8560dcdf98a7ed12" title=":This subroutine calculates the relative permeability for three phases First phase has to be water,..." alt="" coords="1117,67,1221,94"/>
 </map>
 </div>
 <div class="dynheader">
@@ -1011,8 +1096,7 @@ Here is the caller graph for this function:</div>
   <table class="params">
     <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
     <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
-    <tr><td class="paramname">Mdims</td><td>Number of dimensions <br  />
- </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Number of dimensions </td></tr>
     <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
     <tr><td class="paramname">density</td><td>Density of the field (If present density means that we need to use a reference density to ensure consistency with the rest of the equation) </td></tr>
     <tr><td class="paramname">SoluteDispersion</td><td>INOUT The field containing the dispersivity controbution for the given field </td></tr>
@@ -1270,6 +1354,185 @@ Here is the caller graph for this function:</div>
 <area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
 <area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
 <area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
+</map>
+</div>
+
+</div>
+</div>
+<a id="aba2170c291d049cf032d6b1a253aa276"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aba2170c291d049cf032d6b1a253aa276">&#9670;&nbsp;</a></span>compute_viscosity_eos()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine multiphase_eos::compute_viscosity_eos </td>
+          <td>(</td>
+          <td class="paramtype">type( state_type ), dimension( : ), intent(inout)&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type( multi_dimensions ), intent(in)&#160;</td>
+          <td class="paramname"><em>Mdims</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>In this subroutine we compute the viscosity EOS. Options for different EOS. </p>
+<dl class="section author"><dt>Author</dt><dd>Meissam Bahlali </dd></dl>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacemultiphase__eos_aba2170c291d049cf032d6b1a253aa276_icgraph.png" border="0" usemap="#namespacemultiphase__eos_aba2170c291d049cf032d6b1a253aa276_icgraph" alt=""/></div>
+<map name="namespacemultiphase__eos_aba2170c291d049cf032d6b1a253aa276_icgraph" id="namespacemultiphase__eos_aba2170c291d049cf032d6b1a253aa276_icgraph">
+<area shape="rect" title="In this subroutine we compute the viscosity EOS. Options for different EOS." alt="" coords="939,54,1109,95"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="688,25,891,66"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,25,376,66"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,25,640,66"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,25,152,66"/>
+</map>
+</div>
+
+</div>
+</div>
+<a id="a84fa5e7155dc42f6e8365fc6a0dfd899"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a84fa5e7155dc42f6e8365fc6a0dfd899">&#9670;&nbsp;</a></span>copy_metal_field()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine multiphase_eos::copy_metal_field </td>
+          <td>(</td>
+          <td class="paramtype">type(state_type), dimension(:), intent(inout)&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(state_type), intent(inout)&#160;</td>
+          <td class="paramname"><em>packed_state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(multi_dimensions), intent(in)&#160;</td>
+          <td class="paramname"><em>Mdims</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(multi_ndgln), intent(in)&#160;</td>
+          <td class="paramname"><em>ndgln</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>: subroutine to copy a Metal Field into a copied field BEFORE the exchange steps happen (dissolution or precipitation). This can be used to have access to a liquid or solid metal field before the exchange step has happened. </p>
+<dl class="section author"><dt>Author</dt><dd>Meissam Bahlali </dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+  </table>
+  </dd>
+</dl>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacemultiphase__eos_a84fa5e7155dc42f6e8365fc6a0dfd899_icgraph.png" border="0" usemap="#namespacemultiphase__eos_a84fa5e7155dc42f6e8365fc6a0dfd899_icgraph" alt=""/></div>
+<map name="namespacemultiphase__eos_a84fa5e7155dc42f6e8365fc6a0dfd899_icgraph" id="namespacemultiphase__eos_a84fa5e7155dc42f6e8365fc6a0dfd899_icgraph">
+<area shape="rect" title=": subroutine to copy a Metal Field into a copied field BEFORE the exchange steps happen (dissolution ..." alt="" coords="424,5,573,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
+</map>
+</div>
+
+</div>
+</div>
+<a id="a2e3f9c0b2e55a90103c72b4570f45e48"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2e3f9c0b2e55a90103c72b4570f45e48">&#9670;&nbsp;</a></span>correction_mass_metal()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine multiphase_eos::correction_mass_metal </td>
+          <td>(</td>
+          <td class="paramtype">type(state_type), dimension(:), intent(inout)&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(state_type), intent(inout)&#160;</td>
+          <td class="paramname"><em>packed_state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(multi_dimensions), intent(in)&#160;</td>
+          <td class="paramname"><em>Mdims</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(multi_ndgln), intent(in)&#160;</td>
+          <td class="paramname"><em>ndgln</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, intent(in)&#160;</td>
+          <td class="paramname"><em>total_mass_before</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, intent(in)&#160;</td>
+          <td class="paramname"><em>total_mass_after</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>: subroutine to apply a correction factor to the metal concentrations in order to conserve mass if needed. </p>
+<dl class="section author"><dt>Author</dt><dd>Meissam Bahlali </dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+  </table>
+  </dd>
+</dl>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacemultiphase__eos_a2e3f9c0b2e55a90103c72b4570f45e48_icgraph.png" border="0" usemap="#namespacemultiphase__eos_a2e3f9c0b2e55a90103c72b4570f45e48_icgraph" alt=""/></div>
+<map name="namespacemultiphase__eos_a2e3f9c0b2e55a90103c72b4570f45e48_icgraph" id="namespacemultiphase__eos_a2e3f9c0b2e55a90103c72b4570f45e48_icgraph">
+<area shape="rect" title=": subroutine to apply a correction factor to the metal concentrations in order to conserve mass if ne..." alt="" coords="424,5,603,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
 </map>
 </div>
 
@@ -2037,6 +2300,156 @@ Here is the call graph for this function:</div>
 
 </div>
 </div>
+<a id="a7403abd4f0f6b2a8237aaa49bee9081e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7403abd4f0f6b2a8237aaa49bee9081e">&#9670;&nbsp;</a></span>metal_dissolution()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine multiphase_eos::metal_dissolution </td>
+          <td>(</td>
+          <td class="paramtype">type(state_type), dimension(:), intent(inout)&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(state_type), intent(inout)&#160;</td>
+          <td class="paramname"><em>packed_state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(multi_dimensions), intent(in)&#160;</td>
+          <td class="paramname"><em>Mdims</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(multi_ndgln), intent(in)&#160;</td>
+          <td class="paramname"><em>ndgln</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>: subroutine to dissolve metals using a partition coefficient. Dissolve/precipitate instantaneously the amount introduced in diamond in kg/kg. Requires to have the following scalar fields defined: a liquid metal passive tracer field (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal, a solid metal field (e.g., "Metal_solid") the temperature/salt coefficient fields for the partition coefficient, defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties. Requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not. </p>
+<dl class="section author"><dt>Author</dt><dd>Meissam Bahlali </dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+  </table>
+  </dd>
+</dl>
+<div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacemultiphase__eos_a7403abd4f0f6b2a8237aaa49bee9081e_cgraph.png" border="0" usemap="#namespacemultiphase__eos_a7403abd4f0f6b2a8237aaa49bee9081e_cgraph" alt=""/></div>
+<map name="namespacemultiphase__eos_a7403abd4f0f6b2a8237aaa49bee9081e_cgraph" id="namespacemultiphase__eos_a7403abd4f0f6b2a8237aaa49bee9081e_cgraph">
+<area shape="rect" title=": subroutine to dissolve metals using a partition coefficient. Dissolve/precipitate instantaneously t..." alt="" coords="5,5,159,47"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a282f02f39508adfb64d99bf4659af86c" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="207,5,371,47"/>
+<area shape="rect" href="namespacemultiphase__eos.html#ac13395594592fe917fc20b7c3c2b7a5d" title=": Read from diamond and decide which sort of density representation do we have" alt="" coords="419,5,577,47"/>
+</map>
+</div>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacemultiphase__eos_a7403abd4f0f6b2a8237aaa49bee9081e_icgraph.png" border="0" usemap="#namespacemultiphase__eos_a7403abd4f0f6b2a8237aaa49bee9081e_icgraph" alt=""/></div>
+<map name="namespacemultiphase__eos_a7403abd4f0f6b2a8237aaa49bee9081e_icgraph" id="namespacemultiphase__eos_a7403abd4f0f6b2a8237aaa49bee9081e_icgraph">
+<area shape="rect" title=": subroutine to dissolve metals using a partition coefficient. Dissolve/precipitate instantaneously t..." alt="" coords="424,5,577,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
+</map>
+</div>
+
+</div>
+</div>
+<a id="ad552bb5fe3f1a7753cb81faaf6097893"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad552bb5fe3f1a7753cb81faaf6097893">&#9670;&nbsp;</a></span>metal_precipitation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine multiphase_eos::metal_precipitation </td>
+          <td>(</td>
+          <td class="paramtype">type(state_type), dimension(:), intent(inout)&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(state_type), intent(inout)&#160;</td>
+          <td class="paramname"><em>packed_state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(multi_dimensions), intent(in)&#160;</td>
+          <td class="paramname"><em>Mdims</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(multi_ndgln), intent(in)&#160;</td>
+          <td class="paramname"><em>ndgln</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, intent(in)&#160;</td>
+          <td class="paramname"><em>dt</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>: subroutine to precipitate metals using a precipitation rate. Precipitate the amount introduced in diamond in kg/kg. Requires to have the following scalar fields defined: a liquid metal passive tracer field (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal, a solid metal field (e.g., "Metal_solid") the temperature/salt coefficient fields for the precipitation rate, defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties. Requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not. </p>
+<dl class="section author"><dt>Author</dt><dd>Meissam Bahlali </dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+  </table>
+  </dd>
+</dl>
+<div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacemultiphase__eos_ad552bb5fe3f1a7753cb81faaf6097893_cgraph.png" border="0" usemap="#namespacemultiphase__eos_ad552bb5fe3f1a7753cb81faaf6097893_cgraph" alt=""/></div>
+<map name="namespacemultiphase__eos_ad552bb5fe3f1a7753cb81faaf6097893_cgraph" id="namespacemultiphase__eos_ad552bb5fe3f1a7753cb81faaf6097893_cgraph">
+<area shape="rect" title=": subroutine to precipitate metals using a precipitation rate. Precipitate the amount introduced in d..." alt="" coords="5,5,159,47"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a282f02f39508adfb64d99bf4659af86c" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="207,5,371,47"/>
+<area shape="rect" href="namespacemultiphase__eos.html#ac13395594592fe917fc20b7c3c2b7a5d" title=": Read from diamond and decide which sort of density representation do we have" alt="" coords="419,5,577,47"/>
+</map>
+</div>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacemultiphase__eos_ad552bb5fe3f1a7753cb81faaf6097893_icgraph.png" border="0" usemap="#namespacemultiphase__eos_ad552bb5fe3f1a7753cb81faaf6097893_icgraph" alt=""/></div>
+<map name="namespacemultiphase__eos_ad552bb5fe3f1a7753cb81faaf6097893_icgraph" id="namespacemultiphase__eos_ad552bb5fe3f1a7753cb81faaf6097893_icgraph">
+<area shape="rect" title=": subroutine to precipitate metals using a precipitation rate. Precipitate the amount introduced in d..." alt="" coords="424,5,577,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
+</map>
+</div>
+
+</div>
+</div>
 <a id="a282f02f39508adfb64d99bf4659af86c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a282f02f39508adfb64d99bf4659af86c">&#9670;&nbsp;</a></span>retrieve_reference_density()</h2>
 
@@ -2106,14 +2519,18 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c_icgraph.png" border="0" usemap="#namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c_icgraph" alt=""/></div>
 <map name="namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c_icgraph" id="namespacemultiphase__eos_a282f02f39508adfb64d99bf4659af86c_icgraph">
-<area shape="rect" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="989,39,1173,80"/>
-<area shape="rect" href="namespacemultiphase__eos.html#ac21530a3f76ed685a2ce5fcb0bb11bd0" title=": This subroutine computed the gravity effect, i.e. rho * g" alt="" coords="749,5,941,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="753,71,937,112"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="479,5,689,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,64,419,105"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,64,171,105"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,123,701,164"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,130,396,157"/>
+<area shape="rect" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="904,217,1068,259"/>
+<area shape="rect" href="namespacemultiphase__eos.html#ac21530a3f76ed685a2ce5fcb0bb11bd0" title=": This subroutine computed the gravity effect, i.e. rho * g" alt="" coords="683,123,856,164"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="686,57,853,99"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a7403abd4f0f6b2a8237aaa49bee9081e" title=": subroutine to dissolve metals using a partition coefficient. Dissolve/precipitate instantaneously t..." alt="" coords="453,240,606,281"/>
+<area shape="rect" href="namespacemultiphase__eos.html#ad552bb5fe3f1a7753cb81faaf6097893" title=": subroutine to precipitate metals using a precipitation rate. Precipitate the amount introduced in d..." alt="" coords="453,305,606,347"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a2c4ed816844055b0ed8990bbbc37f11a" title=": subroutine to calculate the metal total mass (in kg)." alt="" coords="696,361,843,403"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#aa5819c18b57b8144faa1885776a2cc8b" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="687,188,851,229"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="433,123,625,164"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,181,376,223"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,181,152,223"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="424,5,635,47"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="219,13,357,39"/>
 </map>
 </div>
 
@@ -2136,6 +2553,90 @@ Here is the caller graph for this function:</div>
 </div><div class="memdoc">
 
 <p>: ???? </p>
+
+</div>
+</div>
+<a id="a2c4ed816844055b0ed8990bbbc37f11a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2c4ed816844055b0ed8990bbbc37f11a">&#9670;&nbsp;</a></span>total_mass_metal()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine multiphase_eos::total_mass_metal </td>
+          <td>(</td>
+          <td class="paramtype">type(state_type), dimension(:), intent(inout)&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(state_type), intent(inout)&#160;</td>
+          <td class="paramname"><em>packed_state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(multi_dimensions), intent(in)&#160;</td>
+          <td class="paramname"><em>Mdims</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(multi_ndgln), intent(in)&#160;</td>
+          <td class="paramname"><em>ndgln</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type (multi_shape_funs)&#160;</td>
+          <td class="paramname"><em>CV_funs</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, intent(out)&#160;</td>
+          <td class="paramname"><em>metal_total_mass</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>: subroutine to calculate the metal total mass (in kg). </p>
+<dl class="section author"><dt>Author</dt><dd>Meissam Bahlali </dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">state</td><td>Linked list containing all the fields defined in diamond and considered by Fluidity </td></tr>
+    <tr><td class="paramname">packed_state</td><td>Linked list containing all the fields used by IC-FERST, memory partially shared with state </td></tr>
+    <tr><td class="paramname">Mdims</td><td>Data type storing all the dimensions describing the mesh, fields, nodes, etc </td></tr>
+    <tr><td class="paramname">ndgln</td><td>Global to local variables </td></tr>
+  </table>
+  </dd>
+</dl>
+<div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacemultiphase__eos_a2c4ed816844055b0ed8990bbbc37f11a_cgraph.png" border="0" usemap="#namespacemultiphase__eos_a2c4ed816844055b0ed8990bbbc37f11a_cgraph" alt=""/></div>
+<map name="namespacemultiphase__eos_a2c4ed816844055b0ed8990bbbc37f11a_cgraph" id="namespacemultiphase__eos_a2c4ed816844055b0ed8990bbbc37f11a_cgraph">
+<area shape="rect" title=": subroutine to calculate the metal total mass (in kg)." alt="" coords="5,5,152,47"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a282f02f39508adfb64d99bf4659af86c" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="200,5,364,47"/>
+<area shape="rect" href="namespacemultiphase__eos.html#ac13395594592fe917fc20b7c3c2b7a5d" title=": Read from diamond and decide which sort of density representation do we have" alt="" coords="412,5,571,47"/>
+</map>
+</div>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacemultiphase__eos_a2c4ed816844055b0ed8990bbbc37f11a_icgraph.png" border="0" usemap="#namespacemultiphase__eos_a2c4ed816844055b0ed8990bbbc37f11a_icgraph" alt=""/></div>
+<map name="namespacemultiphase__eos_a2c4ed816844055b0ed8990bbbc37f11a_icgraph" id="namespacemultiphase__eos_a2c4ed816844055b0ed8990bbbc37f11a_icgraph">
+<area shape="rect" title=": subroutine to calculate the metal total mass (in kg)." alt="" coords="424,5,571,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
+</map>
+</div>
 
 </div>
 </div>
