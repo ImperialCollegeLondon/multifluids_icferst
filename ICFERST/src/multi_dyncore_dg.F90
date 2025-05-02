@@ -949,7 +949,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !>@param  THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
-         eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
+         eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, prev_sat, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, time_step, SFPI_taken, SFPI_its, Courant_number,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
@@ -970,6 +970,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              INTEGER, intent( in ) :: igot_theta_flux
              REAL, intent( in ) :: DT
              REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
+             real, dimension( : ,: ), intent( inout ) :: prev_sat
              REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
              !REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
@@ -1149,9 +1150,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 ! call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
 ! Mmat%CV_RHS%val = 0.
 
+
                  call ASSEMB_SAT_JAC_AND_RES( state, packed_state, &
                  n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                 sat_field, velocity, density, multi_absorp, &
+                 sat_field, prev_sat, velocity, density, multi_absorp, &
                  DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                  DEN_ALL, DENOLD_ALL, &
                  Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
@@ -1168,6 +1170,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                  Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
                  nonlinear_iteration = nonlinear_iteration)
+
+
 ! print*, "----------------NUMERICAL JACOBIAN AND RESIDUAL------------------------------"
 ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 ! print *, "=========================================================="
@@ -1279,6 +1283,7 @@ print *, "ITERATION/RES: ", its, res
                      sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) + solution%val(iphase+(ipres-1)*n_in_pres,:)
                    end do
                  end do
+
 ! print *, solution%val
 ! print *,  "NLI",nonlinear_iteration,"SFPIs: ", its ,  "| Residual:", maxval(abs(Mmat%CV_RHS%val))
                 !Copy solution back to sat_field (not ideal...)
@@ -1447,7 +1452,7 @@ print *, "ITERATION/RES: ", its, res
     !---------------------------------------------------------------------------
     SUBROUTINE ASSEMB_SAT_JAC_AND_RES( state, packed_state, &
         final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-        sat_field, velocity, density, multi_absorp, &
+        sat_field, sat_bak, velocity, density, multi_absorp, &
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B,&
         DEN_ALL, DENOLD_ALL, &
         CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, &
@@ -1482,6 +1487,7 @@ print *, "ITERATION/RES: ", its, res
         type (multi_matrices), intent(inout) :: Mmat
         type (porous_adv_coefs), intent(inout) :: upwnd
         type(tensor_field), intent(inout), target :: sat_field
+        real, dimension(:,:) :: sat_bak
         type(tensor_field), intent(in), target :: density
         type(tensor_field), intent(in) :: velocity
         type(multi_absorption), intent(inout) :: multi_absorp
@@ -1547,13 +1553,18 @@ print *, "ITERATION/RES: ", its, res
 
 !NEXT I SHOULD DO
 ! 2) OPTIMISE: II) MAYBE NOT NEEDED IF ONLY ONE NEWTON PER PICARD? => MATRICES SHOULD BE AN INPUT OF SATURATION_ASSEMB SO I DON'T NEED TO REALLOCATE THEM SO OFTEN
-! 3) ADD OVER_RELAXATION: 
-        ! a) SINCE NOW WE USE SATURATION, WE NEED SAT OF THE PREVIOUS NON-LINEAR ITERATION (OTHERWISE VAD IS JUST ZERO ALWAYS)
-        ! b) RESIDUAL NOT YET DONE. WRITTEN HOW IT SHOULD BE BUT WITHOUT THE PREVIOUS SATURATION SO IT IS ZERO.
-! 4) SECANT METHOD? LOADS OF ZEROES EXPECTED, JUST ENFORCE ONE IN DIAGONAL AND ZERO RESIDUAL EVEN BETTER!
+! 3) ADD OVER_RELAXATION. DONE. WE USE THE PREVIOUS SATURATION TO CALCULATE THE OVER_RELAXATION PARAMETER
+! 4) (IGNORE FOR NOW) -> SECANT METHOD? LOADS OF ZEROES EXPECTED, JUST ENFORCE ONE IN DIAGONAL AND ZERO RESIDUAL EVEN BETTER! 
+! 5) ADD WELLS TO JACOBIAN AND RESIDUAL
+! 6) ALLOW FOR A DIFFERENT CONVERGENCE TOLERANCE FOR THE SATURATION AND THE OTHER FIELDS... WE WANT TIGHT THE SATURATION BUT NOT NECESSARILY OTHER FIELDS
+        ! ALSO CHECK IF OUR TESTING METHOD IS CORRECT. THE RESIDUAL SEEMS TO BE 3 ORDERS OF MAGNITUDE AHEAD OF THE SAT CHECK
+        ! IT MIGHT NOT BE A PROBLEM AS LONG AS WE UNDERSTAND IT AND IT IS CONSISTENT
+! 7) TEST MORE COMPLEX EXAMPLES WITH THE MASS ISSUE
+        ! IS THE VAD STILL HELPING IN THESE CASES?
+! 8) TIDY UP THE CODE. ALLOW FOR BOTH PICARD AND NEWTON.
         call SATURATION_ASSEMB( state, packed_state, &
         Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-        sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+        sat_field, sat_bak, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
         SOURCT_ALL, VOLFRA_PORE, &
         VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
         eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
@@ -1588,7 +1599,7 @@ print *, "ITERATION/RES: ", its, res
         ! Calculate perturbated matrix
         call SATURATION_ASSEMB(state, packed_state, &
         Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-        sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+        sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
         SOURCT_ALL, VOLFRA_PORE, &
         VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
         eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
