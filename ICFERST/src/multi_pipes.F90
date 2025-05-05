@@ -85,7 +85,7 @@ contains
     !>@param  outfluxes  Contains all the fields required to compute the outfluxes of the model and create the outfluxes.csv file. Computed when assembling the continuity equation
     !>@param assemble_collapsed_to_one_phase Collapses phases and solves for one single temperature. When there is thermal equilibrium
     SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-                  getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
+                  getcv_disc, getct, getNewtonType, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
                   INV_SIGMA, upwnd, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase )
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
@@ -99,7 +99,7 @@ contains
       real, dimension(:,:),intent( inout ) :: INV_SIGMA
       real, dimension(:),intent( inout ) :: MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE ! of length NCMC
       real, dimension(:),intent( inout ) :: mass_pipe, MASS_PIPE_FOR_COUP ! of length Mdims%cv_nonods
-      logical, intent( in ) :: getcv_disc, getct, thermal, assemble_collapsed_to_one_phase
+      logical, intent( in ) :: getcv_disc, getct, getNewtonType, thermal, assemble_collapsed_to_one_phase
       real, intent(in) :: DT, CV_BETA
       !Variables that are used to define the pipe pos.
       type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
@@ -726,10 +726,17 @@ contains
                             assembly_phase = iphase
                             !For the RHS collapsing to assemble into phase 2 can be done just here
                             if (assemble_collapsed_to_one_phase) assembly_phase = 2
-                            call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_CV_RHS_I(IPHASE))
-                            !Introduce the information into the petsc_ACV matrix
-                            call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
-                            call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodj, LOC_MAT_IJ(iphase) )
+                            if (getNewtonType) then 
+                              call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_MAT_II(iphase)*T_CV_NODI(iphase)+LOC_MAT_IJ(iphase)*T_CV_NODJ(iphase) - LOC_CV_RHS_I(IPHASE))
+                              !Introduce the information into the petsc_ACV matrix
+                              call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase)*T_CV_NODI(iphase))
+                              call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodj, LOC_MAT_IJ(iphase)*T_CV_NODJ(iphase))
+                            else
+                              call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_CV_RHS_I(IPHASE))
+                              !Introduce the information into the petsc_ACV matrix
+                              call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
+                              call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodj, LOC_MAT_IJ(iphase) )
+                            end if
                           end do
                       END IF
                   END DO ! DO ILOOP = 1, 2
@@ -848,9 +855,15 @@ contains
                         assembly_phase = iphase
                         !For the RHS collapsing to assemble into phase 2 can be done just here
                         if (assemble_collapsed_to_one_phase) assembly_phase = 2
-                        call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,LOC_CV_RHS_I(IPHASE))
-                        !Introduce the information into the petsc_ACV matrix
-                        call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,JCV_NOD,JCV_NOD, LOC_MAT_II(iphase) )
+                        if (getNewtonType) then
+                          call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,LOC_MAT_II(iphase)*T_CV_NODI(iphase)-LOC_CV_RHS_I(IPHASE))
+                          !Introduce the information into the petsc_ACV matrix
+                          call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,JCV_NOD,JCV_NOD, LOC_MAT_II(iphase)*T_CV_NODI(iphase))                         
+                        else
+                          call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,LOC_CV_RHS_I(IPHASE))
+                          !Introduce the information into the petsc_ACV matrix
+                          call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,JCV_NOD,JCV_NOD, LOC_MAT_II(iphase) )
+                        end if
                       end do
 
                   ENDIF ! ENDOF IF ( GETCV_DISC ) THEN
@@ -1012,7 +1025,7 @@ contains
     !>@param assemble_collapsed_to_one_phase Collapses phases and solves for one single temperature. When there is thermal equilibrium
   subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, final_phase, Mdims, ndgln, DERIV, CV_P, &
                   SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL,&
-                  getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, &
+                  getcv_disc, getct, getNewtonType, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, &
                   mean_pore_cv, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes, porous_heat_coef, assemble_collapsed_to_one_phase )
       type(tensor_field), intent(inout) :: tracer
       type(state_type), intent(inout) :: packed_state
@@ -1032,7 +1045,7 @@ contains
       real, dimension(:,:),intent( inout ) :: den_all, denold_all, DIAG_SCALE_PRES
       REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV ! (Mdims%npres,Mdims%cv_nonods)
       real, dimension(:),intent( inout ) :: MASS_ELE, MASS_CV
-      logical, intent( in ) :: getcv_disc, getct, thermal, GOT_T2, assemble_collapsed_to_one_phase
+      logical, intent( in ) :: getcv_disc, getct, getNewtonType, thermal, GOT_T2, assemble_collapsed_to_one_phase
       real, intent(in) :: DT, CV_BETA
       integer, intent(in) :: final_phase
       !Variables that are used to define the pipe pos.
@@ -1144,7 +1157,7 @@ contains
 
       MASS_PIPE_FOR_COUP = 0.
       CALL MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-          getcv_disc, getct, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
+          getcv_disc, getct, getNewtonType, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
           SIGMA_INV_APPROX, upwnd, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase)
 
       GAMMA_PRES_ABS2 = 0.0
@@ -1412,27 +1425,15 @@ contains
                       !Implicit method in all the cases
                       assembly_phase_2 = iphase
                       if (assemble_collapsed_to_one_phase) assembly_phase_2 = 1 + (iphase-1)/Mdims%n_in_pres
-                      call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, &
-                          cv_nodi, cv_nodi, &
-                          MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
-                          ! if(.not.conservative_advection) then ! original method - all implicit (may be unstable in some cases 12/07/2017)
-                          !     call addto(Mmat%petsc_ACV,iphase,compact_phase, &
-                          !         cv_nodi, cv_nodi, &
-                          !         MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
-                          ! else
-                          !   !Some sort of predictor corrector. Implicit may be unstable, therefore the explicit acts as a Dumping term
-                          !   call addto(Mmat%petsc_ACV,iphase,compact_phase, &
-                          !       cv_nodi, cv_nodi, &
-                          !         (1. + dumping_well_factor) * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
-                          !
-                          !       ! ! well mass exchange is introduced in the RHS so it is treated explictly
-                          !       LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
-                          !       + dumping_well_factor * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI )* T_ALL(global_phase, CV_NODI)
-                          !
-                          !     ! ! ! well mass exchange is introduced in the RHS so it is treated explictly <+ all explicit is too slow
-                          !     ! LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
-                          !     ! - MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI )* T_ALL(global_phase, CV_NODI)
-                          ! endif
+                      if (getNewtonType) then
+                        call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, &
+                            cv_nodi, cv_nodi, &
+                            MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI )*LOC_SAT_I(iphase))
+                      else 
+                        call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, &
+                            cv_nodi, cv_nodi, &
+                            MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
+                      end if
                     end do
                 end do
               end do
@@ -1445,8 +1446,13 @@ contains
                     do iphase=wells_first_phase, final_phase*2
                       assembly_phase_2 = iphase
                       if (assemble_collapsed_to_one_phase) assembly_phase_2 = 1 + (iphase-1)/Mdims%n_in_pres
+                      if (getNewtonType) then
+                        call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, cv_nodi, cv_nodi, &
+                        Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI )*LOC_SAT_I(iphase))
+                      else 
                        call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, cv_nodi, cv_nodi, &
                            Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI ))
+                      end if
                     end do
                 end do
             end if
@@ -1456,9 +1462,15 @@ contains
                 assembly_phase = iphase
                 !For the RHS collapsing to assemble into phase 1 can be done just here
                 if (assemble_collapsed_to_one_phase) assembly_phase = 2
-                call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_CV_RHS_I(IPHASE))
-                !Introduce the information into the petsc_ACV matrix
-                call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
+                if (getNewtonType) then 
+                  call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_MAT_II(iphase)*LOC_SAT_I(iphase)-LOC_CV_RHS_I(IPHASE))
+                  !Introduce the information into the petsc_ACV matrix
+                  call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase)*LOC_SAT_I(iphase) )
+                else
+                  call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_CV_RHS_I(IPHASE))
+                  !Introduce the information into the petsc_ACV matrix
+                  call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
+                end if
             end do
 
             ! call addto(Mmat%CV_RHS,CV_NODI,LOC_CV_RHS_I)
