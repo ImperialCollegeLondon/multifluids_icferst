@@ -36,7 +36,7 @@ module multiphase_EOS
     use boundary_conditions, only: get_entire_boundary_condition
     use Field_Options, only: get_external_coordinate_field
     use initialise_fields_module, only: initialise_field_over_regions, initialise_field
-    use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
+    use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table_standard
     use checkpoint
     use parallel_tools
     use parallel_fields
@@ -45,6 +45,9 @@ module multiphase_EOS
     implicit none
 
     real, parameter :: flooding_hmin = 1e-5
+    logical, save :: use_tabulated_relperm = .false., use_tabulated_pc = .false.
+    logical, save :: tables_loaded = .false.
+    real, dimension(:,:,:), allocatable, save :: relperm_table_data, pc_table_data
 
 
 contains
@@ -1262,7 +1265,11 @@ contains
             case (3)
                 call relperm_stone(Kr)
             case default
+              if (use_tabulated_relperm) then
+                call relperm_tabulated(Kr)
+              else
                 call relperm_corey_epsilon(Kr)
+              end if
         end select
 
       contains
@@ -1279,6 +1286,15 @@ contains
           !Make sure that the relperm is between bounds
           KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
         END SUBROUTINE relperm_corey_epsilon
+
+        !>@brief: Tabulated relperm.
+        !>This subroutine computes the relperm based on tabulated data that the user provides (method: linear interpolation).
+        SUBROUTINE relperm_tabulated( Kr )
+          IMPLICIT NONE
+          REAL, intent( inout ) :: Kr
+          ! Variables for tabulated relperm
+          Kr = table_interpolation_linear(relperm_table_data(:,1,iphase), relperm_table_data(:,2,iphase), sat(iphase))
+        END SUBROUTINE relperm_tabulated
 
         !>@brief:This subroutine calculates the relative permeability for three phases
         !>First phase has to be water, second oil and the third gas
@@ -1351,8 +1367,8 @@ contains
             ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless power_law Pc activated (important to allow overelax even when Pc is off).
             if (first_time) then
                 Cap_Power = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Power_Law", nphase)
-                Cap_Brooks = .not. (Cap_Power)
-
+                Cap_Brooks = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Brooks_Corey", nphase)
+                use_tabulated_pc = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Tabulated", nphase)
                 first_time = .false.
             end if
 
@@ -1386,6 +1402,15 @@ contains
                         end if
                     end do
 
+                else if ( use_tabulated_pc ) then
+                    do jphase = 1, nphase
+                      do ele = 1, totele
+                          do cv_iloc = 1, cv_nloc
+                              cv_nod = ndgln%cv((ele-1)*cv_nloc + cv_iloc)
+                              CapPressure(jphase, cv_nod) = table_interpolation_linear(pc_table_data(:,1,jphase), pc_table_data(:,2,jphase), satura(jphase,cv_nod))
+                          end do
+                      end do
+                    end do
                 end if
             END DO
 
@@ -1427,7 +1452,7 @@ contains
         real, dimension(:), intent(in) :: CV_Immobile_Fraction
         !Local
         real, parameter :: eps = 1d-3
-        real :: aux
+        real :: aux, s1, s2, p1, p2
         integer :: i
         logical, save :: Cap_Brooks = .true., Cap_Power = .false.
         logical, save :: first_time = .true.
@@ -1435,18 +1460,34 @@ contains
         aux = ( 1.0 - sum(CV_Immobile_Fraction(:)) )
         ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless power_law Pc activated (important to allow overelax even when Pc is off).
         if (first_time) then
-                Cap_Power = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Power_Law", nphase)
-                Cap_Brooks = .not. (Cap_Power)
-                first_time = .false.
+            Cap_Power = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Power_Law", nphase)
+            Cap_Brooks = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Brooks_Corey", nphase)
+            use_tabulated_pc = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Tabulated", nphase)
         end if
 
         if(Cap_Power) then
             Get_DevCapPressure = &
                 -a*Pe/(1.0 - sum(CV_Immobile_Fraction(:)) )  * ( 1.0 - ( sat - CV_Immobile_Fraction(iphase) )/( 1.0 - sum(CV_Immobile_Fraction(:)) ) ) **(a-1)
-        else
+
+        else if (Cap_Brooks) then
             Get_DevCapPressure = &
                 -a * Pe * aux**a * min((sat - CV_Immobile_Fraction(iphase) + eps), 1.0) ** (-a-1)
-        endif
+
+        else if (use_tabulated_pc) then
+            ! Find closest interval in table
+            do i = 2, size(pc_table_data, 1)
+                if (sat < pc_table_data(i,1,iphase)) then
+                    s1 = pc_table_data(i-1,1,iphase)
+                    p1 = pc_table_data(i-1,2,iphase)
+                    s2 = pc_table_data(i,1,iphase)
+                    p2 = pc_table_data(i,2,iphase)
+                    Get_DevCapPressure = (p2 - p1) / (s2 - s1)
+                    return
+                end if
+            end do
+            ! Saturation outside table bounds - zero slope
+            Get_DevCapPressure = 0.0
+        end if
 
     end function Get_DevCapPressure
 
@@ -2227,8 +2268,9 @@ contains
         real :: auxR
         real, dimension(:,:), pointer :: CV_immobile_fraction
         integer :: iphase, nphase, ele, cv_iloc, cv_nod
-        character(len=500) :: path, path2, path3
-!SPRINT_TO_DO MAYBE WE WANT ALL THESE FIELDS CV_WISE? WE ARE TAKING A DEICISION LATER ON ANYWAY...
+        character(len=500) :: path, path2, path3, table_path
+        real, allocatable :: temp_relperm_table(:,:), temp_pc_table(:,:)
+
         t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
         Saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         SaturationOld => extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
@@ -2242,86 +2284,133 @@ contains
         Auxmesh = fl_mesh
         call allocate (targ_Store, Auxmesh, "Temporary_get_RockFluidProp")
 
+        if (.not. tables_loaded) then
+            do iphase = 1, nphase
+                ! Tabulated relperm
+                path = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated'
+                use_tabulated_relperm = have_option(trim(path))
+                if ( use_tabulated_relperm ) then
+                    ! call get_option('/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated/relperm_table', table_path)
+                    call get_option(trim(path)//'/relperm_table', table_path)
+                    call read_csv_table_standard(temp_relperm_table, trim(table_path))
+                    ! Allocate the 3D relperm table container
+                    if (.not. allocated(relperm_table_data)) then
+                        allocate(relperm_table_data(size(temp_relperm_table,1), size(temp_relperm_table,2), nphase))
+                    end if
+                    ! Assign the table
+                    relperm_table_data(:,:,iphase) = temp_relperm_table
+                end if
+
+                ! Tabulated capillary pressure
+                path = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/capillary_pressure/type_Tabulated'
+                use_tabulated_pc = have_option(trim(path))
+                if ( use_tabulated_pc ) then
+                    call get_option(trim(path)//'/capillary_pressure_table', table_path)
+                    ! call get_option('/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated/capillary_pressure_table', table_path)
+                    call read_csv_table_standard(temp_pc_table, trim(table_path))
+                    ! Allocate the 3D relperm table container
+                    if (.not. allocated(pc_table_data)) then
+                        allocate(pc_table_data(size(temp_pc_table,1), size(temp_pc_table,2), nphase))
+                    end if
+                    ! Assign the table
+                    pc_table_data(:,:,iphase) = temp_pc_table
+                end if
+            end do
+            tables_loaded = .true.
+        end if
+
         !If only updating there is no need to update the other parameters
         if (.not.present_and_true(update_only)) then
-          !Now obtain relpermMax
-          do iphase = 1, nphase
-            path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
-            if (have_option(trim(path))) then
-              call initialise_field_over_regions(targ_Store, trim(path), position)
-              t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
-            else
-              !Only for reservoir phases
-              if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
-                FLAbort("For multiphase porous media flow, relperm max needs to be defined for all the regions of the model.")
-              else
-                t_field%val(2,iphase,:) = 1.0
-              end if
-            end if
-          end do
-
-          !Retrieve relperm exponent
-          do iphase = 1, nphase
-              path = "/material_phase["//int2str(iphase-1)//&
-                  "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_exponent/prescribed/value"
-              if (have_option(trim(path))) then
-                  call initialise_field_over_regions(targ_Store, trim(path) , position)
-                  t_field%val(3,iphase,:) = targ_Store%val
-              else !default value
-              !Only for reservoir phases
-                if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
-                  FLAbort("For multiphase porous media flow, relperm exponent needs to be defined for all the regions of the model.")
+          if (.not. use_tabulated_relperm) then
+              !Now obtain relpermMax
+              do iphase = 1, nphase
+                path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
+                if (have_option(trim(path))) then
+                  call initialise_field_over_regions(targ_Store, trim(path), position)
+                  t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
                 else
-                  t_field%val(3,iphase,:) = 1.0
-                end if
-              end if
-          end do
-          !Initialize capillary pressure
-          if (have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
-              !Get cap pressure constant, C
-              do iphase = 1, nphase
-                  path = "/material_phase["//int2str(iphase-1)//&
-                      "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
-                  path3 = "/material_phase["//int2str(iphase-1)//&
-                      "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::C/prescribed/value"
-                  if (have_option(trim(path))) then
-                      call initialise_field_over_regions(targ_Store, trim(path) , position)
-                      t_field%val(4,iphase,:) = targ_Store%val
-                  elseif (have_option(trim(path3))) then
-                      call initialise_field_over_regions(targ_Store, trim(path3) , position)
-                      t_field%val(4,iphase,:) = targ_Store%val
-                  else !default value
-                      t_field%val(4,iphase,:) = 0.0
+                  !Only for reservoir phases
+                  if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
+                    FLAbort("For multiphase porous media flow, relperm max needs to be defined for all the regions of the model.")
+                  else
+                    t_field%val(2,iphase,:) = 1.0
                   end if
+                end if
               end do
 
-              !Get cap exponent, a
+              !Retrieve relperm exponent
               do iphase = 1, nphase
                   path = "/material_phase["//int2str(iphase-1)//&
-                      "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-                  path3 = "/material_phase["//int2str(iphase-1)//&
-                      "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::a/prescribed/value"
+                      "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_exponent/prescribed/value"
                   if (have_option(trim(path))) then
                       call initialise_field_over_regions(targ_Store, trim(path) , position)
-                      t_field%val(5,iphase,:) = targ_Store%val
-                  elseif (have_option(trim(path3))) then
-                      call initialise_field_over_regions(targ_Store, trim(path3) , position)
-                      t_field%val(5,iphase,:) = targ_Store%val
+                      t_field%val(3,iphase,:) = targ_Store%val
                   else !default value
-                      t_field%val(5,iphase,:) = 1.0
+                  !Only for reservoir phases
+                    if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
+                      FLAbort("For multiphase porous media flow, relperm exponent needs to be defined for all the regions of the model.")
+                    else
+                      t_field%val(3,iphase,:) = 1.0
+                    end if
                   end if
               end do
-              !Get imbibition term
-              do iphase = 1, nphase
-                  path = "/material_phase["//int2str(iphase-1)//&
-                      "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::B/prescribed/value"
-                  if (have_option(trim(path))) then
-                      call initialise_field_over_regions(targ_Store, trim(path) , position)
-                      t_field%val(6,iphase,:) = targ_Store%val
-                  else !default value
-                      t_field%val(6,iphase,:) = 0.0
-                  end if
-              end do
+          else ! Using tabulated relperm, set dummy values
+              t_field%val(2,:,:) = 1.0 ! relperm_max
+              t_field%val(3,:,:) = 1.0 ! relperm_exponent
+          end if
+
+          !Initialize capillary pressure parameters only if not using tabulated Pc
+          if (.not. use_tabulated_pc) then
+              if (have_option_for_any_phase( '/material_phase/multiphase_properties/capillary_pressure', nphase ) ) then
+                  !Get cap pressure constant, C (Entry pressure for Brooks-Corey, Max Pc for Power Law)
+                  do iphase = 1, nphase
+                      path = "/material_phase["//int2str(iphase-1)//&
+                          "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
+                      path3 = "/material_phase["//int2str(iphase-1)//&
+                          "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::C/prescribed/value"
+                      if (have_option(trim(path))) then
+                          call initialise_field_over_regions(targ_Store, trim(path) , position)
+                          t_field%val(4,iphase,:) = targ_Store%val
+                      elseif (have_option(trim(path3))) then
+                          call initialise_field_over_regions(targ_Store, trim(path3) , position)
+                          t_field%val(4,iphase,:) = targ_Store%val
+                      else !default value
+                          t_field%val(4,iphase,:) = 0.0
+                      end if
+                  end do
+
+                  !Get cap exponent, a
+                  do iphase = 1, nphase
+                      path = "/material_phase["//int2str(iphase-1)//&
+                          "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
+                      path3 = "/material_phase["//int2str(iphase-1)//&
+                          "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::a/prescribed/value"
+                      if (have_option(trim(path))) then
+                          call initialise_field_over_regions(targ_Store, trim(path) , position)
+                          t_field%val(5,iphase,:) = targ_Store%val
+                      elseif (have_option(trim(path3))) then
+                          call initialise_field_over_regions(targ_Store, trim(path3) , position)
+                          t_field%val(5,iphase,:) = targ_Store%val
+                      else !default value
+                          t_field%val(5,iphase,:) = 1.0
+                      end if
+                  end do
+                  !Get imbibition term
+                  do iphase = 1, nphase
+                      path = "/material_phase["//int2str(iphase-1)//&
+                          "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::B/prescribed/value"
+                      if (have_option(trim(path))) then
+                          call initialise_field_over_regions(targ_Store, trim(path) , position)
+                          t_field%val(6,iphase,:) = targ_Store%val
+                      else !default value
+                          t_field%val(6,iphase,:) = 0.0
+                      end if
+                  end do
+              end if
+          else ! Using tabulated Pc, set dummy values
+              t_field%val(4,:,:) = 0.0 ! Cap_entry_pressure / Max Pc
+              t_field%val(5,:,:) = 1.0 ! Cap_exponent
+              t_field%val(6,:,:) = 0.0 ! Imbibition_term
           end if
         end if
         !Retrieve Immobile fractions
@@ -2384,6 +2473,7 @@ contains
             end if
         end do
         call deallocate(targ_Store)
+
     contains
 
     !>@brief:  This internal subroutine checks the if we are flipping from drainage to imbibition, or the other way round,

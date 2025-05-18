@@ -673,182 +673,226 @@ via a compressible equation of state.</a:documentation>
             <ref name="tensor_field_choice"/>
           </zeroOrMore>
           <optional>
-            <element name="multiphase_properties">
-              <a:documentation>Parameters required to model porous media multiphase flow
-If modeling multiphase porous media flow and a field left unspecified or all of them, the default values will be used. These are:
+              <element name="multiphase_properties">
+                <a:documentation>Parameters required to model porous media multiphase flow
+  If modeling multiphase porous media flow and a field left unspecified or all of them, the default values will be used. These are:
 
-Relperm: Brooks-Corey model with exponent = 2 and Krmax = 1.
+  Relperm: Brooks-Corey model with exponent = 2 and Krmax = 1.
 
-Capillary pressure disabled.
+  Capillary pressure disabled.
 
-Inmobile fraction = 0.</a:documentation>
-              <element name="Relperm_Corey">
-                <a:documentation>Option for relperm
-Corey relperm:
+  Inmobile fraction = 0.</a:documentation>
+                <choice>
+                <element name="Relperm_Corey">
+                  <a:documentation>Option for relperm
+  Corey relperm:
 
-relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent
+  relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent
 
-&lt;b&gt; YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES&lt;/b&gt;</a:documentation>
-                <element name="scalar_field">
-                  <a:documentation>Relative permeability end point
+  &lt;b&gt; YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES&lt;/b&gt;</a:documentation>
+                  <element name="scalar_field">
+                    <a:documentation>Relative permeability end point
 
-Value between 0 and 1.</a:documentation>
-                  <attribute name="name">
-                    <value>relperm_max</value>
-                  </attribute>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
+  Value between 0 and 1.</a:documentation>
+                    <attribute name="name">
+                      <value>relperm_max</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                    </element>
+                  </element>
+                  <element name="scalar_field">
+                    <a:documentation>Relative permeability exponent
+
+  Typical value 2.0</a:documentation>
+                    <attribute name="name">
+                      <value>relperm_exponent</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                    </element>
                   </element>
                 </element>
-                <element name="scalar_field">
-                  <a:documentation>Relative permeability exponent
+                <element name="Relperm_Tabulated">
+                    <a:documentation>Tabulated relative permeability data.</a:documentation>
+                    <element name="relperm_table">
+                      <a:documentation>CSV file path (e.g., Water): Saturation vs Kr.
 
-Typical value 2.0</a:documentation>
-                  <attribute name="name">
-                    <value>relperm_exponent</value>
-                  </attribute>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
-                  </element>
+CSV format: 2 columns, no header.
+
+Column 1 = Effective Saturation (0–1)
+
+Column 2 = Relative Permeability (Kr)
+
+Example:
+
+0.0,0.0
+
+0.5,0.5
+
+1.0,1.0</a:documentation>
+                      <data type="string"/>
+                    </element>
                 </element>
-              </element>
-              <optional>
-                <element name="capillary_pressure">
-                  <a:documentation>Options for capillary pressure
+                </choice>
+                <optional>
+                  <element name="capillary_pressure">
+                    <a:documentation>Options for capillary pressure
 
-&lt;b&gt;You should specify this ONLY for the wetting phase&lt;/b&gt;</a:documentation>
-                  <optional>
-                    <choice>
-                      <element name="type_Brooks_Corey">
-                        <a:documentation>Brooks-Corey equation
+  &lt;b&gt;You should specify this ONLY for the wetting phase&lt;/b&gt;</a:documentation>
+                    <optional>
+                      <choice>
+                        <element name="type_Brooks_Corey">
+                          <a:documentation>Brooks-Corey equation
 
-Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a; here c is the entry pressure
+  Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a; here c is the entry pressure
 
-For imbibition swith the formula is:
+  For imbibition swith the formula is:
 
-## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure</a:documentation>
-                        <element name="scalar_field">
-                          <a:documentation>Entry pressure of the formula</a:documentation>
-                          <attribute name="name">
-                            <value>C</value>
-                          </attribute>
-                          <element name="prescribed">
-                            <ref name="material_mesh_choice"/>
-                            <ref name="prescribed_scalar_field"/>
-                          </element>
-                        </element>
-                        <optional>
+  ## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure</a:documentation>
                           <element name="scalar_field">
-                            <a:documentation>Imbibition term. if on, entry pressure = C - B;
-By default this value is set to zero.</a:documentation>
+                            <a:documentation>Entry pressure of the formula</a:documentation>
                             <attribute name="name">
-                              <value>B</value>
+                              <value>C</value>
                             </attribute>
                             <element name="prescribed">
                               <ref name="material_mesh_choice"/>
                               <ref name="prescribed_scalar_field"/>
                             </element>
                           </element>
-                        </optional>
-                        <element name="scalar_field">
-                          <a:documentation>exponent -a</a:documentation>
-                          <attribute name="name">
-                            <value>a</value>
-                          </attribute>
-                          <choice>
-                            <element name="prescribed">
-                              <ref name="material_mesh_choice"/>
-                              <ref name="prescribed_scalar_field"/>
+                          <optional>
+                            <element name="scalar_field">
+                              <a:documentation>Imbibition term. if on, entry pressure = C - B;
+  By default this value is set to zero.</a:documentation>
+                              <attribute name="name">
+                                <value>B</value>
+                              </attribute>
+                              <element name="prescribed">
+                                <ref name="material_mesh_choice"/>
+                                <ref name="prescribed_scalar_field"/>
+                              </element>
                             </element>
-                            <element name="aliased">
-                              <ref name="generic_aliased_field"/>
-                            </element>
-                          </choice>
+                          </optional>
+                          <element name="scalar_field">
+                            <a:documentation>exponent -a</a:documentation>
+                            <attribute name="name">
+                              <value>a</value>
+                            </attribute>
+                            <choice>
+                              <element name="prescribed">
+                                <ref name="material_mesh_choice"/>
+                                <ref name="prescribed_scalar_field"/>
+                              </element>
+                              <element name="aliased">
+                                <ref name="generic_aliased_field"/>
+                              </element>
+                            </choice>
+                          </element>
                         </element>
+                        <element name="type_Power_Law">
+                          <a:documentation>Power Law equation
+
+  Pc = c*(1-s_eff)**a
+
+  where s_eff = (S_w-Swir)/(1-Swir-Sor)
+
+  c = maximum pc pressure; a = pc exponent
+
+  (no entry pressure)
+
+  ONLY specify for the wetting phase</a:documentation>
+                          <element name="scalar_field">
+                            <a:documentation>Maximum pressure</a:documentation>
+                            <attribute name="name">
+                              <value>C</value>
+                            </attribute>
+                            <choice>
+                              <element name="prescribed">
+                                <ref name="material_mesh_choice"/>
+                                <ref name="prescribed_scalar_field"/>
+                              </element>
+                              <element name="aliased">
+                                <ref name="generic_aliased_field"/>
+                              </element>
+                            </choice>
+                          </element>
+                          <element name="scalar_field">
+                            <a:documentation>exponent a</a:documentation>
+                            <attribute name="name">
+                              <value>a</value>
+                            </attribute>
+                            <choice>
+                              <element name="prescribed">
+                                <ref name="material_mesh_choice"/>
+                                <ref name="prescribed_scalar_field"/>
+                              </element>
+                              <element name="aliased">
+                                <ref name="generic_aliased_field"/>
+                              </element>
+                            </choice>
+                          </element>
+                        </element>
+                        <element name="type_Tabulated">
+                          <a:documentation>Tabulated capillary pressure data.</a:documentation>
+                          <element name="capillary_pressure_table">
+                            <a:documentation>CSV file path: Saturation vs Pc.
+
+CSV format: 2 columns, no header.
+
+Column 1 = Effective Saturation (0–1)
+
+Column 2 = Capillary Pressure (Pc)
+
+Example:
+
+0.0,50000
+
+0.5,14000
+
+1.0,0</a:documentation>
+                            <data type="string"/>
+                          </element>
+                        </element>
+                      </choice>
+                    </optional>
+                  </element>
+                </optional>
+                <element name="immobile_fraction">
+                  <a:documentation>Immobile volume of fluid phase</a:documentation>
+                  <choice>
+                    <a:documentation>Immobile fraction</a:documentation>
+                    <element name="scalar_field">
+                      <attribute name="name">
+                        <value>value</value>
+                      </attribute>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
                       </element>
-                      <element name="type_Power_Law">
-                        <a:documentation>Power Law equation
+                    </element>
+                    <element name="scalar_field">
+                      <a:documentation>For drainage the immobile fraction is computed dynamically using the Land formula.
+  NOTE: No thermal effects considered to change the trapping, i.e. trapping is permanent
 
-Pc = c*(1-s_eff)**a
+  High hysteresis ~ 0.2. Low hysteresis &gt; 5
 
-where s_eff = (S_w-Swir)/(1-Swir-Sor)
-
-c = maximum pc pressure; a = pc exponent
-
-(no entry pressure)
-
-ONLY specify for the wetting phase</a:documentation>
-                        <element name="scalar_field">
-                          <a:documentation>Maximum pressure</a:documentation>
-                          <attribute name="name">
-                            <value>C</value>
-                          </attribute>
-                          <choice>
-                            <element name="prescribed">
-                              <ref name="material_mesh_choice"/>
-                              <ref name="prescribed_scalar_field"/>
-                            </element>
-                            <element name="aliased">
-                              <ref name="generic_aliased_field"/>
-                            </element>
-                          </choice>
-                        </element>
-                        <element name="scalar_field">
-                          <a:documentation>exponent a</a:documentation>
-                          <attribute name="name">
-                            <value>a</value>
-                          </attribute>
-                          <choice>
-                            <element name="prescribed">
-                              <ref name="material_mesh_choice"/>
-                              <ref name="prescribed_scalar_field"/>
-                            </element>
-                            <element name="aliased">
-                              <ref name="generic_aliased_field"/>
-                            </element>
-                          </choice>
-                        </element>
+  Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".</a:documentation>
+                      <attribute name="name">
+                        <value>Land_coefficient</value>
+                      </attribute>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
                       </element>
-                    </choice>
-                  </optional>
+                    </element>
+                  </choice>
                 </element>
-              </optional>
-              <element name="immobile_fraction">
-                <a:documentation>Immobile volume of fluid phase</a:documentation>
-                <choice>
-                  <a:documentation>Immobile fraction</a:documentation>
-                  <element name="scalar_field">
-                    <attribute name="name">
-                      <value>value</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                    </element>
-                  </element>
-                  <element name="scalar_field">
-                    <a:documentation>For drainage the immobile fraction is computed dynamically using the Land formula.
-NOTE: No thermal effects considered to change the trapping, i.e. trapping is permanent
-
-High hysteresis ~ 0.2. Low hysteresis &gt; 5
-
-Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".</a:documentation>
-                    <attribute name="name">
-                      <value>Land_coefficient</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                    </element>
-                  </element>
-                </choice>
               </element>
-            </element>
-          </optional>
-        </element>
-      </oneOrMore>
+            </optional>
+          </element>
+        </oneOrMore>
       <optional>
         <ref name="mesh_adaptivity_options"/>
       </optional>
