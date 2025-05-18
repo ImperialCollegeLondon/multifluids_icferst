@@ -516,6 +516,36 @@ contains
         end if
     end function table_interpolation
 
+    real function table_interpolation_linear(X_points, Y_points, input_X)
+        implicit none
+        real, intent(in) :: input_X
+        real, dimension(:), intent(in) :: X_points, Y_points
+        integer :: i, n
+
+        n = size(X_points)
+
+        ! Default return in case of error
+        table_interpolation_linear = 0.0
+
+        ! Handle input out of bounds by clamping
+        if (input_X <= X_points(1)) then
+            table_interpolation_linear = Y_points(1)
+            return
+        else if (input_X >= X_points(n)) then
+            table_interpolation_linear = Y_points(n)
+            return
+        end if
+
+        ! Find interval
+        do i = 1, n - 1
+            if (input_X >= X_points(i) .and. input_X <= X_points(i+1)) then
+                table_interpolation_linear = Y_points(i) + (input_X - X_points(i)) * &
+                    (Y_points(i+1) - Y_points(i)) / (X_points(i+1) - X_points(i))
+                return
+            end if
+        end do
+    end function table_interpolation_linear
+
     !>@brief:Template of csv table
     !>OPTIONAL section (header)
     !>real1,real2,real3,..., size(extra_data)
@@ -557,6 +587,51 @@ contains
         close(89)
     end subroutine read_csv_table
 
+    subroutine read_csv_table_standard(data_array, path_to_table, extra_data)
+        implicit none
+        real, dimension(:,:), allocatable, intent(out) :: data_array
+        character(len=*), intent(in) :: path_to_table
+        real, optional, dimension(:), intent(inout) :: extra_data
+
+        ! Local variables
+        integer :: iunit, ierr, i, j, row_count, col_count
+        character(len=500) :: line
+        real, allocatable :: temp(:,:)
+
+        ! First pass: count rows
+        iunit = 89
+        open(unit=iunit, file=trim(path_to_table)//".csv", status='old', action='read', iostat=ierr)
+        if (ierr /= 0) stop "Error opening CSV file"
+
+        row_count = 0
+        do
+            read(iunit, '(A)', iostat=ierr) line
+            if (ierr /= 0) exit
+            row_count = row_count + 1
+        end do
+        close(iunit)
+
+        if (row_count == 0) stop "CSV file is empty"
+
+        col_count = 2  ! <-- or detect from first line if needed
+
+        ! Allocate data
+        allocate(data_array(row_count, col_count))
+
+        ! Second pass: read values
+        open(unit=iunit, file=trim(path_to_table)//".csv", status='old', action='read', iostat=ierr)
+        if (ierr /= 0) stop "Error re-opening CSV file"
+
+        do i = 1, row_count
+            read(iunit, *, iostat=ierr) (data_array(i, j), j = 1, col_count)
+            if (ierr /= 0) then
+                print *, "Error reading data at row ", i
+                stop
+            end if
+        end do
+        close(iunit)
+
+    end subroutine read_csv_table_standard
 
     !>@brief:This subroutine reads a csv file and returns them in an array
     !>@param csv_table_strings INOUT Allocated array of characters to be used to read the CVS file
