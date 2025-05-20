@@ -1872,6 +1872,13 @@ The following must be specified:
         <element name="numerical_methods">
           <a:documentation>Advanced options that are kept for debugging purposes</a:documentation>
           <optional>
+            <element name="bypass_dRhodP_after_first_nonlinear_iteration">
+              <a:documentation>When calculating density at each non-linear iterations, this option forces dRhodP to be 0 unless it is the first iteration.
+This is to test if solving water compressibility term explicitly causes non-convergence under BW EOS + wells + non-Boussinesq approx.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
             <element name="do_not_bound_after_adapt">
               <a:documentation>Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field
 is run to guarantee physically plausible solutions. Nonetheless this may spread errors occurred during the interpolation
@@ -5215,7 +5222,9 @@ Introduce the same name as the scalar field being used. For example: Tracer_CO2<
               <a:documentation>Batzle and Wang (1992) EOS.
   Use for basin scale simulations.
   Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg salinity.
-
+  
+  You can choose to remove pressure terms from BW EOS for trouble-shooting
+  If you want to run BW EOS without Boussinesq approximation, you are recommended to remove pressure terms. 
   NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentation>
               <optional>
                 <element name="C0">
@@ -5233,6 +5242,12 @@ Introduce the same name as the scalar field being used. For example: Tracer_CO2<
                 <element name="P0">
                   <a:documentation>Reference pressure (default 1e5 Pa)</a:documentation>
                   <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="Remove_P_dependencies">
+                  <a:documentation>Remove P terms by setting them to 0.</a:documentation>
+                  <empty/>
                 </element>
               </optional>
             </element>

@@ -54,7 +54,8 @@ contains
   !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
   !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
   !>@param get_RhoCp This flags computes rhoCp instead of rho
-    subroutine Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp )
+  !Ruixiao: An additional flag to force dRhodP to be 0
+    subroutine Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp, bypass_dRhodP )
 
         implicit none
 
@@ -63,6 +64,7 @@ contains
         type(multi_dimensions), intent( in ) :: Mdims
         type(multi_ndgln) :: ndgln
         logical, optional, intent(in) :: get_RhoCp !This flags computes rhoCp instead of rho
+        logical, optional, intent(in) :: bypass_dRhodP !Ruixiao: This flags forces dRhodP to be 0 even without Boussinesq approx.
         !Local variables
         integer, dimension( : ), pointer :: cv_ndgln
         integer :: ncomp_in, nphase, ndim, cv_nonods, cv_nloc, totele
@@ -137,6 +139,9 @@ contains
               Rho=0. ; dRhodP=0.
               call Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
                    nphase, ncomp_in, eos_option_path( (icomp - 1 ) * nphase + iphase ), Rho, dRhodP )
+              !If user specifies, density derivative is removed by setting to zero.
+              if (present_and_true(bypass_dRhodP)) dRhodP = 0.0
+              !print*, "density derivative calculated as", dRhodP
               if ( ncomp > 1 ) then
                  field4 => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
                  Component_l = field4 % val ( icomp, iphase, :)
@@ -412,6 +417,7 @@ contains
         logical, save :: initialised = .false.
         logical :: have_temperature_field
         logical :: have_concentration_field
+        logical :: remove_P_dep
         real, parameter :: toler = 1.e-10
         real, dimension( : ), allocatable, save :: reference_pressure
         real, dimension( : ), allocatable :: eos_coefs, perturbation_pressure, RhoPlus, RhoMinus
@@ -591,13 +597,36 @@ contains
             ! Batzle and Wang (1992) EOS
             ! Use for basin scale simulations.
             ! Valid for ranges: 5<=P<=100 MPa, 20<=T<=350 degrees Celsius, C<=0.32 kg/kg salinity.
+            ! You can choose to remove pressure terms from BW EOS for trouble-shooting
+            ! If you want to run BW EOS without Boussinesq approximation, you are recommended to remove pressure terms. 
             ! Note: Reference density is calculated using reference C0, T0, P0.
 
-            !Calculate the freshwater density
-            rho = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*pressure%val(1,1,:)*1e-6 - 2*(temperature % val - 273.15)*pressure%val(1,1,:)*1e-6 + 0.016*((temperature % val - 273.15))**2*pressure%val(1,1,:)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*pressure%val(1,1,:)*1e-6 -0.333*(pressure%val(1,1,:)*1e-6)**2 - 0.002*(temperature % val - 273.15)*(pressure%val(1,1,:)*1e-6)**2))
-            !Add the brine contribution
-            if (have_concentration_field) rho = rho + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*pressure%val(1,1,:)*1e-6 - 2400*pressure%val(1,1,:)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*pressure%val(1,1,:)*1e-6 + 47*pressure%val(1,1,:)*1e-6*Concentration % val)))
-            if (has_boussinesq_aprox) then
+            !Check if user specified to remove pressure terms
+            remove_P_dep = have_option(trim(eos_option_path) // '/Remove_P_dependencies')
+            !Initialize density calculation for fresh water
+            rho = 1e3
+            !Add pressure dependencies if need to
+            if (.not. remove_P_dep) rho = rho + 1e3*1e-6*(489*pressure%val(1,1,:)*1e-6-0.333*(pressure%val(1,1,:)*1e-6)**2)
+            !Add temperature contribution
+            if (have_temperature_field) then
+              rho = rho + 1e3*1e-6*(-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3)
+              !If pressure is not removed, add pressure-related temperature terms
+              if (.not. remove_P_dep) rho = rho + 1e3*1e-6*(- 2*(temperature % val - 273.15)*pressure%val(1,1,:)*1e-6+ 0.016*((temperature % val - 273.15))**2*pressure%val(1,1,:)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*pressure%val(1,1,:)*1e-6- 0.002*(temperature % val - 273.15)*(pressure%val(1,1,:)*1e-6)**2)
+            endif
+            !Add the brine contribution if salinity is provided
+            if (have_concentration_field) then
+              rho = rho + 1e3*Concentration % val*(0.668 + 0.44*Concentration % val)
+              !If pressure is not removed, add pressure-related salinity terms
+              if (.not. remove_P_dep) rho = rho + 1e3*Concentration % val *1e-6*(300*pressure%val(1,1,:)*1e-6 - 2400*pressure%val(1,1,:)*1e-6*Concentration % val)
+              !Add tempeature-related salinity terms
+              if (have_temperature_field) then
+                rho = rho + 1e3*Concentration % val*1e-6*(temperature % val-273.15) * (80 + 3*(temperature % val-273.15)-3300*Concentration % val)
+                !If pressure is not removed, add pressure-temperature-salinity terms
+                if (.not. remove_P_dep) rho = rho + 1e3*Concentration % val*1e-6*(temperature % val-273.15)*(-13*pressure%val(1,1,:)*1e-6 + 47*pressure%val(1,1,:)*1e-6*Concentration % val)          
+              endif
+            endif
+            !Bypass density derivatives if using Boussinesq approx. or pressure dependencies are removed
+            if (has_boussinesq_aprox .or. remove_P_dep) then
               dRhodP = 0.0
             else
               perturbation_pressure = 1.e-5
@@ -2623,6 +2652,7 @@ contains
       !local variables
       character( len = option_path_len ) :: eos_option_path
       character( len = option_path_len ) :: option_path_comp, option_path_incomp, option_path_python
+      logical :: remove_P_dep
       real :: ref_rho, ref_C0, ref_T0, ref_P0
       type (scalar_field) :: sfield
       type (scalar_field), pointer :: pnt_sfield
@@ -2683,10 +2713,14 @@ contains
         !!$ Den = den0 * ( 1 + alpha * solute mass fraction - beta * DeltaT )
         call get_option( trim( eos_option_path ) // '/reference_density', ref_rho )
       elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/BW_eos' ) then
+        !Check if pressure dependencies need to be removed
+        remove_P_dep = have_option(trim(eos_option_path) // '/Remove_P_dependencies')
         !!$ Reference density is calculated using reference C0, T0, P0.
         call get_option( trim( eos_option_path ) // '/T0', ref_T0, default=298.)
         call get_option( trim( eos_option_path ) // '/P0', ref_P0, default=1e5)
         call get_option( trim( eos_option_path ) // '/C0', ref_C0 , default=0.)
+        !If user specifies to remove pressure dependency, we mute P terms in BW EOS completely
+        if (remove_P_dep) ref_P0 = 0.
         !Calculate the reference freshwater density
         ref_rho = 1e3 * ( 1 + 1e-6 * (-80*(ref_T0 - 273.15) - 3.3*((ref_T0 - 273.15))**2 + 0.00175*((ref_T0 - 273.15))**3 + 489*ref_P0*1e-6 - 2*(ref_T0 - 273.15)*ref_P0*1e-6 + 0.016*((ref_T0 - 273.15))**2*ref_P0*1e-6 - 1.3e-5*((ref_T0 - 273.15))**3*ref_P0*1e-6 -0.333*(ref_P0*1e-6)**2 - 0.002*(ref_T0 - 273.15)*(ref_P0*1e-6)**2))
         !Add the reference brine contribution
