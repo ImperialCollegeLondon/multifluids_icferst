@@ -251,6 +251,7 @@ contains
         double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
         real :: total_mass_metal_before_adapt, total_mass_metal_after_adapt, total_mass_metal_after_correction, total_mass_metal_after_bound
         logical :: viscosity_EOS
+        logical :: bypass_dRhodP_after_first_its
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -395,6 +396,8 @@ contains
             end if
           end do
         end if
+        !Check if we want to bypass dRhodP calculation after 1st nonlinear iteration for debugging
+        bypass_dRhodP_after_first_its = have_option('/numerical_methods/bypass_dRhodP_after_first_nonlinear_iteration')
         !Check if we want to use a compacted mass matrix
         if ((Mmat%CV_pressure .or. have_option('/numerical_methods/simple_mass_matrix')) &
                     .and. is_porous_media .and. Mdims%npres == 1) then
@@ -615,8 +618,11 @@ contains
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its, &
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
-                call Calculate_All_Rhos( state, packed_state, Mdims )
-
+                if (its < 2 .or. .not. bypass_dRhodP_after_first_its) then
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+                else
+                    call Calculate_All_Rhos( state, packed_state, Mdims, bypass_dRhodP=.true. )
+                endif
                 if ( is_porous_media ) then
                     call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
                         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
@@ -721,7 +727,11 @@ contains
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                    call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
+                    if (its<2 .or. .not. bypass_dRhodP_after_first_its) then
+                        call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
+                    else
+                        call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true., bypass_dRhodP=.true.)
+                    endif
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, multi_absorp, dt, &
@@ -905,7 +915,11 @@ contains
             endif
 
             current_time = acctim
-            call Calculate_All_Rhos( state, packed_state, Mdims )
+            if (its<2 .or. .not. bypass_dRhodP_after_first_its) then
+                call Calculate_All_Rhos( state, packed_state, Mdims )
+            else
+                call Calculate_All_Rhos( state, packed_state, Mdims, bypass_dRhodP=.true. )
+            endif
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
             !!$ Calculate diagnostic fields (it should be outside the timeloop as a one-way coupling field only)
             call get_option( '/timestepping/timestep', dt); !Backup of dt
@@ -1568,8 +1582,11 @@ contains
                     END DO
                     DEALLOCATE( RSUM )
                 end if
-
-                call Calculate_All_Rhos( state, packed_state, Mdims )
+                if (its<2 .or. .not. bypass_dRhodP_after_first_its) then
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+                else
+                    call Calculate_All_Rhos( state, packed_state, Mdims, bypass_dRhodP=.true. )
+                endif
             end if Conditional_ReallocatingFields
         end subroutine adapt_mesh_mp
 

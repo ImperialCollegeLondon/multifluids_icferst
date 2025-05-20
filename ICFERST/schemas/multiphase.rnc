@@ -1539,6 +1539,9 @@ start =
 
          ## Advanced options that are kept for debugging purposes
          element numerical_methods {
+            ## When calculating density at each non-linear iterations, this option forces dRhodP to be 0 unless it is the first iteration.
+            ## This is to test if solving water compressibility term explicitly causes non-convergence under BW EOS + wells + non-Boussinesq approx.
+            element bypass_dRhodP_after_first_nonlinear_iteration { empty }?,
             ## Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field
             ## is run to guarantee physically plausible solutions. Nonetheless this may spread errors occurred during the interpolation
             ## that otherwise might have been cut off. Enable this option to avoid doing this operation.
@@ -4285,8 +4288,10 @@ element Density{(
                            ## Reference pressure (default 1e5 Pa)
                            element P0 {
                               real
-                           }?
-                        }
+                           }?,
+                           ## Remove P dependencies
+                           element Remove_P_dependencies { empty }?
+                        }|
                       ),      ## Use the boussinesq approximation. Useful for small variations of density.
                       ## For porous media only the formulate, including linear pressure, with a reference density work with this.
                         element Boussinesq_approximation { empty }?}|
