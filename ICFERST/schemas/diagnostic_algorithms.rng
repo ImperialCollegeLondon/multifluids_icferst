@@ -145,39 +145,6 @@ wrappers.</a:documentation>
       </attribute>
     </element>
   </define>
-  <define name="viscosity_EOS_algorithm">
-    <element name="viscosity_EOS">
-      <a:documentation>Viscosity equation of state.
-        This diagnostic is internal - i.e. it is calculated somewhere within
-  the main code, and is not wrapped by the automatic diagnostics
-  wrappers.</a:documentation>
-      <choice>
-        <element name="viscosity_BW">
-          <a:documentation>Batzle and Wang (1992) viscosity formulation.
-        Use for basin scale simulations.
-        Valid for ranges: T in [0,250] degrees Celsius, C in [0,0.46] kg/kg salinity.</a:documentation>
-          <attribute name="name">
-            <value>Internal</value>
-          </attribute>
-          <attribute name="material_phase_support">
-            <value>multiple</value>
-          </attribute>
-        </element>
-        <element name="viscosity_HP">
-          <a:documentation>Huyakorn and Pinder (1978) viscosity formulation.
-            Use for hydrothermal reservoirs.
-
-            Huyakorn, P. and Pinder, G.F., 1978. A pressure-enthalpy finite element model for simulating hydrothermal reservoirs. Mathematics and Computers in Simulation, 20(3), pp.167-178.</a:documentation>
-          <attribute name="name">
-            <value>Internal</value>
-          </attribute>
-          <attribute name="material_phase_support">
-            <value>multiple</value>
-          </attribute>
-        </element>
-      </choice>
-    </element>
-  </define>
   <define name="legacy_internal_algorithm">
     <element name="algorithm">
       <a:documentation>This diagnostic is deprecated - i.e. it has been replaced by an
@@ -1482,6 +1449,30 @@ Water::Velocity</a:documentation>
       </optional>
     </element>
   </define>
+  <define name="viscosity_EOS_algorithm">
+    <choice>
+      <element name="viscosity_BW">
+        <a:documentation>Viscosity equation of state.
+This diagnostic is internal - i.e. it is calculated somewhere within
+the main code, and is not wrapped by the automatic diagnostics
+wrappers.</a:documentation>
+        <attribute name="name">
+          <value>Internal</value>
+        </attribute>
+        <attribute name="material_phase_support">
+          <value>multiple</value>
+        </attribute>
+      </element>
+      <element name="viscosity_HP">
+        <attribute name="name">
+          <value>Internal</value>
+        </attribute>
+        <attribute name="material_phase_support">
+          <value>multiple</value>
+        </attribute>
+      </element>
+    </choice>
+  </define>
   <!-- Adaptivity diagnostics -->
   <define name="scalar_edge_lengths_algorithm">
     <element name="algorithm">
@@ -2061,7 +2052,7 @@ This field needs to be interpolated between adapts.</a:documentation>
   </define>
   <define name="scalar_period_averaged_algorithm">
     <element name="algorithm">
-      <a:documentation>Algorithm for calulating an average of a scalar field over 
+      <a:documentation>Algorithm for calulating an average of a scalar field over
 a set period, e.g. daily
 Note that we assume the simulation starts at zero for the
 averaging period,

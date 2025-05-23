@@ -1296,6 +1296,8 @@ contains
           REAL, intent( inout ) :: Kr
           ! Variables for tabulated relperm
           Kr = table_interpolation_linear(relperm_table_data(:,1,iphase), relperm_table_data(:,2,iphase), sat(iphase))
+          KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
+          ! print *, sat(iphase), Kr
         END SUBROUTINE relperm_tabulated
 
         !>@brief:This subroutine calculates the relative permeability for three phases

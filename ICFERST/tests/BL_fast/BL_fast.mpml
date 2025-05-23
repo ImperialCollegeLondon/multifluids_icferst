@@ -22,63 +22,21 @@
     <Advance_options/>
   </geometry>
   <solver_options>
-    <Linear_solver>
-      <iterative_method name="gmres">
-        <restart>
-          <integer_value rank="0">30</integer_value>
-        </restart>
-      </iterative_method>
-      <preconditioner name="hypre">
-        <hypre_type name="boomeramg"/>
-      </preconditioner>
-      <relative_error>
-        <real_value rank="0">1e-10</real_value>
-      </relative_error>
-      <max_iterations>
-        <integer_value rank="0">300</integer_value>
-      </max_iterations>
-      <ignore_all_solver_failures/>
-      <diagnostics>
-        <monitors/>
-      </diagnostics>
-      <Custom_solver_configuration>
-        <field name="PhaseVolumeFraction">
-          <iterative_method name="gmres">
-            <restart>
-              <integer_value rank="0">30</integer_value>
-            </restart>
-          </iterative_method>
-          <preconditioner name="bjacobi">
-            <preconditioner name="sor"/>
-          </preconditioner>
-          <relative_error>
-            <real_value rank="0">1e-5</real_value>
-          </relative_error>
-          <absolute_error>
-            <real_value rank="0">1e-8</real_value>
-          </absolute_error>
-          <max_iterations>
-            <integer_value rank="0">3000</integer_value>
-          </max_iterations>
-          <ignore_all_solver_failures/>
-          <diagnostics>
-            <monitors/>
-          </diagnostics>
-        </field>
-      </Custom_solver_configuration>
-    </Linear_solver>
     <Non_Linear_Solver>
       <integer_value rank="0">20</integer_value>
       <Fixed_Point_Iteration>
         <real_value rank="0">5e-2</real_value>
         <Infinite_norm_tol>
-          <real_value rank="0">1e-3</real_value>
+          <real_value rank="0">1e-5</real_value>
         </Infinite_norm_tol>
+        <Picard_its>
+          <integer_value rank="0">0</integer_value>
+        </Picard_its>
         <Backtracking_factor>
           <real_value rank="0">-10</real_value>
         </Backtracking_factor>
         <Vanishing_relaxation>
-          <real_value rank="0">-3e2</real_value>
+          <real_value rank="0">0.0</real_value>
         </Vanishing_relaxation>
       </Fixed_Point_Iteration>
     </Non_Linear_Solver>
@@ -256,7 +214,7 @@
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value rank="0">0.3</real_value>
+            <real_value rank="0">0.2</real_value>
           </constant>
         </initial_condition>
         <boundary_conditions name="inlet">
@@ -274,40 +232,12 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
-        <output/>
       </prognostic>
     </scalar_field>
     <multiphase_properties>
-      <Relperm_Corey>
-        <scalar_field name="relperm_max">
-          <prescribed>
-            <mesh name="P0DG"/>
-            <value name="WholeMesh">
-              <constant>
-                <real_value rank="0">1</real_value>
-              </constant>
-            </value>
-            <stat/>
-            <detectors>
-              <exclude_from_detectors/>
-            </detectors>
-          </prescribed>
-        </scalar_field>
-        <scalar_field name="relperm_exponent">
-          <prescribed>
-            <mesh name="P0DG"/>
-            <value name="WholeMesh">
-              <constant>
-                <real_value rank="0">2</real_value>
-              </constant>
-            </value>
-            <stat/>
-            <detectors>
-              <exclude_from_detectors/>
-            </detectors>
-          </prescribed>
-        </scalar_field>
-      </Relperm_Corey>
+      <Relperm_Tabulated>
+        <relperm_table>WatRelPerm</relperm_table>
+      </Relperm_Tabulated>
       <immobile_fraction>
         <scalar_field name="value">
           <prescribed>
@@ -452,40 +382,12 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
-        <output/>
       </prognostic>
     </scalar_field>
     <multiphase_properties>
-      <Relperm_Corey>
-        <scalar_field name="relperm_max">
-          <prescribed>
-            <mesh name="P0DG"/>
-            <value name="WholeMesh">
-              <constant>
-                <real_value rank="0">1</real_value>
-              </constant>
-            </value>
-            <stat/>
-            <detectors>
-              <exclude_from_detectors/>
-            </detectors>
-          </prescribed>
-        </scalar_field>
-        <scalar_field name="relperm_exponent">
-          <prescribed>
-            <mesh name="P0DG"/>
-            <value name="WholeMesh">
-              <constant>
-                <real_value rank="0">2</real_value>
-              </constant>
-            </value>
-            <stat/>
-            <detectors>
-              <exclude_from_detectors/>
-            </detectors>
-          </prescribed>
-        </scalar_field>
-      </Relperm_Corey>
+      <Relperm_Tabulated>
+        <relperm_table>NAPLRelPerm</relperm_table>
+      </Relperm_Tabulated>
       <immobile_fraction>
         <scalar_field name="value">
           <prescribed>

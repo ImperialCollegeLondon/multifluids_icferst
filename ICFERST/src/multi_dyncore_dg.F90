@@ -61,7 +61,7 @@ module multiphase_1D_engine
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
-    public  :: INTENERGE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
+    public  :: INTENERGE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, VolumeFraction_Assemble_Solve_Newton, &
     FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system, Tracer_Assemble_Solve
 
 contains
@@ -949,7 +949,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !>@param  THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
-         eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, prev_sat, &
+         eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, time_step, SFPI_taken, SFPI_its, Courant_number,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
@@ -970,7 +970,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              INTEGER, intent( in ) :: igot_theta_flux
              REAL, intent( in ) :: DT
              REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
-             real, dimension( : ,: ), intent( inout ) :: prev_sat
              REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
              !REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
@@ -1071,7 +1070,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              else
                  call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
              end if
-! max_sat_its = 20  
              ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
              GET_THETA_FLUX = .FALSE.
              !####Create dummy variables required for_cv_assemb with no memory usage ####
@@ -1124,85 +1122,33 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                !To avoid a petsc warning error we need to re-allocate the matrix always
                call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
                 !Update solution field to calculate the residual
-                !   do ipres =1, mdims%npres
-                !     do iphase = 1 , n_in_pres
-                !      solution%val(iphase+(ipres-1)*n_in_pres,:) = sat_field%val(1,iphase+(ipres-1)*n_in_pres,:)
-                !    end do
-                !  end do
+                  do ipres =1, mdims%npres
+                    do iphase = 1 , n_in_pres
+                     solution%val(iphase+(ipres-1)*n_in_pres,:) = sat_field%val(1,iphase+(ipres-1)*n_in_pres,:)
+                   end do
+                 end do
 
-!                 call SATURATION_ASSEMB( state, packed_state, &
-!                     n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-!                     sat_field, velocity, density, multi_absorp, &
-!                     INV_B,DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
-!                     VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-!                     eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, assemble_collapsed_to_one_phase=.false.)
-! call assemble(Mmat%petsc_ACV)
-! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
-! print *, "=========================================================="
-! ! print *, Mmat%CV_RHS%val
-! do its_taken = 1, Mdims%nphase
-!     do Max_sat_its =1, Mdims%cv_nonods
-!         print*, its_taken, Max_sat_its, Mmat%CV_RHS%val(its_taken, Max_sat_its)
-!     end do
-! end do
-! print *, "##########################################################"
-! call deallocate(Mmat%petsc_ACV)
-! call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
-! Mmat%CV_RHS%val = 0.
-
-
-                 call ASSEMB_SAT_JAC_AND_RES( state, packed_state, &
-                 n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                 sat_field, prev_sat, velocity, density, multi_absorp, &
-                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                 DEN_ALL, DENOLD_ALL, &
-                 Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
-                 SUF_SIG_DIAGTEN_BC, &
-                 DERIV%val(1,:,:), P, &
-                 V_SOURCE, V_ABSORB, VOLFRA_PORE, &
-                 GETCV_DISC, GETCT, &
-                 IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
-                 THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                 MEAN_PORE_CV, &
-                 mass_Mn_pres, THERMAL, &
-                 .false.,  mass_Mn_pres, &
-                 mass_ele_transp, &          !Capillary variables
-                 VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                 Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-                 nonlinear_iteration = nonlinear_iteration)
-
-
-! print*, "----------------NUMERICAL JACOBIAN AND RESIDUAL------------------------------"
-! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
-! print *, "=========================================================="
-! do its_taken = 1, Mdims%nphase
-!     do Max_sat_its =1, Mdims%cv_nonods
-!         print*, its_taken, Max_sat_its, Mmat%CV_RHS%val(its_taken, Max_sat_its)
-!     end do
-! end do
-! print *, "##########################################################"
-! read*
-                !Assemble the matrix and the RHS
+                 !Assemble the matrix and the RHS
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
-                !  call CV_ASSEMB( state, packed_state, &
-                !      n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                !      sat_field, velocity, density, multi_absorp, &
-                !      DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                !      DEN_ALL, DENOLD_ALL, &
-                !      Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
-                !      SUF_SIG_DIAGTEN_BC, &
-                !      DERIV%val(1,:,:), P, &
-                !      V_SOURCE, V_ABSORB, VOLFRA_PORE, &
-                !      GETCV_DISC, GETCT, &
-                !      IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
-                !      THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                !      MEAN_PORE_CV, &
-                !      mass_Mn_pres, THERMAL, &
-                !      .false.,  mass_Mn_pres, &
-                !      mass_ele_transp, &          !Capillary variables
-                !      VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                !      Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-                !      nonlinear_iteration = nonlinear_iteration)
+                 call CV_ASSEMB( state, packed_state, &
+                     n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                     sat_field, velocity, density, multi_absorp, &
+                     DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                     DEN_ALL, DENOLD_ALL, &
+                     Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
+                     SUF_SIG_DIAGTEN_BC, &
+                     DERIV%val(1,:,:), P, &
+                     V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+                     GETCV_DISC, GETCT, &
+                     IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
+                     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                     MEAN_PORE_CV, &
+                     mass_Mn_pres, THERMAL, &
+                     .false.,  mass_Mn_pres, &
+                     mass_ele_transp, &          !Capillary variables
+                     VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                     nonlinear_iteration = nonlinear_iteration)
 
                  !Make the inf norm of the Courant number across cpus
                  !Normally computed when dealing with the continuity equation but
@@ -1232,19 +1178,18 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 #endif
                         !Calculate the actual residual using a previous backtrack_par
                         ! vtracer=as_vector(sat_field,dim=2)
-                        ! call mult(residual, Mmat%petsc_ACV, solution)
+                        call mult(residual, Mmat%petsc_ACV, solution)
                         !Now residual is calculated as Residual = RHS - A*X0
-                        ! residual%val = Mmat%CV_RHS%val - residual%val
+                        residual%val = Mmat%CV_RHS%val - residual%val
                         if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
-                        resold = res; res = maxval(abs(Mmat%CV_RHS%val))
-print *, "ITERATION/RES: ", its, res                        
-                        ! do iphase = 1, nphase
-                        ! !L2 norm of the residual; needs to be done in steps to ensure cosistency in parallel
-                        !     aux = dot_product(residual%val(iphase,:),residual%val(iphase,:))
-                        !     call allsum(aux)
-                        !     aux = sqrt(aux)/ dble(total_cv_nodes)
-                        !     if (aux > res) res = aux
-                        ! end do
+                        resold = res; res = 0
+                        do iphase = 1, nphase
+                        !L2 norm of the residual; needs to be done in steps to ensure cosistency in parallel
+                            aux = dot_product(residual%val(iphase,:),residual%val(iphase,:))
+                            call allsum(aux)
+                            aux = sqrt(aux)/ dble(total_cv_nodes)
+                            if (aux > res) res = aux
+                        end do
                         !We use the highest residual across the domain
                         if (IsParallel()) call allmax(res)
 
@@ -1277,29 +1222,20 @@ print *, "ITERATION/RES: ", its, res
                  !To avoid a petsc warning error we need to re-allocate the matrix always
                  call deallocate(Mmat%petsc_ACV)
  ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
-                 !solution now contains dS
+                !Copy solution back to sat_field (not ideal...)
                   do ipres =1, mdims%npres
                     do iphase = 1 , n_in_pres
-                     sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) + solution%val(iphase+(ipres-1)*n_in_pres,:)
+                     sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*n_in_pres,:)
                    end do
-                 end do
-
-! print *, solution%val
-! print *,  "NLI",nonlinear_iteration,"SFPIs: ", its ,  "| Residual:", maxval(abs(Mmat%CV_RHS%val))
-                !Copy solution back to sat_field (not ideal...)
-                !   do ipres =1, mdims%npres
-                !     do iphase = 1 , n_in_pres
-                !      sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*n_in_pres,:)
-                !    end do
                  ! end do
-                !     if (backtrack_par_factor > 1.01) then
-                !      !Convert from nphases-1 to nphases (only if we are not using FPI_backtracking)
-                !      do cv_nodi = 1, Mdims%cv_nonods
-                !        sat_field%val(1,Mdims%n_in_pres+(ipres-1)*Mdims%n_in_pres,cv_nodi) = 1.0 - &
-                !             sum(sat_field%val(1,1+(ipres-1)*Mdims%n_in_pres:(Mdims%n_in_pres-1) + (ipres-1)*Mdims%n_in_pres,cv_nodi))
-                !      end do
-                !    end if
-                !  end do
+                    if (backtrack_par_factor > 1.01) then
+                     !Convert from nphases-1 to nphases (only if we are not using FPI_backtracking)
+                     do cv_nodi = 1, Mdims%cv_nonods
+                       sat_field%val(1,Mdims%n_in_pres+(ipres-1)*Mdims%n_in_pres,cv_nodi) = 1.0 - &
+                            sum(sat_field%val(1,1+(ipres-1)*Mdims%n_in_pres:(Mdims%n_in_pres-1) + (ipres-1)*Mdims%n_in_pres,cv_nodi))
+                     end do
+                   end if
+                 end do
 
                  !Set to zero the fields
                  call zero(Mmat%CV_RHS)
@@ -1310,49 +1246,43 @@ print *, "ITERATION/RES: ", its, res
                  !Correct the solution obtained to make sure we are on track towards the final solution
                  ! if (Mdims%ncomp > 0) call update_components()
                  !Correct the solution obtained to make sure we are on track towards the final solution
-!                  if (backtrack_par_factor < 1.01) then
-!                      !If convergence is not good, then we calculate a new saturation using backtracking
-!                      if (.not. satisfactory_convergence) then
+                 if (backtrack_par_factor < 1.01) then
+                     !If convergence is not good, then we calculate a new saturation using backtracking
+                     if (.not. satisfactory_convergence) then
 
-!                          !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
-!                          call FPI_backtracking(nphase, Mdims, ndgln, state,packed_state, sat_bak(1:nphase, :), backtrack_sat(1:nphase, :), backtrack_par_factor,&
-!                              Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
-!                              useful_sats,res, res/resold, first_res) !halos are updated within this subroutine
-! ! call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .FALSE. )
-! ! if (maxval(abs(Mmat%CV_RHS%val))< 1d-8 .or. its > 20) exit Loop_NonLinearFlux
-!                          !Store the accumulated updated done
-!                          updating = updating + new_backtrack_par
-!                          !If the backtrack_par factor is not adaptive, then, just one iteration
-!                          if (backtrack_par_factor > 0) then
-!                              satisfactory_convergence = .true.
-!                              exit Loop_NonLinearFlux
-!                          end if
-!                          !This have to be consistent between processors
-!                          if (IsParallel())  call alland(satisfactory_convergence)
-!                          !If looping again, recalculate
-!                          if (.not. satisfactory_convergence) then
-!                              !Store old saturation to fully undo an iteration if it is very divergent
-!                              backtrack_sat = sat_bak
-!                              !Velocity is recalculated through updating the sigmas
-!                              if (is_porous_media) call Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
-!                                    CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
+                         !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
+                         call FPI_backtracking(nphase, Mdims, ndgln, state,packed_state, sat_bak(1:nphase, :), backtrack_sat(1:nphase, :), backtrack_par_factor,&
+                             Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
+                             useful_sats,res, res/resold, first_res) !halos are updated within this subroutine
 
-!                              !Also recalculate the Over-relaxation parameter
-!                             call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
+                         !Store the accumulated updated done
+                         updating = updating + new_backtrack_par
+                         !If the backtrack_par factor is not adaptive, then, just one iteration
+                         if (backtrack_par_factor > 0) then
+                             satisfactory_convergence = .true.
+                             exit Loop_NonLinearFlux
+                         end if
+                         !This have to be consistent between processors
+                         if (IsParallel())  call alland(satisfactory_convergence)
+                         !If looping again, recalculate
+                         if (.not. satisfactory_convergence) then
+                             !Store old saturation to fully undo an iteration if it is very divergent
+                             backtrack_sat = sat_bak
+                             !Velocity is recalculated through updating the sigmas
+                             if (is_porous_media) call Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
+                                   CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
 
-!                          else
-!                              exit Loop_NonLinearFlux
-!                          end if
+                             !Also recalculate the Over-relaxation parameter
+                            call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
 
-!                      end if
-!                  else !Just one iteration
-!                      if (IsParallel()) call halo_update(sat_field)
-!                      exit Loop_NonLinearFlux
-!                  end if
-                 if (res < 1e-8.or.its > 0) then 
-                    backtrack_or_convergence = 1
-                    if (IsParallel()) call halo_update(sat_field)
-                    exit Loop_NonLinearFlux
+                         else
+                             exit Loop_NonLinearFlux
+                         end if
+
+                     end if
+                 else !Just one iteration
+                     if (IsParallel()) call halo_update(sat_field)
+                     exit Loop_NonLinearFlux
                  end if
                  its = its + 1
                  useful_sats = useful_sats + 1
@@ -1443,6 +1373,359 @@ print *, "ITERATION/RES: ", its, res
 
     end subroutine VolumeFraction_Assemble_Solve
 
+
+    !---------------------------------------------------------------------------
+    !> @author Chris Pain, Pablo Salinas
+    !> @brief Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jacobian. Solves using Newton's method
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param  multicomponent_state Linked list containing all the fields used by compositional, just in case we are solving for components
+    !!>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  CV_GIdims Gauss integration numbers for CV fields
+    !>@param  CV_funs Shape functions for the CV mesh
+    !>@param  Mspars Sparsity of the matrices
+    !>@param  ndgln Global to local variables
+    !>@param  Mdisopt Discretisation options
+    !>@param  Mmat Matrices for ICFERST
+    !>@param  multi_absorp  Absoprtion of associated with the transport field
+    !>@param  upwnd Sigmas to compute the fluxes at the interphase for porous media
+    !>@param  eles_with_pipe Elements that have a pipe
+    !>@param  pipes_aux Information required to define wells
+    !>@param  DT Time step size
+    !>@param  SUF_SIG_DIAGTEN_BC Like upwnd but for the boundary
+    !>@param V_SOURCE Source term
+    !>@param  VOLFRA_PORE     Porosity field (Mdims%npres,Mdims%totele)
+    !>@param   igot_theta_flux ????
+    !>@param  mass_ele_transp Mass of the elements
+    !>@param nonlinear_iteration Current non-linear iteration
+    !>@param time_step current time-step
+    !>@param SFPI_its Number of saturation fixed point iterations taken
+    !>@param Courant_number Global courant number and shock front courant number
+    !>@param  THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
+    subroutine VolumeFraction_Assemble_Solve_Newton( state,packed_state, multicomponent_state, &
+         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
+         eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, prev_sat, &
+         V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
+         nonlinear_iteration, time_step, SFPI_taken, SFPI_its, Courant_number,&
+         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
+             implicit none
+             type( state_type ), dimension( : ), intent( inout ) :: state, multicomponent_state
+             type( state_type ) :: packed_state
+             type(multi_dimensions), intent(in) :: Mdims
+             type(multi_GI_dimensions), intent(in) :: CV_GIdims
+             type(multi_shape_funs), intent(inout) :: CV_funs
+             type(multi_sparsities), intent(in) :: Mspars
+             type(multi_ndgln), intent(in) :: ndgln
+             type (multi_discretization_opts) :: Mdisopt
+             type (multi_matrices), intent(inout) :: Mmat
+             type(multi_absorption), intent(inout) :: multi_absorp
+             type (porous_adv_coefs), intent(inout) :: upwnd
+             type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
+             type (multi_pipe_package), intent(in) :: pipes_aux
+             INTEGER, intent( in ) :: igot_theta_flux
+             REAL, intent( in ) :: DT
+             REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
+             real, dimension( : ,: ), intent( inout ) :: prev_sat
+             REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
+             !REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
+             REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+             real, dimension( : ), intent( inout ) :: mass_ele_transp
+             integer, intent(in) :: nonlinear_iteration
+             integer, intent(in) :: time_step
+             integer, intent(inout) :: SFPI_taken
+             integer, intent(inout) :: SFPI_its
+             real, dimension(:), intent(inout) :: Courant_number
+             REAL, DIMENSION( :, :), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+
+             ! Local Variables
+             LOGICAL, PARAMETER :: THERMAL= .false.
+             integer :: igot_t2, nphase, n_in_pres
+             REAL, DIMENSION( : ), allocatable :: mass_mn_pres
+             REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
+             REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, INV_B
+             REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
+             REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
+             REAL, DIMENSION( :, : ), allocatable :: T2, T2OLD
+             REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
+             LOGICAL :: GET_THETA_FLUX
+             INTEGER :: STAT, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES, cv_nodi
+             LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
+             type( tensor_field ), pointer :: den_all2, denold_all2
+             character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+             !Working pointers
+             real, dimension(:,:,:), pointer :: p, V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
+             real, dimension(:, :), pointer :: satura
+             type(tensor_field), pointer :: velocity, density, deriv, sat_field
+             type(scalar_field), pointer :: gamma
+             type(vector_field) :: solution
+             !Variable to assign an automatic maximum backtracking parameter based on the Courant number
+             logical :: Auto_max_backtrack
+             !Variables for global convergence method
+             real :: backtrack_par_factor
+             type(vector_field)  :: vtracer, residual
+             type(csr_sparsity), pointer :: sparsity
+             !Variables for capillary pressure
+             real, dimension(Mdims%cv_nonods) :: OvRelax_param
+             integer :: Phase_with_Pc
+             !Variables to stabilize the non-linear iteration solver
+             integer :: Max_sat_its, total_cv_nodes
+             real, dimension(:,:), allocatable :: sat_bak, backtrack_sat
+             real :: Previous_convergence, updating, new_backtrack_par, aux, resold, first_res
+             real, save :: res = -1
+             logical :: satisfactory_convergence
+             integer :: its, useful_sats
+             logical, save :: Solve_all_phases
+             logical, save :: ML_method_activated
+             !Variables to control the PETCs solver
+             integer, save :: max_allowed_its = -1
+             integer :: its_taken
+             logical, save :: written_file = .false.
+             !We check this with the global number of phases per domain
+             if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
+
+             solver_option_path = "/solver_options/Linear_solver"
+             if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::PhaseVolumeFraction')) then
+               solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::PhaseVolumeFraction'
+             end if
+             if(max_allowed_its < 0)  then
+                 call get_option( trim(solver_option_path)//"max_iterations",&
+                  max_allowed_its, default = 9)
+                  Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
+                  ML_method_activated =  have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path")
+             end if
+
+             if (Solve_all_phases) then!For the number_of_normal_FPI FPIs we consider all the phases normally
+               nphase = Mdims%nphase
+               n_in_pres = Mdims%n_in_pres
+             else !For subsequent SFPI iterations just perform nphases - 1
+               !Define local nphase and n_in_pres
+               nphase = (Mdims%n_in_pres - 1 ) * Mdims%npres
+               n_in_pres = nphase/ Mdims%npres
+             end if
+             !Extract variables from packed_state
+             call get_var_from_packed_state(packed_state,FEPressure = P)
+             sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+
+             Satura =>  sat_field%val(1,:,:)
+             !Get information for capillary pressure to be use in CV_ASSEMB
+             call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
+
+             ! pscpsc Disable VAD for the time being for Newton solver
+             OvRelax_param = 0.;
+
+             !Get variable for global convergence method
+             if (.not. have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration')) then
+                 backtrack_par_factor = 1.1
+             else !Get value with the default value of 1.
+                 call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Backtracking_factor',&
+                     backtrack_par_factor, default = 1.0)
+             end if
+
+             !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
+             Auto_max_backtrack = (backtrack_par_factor == -10)
+             !Retrieve number of saturation fixed point iterations from diamond, by default 3 if Courant_number<=1, 9 otherwise
+             if (Courant_number(1) <= 1) then
+                 call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 3)
+             else
+                 call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
+             end if
+             ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
+             GET_THETA_FLUX = .FALSE.
+             !####Create dummy variables required for_cv_assemb with no memory usage ####
+             IGOT_T2 = 0
+             ALLOCATE( THETA_GDIFF( 0, 0 )); ALLOCATE( Mmat%CT( 0,0,0 ) )
+             ALLOCATE( DIAG_SCALE_PRES( 0,0 ) ); ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), INV_B( 0,0,0 ) )
+             !#### Create dummy variables required for_cv_assemb with no memory usage ####
+             deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
+             ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods ) )
+             ALLOCATE( mass_mn_pres(size(Mspars%small_acv%col)) ) ; mass_mn_pres = 0.
+
+
+             Mdisopt%v_beta = 1.0
+             velocity=>extract_tensor_field(packed_state,"PackedVelocity")
+             density=>extract_tensor_field(packed_state,"PackedDensity")
+             sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+
+             !This logical is used to loop over the saturation equation until the functional
+             !explained in function get_Convergence_Functional has been reduced enough
+             satisfactory_convergence = .false.
+             updating = 0.0
+             !We store the convergence of the previous FPI to compare with
+             Previous_convergence = backtrack_or_convergence!<== deprecated?
+             its = 1; useful_sats = 1;
+             total_cv_nodes = Mdims%cv_nonods
+             call allsum(total_cv_nodes)!For parallel consistency when normalising the residual
+             !Now total_cv_nodes includes halos, but because it is a ratio it should be fine
+             if (resold < 0 ) res = huge(res)!<=initialize res once
+
+
+            nullify(DEN_ALL); nullify(DENOLD_ALL)
+            allocate (sat_bak(Mdims%nphase, Mdims%cv_nonods), backtrack_sat(Mdims%nphase, Mdims%cv_nonods))
+            !Allocate residual, to compute the residual
+            if (backtrack_par_factor < 1.01) call allocate(residual,nphase,sat_field%mesh,"residual")
+            call allocate(Mmat%CV_RHS,nphase,sat_field%mesh,"RHS")
+            call allocate(solution,nphase,sat_field%mesh,"Saturation")!; call zero(solution)
+
+            IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
+              ! use DEN=1 because the density is already in the theta variables
+              ALLOCATE( DEN_ALL( nphase, Mdims%cv_nonods )); DEN_ALL = 1.
+              ALLOCATE( DENOLD_ALL( nphase, Mdims%cv_nonods )); DENOLD_ALL = 1.
+            ELSE
+              DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
+              DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
+              DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
+            END IF
+max_allowed_its = 1  ! just one seems to be the best (at least without backtracking)
+             Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
+
+                !To avoid a petsc warning error we need to re-allocate the matrix always
+                call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
+
+                 call ASSEMB_SAT_JAC_AND_RES( state, packed_state, &
+                 n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                 sat_field, prev_sat, velocity, density, multi_absorp, &
+                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                 DEN_ALL, DENOLD_ALL, &
+                 Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
+                 SUF_SIG_DIAGTEN_BC, &
+                 DERIV%val(1,:,:), P, &
+                 V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+                 GETCV_DISC, GETCT, &
+                 IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
+                 THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                 MEAN_PORE_CV, &
+                 mass_Mn_pres, THERMAL, &
+                 .false.,  mass_Mn_pres, &
+                 mass_ele_transp, &          !Capillary variables
+                 VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+                 Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                 nonlinear_iteration = nonlinear_iteration)
+
+                 !Make the inf norm of the Courant number across cpus
+                 !Normally computed when dealing with the continuity equation but
+                 !if solving for saturation it is useful to have up to date information
+                 if (IsParallel()) then
+                    call allmax(Courant_number(1)); call allmax(Courant_number(2))
+                 end if
+
+                 !Time to solve the system
+                 !If using FPI with backtracking
+                 if (backtrack_par_factor < 1.01) then
+                     !Backup of the saturation field, to adjust the solution
+                     sat_bak = satura
+
+                     !If using ADAPTIVE FPI with backtracking
+                     if (backtrack_par_factor < 0) then
+                        if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                        end if
+                        if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
+                        resold = res; res = maxval(abs(Mmat%CV_RHS%val))
+                        !We use the highest residual across the domain
+                        if (IsParallel()) call allmax(res)
+
+                        if (its == 1) then
+                            first_res = res !Variable to check total convergence of the SFPI method
+                        end if
+                     end if
+                 end if
+
+                 call zero(solution)
+
+                 !########Solve the system#############
+                 call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                 !To avoid a petsc warning error we need to re-allocate the matrix always
+                 call deallocate(Mmat%petsc_ACV)
+                 !solution now contains dS
+                  do ipres =1, mdims%npres
+                    do iphase = 1 , n_in_pres
+                     sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) + solution%val(iphase+(ipres-1)*n_in_pres,:)
+                   end do
+                 end do
+
+                ! Impose boundedness to the saturation 
+                call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .TRUE. )
+                 !Set to zero the fields
+                 call zero(Mmat%CV_RHS)
+                 !For non-porous media make sure all the phases sum to one
+                 if (.not. is_porous_media) then
+                    call non_porous_ensure_sum_to_one(Mdims, packed_state)
+                 end if
+                 if (its > max_allowed_its) then ! used to have as well res < 1e-8.or. but tends to exit after just one
+                  ! print *, "Newton solve: ", its, " ", res
+                    backtrack_or_convergence = 1
+                    if (IsParallel()) call halo_update(sat_field)
+                    exit Loop_NonLinearFlux
+                 end if
+                 its = its + 1
+                 useful_sats = useful_sats + 1
+                !  satisfactory_convergence = its > max_allowed_its
+             END DO Loop_NonLinearFlux
+
+             !Store the number of Saturation Fixed_Point iterations
+             SFPI_taken = SFPI_taken + its
+             !Store the final accumulated backtrack_par_factor to properly calculate the convergence functional
+             if (backtrack_par_factor < 1.01) then
+                 !Final effective backtrack_par to calculate properly the non linear convergence is:
+                 backtrack_or_convergence = updating
+             else
+                 backtrack_or_convergence = 1
+             end if
+
+             !If the final saturation solve of the final non-linear FPI fails, then we ensure that the result is not accepted
+             !if using adaptive time-stepping of some sort, the loop will be repeated. In all the cases a Warning message will show up
+             if (its_taken >= max_allowed_its  .or. its_taken == 0 ) solver_not_converged = .true.
+
+             !Make sure the parameter is consistent between cpus
+             if (IsParallel()) call allmin(backtrack_or_convergence)
+
+             !#### Deallocate dummy variables required for_cv_assemb with no memory usage ####
+             deallocate( THETA_GDIFF, Mmat%CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
+             !#### Deallocate dummy variables required for_cv_assemb with no memory usage ####
+
+             DEALLOCATE( mass_mn_pres, MEAN_PORE_CV)
+             DEALLOCATE( sat_bak, backtrack_sat )
+             call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
+             if (backtrack_par_factor < 1.01) call deallocate(residual)
+             !Deallocate pointers only if not pointing to something in packed state
+             if (IGOT_THETA_FLUX == 1 ) then
+                 deallocate(DEN_ALL, DENOLD_ALL)
+             end if
+             nullify(DEN_ALL); nullify(DENOLD_ALL)
+             call deallocate(solution)
+             ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
+
+         contains
+
+        !!!>@brief: This internal subroutine deals with the components within the Saturation Fixed Point Iteration
+        !> WARNING: Still work in progress
+        subroutine update_components()
+          implicit none
+          real, dimension(Mdims%nphase, Mdims%cv_nonods) :: comp_theta_gdiff
+
+          !First, impose physical constrains to the saturation (important to update halos here)
+          call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .false. )
+          !Next, update compoents
+          !Deallocate memory re-used for the compositional assembly solve; SPRINT_TO_DO: this can be done better!
+          call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val); call deallocate(Mmat%petsc_ACV)
+          call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
+               Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
+               multi_absorp, DT, &
+               SUF_SIG_DIAGTEN_BC, &
+               Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux,  &
+               comp_theta_gdiff, eles_with_pipe, pipes_aux, mass_ele_transp, &
+               THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
+
+           !Re-allocate the fields so the saturation loop has consistency with what it expects. SPRINT_TO_DO: this can be done better!
+           call allocate(Mmat%CV_RHS,nphase,sat_field%mesh,"RHS")
+           call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
+
+           !First, impose physical constrains to the saturation (important to update halos here)
+           call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .false. )
+
+        end subroutine update_components
+
+    end subroutine VolumeFraction_Assemble_Solve_Newton
 
     !---------------------------------------------------------------------------
     !> @author Pablo Salinas
@@ -1551,12 +1834,13 @@ print *, "ITERATION/RES: ", its, res
         !Also recalculate the Over-relaxation parameter
         call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
 
-!NEXT I SHOULD DO
+!NEXT I SHOULD DO PSCPSC
 ! 2) OPTIMISE: II) MAYBE NOT NEEDED IF ONLY ONE NEWTON PER PICARD? => MATRICES SHOULD BE AN INPUT OF SATURATION_ASSEMB SO I DON'T NEED TO REALLOCATE THEM SO OFTEN
-! 3) ADD OVER_RELAXATION. DONE. WE USE THE PREVIOUS SATURATION TO CALCULATE THE OVER_RELAXATION PARAMETER
+! 3) ADD OVER_RELAXATION. DONE, NOT SURE IF IT IS WORKING FINE... WE USE THE PREVIOUS SATURATION TO CALCULATE THE OVER_RELAXATION PARAMETER
 ! 4) (IGNORE FOR NOW) -> SECANT METHOD? LOADS OF ZEROES EXPECTED, JUST ENFORCE ONE IN DIAGONAL AND ZERO RESIDUAL EVEN BETTER! 
 ! 5) ADD WELLS TO JACOBIAN AND RESIDUAL. DONE QUICKLY... NOT WORTH THE TIME CONSIDERING THE SMALL PERCENTAGE THAT IT TAKES.
-        ! IMPLEMENTATION DONE. NEEDS TESTING
+        ! IT IS NOT WORKING. PETSC ISSUES... IT DOES NOT MAKE THE DIFFERENCE! AND IF I DO NOT REALLOCATE PETSC_ACV IT GIVES MALLOCS... NONESENSE...
+        ! MALLOC IS NOT RELATED WITH MatSetValue BUT THAT WE WANT TO STORE IT A DIFFERENT LOCATION???? FIND WHERE IT HAPPENS...
 ! 6) ALLOW FOR A DIFFERENT CONVERGENCE TOLERANCE FOR THE SATURATION AND THE OTHER FIELDS... WE WANT TIGHT THE SATURATION BUT NOT NECESSARILY OTHER FIELDS
         ! ALSO CHECK IF OUR TESTING METHOD IS CORRECT. THE RESIDUAL SEEMS TO BE 3 ORDERS OF MAGNITUDE AHEAD OF THE SAT CHECK
         ! IT MIGHT NOT BE A PROBLEM AS LONG AS WE UNDERSTAND IT AND IT IS CONSISTENT
@@ -1573,16 +1857,17 @@ print *, "ITERATION/RES: ", its, res
 
         ! Calculate residual with current Saturation guess
         call assemble(Mmat%petsc_ACV)
+! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)        
+! read*
         ! Store matrix
         sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
         call duplicate_petsc_matrix(Mmat%petsc_ACV, PETSC_ACV2)
-        call assemble(PETSC_ACV2)
-        !Make a copy of the saturation
-        !Get from packed_state
+! TRY TO AVOID EXTRA ALLOCATIONS IF POSSIBLE... IT IS NEEDED ONLY WHEN USING WELLS...        
+! call deallocate(Mmat%petsc_ACV)
+! call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, Mdims%nphase)
+        !Introduce perturbation. Make sure that the perturbation is between bounds
         call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,&
             OldPhaseVolumeFraction = OldSatura, CV_Immobile_Fraction = CV_Immobile_Fraction)
-
-        !Introduce perturbation. Make sure that the perturbation is between bounds
         call allocate(vpert,Mdims%nphase,sat_field%mesh,"vpert"); vpert%val = 0d0;
         do cv_inod = 1, Mdims%cv_nonods
           where (satura(:, cv_inod) - PERT > CV_Immobile_Fraction(:, cv_inod))
@@ -1609,12 +1894,17 @@ print *, "ITERATION/RES: ", its, res
         Satura = Satura - vpert%val
         ! Compute Jacobian as (A-A_pertb/pertb)
         call assemble(Mmat%petsc_ACV)
+! print*, "ASSEMBLED SECOND MATRIX"
+! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
+! read*
         ! 1) A - A_pertb (Note that petsc_ACV is the perturbed matrix)
         call MatAYPX(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, SAME_NONZERO_PATTERN, ierr)
+! print*, "GENERATED JACOBIAN"
+! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
+! read*
         ! 2) Divide by the perturbation (it is row-wise)
         vpert%val = 1d0/vpert%val
         call scale_PETSc_matrix_by_vector(Mmat%petsc_ACV, vpert)
-
         ! Clean up memory
         call deallocate(petsc_ACV2);call deallocate(vpert);
     end subroutine ASSEMB_SAT_JAC_AND_RES

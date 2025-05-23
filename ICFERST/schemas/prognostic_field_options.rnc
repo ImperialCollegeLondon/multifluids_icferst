@@ -144,7 +144,7 @@ prognostic_scalar_field =
          attribute name { "Source" },
          attribute rank { "0" },
          (
-            element prescribed {
+            (element prescribed {
                prescribed_scalar_field_no_adapt
             }|
             ## This only works for traffic modelling
@@ -154,7 +154,7 @@ prognostic_scalar_field =
                   internal_algorithm
                ),
                diagnostic_scalar_field_no_adapt
-            }
+            }),
              ## Imposed value for the tracer
              element Tracer_field_value {
                 real

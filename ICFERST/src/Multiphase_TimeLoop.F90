@@ -158,7 +158,7 @@ contains
             mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
         !!$ Defining time- and nonlinear interations-loops variables
         integer :: itime, dump_period_in_timesteps, final_timestep, &
-            NonLinearIteration, NonLinearIteration_Components, itimeflag
+            NonLinearIteration, NonLinearIteration_Components, itimeflag, picard_its
         real :: acctim, finish_time, dump_period
         !!$ Defining problem that will be solved
         logical :: have_temperature_field, have_concentration_field, have_component_field, have_extra_DiffusionLikeTerm, &
@@ -427,6 +427,7 @@ contains
             call get_option('/io/dump_period/constant', dump_period, default = 0.01)
         end if
         call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
+        call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Picard_its', picard_its, default = NonLinearIteration+1 )
         !!$
         have_temperature_field = .false. ; have_component_field = .false. ; have_extra_DiffusionLikeTerm = .false.
         do istate = 1, Mdims%nstate
@@ -699,12 +700,23 @@ contains
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                   ! Ensure that sat_bak is always defined (pscpsc only if VAD defined)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                  if (its==1)  prev_sat = saturation_field%val(1,:,:)
-                  call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
-                      Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
-                      Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, prev_sat, &
-                      ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
-                      sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
+                    
+                    if (its <= picard_its) then 
+                      ! print *, "Picard iteration", its, picard_its
+                      call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
+                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
+                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
+                        sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
+                    else 
+                      ! print *, "Newton iteration", its, picard_its
+                      if (its==1)  prev_sat = saturation_field%val(1,:,:)
+                      call VolumeFraction_Assemble_Solve_Newton( state, packed_state, multicomponent_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
+                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, prev_sat, &
+                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
+                        sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
+                  end if
                   !Update the prev_sat field (pscpsc only if VAD defined)
                   prev_sat = saturation_field%val(1,:,:)
 

@@ -164,7 +164,7 @@ contains
     !   type(tensor_field), pointer ::temp_field, Concentration_field
       type (tensor_field_pointer), allocatable, DIMENSION(:) :: outfluxes_fields
       logical :: compute_outfluxes
-
+      PetscScalar :: petsc_dummy_val 
       PetscScalar,parameter :: one = 1.0
       PetscErrorCode :: ierr
       PetscInt :: i_indx, j_indx
@@ -882,7 +882,7 @@ contains
       DO IPHASE = 1, final_phase
           INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE, 1.E-15 )
       END DO
-
+print *, "MIAU1"
       IF ( GETCV_DISC ) THEN
           do iphase = wells_first_phase, final_phase*2
             assembly_phase = iphase
@@ -892,11 +892,17 @@ contains
                       cv_nodj = cv_nodi
                       i_indx = Mmat%petsc_ACV%row_numbering%gnn2unn( cv_nodi, assembly_phase )
                       j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, assembly_phase )
-#if PETSC_VERSION_MINOR >=14
-                      call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, one, ADD_VALUES, ierr)
-
+                      if (getNewtonType) then 
+                        petsc_dummy_val = T_ALL%val(1,assembly_phase,cv_nodi)
+                      else               
+                        petsc_dummy_val = 1.0
+                      end if
+#if PETSC_VERSION_MINOR >=14 
+print *, "MIAU2"
+                      call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, petsc_dummy_val, ADD_VALUES, ierr)
 #else
-                      call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, real(1.0, kind=PetscScalar_kind), ADD_VALUES, ierr)
+  print *, "MIAU3"
+                      call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, real(petsc_dummy_val, kind=PetscScalar_kind), ADD_VALUES, ierr)
 #endif
                   end if
               end do
