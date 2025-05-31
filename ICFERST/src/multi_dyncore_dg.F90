@@ -1216,7 +1216,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  end if
 
                  call zero(solution)
-
                  !########Solve the system#############
                  call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
                  !To avoid a petsc warning error we need to re-allocate the matrix always
@@ -1643,20 +1642,17 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                    end do
                  end do
 
-                ! Impose boundedness to the saturation 
-                call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .TRUE. )
-                 !Set to zero the fields
-                 call zero(Mmat%CV_RHS)
-                 !For non-porous media make sure all the phases sum to one
-                 if (.not. is_porous_media) then
-                    call non_porous_ensure_sum_to_one(Mdims, packed_state)
-                 end if
-                 if (its > max_allowed_its) then ! used to have as well res < 1e-8.or. but tends to exit after just one
-                  ! print *, "Newton solve: ", its, " ", res
+                  ! Impose boundedness to the saturation 
+                  call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .TRUE. )
+                  !Set to zero the fields
+                  call zero(Mmat%CV_RHS)
+                  
+                  if (its > max_allowed_its) then ! used to have as well res < 1e-8.or. but tends to exit after just one
+                    ! print *, "Newton solve: ", its, " ", res
                     backtrack_or_convergence = 1
-                    if (IsParallel()) call halo_update(sat_field)
+                    if (IsParallel()) call halo_update(sat_field) 
                     exit Loop_NonLinearFlux
-                 end if
+                  end if
                  its = its + 1
                  useful_sats = useful_sats + 1
                 !  satisfactory_convergence = its > max_allowed_its
@@ -1821,9 +1817,13 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         type(csr_sparsity), pointer :: sparsity
         real, dimension(:), allocatable :: Max_sat
         real, dimension(:,:), pointer :: Satura, OldSatura, CV_Immobile_Fraction
-        Integer :: ierr;
+        Integer :: ierr, j_indx, i_indx, iphase, cv_nodi;
         Real, parameter :: PERT = 1d-5;
         type(vector_field) :: vpert
+
+        type( scalar_field ), pointer :: pipe_diameter
+
+
         !Variables for capillary pressure
         real, dimension(Mdims%cv_nonods) :: OvRelax_param
 
@@ -1837,16 +1837,16 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
 !NEXT I SHOULD DO PSCPSC
 ! 2) OPTIMISE: II) MAYBE NOT NEEDED IF ONLY ONE NEWTON PER PICARD? => MATRICES SHOULD BE AN INPUT OF SATURATION_ASSEMB SO I DON'T NEED TO REALLOCATE THEM SO OFTEN
 ! 3) ADD OVER_RELAXATION. DONE, NOT SURE IF IT IS WORKING FINE... WE USE THE PREVIOUS SATURATION TO CALCULATE THE OVER_RELAXATION PARAMETER
-! 4) (IGNORE FOR NOW) -> SECANT METHOD? LOADS OF ZEROES EXPECTED, JUST ENFORCE ONE IN DIAGONAL AND ZERO RESIDUAL EVEN BETTER! 
 ! 5) ADD WELLS TO JACOBIAN AND RESIDUAL. DONE QUICKLY... NOT WORTH THE TIME CONSIDERING THE SMALL PERCENTAGE THAT IT TAKES.
-        ! IT IS NOT WORKING. PETSC ISSUES... IT DOES NOT MAKE THE DIFFERENCE! AND IF I DO NOT REALLOCATE PETSC_ACV IT GIVES MALLOCS... NONESENSE...
-        ! MALLOC IS NOT RELATED WITH MatSetValue BUT THAT WE WANT TO STORE IT A DIFFERENT LOCATION???? FIND WHERE IT HAPPENS...
-! 6) ALLOW FOR A DIFFERENT CONVERGENCE TOLERANCE FOR THE SATURATION AND THE OTHER FIELDS... WE WANT TIGHT THE SATURATION BUT NOT NECESSARILY OTHER FIELDS
+        ! THE MALLOC IS BECAUSE IT IS NOT THE SAME NON-ZERO PATTERN BETWEEN THE ORIGINAL AND UNPERTURBED => ALLOW TO ASSEMBLE TO A GIVEN MATRIX
+        ! WELLS ALMOST WORKING. I THINK THAT THE SIGN OF THE WELLS PARAT MAY NOT BE CONSISTENT WITH THE SIGN OF THE RESERVOIR PART
+! 6) ALLOW FOR A DIFFERENT CONVERGENCE TOLERANCE FOR THE SATURATION AND THE OTHER FIELDS... IT IS LIKE THAT. PRESSURE IS EFFECTIVELY AT 10%
         ! ALSO CHECK IF OUR TESTING METHOD IS CORRECT. THE RESIDUAL SEEMS TO BE 3 ORDERS OF MAGNITUDE AHEAD OF THE SAT CHECK
         ! IT MIGHT NOT BE A PROBLEM AS LONG AS WE UNDERSTAND IT AND IT IS CONSISTENT
 ! 7) TEST MORE COMPLEX EXAMPLES WITH THE MASS ISSUE
         ! IS THE VAD STILL HELPING IN THESE CASES?
-! 8) TIDY UP THE CODE. ALLOW FOR BOTH PICARD AND NEWTON.
+! print *, "ASSEMBLE FIRST"
+! read*        
         call SATURATION_ASSEMB( state, packed_state, &
         Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
         sat_field, sat_bak, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
@@ -1857,19 +1857,24 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
 
         ! Calculate residual with current Saturation guess
         call assemble(Mmat%petsc_ACV)
-! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)        
-! read*
+
         ! Store matrix
         sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-        call duplicate_petsc_matrix(Mmat%petsc_ACV, PETSC_ACV2)
-! TRY TO AVOID EXTRA ALLOCATIONS IF POSSIBLE... IT IS NEEDED ONLY WHEN USING WELLS...        
-! call deallocate(Mmat%petsc_ACV)
-! call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, Mdims%nphase)
+        call duplicate_petsc_matrix(Mmat%petsc_ACV, PETSC_ACV2)  ! pscpsc avoid duplication and assemble to given matrix
+
+! call MatView(petsc_ACV2%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
+! read*
+
+        ! pscpsc avoid reallocating => THE MATRIX TO STORE INTO THE SUBROUTINES...     
+        call deallocate(Mmat%petsc_ACV)
+        call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, Mdims%nphase)
+
         !Introduce perturbation. Make sure that the perturbation is between bounds
         call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,&
             OldPhaseVolumeFraction = OldSatura, CV_Immobile_Fraction = CV_Immobile_Fraction)
         call allocate(vpert,Mdims%nphase,sat_field%mesh,"vpert"); vpert%val = 0d0;
         do cv_inod = 1, Mdims%cv_nonods
+          !PSCPSC NO NEED TO GO OVER ALL THE PHASES FOR WELLS, ONLY WHERE WELLS ARE DEFINED...
           where (satura(:, cv_inod) - PERT > CV_Immobile_Fraction(:, cv_inod))
             vpert%val(:,cv_inod) = -PERT
           elsewhere
@@ -1897,14 +1902,19 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
 ! print*, "ASSEMBLED SECOND MATRIX"
 ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
 ! read*
+
         ! 1) A - A_pertb (Note that petsc_ACV is the perturbed matrix)
-        call MatAYPX(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, SAME_NONZERO_PATTERN, ierr)
-! print*, "GENERATED JACOBIAN"
+        call MatAYPX(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
+! print*, "DIFF MATRICES"
 ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
 ! read*
         ! 2) Divide by the perturbation (it is row-wise)
         vpert%val = 1d0/vpert%val
         call scale_PETSc_matrix_by_vector(Mmat%petsc_ACV, vpert)
+! print*, "GENERATED JACOBIAN"
+! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)        
+! read*     
+
         ! Clean up memory
         call deallocate(petsc_ACV2);call deallocate(vpert);
     end subroutine ASSEMB_SAT_JAC_AND_RES

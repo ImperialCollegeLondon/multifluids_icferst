@@ -438,9 +438,5 @@
       </prescribed>
     </scalar_field>
   </porous_media>
-  <numerical_methods>
-    <max_sat_its>
-      <integer_value rank="0">8</integer_value>
-    </max_sat_its>
-  </numerical_methods>
+  <numerical_methods/>
 </icferst_options>

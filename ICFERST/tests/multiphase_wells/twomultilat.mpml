@@ -28,6 +28,9 @@
         <Infinite_norm_tol>
           <real_value rank="0">1e-3</real_value>
         </Infinite_norm_tol>
+        <Picard_its>
+          <integer_value rank="0">20</integer_value>
+        </Picard_its>
         <Vanishing_relaxation>
           <real_value rank="0">0.0</real_value>
         </Vanishing_relaxation>
@@ -225,7 +228,6 @@
             <solver/>
           </continuous>
         </galerkin_projection>
-        <output/>
       </prognostic>
     </scalar_field>
     <multiphase_properties>
@@ -397,7 +399,6 @@
             <solver/>
           </continuous>
         </galerkin_projection>
-        <output/>
       </prognostic>
     </scalar_field>
     <multiphase_properties>
@@ -643,7 +644,6 @@
             <solver/>
           </continuous>
         </galerkin_projection>
-        <output/>
       </prognostic>
     </scalar_field>
   </material_phase>
@@ -792,7 +792,6 @@
             <solver/>
           </continuous>
         </galerkin_projection>
-        <output/>
       </prognostic>
     </scalar_field>
   </material_phase>

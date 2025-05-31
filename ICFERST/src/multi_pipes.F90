@@ -727,7 +727,7 @@ contains
                             !For the RHS collapsing to assemble into phase 2 can be done just here
                             if (assemble_collapsed_to_one_phase) assembly_phase = 2
                             if (getNewtonType) then 
-                              call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_MAT_II(iphase)*T_CV_NODI(iphase)+LOC_MAT_IJ(iphase)*T_CV_NODJ(iphase) - LOC_CV_RHS_I(IPHASE))
+                              call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,-1*(LOC_MAT_II(iphase)*T_CV_NODI(iphase)+LOC_MAT_IJ(iphase)*T_CV_NODJ(iphase) - LOC_CV_RHS_I(IPHASE)))
                               !Introduce the information into the petsc_ACV matrix
                               call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase)*T_CV_NODI(iphase))
                               call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodj, LOC_MAT_IJ(iphase)*T_CV_NODJ(iphase))
@@ -856,7 +856,7 @@ contains
                         !For the RHS collapsing to assemble into phase 2 can be done just here
                         if (assemble_collapsed_to_one_phase) assembly_phase = 2
                         if (getNewtonType) then
-                          call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,LOC_MAT_II(iphase)*T_CV_NODI(iphase)-LOC_CV_RHS_I(IPHASE))
+                          call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,-1*(LOC_MAT_II(iphase)*T_CV_NODI(iphase)-LOC_CV_RHS_I(IPHASE)))
                           !Introduce the information into the petsc_ACV matrix
                           call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,JCV_NOD,JCV_NOD, LOC_MAT_II(iphase)*T_CV_NODI(iphase))                         
                         else
@@ -882,7 +882,7 @@ contains
       DO IPHASE = 1, final_phase
           INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE, 1.E-15 )
       END DO
-print *, "MIAU1"
+
       IF ( GETCV_DISC ) THEN
           do iphase = wells_first_phase, final_phase*2
             assembly_phase = iphase
@@ -893,15 +893,13 @@ print *, "MIAU1"
                       i_indx = Mmat%petsc_ACV%row_numbering%gnn2unn( cv_nodi, assembly_phase )
                       j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, assembly_phase )
                       if (getNewtonType) then 
-                        petsc_dummy_val = T_ALL%val(1,assembly_phase,cv_nodi)
-                      else               
+                        petsc_dummy_val = T_ALL%val(1,iphase,cv_nodi)
+                      else 
                         petsc_dummy_val = 1.0
                       end if
 #if PETSC_VERSION_MINOR >=14 
-print *, "MIAU2"
                       call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, petsc_dummy_val, ADD_VALUES, ierr)
 #else
-  print *, "MIAU3"
                       call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, real(petsc_dummy_val, kind=PetscScalar_kind), ADD_VALUES, ierr)
 #endif
                   end if
