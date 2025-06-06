@@ -395,7 +395,10 @@ prognostic_pressure_field =
                ##
                ## The gravitational acceleration is considered to be in negative y (or negative z in 3D) direction.
                ##
-               ## <b>NOTE: Density boundary conditions must be specified.</b>
+               ## <b>IMPORTANT NOTES:
+               ## 1. Do not group regions (e.g., avoid "1 2").
+               ## Instead, define 1 boundary condition per region (e.g., "1" and "2" separately).
+               ## 2. Make sure to define density boundary conditions on each boundary where hydrostatic_boundaries is applied.</b>
                element hydrostatic_boundaries {
                  empty
                }?,
