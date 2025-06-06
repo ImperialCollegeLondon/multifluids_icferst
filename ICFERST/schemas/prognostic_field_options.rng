@@ -424,20 +424,6 @@ coordinates, the nearest vertex will be selected.</a:documentation>
           </element>
         </choice>
       </optional>
-      <optional>
-        <element name="hydrostatic_boundaries">
-          <a:documentation>It calculates the pressure based on p = rho * g * ( -1.0 * y ) + p0  in 2D and p = rho * g * (-1.0 * z ) + p0 in 3D.
-where "y" and "z" are the vertical coordinates in 2D and 3D, respectively; "p0" is the pressure in
-[pa] at the highest point of the boundary (normally at y=0 or z=0). With this hydrostatic option "p0" should be assinged
-under 'dirichlet/constant' for each boundary (however, it typically has a value of 0.0).
-p0 can also be used to adjust the pressure at the highest point of a pressure boundary if it is located below 0.0.
-
-The gravitational acceleration is considered to be in negative y (or negative z in 3D) direction.
-
-&lt;b&gt;NOTE: Density boundary conditions must be specified.&lt;/b&gt;</a:documentation>
-          <empty/>
-        </element>
-      </optional>
       <oneOrMore>
         <choice>
           <element name="initial_condition">
@@ -502,6 +488,20 @@ want this.</a:documentation>
                   </element>
                 </optional>
               </element>
+              <optional>
+                <element name="hydrostatic_boundaries">
+                  <a:documentation>It calculates the pressure based on p = rho * g * ( -1.0 * y ) + p0  in 2D and p = rho * g * (-1.0 * z ) + p0 in 3D.
+                    where "y" and "z" are the vertical coordinates in 2D and 3D, respectively; "p0" is the pressure in
+                    [pa] at the highest point of the boundary (normally at y=0 or z=0). With this hydrostatic option "p0" should be assinged
+                    under 'dirichlet/constant' for each boundary (however, it typically has a value of 0.0).
+                    p0 can also be used to adjust the pressure at the highest point of a pressure boundary if it is located below 0.0.
+
+                    The gravitational acceleration is considered to be in negative y (or negative z in 3D) direction.
+
+                    &lt;b&gt;NOTE: Density boundary conditions must be specified.&lt;/b&gt;</a:documentation>
+                    <empty/>
+                  </element>
+              </optional>
               <ref name="input_choice_real"/>
             </element>
             <element name="type">

@@ -338,20 +338,6 @@ prognostic_pressure_field =
             real_dim_vector
          }
       )?,
-    (
-         ## It calculates the pressure based on p = rho * g * ( -1.0 * y ) + p0  in 2D and p = rho * g * (-1.0 * z ) + p0 in 3D.
-         ## where "y" and "z" are the vertical coordinates in 2D and 3D, respectively; "p0" is the pressure in
-         ## [pa] at the highest point of the boundary (normally at y=0 or z=0). With this hydrostatic option "p0" should be assinged
-         ## under 'dirichlet/constant' for each boundary (however, it typically has a value of 0.0).
-         ## p0 can also be used to adjust the pressure at the highest point of a pressure boundary if it is located below 0.0.
-         ##
-         ## The gravitational acceleration is considered to be in negative y (or negative z in 3D) direction.
-         ##
-         ## <b>NOTE: Density boundary conditions must be specified.</b>
-         element hydrostatic_boundaries {
-            empty
-         }
-      )?,
       (
          ## Initial condition for WholeMesh
          ##asc
@@ -401,6 +387,18 @@ prognostic_pressure_field =
                      empty
                   }?
                },
+               ## It calculates the pressure based on p = rho * g * ( -1.0 * y ) + p0  in 2D and p = rho * g * (-1.0 * z ) + p0 in 3D.
+               ## where "y" and "z" are the vertical coordinates in 2D and 3D, respectively; "p0" is the pressure in
+               ## [pa] at the highest point of the boundary (normally at y=0 or z=0). With this hydrostatic option "p0" should be assinged
+               ## under 'dirichlet/constant' for each boundary (however, it typically has a value of 0.0).
+               ## p0 can also be used to adjust the pressure at the highest point of a pressure boundary if it is located below 0.0.
+               ##
+               ## The gravitational acceleration is considered to be in negative y (or negative z in 3D) direction.
+               ##
+               ## <b>NOTE: Density boundary conditions must be specified.</b>
+               element hydrostatic_boundaries {
+                 empty
+               }?,
                input_choice_real
             }|
             element type {

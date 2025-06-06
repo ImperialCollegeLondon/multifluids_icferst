@@ -184,7 +184,8 @@ contains
         real, dimension( :, :, : ), allocatable :: &
             Velocity_Absorption, Temperature_Absorption
         real, dimension( :, : ), allocatable ::sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
-        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter, SFPI_taken, pres_its_taken
+        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter, SFPI_taken, pres_its_taken, n_bcs
+        logical :: global_hydrostatic_bc
         real, dimension( : ), allocatable :: rsum
         real, dimension(:, :), allocatable :: SUF_SIG_DIAGTEN_BC
         type( scalar_field ), pointer :: cfl, rc_field
@@ -383,10 +384,24 @@ contains
           end do
         end if
 
-!Check that we have specified Boundary conditions for density
+        ! Check if hydrostatic boundary conditions are present in any phase
+        global_hydrostatic_bc = .false.  ! Initialize flag to false
+        do iphase = 0, Mdims%nphase - 1
+          n_bcs = option_count("/material_phase[" // int2str(iphase) // "]/scalar_field::Pressure/prognostic/boundary_conditions")
+          do i = 1, n_bcs
+            if (have_option("/material_phase[" // int2str(iphase) // "]/scalar_field::Pressure/prognostic/boundary_conditions[" // int2str(i - 1) // "]/type::dirichlet/hydrostatic_boundaries")) then
+              global_hydrostatic_bc = .true.
+              exit
+            end if
+          end do
+          ! Exit the outer loop early if hydrostatic BC already found in any phase
+          if (global_hydrostatic_bc) exit
+        end do
+
+        ! Check that we have specified Boundary conditions for density
         if (have_option_for_any_phase("phase_properties/Density/compressible", Mdims%ndim) .or. &
           have_option_for_any_phase("phase_properties/Density/python_state", Mdims%ndim) .or. &
-          have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/hydrostatic_boundaries' )) then
+          global_hydrostatic_bc) then
           do i = 1, Mdims%nphase
             if (getprocno() == 1 .and. &
             (.not. (have_option('/material_phase[' // int2str( i - 1 ) // ']/phase_properties/Density/boundary_conditions') .or. &
