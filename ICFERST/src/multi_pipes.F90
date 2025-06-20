@@ -1042,7 +1042,7 @@ contains
       real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
       type (multi_outfluxes), intent(inout) :: outfluxes
       ! Local variables
-      real :: auxR, cc, deltaP, rp, rp_nano, skin, h, h_nano, INV_SIGMA_ND, INV_SIGMA_NANO_N, w_sum_one1, w_sum_one2, one_m_cv_beta
+      real :: auxR, cc, deltaP, rp, rp_nano, skin, h, h_nano, INV_SIGMA_ND, INV_SIGMA_NANO_N, w_sum_one1, w_sum_one2, one_m_cv_beta, beta, beta_min, beta_max, k_beta, tol
       INTEGER :: u_lnloc, ele, i, jpres, u_iloc, x_iloc, idim, cv_lkloc, u_knod, u_lngi, &
           U_NOD, U_SILOC, MAT_NODI, ipres, k, CV_NODI, IPHASE, COUNT, cv_iloc, jphase, iphase_ipres, jphase_jpres,&
           compact_phase, global_phase, wells_first_phase
@@ -1161,7 +1161,19 @@ contains
           cc = 0.0
           if ( pipes_aux%MASS_PIPE( cv_nodi )>0.0 ) cc = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
           h = (Mass_CV( cv_nodi )/h)**(1.0/(Mdims%ndim-1)) ! This is the lengthscale normal to the wells.
-          rp = 0.14 * h
+          ! Compute a modified rp to avoid ln(rp/rw) < 0 in Peaceman correction.
+          ! Smoothly transitions from rp = rw for small h to rp = 0.2*h for large h.
+          ! Ensures stability and avoids non-physical flow with fine meshes near the well.
+          ! The steepness of the transition is controlled by a parameter beta(rw), which decreases with the well radius rw.
+          ! beta = beta_max * exp(-k * rw), clipped to [beta_min, beta_max]
+          tol = 1.e-3
+          beta_max = 70.0
+          beta_min = 3.0
+          k_beta = 4.0
+          beta = beta_max * exp(-k_beta * 0.5 * PIPE_DIAMETER%val(cv_nodi))
+          beta = max(beta_min, min(beta, beta_max))
+          ! Compute rp with a smooth softplus transition function
+          rp = 0.5*PIPE_DIAMETER%val(cv_nodi) + (1.0 / beta) * log(1 + exp(beta * (0.2 * h -  0.5*PIPE_DIAMETER%val(cv_nodi)))) * ( 1.0 - exp(-h / (0.5*PIPE_DIAMETER%val(cv_nodi))) ) + tol
           Skin = 0.0
           !Create local memory to avoid slicing
           if (GOT_T2) then
@@ -1234,8 +1246,20 @@ contains
               cc = 0.0
               if ( pipes_aux%MASS_PIPE( cv_nodi )>0.0 ) cc = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
               h = (Mass_CV( cv_nodi )/h)**(1.0/(Mdims%ndim-1))  ! This is the lengthscale normal to the wells.
-              rp = 0.14 * h
-              rp_NANO = 0.14 * h_NANO
+              ! Compute a modified rp to avoid ln(rp/rw) < 0 in Peaceman correction.
+              ! Smoothly transitions from rp = rw for small h to rp = 0.2*h for large h.
+              ! Ensures stability and avoids non-physical flow with fine meshes near the well.
+              ! The steepness of the transition is controlled by a parameter beta(rw), which decreases with the well radius rw.
+              ! beta = beta_max * exp(-k * rw), clipped to [beta_min, beta_max]
+              tol = 1.e-3
+              beta_max = 70.0
+              beta_min = 3.0
+              k_beta = 4.0
+              beta = beta_max * exp(-k_beta * 0.5 * PIPE_DIAMETER%val(cv_nodi))
+              beta = max(beta_min, min(beta, beta_max))
+              ! Compute rp with a smooth softplus transition function
+              rp = 0.5*PIPE_DIAMETER%val(cv_nodi) + (1.0 / beta) * log(1 + exp(beta * (0.2 * h -  0.5*PIPE_DIAMETER%val(cv_nodi)))) * ( 1.0 - exp(-h / (0.5*PIPE_DIAMETER%val(cv_nodi))) ) + tol
+              rp_NANO = 0.5*PIPE_DIAMETER%val(cv_nodi) + (1.0 / beta) * log(1 + exp(beta * (0.2 * h_NANO -  0.5*PIPE_DIAMETER%val(cv_nodi)))) * ( 1.0 - exp(-h_NANO / (0.5*PIPE_DIAMETER%val(cv_nodi))) ) + tol
               Skin = 0.0
               !Create local memory to reduce slicing
               do ipres = 1, Mdims%npres
@@ -1311,7 +1335,7 @@ contains
                       count = min(1,cv_nodi)
                       !Rp is the internal radius of the well
                       rp = max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) - well_thickness%val(count)
-                      h = 1./(PI * (0.5*pipe_Diameter%val( cv_nodi )**2.))!height/volume pipe
+                      h = 1./(PI * (0.5*pipe_Diameter%val( cv_nodi ))**2.)!height/volume pipe
                       !we apply Q = 1/WellVolume * (Tin-Tout) * 2 * PI * K * L/(ln(Rout/Rin))
                       auxR = conductivity_pipes%val(count) * 2.0 * PI * h / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
                       DO IPHASE = 1, final_phase
