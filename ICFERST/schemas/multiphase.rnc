@@ -550,150 +550,142 @@ start =
             ## Capillary pressure disabled.
             ##
             ## Inmobile fraction = 0.
-            element multiphase_properties {
-               ## Option for relperm
-                  ## Corey relperm:
-                  ##
-                  ## relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent
-                  ##
-                  ## <b> YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES</b>
-               element Relperm_Corey {
-                     ## Relative permeability end point
-                     ##
-                     ## Value between 0 and 1.
-                    element scalar_field {
-                       attribute name { "relperm_max" },
-                       (
-                          element prescribed {
-                             material_mesh_choice,
-                             prescribed_scalar_field
-                          }
-                       )
-                    },
-                     ## Relative permeability exponent
-                     ##
-                     ## Typical value 2.0
-                     element scalar_field {
-                        attribute name { "relperm_exponent" },
-                        (
-                           element prescribed {
-                              material_mesh_choice,
-                              prescribed_scalar_field
-                  }
-                        )
-                     }
-                },
-               ## Options for capillary pressure
-               ##
-               ## <b>You should specify this ONLY for the wetting phase</b>
-               element capillary_pressure {
-                  (## Brooks-Corey equation
-                  ##
-                  ## Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a; here c is the entry pressure
-                  ##
-                  ## For imbibition swith the formula is:
-                  ##
-                  ## ## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure
+element multiphase_properties {
+  ## Option for relperm model choice
+  element relperm_model {
+    (
+      ## Corey relperm:
+      ##
+      ## relperm = relperm_max * ((Sat - S_immobile) / (1 - Sum(Immobile_saturations)))^relperm_exponent
+      ##
+      ## <b> YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES</b>
+      element Relperm_Corey {
+        ## Relative permeability end point (0–1)
+        element scalar_field {
+          attribute name { "relperm_max" }
+          element prescribed {
+            material_mesh_choice
+            prescribed_scalar_field
+          }
+        }
+        ## Relative permeability exponent (e.g., 2.0)
+        element scalar_field {
+          attribute name { "relperm_exponent" }
+          element prescribed {
+            material_mesh_choice
+            prescribed_scalar_field
+          }
+        }
+      } |
 
-                  element type_Brooks_Corey {
-                    ## Entry pressure of the formula
-                    element scalar_field {
-                       attribute name { "C" },
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field
-                      }
-                    },
-                    ## Imbibition term. if on, entry pressure = C - B;
-                    ## By default this value is set to zero.
-                    element scalar_field {
-                       attribute name { "B" },
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field
-                      }
-                    }?,
-                    ## exponent -a
-                    element scalar_field {
-                       attribute name { "a" },
-                       (
-                          element prescribed {
-                             material_mesh_choice,
-                             prescribed_scalar_field
-                          }|
-                          element aliased {
-                             generic_aliased_field
-                          }
-                       )
-                    }}|
-	          ## Power Law equation
-                  ##
-                  ## Pc = c*(1-s_eff)**a
-		              ##
-		              ## where s_eff = (S_w-Swir)/(1-Swir-Sor)
-		              ##
-		              ## c = maximum pc pressure; a = pc exponent
-		              ##
-		              ## (no entry pressure)
-                  ##
-                  ## ONLY specify for the wetting phase
-		              element type_Power_Law {
-                    ## Maximum pressure
-                    element scalar_field {
-                       attribute name { "C" },
-                       (
-                          element prescribed {
-                             material_mesh_choice,
-                             prescribed_scalar_field
-                          }|
-                          element aliased {
-                             generic_aliased_field
-                          }
-                       )
-                    },
-                    ## exponent a
-                    element scalar_field {
-                       attribute name { "a" },
-                       (
-                          element prescribed {
-                             material_mesh_choice,
-                             prescribed_scalar_field
-                          }|
-                          element aliased {
-                             generic_aliased_field
-                          }
-                       )
-                    }})?
-               }?,
-               ## Immobile volume of fluid phase
-               element immobile_fraction {
-               ## Immobile fraction
-                    (element scalar_field {
-                       attribute name { "value" },
-                       (
-                          element prescribed {
-                             material_mesh_choice,
-                             prescribed_scalar_field
-                          }
-                       )
-                    }|
-                     ## For drainage the immobile fraction is computed dynamically using the Land formula.
-                     ## NOTE: No thermal effects considered to change the trapping, i.e. trapping is permanent
-                     ##
-                     ## High hysteresis ~ 0.2. Low hysteresis > 5
-                     ##
-                     ## Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".
-                    element scalar_field {
-                       attribute name { "Land_coefficient" },
-                       (
-                          element prescribed {
-                             material_mesh_choice,
-                             prescribed_scalar_field
-                          }
-                       )
-                    }
-               )}
-            }?
+      ## Tabulated relative permeability data
+      element Relperm_Tabulated {
+        ## CSV: Saturation vs Kr for each phase
+        element relperm_table { xsd:string }
+      }
+    )
+  }
+
+  ## Capillary pressure settings (ONLY for wetting phase)
+  element capillary_pressure ? {
+    (
+      ## Brooks-Corey model
+      element type_Brooks_Corey {
+        ## Entry pressure (C)
+        element scalar_field {
+          attribute name { "C" }
+          element prescribed {
+            material_mesh_choice
+            prescribed_scalar_field
+          }
+        }
+
+        ## Imbibition term (B), optional
+        element scalar_field ? {
+          attribute name { "B" }
+          element prescribed {
+            material_mesh_choice
+            prescribed_scalar_field
+          }
+        }
+
+        ## Exponent (-a)
+        element scalar_field {
+          attribute name { "a" }
+          (
+            element prescribed {
+              material_mesh_choice
+              prescribed_scalar_field
+            } |
+            element aliased {
+              generic_aliased_field
+            }
+          )
+        }
+      } |
+
+      ## Power Law model
+      element type_Power_Law {
+        ## Maximum pressure (C)
+        element scalar_field {
+          attribute name { "C" }
+          (
+            element prescribed {
+              material_mesh_choice
+              prescribed_scalar_field
+            } |
+            element aliased {
+              generic_aliased_field
+            }
+          )
+        }
+
+        ## Exponent (a)
+        element scalar_field {
+          attribute name { "a" }
+          (
+            element prescribed {
+              material_mesh_choice
+              prescribed_scalar_field
+            } |
+            element aliased {
+              generic_aliased_field
+            }
+          )
+        }
+      } |
+
+      ## Tabulated capillary pressure model
+      element type_Tabulated {
+        element capillary_pressure_table { xsd:string }
+      }
+    )
+  }
+
+  ## Immobile volume of fluid phase
+  element immobile_fraction {
+    (
+      ## Fixed immobile fraction
+      element scalar_field {
+        attribute name { "value" }
+        element prescribed {
+          material_mesh_choice
+          prescribed_scalar_field
+        }
+      } |
+
+      ## Dynamic (Land trapping model)
+      element scalar_field {
+        attribute name { "Land_coefficient" }
+        element prescribed {
+          material_mesh_choice
+          prescribed_scalar_field
+        }
+      }
+    )
+  }
+}
+
          }+,
          mesh_adaptivity_options?,
          ## Porous Media
