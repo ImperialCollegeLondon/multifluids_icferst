@@ -2070,7 +2070,7 @@ contains
           if (Mdims%npres >1) call ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, &
                                 final_phase, &! final_phase => reservoir domain
                                 Mdims, ndgln, DERIV, CV_P, SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
-                                SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, getcv_disc, getct, .false., Mmat, Mspars, upwnd, GOT_T2, DT, &
+                                SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, getcv_disc, getct, .false., .true., Mmat, Mspars, upwnd, GOT_T2, DT, &
                                 pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES,mean_pore_cv, eles_with_pipe, thermal,&
                                 CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes,&
                                 porous_heat_coef, loc_assemble_collapsed_to_one_phase )
@@ -8193,7 +8193,7 @@ end if
         if (Mdims%npres >1) call ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, saturation, den_all, denold_all, &
                               final_phase, &! final_phase => reservoir domain
                               Mdims, ndgln, well_dummy7, CV_P, SOURCT_ALL, well_dummy8, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
-                              SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, .true., .false., .true.,Mmat, Mspars, upwnd, .false., DT, &
+                              SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, .true., .false., .true., getResidual,Mmat, Mspars, upwnd, .false., DT, &
                               pipes_aux, well_dummy4, well_dummy6,mean_pore_cv, eles_with_pipe, .false.,&
                               1.0, MASS_CV, well_dummy4, MASS_ELE, well_dummy2, well_dummy3,&
                               well_dummy1, loc_assemble_collapsed_to_one_phase )

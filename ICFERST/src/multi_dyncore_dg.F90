@@ -1217,10 +1217,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                  call zero(solution)
                  !########Solve the system#############
+                 
+! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
+! read*
                  call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
                  !To avoid a petsc warning error we need to re-allocate the matrix always
                  call deallocate(Mmat%petsc_ACV)
- ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
                 !Copy solution back to sat_field (not ideal...)
                   do ipres =1, mdims%npres
                     do iphase = 1 , n_in_pres
@@ -1838,9 +1840,14 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
 ! 2) OPTIMISE: II) MAYBE NOT NEEDED IF ONLY ONE NEWTON PER PICARD? => MATRICES SHOULD BE AN INPUT OF SATURATION_ASSEMB SO I DON'T NEED TO REALLOCATE THEM SO OFTEN
 ! 3) ADD OVER_RELAXATION. DONE, NOT SURE IF IT IS WORKING FINE... WE USE THE PREVIOUS SATURATION TO CALCULATE THE OVER_RELAXATION PARAMETER
 ! 5) ADD WELLS TO JACOBIAN AND RESIDUAL. DONE QUICKLY... NOT WORTH THE TIME CONSIDERING THE SMALL PERCENTAGE THAT IT TAKES.
+        ! MAYBE THEY ARE WORKING FINE NOW/??
         ! THE MALLOC IS BECAUSE IT IS NOT THE SAME NON-ZERO PATTERN BETWEEN THE ORIGINAL AND UNPERTURBED => ALLOW TO ASSEMBLE TO A GIVEN MATRIX
-        ! WELLS ALMOST WORKING. I THINK THAT THE SIGN OF THE WELLS PARAT MAY NOT BE CONSISTENT WITH THE SIGN OF THE RESERVOIR PART
-! 6) ALLOW FOR A DIFFERENT CONVERGENCE TOLERANCE FOR THE SATURATION AND THE OTHER FIELDS... IT IS LIKE THAT. PRESSURE IS EFFECTIVELY AT 10%
+        ! WELLS ALMOST WORKING, SMALL DISCREPANCY AT THE CONNECTION WELL-RESERVOIR. IT IS AGAIN PETSC NOT DOING THE DIFFERENCE PROPERLY, IT SOME POINTS IT ADDS INSTEAD OD MAKING THE DIFFERENCE...
+        ! MAYBE BETTER TO WAIT FOR NEW PETSC???
+        ! I HAVE TRIED ASSEMBLING DIRECTLY THE JACOBIAN AS IT IS NOT DEPENDANT ON SATURATION. BUT THAT ALSO FAILED FOR SOME REASON...
+        !Doubting everything now! Because it is column major maybe I am multipliying by the wrong sat? the first sat entry in the matrix instead of the second?
+        !MAYBE JUST ASSEMBLE WELLS AS NORMAL? ONLY IF ASSEMBLE RESIDUAL? THEN I WOULD DO IT JUST ONCE?, BUT THEN I WOULD DIVIDE BY PERTURBATION...
+        ! 6) ALLOW FOR A DIFFERENT CONVERGENCE TOLERANCE FOR THE SATURATION AND THE OTHER FIELDS... IT IS LIKE THAT. PRESSURE IS EFFECTIVELY AT 10%
         ! ALSO CHECK IF OUR TESTING METHOD IS CORRECT. THE RESIDUAL SEEMS TO BE 3 ORDERS OF MAGNITUDE AHEAD OF THE SAT CHECK
         ! IT MIGHT NOT BE A PROBLEM AS LONG AS WE UNDERSTAND IT AND IT IS CONSISTENT
 ! 7) TEST MORE COMPLEX EXAMPLES WITH THE MASS ISSUE
@@ -1874,7 +1881,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
             OldPhaseVolumeFraction = OldSatura, CV_Immobile_Fraction = CV_Immobile_Fraction)
         call allocate(vpert,Mdims%nphase,sat_field%mesh,"vpert"); vpert%val = 0d0;
         do cv_inod = 1, Mdims%cv_nonods
-          !PSCPSC NO NEED TO GO OVER ALL THE PHASES FOR WELLS, ONLY WHERE WELLS ARE DEFINED...
+          
           where (satura(:, cv_inod) - PERT > CV_Immobile_Fraction(:, cv_inod))
             vpert%val(:,cv_inod) = -PERT
           elsewhere
@@ -1904,12 +1911,14 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
 ! read*
 
         ! 1) A - A_pertb (Note that petsc_ACV is the perturbed matrix)
-        call MatAYPX(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
+        ! call MatAYPX(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
+
+        call MatAXPY(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
 ! print*, "DIFF MATRICES"
 ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
 ! read*
         ! 2) Divide by the perturbation (it is row-wise)
-        vpert%val = 1d0/vpert%val
+        vpert%val = -1d0/vpert%val
         call scale_PETSc_matrix_by_vector(Mmat%petsc_ACV, vpert)
 ! print*, "GENERATED JACOBIAN"
 ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)        
