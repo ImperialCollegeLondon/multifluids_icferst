@@ -1421,7 +1421,7 @@ contains
               !Here we add the coupling term between phases for the wells, so we have to iterate over all the phases
               do ipres = 1, Mdims%npres
                 DO jphase=1 , final_phase
-                  ! global_phase = jphase + (ipres - 1)*Mdims%n_in_pres
+                  global_phase = jphase + (ipres - 1)*Mdims%n_in_pres
                   compact_phase = jphase + (ipres - 1)*final_phase
                   assembly_phase = compact_phase
                   if (assemble_collapsed_to_one_phase) assembly_phase = ipres!1 + (jphase-1)/Mdims%n_in_pres
@@ -1431,14 +1431,15 @@ contains
                       if (assemble_collapsed_to_one_phase) assembly_phase_2 = 1 + (iphase-1)/Mdims%n_in_pres
                       if (getNewtonType) then
                         if (getResidual) then 
-                          call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,MASS_PIPE_FOR_COUP( CV_NODI ) *&
-                                                PIPE_ABS( iphase, compact_phase, CV_NODI )*T_ALL( compact_phase, CV_NODI ))
+                          !pscpsc DOES IT GO INTO assembly_phase_2 OR assembly_phase? FOR ME THE LOGIC IS ASSEMBLE_PHASE NOT THE 2... NEITHER SOLVE THE PROBLEM
+                          call addto(Mmat%CV_RHS,assembly_phase_2, CV_NODI,MASS_PIPE_FOR_COUP( CV_NODI ) *&
+                                                PIPE_ABS( iphase, compact_phase, CV_NODI )*T_ALL( global_phase, CV_NODI ))
                           ! call addto(Mmat%CV_RHS,assembly_phase_2, CV_NODI,MASS_PIPE_FOR_COUP( CV_NODI ) *&
                           !                       PIPE_ABS( iphase, compact_phase, CV_NODI )*T_ALL( compact_phase, CV_NODI ))
                         end if
                         call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, &
                             cv_nodi, cv_nodi, &
-                            MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI )*T_ALL( compact_phase, CV_NODI ))  ! We can use T_ALL because for Newton we only consider saturation
+                            MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI )*T_ALL( global_phase, CV_NODI ))  ! We can use T_ALL because for Newton we only consider saturation
                       else 
                         call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, &
                             cv_nodi, cv_nodi, &
@@ -1458,13 +1459,13 @@ contains
                       if (assemble_collapsed_to_one_phase) assembly_phase_2 = 1 + (iphase-1)/Mdims%n_in_pres
                       if (getNewtonType) then
                         if (getResidual) then 
-                          call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,Mass_CV( CV_NODI ) *&
-                                        ABSORBT_ALL( iphase, compact_phase, CV_NODI )*T_ALL( compact_phase, CV_NODI ))
+                          call addto(Mmat%CV_RHS,assembly_phase_2, CV_NODI,Mass_CV( CV_NODI ) *&
+                                        ABSORBT_ALL( iphase, compact_phase, CV_NODI )*T_ALL( jphase, CV_NODI ))
                           ! call addto(Mmat%CV_RHS,assembly_phase_2, CV_NODI,Mass_CV( CV_NODI ) *&
                           !               ABSORBT_ALL( iphase, compact_phase, CV_NODI )*T_ALL( compact_phase, CV_NODI ))
                         end if
                         call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, cv_nodi, cv_nodi, &
-                            Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI )*T_ALL( compact_phase, CV_NODI ))  ! We can use T_ALL because for Newton we only consider saturation
+                            Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI )*T_ALL( jphase, CV_NODI ))  ! We can use T_ALL because for Newton we only consider saturation
                       else 
                        call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, cv_nodi, cv_nodi, &
                            Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI ))

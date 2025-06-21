@@ -1842,9 +1842,13 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
 ! 5) ADD WELLS TO JACOBIAN AND RESIDUAL. DONE QUICKLY... NOT WORTH THE TIME CONSIDERING THE SMALL PERCENTAGE THAT IT TAKES.
         ! MAYBE THEY ARE WORKING FINE NOW/??
         ! THE MALLOC IS BECAUSE IT IS NOT THE SAME NON-ZERO PATTERN BETWEEN THE ORIGINAL AND UNPERTURBED => ALLOW TO ASSEMBLE TO A GIVEN MATRIX
-        ! WELLS ALMOST WORKING, SMALL DISCREPANCY AT THE CONNECTION WELL-RESERVOIR. IT IS AGAIN PETSC NOT DOING THE DIFFERENCE PROPERLY, IT SOME POINTS IT ADDS INSTEAD OD MAKING THE DIFFERENCE...
+        ! WELLS ALMOST WORKING, SMALL DISCREPANCY AT THE CONNECTION WELL-RESERVOIR. IT IS AGAIN PETSC NOT DOING THE DIFFERENCE PROPERLY, 
+        ! IT SOME POINTS IT ADDS INSTEAD OF MAKING THE DIFFERENCE... SEE IF IT AFFECTS THE RESIDUAL. TRIED MAKING IT CONSIDERING
+        ! THAT THE JACOBIAN IS JUST THE ORIGINAL BUT SOMEHOW IT WORKED WORSE...
         ! MAYBE BETTER TO WAIT FOR NEW PETSC???
         ! I HAVE TRIED ASSEMBLING DIRECTLY THE JACOBIAN AS IT IS NOT DEPENDANT ON SATURATION. BUT THAT ALSO FAILED FOR SOME REASON...
+        ! MAYBE IT IS THE RESIDUAL...? CHECK THAT IT IS CORRECT...
+        ! PHASE 4 IS EVERYWHERE 1 EXCEPT IN INJECTOR WELL, MAYBE THAT IS THE ISSUE?
         !Doubting everything now! Because it is column major maybe I am multipliying by the wrong sat? the first sat entry in the matrix instead of the second?
         !MAYBE JUST ASSEMBLE WELLS AS NORMAL? ONLY IF ASSEMBLE RESIDUAL? THEN I WOULD DO IT JUST ONCE?, BUT THEN I WOULD DIVIDE BY PERTURBATION...
         ! 6) ALLOW FOR A DIFFERENT CONVERGENCE TOLERANCE FOR THE SATURATION AND THE OTHER FIELDS... IT IS LIKE THAT. PRESSURE IS EFFECTIVELY AT 10%
@@ -1911,14 +1915,14 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
 ! read*
 
         ! 1) A - A_pertb (Note that petsc_ACV is the perturbed matrix)
-        ! call MatAYPX(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
+        call MatAYPX(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
 
-        call MatAXPY(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
+        ! call MatAXPY(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
 ! print*, "DIFF MATRICES"
 ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
 ! read*
         ! 2) Divide by the perturbation (it is row-wise)
-        vpert%val = -1d0/vpert%val
+        vpert%val = 1d0/vpert%val
         call scale_PETSc_matrix_by_vector(Mmat%petsc_ACV, vpert)
 ! print*, "GENERATED JACOBIAN"
 ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)        
