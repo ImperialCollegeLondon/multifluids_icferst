@@ -1353,6 +1353,10 @@ contains
           call allocate_and_insert_tensor_field('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity', &
           states(1))
         end if
+        if (have_option("/porous_media/porous_properties/scalar_field::porosity_total")) then
+          call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porosity_total', &
+          states(1), field_name='porosity_total')
+        end if
       end if
       if (have_option("/porous_media/SelfPotential")) then
         call allocate_and_insert_scalar_field('/porous_media/SelfPotential/scalar_field::SelfPotential', &

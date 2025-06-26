@@ -1521,12 +1521,13 @@ contains
       logical, optional, intent(in) :: divide_by_rho_CP
       character(len=*), optional, intent(in) :: TracerName
       !Local variables
-      type(scalar_field), pointer :: component, sfield, solid_concentration
+      type(scalar_field), pointer :: component, sfield, solid_concentration, porosity_total_field
       type(tensor_field), pointer :: diffusivity, tfield, den, saturation
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
       logical, parameter :: harmonic_average=.false.
-      logical :: wiener_conductivity
+      logical :: wiener_conductivity, have_porosity_total = .false.
+      logical, save :: have_been_read = .false.
       real :: expo
 
       ScalarAdvectionField_Diffusion = 0.0
@@ -1565,6 +1566,18 @@ contains
         if (is_porous_media) then
           !####DIFFUSIVITY FOR POROUS MEDIA ONLY####
           sfield=>extract_scalar_field(state(1),"Porosity")
+
+          if ( .not. have_been_read ) then
+            have_porosity_total = have_option("/porous_media/porous_properties/scalar_field::porosity_total")
+            have_been_read = .true.
+          end if
+
+          if (have_porosity_total) then
+            porosity_total_field=>extract_scalar_field(state(1),"porosity_total")
+          else
+            porosity_total_field=>extract_scalar_field(state(1),"Porosity") ! dummy
+          end if
+
           den => extract_tensor_field( packed_state,"PackedDensity" )
           !expo used to switch between boussinesq (density ==1) or normal
           expo = 1.; if (has_boussinesq_aprox) expo = 0.
@@ -1602,36 +1615,70 @@ contains
             !lambda_p+3*lambda_p*(lambda_f-lambda_p)*porosity/(3*lambda_p+(lambda_f-lambda_p)(1-porosity))
             wiener_conductivity =  have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/Wiener_conductivity')
             saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-            do iphase = 1, Mdims%nphase
-              diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-              if (stat /= 0) cycle!If no field defined then cycle
-              tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
-              do ele = 1, Mdims%totele
-                ele_nod = min(size(sfield%val), ele)
-                t_ele_nod = min(size(tfield%val, 3), ele)
-                do iloc = 1, Mdims%mat_nloc
-                  mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-                  cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                  if (wiener_conductivity) then
-                    do idim = 1, Mdims%ndim
-                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
-                      (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                      +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod)) ! for classic weighted approach (Wiener approach)
-                    end do
-                  else
-                    do idim = 1, Mdims%ndim
-                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
-                      (tfield%val(idim, idim, t_ele_nod)+3*tfield%val(idim, idim, t_ele_nod)* &
-                      (node_val( diffusivity, idim, idim, mat_inod ) - tfield%val(idim, idim, t_ele_nod))*sfield%val(ele_nod)/ &
-                      (3*tfield%val(idim, idim, t_ele_nod)+(node_val( diffusivity, idim, idim, mat_inod )-tfield%val(idim, idim, t_ele_nod))* &
-                      (1-sfield%val(ele_nod))))
-                    end do
-                  end if
+
+            if (have_porosity_total) then
+              do iphase = 1, Mdims%nphase
+                diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+                if (stat /= 0) cycle!If no field defined then cycle
+                tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+                do ele = 1, Mdims%totele
+                  ele_nod = min(size(porosity_total_field%val), ele)
+                  t_ele_nod = min(size(tfield%val, 3), ele)
+                  do iloc = 1, Mdims%mat_nloc
+                    mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                    cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+                    if (wiener_conductivity) then
+                      do idim = 1, Mdims%ndim
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
+                        (porosity_total_field%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
+                        +(1.0-porosity_total_field%val(ele_nod))* tfield%val(idim, idim, t_ele_nod)) ! for classic weighted approach (Wiener approach)
+                      end do
+                    else
+                      do idim = 1, Mdims%ndim
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
+                        (tfield%val(idim, idim, t_ele_nod)+3*tfield%val(idim, idim, t_ele_nod)* &
+                        (node_val( diffusivity, idim, idim, mat_inod ) - tfield%val(idim, idim, t_ele_nod))*porosity_total_field%val(ele_nod)/ &
+                        (3*tfield%val(idim, idim, t_ele_nod)+(node_val( diffusivity, idim, idim, mat_inod )-tfield%val(idim, idim, t_ele_nod))* &
+                        (1-porosity_total_field%val(ele_nod))))
+                      end do
+                    end if
+                  end do
                 end do
               end do
-            end do
+            else
+              do iphase = 1, Mdims%nphase
+                diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+                if (stat /= 0) cycle!If no field defined then cycle
+                tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+                do ele = 1, Mdims%totele
+                  ele_nod = min(size(sfield%val), ele)
+                  t_ele_nod = min(size(tfield%val, 3), ele)
+                  do iloc = 1, Mdims%mat_nloc
+                    mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                    cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+                    if (wiener_conductivity) then
+                      do idim = 1, Mdims%ndim
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
+                        (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
+                        +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod)) ! for classic weighted approach (Wiener approach)
+                      end do
+                    else
+                      do idim = 1, Mdims%ndim
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
+                        (tfield%val(idim, idim, t_ele_nod)+3*tfield%val(idim, idim, t_ele_nod)* &
+                        (node_val( diffusivity, idim, idim, mat_inod ) - tfield%val(idim, idim, t_ele_nod))*sfield%val(ele_nod)/ &
+                        (3*tfield%val(idim, idim, t_ele_nod)+(node_val( diffusivity, idim, idim, mat_inod )-tfield%val(idim, idim, t_ele_nod))* &
+                        (1-sfield%val(ele_nod))))
+                      end do
+                    end if
+                  end do
+                end do
+              end do
+            end if
           endif
         else
           do iphase = 1, Mdims%nphase

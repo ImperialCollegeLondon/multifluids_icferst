@@ -208,7 +208,9 @@ contains
         type(tensor_field), pointer :: tracer_field, tracer_field2, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(tensor_field), pointer :: perm_field
-        type(vector_field), pointer :: positions, porosity_field, MeanPoreCV, PythonPhaseVolumeFractionSource
+        type(vector_field), pointer :: positions, porosity_field, MeanPoreCV, PythonPhaseVolumeFractionSource, porosity_total_field
+        logical :: have_porosity_total = .false.
+        logical, save :: have_been_read = .false.
         type(scalar_field), pointer :: DensitySource, T
         !Variables that are used to define the pipe pos
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
@@ -595,6 +597,18 @@ contains
             call copy_packed_new_to_old( packed_state )
             ExitNonLinearLoop = .false.
             porosity_field=>extract_vector_field(packed_state,"Porosity")
+
+            if ( .not. have_been_read ) then
+              have_porosity_total = have_option("/porous_media/porous_properties/scalar_field::porosity_total")
+              have_been_read = .true.
+            end if
+
+            if (have_porosity_total) then
+              porosity_total_field=>extract_vector_field(packed_state,"porosity_total")
+            else
+              porosity_total_field=>extract_vector_field(packed_state,"Porosity") ! dummy
+            end if
+
             ! evaluate prescribed fields at time = current_time+dt
             call set_prescribed_field_values( state, exclude_interpolated = .true., &
                 exclude_nonreprescribed = .true., time = acctim )
@@ -681,7 +695,7 @@ contains
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
-                        dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
+                        dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, porosity_total_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
                         calculate_mass_delta, outfluxes, pres_its_taken, its, Courant_number)
                 end if Conditional_ForceBalanceEquation
@@ -710,7 +724,7 @@ contains
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
-                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
+                        ScalarField_Source_Store, Porosity_field%val,porosity_total_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
 
                 end if Conditional_PhaseVolumeFraction
@@ -740,7 +754,7 @@ contains
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                        suf_sig_diagten_bc, Porosity_field%val, &
+                        suf_sig_diagten_bc, Porosity_field%val, porosity_total_field%val, &
                         !!$
                         0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                         THETA_GDIFF, eles_with_pipe, pipes_aux, &
@@ -800,7 +814,7 @@ contains
                       call Tracer_Assemble_Solve( trim(option_name), state, packed_state, &
                       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                       tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                      suf_sig_diagten_bc, Porosity_field%val, &
+                      suf_sig_diagten_bc, Porosity_field%val, porosity_total_field%val, &
                       !!$
                       0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                       THETA_GDIFF, eles_with_pipe, pipes_aux, &
@@ -879,7 +893,7 @@ contains
                   call Tracer_Assemble_Solve( trim(option_name), state, packed_state, &
                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                     tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                    suf_sig_diagten_bc, Porosity_field%val, &
+                    suf_sig_diagten_bc, Porosity_field%val, porosity_total_field%val, &
                     !!$
                     0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                     THETA_GDIFF, eles_with_pipe, pipes_aux, &
@@ -1726,6 +1740,12 @@ contains
             end do
             !Pointing to porosity again is required
             porosity_field=>extract_vector_field(packed_state,"Porosity")
+            if (have_porosity_total) then
+              porosity_total_field=>extract_vector_field(packed_state,"porosity_total")
+            else
+              porosity_total_field=>extract_vector_field(packed_state,"Porosity") ! dummy
+            end if
+
             !Now we have to converge again within the same time-step
             ExitNonLinearLoop = .false.; its = 1
             adapt_mesh_in_FPI = .false.
