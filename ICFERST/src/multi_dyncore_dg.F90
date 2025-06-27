@@ -1409,156 +1409,157 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, time_step, SFPI_taken, SFPI_its, Courant_number,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
-             implicit none
-             type( state_type ), dimension( : ), intent( inout ) :: state, multicomponent_state
-             type( state_type ) :: packed_state
-             type(multi_dimensions), intent(in) :: Mdims
-             type(multi_GI_dimensions), intent(in) :: CV_GIdims
-             type(multi_shape_funs), intent(inout) :: CV_funs
-             type(multi_sparsities), intent(in) :: Mspars
-             type(multi_ndgln), intent(in) :: ndgln
-             type (multi_discretization_opts) :: Mdisopt
-             type (multi_matrices), intent(inout) :: Mmat
-             type(multi_absorption), intent(inout) :: multi_absorp
-             type (porous_adv_coefs), intent(inout) :: upwnd
-             type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
-             type (multi_pipe_package), intent(in) :: pipes_aux
-             INTEGER, intent( in ) :: igot_theta_flux
-             REAL, intent( in ) :: DT
-             REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
-             real, dimension( : ,: ), intent( inout ) :: prev_sat
-             REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
-             !REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
-             REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
-             real, dimension( : ), intent( inout ) :: mass_ele_transp
-             integer, intent(in) :: nonlinear_iteration
-             integer, intent(in) :: time_step
-             integer, intent(inout) :: SFPI_taken
-             integer, intent(inout) :: SFPI_its
-             real, dimension(:), intent(inout) :: Courant_number
-             REAL, DIMENSION( :, :), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+            implicit none
+            type( state_type ), dimension( : ), intent( inout ) :: state, multicomponent_state
+            type( state_type ) :: packed_state
+            type(multi_dimensions), intent(in) :: Mdims
+            type(multi_GI_dimensions), intent(in) :: CV_GIdims
+            type(multi_shape_funs), intent(inout) :: CV_funs
+            type(multi_sparsities), intent(in) :: Mspars
+            type(multi_ndgln), intent(in) :: ndgln
+            type (multi_discretization_opts) :: Mdisopt
+            type (multi_matrices), intent(inout) :: Mmat
+            type(multi_absorption), intent(inout) :: multi_absorp
+            type (porous_adv_coefs), intent(inout) :: upwnd
+            type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
+            type (multi_pipe_package), intent(in) :: pipes_aux
+            INTEGER, intent( in ) :: igot_theta_flux
+            REAL, intent( in ) :: DT
+            REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
+            real, dimension( : ,: ), intent( inout ) :: prev_sat
+            REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
+            !REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
+            REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+            real, dimension( : ), intent( inout ) :: mass_ele_transp
+            integer, intent(in) :: nonlinear_iteration
+            integer, intent(in) :: time_step
+            integer, intent(inout) :: SFPI_taken
+            integer, intent(inout) :: SFPI_its
+            real, dimension(:), intent(inout) :: Courant_number
+            REAL, DIMENSION( :, :), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
 
-             ! Local Variables
-             LOGICAL, PARAMETER :: THERMAL= .false.
-             integer :: igot_t2, nphase, n_in_pres
-             REAL, DIMENSION( : ), allocatable :: mass_mn_pres
-             REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-             REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, INV_B
-             REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
-             REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
-             REAL, DIMENSION( :, : ), allocatable :: T2, T2OLD
-             REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
-             LOGICAL :: GET_THETA_FLUX
-             INTEGER :: STAT, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES, cv_nodi
-             LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
-             type( tensor_field ), pointer :: den_all2, denold_all2
-             character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
-             !Working pointers
-             real, dimension(:,:,:), pointer :: p, V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
-             real, dimension(:, :), pointer :: satura
-             type(tensor_field), pointer :: velocity, density, deriv, sat_field
-             type(scalar_field), pointer :: gamma
-             type(vector_field) :: solution
-             !Variable to assign an automatic maximum backtracking parameter based on the Courant number
-             logical :: Auto_max_backtrack
-             !Variables for global convergence method
-             real :: backtrack_par_factor
-             type(vector_field)  :: vtracer, residual
-             type(csr_sparsity), pointer :: sparsity
-             !Variables for capillary pressure
-             real, dimension(Mdims%cv_nonods) :: OvRelax_param
-             integer :: Phase_with_Pc
-             !Variables to stabilize the non-linear iteration solver
-             integer :: Max_sat_its, total_cv_nodes
-             real, dimension(:,:), allocatable :: sat_bak, backtrack_sat
-             real :: Previous_convergence, updating, new_backtrack_par, aux, resold, first_res
-             real, save :: res = -1
-             logical :: satisfactory_convergence
-             integer :: its, useful_sats
-             logical, save :: Solve_all_phases
-             logical, save :: ML_method_activated
-             !Variables to control the PETCs solver
-             integer, save :: max_allowed_its = -1
-             integer :: its_taken
-             logical, save :: written_file = .false.
-             !We check this with the global number of phases per domain
-             if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
+            ! Local Variables
+            LOGICAL, PARAMETER :: THERMAL= .false.
+            integer :: igot_t2, nphase, n_in_pres
+            REAL, DIMENSION( : ), allocatable :: mass_mn_pres
+            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
+            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, INV_B
+            REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
+            REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
+            REAL, DIMENSION( :, : ), allocatable :: T2, T2OLD
+            REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
+            LOGICAL :: GET_THETA_FLUX
+            INTEGER :: STAT, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES, cv_nodi
+            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
+            type( tensor_field ), pointer :: den_all2, denold_all2
+            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+            !Working pointers
+            real, dimension(:,:,:), pointer :: p, V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
+            real, dimension(:, :), pointer :: satura
+            type(tensor_field), pointer :: velocity, density, deriv, sat_field
+            type(scalar_field), pointer :: gamma, pipe_diameter
+            type(vector_field) :: solution
+            !Variable to assign an automatic maximum backtracking parameter based on the Courant number
+            logical :: Auto_max_backtrack
+            !Variables for global convergence method
+            real :: backtrack_par_factor
+            type(vector_field)  :: vtracer, residual
+            type(csr_sparsity), pointer :: sparsity
+            !Variables for capillary pressure
+            real, dimension(Mdims%cv_nonods) :: OvRelax_param
+            integer :: Phase_with_Pc
+            !Variables to stabilize the non-linear iteration solver
+            integer :: Max_sat_its, total_cv_nodes
+            real, dimension(:,:), allocatable :: sat_bak, backtrack_sat
+            real :: Previous_convergence, updating, new_backtrack_par, aux, resold, first_res, btrk
+            real, save :: res = -1
+            logical :: satisfactory_convergence
+            integer :: its, useful_sats
+            logical, save :: Solve_all_phases
+            logical, save :: ML_method_activated
+            !Variables to control the PETCs solver
+            integer, save :: max_allowed_its = -1
+            integer :: its_taken
+            logical, save :: written_file = .false.
+            !We check this with the global number of phases per domain
+            if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
 
-             solver_option_path = "/solver_options/Linear_solver"
-             if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::PhaseVolumeFraction')) then
-               solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::PhaseVolumeFraction'
-             end if
-             if(max_allowed_its < 0)  then
-                 call get_option( trim(solver_option_path)//"max_iterations",&
-                  max_allowed_its, default = 9)
-                  Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
-                  ML_method_activated =  have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path")
-             end if
+            solver_option_path = "/solver_options/Linear_solver"
+            if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::PhaseVolumeFraction')) then
+              solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::PhaseVolumeFraction'
+            end if
+            if(max_allowed_its < 0)  then
+                call get_option( trim(solver_option_path)//"max_iterations",&
+                max_allowed_its, default = 9)
+                Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
+                ML_method_activated =  have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/ML_model_path")
+            end if
 
-             if (Solve_all_phases) then!For the number_of_normal_FPI FPIs we consider all the phases normally
-               nphase = Mdims%nphase
-               n_in_pres = Mdims%n_in_pres
-             else !For subsequent SFPI iterations just perform nphases - 1
-               !Define local nphase and n_in_pres
-               nphase = (Mdims%n_in_pres - 1 ) * Mdims%npres
-               n_in_pres = nphase/ Mdims%npres
-             end if
-             !Extract variables from packed_state
-             call get_var_from_packed_state(packed_state,FEPressure = P)
-             sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+            if (Solve_all_phases) then!For the number_of_normal_FPI FPIs we consider all the phases normally
+              nphase = Mdims%nphase
+              n_in_pres = Mdims%n_in_pres
+            else !For subsequent SFPI iterations just perform nphases - 1
+              !Define local nphase and n_in_pres
+              nphase = (Mdims%n_in_pres - 1 ) * Mdims%npres
+              n_in_pres = nphase/ Mdims%npres
+            end if
+            !Extract variables from packed_state
+            call get_var_from_packed_state(packed_state,FEPressure = P)
+            sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
 
-             Satura =>  sat_field%val(1,:,:)
-             !Get information for capillary pressure to be use in CV_ASSEMB
-             call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
+            Satura =>  sat_field%val(1,:,:)
+            !Get information for capillary pressure to be use in CV_ASSEMB
+            call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
 
-             ! pscpsc Disable VAD for the time being for Newton solver
-             OvRelax_param = 0.;
+            ! pscpsc Disable VAD for the time being for Newton solver
+            OvRelax_param = 0.;
 
-             !Get variable for global convergence method
-             if (.not. have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration')) then
-                 backtrack_par_factor = 1.1
-             else !Get value with the default value of 1.
-                 call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Backtracking_factor',&
-                     backtrack_par_factor, default = 1.0)
-             end if
+            !Get variable for global convergence method
+            if (.not. have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration')) then
+                backtrack_par_factor = 1.1
+            else !Get value with the default value of 1.
+                call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Backtracking_factor',&
+                    backtrack_par_factor, default = 1.0)
+            end if
 
-             !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
-             Auto_max_backtrack = (backtrack_par_factor == -10)
-             !Retrieve number of saturation fixed point iterations from diamond, by default 3 if Courant_number<=1, 9 otherwise
-             if (Courant_number(1) <= 1) then
-                 call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 3)
-             else
-                 call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
-             end if
-             ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
-             GET_THETA_FLUX = .FALSE.
-             !####Create dummy variables required for_cv_assemb with no memory usage ####
-             IGOT_T2 = 0
-             ALLOCATE( THETA_GDIFF( 0, 0 )); ALLOCATE( Mmat%CT( 0,0,0 ) )
-             ALLOCATE( DIAG_SCALE_PRES( 0,0 ) ); ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), INV_B( 0,0,0 ) )
-             !#### Create dummy variables required for_cv_assemb with no memory usage ####
-             deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
-             ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods ) )
-             ALLOCATE( mass_mn_pres(size(Mspars%small_acv%col)) ) ; mass_mn_pres = 0.
+            !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
+            Auto_max_backtrack = (backtrack_par_factor == -10)
+            !Retrieve number of saturation fixed point iterations from diamond, by default 3 if Courant_number<=1, 9 otherwise
+            if (Courant_number(1) <= 1) then
+                call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 3)
+            else
+                call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
+            end if
+            ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
+            GET_THETA_FLUX = .FALSE.
+            !####Create dummy variables required for_cv_assemb with no memory usage ####
+            IGOT_T2 = 0
+            ALLOCATE( THETA_GDIFF( 0, 0 )); ALLOCATE( Mmat%CT( 0,0,0 ) )
+            ALLOCATE( DIAG_SCALE_PRES( 0,0 ) ); ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), INV_B( 0,0,0 ) )
+            !#### Create dummy variables required for_cv_assemb with no memory usage ####
+            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
+            ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods ) )
+            ALLOCATE( mass_mn_pres(size(Mspars%small_acv%col)) ) ; mass_mn_pres = 0.
 
 
-             Mdisopt%v_beta = 1.0
-             velocity=>extract_tensor_field(packed_state,"PackedVelocity")
-             density=>extract_tensor_field(packed_state,"PackedDensity")
-             sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+            Mdisopt%v_beta = 1.0
+            velocity=>extract_tensor_field(packed_state,"PackedVelocity")
+            density=>extract_tensor_field(packed_state,"PackedDensity")
+            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
 
-             !This logical is used to loop over the saturation equation until the functional
-             !explained in function get_Convergence_Functional has been reduced enough
-             satisfactory_convergence = .false.
-             updating = 0.0
-             !We store the convergence of the previous FPI to compare with
-             Previous_convergence = backtrack_or_convergence!<== deprecated?
-             its = 1; useful_sats = 1;
-             total_cv_nodes = Mdims%cv_nonods
-             call allsum(total_cv_nodes)!For parallel consistency when normalising the residual
-             !Now total_cv_nodes includes halos, but because it is a ratio it should be fine
-             if (resold < 0 ) res = huge(res)!<=initialize res once
+            !This logical is used to loop over the saturation equation until the functional
+            !explained in function get_Convergence_Functional has been reduced enough
+            satisfactory_convergence = .false.
+            updating = 0.0
+            !We store the convergence of the previous FPI to compare with
+            Previous_convergence = backtrack_or_convergence!<== deprecated?
+            its = 1; useful_sats = 1;
+            total_cv_nodes = Mdims%cv_nonods
+            call allsum(total_cv_nodes)!For parallel consistency when normalising the residual
+            !Now total_cv_nodes includes halos, but because it is a ratio it should be fine
+            if (resold < 0 ) res = huge(res)!<=initialize res once
 
+            if (Mdims%npres > 1) pipe_diameter => extract_scalar_field( state(1), "DiameterPipe" )
 
             nullify(DEN_ALL); nullify(DENOLD_ALL)
             allocate (sat_bak(Mdims%nphase, Mdims%cv_nonods), backtrack_sat(Mdims%nphase, Mdims%cv_nonods))
@@ -1576,6 +1577,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
               DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
             END IF
+
 max_allowed_its = 1  ! just one seems to be the best (at least without backtracking)
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
 
@@ -1632,17 +1634,33 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                  end if
 
                  call zero(solution)
+                 ! pscpsc maybe this is enough considerin 20 is good
+                 btrk = 1.0
+                if (nonlinear_iteration > 3) then 
+                  btrk = 0.75;
+                else if (nonlinear_iteration > 10) then 
+                  btrk = 0.5;
+                else if (nonlinear_iteration > 15) then 
+                  btrk = 0.25;
+                end if
 
                  !########Solve the system#############
                  call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
                  !To avoid a petsc warning error we need to re-allocate the matrix always
                  call deallocate(Mmat%petsc_ACV)
-                 !solution now contains dS
+                 !solution now contains dS. Update the saturation field
                   do ipres =1, mdims%npres
-                    do iphase = 1 , n_in_pres
-                     sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) + solution%val(iphase+(ipres-1)*n_in_pres,:)
-                   end do
-                 end do
+                    do cv_nodi = 1, Mdims%cv_nonods
+                      if ( .not. node_owned( sat_field, cv_nodi ) ) cycle
+                      if (ipres>1) then
+                        if(pipe_diameter%val(cv_nodi)<=1d-8) cycle
+                      end if      
+                      do iphase = 1 , n_in_pres
+                        sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,cv_nodi) = &
+                          sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,cv_nodi) + btrk*solution%val(iphase+(ipres-1)*n_in_pres,cv_nodi)
+                      end do
+                    end do
+                  end do
 
                   ! Impose boundedness to the saturation 
                   call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .TRUE. )

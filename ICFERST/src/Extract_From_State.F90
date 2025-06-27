@@ -2388,37 +2388,37 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
            ! end if
 
             !generate output message
-            write(temp_string, '(a, i0, a, E10.3, a, E10.3)' ) "Iterations: ", nonlinear_its, " | Pressure:", inf_norm_pres, " | Mass check:", max_calculate_mass_delta
+            write(temp_string, '(a, i0, a, 1PE10.3, a, 1PE10.3)' ) "Iterations: ", nonlinear_its, " | Pressure:", inf_norm_pres, " | Mass check:", max_calculate_mass_delta
             output_message = trim(temp_string); temp_string = ''
-
+ts_ref_val = 0d0;
             if (is_porous_media) then
                 select case (variable_selection)
                 case (2)
-                    write(temp_string, '(a, E10.3,a,i0)' ) "| L_inf:", inf_norm_val
+                    write(temp_string, '(a, 1PE10.3,a,i0)' ) "| L_inf:", inf_norm_val
                 case default
                     if (abs(inf_norm_val) > 1e-30) then
-                        write(temp_string, '(a, E10.3)' ) "| Saturation:", inf_norm_val
+                        write(temp_string, '(a, 1PE10.3)' ) "| Saturation:", inf_norm_val
                         output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
                     end if
                     if (abs(ts_ref_val) > 1e-30) then
-                        write(temp_string, '(a, E10.3)' ) "| Saturation(Rel L2)::", ts_ref_val
+                        write(temp_string, '(a, 1PE10.3)' ) "| Saturation(Rel L2)::", ts_ref_val
                         output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
                     end if
                     if (abs(inf_norm_temp) > 1e-30) then
-                        write(temp_string, '(a, E10.3)' ) "| Temperature: ",inf_norm_temp
+                        write(temp_string, '(a, 1PE10.3)' ) "| Temperature: ",inf_norm_temp
                         output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
                     end if
                     if (abs(inf_norm_conc) > 1e-30) then
-                        write(temp_string, '(a, E10.3)' ) "| Tracer: ", inf_norm_conc
+                        write(temp_string, '(a, 1PE10.3)' ) "| Tracer: ", inf_norm_conc
                         output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
                     end if
                     if (abs(Tracers_ref_val) > 1e-30) then
-                        write(temp_string, '(a, E10.3)' ) "| PassiveTracers/Species:",Tracers_ref_val
+                        write(temp_string, '(a, 1PE10.3)' ) "| PassiveTracers/Species:",Tracers_ref_val
                         output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
                     end if
                 end select
             else
-                write(temp_string, '(a, E10.3,a,i0)' ) "| L_inf:", inf_norm_val
+                write(temp_string, '(a, 1PE10.3,a,i0)' ) "| L_inf:", inf_norm_val
             end if
 
             !Asssemble finally the output message
@@ -2482,7 +2482,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     dt = max(min(stored_dt, max_ts), 1d-8)
                     call set_option( '/timestepping/timestep', dt )
                     if (getprocno() == 1)then
-                        ewrite(show_FPI_conv,*) "Time step restored to:", dt/ conversor , trim(output_units)
+                        ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step restored to:", dt/ conversor, trim(output_units)
                     end if
                     adjusted_ts_to_dump = .false.
                     return
@@ -2507,7 +2507,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                         dt = max(min(dt, max_ts), min_ts)
                         call set_option( '/timestepping/timestep', dt )
                         if (getprocno() == 1 .and. abs(auxR-dt)/dt > 1d-3)then
-                            ewrite(show_FPI_conv,*) "Time step changed to:", dt/ conversor , trim(output_units)
+                            ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step changed to:", dt/conversor, trim(output_units)
                         end if
                         ExitNonLinearLoop = .true.
                         return
@@ -2524,7 +2524,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     !Ensure that period_vtus or the final time are matched, controlled by max_ts
                     dt = max(min(dt, max_ts), min_ts)
                     if (getprocno() == 1) then
-                        ewrite(show_FPI_conv,*) "Time step increased to:", dt/ conversor , trim(output_units)
+                        ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step increased to:", dt/conversor, trim(output_units)
                     end if
                     ExitNonLinearLoop = .true.
                     call set_option( '/timestepping/timestep', dt )
@@ -2545,7 +2545,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                         deallocate(reference_field)
                         !Tell the user the number of FPI and final convergence to help improving the parameters
                         if (getprocno() == 1) then
-                            ewrite(show_FPI_conv,*)  "Minimum time-step(",min_ts/ conversor , trim(output_units),") reached, advancing time."
+                            ewrite(show_FPI_conv,'(a, 1PE10.3, a)')  "Minimum time-step(", min_ts/conversor, trim(output_units),") reached, advancing time."
                         end if
                         !If PID_controller then update the status
                         if (PID_controller) auxR = PID_time_controller(reset=.true.)
@@ -2565,7 +2565,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     call set_option( '/timestepping/timestep', dt )
                     stored_dt = dt
                     if (getprocno() == 1) then
-                        ewrite(show_FPI_conv,*) "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt/ conversor , trim(output_units)
+                        ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt/conversor, trim(output_units)
                     end if
                     Repeat_time_step = .true.
                     ExitNonLinearLoop = .true.
@@ -2581,7 +2581,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     call set_option( '/timestepping/timestep', dt )
                     if (abs(auxR-dt) > 1d-8) then
                         if (getprocno() == 1)then
-                            ewrite(show_FPI_conv,*) "Time step modified to match final time/dump_period:", dt/ conversor , trim(output_units)
+                            ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step modified to match final time/dump_period:", dt/conversor, trim(output_units)
                             adjusted_ts_to_dump = .true.
                         end if
                     end if
@@ -3565,25 +3565,25 @@ end subroutine get_DarcyVelocity
             endif
             ! Write the actual numbers to the file now
             if (is_porous_media) then
-                write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
+                write(numbers,'(1PE17.11,a,1PE17.11, a, 1PE17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
             else
-                write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(60.) , ",",  outfluxes%porevolume
+                write(numbers,'(1PE17.11,a,1PE17.11, a, 1PE17.11)') current_time, "," , current_time/(60.) , ",",  outfluxes%porevolume
             end if
 
             whole_line =  trim(numbers)
             do ioutlet =1, size(outfluxes%intflux,2)
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(fluxstring(iphase),'(E17.11)') outfluxes%totout(iphase,ioutlet)
+                    write(fluxstring(iphase),'(1PE17.11)') outfluxes%totout(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(intfluxstring(iphase),'(E17.11)') outfluxes%intflux(iphase,ioutlet)
+                    write(intfluxstring(iphase),'(1PE17.11)') outfluxes%intflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
                 do ifields = 1, size(outfluxes%field_names,2)
                     do iphase = 1, size(outfluxes%intflux,1) !Here we output the average value over the surface
-                        write(tempstring(iphase),'(E17.11)') outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
+                        write(tempstring(iphase),'(1PE17.11)') outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     end do
                 end do

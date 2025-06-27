@@ -249,7 +249,7 @@ contains
         logical :: have_Active_Tracers = .true.
         logical :: have_Passive_Tracers = .true.
         integer :: fields
-        character( len = option_path_len ) :: option_name
+        character( len = option_path_len ) :: option_name, sim_qlty
         integer :: phreeqc_id
         double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
         real :: total_mass_metal_before_adapt, total_mass_metal_after_adapt, total_mass_metal_after_correction, total_mass_metal_after_bound
@@ -428,6 +428,15 @@ contains
         end if
         call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
         call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Picard_its', picard_its, default = NonLinearIteration+1 )
+
+        call get_option("/geometry/simulation_quality", sim_qlty)
+        if (trim(sim_qlty) /= "fast" .and. have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Picard_its')) then 
+            ewrite(0,*) "====================================================================="
+            ewrite(0,*) "WARNING: Newton solver should be used with simulation_quality = fast."
+            ewrite(0,*) "====================================================================="
+        end if
+
+
         !!$
         have_temperature_field = .false. ; have_component_field = .false. ; have_extra_DiffusionLikeTerm = .false.
         do istate = 1, Mdims%nstate
@@ -953,9 +962,9 @@ contains
 
             if (is_porous_media .and. getprocno() == 1) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
-                    ewrite(0,*) "Courant_number and shock-front Courant number", Courant_number
+                    ewrite(0,'(a, 1PE10.3, 1PE10.3)') "Courant_number and shock-front Courant number: ", Courant_number(1), Courant_number(2)
                 else !printout only in the log
-                    ewrite(1,*) "Courant_number and shock-front Courant number", Courant_number
+                    ewrite(1,'(a, 1PE10.3, 1PE10.3)') "Courant_number and shock-front Courant number: ", Courant_number(1), Courant_number(2)
                 end if
             end if
 
