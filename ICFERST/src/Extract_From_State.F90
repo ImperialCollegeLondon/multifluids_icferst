@@ -2061,7 +2061,7 @@ end subroutine finalise_multistate
 !>@param  adapt_mesh_in_FPI, first_time_step
 !>@param  Accum_Courant, Courant_tol, Current_Courant
 !>@param  calculate_mass_delta  1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
-subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
+subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, order, calculate_mass_delta, &
     adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Current_Courant, first_time_step)
     Implicit none
@@ -2070,7 +2070,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     real, dimension(:,:,:), allocatable, intent(inout) :: reference_field
     real, intent(in) :: old_acctim
     logical, intent(inout) :: Repeat_time_step, ExitNonLinearLoop
-    integer, intent(inout) :: its
+    integer, intent(inout) :: its, itime
     logical, intent(in) :: nonLinearAdaptTs
     integer, intent(in) :: order
     logical, optional, intent(in) :: adapt_mesh_in_FPI, first_time_step
@@ -2093,8 +2093,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     real, dimension(:,:), pointer :: phasevolumefraction
     type(tensor_field), pointer :: temperature, Concentration, enthalpy, tracer_field
     real, dimension(:,:,:), pointer :: velocity
-    character (len = OPTION_PATH_LEN) :: output_message =''
-    character (len = OPTION_PATH_LEN) :: temp_string =''
+    character (len = PYTHON_FUNC_LEN) :: output_message =''
+    character (len = OPTION_PATH_LEN) :: temp_string ='', temp_string2 ='', sitime ='', snits =''
     character( len = option_path_len ) :: option_name
     !Variables for automatic non-linear iterations
     real, save :: dt_by_user = -1
@@ -2388,7 +2388,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
            ! end if
 
             !generate output message
-            write(temp_string, '(a, i0, a, 1PE10.3, a, 1PE10.3)' ) "Iterations: ", nonlinear_its, " | Pressure:", inf_norm_pres, " | Mass check:", max_calculate_mass_delta
+            ! write(temp_string, '(a, i0, a, 1PE10.3, a, 1PE10.3)' ) "Iterations: ", nonlinear_its, " | Pressure:", inf_norm_pres, " | Mass check:", max_calculate_mass_delta
             output_message = trim(temp_string); temp_string = ''
 ts_ref_val = 0d0;
             if (is_porous_media) then
@@ -2396,26 +2396,64 @@ ts_ref_val = 0d0;
                 case (2)
                     write(temp_string, '(a, 1PE10.3,a,i0)' ) "| L_inf:", inf_norm_val
                 case default
-                    if (abs(inf_norm_val) > 1e-30) then
-                        write(temp_string, '(a, 1PE10.3)' ) "| Saturation:", inf_norm_val
-                        output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                  output_message = ''; temp_string = ''
+                  ! Print header for the output
+                  if ((itime == 1 .or. mod(itime,15) == 0)) then
+                    write(temp_string ,'(a)') "  Step|   nits|   Time[s]|   Time[d]|   Pres[-]|   Mass[-]|    Sat[-]|"
+                    write(temp_string2,'(a)') "------|-------|----------|----------|----------|----------|----------|"
+                    if (abs(inf_norm_temp)   > 1e-30) then 
+                      write(temp_string,'(a)') "    Temp[-]|"
+                      write(temp_string2,'(a)') "----------|"
                     end if
-                    if (abs(ts_ref_val) > 1e-30) then
-                        write(temp_string, '(a, 1PE10.3)' ) "| Saturation(Rel L2)::", ts_ref_val
-                        output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                    if (abs(inf_norm_conc)   > 1e-30) then 
+                      write(temp_string,'(a)') "    Trac[-]|"
+                      write(temp_string2,'(a)') "----------|"
                     end if
-                    if (abs(inf_norm_temp) > 1e-30) then
-                        write(temp_string, '(a, 1PE10.3)' ) "| Temperature: ",inf_norm_temp
-                        output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                    if (abs(Tracers_ref_val) > 1e-30) then 
+                      write(temp_string,'(a)') "   PTrac[-]|"
+                      write(temp_string2,'(a)') "----------|"
                     end if
-                    if (abs(inf_norm_conc) > 1e-30) then
-                        write(temp_string, '(a, 1PE10.3)' ) "| Tracer: ", inf_norm_conc
-                        output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
-                    end if
-                    if (abs(Tracers_ref_val) > 1e-30) then
-                        write(temp_string, '(a, 1PE10.3)' ) "| PassiveTracers/Species:",Tracers_ref_val
-                        output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
-                    end if
+                    write(output_message,*)  trim(temp_string)//ACHAR(10)//"  "//trim(temp_string2)//ACHAR(10)
+                    ! print*,trim(temp_string)
+                    ! print*,trim(temp_string2)
+                    temp_string = ''; temp_string2 = ' '
+                  end if
+
+                  write(sitime,'(I6)') itime
+                  write(snits ,'(I6)') nonlinear_its
+
+                  write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| " //printPretty(acctim) // "| " // printPretty(acctim/86400.) // "| " // &
+                       printPretty(inf_norm_pres) // "| " // printPretty(max_calculate_mass_delta) // "| " // &
+                       printPretty(inf_norm_val) // "| "
+                  if (abs(inf_norm_temp)   > 1e-30) temp_string = trim(temp_string) // printPretty(inf_norm_temp)   // "| "
+                  if (abs(inf_norm_conc)   > 1e-30) temp_string = trim(temp_string) // printPretty(inf_norm_conc)   // "| "
+                  if (abs(Tracers_ref_val) > 1e-30) temp_string = trim(temp_string) // printPretty(Tracers_ref_val) // "| "
+                  if ((itime == 1 .or. mod(itime,15) == 0)) then 
+                    output_message = trim(output_message) // " "//trim(temp_string)
+                  else 
+                    output_message = trim(output_message) // trim(temp_string)
+                  end if
+                  temp_string = ''
+                    ! if (abs(inf_norm_val) > 1e-30) then
+                    !     write(temp_string, '(a, a)' ) "| Saturation: ", printPretty(inf_norm_val)
+                    !     output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                    ! end if
+                    ! if (abs(ts_ref_val) > 1e-30) then
+                    !     write(temp_string, '(a, a)' ) "| Saturation(Rel L2): ", printPretty(ts_ref_val)
+                    !     output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                    ! end if
+                    ! if (abs(inf_norm_temp) > 1e-30) then
+                    !     write(temp_string, '(a, a)' ) "| Temperature: ",printPretty(inf_norm_temp)
+                    !     output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                    ! end if
+                    ! if (abs(inf_norm_conc) > 1e-30) then
+                    !     write(temp_string, '(a, a)' ) "| Tracer: ", printPretty(inf_norm_conc)
+                    !     output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                    ! end if
+                    ! if (abs(Tracers_ref_val) > 1e-30) then
+                    !     write(temp_string, '(a, a)' ) "| PassiveTracers/Species: ", printPretty(Tracers_ref_val)
+                    !     output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
+                    ! end if
                 end select
             else
                 write(temp_string, '(a, 1PE10.3,a,i0)' ) "| L_inf:", inf_norm_val
@@ -3861,5 +3899,15 @@ end subroutine get_DarcyVelocity
         end function avg_value_for_BC
 
       end subroutine Impose_connected_BCs
+
+function printPretty(val) result(eng_format)
+    implicit none
+    real, intent(in) :: val
+    !Local variables
+    character(len=9) :: eng_format
+
+    write(eng_format,'(1PE8.2)') val
+
+end function printPretty
 
 end module Copy_Outof_State
