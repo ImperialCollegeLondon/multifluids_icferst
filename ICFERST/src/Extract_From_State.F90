@@ -2094,7 +2094,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
     type(tensor_field), pointer :: temperature, Concentration, enthalpy, tracer_field
     real, dimension(:,:,:), pointer :: velocity
     character (len = PYTHON_FUNC_LEN) :: output_message =''
-    character (len = OPTION_PATH_LEN) :: temp_string ='', temp_string2 ='', sitime ='', snits =''
+    character (len = OPTION_PATH_LEN) :: temp_string ='', temp_string2 ='', temp_string3 ='',sitime ='', snits =''
     character( len = option_path_len ) :: option_name
     !Variables for automatic non-linear iterations
     real, save :: dt_by_user = -1
@@ -2399,20 +2399,23 @@ ts_ref_val = 0d0;
                   output_message = ''; temp_string = ''
                   ! Print header for the output
                   if ((itime == 1 .or. mod(itime,15) == 0)) then
-                    write(temp_string ,'(a)') "  Step|   nits|   Time[s]|   Time[d]|   Pres[-]|   Mass[-]|    Sat[-]|"
-                    write(temp_string2,'(a)') "------|-------|----------|----------|----------|----------|----------|"
+                    write(temp_string ,'(a)') "  Step|   nits|     dT[s]|   Time[s]|   Time[d]|   Pres[-]|   Mass[-]|    Sat[-]|"
+                    write(temp_string2,'(a)') "------|-------|----------|----------|----------|----------|----------|----------|"
                     if (abs(inf_norm_temp)   > 1e-30) then 
-                      write(temp_string,'(a)') "    Temp[-]|"
-                      write(temp_string2,'(a)') "----------|"
+                      write(temp_string3,'(a)') "    Temp[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+                      write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
                     if (abs(inf_norm_conc)   > 1e-30) then 
-                      write(temp_string,'(a)') "    Trac[-]|"
-                      write(temp_string2,'(a)') "----------|"
+                      write(temp_string3,'(a)') "    Trac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+                      write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
                     if (abs(Tracers_ref_val) > 1e-30) then 
-                      write(temp_string,'(a)') "   PTrac[-]|"
-                      write(temp_string2,'(a)') "----------|"
+                      write(temp_string3,'(a)') "   PTrac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+                      write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
+                    write(temp_string3,'(a)') " State|"      ; temp_string  = trim(temp_string ) // trim(temp_string3)
+                    write(temp_string3,'(a)') "------|"       ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+
                     write(output_message,*)  trim(temp_string)//ACHAR(10)//"  "//trim(temp_string2)//ACHAR(10)
                     ! print*,trim(temp_string)
                     ! print*,trim(temp_string2)
@@ -2422,12 +2425,17 @@ ts_ref_val = 0d0;
                   write(sitime,'(I6)') itime
                   write(snits ,'(I6)') nonlinear_its
 
-                  write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| " //printPretty(acctim) // "| " // printPretty(acctim/86400.) // "| " // &
+                  write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| " //printPretty(dt) // "| " //printPretty(acctim) // "| " // printPretty(acctim/86400.) // "| " // &
                        printPretty(inf_norm_pres) // "| " // printPretty(max_calculate_mass_delta) // "| " // &
                        printPretty(inf_norm_val) // "| "
                   if (abs(inf_norm_temp)   > 1e-30) temp_string = trim(temp_string) // printPretty(inf_norm_temp)   // "| "
                   if (abs(inf_norm_conc)   > 1e-30) temp_string = trim(temp_string) // printPretty(inf_norm_conc)   // "| "
                   if (abs(Tracers_ref_val) > 1e-30) temp_string = trim(temp_string) // printPretty(Tracers_ref_val) // "| "
+                  if (its >= NonLinearIteration)    then 
+                                                    temp_string = trim(temp_string) //"  Fail|"
+                  else                                                                 
+                                                    temp_string = trim(temp_string) //"    OK|"
+                  end if     
                   if ((itime == 1 .or. mod(itime,15) == 0)) then 
                     output_message = trim(output_message) // " "//trim(temp_string)
                   else 
@@ -2509,7 +2517,7 @@ ts_ref_val = 0d0;
                     Repeat_time_step = .true.
                     solver_not_converged = .false.
                     if (getprocno() == 1) then
-                        ewrite(show_FPI_conv,*) "WARNING: A solver failed to achieve convergence in the current non-linear iteration. Repeating time-level."
+                        ! ewrite(show_FPI_conv,*) "WARNING: A solver failed to achieve convergence in the current non-linear iteration. Repeating time-level."
                     end if
                 end if
                 !If maximum number of FPI reached, then repeat time-step
@@ -2519,9 +2527,9 @@ ts_ref_val = 0d0;
                 if (adjusted_ts_to_dump) then
                     dt = max(min(stored_dt, max_ts), 1d-8)
                     call set_option( '/timestepping/timestep', dt )
-                    if (getprocno() == 1)then
-                        ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step restored to:", dt/ conversor, trim(output_units)
-                    end if
+                    ! if (getprocno() == 1)then
+                    !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step restored to:", dt/ conversor, trim(output_units)
+                    ! end if
                     adjusted_ts_to_dump = .false.
                     return
                 end if
@@ -2544,9 +2552,9 @@ ts_ref_val = 0d0;
                         !Ensure that period_vtus or the final time are matched, controlled by max_ts
                         dt = max(min(dt, max_ts), min_ts)
                         call set_option( '/timestepping/timestep', dt )
-                        if (getprocno() == 1 .and. abs(auxR-dt)/dt > 1d-3)then
-                            ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step changed to:", dt/conversor, trim(output_units)
-                        end if
+                        ! if (getprocno() == 1 .and. abs(auxR-dt)/dt > 1d-3)then
+                        !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step changed to:", dt/conversor, trim(output_units)
+                        ! end if
                         ExitNonLinearLoop = .true.
                         return
                     end if
@@ -2561,9 +2569,9 @@ ts_ref_val = 0d0;
                     stored_dt = dt
                     !Ensure that period_vtus or the final time are matched, controlled by max_ts
                     dt = max(min(dt, max_ts), min_ts)
-                    if (getprocno() == 1) then
-                        ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step increased to:", dt/conversor, trim(output_units)
-                    end if
+                    ! if (getprocno() == 1) then
+                    !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step increased to:", dt/conversor, trim(output_units)
+                    ! end if
                     ExitNonLinearLoop = .true.
                     call set_option( '/timestepping/timestep', dt )
                     return
@@ -2582,9 +2590,9 @@ ts_ref_val = 0d0;
                         ExitNonLinearLoop = .true.
                         deallocate(reference_field)
                         !Tell the user the number of FPI and final convergence to help improving the parameters
-                        if (getprocno() == 1) then
-                            ewrite(show_FPI_conv,'(a, 1PE10.3, a)')  "Minimum time-step(", min_ts/conversor, trim(output_units),") reached, advancing time."
-                        end if
+                        ! if (getprocno() == 1) then
+                        !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)')  "Minimum time-step(", min_ts/conversor, trim(output_units),") reached, advancing time."
+                        ! end if
                         !If PID_controller then update the status
                         if (PID_controller) auxR = PID_time_controller(reset=.true.)
                         return
@@ -2602,9 +2610,9 @@ ts_ref_val = 0d0;
                     end if
                     call set_option( '/timestepping/timestep', dt )
                     stored_dt = dt
-                    if (getprocno() == 1) then
-                        ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt/conversor, trim(output_units)
-                    end if
+                    ! if (getprocno() == 1) then
+                    !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt/conversor, trim(output_units)
+                    ! end if
                     Repeat_time_step = .true.
                     ExitNonLinearLoop = .true.
                     return
@@ -2619,7 +2627,7 @@ ts_ref_val = 0d0;
                     call set_option( '/timestepping/timestep', dt )
                     if (abs(auxR-dt) > 1d-8) then
                         if (getprocno() == 1)then
-                            ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step modified to match final time/dump_period:", dt/conversor, trim(output_units)
+                            ! ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step modified to match final time/dump_period:", dt/conversor, trim(output_units)
                             adjusted_ts_to_dump = .true.
                         end if
                     end if
