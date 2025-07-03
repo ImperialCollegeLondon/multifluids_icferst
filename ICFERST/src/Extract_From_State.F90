@@ -2281,9 +2281,9 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
 
           !We decide a priory if we use days or seconds to show dt to the user
           call get_option( '/timestepping/timestep', dt )
-          conversor = 1.0; output_units =' seconds <dimensionless>'
+          conversor = 1.0; output_units ='s'
           if (dt > 86400.) then
-            conversor = 86400.; output_units =' days <dimensionless>'
+            conversor = 86400.; output_units ='d'
           end if
 
             !If Automatic_NonLinerIterations then we compare the variation of the a property from one time step to the next one
@@ -2398,9 +2398,9 @@ ts_ref_val = 0d0;
                 case default
                   output_message = ''; temp_string = ''
                   ! Print header for the output
-                  if ((itime == 1 .or. mod(itime,15) == 0)) then
-                    write(temp_string ,'(a)') "  Step|   nits|     dT[s]|   Time[s]|   Time[d]|   Pres[-]|   Mass[-]|    Sat[-]|"
-                    write(temp_string2,'(a)') "------|-------|----------|----------|----------|----------|----------|----------|"
+                  if ((itime == 1 .or. mod(itime,20) == 0)) then
+                    write(temp_string ,'(a)') "  Step|   nits|     dT["//trim(output_units)//"]|   Time["//trim(output_units)//"]|   Pres[-]|   Mass[-]|    Sat[-]|"
+                    write(temp_string2,'(a)') "------|-------|----------|----------|----------|----------|----------|"
                     if (abs(inf_norm_temp)   > 1e-30) then 
                       write(temp_string3,'(a)') "    Temp[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
@@ -2414,7 +2414,9 @@ ts_ref_val = 0d0;
                       write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
                     write(temp_string3,'(a)') " State|"      ; temp_string  = trim(temp_string ) // trim(temp_string3)
-                    write(temp_string3,'(a)') "------|"       ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+                    write(temp_string3,'(a)') "------|"      ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+                    write(temp_string3,'(a)') "nWarng|"      ; temp_string  = trim(temp_string ) // trim(temp_string3)
+                    write(temp_string3,'(a)') "------|"      ; temp_string2 = trim(temp_string2) // trim(temp_string3)
 
                     write(output_message,*)  trim(temp_string)//ACHAR(10)//"  "//trim(temp_string2)//ACHAR(10)
                     ! print*,trim(temp_string)
@@ -2425,7 +2427,7 @@ ts_ref_val = 0d0;
                   write(sitime,'(I6)') itime
                   write(snits ,'(I6)') nonlinear_its
 
-                  write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| " //printPretty(dt) // "| " //printPretty(acctim) // "| " // printPretty(acctim/86400.) // "| " // &
+                  write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| " //printPretty(dt/conversor) // "| " // printPretty(acctim/conversor) // "| " // &
                        printPretty(inf_norm_pres) // "| " // printPretty(max_calculate_mass_delta) // "| " // &
                        printPretty(inf_norm_val) // "| "
                   if (abs(inf_norm_temp)   > 1e-30) temp_string = trim(temp_string) // printPretty(inf_norm_temp)   // "| "
@@ -2435,8 +2437,10 @@ ts_ref_val = 0d0;
                                                     temp_string = trim(temp_string) //"  Fail|"
                   else                                                                 
                                                     temp_string = trim(temp_string) //"    OK|"
-                  end if     
-                  if ((itime == 1 .or. mod(itime,15) == 0)) then 
+                  end if   
+                  write(snits,'(I6)') nDMOWarnings !re=use string variable snits
+                  temp_string = trim(temp_string) // snits; temp_string = trim(temp_string) // "| "  
+                  if ((itime == 1 .or. mod(itime,20) == 0)) then 
                     output_message = trim(output_message) // " "//trim(temp_string)
                   else 
                     output_message = trim(output_message) // trim(temp_string)
