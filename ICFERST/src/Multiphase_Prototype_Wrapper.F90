@@ -19,9 +19,8 @@
 
 subroutine multiphase_prototype_wrapper() bind(C)
 
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"    
   use petsc
-#endif
 
     use fldebug
     use elements

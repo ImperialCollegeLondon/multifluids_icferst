@@ -187,7 +187,8 @@ bin/icferst: fluidity_library
 	@echo "    MKDIR ICFERST"
 	@mkdir -p bin
 	@echo "    LD icferst"
-	@$(EVAL) $(LINKER) -o bin/icferst ICFERST/main.o ./ICFERST/lib/libmphase.a $(CXXFLAGS) $(LIBS)
+	@$(EVAL) mpif90 -o bin/icferst ICFERST/main.o ./ICFERST/lib/libmphase.a $(LDFLAGS) $(LIBS)
+
 	@cd ../
 
 bin/form_pod_basis: fluidity_library reduced_modelling/Form_Pod_Basis_Main.F90

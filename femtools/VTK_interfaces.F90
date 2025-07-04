@@ -94,12 +94,13 @@ module vtk_interfaces
      end subroutine vtk_get_sizes
   end interface
   
-  interface vtkwriteghostlevels
-     subroutine vtkwriteghostlevels(ghost_levels)
-       implicit none
-       integer ghost_levels(*)
-     end subroutine vtkwriteghostlevels
-  end interface
+  interface
+  subroutine vtkwriteghostlevels(ghost_levels) bind(C, name="vtkwriteghostlevels")
+    use iso_c_binding
+    implicit none
+    integer(c_int) :: ghost_levels(*)
+  end subroutine vtkwriteghostlevels
+end interface
 
 contains
     
@@ -565,7 +566,7 @@ contains
          if(.not. element_owned(model, i)) ghost_levels(i) = 1
        end do
        
-       call vtkWriteGhostLevels(ghost_levels)
+       call vtkwriteghostlevels(ghost_levels)
     end if
 
     

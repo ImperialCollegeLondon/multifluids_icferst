@@ -26,6 +26,34 @@
    USA
 */
 
+/* Copyright (C) 2004- Imperial College London and others.
+   
+   Please see the AUTHORS file in the main source directory for a full
+   list of copyright holders.
+   
+   Adrian Umpleby
+   Applied Modelling and Computation Group
+   Department of Earth Science and Engineering
+   Imperial College London
+   
+   adrian@imperial.ac.uk
+   
+   This library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License.
+   
+   This library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+   
+   You should have received a copy of the GNU Lesser General Public
+   License along with this library; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
+   USA
+*/
+
 #include "confdefs.h"
 
 #ifdef DOUBLEP
@@ -43,10 +71,15 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <vtk.h>
+#include <vtkDataSetReader.h>
+#include <vtkXMLUnstructuredGridReader.h>
+#include <vtkXMLPUnstructuredGridReader.h>
+#include <vtkUnstructuredGrid.h>
+#include <vtkCellData.h>
+#include <vtkPointData.h>
+#include <vtkIdList.h>
 
 #include "vtkmeshio.h"
-
 
 using namespace std;
 
@@ -84,13 +117,13 @@ vtkIdType *InitFront(vtkIdType n)
 }
 
 char FaceCutType(vtkUnstructuredGrid *dataSet, int *hexcut,
-                        vtkIdType i,vtkIdList *fcpts)
+                        vtkIdType i, vtkIdList *fcpts)
 {
     vtkIdType npts;
-    vtkIdType *pts;
+    const vtkIdType *pts;
     int locpos[4];
     int fcid=0,maxpos=0,d1=0,d2=0;
-    dataSet->GetCellPoints(i,npts,pts);
+    dataSet->GetCellPoints(i, npts, pts);
     assert(npts==8);
     for(int j=0;j<4;j++) {
       locpos[j]=999;
@@ -168,12 +201,6 @@ char FaceCutType(vtkUnstructuredGrid *dataSet, int *hexcut,
     } else
       fcid = fcid+100;
     if( fcid>5 || hexcut[i*6+fcid]>2 ) {
-      //if(fcid>5)
-        //printf("Can't find face for element ",i," ",fcid,"\n";)
-      //else
-        //printf("EH?? ",i," ",fcid," ",(int)hexcut[i*6+fcid},"\n";
-//      cerr<<pts[0]<<" "<<pts[1]<<" "<<pts[2]<<" "<<pts[3]<<" "<<pts[4]<<" "<<pts[5]<<" "<<pts[6]<<" "<<pts[7]<<endl;
-//      cerr<<fcpts->GetId(0)<<" "<<fcpts->GetId(1)<<" "<<fcpts->GetId(2)<<" "<<fcpts->GetId(3)<<endl;
       return 0;
     }
     assert(hexcut[i*6+fcid]>0);
@@ -182,10 +209,6 @@ char FaceCutType(vtkUnstructuredGrid *dataSet, int *hexcut,
     if(locpos[0]==d2 && locpos[2]==d1) return 1;
     if(locpos[1]==d1 && locpos[3]==d2) return 2;
     if(locpos[1]==d2 && locpos[3]==d1) return 2;
-//    cerr<<"Failed FaceCutType for element "<<i<<" "<<fcid<<" "<<d1<<" "<<d2<<endl;
-//    cerr<<pts[0]<<" "<<pts[1]<<" "<<pts[2]<<" "<<pts[3]<<" "<<pts[4]<<" "<<pts[5]<<" "<<pts[6]<<" "<<pts[7]<<endl;
-//    cerr<<fcpts->GetId(0)<<" "<<fcpts->GetId(1)<<" "<<fcpts->GetId(2)<<" "<<fcpts->GetId(3)<<endl;
-//    cerr<<locpos[0]<<" "<<locpos[1]<<" "<<locpos[2]<<" "<<locpos[3]<<endl;
     return 0;
 }
 
@@ -222,13 +245,6 @@ void CheckConnected(vtkUnstructuredGrid *dataSet, int *hexcut, const int kk,
       if( f & 2 ) {
       dataSet->GetCellNeighbors(i,fc2pts,nghbrs2);
       n2 = nghbrs2->GetNumberOfIds();
-      //if(n1+n2<=0) {
-      //  cerr<<"No neighbours for element "<<i<<" "<<k<<endl;
-      //  cerr<<fc1pts->GetId(0)<<" "<<fc1pts->GetId(1)<<" "<<fc1pts->GetId(2)<<" "<<fc1pts->GetId(3)<<endl;
-      //  cerr<<fc2pts->GetId(0)<<" "<<fc2pts->GetId(1)<<" "<<fc2pts->GetId(2)<<" "<<fc2pts->GetId(3)<<endl;
-      //  cerr<<fc1pts->GetNumberOfIds()<<" "<<fc2pts->GetNumberOfIds()<<endl;
-      //}
-      //assert(n1+n2>0);
       assert(n2<2);
       }
 
@@ -251,11 +267,6 @@ void CheckConnected(vtkUnstructuredGrid *dataSet, int *hexcut, const int kk,
           hexcut[i*6+k] = hexcut[i*6+k+1];
       } else if( hexcut[i*6+k+1]==0 )
         hexcut[i*6+k+1] = hexcut[i*6+k];
-      else if( hexcut[i*6+k]!=hexcut[i*6+k+1] ) {
-        //printf("OOPS! ",i," ",k," ",(int)hexcut[i*6+k]," ",(int)hexcut[i*6+k+1],"\n";
-        //cerr<<fc1pts->GetId(0)<<" "<<fc1pts->GetId(1)<<" "<<fc1pts->GetId(2)<<" "<<fc1pts->GetId(3)<<endl;
-        //cerr<<fc2pts->GetId(0)<<" "<<fc2pts->GetId(1)<<" "<<fc2pts->GetId(2)<<" "<<fc2pts->GetId(3)<<endl;
-      }
 }
 
 REAL CheckTetVol(vtkIdType p1, vtkIdType p2, vtkIdType p3, vtkIdType p4,
@@ -324,25 +335,17 @@ REAL CheckTetVol(vtkIdType p1, vtkIdType p2, vtkIdType p3, vtkIdType p4,
     
     dmin = dmin*sqrt(dmin)/50000;
 
-    // volume = | r_a r_b r_c | / 6
     vol = (a1*(b2*c3 - b3*c2) - b1*(a2*c3 - a3*c2) + c1*(a2*b3 - a3*b2))/6.0;
     
     if(fabs(vol)<=fabs(dmin)) {
       cerr<<"Found very small volume "<<vol<<" "<<d10<<" "<<d20<<" "<<d30<<" "<<d21<<" "<<d31<<" "<<d32<<" "<<dmin<<"\n";
-      //printf("Found very small elem ",vol," ",d10," ",d20," ",d30," ",d21," ",d31," ",d32," ",dmin,"\n";
-      //return 0.0;
     }
-    //if(vol<-dmin) {
-      //cerr<<"Found inside-out elem "<<vol<<" "<<d10<<" "<<d20<<" "<<d30<<" "<<d21<<" "<<d31<<" "<<d32<<" "<<dmin<<"\n";
-      //return vol;
-    //}
-    //cerr<<"Found fine elem "<<vol<<" "<<d10<<" "<<d20<<" "<<d30<<" "<<d21<<" "<<d31<<" "<<d32<<" "<<dmin<<"\n";
   }
 
   return (REAL) vol;
 }
 
-int AddOneLine(vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
+int AddOneLine(const vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
                REAL *X, REAL *Y, REAL *Z )
 {
   if( ENLBas != NULL && ENList != NULL ) {
@@ -354,9 +357,8 @@ int AddOneLine(vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
   return cellcnt+1;
 }
 
-int AddOneAnything(vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
+int AddOneAnything(const vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
                REAL *X, REAL *Y, REAL *Z, int nloc)
-// general version only works for elements that don't need reordering
 {
   if( ENLBas != NULL && ENList != NULL ) {
     int ibas = ENLBas[cellcnt];
@@ -367,7 +369,7 @@ int AddOneAnything(vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
   return cellcnt+1;
 }
 
-int AddOneTri(vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
+int AddOneTri(const vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
               REAL *X, REAL *Y, REAL *Z )
 {
   if( ENLBas != NULL && ENList != NULL ) {
@@ -379,12 +381,11 @@ int AddOneTri(vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
   return cellcnt+1;
 }
 
-int AddOneQuad(vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
+int AddOneQuad(const vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
                REAL *X, REAL *Y, REAL *Z )
 {
   if( ENLBas != NULL && ENList != NULL ) {
     int ibas = ENLBas[cellcnt];
-    // FIXME!! -is this node ordering correct?
     ENList[ibas  ] = pts[0]+1;
     ENList[ibas+1] = pts[1]+1;
     ENList[ibas+2] = pts[3]+1;
@@ -394,12 +395,11 @@ int AddOneQuad(vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
   return cellcnt+1;
 }
 
-int AddOneHexa(vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
+int AddOneHexa(const vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
                REAL *X, REAL *Y, REAL *Z )
 {
   if( ENLBas != NULL && ENList != NULL ) {
     int ibas = ENLBas[cellcnt];
-    // FIXME!! -is this node ordering correct?
     for(int i=0; i<8; i++)
       ENList[ibas+i] = pts[i]+1;
     ENList[ibas+2] = pts[3]+1;
@@ -411,12 +411,11 @@ int AddOneHexa(vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
   return cellcnt+1;
 }
 
-int AddOneWedge(vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
+int AddOneWedge(const vtkIdType *pts, int cellcnt, int *ENLBas, int *ENList,
                 REAL *X, REAL *Y, REAL *Z )
 {
   if( ENLBas != NULL && ENList != NULL ) {
     int ibas = ENLBas[cellcnt];
-    // FIXME!! -the node ordering is probably not correct
     for(int i=0; i<6; i++)
       ENList[ibas+i] = pts[i]+1;
     ENLBas[cellcnt+1] = ibas + 6;
@@ -431,7 +430,6 @@ int AddOneTetra(vtkIdType p1, vtkIdType p2, vtkIdType p3, vtkIdType p4,
   static REAL minvol=0.0, maxvol=0.0;
   REAL ort=0.0;
 
-  // special case to return inside-out count and set counter to zero
   if( p1==0 && p2==0 && p3==0 && p4==0 && tetcnt==0 ) {
     ort = (REAL) iocnt;
     iocnt = 0;
@@ -487,7 +485,6 @@ int readVTKFile(const char * const filename,
   vtkXMLUnstructuredGridReader *read2=NULL;
   vtkXMLPUnstructuredGridReader *read3=NULL;
   vtkUnstructuredGrid *dataSet=NULL;
-  //vtkDataSet *dataSet=NULL;
   Field_Info *lastfld=NULL;
   int addall = 0, filetype = -1;
   char typnam[30];
@@ -509,7 +506,6 @@ int readVTKFile(const char * const filename,
   const char * const ext = filename + strlen(filename) - 4;
 
   if( strncmp(ext,".vtk",4)==0 ) {
-    //printf("Reading from VTK file: %s\n",filename);
     read1 = vtkDataSetReader::New();
     if( read1==NULL ) {
       cerr<<"ERROR: Failed to read!\n";
@@ -545,34 +541,30 @@ int readVTKFile(const char * const filename,
           <<filetype<<" must be vktUnstructuredGrid\n";
       return -1;
     }
-    if( strlen(typnam) != 3 ) { // length 3 was used above for VTK_UNSTRUCTURED_GRID
+    if( strlen(typnam) != 3 ) {
       cerr<<"ERROR: Cannot read file containing "<<typnam<<" must be vktUnstructuredGrid\n";
       return -1;
     }else
       dataSet = read1->GetUnstructuredGridOutput();
       read1->Update();
   } else if( strncmp(ext,".vtu",4)==0 ) {
-    //printf("Reading from VTK XML file: %s\n",filename);
     read2 = vtkXMLUnstructuredGridReader::New();
     if( read2==NULL ) {
       cerr<<"ERROR: Failed to read!\n";
       return -1;
     }
     read2->SetFileName(filename);
-    //reader->SetScalarsName("temp");
     dataSet = read2->GetOutput();
     read2->Update();
   }else{
     const char * const pext = filename + strlen(filename) - 5;
     if( strncmp(pext,".pvtu",5)==0 ) {
-      //printf("Reading from VTK XML parallel file: %s\n",filename);
       read3 = vtkXMLPUnstructuredGridReader::New();
       if( read3==NULL ) {
         cerr<<"ERROR: Failed to read!\n";
         return -1;
       }
       read3->SetFileName(filename);
-      //reader->SetScalarsName("temp");
       dataSet = read3->GetOutput();
       read3->Update();
     }else{
@@ -610,23 +602,20 @@ int readVTKFile(const char * const filename,
   }
   
   vtkIdType ntets = ncells;
-  int numfld=0, numprops=0;
   
   {
     vtkIdType npts;
-    vtkIdType *pts;
+    const vtkIdType *pts;
     dataSet->GetCellPoints(0,npts,pts);
     if(npts==8 && onlytets!=0) ntets = 6*ncells;
   }
 
-
   vtkPointData *flds = dataSet->GetPointData();
-//  cerr<<*flds<<endl;
-//  cerr<<";) #arrays = "<<flds->GetNumberOfTuples()<<endl;
   vtkDataArray* T = flds->GetArray(0);
 
+  int numfld=0, numprops=0;
+  
   if( T == NULL ) {
-//    cerr<<"ERROR: No field arrays in VTK file\n";
     numfld=0;
   } else {
     int i=0;
@@ -654,17 +643,6 @@ int readVTKFile(const char * const filename,
               }
               if(newfld!=NULL) newfld = newfld->next;
             }
-            if(gotfld==NULL)
-              //printf(" (not in user's field list)\n");
-              0;
-            else if( gotfld->interperr>0.0 )
-              //printf("\n");
-              0;
-              //cerr<<" (adapt err = "<<gotfld->interperr<<")\n";
-            else if( gotfld->interperr==0.0 )
-              //printf("\n");
-              0;
-              //cerr<<" (only for output)\n";
           } else {
             Field_Info *newfld=(Field_Info *)malloc(sizeof(Field_Info));
             assert(newfld!=NULL);
@@ -674,7 +652,6 @@ int readVTKFile(const char * const filename,
             newfld->ncomponents = k;
             newfld->next = NULL;
             newfld->identifier = i;
-            //printf("\n");
             lastfld->next = newfld;
             lastfld = newfld;
             numfld += k;
@@ -684,31 +661,21 @@ int readVTKFile(const char * const filename,
       i++;
     }
   }
-  //printf("Total no. of field components: %d\n",numfld);
 
   vtkCellData *props = dataSet->GetCellData();
-//  cerr<<*flds<<endl;
-//  cerr<<";) #arrays = "<<flds->GetNumberOfTuples()<<endl;
   vtkDataArray* P = props->GetArray(0);
 
   if( P == NULL ) {
-    //printf("--- No cell property arrays in VTK file\n");
     numprops=0;
   } else {
     int i=0;
     while( P != NULL ) {
-      //printf("Trying to get cell property array %d...",i);
       P = props->GetArray(i);
       if( P == NULL )
-        //printf("does not exist\n");
         0;
       else {
         int k=P->GetNumberOfComponents();
-        //cerr<<"  type: "<<T->GetDataType();
-        //printf("  name: '%s'",P->GetName());
-        //printf("  components: %d",k);
         if(P->GetName()==NULL) {
-          //printf("\n");
           0;
         } else {
           unsigned int l = strlen(P->GetName());
@@ -726,17 +693,6 @@ int readVTKFile(const char * const filename,
               }
               if(newfld!=NULL) newfld = newfld->next;
             }
-            if(gotfld==NULL)
-              //printf(" (not in user's field list)\n");
-              0;
-            else if( gotfld->interperr>0.0 )
-              //printf("\n");
-              0;
-              //cerr<<" (adapt err = "<<gotfld->interperr<<")\n";
-            else if( gotfld->interperr==0.0 )
-              //printf("\n");
-              0;
-              //cerr<<" (only for output)\n";
           } else {
             Field_Info *newfld=(Field_Info *)malloc(sizeof(Field_Info));
             assert(newfld!=NULL);
@@ -746,7 +702,6 @@ int readVTKFile(const char * const filename,
             newfld->ncomponents = k;
             newfld->next = NULL;
             newfld->identifier = i;
-            //printf("\n");
             lastfld->next = newfld;
             lastfld = newfld;
             numprops += k;
@@ -756,7 +711,6 @@ int readVTKFile(const char * const filename,
       i++;
     }
   }
-//  printf("Total no. of cell property components: %d\n",numprops);
   *NumProps = numprops;
 
   // Get rid of unused nodes and find dimension of problem
@@ -766,25 +720,20 @@ int readVTKFile(const char * const filename,
     int *used=(int *) malloc(nnodes*sizeof(int));
     assert(used!=NULL);
     if( *ndim == 0 ) {
-//      printf("1D element types: LINE=%d\n",VTK_LINE);
-//      printf("2D element types: TRI=%d  QUAD=%d\n",VTK_TRIANGLE,VTK_QUAD);
-//      printf("3D element types: TET=%d  WEDGE=%d  HEX=%d\n",VTK_TETRA,VTK_WEDGE,VTK_HEXAHEDRON);
       for(vtkIdType i=0; i<ncells; i++) {
         vtkIdType npts=0, ct;
-        vtkIdType *pts;
+        const vtkIdType *pts;
         ct = dataSet->GetCellType(i);
         dataSet->GetCellPoints(i,npts,pts);
         if( npts == 2 ) {
           if( curdim < 1 ) curdim = 1;
           if( ct != VTK_LINE ) {
             cerr<<"INCONSISTENT: Element "<<i<<" type: "<<ct<<" nodes: "<<npts<<endl;
-            //dataSet->SetCellType(i,VTK_LINE);
           }
         } else if( npts == 3 ) {
           if( curdim < 2 ) curdim = 2;
           if( ct != VTK_TRIANGLE ) {
             cerr<<"INCONSISTENT: Element "<<i<<" type: "<<ct<<" nodes: "<<npts<<endl;
-            //dataSet->SetCellType(i,VTK_TRIANGLE);
           }
         } else if( npts == 4 ) {
           if( curdim < 2 ) {
@@ -797,12 +746,10 @@ int readVTKFile(const char * const filename,
           } else if( curdim == 2 ) {
             if( ct != VTK_QUAD ) {
               cerr<<"INCONSISTENT: Element "<<i<<" type: "<<ct<<" nodes: "<<npts<<endl;
-             // dataSet->SetCellType(i,VTK_QUAD);
             }
           } else if( curdim == 3 ) {
             if( ct != VTK_TETRA ) {
               cerr<<"INCONSISTENT: Element "<<i<<" type: "<<ct<<" nodes: "<<npts<<endl;
-              //dataSet->SetCellType(i,VTK_TETRA);
             }
           }
         } else if( npts == 6 ) {
@@ -812,7 +759,6 @@ int readVTKFile(const char * const filename,
             curdim = 2;
           } else {
             cerr<<"INCONSISTENT: Element "<<i<<" type: "<<ct<<" nodes: "<<npts<<endl;
-            //dataSet->SetCellType(i,VTK_WEDGE);
           }
         } else if( npts == 8 ) {
           curdim = 3;
@@ -841,16 +787,14 @@ int readVTKFile(const char * const filename,
         }
       }
       *ndim = curdim;
-//      printf("Found dimension of mesh: %dd\n",curdim);
     } else {
       curdim = *ndim;
-//      printf("Only registering %dd cells\n",curdim);
     }
     for(int i=0; i<nnodes; i++)
       used[i] = 0;
     for(vtkIdType i=0; i<ncells; i++) {
       vtkIdType npts=0, ct;
-      vtkIdType *pts;
+      const vtkIdType *pts;
       ct = dataSet->GetCellType(i);
       dataSet->GetCellPoints(i,npts,pts);
       if( curdim == 1 ) {
@@ -864,14 +808,12 @@ int readVTKFile(const char * const filename,
         cellcnt++;
         for(vtkIdType j=0; j<npts; j++) {
           if(pts[j]<0 || pts[j]>=nnodes) {
-            //cerr<<"Cell "<<i<<" has out-of-range node ("<<pts[j]<<")!\n";
             assert(pts[j]>=0 && pts[j]<nnodes);
           }
           used[pts[j]]++;
         }
       }
     }
-//    printf("Found %d %dd cells\n",cellcnt,curdim);
     // create counter for renumbering the nodes
     nodcnt=0;
     for(int i=0; i<nnodes; i++) {
@@ -882,15 +824,16 @@ int readVTKFile(const char * const filename,
     }
 
     if(nodcnt<nnodes) {
-//      printf("Found %d unused nodes - removing...\n",nnodes-nodcnt);
       // renumber the cell data
       for(vtkIdType i=0; i<ncells; i++) {
         vtkIdType npts;
-        vtkIdType *pts;
+        const vtkIdType *pts;
         dataSet->GetCellPoints(i,npts,pts);
+        vtkIdType *newpts = new vtkIdType[npts];
         for(vtkIdType j=0; j<npts; j++)
-          pts[j] = used[pts[j]]-1;
-        dataSet->ReplaceCell(i,npts,pts);
+          newpts[j] = used[pts[j]]-1;
+        dataSet->ReplaceCell(i,npts,newpts);
+        delete[] newpts;
       }
     }
     {
@@ -913,10 +856,7 @@ int readVTKFile(const char * const filename,
       // extract the nodes, skipping unused ones
       for(vtkIdType i=0; i<nnodes; i++) {
         if(used[i]>0) {
-// what VTK uses is independent of our choice of single or double for REAL when compiling
-// older VTK used to use float, but it's quite a while back, so we'll assume double now
           double x[3];
-//          float v=T->GetTuple1(i);
           dataSet->GetPoint(i,x);
           NODX[used[i]-1] =(REAL) x[0];
           NODY[used[i]-1] =(REAL) x[1];
@@ -990,18 +930,15 @@ int readVTKFile(const char * const filename,
 
   *NumNodes = nnodes;
 
-//  printf("Nodes in final mesh: %d\n",nnodes);
-
   if( ntets==ncells || *ndim!=3 ) {
     // Extract tets
     int *ENLST = NULL, *ENLBS = NULL;
     int tetcnt = 0, szenls = 0, curdim = *ndim;
     // this zeros inside-out counter - what's returned may be rubbish
     int iocnt=AddOneTetra(0,0,0,0,0,NULL,NULL,*X,*Y,*Z);
-//    printf("Counting allowable %dd cells...\n",*ndim);
     for(vtkIdType i=0; i<ncells; i++){
       vtkIdType npts;
-      vtkIdType *pts;
+      const vtkIdType *pts;
       dataSet->GetCellPoints(i,npts,pts);
       if( curdim == 3 ) {
         if( npts == 4 ) {
@@ -1029,7 +966,6 @@ int readVTKFile(const char * const filename,
       }
       szenls += npts;
     }
-//    printf("Ended up with %d cells (was %d)\n",tetcnt,ntets);
     ntets = tetcnt;
     *NumElms = ntets;
     if( onlyinfo == 0 ) {
@@ -1047,11 +983,10 @@ int readVTKFile(const char * const filename,
       tetcnt = 0;
       // this zeros inside-out counter, but also returns real inside-out count
       iocnt=AddOneTetra(0,0,0,0,0,NULL,NULL,*X,*Y,*Z);
-//      printf("Found %d inside-out elements\n",iocnt);
       ENLBS[0] = 0;
       for(vtkIdType i=0; i<ncells; i++){
         vtkIdType npts;
-        vtkIdType *pts;
+        const vtkIdType *pts;
         dataSet->GetCellPoints(i,npts,pts);
         if( curdim == 3 ) {
           if( npts == 4 ) {
@@ -1077,39 +1012,16 @@ int readVTKFile(const char * const filename,
             tetcnt=AddOneLine(pts, tetcnt, ENLBS, ENLST, *X, *Y, *Z );
           }
         }
-        //if(i>ncells-10) cerr<<"  tried to add "<<i<<" "<<tetcnt<<"\n";
       }
       // this zeros inside-out counter, but also returns real inside-out count
       iocnt=AddOneTetra(0,0,0,0,0,NULL,NULL,*X,*Y,*Z);
-      //cerr<<"Found "<<iocnt<<" inside-out elements\n";
       *ENList = &(ENLST[0]);
       *ENLBas = &(ENLBS[0]);
-/*      printf("First 10 elements:\n");
-      for(int i=0; i<10; i++) {
-        int ibas = ENLBS[i];
-        int l = ENLBS[i+1];
-        printf("Nodes (%d to %d): ",ibas,l-1);
-        for( int j=ibas; j<l; j++ )
-          printf("%d ",ENLST[j]);
-        printf("\n");
-      }
-      printf("Last 10 elements:\n");
-      for(int i=tetcnt-10; i<tetcnt; i++) {
-        int ibas = ENLBS[i];
-        int l = ENLBS[i+1];
-        printf("Nodes (%d to %d): ",ibas,l-1);
-        for( int j=ibas; j<l; j++ )
-          printf("%d ",ENLST[j]);
-        printf("\n");
-      }*/
     }
     *szENLs = szenls;
   } else {
     // Extract hexes, converting to tets
-//    cerr<<"Hex mesh extraction not yet available\n";
-//    assert(ntets=ncells);
     int *ENLST = NULL, *ENLBS = NULL;
-    //int hexcut[ncells*6];
     int count[8];
     int val, tetcnt;
     int *hexcut = (int *) malloc(ncells*6*sizeof(int));
@@ -1119,7 +1031,6 @@ int readVTKFile(const char * const filename,
     vtkIdList *fc2pts=vtkIdList::New();
     fc1pts->SetNumberOfIds(4);
     fc2pts->SetNumberOfIds(4);
-//    printf("Extracting hex mesh and converting to %d tets...\n",ntets);
     int npass = 2;
     if( onlyinfo != 0 ) npass = 1;
     for(int pass=0; pass<npass; pass++) {
@@ -1135,12 +1046,10 @@ int readVTKFile(const char * const filename,
         hexcut[k*6] = 0;
       for(vtkIdType k=0; k<ncells; k++){
         vtkIdType npts;
-        vtkIdType *pts;
+        const vtkIdType *pts;
         vtkIdType i = NextFrontCell(front);
         dataSet->GetCellPoints(i,npts,pts);
         assert(npts==8);
-        //cerr<<"Checking element "<<i<<" ";
-        //cerr<<pts[0]<<" "<<pts[1]<<" "<<pts[2]<<" "<<pts[3]<<" "<<pts[4]<<" "<<pts[5]<<" "<<pts[6]<<" "<<pts[7]<<endl;
         // check faces 0123 and 4567
         fc1pts->SetId(0,pts[0]);
         fc1pts->SetId(1,pts[1]);
@@ -1250,7 +1159,6 @@ int readVTKFile(const char * const filename,
             tetcnt=AddOneTetra(pts[1], pts[5], pts[2], pts[3],tetcnt,ENLBS,ENLST,*X,*Y,*Z);
             tetcnt=AddOneTetra(pts[2], pts[5], pts[6], pts[3],tetcnt,ENLBS,ENLST,*X,*Y,*Z);
         } else {
-          //cerr<<"val failed! "<<i<<" "<<val<<endl;
           assert(val==-999);
         }
         count[val]++;
@@ -1259,9 +1167,6 @@ int readVTKFile(const char * const filename,
       // zeros inside-out counter, but also returns real inside-out count
       iocnt=AddOneTetra(0,0,0,0,0,NULL,NULL,*X,*Y,*Z);
       if( ENLST==NULL && onlyinfo == 0 ) {
-//        printf("Ended up with %d tets (was %d)\n",tetcnt,ntets);
-        //cerr<<"Stats: "<<count[0]<<" "<<count[2]<<" "<<count[1]<<" "<<count[3]<<" "<<count[4]<<" "<<count[5]<<" "<<count[6]<<" "<<count[7]<<endl;
-        //cerr<<"Found "<<iocnt<<" inside-out elements\n";
         if( *ENLBas == NULL )
           ENLBS = (int *) malloc((ntets+1)*sizeof(int));
         else
@@ -1275,7 +1180,6 @@ int readVTKFile(const char * const filename,
         assert(ENLST!=NULL);
         free(front);
         front = NULL;
-//        printf("Done first pass to find size - starting second pass...\n");
       }
     }
     free(hexcut);
@@ -1304,11 +1208,9 @@ int readVTKFile(const char * const filename,
     }
   }
 
-  //dataSet->Delete();
   if(read1) read1->Delete();
   if(read2) read2->Delete();
   if(read3) read3->Delete();
-  //if( read ) read->Delete();
 
   return 0;
 }
@@ -1322,28 +1224,21 @@ int fgetvtksizes(char *fortname, int *namelen,
   int *ENLBAS=NULL, *ENLIST=NULL, *SNLIST=NULL;
   REAL *X=NULL, *Y=NULL, *Z=NULL, *F=NULL, *P=NULL;
   
-  // the filename string passed down from Fortan needs terminating,
-  // so make a copy and fiddle with it (remember to free it)
   char *filename = (char *)malloc(*namelen+3);
   memcpy( filename, fortname, *namelen );
   filename[*namelen] = 0;
-//  printf("Terminated at %d: %s\n",*namelen,filename);
 
-  // we must create an empty Field_Info record for readVTKFile,
-  // so that it can append all the fields after it.
   Field_Info *fieldlst = (Field_Info *)malloc(sizeof(Field_Info));
   assert( fieldlst!=NULL );
   fieldlst->ncomponents = -1;
   fieldlst->next = NULL;
 
-  // read VTK file, placing required info into appropriate arrays
   status = readVTKFile( filename, NNOD, NELM, NFIELD, NPROP,
                         SZENLS, NDIM, fieldlst,
                         &X, &Y, &Z, &ENLBAS, &ENLIST, &F, &P, 2, 0 );
 
   free( filename );
 
-  // we remove the leading record (created before readVTKFile),
   if( fieldlst->ncomponents==-1 ) {
     Field_Info *newfld = fieldlst;
     fieldlst = newfld->next;
@@ -1352,12 +1247,10 @@ int fgetvtksizes(char *fortname, int *namelen,
   }
 
   if( status ) {
-    //fprintf(stderr,"*** fgetvtksizes: Got error %d from readVTKFile\n",status);
     return status;
   }
 
   *maxlen = 0;
-  // now check lengths of field names, and free the field info list
   while( fieldlst != NULL ) {
     Field_Info *newfld = fieldlst;
     fieldlst = newfld->next;
@@ -1385,20 +1278,15 @@ int freadvtkfile(char *fortname, int *namelen,
 {
   int status=0;
   
-  // the filename string passed down from Fortan needs terminating
-  // so make a copy and fiddle with it (remember to free it)
   char *filename = (char *)malloc(*namelen+3);
   memcpy( filename, fortname, *namelen );
   filename[*namelen] = 0;
 
-  // we must create an empty Field_Info record for readVTKFile,
-  // so that it can append all the fields after it.
   Field_Info *fieldlst = (Field_Info *)malloc(sizeof(Field_Info));
   assert( fieldlst!=NULL );
   fieldlst->ncomponents = -1;
   fieldlst->next = NULL;
 
-  // read VTK file, placing required info into appropriate arrays
   status = readVTKFile( filename, NNOD, NELM, NFIELD, NPROP,
                         SZENLS, NDIM, fieldlst,
                         &X, &Y, &Z, &ENLBAS, &ENLIST, &FIELDS, &PROPS,
@@ -1406,7 +1294,6 @@ int freadvtkfile(char *fortname, int *namelen,
 
   free( filename );
 
-  // we remove the leading record (created before readVTKFile),
   if( fieldlst->ncomponents==-1 ) {
     Field_Info *newfld = fieldlst;
     fieldlst = newfld->next;
@@ -1415,12 +1302,9 @@ int freadvtkfile(char *fortname, int *namelen,
   }
 
   if( status ) {
-    //fprintf(stderr,"*** freadvtkfile: Got error %d from readVTKFile\n",status);
     return status;
   }
 
-  // now put field names into NAMES (truncating at maxlen if needed),
-  // and free up the field info list
   int ipos = 0;
   while( fieldlst != NULL ) {
     Field_Info *newfld = fieldlst;
@@ -1430,7 +1314,6 @@ int freadvtkfile(char *fortname, int *namelen,
     if( l>*maxlen )
       l = *maxlen;
     for( int k=1; k<=newfld->ncomponents; k++) {
-      // copy characters into NAMES 
       for( int i=0; i<l; i++ )
         NAMES[ipos+i] = thisname[i];
       j = l;
@@ -1446,7 +1329,6 @@ int freadvtkfile(char *fortname, int *namelen,
         NAMES[ipos+j] = 48 + k%10;
         j++;
       }
-      // pad with spaces up to maxlen
       for( int i=j; i<*maxlen; i++ )
         NAMES[ipos+i] = 32;
       ipos += *maxlen;

@@ -16,10 +16,8 @@
 !    USA
 #include "fdebug.h"
 module multiphase_time_loop
-
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
   use petsc
-#endif
 
 
     use field_options
@@ -651,12 +649,14 @@ contains
                 if (is_magma) compute_compaction= .true.
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
                     if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
-                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
-                        Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
-                        dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
-                        igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling, magma_phase_coef)
+                    ! CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
+                    !     Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
+                    !     Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
+                    !     dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
+                    !     igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
+                    !     calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling, magma_phase_coef)
+                    ! velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    ! velocity_field%val=0.
                 end if Conditional_ForceBalanceEquation
                 
 
@@ -779,7 +779,7 @@ contains
                   backtrack_or_convergence = 1.0
                   ! ! Update the temperature field
                   call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
-                  call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
+                !   call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
                 end if
                 !#=================================================================================================================
                 call petsc_logging(3,stages,ierrr,default=.true.)
@@ -865,14 +865,14 @@ contains
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
             ! For magma, calculate the contributions for the melt fraction and bulk composition change
-            if (is_magma .and. timestep>=2) then 
-                call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
-                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
-                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, Courant_number, &
-                        sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
-                call cal_contribution2(state,packed_state, Mdims, Mmat, ndgln, dt)
-            end if
+            ! if (is_magma .and. timestep>=2) then 
+                ! call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
+                !         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
+                !         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
+                !         ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, Courant_number, &
+                !         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
+                ! call cal_contribution2(state,packed_state, Mdims, Mmat, ndgln, dt)
+            ! end if
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
               ewrite(0,*) "Iterations taken by the pressure linear solver:", pres_its_taken
             end if

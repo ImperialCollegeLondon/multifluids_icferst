@@ -1,9 +1,7 @@
 #include "confdefs.h"
+
 #include "petsc.h"
-#if PETSC_VERSION_MINOR==0
-#include "petscfix.h"
-#include "petscis.h"
-#endif
+
 
 #include <string.h>
 

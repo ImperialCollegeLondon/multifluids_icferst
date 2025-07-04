@@ -32,6 +32,10 @@
 #include "vtkDataSet.h"
 #include "vtkUnstructuredGrid.h"
 #include "vtkMeshQuality.h"
+#include <vtkSmartPointer.h>
+#include <vtkTriangle.h>
+#include <vtkTetra.h>
+
 
 #include <stdio.h>
 

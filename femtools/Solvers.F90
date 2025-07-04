@@ -32,9 +32,8 @@ module solvers
   use elements
   use spud
   use parallel_tools
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
   use petsc
-#endif
   use Sparse_Tools
   use Fields
   use profiler
@@ -2165,7 +2164,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
         ! call PetscOptionsInsertString("-pc_gamg_sym_graph true", ierr)
 
         !We always get issues with unsymmetric graphs, forcing symmetry seems not to be that expensive and should help with this
-        call PCGAMGSetSymGraph(pc, PETSC_TRUE, ierr)
+        ! call PCGAMGSetSymGraph(pc, PETSC_TRUE, ierr)
 
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well

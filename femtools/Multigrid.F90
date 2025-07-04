@@ -6,9 +6,8 @@ use FLDebug
 use spud
 use futils
 use parallel_tools
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
   use petsc
-#endif
 use Sparse_tools
 use Petsc_Tools
 use sparse_tools_petsc

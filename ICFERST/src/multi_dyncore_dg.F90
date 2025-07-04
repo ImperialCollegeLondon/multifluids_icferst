@@ -2049,7 +2049,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         
         integer :: TEST_temperal
         real :: cmcscaling
-        cmcscaling=73! 13 for lid viscosity order 13
+        integer :: cmcscaling2
+        call get_option("/numerical_methods/max_sat_its", cmcscaling2, default = 15)
+        cmcscaling=cmcscaling2! 13 for lid viscosity order 13
         ! if (is_magma) compute_compaction= .true.  ! For magma only the first phase is assembled for the momentum equation.
 
         ! call get_option("/numerical_methods/max_sat_its", TEST_temperal)

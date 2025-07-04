@@ -33,9 +33,8 @@ module Petsc_Tools
   use Reference_Counting
   use halo_data_types
   use halos_base
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
   use petsc
-#endif
   use Sparse_Tools
   use fields_data_types
   use fields_base

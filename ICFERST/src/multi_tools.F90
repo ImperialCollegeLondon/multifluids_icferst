@@ -18,10 +18,8 @@
 
 
 module multi_tools
-
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
   use petsc
-#endif
 
     use python_state
     use state_module

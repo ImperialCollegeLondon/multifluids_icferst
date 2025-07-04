@@ -31,9 +31,8 @@
     use global_parameters
     use elements
     use spud
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
     use petsc
-#endif
     use parallel_tools
     use data_structures
     use sparse_tools
