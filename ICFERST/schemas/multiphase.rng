@@ -1044,29 +1044,31 @@ if you want to use the Wiener method.</a:documentation>
                   </optional>
                 </element>
               </optional>
-              <element name="scalar_field">
-                <a:documentation>Specify scalar field compressibility of the porous media
+              <optional>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field compressibility of the porous media
 ( in Pa-1 den = den_surface*exp(Coef*(P_res-P_surface))
 with P_surf = 10^5 Pa )
 
 Here the term &lt;b&gt;Coef&lt;/b&gt; is specified.
 
 Temporarily P_surface can be defined from /numerical_methods/Surface_pressure</a:documentation>
-                <attribute name="name">
-                  <value>porous_compressibility</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                </choice>
-              </element>
+                  <attribute name="name">
+                    <value>porous_compressibility</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
+                </element>
+              </optional>
               <optional>
                 <element name="scalar_field">
                   <a:documentation>Specify scalar field: total porosity
