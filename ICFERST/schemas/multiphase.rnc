@@ -3432,7 +3432,7 @@ scalar_field_choice =
          ## Name has to start with CopiedField_Metal (e.g., CopiedField_Metal_Cu).
          element scalar_field {
             attribute rank { "0" },
-            attribute name { xsd:string },
+            attribute name { "CopiedField_Metal" },
             (
                element diagnostic {
                   internal_algorithm,

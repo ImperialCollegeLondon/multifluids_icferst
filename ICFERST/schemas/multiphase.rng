@@ -4209,7 +4209,7 @@ Name has to start with CopiedField_Metal (e.g., CopiedField_Metal_Cu).</a:docume
           <value>0</value>
         </attribute>
         <attribute name="name">
-          <data type="string"/>
+          <value>CopiedField_Metal</value>
         </attribute>
         <choice>
           <element name="diagnostic">
