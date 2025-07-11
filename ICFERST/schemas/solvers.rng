@@ -79,9 +79,9 @@ by the PETSc library. Many more methods are provided.
   </define>
   <!--
     ####################################################################
-
+    
     options for the different iterative ksp methods
-
+    
     ####################################################################
   -->
   <define name="kspgmres_options">
@@ -146,9 +146,9 @@ http://www-unix.mcs.anl.gov/petsc/petsc-2/snapshots/petsc-dev/docs/manualpages/K
   </define>
   <!--
     ####################################################################
-
+    
     options for the different preconditioners
-
+    
     ####################################################################
   -->
   <define name="pcsor_options">
@@ -509,9 +509,9 @@ Default : 0.1</a:documentation>
   </define>
   <!--
     ####################################################################
-
+    
     all the other solver options
-
+    
     ####################################################################
   -->
   <define name="generic_solver_options">
@@ -519,7 +519,7 @@ Default : 0.1</a:documentation>
       <a:documentation>Relative error
 
 The solver finishes if the preconditioned error becomes smaller than the original preconditioned error times this value.
-Suggested value: 1.0e-10, 1.0e-13 with wells</a:documentation>
+Suggested value: 1.0e-10 without wells, 1.0e-13 with wells</a:documentation>
       <ref name="real"/>
     </element>
     <optional>

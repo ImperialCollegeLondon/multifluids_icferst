@@ -880,7 +880,7 @@ start =
                      output_options
                      }
                   )
-               }
+               },
 
                ## Specify scalar field: total porosity
                ## This field defines the *total porosity* of the porous medium, which is the sum of effective and non-effective porosity.
