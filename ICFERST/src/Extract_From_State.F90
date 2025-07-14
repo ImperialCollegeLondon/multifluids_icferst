@@ -3610,8 +3610,14 @@ end subroutine get_DarcyVelocity
                 enddo
                 !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
                 do ifields = 1, size(outfluxes%field_names,2)
-                    do iphase = 1, size(outfluxes%intflux,1) !Here we output the average value over the surface
-                        write(tempstring(iphase),'(E17.11)') outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
+                    do iphase = 1, size(outfluxes%intflux,1)
+                        if (trim(outfluxes%field_names(iphase, ifields)) == "Temperature") then
+                            write(tempstring(iphase),'(E17.11)') &
+                                outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet) - 273.15 ! Print the temperature outfluxes in Celsius, not Kelvin
+                        else
+                            write(tempstring(iphase),'(E17.11)') &
+                                outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
+                        end if
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     end do
                 end do
