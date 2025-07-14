@@ -101,6 +101,7 @@ module embed_python
       !! Interface to c wrapper function.
       use iso_c_binding, only: c_double
       implicit none
+      
       integer, intent(in) :: function_len
       character(len = function_len) :: function
       integer, intent(in) :: dim
@@ -340,7 +341,7 @@ contains
     integer, intent(out) :: stat
 
     real(kind = c_double), dimension(size(result, 1), size(result, 2), size(result, 3)) :: lresult
-
+    
     call set_tensor_field_from_python(function, function_len, dim, &
       & nodes, real(x, kind = c_double), real(y, kind = c_double), real(z, kind = c_double), real(t, kind = c_double), result_dim, lresult, stat)
     result = lresult

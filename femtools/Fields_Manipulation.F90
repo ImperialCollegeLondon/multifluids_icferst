@@ -1654,11 +1654,11 @@ module fields_manipulation
           end if
        end if
     end if
-
+    print *,'4'
     call set_tensor_field_from_python(func, len(func), dim,&
             & node_count(field), x, y, z, time, field%dim, &
             field%val, stat)
-
+    print *,'end'
     if (stat/=0) then
       ewrite(-1, *) "Python error while setting field: "//trim(field%name)
       ewrite(-1, *) "Python string was:"

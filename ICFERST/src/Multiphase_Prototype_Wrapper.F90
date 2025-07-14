@@ -18,7 +18,6 @@
 #include "fdebug.h"
 
 subroutine multiphase_prototype_wrapper() bind(C)
-
 #include "petsc/finclude/petsc.h"    
   use petsc
 
@@ -98,16 +97,16 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     !Flag the first time step
     first_time_step = .true.
-
+    
     ! Read state from .mpml file
     call populate_multi_state(state)
-
+    
     !If desired by the user create a bin msh file
     if (have_option("/geometry/create_binary_msh")) call create_bin_msh_file(state)
-
+   
     ! Check the diagnostic field dependencies for circular dependencies
     call check_diagnostic_dependencies(state)
-
+    
     !allocate(rheology(size(state)))
     !call initialize_rheologies(state,rheology)
     !call calculate_rheologies(state,rheology)
@@ -147,7 +146,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
       dt = finish_time - current_time
       call set_option("/timestepping/timestep", dt)
     end if
-
+    
     call get_option('/simulation_name',simulation_name)
     call initialise_diagnostics(trim(simulation_name),state, ICFERST = .true.)
 
@@ -209,6 +208,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
 call petsc_logging(1,stages,ierr,default=.false., push_no=0, stage_name="WRAP")
 call petsc_logging(2,stages,ierr,default=.true., push_no=0)
 
+ 
     call MultiFluids_SolveTimeLoop( state, &
         dt, nonlinear_iterations, dump_no )
 
@@ -383,7 +383,6 @@ contains
                 end if
             end do
         end if
-
         !Checking whether the field PhaseVolumeFraction is defined or not. If not a error is output
         do i = 1, nphase
           if (.not. have_option(("/material_phase["// int2str( i - 1 )//"]/scalar_field::PhaseVolumeFraction"))) &
@@ -420,7 +419,6 @@ contains
             end if
         end if
 
-
         if (is_porous_media .and. have_option('/mesh_adaptivity/hr_adaptivity')) then
             ewrite(1, *) "Preserve regions MUST to be ON. Check multiphase_prototype_wrapper"
             !Ensure that preserve_mesh_regions is on, since otherwise it does not work
@@ -431,6 +429,7 @@ contains
                  "/mesh_adaptivity/hr_adaptivity/preserve_mesh_regions")
             end if
         end if
+
         if (is_porous_media .or. is_magma) then
             ewrite(1, *) "For porous media we output only the Darcy Velocity, not the velocity. Check multiphase_prototype_wrapper"
             !Create a field to store the DarcyVelocity in it
@@ -462,7 +461,7 @@ contains
                     !   end if
                 end if
 
-
+          
 !                option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::"
 !                call copy_option(trim(option_path)//"Velocity", trim(option_path)//"DarcyVelocity")
 !                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/tensor_field::Viscosity")) &
@@ -475,10 +474,9 @@ contains
 !                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/adaptivity_options")
             end do
         end if
-
         !Add dummy fields to ensure that the well geometries are preserved when the mesh is adapted
         !or to show the wells in paraview
-        if (npres>1 ) then
+        if (npres>1 ) then        
             ewrite(1, *) "For wells we define dummy variables and we enforce options in Diamond. Check multiphase_prototype_wrapper"
             if (have_option('/porous_media/wells_and_pipes/well_volume_ids')) then
                 !Introduce some dummy regions to ensure that mesh adaptivity keeps the wells in place
@@ -518,7 +516,6 @@ contains
 !print all the options in the diamond file and added here to the terminal
         ! call print_options()
         !Call fluidity to populate state
-
         call populate_state(state)
 
     end subroutine populate_multi_state

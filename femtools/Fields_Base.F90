@@ -3909,7 +3909,7 @@ contains
     real, intent(in) :: time
 
     integer :: dim
-    
+
     dim=vfield%dim
     select case(dim)
     case(1)

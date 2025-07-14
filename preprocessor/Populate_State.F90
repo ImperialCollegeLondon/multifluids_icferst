@@ -164,7 +164,7 @@ contains
     ewrite(1,*) "In populate_state"
     call profiler_tic("I/O")
     call tictoc_clear(TICTOC_ID_IO_READ)
-
+    
     ! Find out how many states there are
     nstates=option_count("/material_phase")
     allocate(states(1:nstates))
@@ -172,7 +172,7 @@ contains
        call nullify(states(i))
        call set_option_path(states(i), "/material_phase["//int2str(i-1)//"]")
     end do
-
+    
     call initialise_ocean_forcing_readers
 
     call insert_external_mesh(states, save_vtk_cache = .true.)
@@ -181,24 +181,24 @@ contains
 
     !If any meshes have constraints, allocate an appropriate trace mesh
     call insert_trace_meshes(states)
-
+    
     call compute_domain_statistics(states)
-
+    print *, '1'
     call allocate_and_insert_fields(states)
-
+    print *, 'end'
     call initialise_prognostic_fields(states, save_vtk_cache=.true., &
       initial_mesh=.true.)
-
+    
     call set_prescribed_field_values(states, initial_mesh=.true.)
 
     call populate_boundary_conditions(states)
-
+    
     call set_boundary_conditions_values(states)
 
     call set_dirichlet_consistent(states)
 
     call alias_fields(states)
-
+    
     call create_reserve_state(states)
 
     call tictoc_report(2, TICTOC_ID_IO_READ)
@@ -1307,7 +1307,7 @@ contains
     if (have_option("/ocean_biology/lagrangian_ensemble/hyperlight")) then
        call allocate_and_insert_irradiance(states(1))
     end if
-
+    
     ! insert porous media fields
     if (have_option('/porous_media')) then!SPRINT_TO_D I DON'T THINK WE NEED TO LOOP OVER NSTATES IN ALL THESE CASES
       call allocate_and_insert_scalar_field('/porous_media/scalar_field::Porosity', &
@@ -1357,7 +1357,7 @@ contains
         states(1), field_name='SelfPotential')
       end if
     end if
-
+    
     if (have_option("/porous_media/wells_and_pipes")) then
       call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Pipe', &
       states(1), field_name='Pipe')
@@ -1385,7 +1385,7 @@ contains
     end if
 
 
-
+    
     ! insert electrical property fields
     do i=1,nstates
       tmp = '/material_phase['//int2str(i-1)//']/electrical_properties/coupling_coefficients/'
@@ -1423,7 +1423,7 @@ contains
           call allocate_and_insert_scalar_field('', states(1), parent_mesh='PressureMesh', field_name='harmonic'//int2str(i))
       end do
     end if
-
+   
     ! insert miscellaneous scalar fields
     do i=1, size(additional_fields_absolute)
        if (have_option(trim(additional_fields_absolute(i)))) then
@@ -1445,9 +1445,8 @@ contains
          end if
        end do
     end do
-
     call allocate_metric_limits(states(1))
-
+    
   contains
 
     subroutine allocate_and_insert_one_phase(state_path, state, dont_allocate_prognostic_value_spaces)
@@ -3166,7 +3165,7 @@ contains
       ewrite(-1,*) "Warning: adaptivity turned on, but no edge length limits available?"
       return
     end if
-
+    
     is_constant = (have_option(path // "/tensor_field::MinimumEdgeLengths/anisotropic_symmetric/constant"))
     if (is_constant) then
       call allocate(min_edge, mesh, "MinimumEdgeLengths", field_type=FIELD_TYPE_CONSTANT)
@@ -3175,13 +3174,15 @@ contains
       call set(max_eigen, eigenvalue_from_edge_length(node_val(min_edge, 1)))
     else
       call allocate(min_edge, mesh, "MinimumEdgeLengths")
+      print *,'2'
       call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
-      call allocate(max_eigen, mesh, "MaxMetricEigenbound")
+      call allocate(max_eigen, mesh, "MaxMetricEigenbound")     
+      
       do node=1,node_count(mesh)
         call set(max_eigen, node, eigenvalue_from_edge_length(node_val(min_edge, node)))
       end do
     end if
-
+    
     call insert(state, max_eigen, "MaxMetricEigenbound")
     call deallocate(min_edge)
     call deallocate(max_eigen)
@@ -3193,7 +3194,7 @@ contains
       call allocate(min_eigen, mesh, "MinMetricEigenbound", field_type=FIELD_TYPE_CONSTANT)
       call set(min_eigen, eigenvalue_from_edge_length(node_val(max_edge, 1)))
     else
-      call allocate(max_edge, mesh, "MaximumEdgeLengths")
+      call allocate(max_edge, mesh, "MaximumEdgeLengths")      
       call initialise_field(max_edge, path // "/tensor_field::MaximumEdgeLengths", X)
       call allocate(min_eigen, mesh, "MinMetricEigenbound")
       do node=1,node_count(mesh)

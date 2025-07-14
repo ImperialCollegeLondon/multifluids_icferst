@@ -1,1582 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <grammar xmlns:a="http://relaxng.org/ns/compatibility/annotations/1.0" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
-  <include href="spud_base.rng"/>
-  <include href="adaptivity_options.rng"/>
-  <include href="diagnostic_algorithms.rng"/>
-  <include href="input_output.rng"/>
-  <include href="solvers.rng"/>
-  <include href="stabilisation.rng"/>
-  <include href="mesh_options.rng"/>
-  <include href="physical_parameters.rng"/>
-  <include href="prognostic_field_options.rng"/>
-  <include href="prescribed_field_options.rng"/>
-  <include href="spatial_discretisation.rng"/>
-  <include href="temporal_discretisation.rng"/>
-  <start>
-    <element name="icferst_options">
-      <a:documentation>IC-FERST is a next generation simulator based on Double-Control-Volume
-Finite Element methods and dynamic unstructured mesh optimisation.
-
-IC-FERST is licensed under the LGPL. For more information
-please visit: http://multifluids.github.io/</a:documentation>
-      <ref name="comment"/>
-      <element name="simulation_name">
-        <a:documentation>Model output files are named according to the simulation
-name, e.g. [simulation_name]_0.vtu. Non-standard
-characters in the simulation name should be avoided.</a:documentation>
-        <ref name="anystring"/>
-      </element>
-      <choice>
-        <element name="inertia_dominated_simulator">
-          <a:documentation>Navier-stokes simulator</a:documentation>
-          <ref name="comment"/>
-        </element>
-        <element name="porous_media_simulator">
-          <a:documentation>Darcy flow simulator</a:documentation>
-          <ref name="comment"/>
-        </element>
-        <element name="magma_simulator">
-          <a:documentation>Magma flow simulator. You need to specify at least two phases and
-1) Temperature
-
-2) Enthalpy
-
-3) Concentration field 
-
-apart from the parameters in magma_parameters</a:documentation>
-          <ref name="comment"/>
-        </element>
-        <element name="stokes_simulator">
-          <a:documentation>Stokes flow simulator</a:documentation>
-          <ref name="comment"/>
-        </element>
-        <element name="poroelasticity">
-          <a:documentation>Poro-elasticity simulator:
-This requires to define through diamond the tensor field in phase 1 UAbsorB
-as an absorption term and also the RHS that should include the second time-derivative for the solid phase
-and also the coupling terms. The first phase is considered the solid phase.</a:documentation>
-          <ref name="comment"/>
-        </element>
-      </choice>
-      <ref name="geometry"/>
-      <ref name="solver_options"/>
-      <element name="io">
-        <a:documentation>Input/output options</a:documentation>
-        <element name="dump_format">
-          <a:documentation>Format for dump files. Only vtk for now.</a:documentation>
-          <element name="string_value">
-            <value>vtk</value>
-          </element>
-        </element>
-        <choice>
-          <element name="dump_period">
-            <a:documentation>Period between dumps in time units.
-
-Specifies the period between each dump of the solution to disk.
-A value of 0.0 indicates that there would be a dump at every timestep.</a:documentation>
-            <choice>
-              <element name="constant">
-                <ref name="real"/>
-              </element>
-              <element name="python">
-                <a:documentation>Python function prescribing real input. Functions should be of the form:
-
- def val(t):
-    # Function code
-    return # Return value
-
-</a:documentation>
-                <ref name="python_code"/>
-              </element>
-            </choice>
-          </element>
-          <element name="dump_period_in_timesteps">
-            <a:documentation>Dump period, in timesteps.
-
-Specifies the number of timesteps between each dump of the solution to disk.
-A value of 0 indicates a dump at every timestep.</a:documentation>
-            <choice>
-              <element name="constant">
-                <ref name="integer"/>
-              </element>
-              <element name="python">
-                <a:documentation>Python function prescribing integer input. Functions should be of the form:
-
- def val(t):
-    # Function code
-    return # Return value
-
-</a:documentation>
-                <ref name="python_code"/>
-              </element>
-            </choice>
-          </element>
-        </choice>
-        <optional>
-          <element name="PropertiesFromFile">
-            <a:documentation>Path (without the extension) to the .csv file containing the fluid and porous media properties.
-&lt;b&gt;NOTE: Properties in the .csv file will overwrite the input from diamond.&lt;/b&gt;
-
-The information is stored as:
-
-Property, phase, region_ids(0= if all), value (values separated by _ for region ids and tensors)
-
-You can find an example in the Proous_media_general test case
-
-If using this, all the modifiable fields need to have the option to read from a csv file</a:documentation>
-            <data type="string"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="Show_Convergence">
-            <a:documentation>Prints the number of iterations and
-the final convergence achieved by the FPI solver</a:documentation>
-            <ref name="comment"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="Courant_number">
-            <a:documentation>If porous_media, printout the Courant number every time-step</a:documentation>
-            <ref name="comment"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="dump_boundaryflux">
-            <a:documentation>&lt;b&gt;Generates a .csv file including the volume_flux, rates, etc. across the specified boundaries&lt;/b&gt;</a:documentation>
-            <empty/>
-            <element name="surface_ids">
-              <a:documentation>Surface id:</a:documentation>
-              <ref name="integer_vector"/>
-            </element>
-          </element>
-        </optional>
-        <optional>
-          <element name="checkpointing">
-            <a:documentation>Whether to enable dumping of checkpointing output.
-
-See http://amcg.ese.ic.ac.uk/index.php?title=Local:Checkpointing_from_new_options</a:documentation>
-            <element name="checkpoint_period_in_dumps">
-              <a:documentation>Checkpointing period, in dumps. Non-negative value
-required. A value of zero indicates that checkpoints
-should be created at every dump. If
-/io/max_dumpfile_count is exceeded then earlier
-checkpoints may be overwritten.</a:documentation>
-              <ref name="integer"/>
-            </element>
-            <optional>
-              <element name="checkpoint_at_start">
-                <a:documentation>Enable to checkpoint at simulation start.</a:documentation>
-                <ref name="comment"/>
-              </element>
-            </optional>
-            <optional>
-              <element name="checkpoint_at_end">
-                <a:documentation>Enable to force a checkpoint at simulation end.</a:documentation>
-                <ref name="comment"/>
-              </element>
-            </optional>
-            <ref name="comment"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="detectors">
-            <a:documentation>Specification of detectors. Note that when running in parallel the detector output is in binary format even if binary_output is not enabled. When running in serial, although the output is in principle still generated in ascii format if binary_output is not enabled, it is not certain that it is working well. Hence, it is recommended to enable binary_output and work with binary files.</a:documentation>
-            <zeroOrMore>
-              <choice>
-                <element name="static_detector">
-                  <a:documentation>A single static detector</a:documentation>
-                  <attribute name="name">
-                    <data type="string"/>
-                  </attribute>
-                  <choice>
-                    <element name="location">
-                      <ref name="real_dim_vector"/>
-                    </element>
-                    <element name="from_checkpoint_file">
-                      <a:documentation>File containing the detectors positions in binary form</a:documentation>
-                      <attribute name="file_name">
-                        <data type="string"/>
-                      </attribute>
-                      <element name="format">
-                        <a:documentation>The format of the input file containing field data.</a:documentation>
-                        <element name="string_value">
-                          <value>binary</value>
-                        </element>
-                      </element>
-                    </element>
-                  </choice>
-                </element>
-                <element name="lagrangian_detector">
-                  <a:documentation>A single lagrangian detector</a:documentation>
-                  <attribute name="name">
-                    <data type="string"/>
-                  </attribute>
-                  <choice>
-                    <element name="location">
-                      <a:documentation>This is the initial location of a detector that moves with the fluid velocity.</a:documentation>
-                      <ref name="real_dim_vector"/>
-                    </element>
-                    <element name="from_checkpoint_file">
-                      <a:documentation>File containing the detectors positions in binary form</a:documentation>
-                      <attribute name="file_name">
-                        <data type="string"/>
-                      </attribute>
-                      <element name="format">
-                        <a:documentation>The format of the input file containing field data.</a:documentation>
-                        <element name="string_value">
-                          <value>binary</value>
-                        </element>
-                      </element>
-                    </element>
-                  </choice>
-                </element>
-                <element name="detector_array">
-                  <a:documentation>Detectors with their locations specified via a python function or from a file. Allows detector arrays to be added.</a:documentation>
-                  <attribute name="name">
-                    <data type="string"/>
-                  </attribute>
-                  <element name="number_of_detectors">
-                    <a:documentation>The number of detectors prescribed by the python function.</a:documentation>
-                    <ref name="integer"/>
-                  </element>
-                  <choice>
-                    <element name="static">
-                      <a:documentation>Create fixed detectors.</a:documentation>
-                      <empty/>
-                    </element>
-                    <element name="lagrangian">
-                      <a:documentation>Create detectors which move with the fluid velocity.</a:documentation>
-                      <empty/>
-                    </element>
-                  </choice>
-                  <choice>
-                    <element name="python">
-                      <a:documentation>Python function prescribing dimensional vector input. Functions should be of the form:
-
- def val(t):
-    # Function code
-    return # Return value
-
-The return value must have length number_of_detectors.
-
-*** IMPORTANT NOTE ***
-
-The t argument is for future use only - currently detector locations are only set at simulation start.</a:documentation>
-                      <ref name="python_code"/>
-                    </element>
-                    <element name="from_file">
-                      <a:documentation>File containing the detectors positions in binary form</a:documentation>
-                      <attribute name="file_name">
-                        <data type="string"/>
-                      </attribute>
-                      <element name="format">
-                        <a:documentation>The format of the input file containing field data.</a:documentation>
-                        <element name="string_value">
-                          <value>binary</value>
-                        </element>
-                      </element>
-                    </element>
-                    <element name="from_checkpoint_file">
-                      <a:documentation>File containing the detectors positions in binary form</a:documentation>
-                      <attribute name="file_name">
-                        <data type="string"/>
-                      </attribute>
-                      <element name="format">
-                        <a:documentation>The format of the input file containing field data.</a:documentation>
-                        <element name="string_value">
-                          <value>binary</value>
-                        </element>
-                      </element>
-                    </element>
-                  </choice>
-                </element>
-              </choice>
-            </zeroOrMore>
-            <optional>
-              <element name="binary_output">
-                <a:documentation>Enable to write detector output in binary format</a:documentation>
-                <ref name="comment"/>
-              </element>
-            </optional>
-            <optional>
-              <element name="lagrangian_timestepping">
-                <choice>
-                  <element name="explicit_runge_kutta_guided_search">
-                    <a:documentation>Use explicit runge kutta method with
-binary search</a:documentation>
-                    <element name="subcycles">
-                      <a:documentation>Number of subdivisions of the timestep
-increase this if you are not happy with your
-detector trajectory accuracy, or if particles
-are jumping out of the domain a lot</a:documentation>
-                      <ref name="integer"/>
-                    </element>
-                    <element name="search_tolerance">
-                      <a:documentation>Tolerance for deciding if detector is in a given
-element. Recommended value 1.0e-10.</a:documentation>
-                      <ref name="real"/>
-                    </element>
-                    <element name="n_stages">
-                      <a:documentation>Number of RK stages
-For the RK4 method, it should be 4.</a:documentation>
-                      <ref name="integer"/>
-                    </element>
-                    <element name="stage_weights">
-                      <a:documentation>ERK stage array. This is an array
-containing the lower-triangular
-part of the Butcher weight matrix
-A that explains how to compute the
-RK stages.  See
-http://en.wikipedia.org/wiki/Runge–Kutta_methods#Explicit_Runge.E2.80.93Kutta_methods
-for notation.  The array is stored
-in the following order:
-[a_{21},a_{31},a_{32},...,a_{s1},a_{s2},a_{s(s-1)}]
-and so the array has size s(s-1)/2
-where s is the number of stages.
-For the RK4 method, it should be
-[0.5,0,0.5,0,0,1]</a:documentation>
-                      <ref name="real_vector"/>
-                    </element>
-                    <element name="timestep_weights">
-                      <a:documentation>ERK timestep weights. This is the
-b vector that explains how to
-compute the timestep from the RK
-stages.  See
-http://en.wikipedia.org/wiki/Runge–Kutta_methods#Explicit_Runge.E2.80.93Kutta_methods
-for notation.  It should have size
-s where s is the number of stages.
-For the RK4 method, it should be
-[1/6,1/3,1/3,1/6]</a:documentation>
-                      <ref name="real_vector"/>
-                    </element>
-                  </element>
-                  <element name="binary_search">
-                    <a:documentation>Use binary search algorithm</a:documentation>
-                    <empty/>
-                  </element>
-                </choice>
-              </element>
-            </optional>
-          </element>
-        </optional>
-        <optional>
-          <element name="log_output">
-            <a:documentation>Options to create even more output in the logs:
-
-Note that the main option to control the log output is given on the command line:
-
--v0  only output error and warnings
-
--v1  also give "navigational information", to indicate where in the code we currently are
-
--v2  also give any additional information (mins and maxes of fields, etc.)
-</a:documentation>
-            <optional>
-              <element name="memory_diagnostics">
-                <a:documentation>Log all allocates and deallocates done for meshes, fields, sparsities and matrices.
-
-NOTE: Requires -v2</a:documentation>
-                <empty/>
-              </element>
-            </optional>
-          </element>
-        </optional>
-        <optional>
-          <element name="disable_dump_at_start">
-            <a:documentation>Disable dump at simulation start</a:documentation>
-            <ref name="comment"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="disable_dump_at_end">
-            <a:documentation>Disable dump at simulation end</a:documentation>
-            <ref name="comment"/>
-          </element>
-        </optional>
-      </element>
-      <element name="timestepping">
-        <a:documentation>Options dealing with time discretisation</a:documentation>
-        <element name="current_time">
-          <a:documentation>Current simulation time. At the start of the simulation this
-is the start time.</a:documentation>
-          <ref name="real"/>
-        </element>
-        <element name="timestep">
-          <a:documentation>The time step size. If adaptive time stepping is used
-then this is the initial time step size.</a:documentation>
-          <ref name="real"/>
-        </element>
-        <element name="finish_time">
-          <a:documentation>Simulation time at which the simulation should end.</a:documentation>
-          <ref name="real"/>
-        </element>
-        <optional>
-          <element name="adaptive_timestep">
-            <a:documentation>Vary the timestep according to the courant number.
-&lt;b&gt;Recommended method for non Darcy simulations&lt;/b&gt;
-You will need to generate the scalar field CFLNumber for each phase.</a:documentation>
-            <element name="requested_cfl">
-              <a:documentation>The timestep will be adjusted (within the tolerance
-and bounds specified) to target this courant
-number. Timestep adapts occur at the end of each
-timestep and after a mesh adapt.
-
-&lt;b&gt;NOTE&lt;/b&gt; If the nonlinear adaptive time-step is on, the CFL is used as an upper bound of the nonlinear adaptive time-step</a:documentation>
-              <ref name="real"/>
-              <optional>
-                <element name="Shock_front_CFL">
-                  <a:documentation>For porous media use the shock-front CFL instead.</a:documentation>
-                  <empty/>
-                </element>
-              </optional>
-            </element>
-            <optional>
-              <element name="cfl_pressure">
-                <a:documentation>Multiplier of the requested CFL based on which the pressure and velocity fields
-will be recalculated. Otherwise, the pressure will not be updated.</a:documentation>
-                <ref name="integer"/>
-                <optional>
-                  <element name="at_mesh_adapt">
-                    <a:documentation>Requested CFL for Pressure is forced to match the hr-adaptive period.
-Any value given for cfl_pressure will be overwritten with the value
-of hr-adaptive period.</a:documentation>
-                    <empty/>
-                  </element>
-                </optional>
-              </element>
-            </optional>
-            <ref name="timestep_cfl_number_options"/>
-            <optional>
-              <element name="minimum_timestep">
-                <a:documentation>Minimum time step size.
-Manual suggests 0.0</a:documentation>
-                <optional>
-                  <element name="dump_vtu_if_reached">
-                    <a:documentation>If enabled, signals model dump if a timestep less
-than or equal to the minimum_timestep is requested.</a:documentation>
-                    <optional>
-                      <element name="terminate">
-                        <a:documentation>If enabled, signals model termination if a timestep less
-than or equal to the minimum_timestep is requested. The
-model will stop at the end of the timestep in order to
-allow for the latest output to be written.</a:documentation>
-                        <ref name="comment"/>
-                      </element>
-                    </optional>
-                    <ref name="comment"/>
-                  </element>
-                </optional>
-                <ref name="real"/>
-              </element>
-            </optional>
-            <optional>
-              <element name="maximum_timestep">
-                <a:documentation>Maximum time step size.
-Manual suggests 1.E+10</a:documentation>
-                <ref name="real"/>
-              </element>
-            </optional>
-            <optional>
-              <element name="increase_tolerance">
-                <a:documentation>The maximum ratio by which the timestep is allowed
-to increase in a timestep adapt. e.g., a value of
-1.1 indicates that the timestep may be increased by
-at most 10%.</a:documentation>
-                <ref name="real"/>
-              </element>
-            </optional>
-            <optional>
-              <element name="at_first_timestep">
-                <a:documentation>Specify whether you want to calculate a new timestep
-at the first timestep or not.</a:documentation>
-                <empty/>
-              </element>
-            </optional>
-          </element>
-        </optional>
-      </element>
-      <optional>
-        <ref name="physical_parameter_options"/>
-      </optional>
-      <oneOrMore>
-        <element name="material_phase">
-          <a:documentation>The material or phase options</a:documentation>
-          <attribute name="name">
-            <data type="string"/>
-          </attribute>
-          <optional>
-            <element name="is_multiphase_component">
-              <a:documentation>Specify whether this phase is actually a component</a:documentation>
-              <element name="alpha_beta">
-                <a:documentation>The Equations of State are enforced over the lenght of a time-step
-using the a formula containing different fields.
-This parameter multiplies this formula. For inert components use 0. For non-inert use 1.0</a:documentation>
-                <ref name="real"/>
-              </element>
-              <optional>
-                <element name="KComp_Sigmoid">
-                  <a:documentation>Enable this option to use sigmoid method for finding equilibrium</a:documentation>
-                  <element name="K_Comp">
-                    <a:documentation>KComp value for this component</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </element>
-              </optional>
-              <optional>
-                <element name="Comp_Sum2One">
-                  <a:documentation>Enable this option to force component mass fractions
-to sum to 1 by adding constraint into compositional source term.</a:documentation>
-                  <element name="Relaxation_Coefficient">
-                    <a:documentation>Relaxation coefficient to summation constraint [0,1].
---&gt; 0: under-relaxation ; --&gt; 1: over-relaxation</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                  <optional>
-                    <element name="Ensure_Positive">
-                      <a:documentation>Ensure that this constraint acts only as a positive absorption term</a:documentation>
-                      <empty/>
-                    </element>
-                  </optional>
-                  <optional>
-                    <element name="Enforce_Comp_Sum2One">
-                      <a:documentation>Explicitly enforce components to sum to one</a:documentation>
-                      <empty/>
-                    </element>
-                  </optional>
-                </element>
-              </optional>
-              <optional>
-                <element name="surface_tension">
-                  <a:documentation>Surface tension</a:documentation>
-                  <element name="coefficient">
-                    <a:documentation>Surface tension coefficient.</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                  <optional>
-                    <element name="angle">
-                      <a:documentation>Contact angle.</a:documentation>
-                      <ref name="real"/>
-                    </element>
-                  </optional>
-                  <optional>
-                    <element name="smooth">
-                      <a:documentation> Smoothing.</a:documentation>
-                      <empty/>
-                    </element>
-                  </optional>
-                </element>
-              </optional>
-              <optional>
-                <element name="linearise_component">
-                  <a:documentation>Linearises a P2 field. Use this if having stability issues with high-order discretisations</a:documentation>
-                  <empty/>
-                </element>
-              </optional>
-            </element>
-          </optional>
-          <ref name="phase_properties_options">
-            <a:documentation>Options to provide properties of the fluid for the given phase.</a:documentation>
-          </ref>
-          <element name="scalar_field">
-            <a:documentation>Pressure</a:documentation>
-            <attribute name="rank">
-              <value>0</value>
-            </attribute>
-            <attribute name="name">
-              <value>Pressure</value>
-            </attribute>
-            <choice>
-              <a:documentation>Field type</a:documentation>
-              <element name="prognostic">
-                <!-- mesh choice with PressureMesh as first option -->
-                <ref name="pressure_mesh_choice"/>
-                <ref name="prognostic_pressure_field"/>
-                <ref name="output_options"/>
-              </element>
-              <element name="prescribed">
-                <!-- mesh choice with PressureMesh as first option -->
-                <ref name="pressure_mesh_choice"/>
-                <ref name="prescribed_scalar_field"/>
-                <ref name="output_options"/>
-              </element>
-              <element name="diagnostic">
-                <a:documentation>Compute pressure from Density and InternalEnergy
-via a compressible equation of state.</a:documentation>
-                <!-- mesh choice with PressureMesh as first option -->
-                <ref name="pressure_mesh_choice"/>
-                <ref name="internal_algorithm"/>
-                <ref name="diagnostic_scalar_field"/>
-              </element>
-              <element name="aliased">
-                <attribute name="material_phase_name">
-                  <data type="string"/>
-                </attribute>
-                <attribute name="field_name">
-                  <value>Pressure</value>
-                </attribute>
-              </element>
-            </choice>
-          </element>
-          <element name="vector_field">
-            <a:documentation>Velocity vector and momentum options</a:documentation>
-            <attribute name="rank">
-              <value>1</value>
-            </attribute>
-            <attribute name="name">
-              <value>Velocity</value>
-            </attribute>
-            <choice>
-              <a:documentation>Field type</a:documentation>
-              <element name="prognostic">
-                <ref name="velocity_mesh_choice"/>
-                <ref name="prognostic_velocity_field"/>
-                <ref name="output_options"/>
-              </element>
-              <element name="prescribed">
-                <ref name="velocity_mesh_choice"/>
-                <ref name="prescribed_vector_field"/>
-                <ref name="output_options"/>
-              </element>
-              <element name="diagnostic">
-                <ref name="velocity_mesh_choice"/>
-                <ref name="vector_python_diagnostic_algorithm"/>
-                <ref name="diagnostic_vector_field"/>
-                <ref name="output_options"/>
-              </element>
-              <element name="aliased">
-                <attribute name="material_phase_name">
-                  <data type="string"/>
-                </attribute>
-                <attribute name="field_name">
-                  <value>Velocity</value>
-                </attribute>
-              </element>
-            </choice>
-          </element>
-          <zeroOrMore>
-            <ref name="scalar_field_choice"/>
-          </zeroOrMore>
-          <zeroOrMore>
-            <ref name="vector_field_choice"/>
-          </zeroOrMore>
-          <zeroOrMore>
-            <ref name="tensor_field_choice"/>
-          </zeroOrMore>
-          <optional>
-            <element name="multiphase_properties">
-              <a:documentation>Parameters required to model porous media multiphase flow
-If modeling multiphase porous media flow and a field left unspecified or all of them, the default values will be used. These are:
-
-Relperm: Brooks-Corey model with exponent = 2 and Krmax = 1.
-
-Capillary pressure disabled.
-
-Inmobile fraction = 0.</a:documentation>
-              <optional>
-                <element name="Relperm_Corey">
-                  <a:documentation>Option for relperm type in prototype code
-Corey relperm:
-
-relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent</a:documentation>
-                  <element name="scalar_field">
-                    <a:documentation>Relative permeability end point
-
-Value between 0 and 1. Default value 1.0</a:documentation>
-                    <attribute name="name">
-                      <value>relperm_max</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                    </element>
-                  </element>
-                  <element name="scalar_field">
-                    <a:documentation>Relative permeability exponent
-
-Default value 2.0</a:documentation>
-                    <attribute name="name">
-                      <value>relperm_exponent</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                    </element>
-                  </element>
-                </element>
-              </optional>
-              <optional>
-                <element name="capillary_pressure">
-                  <a:documentation>Options for capillary pressure
-
-&lt;b&gt;You should specify this ONLY for the wetting phase&lt;/b&gt;</a:documentation>
-                  <optional>
-                    <element name="type_Brooks_Corey">
-                      <a:documentation>Brooks-Corey equation
-
-Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a; here c is the entry pressure
-
-For imbibition swith the formula is:
-
-## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure</a:documentation>
-                      <element name="scalar_field">
-                        <a:documentation>Entry pressure of the formula</a:documentation>
-                        <attribute name="name">
-                          <value>C</value>
-                        </attribute>
-                        <element name="prescribed">
-                          <ref name="material_mesh_choice"/>
-                          <ref name="prescribed_scalar_field"/>
-                        </element>
-                      </element>
-                      <optional>
-                        <element name="scalar_field">
-                          <a:documentation>Imbibition term. if on, entry pressure = C - B;
-By default this value is set to zero.</a:documentation>
-                          <attribute name="name">
-                            <value>B</value>
-                          </attribute>
-                          <element name="prescribed">
-                            <ref name="material_mesh_choice"/>
-                            <ref name="prescribed_scalar_field"/>
-                          </element>
-                        </element>
-                      </optional>
-                      <element name="scalar_field">
-                        <a:documentation>exponent -a</a:documentation>
-                        <attribute name="name">
-                          <value>a</value>
-                        </attribute>
-                        <choice>
-                          <element name="prescribed">
-                            <ref name="material_mesh_choice"/>
-                            <ref name="prescribed_scalar_field"/>
-                          </element>
-                          <element name="aliased">
-                            <ref name="generic_aliased_field"/>
-                          </element>
-                        </choice>
-                      </element>
-                    </element>
-                  </optional>
-                  <optional>
-                    <element name="type_Power_Law">
-                      <a:documentation>Power Law equation
-
-Pc = c*(1-s_eff)**a
-
-where s_eff = (S_w-Swir)/(1-Swir-Sor)
-
-c = maximum pc pressure; a = pc exponent
-
-(no entry pressure)
-
-ONLY specify for the wetting phase</a:documentation>
-                      <element name="scalar_field">
-                        <a:documentation>Maximum pressure</a:documentation>
-                        <attribute name="name">
-                          <value>C</value>
-                        </attribute>
-                        <choice>
-                          <element name="prescribed">
-                            <ref name="material_mesh_choice"/>
-                            <ref name="prescribed_scalar_field"/>
-                          </element>
-                          <element name="aliased">
-                            <ref name="generic_aliased_field"/>
-                          </element>
-                        </choice>
-                      </element>
-                      <element name="scalar_field">
-                        <a:documentation>exponent a</a:documentation>
-                        <attribute name="name">
-                          <value>a</value>
-                        </attribute>
-                        <choice>
-                          <element name="prescribed">
-                            <ref name="material_mesh_choice"/>
-                            <ref name="prescribed_scalar_field"/>
-                          </element>
-                          <element name="aliased">
-                            <ref name="generic_aliased_field"/>
-                          </element>
-                        </choice>
-                      </element>
-                    </element>
-                  </optional>
-                </element>
-              </optional>
-              <optional>
-                <element name="immobile_fraction">
-                  <a:documentation>Immobile volume of fluid phase</a:documentation>
-                  <element name="scalar_field">
-                    <a:documentation>Immobile fraction</a:documentation>
-                    <attribute name="name">
-                      <value>value</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                    </element>
-                  </element>
-                </element>
-              </optional>
-            </element>
-          </optional>
-        </element>
-      </oneOrMore>
-      <optional>
-        <ref name="mesh_adaptivity_options"/>
-      </optional>
-      <optional>
-        <element name="porous_media">
-          <a:documentation>Porous Media</a:documentation>
-          <element name="scalar_field">
-            <a:documentation>Specify scalar field Porosity</a:documentation>
-            <attribute name="name">
-              <value>Porosity</value>
-            </attribute>
-            <choice>
-              <element name="prescribed">
-                <ref name="material_mesh_choice"/>
-                <ref name="prescribed_scalar_field"/>
-                <ref name="output_options"/>
-              </element>
-              <element name="aliased">
-                <ref name="generic_aliased_field"/>
-                <ref name="output_options"/>
-              </element>
-            </choice>
-          </element>
-          <choice>
-            <a:documentation>Specify field Permeability</a:documentation>
-            <element name="scalar_field">
-              <attribute name="name">
-                <value>Permeability</value>
-              </attribute>
-              <choice>
-                <element name="prescribed">
-                  <ref name="material_mesh_choice"/>
-                  <ref name="prescribed_scalar_field"/>
-                  <ref name="output_options"/>
-                </element>
-                <element name="diagnostic">
-                  <ref name="material_mesh_choice"/>
-                  <ref name="scalar_python_diagnostic_algorithm"/>
-                  <ref name="diagnostic_scalar_field"/>
-                  <ref name="output_options"/>
-                </element>
-              </choice>
-            </element>
-            <element name="vector_field">
-              <attribute name="name">
-                <value>Permeability</value>
-              </attribute>
-              <choice>
-                <element name="prescribed">
-                  <ref name="material_mesh_choice"/>
-                  <ref name="prescribed_vector_field"/>
-                  <ref name="output_options"/>
-                </element>
-                <element name="diagnostic">
-                  <ref name="material_mesh_choice"/>
-                  <ref name="vector_python_diagnostic_algorithm"/>
-                  <ref name="diagnostic_vector_field"/>
-                  <ref name="output_options"/>
-                </element>
-              </choice>
-            </element>
-            <element name="tensor_field">
-              <attribute name="name">
-                <value>Permeability</value>
-              </attribute>
-              <choice>
-                <element name="prescribed">
-                  <ref name="material_mesh_choice"/>
-                  <ref name="prescribed_tensor_field"/>
-                  <ref name="output_options"/>
-                </element>
-                <element name="diagnostic">
-                  <ref name="material_mesh_choice"/>
-                  <ref name="tensor_python_diagnostic_algorithm"/>
-                  <ref name="diagnostic_tensor_field"/>
-                  <ref name="output_options"/>
-                </element>
-              </choice>
-            </element>
-          </choice>
-          <optional>
-            <element name="Dispersion">
-              <a:documentation>Specify scalar field longitudinal and transverse Dispersivity</a:documentation>
-              <element name="scalar_field">
-                <attribute name="name">
-                  <value>Longitudinal_Dispersivity</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                </choice>
-              </element>
-              <optional>
-                <element name="scalar_field">
-                  <attribute name="name">
-                    <value>Transverse_Dispersivity</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-              </optional>
-            </element>
-          </optional>
-          <optional>
-            <element name="porous_properties">
-              <a:documentation>Rock properties
-For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conductivity are &lt;b&gt;MANDATORY&lt;/b&gt;</a:documentation>
-              <element name="scalar_field">
-                <a:documentation>Specify scalar field density of the porous media</a:documentation>
-                <attribute name="name">
-                  <value>porous_density</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                </choice>
-              </element>
-              <optional>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )</a:documentation>
-                  <attribute name="name">
-                    <value>porous_heat_capacity</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-              </optional>
-              <optional>
-                <element name="tensor_field">
-                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )</a:documentation>
-                  <attribute name="name">
-                    <value>porous_thermal_conductivity</value>
-                  </attribute>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_tensor_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                </element>
-              </optional>
-              <optional>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field compressibility of the porous media
-( in Pa-1 den = den_surface*exp(c*(P_res-P_surface))
-with P_surf = 10^5 Pa )</a:documentation>
-                  <attribute name="name">
-                    <value>porous_compressibility</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-              </optional>
-            </element>
-          </optional>
-          <optional>
-            <element name="wells_and_pipes">
-              <a:documentation>Options to specify the wells/pipes</a:documentation>
-              <element name="scalar_field">
-                <a:documentation>Option to define laterals from diamond
-if in doubt set it to 1.</a:documentation>
-                <attribute name="name">
-                  <value>Pipe</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="diagnostic">
-                    <ref name="vector_python_diagnostic_algorithm"/>
-                    <ref name="diagnostic_scalar_field_no_adapt"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                </choice>
-              </element>
-              <element name="scalar_field">
-                <a:documentation>Specify where and how much the well/pipes are opened
-It goes from 0 to 1. If completely opened, set it to 1.</a:documentation>
-                <attribute name="name">
-                  <value>Gamma</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <ref name="pressure_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="diagnostic">
-                    <ref name="vector_python_diagnostic_algorithm"/>
-                    <ref name="diagnostic_scalar_field_no_adapt"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                </choice>
-              </element>
-              <element name="scalar_field">
-                <a:documentation>Absorption in the pipes.
-If none, set it to 1.
-
-&lt;b&gt;Recommended. set to 1 and use the internal method&lt;/b&gt; based on the Moody diagram that can be selected in
-/wells_and_pipes/well_options/calculate_sigma_pipe</a:documentation>
-                <attribute name="name">
-                  <value>Sigma</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <ref name="subcv_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="diagnostic">
-                    <ref name="vector_python_diagnostic_algorithm"/>
-                    <ref name="diagnostic_scalar_field_no_adapt"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                </choice>
-              </element>
-              <element name="scalar_field">
-                <a:documentation>Specify the diameter of the pipe.
-This effectively defines where and where not there is a pipe.
-If the diameter is &lt;=0 no pipe, else there is pipe.</a:documentation>
-                <attribute name="name">
-                  <value>DiameterPipe</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <ref name="pressure_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="diagnostic">
-                    <ref name="vector_python_diagnostic_algorithm"/>
-                    <ref name="diagnostic_scalar_field_no_adapt"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                </choice>
-              </element>
-              <optional>
-                <element name="thermal_well_properties">
-                  <a:documentation>Specify thermal well-related options</a:documentation>
-                  <element name="scalar_field">
-                    <a:documentation>Specify the conductivity of the well/pipe material.
-If there are several layers this, it has to be the equivalent conductivity from inside the well/pipe to
-the reservoir.
-This is only required for heat transport</a:documentation>
-                    <attribute name="name">
-                      <value>Conductivity</value>
-                    </attribute>
-                    <choice>
-                      <element name="prescribed">
-                        <ref name="pressure_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
-                        <ref name="output_options"/>
-                      </element>
-                      <element name="diagnostic">
-                        <ref name="vector_python_diagnostic_algorithm"/>
-                        <ref name="diagnostic_scalar_field_no_adapt"/>
-                        <ref name="output_options"/>
-                      </element>
-                      <element name="aliased">
-                        <ref name="generic_aliased_field"/>
-                        <ref name="output_options"/>
-                      </element>
-                    </choice>
-                  </element>
-                  <element name="scalar_field">
-                    <a:documentation>Specify the thickness of the well/pipe.
-If there are several layers this, it has to be the equivalent thiness from inside the well/pipe to
-the reservoir.
-This is only required for heat transport</a:documentation>
-                    <attribute name="name">
-                      <value>well_thickness</value>
-                    </attribute>
-                    <choice>
-                      <element name="prescribed">
-                        <ref name="pressure_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
-                        <ref name="output_options"/>
-                      </element>
-                      <element name="diagnostic">
-                        <ref name="vector_python_diagnostic_algorithm"/>
-                        <ref name="diagnostic_scalar_field_no_adapt"/>
-                        <ref name="output_options"/>
-                      </element>
-                      <element name="aliased">
-                        <ref name="generic_aliased_field"/>
-                        <ref name="output_options"/>
-                      </element>
-                    </choice>
-                  </element>
-                </element>
-              </optional>
-              <optional>
-                <element name="well_options">
-                  <a:documentation>Specify well-related options</a:documentation>
-                  <optional>
-                    <element name="calculate_sigma_pipe">
-                      <a:documentation>Calculate the well \sigma field internally
-using a non-linear friction factor.
-This will over-write the field specified in Sigma1.</a:documentation>
-                      <optional>
-                        <!-- Defaults to 1.0e-6. -->
-                        <element name="pipe_roughness">
-                          <ref name="real"/>
-                        </element>
-                      </optional>
-                    </element>
-                  </optional>
-                  <optional>
-                    <element name="switch_wells_on_and_off">
-                      <a:documentation>Switches wells on and off to optimise production
-&lt;b&gt;Not recommended, better use gamma with python.&lt;/b&gt;</a:documentation>
-                      <element name="phase_exclude">
-                        <ref name="integer"/>
-                      </element>
-                    </element>
-                  </optional>
-                  <optional>
-                    <element name="wells_bdf_tolerance">
-                      <a:documentation>If when using mesh adaptivity the well path is disappearing, this tolerance can probably solve the problem.
-.bdf files have only 6 digits precision, therefore for coordinates bigger than kilometres this value might need to be increased and
-the other way round for values below 100.
-The default value is 1e-2. If the domain size is below 10m it is automatically set to 1e-4</a:documentation>
-                      <ref name="real"/>
-                    </element>
-                  </optional>
-                </element>
-              </optional>
-              <element name="well_volume_ids">
-                <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
-that the well trajectories are preserved.
-
-&lt;b&gt;This is MANDATORY when using files or coordinates to define wells&lt;/b&gt;</a:documentation>
-                <ref name="integer_vector"/>
-                <group>
-                  <optional>
-                    <element name="Lock_sleeve_nodes">
-                      <a:documentation>Lock nodes within the well volumes/sleeves.
-&lt;b&gt; Very useful to reduce oscillations in the system when using mesh adaptivity&lt;/b&gt;.
-Very recommended. ONLY WORKS FOR 3D.</a:documentation>
-                      <ref name="comment"/>
-                    </element>
-                  </optional>
-                  <optional>
-                    <element name="Show_well_volumes_ids">
-                      <a:documentation>Output the ids of the wells</a:documentation>
-                      <ref name="comment"/>
-                    </element>
-                  </optional>
-                </group>
-              </element>
-              <zeroOrMore>
-                <element name="well_from_file">
-                  <a:documentation>Introduce here the relative path to the file defining a 1D well
-Note: &lt;b&gt;the only accepted file format is NASTRAN, i.e. .bdf.&lt;/b&gt;
-Each file has to describe a continuous well touching an external boundary.
-
-***Well_volume_ids option is MANDATORY when using this method to define wells.***</a:documentation>
-                  <attribute name="name">
-                    <data type="string" datatypeLibrary=""/>
-                  </attribute>
-                  <attribute name="file_path">
-                    <data type="string" datatypeLibrary=""/>
-                  </attribute>
-                </element>
-              </zeroOrMore>
-              <zeroOrMore>
-                <element name="well_from_coordinates">
-                  <a:documentation>For straight-line wells the top and bottom coordinates may be used instead of a bdf file.
-
-***Well_volume_ids option is MANDATORY when using this method to define wells.***</a:documentation>
-                  <attribute name="name">
-                    <data type="string" datatypeLibrary=""/>
-                  </attribute>
-                  <group>
-                    <element name="top_coordinates">
-                      <a:documentation>Coordinates of the top point of the well
-
-Example: 500.0,500.0,0.0</a:documentation>
-                      <ref name="real_vector"/>
-                    </element>
-                    <element name="bottom_coordinates">
-                      <a:documentation>Coordinates of the bottom point of the well
-
-Example: 500.0,500.0,-1000.0</a:documentation>
-                      <ref name="real_vector"/>
-                    </element>
-                  </group>
-                </element>
-              </zeroOrMore>
-            </element>
-          </optional>
-          <optional>
-            <element name="SelfPotential">
-              <a:documentation>Activates the SelfPotential solver. (S.I. Volts)
-
-&lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase,
-temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a Concentration field defined.
-Also, if the minimum concentration is very small, for example below 1e-2, you should expect instabilities
-in your solution due to the logarithmic nature of the system to solve for, fresh water has a higher concentration that that.
-
-Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.</a:documentation>
-              <element name="scalar_field">
-                <attribute name="name">
-                  <value>SelfPotential</value>
-                </attribute>
-                <element name="diagnostic">
-                  <ref name="pressure_mesh_choice"/>
-                  <ref name="internal_algorithm"/>
-                  <ref name="diagnostic_scalar_field"/>
-                  <ref name="output_options"/>
-                </element>
-              </element>
-              <element name="reference_coordinates">
-                <a:documentation>&lt;b&gt;Input coordinates of desired reference node (voltage = 0), this would be normally the top of the well&lt;/b&gt;. If a node does not exist at these
-coordinates, the nearest vertex will be selected.</a:documentation>
-                <ref name="real_dim_vector"/>
-              </element>
-              <optional>
-                <element name="Reservoir_temperature">
-                  <a:documentation>&lt;b&gt;If not solving for temperature&lt;/b&gt;: here it MUST be specified the reservoir temperature (Kelvin) to compute the rock saturated conductivity.</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="Cementation_exp">
-                  <a:documentation>Cementation exponent, by default 1.8, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="Sat_exponent">
-                  <a:documentation>Saturation exponent, by default 2.0, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="python_Rock_sat_conductivity_code">
-                  <a:documentation>Rock saturated conductivity term (sigma). If this option is on the coded result will be used instead of the internal formula.
-&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
-                  <ref name="scalar_python_diagnostic_algorithm"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="python_ElectroKinetic_code">
-                  <a:documentation>Electrokinetic (Cek) coupling term. If this option is on the coded result will be used instead of the internal formula.
-&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
-                  <ref name="scalar_python_diagnostic_algorithm"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="python_Electrodiffusive_code">
-                  <a:documentation>Electrodiffusive (Ced) coupling term. If this option is on the coded result will be used instead of the internal formula.
-&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
-                  <ref name="scalar_python_diagnostic_algorithm"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="python_Thermoelectric_code">
-                  <a:documentation>Thermoelectric (Cte) coupling term. If this option is on the coded result will be used instead of the internal formula.
-&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
-                  <ref name="scalar_python_diagnostic_algorithm"/>
-                </element>
-              </optional>
-            </element>
-          </optional>
-          <optional>
-            <element name="FWL">
-              <a:documentation>Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
-
-This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.
-
-The following must be specified:
-
-- Densities of water (phase 1) and oil (phase 2)
-
-- Gravity
-
-- Capillary pressure curve</a:documentation>
-              <ref name="real"/>
-            </element>
-          </optional>
-        </element>
-      </optional>
-      <optional>
-        <element name="magma_parameters">
-          <a:documentation>Magma options
-Parameters used for magma_simulator</a:documentation>
-          <optional>
-            <element name="Phase_diagram_coefficients">
-              <a:documentation>Set up phase diagram coefficients. The phase behavious is set by the solidus and liquidus, which is given by, e.g. Tl=A1*Cb^2+B1*Cb+C1; For eutectic phase diagram, A1, B1, C1 is for the branch when the bulk composition is smaller than the eutectic point ae (Cb&lt;=ae). and A2, B2, C2 is for when bulk composition is larger than ae. If only one branch is present in the system (ae=1), only A1, B1, C1 are used.</a:documentation>
-              <element name="A1">
-                <a:documentation>A1</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="B1">
-                <a:documentation>B1</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="C1">
-                <a:documentation>C1</a:documentation>
-                <ref name="real"/>
-              </element>
-              <optional>
-                <element name="A2">
-                  <a:documentation>A2</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="B2">
-                  <a:documentation>B2</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="C2">
-                  <a:documentation>C2</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <element name="ae">
-                <a:documentation>Eutectic point</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="latent_heat">
-                <a:documentation>Latent heat (Lf)
-The energy difference between liquid and solid, which is used in the relationship between enthalpy (H) and temperature (T): H= cp *T +Lf * phi, where phi is the melt fraction.</a:documentation>
-                <ref name="real"/>
-              </element>
-            </element>
-          </optional>
-          <element name="bulk_viscosity_exponential_coefficient">
-            <a:documentation>bulk viscosity is set to follow the power law: xi=mu*phi^(-b), where mu is the reference bulk viscosity. Here coefficient b is set.</a:documentation>
-            <ref name="real"/>
-          </element>
-          <element name="coupling_term_coefficients">
-            <a:documentation>The copling_term represents the strength of the solid/liquid interaction. At lower melt fraction, this coupling force follows the Darcy permeability law C=1/a/d^2*mu*phi^(2-b), which is obtained from the relationship C=mu phi*2/k, where k is the absolute permeability. At high melt fraction, coupling force follows hindled settling: C=1/d^2*mu*phi^(-5)*(1-phi). We define that when the melt fraction is less than certain value (cut_a) it follows Darcy's law; when it's higher than another chosen value(cut_b), it follows hindered settling and the values in between are interpolated. Here coefficients a, grain size d, coefficients b and the cutting between the two demains needs to be set.</a:documentation>
-            <element name="coupling_power_coefficent_a">
-              <a:documentation>coefficient a</a:documentation>
-              <ref name="real"/>
-            </element>
-            <element name="coupling_power_coefficent_b">
-              <a:documentation>Power law coefficient b</a:documentation>
-              <ref name="real"/>
-            </element>
-            <element name="grain_size">
-              <a:documentation>Grain size</a:documentation>
-              <ref name="real"/>
-            </element>
-            <element name="cut_a">
-              <a:documentation>the range below which the coupling terms follow the Darcy's law, set this to 1 to make the entire domain Darcy like.</a:documentation>
-              <ref name="real"/>
-            </element>
-            <element name="cut_b">
-              <a:documentation>the range above which the coupling terms follow the Hindered settling</a:documentation>
-              <ref name="real"/>
-            </element>
-          </element>
-        </element>
-      </optional>
-      <optional>
-        <element name="femdem_fracture">
-          <a:documentation>Fracking options</a:documentation>
-          <optional>
-            <element name="femdem_file">
-              <a:documentation>Specify FEMDEM input file</a:documentation>
-              <attribute name="name">
-                <data type="string"/>
-              </attribute>
-            </element>
-          </optional>
-          <optional>
-            <element name="oneway_coupling_only">
-              <attribute name="rank">
-                <value>0</value>
-              </attribute>
-              <choice>
-                <value>1way</value>
-                <value>p2way</value>
-              </choice>
-            </element>
-          </optional>
-          <optional>
-            <element name="include_pore_pressure">
-              <empty/>
-            </element>
-          </optional>
-        </element>
-      </optional>
-      <optional>
-        <element name="numerical_methods">
-          <a:documentation>Advanced options that are kept for debugging purposes</a:documentation>
-          <optional>
-            <element name="do_not_bound_after_adapt">
-              <a:documentation>Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field
-is run to guarantee physically plausible solutions. Nonetheless this may spread errors occurred during the interpolation
-that otherwise might have been cut off. Enable this option to avoid doing this operation.
-
-This option is useful if your field is suddenly changing after adapting the mesh.</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="use_ENO_scheme">
-              <a:documentation>Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="disable_P0_limiter">
-              <a:documentation>Disable the limiter for velocity when using P0DG. Not for porous media.</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="use_reflect_method">
-              <a:documentation>Use a method to avoid distortion due to boundaries</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="lump_mass_matrix">
-              <a:documentation>Use the row-sum method to create a lumped mass matrix.
-For porous media this will not have an effect.
-Also options to convert P1DG into P0DG and introduce the temporal terms into the mass matrix</a:documentation>
-              <optional>
-                <element name="lump_weight">
-                  <a:documentation>For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
-the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
-The default value for P1DGP1 =&gt; 1e4 and disabled for other element types.
-To disable it manually, set it to negative values.</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="get_all_in_mass_matrix">
-                  <a:documentation>Introduce in the pivit matrix the temporal terms</a:documentation>
-                  <empty/>
-                </element>
-              </optional>
-            </element>
-          </optional>
-          <optional>
-            <element name="no_matrix_store">
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="lump_momentum_inertia">
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="max_sat_its">
-              <a:documentation>Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
-By default this number is 9. Recommended range: 3 to 9.</a:documentation>
-              <ref name="integer"/>
-            </element>
-          </optional>
-          <optional>
-            <element name="Max_compositional_its">
-              <a:documentation>Impose a maximum number of iterations for the compositional loop
-By default this number is 1. STILL TESTING THIS PARAMETER</a:documentation>
-              <ref name="integer"/>
-            </element>
-          </optional>
-          <optional>
-            <element name="solve_nphases_minus_one">
-              <a:documentation>Decide to solve for nphases-1. This should be faster. Still in DEVELOPMENT.</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="VAD_two_levels">
-              <a:documentation>This is for stratified flows, experimental but it seems to work better than the default</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="porous_output_force_density">
-              <a:documentation>For porous media only the Darcy velocity is outputed as the normal velocity is actually the force density
-activate this to also output the force_density</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="create_P_mat_fast">
-              <a:documentation>Use the fast method to create the pressure matrix. Be aware that some methods only work with the slow method</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-        </element>
-      </optional>
-    </element>
-  </start>
   <define name="geometry">
     <element name="geometry">
       <a:documentation>Options dealing with the specification of geometry</a:documentation>
@@ -4994,4 +3417,1600 @@ Defaults to 1.</a:documentation>
       </optional>
     </element>
   </define>
+  
+  <define name="diagnostic_tensor_field_no_adapt">
+  <text/>
+  </define>
+  <define name="discrete_properties_algorithm_scalar">
+  <text/>
+  </define>
+  <define name="recalculation_options">
+  <text/>
+  </define>
+  <define name="discrete_properties_algorithm_vector">
+  <text/>
+  </define>
+
+
+
+  <include href="spud_base.rng"/>
+  <include href="input_output.rng"/>
+  <include href="mesh_options.rng"/>    
+  <include href="adaptivity_options.rng"/>
+  <include href="diagnostic_algorithms.rng"/>  
+  <include href="solvers.rng"/>
+  <include href="stabilisation.rng"/>  
+  <include href="physical_parameters.rng"/>
+  <include href="prognostic_field_options.rng"/>
+  <include href="prescribed_field_options.rng"/>
+  <include href="spatial_discretisation.rng"/>
+  <include href="temporal_discretisation.rng"/>
+
+
+
+  <start>
+    <element name="icferst_options">
+      <a:documentation>IC-FERST is a next generation simulator based on Double-Control-Volume
+Finite Element methods and dynamic unstructured mesh optimisation.
+
+IC-FERST is licensed under the LGPL. For more information
+please visit: http://multifluids.github.io/</a:documentation>
+      <ref name="comment"/>
+      <element name="simulation_name">
+        <a:documentation>Model output files are named according to the simulation
+name, e.g. [simulation_name]_0.vtu. Non-standard
+characters in the simulation name should be avoided.</a:documentation>
+        <ref name="anystring"/>
+      </element>
+      <choice>
+        <element name="inertia_dominated_simulator">
+          <a:documentation>Navier-stokes simulator</a:documentation>
+          <ref name="comment"/>
+        </element>
+        <element name="porous_media_simulator">
+          <a:documentation>Darcy flow simulator</a:documentation>
+          <ref name="comment"/>
+        </element>
+        <element name="magma_simulator">
+          <a:documentation>Magma flow simulator. You need to specify at least two phases and
+1) Temperature
+
+2) Enthalpy
+
+3) Concentration field 
+
+apart from the parameters in magma_parameters</a:documentation>
+          <ref name="comment"/>
+        </element>
+        <element name="stokes_simulator">
+          <a:documentation>Stokes flow simulator</a:documentation>
+          <ref name="comment"/>
+        </element>
+        <element name="poroelasticity">
+          <a:documentation>Poro-elasticity simulator:
+This requires to define through diamond the tensor field in phase 1 UAbsorB
+as an absorption term and also the RHS that should include the second time-derivative for the solid phase
+and also the coupling terms. The first phase is considered the solid phase.</a:documentation>
+          <ref name="comment"/>
+        </element>
+      </choice>
+      <ref name="geometry"/>
+      <ref name="solver_options"/>
+      <element name="io">
+        <a:documentation>Input/output options</a:documentation>
+        <element name="dump_format">
+          <a:documentation>Format for dump files. Only vtk for now.</a:documentation>
+          <element name="string_value">
+            <value>vtk</value>
+          </element>
+        </element>
+        <choice>
+          <element name="dump_period">
+            <a:documentation>Period between dumps in time units.
+
+Specifies the period between each dump of the solution to disk.
+A value of 0.0 indicates that there would be a dump at every timestep.</a:documentation>
+            <choice>
+              <element name="constant">
+                <ref name="real"/>
+              </element>
+              <element name="python">
+                <a:documentation>Python function prescribing real input. Functions should be of the form:
+
+ def val(t):
+    # Function code
+    return # Return value
+
+</a:documentation>
+                <ref name="python_code"/>
+              </element>
+            </choice>
+          </element>
+          <element name="dump_period_in_timesteps">
+            <a:documentation>Dump period, in timesteps.
+
+Specifies the number of timesteps between each dump of the solution to disk.
+A value of 0 indicates a dump at every timestep.</a:documentation>
+            <choice>
+              <element name="constant">
+                <ref name="integer"/>
+              </element>
+              <element name="python">
+                <a:documentation>Python function prescribing integer input. Functions should be of the form:
+
+ def val(t):
+    # Function code
+    return # Return value
+
+</a:documentation>
+                <ref name="python_code"/>
+              </element>
+            </choice>
+          </element>
+        </choice>
+        <optional>
+          <element name="PropertiesFromFile">
+            <a:documentation>Path (without the extension) to the .csv file containing the fluid and porous media properties.
+&lt;b&gt;NOTE: Properties in the .csv file will overwrite the input from diamond.&lt;/b&gt;
+
+The information is stored as:
+
+Property, phase, region_ids(0= if all), value (values separated by _ for region ids and tensors)
+
+You can find an example in the Proous_media_general test case
+
+If using this, all the modifiable fields need to have the option to read from a csv file</a:documentation>
+            <data type="string"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="Show_Convergence">
+            <a:documentation>Prints the number of iterations and
+the final convergence achieved by the FPI solver</a:documentation>
+            <ref name="comment"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="Courant_number">
+            <a:documentation>If porous_media, printout the Courant number every time-step</a:documentation>
+            <ref name="comment"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="dump_boundaryflux">
+            <a:documentation>&lt;b&gt;Generates a .csv file including the volume_flux, rates, etc. across the specified boundaries&lt;/b&gt;</a:documentation>
+            <empty/>
+            <element name="surface_ids">
+              <a:documentation>Surface id:</a:documentation>
+              <ref name="integer_vector"/>
+            </element>
+          </element>
+        </optional>
+        <optional>
+          <element name="checkpointing">
+            <a:documentation>Whether to enable dumping of checkpointing output.
+
+See http://amcg.ese.ic.ac.uk/index.php?title=Local:Checkpointing_from_new_options</a:documentation>
+            <element name="checkpoint_period_in_dumps">
+              <a:documentation>Checkpointing period, in dumps. Non-negative value
+required. A value of zero indicates that checkpoints
+should be created at every dump. If
+/io/max_dumpfile_count is exceeded then earlier
+checkpoints may be overwritten.</a:documentation>
+              <ref name="integer"/>
+            </element>
+            <optional>
+              <element name="checkpoint_at_start">
+                <a:documentation>Enable to checkpoint at simulation start.</a:documentation>
+                <ref name="comment"/>
+              </element>
+            </optional>
+            <optional>
+              <element name="checkpoint_at_end">
+                <a:documentation>Enable to force a checkpoint at simulation end.</a:documentation>
+                <ref name="comment"/>
+              </element>
+            </optional>
+            <ref name="comment"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="detectors">
+            <a:documentation>Specification of detectors. Note that when running in parallel the detector output is in binary format even if binary_output is not enabled. When running in serial, although the output is in principle still generated in ascii format if binary_output is not enabled, it is not certain that it is working well. Hence, it is recommended to enable binary_output and work with binary files.</a:documentation>
+            <zeroOrMore>
+              <choice>
+                <element name="static_detector">
+                  <a:documentation>A single static detector</a:documentation>
+                  <attribute name="name">
+                    <data type="string"/>
+                  </attribute>
+                  <choice>
+                    <element name="location">
+                      <ref name="real_dim_vector"/>
+                    </element>
+                    <element name="from_checkpoint_file">
+                      <a:documentation>File containing the detectors positions in binary form</a:documentation>
+                      <attribute name="file_name">
+                        <data type="string"/>
+                      </attribute>
+                      <element name="format">
+                        <a:documentation>The format of the input file containing field data.</a:documentation>
+                        <element name="string_value">
+                          <value>binary</value>
+                        </element>
+                      </element>
+                    </element>
+                  </choice>
+                </element>
+                <element name="lagrangian_detector">
+                  <a:documentation>A single lagrangian detector</a:documentation>
+                  <attribute name="name">
+                    <data type="string"/>
+                  </attribute>
+                  <choice>
+                    <element name="location">
+                      <a:documentation>This is the initial location of a detector that moves with the fluid velocity.</a:documentation>
+                      <ref name="real_dim_vector"/>
+                    </element>
+                    <element name="from_checkpoint_file">
+                      <a:documentation>File containing the detectors positions in binary form</a:documentation>
+                      <attribute name="file_name">
+                        <data type="string"/>
+                      </attribute>
+                      <element name="format">
+                        <a:documentation>The format of the input file containing field data.</a:documentation>
+                        <element name="string_value">
+                          <value>binary</value>
+                        </element>
+                      </element>
+                    </element>
+                  </choice>
+                </element>
+                <element name="detector_array">
+                  <a:documentation>Detectors with their locations specified via a python function or from a file. Allows detector arrays to be added.</a:documentation>
+                  <attribute name="name">
+                    <data type="string"/>
+                  </attribute>
+                  <element name="number_of_detectors">
+                    <a:documentation>The number of detectors prescribed by the python function.</a:documentation>
+                    <ref name="integer"/>
+                  </element>
+                  <choice>
+                    <element name="static">
+                      <a:documentation>Create fixed detectors.</a:documentation>
+                      <empty/>
+                    </element>
+                    <element name="lagrangian">
+                      <a:documentation>Create detectors which move with the fluid velocity.</a:documentation>
+                      <empty/>
+                    </element>
+                  </choice>
+                  <choice>
+                    <element name="python">
+                      <a:documentation>Python function prescribing dimensional vector input. Functions should be of the form:
+
+ def val(t):
+    # Function code
+    return # Return value
+
+The return value must have length number_of_detectors.
+
+*** IMPORTANT NOTE ***
+
+The t argument is for future use only - currently detector locations are only set at simulation start.</a:documentation>
+                      <ref name="python_code"/>
+                    </element>
+                    <element name="from_file">
+                      <a:documentation>File containing the detectors positions in binary form</a:documentation>
+                      <attribute name="file_name">
+                        <data type="string"/>
+                      </attribute>
+                      <element name="format">
+                        <a:documentation>The format of the input file containing field data.</a:documentation>
+                        <element name="string_value">
+                          <value>binary</value>
+                        </element>
+                      </element>
+                    </element>
+                    <element name="from_checkpoint_file">
+                      <a:documentation>File containing the detectors positions in binary form</a:documentation>
+                      <attribute name="file_name">
+                        <data type="string"/>
+                      </attribute>
+                      <element name="format">
+                        <a:documentation>The format of the input file containing field data.</a:documentation>
+                        <element name="string_value">
+                          <value>binary</value>
+                        </element>
+                      </element>
+                    </element>
+                  </choice>
+                </element>
+              </choice>
+            </zeroOrMore>
+            <optional>
+              <element name="binary_output">
+                <a:documentation>Enable to write detector output in binary format</a:documentation>
+                <ref name="comment"/>
+              </element>
+            </optional>
+            <optional>
+              <element name="lagrangian_timestepping">
+                <choice>
+                  <element name="explicit_runge_kutta_guided_search">
+                    <a:documentation>Use explicit runge kutta method with
+binary search</a:documentation>
+                    <element name="subcycles">
+                      <a:documentation>Number of subdivisions of the timestep
+increase this if you are not happy with your
+detector trajectory accuracy, or if particles
+are jumping out of the domain a lot</a:documentation>
+                      <ref name="integer"/>
+                    </element>
+                    <element name="search_tolerance">
+                      <a:documentation>Tolerance for deciding if detector is in a given
+element. Recommended value 1.0e-10.</a:documentation>
+                      <ref name="real"/>
+                    </element>
+                    <element name="n_stages">
+                      <a:documentation>Number of RK stages
+For the RK4 method, it should be 4.</a:documentation>
+                      <ref name="integer"/>
+                    </element>
+                    <element name="stage_weights">
+                      <a:documentation>ERK stage array. This is an array
+containing the lower-triangular
+part of the Butcher weight matrix
+A that explains how to compute the
+RK stages.  See
+http://en.wikipedia.org/wiki/Runge–Kutta_methods#Explicit_Runge.E2.80.93Kutta_methods
+for notation.  The array is stored
+in the following order:
+[a_{21},a_{31},a_{32},...,a_{s1},a_{s2},a_{s(s-1)}]
+and so the array has size s(s-1)/2
+where s is the number of stages.
+For the RK4 method, it should be
+[0.5,0,0.5,0,0,1]</a:documentation>
+                      <ref name="real_vector"/>
+                    </element>
+                    <element name="timestep_weights">
+                      <a:documentation>ERK timestep weights. This is the
+b vector that explains how to
+compute the timestep from the RK
+stages.  See
+http://en.wikipedia.org/wiki/Runge–Kutta_methods#Explicit_Runge.E2.80.93Kutta_methods
+for notation.  It should have size
+s where s is the number of stages.
+For the RK4 method, it should be
+[1/6,1/3,1/3,1/6]</a:documentation>
+                      <ref name="real_vector"/>
+                    </element>
+                  </element>
+                  <element name="binary_search">
+                    <a:documentation>Use binary search algorithm</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+              </element>
+            </optional>
+          </element>
+        </optional>
+        <optional>
+          <element name="log_output">
+            <a:documentation>Options to create even more output in the logs:
+
+Note that the main option to control the log output is given on the command line:
+
+-v0  only output error and warnings
+
+-v1  also give "navigational information", to indicate where in the code we currently are
+
+-v2  also give any additional information (mins and maxes of fields, etc.)
+</a:documentation>
+            <optional>
+              <element name="memory_diagnostics">
+                <a:documentation>Log all allocates and deallocates done for meshes, fields, sparsities and matrices.
+
+NOTE: Requires -v2</a:documentation>
+                <empty/>
+              </element>
+            </optional>
+          </element>
+        </optional>
+        <optional>
+          <element name="disable_dump_at_start">
+            <a:documentation>Disable dump at simulation start</a:documentation>
+            <ref name="comment"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="disable_dump_at_end">
+            <a:documentation>Disable dump at simulation end</a:documentation>
+            <ref name="comment"/>
+          </element>
+        </optional>
+      </element>
+      <element name="timestepping">
+        <a:documentation>Options dealing with time discretisation</a:documentation>
+        <element name="current_time">
+          <a:documentation>Current simulation time. At the start of the simulation this
+is the start time.</a:documentation>
+          <ref name="real"/>
+        </element>
+        <element name="timestep">
+          <a:documentation>The time step size. If adaptive time stepping is used
+then this is the initial time step size.</a:documentation>
+          <ref name="real"/>
+        </element>
+        <element name="finish_time">
+          <a:documentation>Simulation time at which the simulation should end.</a:documentation>
+          <ref name="real"/>
+        </element>
+        <optional>
+          <element name="adaptive_timestep">
+            <a:documentation>Vary the timestep according to the courant number.
+&lt;b&gt;Recommended method for non Darcy simulations&lt;/b&gt;
+You will need to generate the scalar field CFLNumber for each phase.</a:documentation>
+            <element name="requested_cfl">
+              <a:documentation>The timestep will be adjusted (within the tolerance
+and bounds specified) to target this courant
+number. Timestep adapts occur at the end of each
+timestep and after a mesh adapt.
+
+&lt;b&gt;NOTE&lt;/b&gt; If the nonlinear adaptive time-step is on, the CFL is used as an upper bound of the nonlinear adaptive time-step</a:documentation>
+              <ref name="real"/>
+              <optional>
+                <element name="Shock_front_CFL">
+                  <a:documentation>For porous media use the shock-front CFL instead.</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+            <optional>
+              <element name="cfl_pressure">
+                <a:documentation>Multiplier of the requested CFL based on which the pressure and velocity fields
+will be recalculated. Otherwise, the pressure will not be updated.</a:documentation>
+                <ref name="integer"/>
+                <optional>
+                  <element name="at_mesh_adapt">
+                    <a:documentation>Requested CFL for Pressure is forced to match the hr-adaptive period.
+Any value given for cfl_pressure will be overwritten with the value
+of hr-adaptive period.</a:documentation>
+                    <empty/>
+                  </element>
+                </optional>
+              </element>
+            </optional>
+            <ref name="timestep_cfl_number_options"/>
+            <optional>
+              <element name="minimum_timestep">
+                <a:documentation>Minimum time step size.
+Manual suggests 0.0</a:documentation>
+                <optional>
+                  <element name="dump_vtu_if_reached">
+                    <a:documentation>If enabled, signals model dump if a timestep less
+than or equal to the minimum_timestep is requested.</a:documentation>
+                    <optional>
+                      <element name="terminate">
+                        <a:documentation>If enabled, signals model termination if a timestep less
+than or equal to the minimum_timestep is requested. The
+model will stop at the end of the timestep in order to
+allow for the latest output to be written.</a:documentation>
+                        <ref name="comment"/>
+                      </element>
+                    </optional>
+                    <ref name="comment"/>
+                  </element>
+                </optional>
+                <ref name="real"/>
+              </element>
+            </optional>
+            <optional>
+              <element name="maximum_timestep">
+                <a:documentation>Maximum time step size.
+Manual suggests 1.E+10</a:documentation>
+                <ref name="real"/>
+              </element>
+            </optional>
+            <optional>
+              <element name="increase_tolerance">
+                <a:documentation>The maximum ratio by which the timestep is allowed
+to increase in a timestep adapt. e.g., a value of
+1.1 indicates that the timestep may be increased by
+at most 10%.</a:documentation>
+                <ref name="real"/>
+              </element>
+            </optional>
+            <optional>
+              <element name="at_first_timestep">
+                <a:documentation>Specify whether you want to calculate a new timestep
+at the first timestep or not.</a:documentation>
+                <empty/>
+              </element>
+            </optional>
+          </element>
+        </optional>
+      </element>
+      <optional>
+        <ref name="physical_parameter_options"/>
+      </optional>
+      <oneOrMore>
+        <element name="material_phase">
+          <a:documentation>The material or phase options</a:documentation>
+          <attribute name="name">
+            <data type="string"/>
+          </attribute>
+          <optional>
+            <element name="is_multiphase_component">
+              <a:documentation>Specify whether this phase is actually a component</a:documentation>
+              <element name="alpha_beta">
+                <a:documentation>The Equations of State are enforced over the lenght of a time-step
+using the a formula containing different fields.
+This parameter multiplies this formula. For inert components use 0. For non-inert use 1.0</a:documentation>
+                <ref name="real"/>
+              </element>
+              <optional>
+                <element name="KComp_Sigmoid">
+                  <a:documentation>Enable this option to use sigmoid method for finding equilibrium</a:documentation>
+                  <element name="K_Comp">
+                    <a:documentation>KComp value for this component</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </element>
+              </optional>
+              <optional>
+                <element name="Comp_Sum2One">
+                  <a:documentation>Enable this option to force component mass fractions
+to sum to 1 by adding constraint into compositional source term.</a:documentation>
+                  <element name="Relaxation_Coefficient">
+                    <a:documentation>Relaxation coefficient to summation constraint [0,1].
+--&gt; 0: under-relaxation ; --&gt; 1: over-relaxation</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                  <optional>
+                    <element name="Ensure_Positive">
+                      <a:documentation>Ensure that this constraint acts only as a positive absorption term</a:documentation>
+                      <empty/>
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="Enforce_Comp_Sum2One">
+                      <a:documentation>Explicitly enforce components to sum to one</a:documentation>
+                      <empty/>
+                    </element>
+                  </optional>
+                </element>
+              </optional>
+              <optional>
+                <element name="surface_tension">
+                  <a:documentation>Surface tension</a:documentation>
+                  <element name="coefficient">
+                    <a:documentation>Surface tension coefficient.</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                  <optional>
+                    <element name="angle">
+                      <a:documentation>Contact angle.</a:documentation>
+                      <ref name="real"/>
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="smooth">
+                      <a:documentation> Smoothing.</a:documentation>
+                      <empty/>
+                    </element>
+                  </optional>
+                </element>
+              </optional>
+              <optional>
+                <element name="linearise_component">
+                  <a:documentation>Linearises a P2 field. Use this if having stability issues with high-order discretisations</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+          </optional>
+          <ref name="phase_properties_options">
+            <a:documentation>Options to provide properties of the fluid for the given phase.</a:documentation>
+          </ref>
+          <element name="scalar_field">
+            <a:documentation>Pressure</a:documentation>
+            <attribute name="rank">
+              <value>0</value>
+            </attribute>
+            <attribute name="name">
+              <value>Pressure</value>
+            </attribute>
+            <choice>
+              <a:documentation>Field type</a:documentation>
+              <element name="prognostic">
+                <!-- mesh choice with PressureMesh as first option -->
+                <ref name="pressure_mesh_choice"/>
+                <ref name="prognostic_pressure_field"/>
+                <ref name="output_options"/>
+              </element>
+              <element name="prescribed">
+                <!-- mesh choice with PressureMesh as first option -->
+                <ref name="pressure_mesh_choice"/>
+                <ref name="prescribed_scalar_field"/>
+                <ref name="output_options"/>
+              </element>
+              <element name="diagnostic">
+                <a:documentation>Compute pressure from Density and InternalEnergy
+via a compressible equation of state.</a:documentation>
+                <!-- mesh choice with PressureMesh as first option -->
+                <ref name="pressure_mesh_choice"/>
+                <ref name="internal_algorithm"/>
+                <ref name="diagnostic_scalar_field"/>
+              </element>
+              <element name="aliased">
+                <attribute name="material_phase_name">
+                  <data type="string"/>
+                </attribute>
+                <attribute name="field_name">
+                  <value>Pressure</value>
+                </attribute>
+              </element>
+            </choice>
+          </element>
+          <element name="vector_field">
+            <a:documentation>Velocity vector and momentum options</a:documentation>
+            <attribute name="rank">
+              <value>1</value>
+            </attribute>
+            <attribute name="name">
+              <value>Velocity</value>
+            </attribute>
+            <choice>
+              <a:documentation>Field type</a:documentation>
+              <element name="prognostic">
+                <ref name="velocity_mesh_choice"/>
+                <ref name="prognostic_velocity_field"/>
+                <ref name="output_options"/>
+              </element>
+              <element name="prescribed">
+                <ref name="velocity_mesh_choice"/>
+                <ref name="prescribed_vector_field"/>
+                <ref name="output_options"/>
+              </element>
+              <element name="diagnostic">
+                <ref name="velocity_mesh_choice"/>
+                <ref name="vector_python_diagnostic_algorithm"/>
+                <ref name="diagnostic_vector_field"/>
+                <ref name="output_options"/>
+              </element>
+              <element name="aliased">
+                <attribute name="material_phase_name">
+                  <data type="string"/>
+                </attribute>
+                <attribute name="field_name">
+                  <value>Velocity</value>
+                </attribute>
+              </element>
+            </choice>
+          </element>
+          <zeroOrMore>
+            <ref name="scalar_field_choice"/>
+          </zeroOrMore>
+          <zeroOrMore>
+            <ref name="vector_field_choice"/>
+          </zeroOrMore>
+          <zeroOrMore>
+            <ref name="tensor_field_choice"/>
+          </zeroOrMore>
+          <optional>
+            <element name="multiphase_properties">
+              <a:documentation>Parameters required to model porous media multiphase flow
+If modeling multiphase porous media flow and a field left unspecified or all of them, the default values will be used. These are:
+
+Relperm: Brooks-Corey model with exponent = 2 and Krmax = 1.
+
+Capillary pressure disabled.
+
+Inmobile fraction = 0.</a:documentation>
+              <optional>
+                <element name="Relperm_Corey">
+                  <a:documentation>Option for relperm type in prototype code
+Corey relperm:
+
+relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent</a:documentation>
+                  <element name="scalar_field">
+                    <a:documentation>Relative permeability end point
+
+Value between 0 and 1. Default value 1.0</a:documentation>
+                    <attribute name="name">
+                      <value>relperm_max</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                    </element>
+                  </element>
+                  <element name="scalar_field">
+                    <a:documentation>Relative permeability exponent
+
+Default value 2.0</a:documentation>
+                    <attribute name="name">
+                      <value>relperm_exponent</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                    </element>
+                  </element>
+                </element>
+              </optional>
+              <optional>
+                <element name="capillary_pressure">
+                  <a:documentation>Options for capillary pressure
+
+&lt;b&gt;You should specify this ONLY for the wetting phase&lt;/b&gt;</a:documentation>
+                  <optional>
+                    <element name="type_Brooks_Corey">
+                      <a:documentation>Brooks-Corey equation
+
+Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a; here c is the entry pressure
+
+For imbibition swith the formula is:
+
+## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure</a:documentation>
+                      <element name="scalar_field">
+                        <a:documentation>Entry pressure of the formula</a:documentation>
+                        <attribute name="name">
+                          <value>C</value>
+                        </attribute>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                        </element>
+                      </element>
+                      <optional>
+                        <element name="scalar_field">
+                          <a:documentation>Imbibition term. if on, entry pressure = C - B;
+By default this value is set to zero.</a:documentation>
+                          <attribute name="name">
+                            <value>B</value>
+                          </attribute>
+                          <element name="prescribed">
+                            <ref name="material_mesh_choice"/>
+                            <ref name="prescribed_scalar_field"/>
+                          </element>
+                        </element>
+                      </optional>
+                      <element name="scalar_field">
+                        <a:documentation>exponent -a</a:documentation>
+                        <attribute name="name">
+                          <value>a</value>
+                        </attribute>
+                        <choice>
+                          <element name="prescribed">
+                            <ref name="material_mesh_choice"/>
+                            <ref name="prescribed_scalar_field"/>
+                          </element>
+                          <element name="aliased">
+                            <ref name="generic_aliased_field"/>
+                          </element>
+                        </choice>
+                      </element>
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="type_Power_Law">
+                      <a:documentation>Power Law equation
+
+Pc = c*(1-s_eff)**a
+
+where s_eff = (S_w-Swir)/(1-Swir-Sor)
+
+c = maximum pc pressure; a = pc exponent
+
+(no entry pressure)
+
+ONLY specify for the wetting phase</a:documentation>
+                      <element name="scalar_field">
+                        <a:documentation>Maximum pressure</a:documentation>
+                        <attribute name="name">
+                          <value>C</value>
+                        </attribute>
+                        <choice>
+                          <element name="prescribed">
+                            <ref name="material_mesh_choice"/>
+                            <ref name="prescribed_scalar_field"/>
+                          </element>
+                          <element name="aliased">
+                            <ref name="generic_aliased_field"/>
+                          </element>
+                        </choice>
+                      </element>
+                      <element name="scalar_field">
+                        <a:documentation>exponent a</a:documentation>
+                        <attribute name="name">
+                          <value>a</value>
+                        </attribute>
+                        <choice>
+                          <element name="prescribed">
+                            <ref name="material_mesh_choice"/>
+                            <ref name="prescribed_scalar_field"/>
+                          </element>
+                          <element name="aliased">
+                            <ref name="generic_aliased_field"/>
+                          </element>
+                        </choice>
+                      </element>
+                    </element>
+                  </optional>
+                </element>
+              </optional>
+              <optional>
+                <element name="immobile_fraction">
+                  <a:documentation>Immobile volume of fluid phase</a:documentation>
+                  <element name="scalar_field">
+                    <a:documentation>Immobile fraction</a:documentation>
+                    <attribute name="name">
+                      <value>value</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                    </element>
+                  </element>
+                </element>
+              </optional>
+            </element>
+          </optional>
+        </element>
+      </oneOrMore>
+      <optional>
+        <ref name="mesh_adaptivity_options"/>
+      </optional>
+      <optional>
+        <element name="porous_media">
+          <a:documentation>Porous Media</a:documentation>
+          <element name="scalar_field">
+            <a:documentation>Specify scalar field Porosity</a:documentation>
+            <attribute name="name">
+              <value>Porosity</value>
+            </attribute>
+            <choice>
+              <element name="prescribed">
+                <ref name="material_mesh_choice"/>
+                <ref name="prescribed_scalar_field"/>
+                <ref name="output_options"/>
+              </element>
+              <element name="aliased">
+                <ref name="generic_aliased_field"/>
+                <ref name="output_options"/>
+              </element>
+            </choice>
+          </element>
+          <choice>
+            <a:documentation>Specify field Permeability</a:documentation>
+            <element name="scalar_field">
+              <attribute name="name">
+                <value>Permeability</value>
+              </attribute>
+              <choice>
+                <element name="prescribed">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="prescribed_scalar_field"/>
+                  <ref name="output_options"/>
+                </element>
+                <element name="diagnostic">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                  <ref name="diagnostic_scalar_field"/>
+                  <ref name="output_options"/>
+                </element>
+              </choice>
+            </element>
+            <element name="vector_field">
+              <attribute name="name">
+                <value>Permeability</value>
+              </attribute>
+              <choice>
+                <element name="prescribed">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="prescribed_vector_field"/>
+                  <ref name="output_options"/>
+                </element>
+                <element name="diagnostic">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="vector_python_diagnostic_algorithm"/>
+                  <ref name="diagnostic_vector_field"/>
+                  <ref name="output_options"/>
+                </element>
+              </choice>
+            </element>
+            <element name="tensor_field">
+              <attribute name="name">
+                <value>Permeability</value>
+              </attribute>
+              <choice>
+                <element name="prescribed">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="prescribed_tensor_field"/>
+                  <ref name="output_options"/>
+                </element>
+                <element name="diagnostic">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="tensor_python_diagnostic_algorithm"/>
+                  <ref name="diagnostic_tensor_field"/>
+                  <ref name="output_options"/>
+                </element>
+              </choice>
+            </element>
+          </choice>
+          <optional>
+            <element name="Dispersion">
+              <a:documentation>Specify scalar field longitudinal and transverse Dispersivity</a:documentation>
+              <element name="scalar_field">
+                <attribute name="name">
+                  <value>Longitudinal_Dispersivity</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <optional>
+                <element name="scalar_field">
+                  <attribute name="name">
+                    <value>Transverse_Dispersivity</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
+                </element>
+              </optional>
+            </element>
+          </optional>
+          <optional>
+            <element name="porous_properties">
+              <a:documentation>Rock properties
+For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conductivity are &lt;b&gt;MANDATORY&lt;/b&gt;</a:documentation>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field density of the porous media</a:documentation>
+                <attribute name="name">
+                  <value>porous_density</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <optional>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )</a:documentation>
+                  <attribute name="name">
+                    <value>porous_heat_capacity</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
+                </element>
+              </optional>
+              <optional>
+                <element name="tensor_field">
+                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )</a:documentation>
+                  <attribute name="name">
+                    <value>porous_thermal_conductivity</value>
+                  </attribute>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_tensor_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </element>
+              </optional>
+              <optional>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field compressibility of the porous media
+( in Pa-1 den = den_surface*exp(c*(P_res-P_surface))
+with P_surf = 10^5 Pa )</a:documentation>
+                  <attribute name="name">
+                    <value>porous_compressibility</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
+                </element>
+              </optional>
+            </element>
+          </optional>
+          <optional>
+            <element name="wells_and_pipes">
+              <a:documentation>Options to specify the wells/pipes</a:documentation>
+              <element name="scalar_field">
+                <a:documentation>Option to define laterals from diamond
+if in doubt set it to 1.</a:documentation>
+                <attribute name="name">
+                  <value>Pipe</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify where and how much the well/pipes are opened
+It goes from 0 to 1. If completely opened, set it to 1.</a:documentation>
+                <attribute name="name">
+                  <value>Gamma</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="pressure_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Absorption in the pipes.
+If none, set it to 1.
+
+&lt;b&gt;Recommended. set to 1 and use the internal method&lt;/b&gt; based on the Moody diagram that can be selected in
+/wells_and_pipes/well_options/calculate_sigma_pipe</a:documentation>
+                <attribute name="name">
+                  <value>Sigma</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="subcv_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify the diameter of the pipe.
+This effectively defines where and where not there is a pipe.
+If the diameter is &lt;=0 no pipe, else there is pipe.</a:documentation>
+                <attribute name="name">
+                  <value>DiameterPipe</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="pressure_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <optional>
+                <element name="thermal_well_properties">
+                  <a:documentation>Specify thermal well-related options</a:documentation>
+                  <element name="scalar_field">
+                    <a:documentation>Specify the conductivity of the well/pipe material.
+If there are several layers this, it has to be the equivalent conductivity from inside the well/pipe to
+the reservoir.
+This is only required for heat transport</a:documentation>
+                    <attribute name="name">
+                      <value>Conductivity</value>
+                    </attribute>
+                    <choice>
+                      <element name="prescribed">
+                        <ref name="pressure_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                      <element name="diagnostic">
+                        <ref name="vector_python_diagnostic_algorithm"/>
+                        <ref name="diagnostic_scalar_field_no_adapt"/>
+                        <ref name="output_options"/>
+                      </element>
+                      <element name="aliased">
+                        <ref name="generic_aliased_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                    </choice>
+                  </element>
+                  <element name="scalar_field">
+                    <a:documentation>Specify the thickness of the well/pipe.
+If there are several layers this, it has to be the equivalent thiness from inside the well/pipe to
+the reservoir.
+This is only required for heat transport</a:documentation>
+                    <attribute name="name">
+                      <value>well_thickness</value>
+                    </attribute>
+                    <choice>
+                      <element name="prescribed">
+                        <ref name="pressure_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                      <element name="diagnostic">
+                        <ref name="vector_python_diagnostic_algorithm"/>
+                        <ref name="diagnostic_scalar_field_no_adapt"/>
+                        <ref name="output_options"/>
+                      </element>
+                      <element name="aliased">
+                        <ref name="generic_aliased_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                    </choice>
+                  </element>
+                </element>
+              </optional>
+              <optional>
+                <element name="well_options">
+                  <a:documentation>Specify well-related options</a:documentation>
+                  <optional>
+                    <element name="calculate_sigma_pipe">
+                      <a:documentation>Calculate the well \sigma field internally
+using a non-linear friction factor.
+This will over-write the field specified in Sigma1.</a:documentation>
+                      <optional>
+                        <!-- Defaults to 1.0e-6. -->
+                        <element name="pipe_roughness">
+                          <ref name="real"/>
+                        </element>
+                      </optional>
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="switch_wells_on_and_off">
+                      <a:documentation>Switches wells on and off to optimise production
+&lt;b&gt;Not recommended, better use gamma with python.&lt;/b&gt;</a:documentation>
+                      <element name="phase_exclude">
+                        <ref name="integer"/>
+                      </element>
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="wells_bdf_tolerance">
+                      <a:documentation>If when using mesh adaptivity the well path is disappearing, this tolerance can probably solve the problem.
+.bdf files have only 6 digits precision, therefore for coordinates bigger than kilometres this value might need to be increased and
+the other way round for values below 100.
+The default value is 1e-2. If the domain size is below 10m it is automatically set to 1e-4</a:documentation>
+                      <ref name="real"/>
+                    </element>
+                  </optional>
+                </element>
+              </optional>
+              <element name="well_volume_ids">
+                <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
+that the well trajectories are preserved.
+
+&lt;b&gt;This is MANDATORY when using files or coordinates to define wells&lt;/b&gt;</a:documentation>
+                <ref name="integer_vector"/>
+                <group>
+                  <optional>
+                    <element name="Lock_sleeve_nodes">
+                      <a:documentation>Lock nodes within the well volumes/sleeves.
+&lt;b&gt; Very useful to reduce oscillations in the system when using mesh adaptivity&lt;/b&gt;.
+Very recommended. ONLY WORKS FOR 3D.</a:documentation>
+                      <ref name="comment"/>
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="Show_well_volumes_ids">
+                      <a:documentation>Output the ids of the wells</a:documentation>
+                      <ref name="comment"/>
+                    </element>
+                  </optional>
+                </group>
+              </element>
+              <zeroOrMore>
+                <element name="well_from_file">
+                  <a:documentation>Introduce here the relative path to the file defining a 1D well
+Note: &lt;b&gt;the only accepted file format is NASTRAN, i.e. .bdf.&lt;/b&gt;
+Each file has to describe a continuous well touching an external boundary.
+
+***Well_volume_ids option is MANDATORY when using this method to define wells.***</a:documentation>
+                  <attribute name="name">
+                    <data type="string" datatypeLibrary=""/>
+                  </attribute>
+                  <attribute name="file_path">
+                    <data type="string" datatypeLibrary=""/>
+                  </attribute>
+                </element>
+              </zeroOrMore>
+              <zeroOrMore>
+                <element name="well_from_coordinates">
+                  <a:documentation>For straight-line wells the top and bottom coordinates may be used instead of a bdf file.
+
+***Well_volume_ids option is MANDATORY when using this method to define wells.***</a:documentation>
+                  <attribute name="name">
+                    <data type="string" datatypeLibrary=""/>
+                  </attribute>
+                  <group>
+                    <element name="top_coordinates">
+                      <a:documentation>Coordinates of the top point of the well
+
+Example: 500.0,500.0,0.0</a:documentation>
+                      <ref name="real_vector"/>
+                    </element>
+                    <element name="bottom_coordinates">
+                      <a:documentation>Coordinates of the bottom point of the well
+
+Example: 500.0,500.0,-1000.0</a:documentation>
+                      <ref name="real_vector"/>
+                    </element>
+                  </group>
+                </element>
+              </zeroOrMore>
+            </element>
+          </optional>
+          <optional>
+            <element name="SelfPotential">
+              <a:documentation>Activates the SelfPotential solver. (S.I. Volts)
+
+&lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase,
+temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a Concentration field defined.
+Also, if the minimum concentration is very small, for example below 1e-2, you should expect instabilities
+in your solution due to the logarithmic nature of the system to solve for, fresh water has a higher concentration that that.
+
+Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.</a:documentation>
+              <element name="scalar_field">
+                <attribute name="name">
+                  <value>SelfPotential</value>
+                </attribute>
+                <element name="diagnostic">
+                  <ref name="pressure_mesh_choice"/>
+                  <ref name="internal_algorithm"/>
+                  <ref name="diagnostic_scalar_field"/>
+                  <ref name="output_options"/>
+                </element>
+              </element>
+              <element name="reference_coordinates">
+                <a:documentation>&lt;b&gt;Input coordinates of desired reference node (voltage = 0), this would be normally the top of the well&lt;/b&gt;. If a node does not exist at these
+coordinates, the nearest vertex will be selected.</a:documentation>
+                <ref name="real_dim_vector"/>
+              </element>
+              <optional>
+                <element name="Reservoir_temperature">
+                  <a:documentation>&lt;b&gt;If not solving for temperature&lt;/b&gt;: here it MUST be specified the reservoir temperature (Kelvin) to compute the rock saturated conductivity.</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="Cementation_exp">
+                  <a:documentation>Cementation exponent, by default 1.8, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="Sat_exponent">
+                  <a:documentation>Saturation exponent, by default 2.0, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="python_Rock_sat_conductivity_code">
+                  <a:documentation>Rock saturated conductivity term (sigma). If this option is on the coded result will be used instead of the internal formula.
+&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="python_ElectroKinetic_code">
+                  <a:documentation>Electrokinetic (Cek) coupling term. If this option is on the coded result will be used instead of the internal formula.
+&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="python_Electrodiffusive_code">
+                  <a:documentation>Electrodiffusive (Ced) coupling term. If this option is on the coded result will be used instead of the internal formula.
+&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="python_Thermoelectric_code">
+                  <a:documentation>Thermoelectric (Cte) coupling term. If this option is on the coded result will be used instead of the internal formula.
+&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                </element>
+              </optional>
+            </element>
+          </optional>
+          <optional>
+            <element name="FWL">
+              <a:documentation>Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
+
+This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.
+
+The following must be specified:
+
+- Densities of water (phase 1) and oil (phase 2)
+
+- Gravity
+
+- Capillary pressure curve</a:documentation>
+              <ref name="real"/>
+            </element>
+          </optional>
+        </element>
+      </optional>
+      <optional>
+        <element name="magma_parameters">
+          <a:documentation>Magma options
+Parameters used for magma_simulator</a:documentation>
+          <optional>
+            <element name="Phase_diagram_coefficients">
+              <a:documentation>Set up phase diagram coefficients. The phase behavious is set by the solidus and liquidus, which is given by, e.g. Tl=A1*Cb^2+B1*Cb+C1; For eutectic phase diagram, A1, B1, C1 is for the branch when the bulk composition is smaller than the eutectic point ae (Cb&lt;=ae). and A2, B2, C2 is for when bulk composition is larger than ae. If only one branch is present in the system (ae=1), only A1, B1, C1 are used.</a:documentation>
+              <element name="A1">
+                <a:documentation>A1</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="B1">
+                <a:documentation>B1</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="C1">
+                <a:documentation>C1</a:documentation>
+                <ref name="real"/>
+              </element>
+              <optional>
+                <element name="A2">
+                  <a:documentation>A2</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="B2">
+                  <a:documentation>B2</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="C2">
+                  <a:documentation>C2</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <element name="ae">
+                <a:documentation>Eutectic point</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="latent_heat">
+                <a:documentation>Latent heat (Lf)
+The energy difference between liquid and solid, which is used in the relationship between enthalpy (H) and temperature (T): H= cp *T +Lf * phi, where phi is the melt fraction.</a:documentation>
+                <ref name="real"/>
+              </element>
+            </element>
+          </optional>
+          <element name="bulk_viscosity_exponential_coefficient">
+            <a:documentation>bulk viscosity is set to follow the power law: xi=mu*phi^(-b), where mu is the reference bulk viscosity. Here coefficient b is set.</a:documentation>
+            <ref name="real"/>
+          </element>
+          <element name="coupling_term_coefficients">
+            <a:documentation>The copling_term represents the strength of the solid/liquid interaction. At lower melt fraction, this coupling force follows the Darcy permeability law C=1/a/d^2*mu*phi^(2-b), which is obtained from the relationship C=mu phi*2/k, where k is the absolute permeability. At high melt fraction, coupling force follows hindled settling: C=1/d^2*mu*phi^(-5)*(1-phi). We define that when the melt fraction is less than certain value (cut_a) it follows Darcy's law; when it's higher than another chosen value(cut_b), it follows hindered settling and the values in between are interpolated. Here coefficients a, grain size d, coefficients b and the cutting between the two demains needs to be set.</a:documentation>
+            <element name="coupling_power_coefficent_a">
+              <a:documentation>coefficient a</a:documentation>
+              <ref name="real"/>
+            </element>
+            <element name="coupling_power_coefficent_b">
+              <a:documentation>Power law coefficient b</a:documentation>
+              <ref name="real"/>
+            </element>
+            <element name="grain_size">
+              <a:documentation>Grain size</a:documentation>
+              <ref name="real"/>
+            </element>
+            <element name="cut_a">
+              <a:documentation>the range below which the coupling terms follow the Darcy's law, set this to 1 to make the entire domain Darcy like.</a:documentation>
+              <ref name="real"/>
+            </element>
+            <element name="cut_b">
+              <a:documentation>the range above which the coupling terms follow the Hindered settling</a:documentation>
+              <ref name="real"/>
+            </element>
+          </element>
+        </element>
+      </optional>
+      <optional>
+        <element name="femdem_fracture">
+          <a:documentation>Fracking options</a:documentation>
+          <optional>
+            <element name="femdem_file">
+              <a:documentation>Specify FEMDEM input file</a:documentation>
+              <attribute name="name">
+                <data type="string"/>
+              </attribute>
+            </element>
+          </optional>
+          <optional>
+            <element name="oneway_coupling_only">
+              <attribute name="rank">
+                <value>0</value>
+              </attribute>
+              <choice>
+                <value>1way</value>
+                <value>p2way</value>
+              </choice>
+            </element>
+          </optional>
+          <optional>
+            <element name="include_pore_pressure">
+              <empty/>
+            </element>
+          </optional>
+        </element>
+      </optional>
+      <optional>
+        <element name="numerical_methods">
+          <a:documentation>Advanced options that are kept for debugging purposes</a:documentation>
+          <optional>
+            <element name="do_not_bound_after_adapt">
+              <a:documentation>Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field
+is run to guarantee physically plausible solutions. Nonetheless this may spread errors occurred during the interpolation
+that otherwise might have been cut off. Enable this option to avoid doing this operation.
+
+This option is useful if your field is suddenly changing after adapting the mesh.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="use_ENO_scheme">
+              <a:documentation>Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="disable_P0_limiter">
+              <a:documentation>Disable the limiter for velocity when using P0DG. Not for porous media.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="use_reflect_method">
+              <a:documentation>Use a method to avoid distortion due to boundaries</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="lump_mass_matrix">
+              <a:documentation>Use the row-sum method to create a lumped mass matrix.
+For porous media this will not have an effect.
+Also options to convert P1DG into P0DG and introduce the temporal terms into the mass matrix</a:documentation>
+              <optional>
+                <element name="lump_weight">
+                  <a:documentation>For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
+the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
+The default value for P1DGP1 =&gt; 1e4 and disabled for other element types.
+To disable it manually, set it to negative values.</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="get_all_in_mass_matrix">
+                  <a:documentation>Introduce in the pivit matrix the temporal terms</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+          </optional>
+          <optional>
+            <element name="no_matrix_store">
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="lump_momentum_inertia">
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="max_sat_its">
+              <a:documentation>Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
+By default this number is 9. Recommended range: 3 to 9.</a:documentation>
+              <ref name="integer"/>
+            </element>
+          </optional>
+          <optional>
+            <element name="Max_compositional_its">
+              <a:documentation>Impose a maximum number of iterations for the compositional loop
+By default this number is 1. STILL TESTING THIS PARAMETER</a:documentation>
+              <ref name="integer"/>
+            </element>
+          </optional>
+          <optional>
+            <element name="solve_nphases_minus_one">
+              <a:documentation>Decide to solve for nphases-1. This should be faster. Still in DEVELOPMENT.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="VAD_two_levels">
+              <a:documentation>This is for stratified flows, experimental but it seems to work better than the default</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="porous_output_force_density">
+              <a:documentation>For porous media only the Darcy velocity is outputed as the normal velocity is actually the force density
+activate this to also output the force_density</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="create_P_mat_fast">
+              <a:documentation>Use the fast method to create the pressure matrix. Be aware that some methods only work with the slow method</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+        </element>
+      </optional>
+    </element>
+  </start>  
 </grammar>
