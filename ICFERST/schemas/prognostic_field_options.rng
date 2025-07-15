@@ -159,62 +159,41 @@ requires a distinct name for the options dictionary.</a:documentation>
       <optional>
         <element name="scalar_field">
           <a:documentation>Source term.
-            &lt;b&gt;For Concentration or any Tracer except Temperature:&lt;/b&gt; If "Total_mass" and "Tracer_field_value" options are activated then the source term is based on imposed total mass and tracer field value. In that case, tracer keeps being injected at its prescribed value until reaching the prescribed total mass in the domain. In that case, "Tracer_field_value" has preference over the value imposed in "Source"
-            &lt;b&gt;For Temperature:&lt;/b&gt;  Source term to be imposed in W/m3 (heat production).</a:documentation>
+  For Concentration or any Tracer except Temperature: If "Total_mass" and "Tracer_field_value" options are activated then the source term is based on imposed total mass and tracer field value. In that case, tracer keeps being injected at its prescribed value until reaching the prescribed total mass in the domain. In that case, "Tracer_field_value" has preference over the value imposed in "Source"
+  For Temperature:  Source term to be imposed in W/m3 (heat production).</a:documentation>
           <attribute name="name">
             <value>Source</value>
           </attribute>
           <attribute name="rank">
             <value>0</value>
           </attribute>
-          <choice>
-            <element name="prescribed">
-              <ref name="prescribed_scalar_field_no_adapt"/>
-            </element>
-            <element name="diagnostic">
-              <a:documentation>This only works for traffic modelling</a:documentation>
-              <choice>
-                <ref name="scalar_python_diagnostic_algorithm"/>
-                <ref name="internal_algorithm"/>
-              </choice>
-              <ref name="diagnostic_scalar_field_no_adapt"/>
-            </element>
-          </choice>
-          <optional>
-            <element name="Tracer_field_value">
-              <a:documentation>Imposed value for the tracer</a:documentation>
-              <ref name="real"/>
-            </element>
-          </optional>
-          <optional>
-            <element name="Total_mass">
-              <a:documentation>Imposed total mass (kg)</a:documentation>
-              <ref name="real"/>
-            </element>
-          </optional>
-        </element>
-      </optional>
-      <optional>
-        <element name="scalar_field">
-          <a:documentation>Absorption term</a:documentation>
-          <attribute name="name">
-            <value>Absorption</value>
-          </attribute>
-          <attribute name="rank">
-            <value>0</value>
-          </attribute>
-          <choice>
-            <element name="prescribed">
-              <ref name="prescribed_scalar_field_no_adapt"/>
-            </element>
-            <element name="diagnostic">
-              <choice>
-                <ref name="scalar_python_diagnostic_algorithm"/>
-                <ref name="internal_algorithm"/>
-              </choice>
-              <ref name="diagnostic_scalar_field_no_adapt"/>
-            </element>
-          </choice>
+          <group>
+            <choice>
+              <element name="prescribed">
+                <ref name="prescribed_scalar_field_no_adapt"/>
+              </element>
+              <element name="diagnostic">
+                <a:documentation>This only works for traffic modelling</a:documentation>
+                <choice>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                  <ref name="internal_algorithm"/>
+                </choice>
+                <ref name="diagnostic_scalar_field_no_adapt"/>
+              </element>
+            </choice>
+            <optional>
+              <element name="Tracer_field_value">
+                <a:documentation>Imposed value for the tracer</a:documentation>
+                <ref name="real"/>
+              </element>
+            </optional>
+            <optional>
+              <element name="Total_mass">
+                <a:documentation>Imposed total mass (kg)</a:documentation>
+                <ref name="real"/>
+              </element>
+            </optional>
+          </group>
         </element>
       </optional>
       <optional>
@@ -424,20 +403,6 @@ coordinates, the nearest vertex will be selected.</a:documentation>
           </element>
         </choice>
       </optional>
-      <optional>
-        <element name="hydrostatic_boundaries">
-          <a:documentation>It calculates the pressure based on p = rho * g * ( -1.0 * y ) + p0  in 2D and p = rho * g * (-1.0 * z ) + p0 in 3D.
-where "y" and "z" are the vertical coordinates in 2D and 3D, respectively; "p0" is the pressure in
-[pa] at the highest point of the boundary (normally at y=0 or z=0). With this hydrostatic option "p0" should be assinged
-under 'dirichlet/constant' for each boundary (however, it typically has a value of 0.0).
-p0 can also be used to adjust the pressure at the highest point of a pressure boundary if it is located below 0.0.
-
-The gravitational acceleration is considered to be in negative y (or negative z in 3D) direction.
-
-&lt;b&gt;NOTE: Density boundary conditions must be specified.&lt;/b&gt;</a:documentation>
-          <empty/>
-        </element>
-      </optional>
       <oneOrMore>
         <choice>
           <element name="initial_condition">
@@ -502,6 +467,23 @@ want this.</a:documentation>
                   </element>
                 </optional>
               </element>
+              <optional>
+                <element name="hydrostatic_boundaries">
+                  <a:documentation>It calculates the pressure based on p = rho * g * ( -1.0 * y ) + p0  in 2D and p = rho * g * (-1.0 * z ) + p0 in 3D.
+where "y" and "z" are the vertical coordinates in 2D and 3D, respectively; "p0" is the pressure in
+[pa] at the highest point of the boundary (normally at y=0 or z=0). With this hydrostatic option "p0" should be assinged
+under 'dirichlet/constant' for each boundary (however, it typically has a value of 0.0).
+p0 can also be used to adjust the pressure at the highest point of a pressure boundary if it is located below 0.0.
+
+The gravitational acceleration is considered to be in negative y (or negative z in 3D) direction.
+
+&lt;b&gt;IMPORTANT NOTES:
+1. Do not group regions (e.g., avoid "1 2").
+Instead, define 1 boundary condition per region (e.g., "1" and "2" separately).
+2. Make sure to define density boundary conditions on each boundary where hydrostatic_boundaries is applied.&lt;/b&gt;</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
               <ref name="input_choice_real"/>
             </element>
             <element name="type">

@@ -595,11 +595,11 @@ contains
         type(state_type), dimension(:,:), pointer, optional :: pmulti_state
 
         type(state_type), dimension(:,:), pointer :: multi_state
-        type(scalar_field), pointer :: pressure, sfield, ldfield, tdfield
-        type(vector_field), pointer :: velocity, position, vfield, ldvfield, tdvfield
+        type(scalar_field), pointer :: pressure, sfield, ldfield, tdfield, tpfield
+        type(vector_field), pointer :: velocity, position, vfield, ldvfield, tdvfield, tpvfield
         type(tensor_field), pointer :: tfield, p2, d2, drhodp
         type(vector_field) :: porosity, vec_field, porous_density, porous_density_initial, porous_heat_capacity, &
-             Longitudinal_Dispersivity, Transverse_Dispersivity, porous_density_old, K_A, K_const, K_c, K_T, K_c2, K_T2, K_cT, P_A, P_const, P_c, P_T, P_c2, P_T2, P_cT
+             Longitudinal_Dispersivity, Transverse_Dispersivity, porous_density_old, K_A, K_const, K_c, K_T, K_c2, K_T2, K_cT, P_A, P_const, P_c, P_T, P_c2, P_T2, P_cT, porosity_total
         type(vector_field) :: p_position, u_position, m_position
         type(tensor_field) :: permeability, ten_field, porous_thermal_conductivity
         type(mesh_type), pointer :: ovmesh, element_mesh
@@ -650,6 +650,12 @@ contains
             call insert(packed_state,element_mesh,'P0DG')
         end if
 
+        if(has_scalar_field(state(1),"porosity_total")) then
+            sfield=>extract_scalar_field(state(1),"porosity_total")
+            element_mesh=>sfield%mesh
+            call insert(packed_state,element_mesh,'P0DG')
+        end if
+
         !Insert mass_elements
         call allocate(vec_field,1,element_mesh,"MASS_ELE")
         call zero(vec_field)
@@ -695,6 +701,14 @@ contains
         call insert(packed_state,vec_field,"MeanPoreCV")
         do icomp = 1, ncomp
             call insert(multicomponent_state(icomp),vec_field,"MeanPoreCV")
+        end do
+        call deallocate(vec_field)
+
+        call allocate(vec_field,npres,pressure%mesh,"MeanPoreCV_total")
+        call zero(vec_field)
+        call insert(packed_state,vec_field,"MeanPoreCV_total")
+        do icomp = 1, ncomp
+            call insert(multicomponent_state(icomp),vec_field,"MeanPoreCV_total")
         end do
         call deallocate(vec_field)
 
@@ -965,6 +979,21 @@ contains
               end if
             end if
         end if
+
+        if (has_scalar_field(state(1),"porosity_total")) then
+          call allocate(porosity_total,npres,element_mesh,"porosity_total")
+          do ipres = 1, npres
+              call set(porosity_total,ipres,1.0)
+          end do
+          call insert(packed_state,porosity_total,"porosity_total")
+          call deallocate(porosity_total)
+            tpfield=>extract_scalar_field(state(1),"porosity_total")
+            call set(porosity_total,1,tpfield)
+            if(npres>1) then
+              tpvfield=>extract_vector_field(packed_state,"porosity_total")
+              call assign_val(tpvfield%val(2,:),(/1.0/))
+            end if
+          end if
 
         !!!!!!!!
 
@@ -3581,8 +3610,14 @@ end subroutine get_DarcyVelocity
                 enddo
                 !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
                 do ifields = 1, size(outfluxes%field_names,2)
-                    do iphase = 1, size(outfluxes%intflux,1) !Here we output the average value over the surface
-                        write(tempstring(iphase),'(E17.11)') outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
+                    do iphase = 1, size(outfluxes%intflux,1)
+                        if (trim(outfluxes%field_names(iphase, ifields)) == "Temperature") then
+                            write(tempstring(iphase),'(E17.11)') &
+                                outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet) - 273.15 ! Print the temperature outfluxes in Celsius, not Kelvin
+                        else
+                            write(tempstring(iphase),'(E17.11)') &
+                                outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
+                        end if
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     end do
                 end do

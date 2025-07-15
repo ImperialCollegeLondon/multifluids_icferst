@@ -1013,7 +1013,7 @@ contains
   subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, final_phase, Mdims, ndgln, DERIV, CV_P, &
                   SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL,&
                   getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, &
-                  mean_pore_cv, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes, porous_heat_coef, assemble_collapsed_to_one_phase )
+                  mean_pore_cv, MEAN_PORE_CV_TOTAL, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes, porous_heat_coef, assemble_collapsed_to_one_phase )
       type(tensor_field), intent(inout) :: tracer
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
@@ -1030,7 +1030,7 @@ contains
       integer, dimension(:,:,:), intent( in ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_U_BC_ALL
       real, dimension(:,:,:), intent( inout ) :: SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, INV_B, DIAG_SCALE_PRES_COUP
       real, dimension(:,:),intent( inout ) :: den_all, denold_all, DIAG_SCALE_PRES
-      REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV ! (Mdims%npres,Mdims%cv_nonods)
+      REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV, MEAN_PORE_CV_TOTAL ! (Mdims%npres,Mdims%cv_nonods)
       real, dimension(:),intent( inout ) :: MASS_ELE, MASS_CV
       logical, intent( in ) :: getcv_disc, getct, thermal, GOT_T2, assemble_collapsed_to_one_phase
       real, intent(in) :: DT, CV_BETA
@@ -1042,10 +1042,13 @@ contains
       real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
       type (multi_outfluxes), intent(inout) :: outfluxes
       ! Local variables
-      real :: auxR, cc, deltaP, rp, rp_nano, skin, h, h_nano, INV_SIGMA_ND, INV_SIGMA_NANO_N, w_sum_one1, w_sum_one2, one_m_cv_beta
+      real :: auxR, cc, deltaP, rp, rp_nano, skin, h, h_nano, INV_SIGMA_ND, INV_SIGMA_NANO_N, w_sum_one1, w_sum_one2, one_m_cv_beta, beta, beta_min, beta_max, k_beta, tol
       INTEGER :: u_lnloc, ele, i, jpres, u_iloc, x_iloc, idim, cv_lkloc, u_knod, u_lngi, &
           U_NOD, U_SILOC, MAT_NODI, ipres, k, CV_NODI, IPHASE, COUNT, cv_iloc, jphase, iphase_ipres, jphase_jpres,&
           compact_phase, global_phase, wells_first_phase
+      type(scalar_field), pointer :: porosity_total_field
+      logical :: have_porosity_total = .false.
+      logical, save :: have_been_read = .false.
 
       !Variables for boundary conditions
       REAL, PARAMETER :: FEM_PIPE_CORRECTION = 0.035
@@ -1106,6 +1109,12 @@ contains
               well_thickness => extract_scalar_field( state(1), "well_thickness" )
           end if
       end if
+
+      if ( .not. have_been_read ) then
+        have_porosity_total = have_option("/porous_media/porous_properties/scalar_field::porosity_total")
+        have_been_read = .true.
+      end if
+
     !################## END OF SET VARIABLES ##################
     conservative_advection = abs(cv_beta) > 0.99
     OPT_VEL_UPWIND_COEFS_NEW_CV=0.0 ; N=0.0
@@ -1161,7 +1170,19 @@ contains
           cc = 0.0
           if ( pipes_aux%MASS_PIPE( cv_nodi )>0.0 ) cc = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
           h = (Mass_CV( cv_nodi )/h)**(1.0/(Mdims%ndim-1)) ! This is the lengthscale normal to the wells.
-          rp = 0.14 * h
+          ! Compute a modified rp to avoid ln(rp/rw) < 0 in Peaceman correction.
+          ! Smoothly transitions from rp = rw for small h to rp = 0.2*h for large h.
+          ! Ensures stability and avoids non-physical flow with fine meshes near the well.
+          ! The steepness of the transition is controlled by a parameter beta(rw), which decreases with the well radius rw.
+          ! beta = beta_max * exp(-k * rw), clipped to [beta_min, beta_max]
+          tol = 1.e-3
+          beta_max = 70.0
+          beta_min = 3.0
+          k_beta = 4.0
+          beta = beta_max * exp(-k_beta * 0.5 * PIPE_DIAMETER%val(cv_nodi))
+          beta = max(beta_min, min(beta, beta_max))
+          ! Compute rp with a smooth softplus transition function
+          rp = 0.5*PIPE_DIAMETER%val(cv_nodi) + (1.0 / beta) * log(1 + exp(beta * (0.2 * h -  0.5*PIPE_DIAMETER%val(cv_nodi)))) * ( 1.0 - exp(-h / (0.5*PIPE_DIAMETER%val(cv_nodi))) ) + tol
           Skin = 0.0
           !Create local memory to avoid slicing
           if (GOT_T2) then
@@ -1234,8 +1255,20 @@ contains
               cc = 0.0
               if ( pipes_aux%MASS_PIPE( cv_nodi )>0.0 ) cc = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
               h = (Mass_CV( cv_nodi )/h)**(1.0/(Mdims%ndim-1))  ! This is the lengthscale normal to the wells.
-              rp = 0.14 * h
-              rp_NANO = 0.14 * h_NANO
+              ! Compute a modified rp to avoid ln(rp/rw) < 0 in Peaceman correction.
+              ! Smoothly transitions from rp = rw for small h to rp = 0.2*h for large h.
+              ! Ensures stability and avoids non-physical flow with fine meshes near the well.
+              ! The steepness of the transition is controlled by a parameter beta(rw), which decreases with the well radius rw.
+              ! beta = beta_max * exp(-k * rw), clipped to [beta_min, beta_max]
+              tol = 1.e-3
+              beta_max = 70.0
+              beta_min = 3.0
+              k_beta = 4.0
+              beta = beta_max * exp(-k_beta * 0.5 * PIPE_DIAMETER%val(cv_nodi))
+              beta = max(beta_min, min(beta, beta_max))
+              ! Compute rp with a smooth softplus transition function
+              rp = 0.5*PIPE_DIAMETER%val(cv_nodi) + (1.0 / beta) * log(1 + exp(beta * (0.2 * h -  0.5*PIPE_DIAMETER%val(cv_nodi)))) * ( 1.0 - exp(-h / (0.5*PIPE_DIAMETER%val(cv_nodi))) ) + tol
+              rp_NANO = 0.5*PIPE_DIAMETER%val(cv_nodi) + (1.0 / beta) * log(1 + exp(beta * (0.2 * h_NANO -  0.5*PIPE_DIAMETER%val(cv_nodi)))) * ( 1.0 - exp(-h_NANO / (0.5*PIPE_DIAMETER%val(cv_nodi))) ) + tol
               Skin = 0.0
               !Create local memory to reduce slicing
               do ipres = 1, Mdims%npres
@@ -1311,7 +1344,7 @@ contains
                       count = min(1,cv_nodi)
                       !Rp is the internal radius of the well
                       rp = max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) - well_thickness%val(count)
-                      h = 1./(PI * (0.5*pipe_Diameter%val( cv_nodi )**2.))!height/volume pipe
+                      h = 1./(PI * (0.5*pipe_Diameter%val( cv_nodi ))**2.)!height/volume pipe
                       !we apply Q = 1/WellVolume * (Tin-Tout) * 2 * PI * K * L/(ln(Rout/Rin))
                       auxR = conductivity_pipes%val(count) * 2.0 * PI * h / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
                       DO IPHASE = 1, final_phase
@@ -1358,6 +1391,20 @@ contains
                         + Mass_CV(CV_NODI) * SOURCT_ALL( iphase, CV_NODI )
                   end do
                   if (thermal .and. is_porous_media) then !gr  first term goes to 0?
+                    if (have_porosity_total) then
+                      !In this case for the time-integration term the effective rho Cp is a combination of the porous media
+                      ! and the fluids. Here we add the porous media contribution
+                      DO IPHASE = wells_first_phase, final_phase*2
+                        LOC_MAT_II(iphase) = LOC_MAT_II(iphase) +  porous_heat_coef( CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
+                        * R_PHASE(IPHASE) * (1-MEAN_PORE_CV_TOTAL( 1, CV_NODI ))/MEAN_PORE_CV_TOTAL( 1, CV_NODI )
+                              !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
+                                  !we divide to remove that term and multiply by the correct term (1-porosity)
+                          LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
+                              + (CV_BETA * porous_heat_coef( CV_NODI ) * T2OLD_ALL( iphase, CV_NODI ) &
+                              + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * T2_ALL( iphase, CV_NODI ) ) &
+                              * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV_TOTAL( 1, CV_NODI ))/MEAN_PORE_CV_TOTAL( 1, CV_NODI )
+                      END DO
+                    else
                       !In this case for the time-integration term the effective rho Cp is a combination of the porous media
                       ! and the fluids. Here we add the porous media contribution
                       DO IPHASE = wells_first_phase, final_phase*2
@@ -1370,6 +1417,7 @@ contains
                               + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * T2_ALL( iphase, CV_NODI ) ) &
                               * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
                       END DO
+                    end if
                   end if
 
                   DO IPHASE=1 , final_phase !gr time derivative

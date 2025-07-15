@@ -872,8 +872,32 @@ element multiphase_properties {
                      output_options
                      }
                   )
-               }?
+               }?,
 
+               ## Specify scalar field: total porosity
+               ## This field defines the *total porosity* of the porous medium, which is the sum of effective and non-effective porosity.
+               ## It represents the full volume fraction of pore space, including both flow-connected (effective) and non-connected (non-effective) voids.
+               ## When activated, this field is used to calculate *wet* thermophysical properties, such as thermal conductivity, density and heat capacity.
+               ##
+               ## *** IMPORTANT NOTE ***
+               ##
+               ## If the option is enabled, you must define the total porosity field across all regions, even those where total porosity equals the effective porosity.
+               ## In such cases, simply assign the same value to both the "Porosity" and "porosity_total" fields.
+               ## The effective porosity is specified via the "Porosity" field in IC-FERST and is used in flow and transport calculations.
+               element scalar_field {
+                  attribute name { "porosity_total" },
+                  (
+                     element prescribed {
+                        material_mesh_choice,
+                        prescribed_scalar_field,
+                     output_options
+                     }|
+                     element aliased {
+                        generic_aliased_field,
+                     output_options
+                     }
+                  )
+               }?
              }?,
 
 
@@ -3400,7 +3424,7 @@ scalar_field_choice =
          ## Name has to start with CopiedField_Metal (e.g., CopiedField_Metal_Cu).
          element scalar_field {
             attribute rank { "0" },
-            attribute name { xsd:string },
+            attribute name { "CopiedField_Metal" },
             (
                element diagnostic {
                   internal_algorithm,
