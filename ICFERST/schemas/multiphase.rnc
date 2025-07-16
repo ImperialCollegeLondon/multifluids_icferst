@@ -810,67 +810,112 @@ start =
                }?
             }?,
             ## Rock properties
-            ## For <b>GEOTHERMAL</b> simulations, density, heat capacity and conductivity are <b>MANDATORY</b>
-            element porous_properties{
+            ## For <b>GEOTHERMAL</b> simulations, density, heat capacity, and conductivity are <b>MANDATORY</b>.
+            ##
+            ##
+            ## Properties can be specified as either:
+            ##
+            ## - wet_value: effective property calculated as a porosity-weighted average (e.g., phi * water_value + (1 - phi) * dry_value)
+            ##
+            ## - dry_value: property of the dry matrix alone
+            ##
+            ##
+            ## Choose the appropriate input depending on your model.
+
+            element porous_properties {
                 ## Specify scalar field density of the porous media
-                ##
-                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix).
-                ## Double check and convert your input values so they only represent the matrix property
-                ## (e.g. bulk measurement divided by porosity)
                 element scalar_field {
-                   attribute name { "porous_density" },
-                   (
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field,
-                         output_options
-                      }|
-                      element aliased {
-                         generic_aliased_field,
-                         output_options
-                      }
-                   )
+                    attribute name { "porous_density" },
+                    (
+                        element dry_value {
+                            element prescribed {
+                                material_mesh_choice,
+                                prescribed_scalar_field,
+                                output_options
+                            } |
+                            element aliased {
+                                generic_aliased_field,
+                                output_options
+                            }
+                        } |
+                        element wet_value {
+                            element prescribed {
+                                material_mesh_choice,
+                                prescribed_scalar_field,
+                                output_options
+                            } |
+                            element aliased {
+                                generic_aliased_field,
+                                output_options
+                            }
+                        }
+                    )
                 },
                 ## Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
-                ##
-                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix).
-                ## Double check and convert your input values so they only represent the matrix property
-                ## (e.g. bulk measurement divided by porosity)
                 element scalar_field {
-                   attribute name { "porous_heat_capacity" },
-                   (
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field,
-                        output_options
-                      }|
-                      element aliased {
-                         generic_aliased_field,
-                        output_options
-                      }
-                   )
+                    attribute name { "porous_heat_capacity" },
+                    (
+                        element dry_value {
+                            element prescribed {
+                                material_mesh_choice,
+                                prescribed_scalar_field,
+                                output_options
+                            } |
+                            element aliased {
+                                generic_aliased_field,
+                                output_options
+                            }
+                        } |
+                        element wet_value {
+                            element prescribed {
+                                material_mesh_choice,
+                                prescribed_scalar_field,
+                                output_options
+                            } |
+                            element aliased {
+                                generic_aliased_field,
+                                output_options
+                            }
+                        }
+                    )
                 }?,
 
-
-
                 ## Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin => W/(m·K) )
-                ##
-                ## <b>NOTE</b>: Property specified here is <b>matrix value</b>(bulk = pore space + matrix).
-                ## Double check and convert your input values so they only represent the matrix property
-                ## (e.g. bulk measurement divided by porosity)
-               element tensor_field {
-                  attribute name { "porous_thermal_conductivity" },
-                  element prescribed {
-                     material_mesh_choice,
-                     prescribed_tensor_field,
-                     output_options
-                  },
-                  ## Apply Wiener method for calculating effective thermal conductivity k = phi*k_f+(1-phi)*k_s
-                  ## This method will overestimate the effective thermal conductivity. Default is to use Hashin & Shtrikman
-                  ## method which provides a better estimate of the effective thermal conductivity. Only select this option
-                  ## if you want to use the Wiener method.
-                  element Wiener_conductivity {empty}?
-               }?,
+                element tensor_field {
+                    attribute name { "porous_thermal_conductivity" },
+                    (
+                        element dry_value {
+                            (
+                                element prescribed {
+                                    material_mesh_choice,
+                                    prescribed_tensor_field,
+                                    output_options
+                                } |
+                                element aliased {
+                                    generic_aliased_field,
+                                    output_options
+                                }
+                            ),
+
+                            ## Apply Wiener method for calculating effective thermal conductivity k = phi*k_f+(1-phi)*k_s
+                            ## This method will overestimate the effective thermal conductivity.
+                            ## Default is Hashin & Shtrikman method which provides a better estimate.
+                            ## Select this option only to use Wiener method.
+                            element Wiener_conductivity { empty }?
+                        } |
+                        element wet_value {
+                            element prescribed {
+                                material_mesh_choice,
+                                prescribed_tensor_field,
+                                output_options
+                            } |
+                            element aliased {
+                                generic_aliased_field,
+                                output_options
+                            }
+                        }
+                    )
+                }?,
 
                ## Specify scalar field compressibility of the porous media
                ## ( in Pa-1 den = den_surface*exp(Coef*(P_res-P_surface))

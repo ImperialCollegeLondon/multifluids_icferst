@@ -1572,6 +1572,10 @@ contains
       logical :: wiener_conductivity, have_porosity_total = .false.
       logical, save :: have_been_read = .false.
       real :: expo
+      logical :: is_thermal_conductivity_wet
+      real :: dry_thermal_conductivity
+
+      is_thermal_conductivity_wet = have_option("/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/wet_value")
 
       ScalarAdvectionField_Diffusion = 0.0
       if ( Mdims%ncomp > 1 ) then
@@ -1656,7 +1660,14 @@ contains
             !weighted average of conductivities Wiener method).
             !Default option is to use a more accurate Hashin and Shtrikman definition:
             !lambda_p+3*lambda_p*(lambda_f-lambda_p)*porosity/(3*lambda_p+(lambda_f-lambda_p)(1-porosity))
-            wiener_conductivity =  have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/Wiener_conductivity')
+
+            ! Force Wiener conductivity if wet input is used
+            if (is_thermal_conductivity_wet) then
+              wiener_conductivity = .true.
+            else
+              wiener_conductivity = have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/dry_value/Wiener_conductivity')
+            end if
+
             saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
             if (have_porosity_total) then
@@ -1670,15 +1681,28 @@ contains
                   do iloc = 1, Mdims%mat_nloc
                     mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                     cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+
                     if (wiener_conductivity) then
                       do idim = 1, Mdims%ndim
+                        ! Convert wet to dry thermal conductivity if needed
+                        if (is_thermal_conductivity_wet) then
+                          dry_thermal_conductivity = (tfield%val(idim, idim, t_ele_nod) - &
+                            node_val(diffusivity, idim, idim, mat_inod) * porosity_total_field%val(ele_nod)) / &
+                            (1.0 - porosity_total_field%val(ele_nod))
+                        else
+                          dry_thermal_conductivity = tfield%val(idim, idim, t_ele_nod)
+                        end if
+
+                        ! Use Wiener approach (required for wet inputs, optional for dry)
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
                         (porosity_total_field%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                        +(1.0-porosity_total_field%val(ele_nod))* tfield%val(idim, idim, t_ele_nod)) ! for classic weighted approach (Wiener approach)
+                        +(1.0-porosity_total_field%val(ele_nod))* dry_thermal_conductivity)
                       end do
                     else
+                      ! This branch will only be reached with dry inputs
                       do idim = 1, Mdims%ndim
+                        ! Use Hashin-Shtrikman approach (only valid for dry inputs)
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
                         (tfield%val(idim, idim, t_ele_nod)+3*tfield%val(idim, idim, t_ele_nod)* &
@@ -1687,6 +1711,7 @@ contains
                         (1-porosity_total_field%val(ele_nod))))
                       end do
                     end if
+
                   end do
                 end do
               end do
@@ -1701,15 +1726,28 @@ contains
                   do iloc = 1, Mdims%mat_nloc
                     mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                     cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+
                     if (wiener_conductivity) then
                       do idim = 1, Mdims%ndim
+                        ! Convert wet to dry thermal conductivity if needed
+                        if (is_thermal_conductivity_wet) then
+                          dry_thermal_conductivity = (tfield%val(idim, idim, t_ele_nod) - &
+                            node_val(diffusivity, idim, idim, mat_inod) * sfield%val(ele_nod)) / &
+                            (1.0 - sfield%val(ele_nod))
+                        else
+                          dry_thermal_conductivity = tfield%val(idim, idim, t_ele_nod)
+                        end if
+
+                        ! Use Wiener approach (required for wet inputs, optional for dry)
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
                         (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                        +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod)) ! for classic weighted approach (Wiener approach)
+                        +(1.0-sfield%val(ele_nod))* dry_thermal_conductivity)
                       end do
                     else
+                      ! This branch will only be reached with dry inputs
                       do idim = 1, Mdims%ndim
+                        ! Use Hashin-Shtrikman approach (only valid for dry inputs)
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
                         (tfield%val(idim, idim, t_ele_nod)+3*tfield%val(idim, idim, t_ele_nod)* &
@@ -1718,6 +1756,7 @@ contains
                         (1-sfield%val(ele_nod))))
                       end do
                     end if
+
                   end do
                 end do
               end do

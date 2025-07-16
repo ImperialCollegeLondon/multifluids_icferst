@@ -481,31 +481,164 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
           implicit none
         REAL, DIMENSION( : ), intent(inout) :: porous_heat_coef, porous_heat_coef_old
         !Local variables
-        type( scalar_field ), pointer :: porosity, density_porous, Cp_porous, density_porous_old
-        integer :: ele, cv_inod, iloc, p_den, h_cap, ele_nod
+        type( scalar_field ), pointer :: porosity, porosity_total, density_porous, Cp_porous, density_porous_old
+        type( tensor_field ), pointer :: density, density_old, rho_cp
+        integer :: ele, cv_inod, iloc, p_den, h_cap, ele_nod, iphase
         real, dimension(Mdims%cv_nonods) :: cv_counter
-        real :: auxR
+        real :: auxR, dry_density, dry_cp, dry_density_old, wet_density, ref_density, ref_density_old, cp_fluid, phi, one_minus_phi
+        logical :: is_cp_porous_wet, is_density_porous_wet, have_porosity_total = .false.
+        logical, save :: have_been_read = .false.
+
+        is_cp_porous_wet = have_option("/porous_media/porous_properties/scalar_field::porous_heat_capacity/wet_value")
+        is_density_porous_wet = have_option("/porous_media/porous_properties/scalar_field::porous_density/wet_value")
 
         density_porous => extract_scalar_field( state(1), "porous_density" )
         density_porous_old => extract_scalar_field( state(1), "porous_density_old" )
         Cp_porous => extract_scalar_field( state(1), "porous_heat_capacity" )
         porosity=>extract_scalar_field(state(1),"Porosity")
+        density => extract_tensor_field( packed_state, "PackedDensity" )
+        density_old => extract_tensor_field( packed_state, "PackedOldDensity" )
+        rho_cp => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+
+        if ( .not. have_been_read ) then
+          have_porosity_total = have_option("/porous_media/porous_properties/scalar_field::porosity_total")
+          have_been_read = .true.
+        end if
+
+        if (have_porosity_total) then
+          porosity_total=>extract_scalar_field(state(1),"porosity_total")
+        else
+          porosity_total=>extract_scalar_field(state(1),"Porosity") ! dummy
+        end if
+
         porous_heat_coef = 0.
         porous_heat_coef_old = 0.
         cv_counter = 0
-        do ele = 1, Mdims%totele
-            p_den = min(size(density_porous%val), ele)
-            h_cap = min(size(Cp_porous%val), ele)
-            ele_nod = min(size(porosity%val), ele)
-            do iloc = 1, Mdims%cv_nloc
-                cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
-                porous_heat_coef( cv_inod ) = porous_heat_coef( cv_inod ) + &
-                density_porous%val(p_den ) * Cp_porous%val( h_cap )
-                porous_heat_coef_old( cv_inod ) = porous_heat_coef_old( cv_inod ) + &
-                    density_porous_old%val(p_den ) * Cp_porous%val( h_cap )
+
+        if (have_porosity_total) then
+          do iphase = 1, Mdims%nphase
+            if (has_boussinesq_aprox) then
+                ref_density = retrieve_reference_density(state, packed_state, iphase, lcomp, Mdims%nphase)
+                ref_density_old = ref_density
+            end if
+
+            do ele = 1, Mdims%totele
+                p_den = min(size(density_porous%val), ele)
+                h_cap = min(size(Cp_porous%val), ele)
+                ele_nod = min(size(porosity_total%val), ele)
+                do iloc = 1, Mdims%cv_nloc
+                    cv_inod = ndgln%cv((ele - 1) * Mdims%cv_nloc + iloc)
+                    cv_counter(cv_inod) = cv_counter(cv_inod) + 1.0
+
+                    phi = porosity_total%val(ele_nod)
+                    one_minus_phi = 1.0 - phi
+
+                    ! Get local density or reference density
+                    if (.not. has_boussinesq_aprox) then
+                        ref_density = density%val(1, iphase, cv_inod)
+                        ref_density_old = density_old%val(1, iphase, cv_inod)
+                    end if
+
+                    cp_fluid = rho_cp%val(1, iphase, cv_inod) / density%val(1, iphase, cv_inod)
+
+                    ! Handle all wet/dry combinations
+                    if (is_cp_porous_wet .and. is_density_porous_wet) then
+                        ! Convert both
+                        dry_density = (density_porous%val(p_den) - ref_density * phi) / one_minus_phi
+                        dry_density_old = (density_porous_old%val(p_den) - ref_density_old * phi) / one_minus_phi
+                        dry_cp = (density_porous%val(p_den) * Cp_porous%val(h_cap) - ref_density * cp_fluid * phi) / (dry_density * one_minus_phi)
+
+                    elseif (.not. is_cp_porous_wet .and. is_density_porous_wet) then
+                        ! Only density is wet
+                        dry_density = (density_porous%val(p_den) - ref_density * phi) / one_minus_phi
+                        dry_density_old = (density_porous_old%val(p_den) - ref_density_old * phi) / one_minus_phi
+                        dry_cp = Cp_porous%val(h_cap)
+
+                    elseif (is_cp_porous_wet .and. .not. is_density_porous_wet) then
+                        ! Only cp is wet
+                        dry_density = density_porous%val(p_den)
+                        dry_density_old = density_porous_old%val(p_den)
+                        wet_density = phi * ref_density + one_minus_phi * dry_density
+                        dry_cp = (wet_density * Cp_porous%val(h_cap) - ref_density * cp_fluid * phi) / (dry_density * one_minus_phi)
+
+                    else
+                        ! Use both as dry
+                        dry_density = density_porous%val(p_den)
+                        dry_density_old = density_porous_old%val(p_den)
+                        dry_cp = Cp_porous%val(h_cap)
+
+                    end if
+
+                    ! Add contribution
+                    porous_heat_coef(cv_inod) = porous_heat_coef(cv_inod) + dry_density * dry_cp
+                    porous_heat_coef_old(cv_inod) = porous_heat_coef_old(cv_inod) + dry_density_old * dry_cp
+
+                end do
             end do
-        end do
+          end do
+        else
+          do iphase = 1, Mdims%nphase
+            if (has_boussinesq_aprox) then
+                ref_density = retrieve_reference_density(state, packed_state, iphase, lcomp, Mdims%nphase)
+                ref_density_old = ref_density
+            end if
+
+            do ele = 1, Mdims%totele
+                p_den = min(size(density_porous%val), ele)
+                h_cap = min(size(Cp_porous%val), ele)
+                ele_nod = min(size(porosity%val), ele)
+                do iloc = 1, Mdims%cv_nloc
+                    cv_inod = ndgln%cv((ele - 1) * Mdims%cv_nloc + iloc)
+                    cv_counter(cv_inod) = cv_counter(cv_inod) + 1.0
+
+                    phi = porosity%val(ele_nod)
+                    one_minus_phi = 1.0 - phi
+
+                    ! Get local density or reference density
+                    if (.not. has_boussinesq_aprox) then
+                        ref_density = density%val(1, iphase, cv_inod)
+                        ref_density_old = density_old%val(1, iphase, cv_inod)
+                    end if
+
+                    cp_fluid = rho_cp%val(1, iphase, cv_inod) / density%val(1, iphase, cv_inod)
+
+                    ! Handle all wet/dry combinations
+                    if (is_cp_porous_wet .and. is_density_porous_wet) then
+                        ! Convert both
+                        dry_density = (density_porous%val(p_den) - ref_density * phi) / one_minus_phi
+                        dry_density_old = (density_porous_old%val(p_den) - ref_density_old * phi) / one_minus_phi
+                        dry_cp = (density_porous%val(p_den) * Cp_porous%val(h_cap) - ref_density * cp_fluid * phi) / (dry_density * one_minus_phi)
+
+                    elseif (.not. is_cp_porous_wet .and. is_density_porous_wet) then
+                        ! Only density is wet
+                        dry_density = (density_porous%val(p_den) - ref_density * phi) / one_minus_phi
+                        dry_density_old = (density_porous_old%val(p_den) - ref_density_old * phi) / one_minus_phi
+                        dry_cp = Cp_porous%val(h_cap)
+
+                    elseif (is_cp_porous_wet .and. .not. is_density_porous_wet) then
+                        ! Only cp is wet
+                        dry_density = density_porous%val(p_den)
+                        dry_density_old = density_porous_old%val(p_den)
+                        wet_density = phi * ref_density + one_minus_phi * dry_density
+                        dry_cp = (wet_density * Cp_porous%val(h_cap) - ref_density * cp_fluid * phi) / (dry_density * one_minus_phi)
+
+                    else
+                        ! Use both as dry
+                        dry_density = density_porous%val(p_den)
+                        dry_density_old = density_porous_old%val(p_den)
+                        dry_cp = Cp_porous%val(h_cap)
+
+                    end if
+
+                    ! Add contribution
+                    porous_heat_coef(cv_inod) = porous_heat_coef(cv_inod) + dry_density * dry_cp
+                    porous_heat_coef_old(cv_inod) = porous_heat_coef_old(cv_inod) + dry_density_old * dry_cp
+
+                end do
+            end do
+          end do
+        end if
+
         !Since nodes are visited more than once, this performs a simple average
         !This is the order it has to be done
         auxR = 1.0

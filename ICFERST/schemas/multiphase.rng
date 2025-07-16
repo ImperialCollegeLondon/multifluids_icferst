@@ -988,75 +988,130 @@ if not, vector_field is much faster and the results are the same</a:documentatio
           <optional>
             <element name="porous_properties">
               <a:documentation>Rock properties
-For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conductivity are &lt;b&gt;MANDATORY&lt;/b&gt;</a:documentation>
-              <element name="scalar_field">
-                <a:documentation>Specify scalar field density of the porous media
+For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity, and conductivity are &lt;b&gt;MANDATORY&lt;/b&gt;.
 
-&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
-Double check and convert your input values so they only represent the matrix property
-(e.g. bulk measurement divided by porosity)</a:documentation>
+
+Properties can be specified as either:
+
+- wet_value: effective property calculated as a porosity-weighted average (e.g., phi * water_value + (1 - phi) * dry_value)
+
+- dry_value: property of the dry matrix alone
+
+
+Choose the appropriate input depending on your model.</a:documentation>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field density of the porous media</a:documentation>
                 <attribute name="name">
                   <value>porous_density</value>
                 </attribute>
                 <choice>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
-                    <ref name="output_options"/>
+                  <element name="dry_value">
+                    <choice>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                      <element name="aliased">
+                        <ref name="generic_aliased_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                    </choice>
                   </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
+                  <element name="wet_value">
+                    <choice>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                      <element name="aliased">
+                        <ref name="generic_aliased_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                    </choice>
                   </element>
                 </choice>
               </element>
               <optional>
                 <element name="scalar_field">
-                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
-
-&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
-Double check and convert your input values so they only represent the matrix property
-(e.g. bulk measurement divided by porosity)</a:documentation>
+                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )</a:documentation>
                   <attribute name="name">
                     <value>porous_heat_capacity</value>
                   </attribute>
                   <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
+                    <element name="dry_value">
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                      </choice>
                     </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
+                    <element name="wet_value">
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                      </choice>
                     </element>
                   </choice>
                 </element>
               </optional>
               <optional>
                 <element name="tensor_field">
-                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )
-
-&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
-Double check and convert your input values so they only represent the matrix property
-(e.g. bulk measurement divided by porosity)</a:documentation>
+                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )</a:documentation>
                   <attribute name="name">
                     <value>porous_thermal_conductivity</value>
                   </attribute>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_tensor_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <optional>
-                    <element name="Wiener_conductivity">
-                      <a:documentation>Apply Wiener method for calculating effective thermal conductivity k = phi*k_f+(1-phi)*k_s
-This method will overestimate the effective thermal conductivity. Default is to use Hashin &amp; Shtrikman
-method which provides a better estimate of the effective thermal conductivity. Only select this option
-if you want to use the Wiener method.</a:documentation>
-                      <empty/>
+                  <choice>
+                    <element name="dry_value">
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_tensor_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                      </choice>
+                      <optional>
+                        <element name="Wiener_conductivity">
+                          <a:documentation>Apply Wiener method for calculating effective thermal conductivity k = phi*k_f+(1-phi)*k_s
+This method will overestimate the effective thermal conductivity.
+Default is Hashin &amp; Shtrikman method which provides a better estimate.
+Select this option only to use Wiener method.</a:documentation>
+                          <empty/>
+                        </element>
+                      </optional>
                     </element>
-                  </optional>
+                    <element name="wet_value">
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_tensor_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                      </choice>
+                    </element>
+                  </choice>
                 </element>
               </optional>
               <optional>

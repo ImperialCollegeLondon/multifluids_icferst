@@ -663,82 +663,88 @@
     </tensor_field>
     <porous_properties>
       <scalar_field name="porous_density">
-        <prescribed>
-          <mesh name="P0DG"/>
-          <value name="sandstone">
-            <region_ids>
-              <integer_value rank="1" shape="7">2 1001 1002 1003 2001 2002 2003</integer_value>
-            </region_ids>
-            <constant>
-              <real_value rank="0">1600</real_value>
-            </constant>
-          </value>
-          <value name="mudstone">
-            <region_ids>
-              <integer_value rank="1" shape="7">1 1004 1005 1006 2004 2005 2006</integer_value>
-            </region_ids>
-            <constant>
-              <real_value rank="0">1800</real_value>
-            </constant>
-          </value>
-          <stat/>
-          <detectors>
-            <exclude_from_detectors/>
-          </detectors>
-          <output/>
-        </prescribed>
+        <dry_value>
+          <prescribed>
+            <mesh name="P0DG" />
+            <value name="sandstone">
+              <region_ids>
+                <integer_value rank="1" shape="7">2 1001 1002 1003 2001 2002 2003</integer_value>
+              </region_ids>
+              <constant>
+                <real_value rank="0">1600</real_value>
+              </constant>
+            </value>
+            <value name="mudstone">
+              <region_ids>
+                <integer_value rank="1" shape="7">1 1004 1005 1006 2004 2005 2006</integer_value>
+              </region_ids>
+              <constant>
+                <real_value rank="0">1800</real_value>
+              </constant>
+            </value>
+            <stat />
+            <detectors>
+              <exclude_from_detectors />
+            </detectors>
+            <output />
+          </prescribed>
+        </dry_value>
       </scalar_field>
       <scalar_field name="porous_heat_capacity">
-        <prescribed>
-          <mesh name="P0DG"/>
-          <value name="sandstone">
-            <region_ids>
-              <integer_value rank="1" shape="7">2 1001 1002 1003 2001 2002 2003</integer_value>
-            </region_ids>
-            <constant>
-              <real_value rank="0">1730</real_value>
-            </constant>
-          </value>
-          <value name="mudstone">
-            <region_ids>
-              <integer_value rank="1" shape="7">1 1004 1005 1006 2004 2005 2006</integer_value>
-            </region_ids>
-            <constant>
-              <real_value rank="0">1800</real_value>
-            </constant>
-          </value>
-          <stat/>
-          <detectors>
-            <exclude_from_detectors/>
-          </detectors>
-          <output/>
-        </prescribed>
+        <dry_value>
+          <prescribed>
+            <mesh name="P0DG" />
+            <value name="sandstone">
+              <region_ids>
+                <integer_value rank="1" shape="7">2 1001 1002 1003 2001 2002 2003</integer_value>
+              </region_ids>
+              <constant>
+                <real_value rank="0">1730</real_value>
+              </constant>
+            </value>
+            <value name="mudstone">
+              <region_ids>
+                <integer_value rank="1" shape="7">1 1004 1005 1006 2004 2005 2006</integer_value>
+              </region_ids>
+              <constant>
+                <real_value rank="0">1800</real_value>
+              </constant>
+            </value>
+            <stat />
+            <detectors>
+              <exclude_from_detectors />
+            </detectors>
+            <output />
+          </prescribed>
+        </dry_value>
       </scalar_field>
       <tensor_field name="porous_thermal_conductivity">
-        <prescribed>
-          <mesh name="P0DG"/>
-          <value name="sandstone">
-            <region_ids>
-              <integer_value rank="1" shape="7">2 1001 1002 1003 2001 2002 2003</integer_value>
-            </region_ids>
-            <isotropic>
-              <constant>
-                <real_value rank="0">2.92</real_value>
-              </constant>
-            </isotropic>
-          </value>
-          <value name="mudstone">
-            <region_ids>
-              <integer_value rank="1" shape="7">1 1004 1005 1006 2004 2005 2006</integer_value>
-            </region_ids>
-            <isotropic>
-              <constant>
-                <real_value rank="0">0.6</real_value>
-              </constant>
-            </isotropic>
-          </value>
-          <output/>
-        </prescribed>
+        <dry_value>
+          <prescribed>
+            <mesh name="P0DG" />
+            <value name="sandstone">
+              <region_ids>
+                <integer_value rank="1" shape="7">2 1001 1002 1003 2001 2002 2003</integer_value>
+              </region_ids>
+              <isotropic>
+                <constant>
+                  <real_value rank="0">2.92</real_value>
+                </constant>
+              </isotropic>
+            </value>
+            <value name="mudstone">
+              <region_ids>
+                <integer_value rank="1" shape="7">1 1004 1005 1006 2004 2005 2006</integer_value>
+              </region_ids>
+              <isotropic>
+                <constant>
+                  <real_value rank="0">0.6</real_value>
+                </constant>
+              </isotropic>
+            </value>
+            <output />
+          </prescribed>
+        </dry_value>
       </tensor_field>
     </porous_properties>
     <wells_and_pipes>
