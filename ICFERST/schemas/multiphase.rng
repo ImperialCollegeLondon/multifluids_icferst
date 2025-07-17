@@ -5308,6 +5308,12 @@ NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentati
                   <ref name="real"/>
                 </element>
               </optional>
+              <optional>
+                <element name="Remove_P_dependencies">
+                  <a:documentation>Remove pressure terms in BW EOS by setting P=0. This is a temporary fix to running sim with well domains with non-Boussinesq</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
             </element>
           </choice>
           <optional>
