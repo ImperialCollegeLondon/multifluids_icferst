@@ -63,7 +63,7 @@ int main(int argc, char **argv){
 #endif
 
   flprofiler.tic("/fluidity");
-
+  
 #ifdef USING_GFORTRAN
   /* gfortran hack to ensure 4-byte record marker for unformatted files */
   _gfortran_set_record_marker(4);
@@ -98,7 +98,7 @@ int main(int argc, char **argv){
 #endif
 
   // Start fortran main
-  if(fl_command_line_options.count("simulation_name")){
+  if(fl_command_line_options.count("simulation_name")){    
     multiphase_prototype_wrapper();
   }else{
     usage(argv[0]);

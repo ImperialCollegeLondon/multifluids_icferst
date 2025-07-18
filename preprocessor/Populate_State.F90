@@ -183,9 +183,9 @@ contains
     call insert_trace_meshes(states)
     
     call compute_domain_statistics(states)
-    print *, '1'
+
     call allocate_and_insert_fields(states)
-    print *, 'end'
+
     call initialise_prognostic_fields(states, save_vtk_cache=.true., &
       initial_mesh=.true.)
     
@@ -3174,7 +3174,7 @@ contains
       call set(max_eigen, eigenvalue_from_edge_length(node_val(min_edge, 1)))
     else
       call allocate(min_edge, mesh, "MinimumEdgeLengths")
-      print *,'2'
+
       call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
       call allocate(max_eigen, mesh, "MaxMetricEigenbound")     
       

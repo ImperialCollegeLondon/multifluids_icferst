@@ -49,10 +49,16 @@ module multiphase_1D_engine
     use multi_surface_tension
     use multi_tools, only: CALC_FACE_ELE, tolfun
     use parallel_tools, only : allmax, allmin, isparallel
-    use ieee_arithmetic
+    use, intrinsic :: ieee_arithmetic
     use multi_magma
 
     use sparse_tools_petsc
+
+! #include "petsc/finclude/petsc.h"   
+! #include "petsc/finclude/petscmat.h"   
+!   use petsc 
+! use petscmat
+! use petscsys
     implicit none
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
@@ -570,6 +576,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type(magma_phase_diagram) :: magma_phase_coefficients
            logical :: assemble_collapsed_to_one_phase
 
+! integer :: i,  j
+! PetscErrorCode ierr
+! PetscInt mstart, mend , ncols
+! PetscInt, pointer :: safe_cols(:)
+! PetscScalar, pointer :: safe_vals(:)
+
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
            else
@@ -633,7 +645,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end if
 
            call allocate(Mmat%CV_RHS,1 , tracer%mesh,"RHS")
-           call allocate(solution,1,tracer%mesh,"sol_enthalpy")!; call zero(solution)
+           call allocate(solution,1,tracer%mesh,"sol_enthalpy")!; 
+           call zero(solution)
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
@@ -672,6 +685,27 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number, &
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase, Latent_heat = magma_phase_coefficients%Lf)
 
+! call MatGetOwnershipRange(Mmat%petsc_ACV%M, mstart, mend, ierr)
+! if (ierr /= 0) then
+!         print *, '3 failed'
+! end if
+! do i = mstart, mend - 1
+!     ! Get row i entries
+!     call MatGetRow(Mmat%petsc_ACV%M, i, ncols, safe_cols, safe_vals, ierr)
+!     if (ierr /= 0) then
+!         print *, 'MatGetRow failed at row ', i
+!         cycle  ! skip to next row
+!     end if
+    
+!     ! Loop over all values in the row
+!     do j = 1, ncols
+!         if (.not. ieee_is_finite(safe_vals(j))) then
+!             print *, 'Non-finite value in row ', i, ' col ', safe_cols(j), ' => ', safe_vals(j)
+!         end if
+!     end do
+
+!     call MatRestoreRow(Mmat%petsc_ACV%M, i, ncols, safe_cols, safe_vals, ierr)
+! end do
                  call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
                  tracer%val(1,1,:)=solution%val(1,:)!TODO: sprint_to_do Tracer could be used instead!
                  if (assemble_collapsed_to_one_phase .and. Mdims%n_in_pres > 1) then

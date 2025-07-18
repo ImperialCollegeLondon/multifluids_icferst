@@ -92,7 +92,7 @@ contains
     end if
 
     call limit_metric_elements(positions, metric, min_eles, max_eles)
-    
+
   end subroutine limit_metric_nodes_minmax
   
   subroutine limit_metric_elements_minmax(positions, metric, min_eles, max_eles)
@@ -172,7 +172,7 @@ contains
         if(.not. element_owned(old_positions, ele)) cycle
       end if
       avg_metric = sum(ele_val(metric, ele), 3) / ele_loc(metric, ele)
-      det = determinant(avg_metric)
+      det = determinant(avg_metric)      
       sumvol = sumvol + abs(sqrt(det) * simplex_volume(old_positions, ele))
     end do
     if(lglobal) call allsum(sumvol)

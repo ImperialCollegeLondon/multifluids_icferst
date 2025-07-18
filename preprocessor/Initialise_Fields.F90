@@ -505,10 +505,10 @@ contains
           else
             call get_option("/timestepping/current_time", current_time)
           end if
-          print *, '3'
+
           call set_from_python_function(field, trim(func), position,&
                   & current_time)
-                  print *, 'end'
+                  
        else if (have_option(trim(tpath)//"/generic_function")) then
           FLExit("Generic functions are obsolete. Use a Python function.")
        else

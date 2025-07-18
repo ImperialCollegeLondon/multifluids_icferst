@@ -75,7 +75,6 @@ subroutine multiphase_prototype_wrapper() bind(C)
     PetscErrorCode :: ierr
     PetscLogStage,dimension(0:9) :: stages
 
-
     ! Establish signal handlers
     call initialise_signals()
 

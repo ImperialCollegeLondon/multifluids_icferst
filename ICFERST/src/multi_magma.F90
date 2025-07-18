@@ -119,8 +119,6 @@ contains
     phase_coef%mu(2,:)=phase_coef%mu(1,:)/max(0.2,phi_range)/(1-phi_range)*BS_ratio;
     phase_coef%mu(1,:)=phase_coef%mu(1,1000000:1:-1)
     phase_coef%mu(2,:)=phase_coef%mu(2,1000000:1:-1)
-    print *,'mu:', phase_coef%mu(1,1),phase_coef%mu(1,1000000)
-    print *,'xi:', phase_coef%mu(2,1),phase_coef%mu(2,1000000)
   end subroutine initialize_magma_parameters
 
 
@@ -365,7 +363,6 @@ contains
                    phase_coef%Lf*BulkComposition(cv_nodi)/phase_coef%Ae) .and. &
                    (enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BulkComposition(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)+ &
                    phase_coef%Lf*(1-BulkComposition(cv_nodi))/(1.0000001-phase_coef%Ae))) then
-                    print *, 'eutectic melting'
               Composition%val(1,2,cv_nodi)=phase_coef%Ae
               Composition%val(1,1,cv_nodi)=(BulkComposition(cv_nodi)-saturation%val(1,2,cv_nodi)*phase_coef%Ae)/max(saturation%val(1,1,cv_nodi),1e-8)
               Composition%val(1,1,cv_nodi)=max(Composition%val(1,1,cv_nodi),0.)
@@ -510,7 +507,7 @@ contains
   
   is_solid=.true. ! use solid solution phase diagram
   alpha=1
-  n_order=40
+  n_order=30
 
   step_size=0.3
 
@@ -635,8 +632,6 @@ contains
         Ts_local=(alpha*(1.-BulkComposition(cv_nodi))**n_order+(1.-alpha)*(1-BulkComposition(cv_nodi)**(1./n_order)))*(phase_coef%C1-phase_coef%Ts)+phase_coef%Ts
         Loc_Cp = node_val(Cp,cv_nodi) ! Cp%val(cv_nodi)
         rho=den%val(1,iphase,cv_nodi)
-        ! print *,'local Ts:', Ts_local
-        !  print *, 'local ETS:', (Ts_local*Loc_Cp), 'local H:', enthalpy%val(1,1,cv_nodi)
         IF (enthalpy%val(1,1,cv_nodi)>get_Enthalpy_Liquidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)) then
           saturation%val(1,2, cv_nodi)=1.
           saturation%val(1,1, cv_nodi)=0.
@@ -653,7 +648,6 @@ contains
           Composition%val(1,1,cv_nodi)=BulkComposition(cv_nodi)
           Composition%val(1,2,cv_nodi)=phase_coef%Ae
           temperature%val(1,1,cv_nodi)=(enthalpy%val(1,1,cv_nodi))/Loc_Cp
-          ! print *, 'low temperature:', (enthalpy%val(1,1,cv_nodi))/Loc_Cp
         ELSE
           test_poro=0.2
           test_cl=0.5
@@ -686,14 +680,9 @@ contains
             rhs(2) = -enthalpy%val(1,1,cv_nodi) + test_T * Loc_Cp + phase_coef%Lf * test_poro  
             rhs(3) = phase_coef%C1 - test_T + phase_coef%B1 * test_cl + phase_coef%A1 * test_cl**2  
             rhs(4) = -test_T + phase_coef%Ts - ((alpha - 1.0) * (max(test_cs, 0.0)**(1.0/n_order) - 1.0) + alpha * (-test_cs + 1.0)**n_order) * (phase_coef%Ts - phase_coef%C1)  
-            ! print *,'part1:', alpha * n_order
-            ! print *, 'part2:', max(test_cs, 1e-10)
-            ! print *, 'part3:', max(test_cs, 1e-10)**(n_order-1.0)
-            ! PRINT *, LHS
-            ! PRINT *, RHS 
+
             call DGESV(4, 1, LHS, 4, ipiv, rhs, 4, info) 
-            ! print *, rhs
-            ! stop  
+
 
             test_cl=test_cl      -rhs(1)*step_size
             test_cs=test_cs      -rhs(2)*step_size
@@ -878,9 +867,7 @@ contains
        state_viscosity => extract_tensor_field( state( i ), 'Viscosity' )
        call assign_val(viscosities(i, :),state_viscosity%val(1,1,:))!Take the first term only as for porous media we consider only scalar
      end do
-
      call Calculate_PorousMagma_adv_terms( Magma_absorp, Mdims, upwnd, viscosities, Magma_absorp_capped)
-
      call calculate_SUF_SIG_DIAGTEN_BC_magma( packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
          Mspars, ndgln, upwnd%adv_coef)
 
@@ -902,7 +889,7 @@ contains
              real, dimension( :, : , : ), allocatable :: satura2
              real, dimension(:,:,:,:), allocatable :: Magma_absorp2
              real, dimension(:), allocatable :: max_sat
-             real :: pert
+             real :: pert, denom
              !Local parameters
 
              !retrieve saturation
@@ -952,9 +939,11 @@ contains
                  !Absorption for phase 1 is constant so the gradient is zero
                  upwnd%adv_coef_grad(1, 1, 1, mat_nod)=0.0;
                  DO IPHASE = 2, Mdims%nphase
+                 denom = SATURA2(1,iphase,cv_inod) - satura%val(1,iphase,cv_inod)
+                 denom = merge(denom, sign(1.0, denom)*1e-12, abs(denom) >= 1e-12)
                    ! This is the gradient
                    upwnd%adv_coef_grad(1, 1, iphase, mat_nod) = (Magma_absorp2( 1,1, iphase ,mat_nod) -&
-                   Magma_absorp%val( 1,1, iphase ,mat_nod)) / ( SATURA2(1,iphase, cv_inod ) - satura%val(1,iphase, cv_inod))
+                   Magma_absorp%val( 1,1, iphase ,mat_nod)) / denom
                  END DO
                end do
              END DO
