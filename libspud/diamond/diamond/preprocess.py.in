@@ -22,9 +22,9 @@ from . import debug
 import sys
 import copy
 
-from future.standard_library import install_aliases
-install_aliases()
-import urllib.request, urllib.error, urllib.parse
+#from future.standard_library import install_aliases
+#install_aliases()
+#import urllib.request, urllib.error, urllib.parse
 
 def preprocess(schemafile):
   p = etree.XMLParser(remove_comments=True)
