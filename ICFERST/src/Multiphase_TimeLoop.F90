@@ -29,9 +29,8 @@
 !----------------------------------------------------------------------------------------
 module multiphase_time_loop
 
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
   use petsc
-#endif
 
 #ifdef USING_PHREEQC
   use multi_phreeqc

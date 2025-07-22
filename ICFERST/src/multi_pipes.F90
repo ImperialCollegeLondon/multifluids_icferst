@@ -36,8 +36,10 @@ module multi_pipes
     use multi_data_types
     use write_state_module, only: write_state
     use boundary_conditions
+#include "petsc/finclude/petsc.h"   
+    use petsc
+    
     implicit none
-#include "petsc_legacy.h"
     private
 
     public  :: ASSEMBLE_PIPE_TRANSPORT_AND_CTY, MOD_1D_FORCE_BAL_C, retrieve_pipes_coords, pipe_coords, initialize_pipes_package_and_gamma
