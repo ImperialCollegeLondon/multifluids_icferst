@@ -33,9 +33,8 @@ module Petsc_Tools
   use Reference_Counting
   use halo_data_types
   use halos_base
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
   use petsc
-#endif
   use Sparse_Tools
   use fields_data_types
   use fields_base
@@ -1127,7 +1126,7 @@ contains
     end do
 
     call MatCreateAIJ(MPI_COMM_SELF, nprows, npcols, nprows, npcols, &
-      0, nnz, 0, PETSC_NULL_INTEGER, M, ierr)
+      PETSC_NULL_INTEGER(1), nnz, 0, PETSC_NULL_INTEGER, M, ierr)
     call MatSetup(M, ierr)
 
     call MatSetOption(M, MAT_USE_INODES, PETSC_FALSE, ierr)
@@ -1303,7 +1302,7 @@ contains
     end do
 
     call MatCreateAIJ(MPI_COMM_FEMTOOLS, nrowsp, ncolsp, nrows, ncols, &
-      0, d_nnz, 0, o_nnz, M, ierr)
+      PETSC_NULL_INTEGER(1), d_nnz, PETSC_NULL_INTEGER(1), o_nnz, M, ierr)
     call MatSetup(M, ierr)
 
     if (.not. present_and_true(use_inodes)) then
@@ -1443,7 +1442,7 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
         end do
 
         call MatCreateAIJ(MPI_COMM_FEMTOOLS, nrowsp, ncolsp, nrows, ncols, &
-             PETSC_NULL_INTEGER, d_nnz, PETSC_NULL_INTEGER, o_nnz, M, ierr)
+             PETSC_NULL_INTEGER(1), d_nnz, PETSC_NULL_INTEGER(1), o_nnz, M, ierr)
 
         if (.not. present_and_true(use_inodes)) then
            call MatSetOption(M, MAT_USE_INODES, PETSC_FALSE, ierr)

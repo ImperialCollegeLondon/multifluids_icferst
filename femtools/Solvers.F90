@@ -32,9 +32,8 @@ module solvers
   use elements
   use spud
   use parallel_tools
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
   use petsc
-#endif
   use Sparse_Tools
   use Fields
   use profiler
@@ -46,10 +45,17 @@ module solvers
   use vtk_interfaces
   use halos
   use MeshDiagnostics
-  implicit none
-  ! Module to provide explicit interfaces to matrix solvers.
 
+
+! Module to provide explicit interfaces to matrix solvers.  
 #include "petsc_legacy.h"
+  ! use petscksp
+implicit none 
+
+#if PETSC_VERSION_MINOR>12
+       external KSPMONITORDEFAULT
+       external KSPMonitorTrueResidualNorm
+#endif
 
   ! stuff used in the PETSc monitor (see petsc_solve_callback_setup() below)
   integer :: petsc_monitor_iteration = 0
@@ -271,7 +277,7 @@ subroutine petsc_solve_vector(x, matrix, rhs, option_path, deallocate_matrix)
   type(csr_matrix) :: matrixblock
   type(scalar_field) :: rhsblock, xblock
   integer :: i
-
+print *,'vec1'
   assert(x%dim==rhs%dim)
   assert(size(x%val(1,:))==size(rhs%val(1,:)))
   assert(size(x%val(1,:))==block_size(matrix,2))
@@ -364,7 +370,7 @@ subroutine petsc_solve_vector_components(x, matrix, rhs, option_path)
   character(len=OPTION_PATH_LEN) solver_option_path, option_path_in
   integer literations, i
   logical lstartfromzero
-
+print *,'vec2'
   assert(x%dim==rhs%dim)
   assert(size(x%val(1,:))==size(rhs%val(1,:)))
   assert(size(x%val(1,:))==size(matrix,2))
@@ -732,7 +738,7 @@ subroutine petsc_solve_setup(y, A, b, ksp, petsc_numbering, &
 !!
 !! PETSc solution vector
 Vec, intent(out):: y
-!! PETSc matrix
+! PETSc matrix
 Mat, intent(out):: A
 !! PETSc rhs vector
 Vec, intent(out):: b
@@ -1788,15 +1794,19 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        '/diagnostics/monitors/preconditioned_residual')) then
         call PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, &
            PETSC_VIEWER_DEFAULT,vf,ierr)
-        call KSPMonitorSet(ksp, KSPMonitorDefault, vf, &
+#if PETSC_VERSION_MINOR<=12
+        call KSPMonitorSet(ksp, KSPMonitorDefault, vf, &  
            PetscViewerAndFormatDestroy, ierr)
+#endif
     end if
     if (have_option(trim(solver_option_path)// &
        '/diagnostics/monitors/true_residual')) then
         call PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, &
            PETSC_VIEWER_DEFAULT,vf,ierr)
-        call KSPMonitorSet(ksp, KSPMonitorTrueResidualNorm, vf, &
+#if PETSC_VERSION_MINOR<=12
+        call KSPMonitorSet(ksp, KSPMonitorTrueResidualNorm, vf, &   
            PetscViewerAndFormatDestroy, ierr)
+#endif
     end if
 
     if (have_option(trim(solver_option_path)// &
@@ -1823,8 +1833,10 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
          FLAbort("Need petsc_numbering for monitor")
        end if
        call petsc_monitor_setup(petsc_numbering, max_its)
-       call KSPMonitorSet(ksp, MyKSPMonitor, vf, &
-            &                     PETSC_NULL_FUNCTION, ierr)
+       ! NOTE: there doesn't seem to be a clean way to provide NULL to the void *mctx
+       ! argument in for fortran interface to PETSc v3.8 - PETSC_NULL_KSP does get translated to NULL
+       call KSPMonitorSet(ksp, MyKSPMonitor, PETSC_NULL_KSP, &
+            &                     PETSC_NULL_FUNCTION,ierr)
     end if
 
 #if PETSC_VERSION_MINOR<6
@@ -2152,8 +2164,8 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
         ! call PetscOptionsInsertString("-pc_gamg_sym_graph true", ierr)
 
         !We always get issues with unsymmetric graphs, forcing symmetry seems not to be that expensive and should help with this
-        call PCGAMGSetSymGraph(pc, PETSC_TRUE, ierr)
-
+        ! call PCGAMGSetSymGraph(pc, PETSC_TRUE, ierr)
+        
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
 #if PETSC_VERSION_MINOR<8
@@ -2579,8 +2591,7 @@ end subroutine petsc_monitor_destroy
 subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
 !! The monitor function that gets called each iteration of petsc_solve
 !! (if petsc_solve_callback_setup is called)
-  PetscInt, intent(in) :: n
-  PetscObject, intent(in):: dummy
+  PetscInt, intent(in) :: n,dummy
   KSP, intent(in) :: ksp
   PetscErrorCode, intent(out) :: ierr
 

@@ -16,12 +16,10 @@
 !    USA
 #include "fdebug.h"
 
-!> This module contains the generic subroutines required by ICFERST, for example quicksort
-module multi_tools
 
-#ifdef HAVE_PETSC_MODULES
+module multi_tools
+#include "petsc/finclude/petsc.h"
   use petsc
-#endif
 
     use python_state
     use state_module
@@ -36,6 +34,16 @@ module multi_tools
 
 #include "petsc_legacy.h"
 
+
+    !>@brief: Type to keep an eye on the quality of the elements
+    !>@DEPRECATED
+    type bad_elements
+        integer :: bad_ele
+        real :: angle
+        real :: perp_height !> perp height from base (assuming an isosceles triangle)
+        real, allocatable, dimension(:,:) :: rotmatrix !> the rotation matrix to 'stretch' the bad element in the direction normal to the big angle
+        real :: base !> length of side opposite the large angle
+    end type
 
 contains
 
@@ -84,16 +92,16 @@ contains
     end function tolfun
 
 
-    !>@brief:This function is a tolerance function for a scalar which is used as a denominator.
-    !> If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e.
-    !> the absolute value of A times the sign of B where A is TOLERANCE and B is VALUE.
+
     PURE function tolfun_many(val) result(v_tolfun)
 
         implicit none
         real, dimension(:), intent(in) :: val
         real, dimension(size(val)) :: v_tolfun
+        ! Local
+        real, parameter :: tolerance = 1.e-10
 
-        v_tolfun = sign( 1.0, val ) * max( 1.e-10, abs(val) )
+        v_tolfun = sign( 1.0, val ) * max( tolerance, abs(val) )
 
         return
 
@@ -117,9 +125,7 @@ contains
             ) / 6.0
 
     end function tetvolume
-    !>@brief:This function is a tolerance function for a vector which is used as a denominator.
-    !> If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e.
-    !> the absolute value of A times the sign of B where A is TOLERANCE and B is VALUE.
+
     PURE function vtolfun(val) result(v_tolfun)
 
         implicit none
@@ -175,17 +181,17 @@ contains
         logical, PARAMETER :: orig_limit=.false. ! original limiter is less invasive.
 
         ! For the region 0 < UC < 1 on the NVD, define the limiter
-        ! if(orig_limit) then
-        !     where( ( UC > 0.0 ) .AND. ( UC < 1.0 ) )
-        !         nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( 0.0, UF ) )
-        !     !       nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( UC, UF ) )
-        !     !      nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
-        !     ELSE where ! Outside the region 0<UC<1 on the NVD, use first-order upwinding
-        !         nvd_limit = UC
-        !     END where
-        ! else
-        nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
-        ! endif
+        if(orig_limit) then
+            where( ( UC > 0.0 ) .AND. ( UC < 1.0 ) )
+                nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( 0.0, UF ) )
+            !       nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( UC, UF ) )
+            !      nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
+            ELSE where ! Outside the region 0<UC<1 on the NVD, use first-order upwinding
+                nvd_limit = UC
+            END where
+        else
+            nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
+        endif
 
     end function nvdfunnew_many
 
@@ -516,36 +522,6 @@ contains
         end if
     end function table_interpolation
 
-    real function table_interpolation_linear(X_points, Y_points, input_X)
-        implicit none
-        real, intent(in) :: input_X
-        real, dimension(:), intent(in) :: X_points, Y_points
-        integer :: i, n
-
-        n = size(X_points)
-
-        ! Default return in case of error
-        table_interpolation_linear = 0.0
-
-        ! Handle input out of bounds by clamping
-        if (input_X <= X_points(1)) then
-            table_interpolation_linear = Y_points(1)
-            return
-        else if (input_X >= X_points(n)) then
-            table_interpolation_linear = Y_points(n)
-            return
-        end if
-
-        ! Find interval
-        do i = 1, n - 1
-            if (input_X >= X_points(i) .and. input_X <= X_points(i+1)) then
-                table_interpolation_linear = Y_points(i) + (input_X - X_points(i)) * &
-                    (Y_points(i+1) - Y_points(i)) / (X_points(i+1) - X_points(i))
-                return
-            end if
-        end do
-    end function table_interpolation_linear
-
     !>@brief:Template of csv table
     !>OPTIONAL section (header)
     !>real1,real2,real3,..., size(extra_data)
@@ -555,9 +531,6 @@ contains
     !>1000,0.9
     !>250,0.5
     !>100,0.1
-    !>@param data_array INOUT the data in memory
-    !>@param path_to_table absolute/relative path to the .csv file
-    !>@param extra_data The extra data is composed of one line of headers that we ignore plus one extra line with the data
     subroutine read_csv_table(data_array, path_to_table, extra_data)
         implicit none
         real, dimension(:,:), allocatable, intent(inout) :: data_array
@@ -587,56 +560,8 @@ contains
         close(89)
     end subroutine read_csv_table
 
-    subroutine read_csv_table_standard(data_array, path_to_table, extra_data)
-        implicit none
-        real, dimension(:,:), allocatable, intent(out) :: data_array
-        character(len=*), intent(in) :: path_to_table
-        real, optional, dimension(:), intent(inout) :: extra_data
-
-        ! Local variables
-        integer :: iunit, ierr, i, j, row_count, col_count
-        character(len=500) :: line
-        real, allocatable :: temp(:,:)
-
-        ! First pass: count rows
-        iunit = 89
-        open(unit=iunit, file=trim(path_to_table)//".csv", status='old', action='read', iostat=ierr)
-        if (ierr /= 0) stop "Error opening CSV file"
-
-        row_count = 0
-        do
-            read(iunit, '(A)', iostat=ierr) line
-            if (ierr /= 0) exit
-            row_count = row_count + 1
-        end do
-        close(iunit)
-
-        if (row_count == 0) stop "CSV file is empty"
-
-        col_count = 2  ! <-- or detect from first line if needed
-
-        ! Allocate data
-        allocate(data_array(row_count, col_count))
-
-        ! Second pass: read values
-        open(unit=iunit, file=trim(path_to_table)//".csv", status='old', action='read', iostat=ierr)
-        if (ierr /= 0) stop "Error re-opening CSV file"
-
-        do i = 1, row_count
-            read(iunit, *, iostat=ierr) (data_array(i, j), j = 1, col_count)
-            if (ierr /= 0) then
-                print *, "Error reading data at row ", i
-                stop
-            end if
-        end do
-        close(iunit)
-
-    end subroutine read_csv_table_standard
 
     !>@brief:This subroutine reads a csv file and returns them in an array
-    !>@param csv_table_strings INOUT Allocated array of characters to be used to read the CVS file
-    !>@param path_to_table absolute/relative path to the .csv file
-    !>@param Nentries OUT Number of entries in the table
     subroutine extract_strings_from_csv_file(csv_table_strings, path_to_table, Nentries)
         implicit none
         integer, intent(out) :: Nentries
@@ -763,9 +688,6 @@ END subroutine RotationMatrix
 
     !>@brief:This subroutine reads a nastran file that contains the information defining the 1D path of a well
     !>the input relative filepath should include the file format, for example: well.bdf
-    !>@param filepath Relative path to the .bdf file
-    !>@param node INOUT. Nodes stored
-    !>@param edges Edges connecting nodes
     subroutine read_nastran_file(filepath, node, edges)
         implicit none
         character( len = * ), intent(in) :: filepath
@@ -863,19 +785,18 @@ END subroutine RotationMatrix
     !> Subroutine tested and compared with Matlab (not recommended changing it since it is a pain!)
     !> Only for serial: The best option is to solve in each processor the optimisation system by performing
     !> A' * A = A' *b; so the system becomes very small as COLUMS <<< ROWS
-    !>@param A Input matrix to decompose, returns the Q and R combined
-    !>@param b Input RHS term, returns the X that minimise the system
+    !---------------------------------------------------------------------------
     subroutine Least_squares_solver(A, b, rank)
       implicit none
-      real, dimension(:,:), intent(inout) :: A 
-      real, dimension(:,:), intent(inout) :: b 
+      real, dimension(:,:), intent(inout) :: A !> Input matrix to decompose, returns the Q and R combined
+      real, dimension(:,:), intent(inout) :: b !> Input RHS term, returns the X that minimise the system
       integer, intent(inout) :: rank
       !Local variables
       integer :: i, j, k, theta, m, n, nrhs, lda, ldb
       !Parameters for dgegp3 to compute the QR decomposition
-      integer :: info!If info = -i, the i-th parameter had an illegal value
-      real, dimension(size(A,2)) :: tau!Contains scalar factors of the elementary reflectors for the matrix Q.
-      real, dimension(3*size(A,1)+1) :: work!work is a workspace array, its dimension max(1, lwork).
+      integer :: info!>If info = -i, the i-th parameter had an illegal value
+      real, dimension(size(A,2)) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+      real, dimension(3*size(A,1)+1) :: work!>work is a workspace array, its dimension max(1, lwork).
       integer, dimension(size(A,1)) :: jpvt
       real, parameter :: tolerance_rank = 1d-12
 
@@ -898,15 +819,15 @@ END subroutine RotationMatrix
         !> @brief QR decomposition, returned in A, Q and R mixed, with pivoting! (PREFERRED, obviously!)
           subroutine dgeqp3(m, n, MAT, lda, jpvt, tau, work, lwork, info)
             implicit none
-            integer :: m!Rows of MAT
-            integer :: n !Columns of MAT; Constraint: m >= n > = 0.
-            integer :: lda !The first dimension of MAT
-            integer :: lwork! The size of the work array; 0 == best performance
-            integer :: info!If info = -i, the i-th parameter had an illegal value
-            real, dimension(lda,n) :: MAT!input/output matrix
-            real, dimension(N) :: tau!Contains scalar factors of the elementary reflectors for the matrix Q.
-            real, dimension(3*n+1) :: work!work is a workspace array, its dimension max(1, lwork).
-            integer, dimension(n) :: jpvt!Specifies columns that are not free to move, I guess useful if updating the QR decomposition
+            integer :: m!>Rows of MAT
+            integer :: n !>Columns of MAT; Constraint: m >= n > = 0.
+            integer :: lda !>The first dimension of MAT
+            integer :: lwork!> The size of the work array; 0 == best performance
+            integer :: info!>If info = -i, the i-th parameter had an illegal value
+            real, dimension(lda,n) :: MAT!>input/output matrix
+            real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+            integer, dimension(n) :: jpvt!>Specifies columns that are not free to move, I guess useful if updating the QR decomposition
           end subroutine dgeqp3
       end interface
 
@@ -930,16 +851,16 @@ END subroutine RotationMatrix
           subroutine DORMQR(side, trans, m, n, k, MAT, lda, tau, c, ldc, work, lwork, info)
             implicit none
             character(len=1) :: side, trans !> Either L or R (Left right); N or T (T == Transpose)
-            integer :: m,n !Rows and colums respectively
-            integer :: lda !The first dimension of a
-            integer :: k !The number of elementary reflectors whose product defines the matrix Q. Constraint 0 ≤k≤m if side='L'; 0 ≤k≤n if side='R'.
-            integer :: ldc !The leading dimension of c. Constraint: ldc≥ max(1, m)
-            integer :: lwork! The size of the work array;For better performance, try using lwork = n*blocksize (if side = 'L') or lwork = m*blocksize (if side = 'R') where blocksize is a machine-dependent value (typically, 16 to 64) required for optimum performance of the blocked algorithm.
-            integer :: info!If info = -i, the i-th parameter had an illegal value
-            real, dimension(m,n) :: MAT!input/output matrix
-            real, dimension(ldc,m) :: C !Overwritten by the product Q*C, QT*C, C*Q, or C*QT (as specified by side and trans).
-            real, dimension(N) :: tau !Contains scalar factors of the elementary reflectors for the matrix Q.
-            real, dimension(3*n+1) :: work!work is a workspace array, its dimension max(1, lwork).
+            integer :: m,n !>Rows and colums respectively
+            integer :: lda !>The first dimension of a
+            integer :: k !>The number of elementary reflectors whose product defines the matrix Q. Constraint 0 ≤k≤m if side='L'; 0 ≤k≤n if side='R'.
+            integer :: ldc !>The leading dimension of c. Constraint: ldc≥ max(1, m)
+            integer :: lwork!> The size of the work array;For better performance, try using lwork = n*blocksize (if side = 'L') or lwork = m*blocksize (if side = 'R') where blocksize is a machine-dependent value (typically, 16 to 64) required for optimum performance of the blocked algorithm.
+            integer :: info!>If info = -i, the i-th parameter had an illegal value
+            real, dimension(m,n) :: MAT!>input/output matrix
+            real, dimension(ldc,m) :: C !>Overwritten by the product Q*C, QT*C, C*Q, or C*QT (as specified by side and trans).
+            real, dimension(N) :: tau !>Contains scalar factors of the elementary reflectors for the matrix Q.
+            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
           end subroutine DORMQR
       end interface
 
@@ -948,13 +869,13 @@ END subroutine RotationMatrix
           subroutine dtrsm(side, uplo, transa, diag, m, n, alpha, mat, lda, b, ldb)
             implicit none
             character(len=1) :: side, uplo, transa, diag !> Either L or R (Left right); N or T (T == Transpose)
-            integer :: m,n !Rows and colums respectively
-            integer :: lda !The first dimension of a
-            integer :: info!If info = -i, the i-th parameter had an illegal value
-            real :: alpha ! alpha is zero, then a is not referenced and b need not be set before entry.
-            integer :: ldb !The first dimension of b
-            real, dimension(m,n) :: MAT!input/output matrix
-            real, dimension(m,n) :: B!input/output matrix
+            integer :: m,n !>Rows and colums respectively
+            integer :: lda !>The first dimension of a
+            integer :: info!>If info = -i, the i-th parameter had an illegal value
+            real :: alpha !> alpha is zero, then a is not referenced and b need not be set before entry.
+            integer :: ldb !>The first dimension of b
+            real, dimension(m,n) :: MAT!>input/output matrix
+            real, dimension(m,n) :: B!>input/output matrix
           end subroutine dtrsm
       end interface
 
@@ -994,83 +915,38 @@ END subroutine RotationMatrix
     !> @brief: This subroutine uses python run string to run the python_scalar_diagnostic to read a field
     !> the only difference with the normal approach is that here the Dummy field is used and the returned field is an array.
     !> IMPORTANT: state is used here, NOT packed_state
-    !> It can be used for a given array, scalar_result, scalar fields, vector fields or tensor fields, but only one at a time
-    !>@param  states   Array of Linked list containing all the fields
-    !>@param iphase Current phase
-    !>@param option_path_python Path in the input file to the python code
-    !>@param scalar_result Field to be provided to the python code as initial value
-    !>@param sfield Optional Only one can be picked, depending on the type of field to be used!
-    !>@param vfield Optional Only one can be picked, depending on the type of field to be used!
-    !>@param tfield Optional Only one can be picked, depending on the type of field to be used!
-    subroutine multi_compute_python_field(states, iphase, option_path_python, scalar_result, sfield, vfield, tfield)
+    subroutine compute_python_scalar_field(state, option_path_python, scalar_result)
       implicit none
-      type( state_type ), dimension(:), intent( inout ) :: states
-      integer, intent(in) :: iphase
+      type( state_type ), dimension(:), intent( inout ) :: state
       character( len = * ), intent(in) :: option_path_python
-      real, dimension(:), intent(inout), optional :: scalar_result
-      type (scalar_field), intent(inout), optional :: sfield
-      type (vector_field), intent(inout), optional :: vfield
-      type (tensor_field), intent(inout), optional :: tfield
+      real, dimension(:), intent(inout) :: scalar_result
       !Local variables
-      type (scalar_field), pointer :: s_field
+      type (scalar_field), pointer :: sfield
       character( len = python_func_len ) :: pycode
-      character( len = option_path_len ) :: buffer
-      real :: dt, current_time
-      integer :: i
 
-#ifdef HAVE_NUMPY
-      ewrite(3,*) "Have both NumPy and a python eos..."
-#else
-         FLAbort("Python eos requires NumPy, which cannot be located.")
-#endif
+      if (.not.have_option("/material_phase[0]/scalar_field::Dummy")) then
+          ewrite(0, *) "ERROR: Trying to compute a python scalar_field without enabling the Dummy field in the first phase."
+        stop 657483
+      end if
+
 
       call python_reset()
-      
-      !Support for multiphase
-      call python_add_states(states)
-      call python_run_string("state = states['"//trim(states(iphase)%name)//"']")
-      if (iphase == 1) call python_run_string("Pressure = state.scalar_fields['Pressure']")
-      do i = 1, size(states)
-        if (iphase /= i) then 
-          call python_run_string("state"//int2str(i)//" = states['"//trim(states(i)%name)//"']")
-          !Provide Pressure always so it is available in all the phases
-          if (i == 1) call python_run_string("Pressure = state1.scalar_fields['Pressure']")
-        end if
-      end do
-      
-      !Depending on the input field we define field in a different way
-      if (present(scalar_result)) then 
-        if (.not.have_option("/material_phase["// int2str( iphase - 1)//"]/scalar_field::Dummy")) then
-            ewrite(0, *) "ERROR: Trying to compute a python scalar_field without enabling the Dummy field in the corresponding phase."
-          stop 657483
-        end if
-        s_field => extract_scalar_field(states(iphase), "Dummy");
-        !Impose initially the given value
-        s_field%val = scalar_result
-        call python_run_string("field = state.scalar_fields['Dummy']")
-      end if     
-      if (present(sfield)) call python_run_string("field = state.scalar_fields['"//trim(sfield%name)//"']")
-      if (present(vfield)) call python_run_string("field = state.vector_fields['"//trim(vfield%name)//"']")
-      if (present(tfield)) call python_run_string("field = state.tensor_fields['"//trim(tfield%name)//"']")
-
-      call get_option("/timestepping/current_time", current_time)
-      write(buffer,*) current_time
-      call python_run_string("time="//trim(buffer))
-      call get_option("/timestepping/timestep", dt)
-      write(buffer,*) dt
-      call python_run_string("dt="//trim(buffer))
-      ! Get the code (in some cases it comes under the algorithm part and not in other cases...)
-      if (have_option(trim( option_path_python ) // '/algorithm')) then 
-        call get_option( trim( option_path_python ) // '/algorithm', pycode )
-      else
-        call get_option( trim( option_path_python ), pycode )
-      end if
+      call python_add_state( state(1) )
+      sfield => extract_scalar_field(state(1), "Dummy")
+      sfield%val = 0.
+      call python_run_string("field = state.scalar_fields['Dummy']")
+      ! call get_option("/timestepping/current_time", current_time)
+      ! write(buffer,*) current_time
+      ! call python_run_string("time="//trim(buffer))
+      ! call get_option("/timestepping/timestep", dt)
+      ! write(buffer,*) dt
+      ! call python_run_string("dt="//trim(buffer))
+      ! Get the code
+      call get_option( trim( option_path_python ) // '/algorithm', pycode )
       ! Run the code
       call python_run_string( trim( pycode ) )
-
-      if (present(scalar_result)) scalar_result = s_field%val
-      call python_reset()
-    end subroutine multi_compute_python_field
+      scalar_result = sfield%val
+    end subroutine
 
 
     !---------------------------------------------------------------------------
@@ -1175,40 +1051,5 @@ version and using & profiling, please configure WITHOUT 'petscdebug'"
       end subroutine petsc_log_pop
 
     end subroutine petsc_logging
-
-      !> @brief: Returns true if the input name is a Tracer type:PassiveTracer, Tracer, Species, Concentration or any other reserved word
-      !> This function is used to easily identify Tracers that may have diffusion, sources/sinks, dispersion, etc.
-    logical function is_Tracer_field(input_name) 
-        implicit none 
-        character( len = * ), intent( in ) :: input_name
-        
-        is_Tracer_field = input_name(1:min(len(input_name), 13))=="PassiveTracer"&
-                 .or. input_name(1:min(len(input_name), 6))=="Tracer" .or.&
-                input_name(1:min(len(input_name), 7)) =="Species".or. trim(input_name)=="Concentration"
-    end function is_Tracer_field
-    
-    !> @brief: Returns true if the input name is an Active Tracer type, Tracer, Species, Concentration or any other reserved word 
-    !> This function is used to easily identify Tracers that may have diffusion, sources/sinks, dispersion, etc.
-    logical function is_Active_Tracer_field(input_name, ignore_concentration) 
-        implicit none 
-        character( len = * ), intent( in ) :: input_name
-        logical, optional, INTENT(IN) :: ignore_concentration
-
-        is_Active_Tracer_field = input_name(1:min(len(input_name), 7)) =="Species" &
-                            .or. input_name(1:min(len(input_name), 6))=="Tracer"
-        !For checking convergence, concentration is a special field so we may want to diferenciate it
-        if (present_and_true(ignore_concentration)) return
-
-        is_Active_Tracer_field = is_Active_Tracer_field .or. trim(input_name)=="Concentration"
-    end function is_Active_Tracer_field
-
-    !> @brief: Returns true if the input name is a PassievTracer type.
-    logical function is_PassiveTracer_field(input_name) 
-        implicit none 
-        character( len = * ), intent( in ) :: input_name
-        
-        is_PassiveTracer_field = input_name(1:min(len(input_name), 13))=="PassiveTracer"
-
-    end function is_PassiveTracer_field
 
 end module multi_tools

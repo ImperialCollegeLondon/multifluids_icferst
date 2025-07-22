@@ -51,9 +51,9 @@ type eddy
    real, dimension(:),pointer:: yeddy
    real, dimension(:),pointer:: zeddy
 
-   integer, dimension(:),pointer:: eu
-   integer, dimension(:),pointer:: ev
-   integer, dimension(:),pointer:: ew
+   real, dimension(:),pointer:: eu  ! Changed from integer to real
+   real, dimension(:),pointer:: ev  ! Changed from integer to real
+   real, dimension(:),pointer:: ew  ! Changed from integer to real
 end type eddy
 
 
@@ -233,22 +233,23 @@ contains
                eddies(ns)%yeddy(i)=yminb+(ymaxb-yminb)*cords(i,2)
                eddies(ns)%zeddy(i)=zminb+(zmaxb-zminb)*cords(i,3)
 
-               eddies(ns)%eu(i)=esign()
-               eddies(ns)%ev(i)=esign()
-               eddies(ns)%ew(i)=esign()
+               eddies(ns)%eu(i)=esign()  ! Now returns real
+               eddies(ns)%ev(i)=esign()  ! Now returns real
+               eddies(ns)%ew(i)=esign()  ! Now returns real
             enddo
             deallocate(cords)
          end if
 
 #ifdef HAVE_MPI
          if(IsParallel())then
+            ! Use GetPREAL for all broadcasts
             call mpi_bcast(eddies(ns)%xeddy(1:nots),nots,GetPREAL(),0,MPI_COMM_FEMTOOLS,ierr)
             call mpi_bcast(eddies(ns)%yeddy(1:nots),nots,GetPREAL(),0,MPI_COMM_FEMTOOLS,ierr)
             call mpi_bcast(eddies(ns)%zeddy(1:nots),nots,GetPREAL(),0,MPI_COMM_FEMTOOLS,ierr)
 
-            call mpi_bcast(eddies(ns)%eu(1:nots),nots,mpi_integer,0,MPI_COMM_FEMTOOLS,ierr)
-            call mpi_bcast(eddies(ns)%ev(1:nots),nots,mpi_integer,0,MPI_COMM_FEMTOOLS,ierr)
-            call mpi_bcast(eddies(ns)%ew(1:nots),nots,mpi_integer,0,MPI_COMM_FEMTOOLS,ierr)
+            call mpi_bcast(eddies(ns)%eu(1:nots),nots,GetPREAL(),0,MPI_COMM_FEMTOOLS,ierr)
+            call mpi_bcast(eddies(ns)%ev(1:nots),nots,GetPREAL(),0,MPI_COMM_FEMTOOLS,ierr)
+            call mpi_bcast(eddies(ns)%ew(1:nots),nots,GetPREAL(),0,MPI_COMM_FEMTOOLS,ierr)
          endif
 #endif
 
@@ -392,13 +393,14 @@ contains
 
 #ifdef HAVE_MPI
       if(IsParallel())then
+         ! Use GetPREAL for all broadcasts
          call mpi_bcast(eddies(ns)%xeddy(1:nots),nots,GetPREAL(),0,MPI_COMM_FEMTOOLS,ierr)
          call mpi_bcast(eddies(ns)%yeddy(1:nots),nots,GetPREAL(),0,MPI_COMM_FEMTOOLS,ierr)
          call mpi_bcast(eddies(ns)%zeddy(1:nots),nots,GetPREAL(),0,MPI_COMM_FEMTOOLS,ierr)
 
-         call mpi_bcast(eddies(ns)%eu(1:nots),nots,mpi_integer,0,MPI_COMM_FEMTOOLS,ierr)
-         call mpi_bcast(eddies(ns)%ev(1:nots),nots,mpi_integer,0,MPI_COMM_FEMTOOLS,ierr)
-         call mpi_bcast(eddies(ns)%ew(1:nots),nots,mpi_integer,0,MPI_COMM_FEMTOOLS,ierr)        
+         call mpi_bcast(eddies(ns)%eu(1:nots),nots,GetPREAL(),0,MPI_COMM_FEMTOOLS,ierr)
+         call mpi_bcast(eddies(ns)%ev(1:nots),nots,GetPREAL(),0,MPI_COMM_FEMTOOLS,ierr)
+         call mpi_bcast(eddies(ns)%ew(1:nots),nots,GetPREAL(),0,MPI_COMM_FEMTOOLS,ierr)        
       endif
 #endif 
 
@@ -529,15 +531,15 @@ contains
 
     function esign()
 
-      integer :: esign
-      real    :: i
+      real :: esign  ! Changed return type to real
+      real :: i
 
       call random_number(i)
 
       if (i<0.5) then
-        esign = -1        
+        esign = -1.0  ! Now returns real value
       else
-        esign = +1
+        esign = +1.0  ! Now returns real value
       endif
 
       return 
