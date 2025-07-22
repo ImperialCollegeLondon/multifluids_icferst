@@ -1368,10 +1368,6 @@ contains
                                     !   ENTH_RHS_DIFF_COEF_DIVDX=ENTH_RHS_DIFF_COEF_DIVDX
                                     !   ENTH_RHS_DIFF_COEF_DIVDX(1)=ENTH_RHS_DIFF_COEF_DIVDX(2)
                                     !   ENTH_RHS_DIFF_COEF_DIVDX=-DIFF_COEF_DIVDX
-                                    !   if (ELE==130) then 
-                                    !   print *, "Dif1:", DIFF_COEFOLD_DIVDX
-                                    !   print *, "Dif2:", ENTH_RHS_DIFF_COEF_DIVDX
-                                    !   end if 
                                 ENDIF
                                 end if
                               ELSE
