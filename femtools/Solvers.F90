@@ -277,7 +277,7 @@ subroutine petsc_solve_vector(x, matrix, rhs, option_path, deallocate_matrix)
   type(csr_matrix) :: matrixblock
   type(scalar_field) :: rhsblock, xblock
   integer :: i
-print *,'vec1'
+
   assert(x%dim==rhs%dim)
   assert(size(x%val(1,:))==size(rhs%val(1,:)))
   assert(size(x%val(1,:))==block_size(matrix,2))
@@ -370,7 +370,7 @@ subroutine petsc_solve_vector_components(x, matrix, rhs, option_path)
   character(len=OPTION_PATH_LEN) solver_option_path, option_path_in
   integer literations, i
   logical lstartfromzero
-print *,'vec2'
+
   assert(x%dim==rhs%dim)
   assert(size(x%val(1,:))==size(rhs%val(1,:)))
   assert(size(x%val(1,:))==size(matrix,2))

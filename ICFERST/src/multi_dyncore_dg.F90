@@ -1872,7 +1872,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type( vector_field ), pointer :: x_all2, U
         type( scalar_field ), pointer :: sf, soldf, gamma, cvp
         type( vector_field ) :: packed_vel, rhs
-        type( vector_field ) :: deltap, rhs_p
+        type( vector_field ) :: deltap, rhs_p, test_vec
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
         logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, fem_density_buoyancy
@@ -2248,7 +2248,19 @@ end if
           call extract_diagonal(cmc_petsc, diagonal_CMC)
           call scale_PETSc_matrix(cmc_petsc)
         end if
-        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+! Temperally disabled solve_and_update_pressure subroutine, it gives bugs...just directly excute here, 
+if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC%val)!Recover original X; X = D^-0.5 * X'
+call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
+pres_its_taken = its_taken
+
+if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
+!If the system is re-scaled then now it is time to recover the correct solution
+if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC%val) !Recover original X; X = D^-0.5 * X'
+!If false update pressure then return before doing so
+
+!Now update the pressure
+P_all%val(1,:,:) = P_all%val(1,:,:) + deltap%val
+        ! call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)

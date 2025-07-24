@@ -15882,3 +15882,5 @@ sed -i "s|\\\$(PETSC_ARCH)|$PETSC_ARCH|g" femtools/Makefile
 #   --with-shared-libraries=1 \
 #   --with-fortran-bindings=1
 #   --download-zoltan \
+
+make all
