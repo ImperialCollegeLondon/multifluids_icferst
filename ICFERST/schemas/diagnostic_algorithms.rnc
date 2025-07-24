@@ -1096,11 +1096,27 @@ viscosity_EOS_algorithm =
         ## the main code, and is not wrapped by the automatic diagnostics
         ## wrappers.
         element viscosity_EOS {
+          ## Batzle and Wang (1992) EOS
+          ##
+          ## Use for basin scale simulations.
+          ##
+          ## Valid for ranges: T in [20,350] degrees Celsius.
           element viscosity_BW {
              attribute name { "Internal" },
              attribute material_phase_support { "multiple" }
           }|
           element viscosity_HP {
+             attribute name { "Internal" },
+             attribute material_phase_support { "multiple" }
+          }|
+          ## Lewis et al. (2009) EOS
+          ##
+          ## Valid temperature ranges (K and C) split as:
+          ##
+          ##  - T in [0, 661) K    ([-273.15, 387.85) C)
+          ##
+          ##  - T in [661, inf) K  ([387.85, inf) C)
+          element viscosity_LEWIS {
              attribute name { "Internal" },
              attribute material_phase_support { "multiple" }
           }

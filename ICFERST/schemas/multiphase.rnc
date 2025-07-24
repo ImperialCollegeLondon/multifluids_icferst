@@ -635,7 +635,7 @@ start =
                     element type_Tabulated {
                         element capillary_pressure_table { xsd:string }
                     }|
-      
+
 	          ## Power Law equation
                   ##
                   ## Pc = c*(1-s_eff)**a
@@ -4350,7 +4350,9 @@ element Density{(
                            })}*
                         }|
                         ## Batzle and Wang (1992) EOS
+                        ##
                         ## Use for basin scale simulations.
+                        ##
                         ## Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg salinity.
                         ##
                         ## NOTE: Reference density is calculated using reference C0, T0, P0.
@@ -4365,6 +4367,26 @@ element Density{(
                            }?,
                            ## Reference pressure (default 1e5 Pa)
                            element P0 {
+                              real
+                           }?,
+                           ## Remove pressure terms in BW EOS by setting P=0. This is a temporary fix to running sim with well domains with non-Boussinesq
+                           element Remove_P_dependencies { empty }?
+                        }|
+                        ## Lewis et al. (2009) EOS
+                        ## Valid temperature ranges (K and C) split as:
+                        ##
+                        ##  - T in [0, 574) K    ([-273.15, 300.85) C)
+                        ##
+                        ##  - T in [574, 654) K  ([300.85, 380.85) C)
+                        ##
+                        ##  - T in [654, 663) K  ([380.85, 389.85) C)
+                        ##
+                        ##  - T in [663, inf) K    ([389.85, inf) C)
+                        ##
+                        ## Note: This EOS does not include pressure or salinity dependence. Reference density is calculated using reference T0.
+                        element Lewis_eos {
+                           ## Reference temperature (default 298)
+                           element T0 {
                               real
                            }?
                         }
