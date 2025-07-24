@@ -5316,7 +5316,6 @@ NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentati
                   <empty/>
                 </element>
               </optional>
-<<<<<<< HEAD
             </element>
             <element name="Lewis_eos">
               <a:documentation>Lewis et al. (2009) EOS
@@ -5337,8 +5336,6 @@ Note: This EOS does not include pressure or salinity dependence. Reference densi
                   <ref name="real"/>
                 </element>
               </optional>
-=======
->>>>>>> d4c4824cf514551747168653b4ce82a2628dbd42
             </element>
           </choice>
           <optional>
