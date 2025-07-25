@@ -883,7 +883,7 @@ contains
           INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE, 1.E-15 )
       END DO
 
-      IF ( GETCV_DISC ) THEN  ! Could be optimised for Newton only doing it when getResidual =  true
+      IF ( GETCV_DISC ) THEN  ! pscpsc Could be optimised for Newton only doing it when getResidual =  true
           do iphase = wells_first_phase, final_phase*2
             assembly_phase = iphase
             if (assemble_collapsed_to_one_phase) assembly_phase = 2
@@ -2178,24 +2178,7 @@ contains
             !Re-populate properly PIPE_DIAMETER
             PIPE_DIAMETER%val = 0.
             !Copy values back to PIPE_DIAMETER from diameter_of_the_pipe_aux. This should go over less than 1% of the nodes
-
             do ele = 1, size(eles_with_pipe)
-              !For parallel we only assign a diameter value if the node is owned by the processor
-              if (IsParallel()) then
-                  if (.not. assemble_ele(PIPE_DIAMETER,ele)) then
-                      skip=.true.
-                      neighbours=>ele_neigh(PIPE_DIAMETER,ele)
-                      do nb=1,size(neighbours)
-                          if (neighbours(nb)<=0) cycle
-                          if (assemble_ele(PIPE_DIAMETER,neighbours(nb))) then
-                              skip=.false.
-                              exit
-                          end if
-                      end do
-                      if (skip) cycle
-                  end if
-              end if
-
                 do k = 1, eles_with_pipe(ele)%npipes
                     x_iloc = eles_with_pipe(ele)%pipe_corner_nds1(k)
                     PIPE_DIAMETER%val(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc )) = &
@@ -2205,27 +2188,8 @@ contains
                      diameter_of_the_pipe_aux(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc ))
                 end do
             end do
-
         else
             do ele = 1, Mdims%totele
-
-              !For parallel we only assign a diameter value if the node is owned by the processor
-              if (IsParallel()) then
-                  if (.not. assemble_ele(PIPE_DIAMETER,ele)) then
-                      skip=.true.
-                      neighbours=>ele_neigh(PIPE_DIAMETER,ele)
-                      do nb=1,size(neighbours)
-                          if (neighbours(nb)<=0) cycle
-                          if (assemble_ele(PIPE_DIAMETER,neighbours(nb))) then
-                              skip=.false.
-                              exit
-                          end if
-                      end do
-                      if (skip) cycle
-                  end if
-              end if
-
-
                 ! Look for pipe indicator in element:
                 PIPE_INDEX_LOGICAL=.FALSE.
                 PIPE_NOD_COUNT=0
@@ -2264,6 +2228,7 @@ contains
                                     eles_with_pipe(k)%pipe_corner_nds2, eles_with_pipe(k)%npipes )
             end do
         end if
+
         if (dump_vtu_zero) then
             !Overwrite the first dump with the values of the diameter of the pipe, don't remove this section
             ewrite(1,*) "Overwritting the initial vtu file with the updated values of the diameter of the well"

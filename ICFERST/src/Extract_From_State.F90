@@ -2281,9 +2281,9 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
 
           !We decide a priory if we use days or seconds to show dt to the user
           call get_option( '/timestepping/timestep', dt )
-          conversor = 1.0; output_units ='s'
-          if (dt > 86400.) then
-            conversor = 86400.; output_units ='d'
+          conversor = 86400.; output_units ='d'
+          if (dt < 864.) then
+            conversor = 1.0; output_units ='s'
           end if
 
             !If Automatic_NonLinerIterations then we compare the variation of the a property from one time step to the next one
@@ -2399,18 +2399,22 @@ ts_ref_val = 0d0;
                   output_message = ''; temp_string = ''
                   ! Print header for the output
                   if ((itime == 1 .or. mod(itime,20) == 0)) then
-                    write(temp_string ,'(a)') "  Step|   nits|     dT["//trim(output_units)//"]|   Time["//trim(output_units)//"]|   Pres[-]|   Mass[-]|    Sat[-]|"
-                    write(temp_string2,'(a)') "------|-------|----------|----------|----------|----------|----------|"
+                    write(temp_string ,'(a)') "  Step|   nits|     dT["//trim(output_units)//"]|   Time["//trim(output_units)//"]|   Pres[-]|   Mass[-]|"
+                    write(temp_string2,'(a)') "------|-------|----------|----------|----------|----------|"
+                    if (abs(inf_norm_val)   > 1e-30) then 
+                      write(temp_string3,'(a)') "    Sat[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+                      write(temp_string3,'(a)') "----------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+                    end if
                     if (abs(inf_norm_temp)   > 1e-30) then 
-                      write(temp_string3,'(a)') "    Temp[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+                      write(temp_string3,'(a)') "   Temp[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
                     if (abs(inf_norm_conc)   > 1e-30) then 
-                      write(temp_string3,'(a)') "    Trac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+                      write(temp_string3,'(a)') "   Trac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
                     if (abs(Tracers_ref_val) > 1e-30) then 
-                      write(temp_string3,'(a)') "   PTrac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+                      write(temp_string3,'(a)') "  PTrac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
                     write(temp_string3,'(a)') " State|"      ; temp_string  = trim(temp_string ) // trim(temp_string3)
@@ -2428,11 +2432,11 @@ ts_ref_val = 0d0;
                   write(snits ,'(I6)') nonlinear_its
 
                   write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| " //printPretty(dt/conversor) // "| " // printPretty(acctim/conversor) // "| " // &
-                       printPretty(inf_norm_pres) // "| " // printPretty(max_calculate_mass_delta) // "| " // &
-                       printPretty(inf_norm_val) // "| "
-                  if (abs(inf_norm_temp)   > 1e-30) temp_string = trim(temp_string) // printPretty(inf_norm_temp)   // "| "
-                  if (abs(inf_norm_conc)   > 1e-30) temp_string = trim(temp_string) // printPretty(inf_norm_conc)   // "| "
-                  if (abs(Tracers_ref_val) > 1e-30) temp_string = trim(temp_string) // printPretty(Tracers_ref_val) // "| "
+                       printPretty(inf_norm_pres) // "| " // printPretty(max_calculate_mass_delta) // "| "
+                  if (abs(inf_norm_val)    > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_val)    // "| "   
+                  if (abs(inf_norm_temp)   > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_temp)   // "| "
+                  if (abs(inf_norm_conc)   > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_conc)   // "| "
+                  if (abs(Tracers_ref_val) > 1e-30) temp_string = trim(temp_string)//" "// printPretty(Tracers_ref_val) // "| "
                   if (its >= NonLinearIteration)    then 
                                                     temp_string = trim(temp_string) //"  Fail|"
                   else                                                                 
@@ -2440,10 +2444,12 @@ ts_ref_val = 0d0;
                   end if   
                   write(snits,'(I6)') nDMOWarnings !re=use string variable snits
                   temp_string = trim(temp_string) // snits; temp_string = trim(temp_string) // "| "  
-                  if ((itime == 1 .or. mod(itime,20) == 0)) then 
-                    output_message = trim(output_message) // " "//trim(temp_string)
-                  else 
-                    output_message = trim(output_message) // trim(temp_string)
+                  if (getprocno() == 1) then 
+                    if ((itime == 1 .or. mod(itime,20) == 0)) then 
+                      output_message = trim(output_message) // " "//trim(temp_string)
+                    else 
+                      output_message = trim(output_message) // trim(temp_string)
+                    end if
                   end if
                   temp_string = ''
                     ! if (abs(inf_norm_val) > 1e-30) then
@@ -3615,25 +3621,25 @@ end subroutine get_DarcyVelocity
             endif
             ! Write the actual numbers to the file now
             if (is_porous_media) then
-                write(numbers,'(1PE17.11,a,1PE17.11, a, 1PE17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
+                write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
             else
-                write(numbers,'(1PE17.11,a,1PE17.11, a, 1PE17.11)') current_time, "," , current_time/(60.) , ",",  outfluxes%porevolume
+                write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(60.) , ",",  outfluxes%porevolume
             end if
 
             whole_line =  trim(numbers)
             do ioutlet =1, size(outfluxes%intflux,2)
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(fluxstring(iphase),'(1PE17.11)') outfluxes%totout(iphase,ioutlet)
+                    write(fluxstring(iphase),'(E17.11)') outfluxes%totout(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(intfluxstring(iphase),'(1PE17.11)') outfluxes%intflux(iphase,ioutlet)
+                    write(intfluxstring(iphase),'(E17.11)') outfluxes%intflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
                 do ifields = 1, size(outfluxes%field_names,2)
                     do iphase = 1, size(outfluxes%intflux,1) !Here we output the average value over the surface
-                        write(tempstring(iphase),'(1PE17.11)') outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
+                        write(tempstring(iphase),'(E17.11)') outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     end do
                 end do

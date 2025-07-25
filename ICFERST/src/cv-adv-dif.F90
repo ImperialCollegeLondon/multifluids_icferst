@@ -3544,18 +3544,15 @@ end if
 
                     end if
                 case default!Now calculate mass conservation
-                    !Calculate internal volumes of each phase
+                    !Calculate internal masses of each phase
                     calculate_mass_internal = 0.
                     call calculate_internal_volume( packed_state, Mdims, Mass_ELE, &
                         calculate_mass_internal(1:Mdims%n_in_pres) , ndgln%cv, DEN_ALL)
-                    !DISABLED AS IT DOES NOT WORK WELL AND IT DOES ACCOUNT FOR A VERY TINY FRACTION OF THE OVERALL MASS
+                   !DISABLED AS IT DOES NOT WORK WELL AND IT DOES ACCOUNT FOR A VERY TINY FRACTION OF THE OVERALL MASS
                    ! if (Mdims%npres >1) then!consider as well the pipes
                    !     call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
                    !         calculate_mass_internal(:) , ndgln%cv, eles_with_pipe)
                    ! end if
-
-                    !Loop over nphases - 1
-                    calculate_mass_delta(1,2) = 0.
 
                     tmp1 = sum(calculate_mass_internal)!<=mass inside the domain
                     tmp2 = sum(calculate_mass_delta(:,1))!<= mass inside the domain at the beginning of the time-level
@@ -8189,7 +8186,6 @@ end if
 
            !deallocate(R_PRES,R_PHASE,MEAN_PORE_CV_PHASE)
         !Assemble the part of the wells matrix and create corresponding RHS, absoprtions, etc.
-        ! pscpsc add after the rest is working
         if (Mdims%npres >1) call ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, saturation, den_all, denold_all, &
                               final_phase, &! final_phase => reservoir domain
                               Mdims, ndgln, well_dummy7, CV_P, SOURCT_ALL, well_dummy8, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
