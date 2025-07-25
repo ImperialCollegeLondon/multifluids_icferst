@@ -651,14 +651,8 @@ contains
               dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             endif
             deallocate(remove_P_dep)
-          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Lewis_eos' ) then
-            ! Lewis et al (2009) EOS
-            ! Use for ...
-            ! Valid temperature ranges split as:
-            !  - T < 574 K
-            !  - 574 <= T < 654 K
-            !  - 654 <= T < 663 K
-            !  - T >= 663 K
+          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/IAPWS1995_eos' ) then
+            ! IAPWS (1995) EOS
             ! Note: Reference density is calculated using reference T0.
 
             rho = 0.0  ! initialise
@@ -676,6 +670,37 @@ contains
             end where
 
             where ((temperature % val) >= 663.0)
+              rho = 1.4562424658156e-14*(temperature % val)**6 - 9.882360156382e-11*(temperature % val)**5 + 2.7707846321561e-07*(temperature % val)**4 - 0.000410860340056467*(temperature % val)**3 + 0.339957993811653*(temperature % val)**2 - 148.992636402535*(temperature % val) + 27135.6537310957
+            end where
+
+            ! Note: No pressure or salinity dependence included per original IAPWS 1995 formula
+            ! Density derivative dRhodP not defined (no pressure dependence)
+            dRhodP = 0.0
+
+          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/LL2009_eos' ) then
+            ! Lewis and Lowell (2009) EOS
+            ! Valid for 3.2 wt% salinity
+            ! Note: Reference density is calculated using reference T0.
+
+            rho = 0.0  ! initialise
+
+            where ((temperature % val) < 599.0)
+              rho = -0.0021139540120505*(temperature % val)**2 + 0.917854090105867*(temperature % val) + 947.704830737288
+            end where
+
+            where ((temperature % val) >= 599.0 .and. (temperature % val) < 662.0)
+              rho = -4.91791248168338e-05*(temperature % val)**4 + 0.122423307294122*(temperature % val)**3 - 114.28340270265*(temperature % val)**2 + 47412.7070791346*(temperature % val) - 7374686.34476882
+            end where
+
+            where ((temperature % val) >= 662.0 .and. (temperature % val) < 666.57)
+              rho = 2.62908859436743*(temperature % val)**3 - 5237.39728083828*(temperature % val)**2 + 3477750.2422646*(temperature % val) - 769756993.480138
+            end where
+
+            where ((temperature % val) >= 666.57 .and. (temperature % val) < 721.8)
+              rho = 8.63679470997081e-08*(temperature % val)**6 - 3.61375107871589e-04*(temperature % val)**5 + 0.629951393566949*(temperature % val)**4 - 585.611538256315*(temperature % val)**3 + 306189.623060165*(temperature % val)**2 - 8.53741721794318e+07*(temperature % val) + 9.91764516395852e+09
+            end where
+
+            where ((temperature % val) >= 721.8)
               rho = 1.4562424658156e-14*(temperature % val)**6 - 9.882360156382e-11*(temperature % val)**5 + 2.7707846321561e-07*(temperature % val)**4 - 0.000410860340056467*(temperature % val)**3 + 0.339957993811653*(temperature % val)**2 - 148.992636402535*(temperature % val) + 27135.6537310957
             end where
 
@@ -2160,7 +2185,7 @@ contains
       type( tensor_field ), pointer :: t_field
       integer :: iphase, stat, cv_nod
       type( scalar_field ), pointer :: temperature, concentration
-      logical :: viscosity_BW, viscosity_HP, viscosity_LEWIS
+      logical :: viscosity_BW, viscosity_HP, viscosity_Coumou
       logical :: have_temperature_field, have_concentration_field
       real :: c, T, val
 
@@ -2169,9 +2194,9 @@ contains
           "::Viscosity/diagnostic/viscosity_EOS/viscosity_BW::Internal")
           viscosity_HP = have_option("/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
           "::Viscosity/diagnostic/viscosity_EOS/viscosity_HP::Internal")
-          viscosity_LEWIS = have_option("/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
-          "::Viscosity/diagnostic/viscosity_EOS/viscosity_LEWIS::Internal")
-          if (viscosity_BW) then
+          viscosity_Coumou = have_option("/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
+          "::Viscosity/diagnostic/viscosity_EOS/viscosity_Coumou::Internal")
+          if (viscosity_BW) then ! Batzle and Wang (1992) EOS - "Seismic properties of pore fluids"
             temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
             have_temperature_field = ( stat == 0 )
             Concentration => extract_scalar_field( state( iphase ), 'Concentration', stat )
@@ -2245,12 +2270,12 @@ contains
                 t_field%val(3, 3, cv_nod) = (2.414e-5) * 10**(247.8 / (T - 140.85))
               end do
             end if
-          else if (viscosity_LEWIS) then
+          else if (viscosity_Coumou) then ! Coumou et al. (2008) EOS - "The Structure and Dynamics of Mid-Ocean Ridge Hydrothermal Systems"
             temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
             have_temperature_field = ( stat == 0 )
             t_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
             if (.not. (have_temperature_field)) then
-              FLAbort( "Temperature field needed for Lewis viscosity EOS." )
+              FLAbort( "Temperature field needed for Coumou viscosity EOS." )
             else
               do cv_nod=1,Mdims%cv_nonods
                 T = temperature%val(cv_nod)
@@ -2984,7 +3009,7 @@ contains
         !Add the reference brine contribution
         ref_rho = ref_rho + 1e3*ref_C0 * (0.668 + 0.44*ref_C0 + 1e-6 * (300*ref_P0*1e-6 - 2400*ref_P0*1e-6*ref_C0 + (ref_T0 - 273.15) * (80 + 3*(ref_T0 - 273.15) - 3300*ref_C0 - 13*ref_P0*1e-6 + 47*ref_P0*1e-6*ref_C0)))
         deallocate(remove_P_dep)
-      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Lewis_eos' ) then
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/IAPWS1995_eos' ) then ! IAPWS (1995) EOS
         !!$ Reference density is calculated using reference T0.
         call get_option( trim( eos_option_path ) // '/T0', ref_T0, default=298.)
         ! Calculate the reference density
@@ -2994,6 +3019,23 @@ contains
           ref_rho = -0.0011226938 * ref_T0**3 + 2.0306323768 * ref_T0**2 - 1226.3606196862 * ref_T0 + 247972.46816223
         elseif (ref_T0 < 663.0) then
           ref_rho = 0.419319282558 * ref_T0**3 - 829.57097709631 * ref_T0**2 + 547043.792559283 * ref_T0 - 120240161.260508
+        else
+          ref_rho = 1.4562424658156E-14 * ref_T0**6 - 9.88236015638392E-11 * ref_T0**5 + 2.7707846321561E-07 * ref_T0**4 &
+                  - 4.10860340056467E-04 * ref_T0**3 + 0.339957993811653 * ref_T0**2 - 148.992636402535 * ref_T0 + 27135.6537310957
+        end if
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/LL2009_eos' ) then ! Lewis and Lowell (2009) EOS - "Numerical modeling of two-phase flow in the NaCl-H2O system"
+        !!$ Reference density is calculated using reference T0.
+        call get_option( trim( eos_option_path ) // '/T0', ref_T0, default=298.)
+        ! Calculate the reference density
+        if (ref_T0 < 599.0) then
+          ref_rho = -0.0021139540120505 * ref_T0**2 + 0.917854090105867 * ref_T0 + 947.704830737288
+        elseif (ref_T0 < 662.0) then
+          ref_rho = -4.91791248168338E-05 * ref_T0**4 + 0.122423307294122 * ref_T0**3 - 114.28340270265 * ref_T0**2 + 47412.7070791346 * ref_T0 - 7374686.34476882
+        elseif (ref_T0 < 666.57) then
+          ref_rho = 2.62908859436743 * ref_T0**3 - 5237.39728083828 * ref_T0**2 + 3477750.2422646 * ref_T0 - 769756993.480138
+        elseif (ref_T0 < 721.8) then
+          ref_rho = 8.63679470997081E-08 * ref_T0**6 - 3.61375107871589E-04 * ref_T0**5 + 0.629951393566949 * ref_T0**4 &
+                  - 585.611538256315 * ref_T0**3 + 306189.623060165 * ref_T0**2 - 8.53741721794318E+07 * ref_T0 + 9.91764516395852E+09
         else
           ref_rho = 1.4562424658156E-14 * ref_T0**6 - 9.88236015638392E-11 * ref_T0**5 + 2.7707846321561E-07 * ref_T0**4 &
                   - 4.10860340056467E-04 * ref_T0**3 + 0.339957993811653 * ref_T0**2 - 148.992636402535 * ref_T0 + 27135.6537310957

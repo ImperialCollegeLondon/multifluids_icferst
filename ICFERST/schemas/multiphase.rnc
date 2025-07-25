@@ -4349,7 +4349,7 @@ element Density{(
                               real
                            })}*
                         }|
-                        ## Batzle and Wang (1992) EOS
+                        ## Batzle and Wang (1992) EOS - "Seismic properties of pore fluids"
                         ##
                         ## Use for basin scale simulations.
                         ##
@@ -4372,19 +4372,23 @@ element Density{(
                            ## Remove pressure terms in BW EOS by setting P=0. This is a temporary fix to running sim with well domains with non-Boussinesq
                            element Remove_P_dependencies { empty }?
                         }|
-                        ## Lewis et al. (2009) EOS
-                        ## Valid temperature ranges (K and C) split as:
+                        ## IAPWS (1995) EOS
                         ##
-                        ##  - T in [0, 574) K    ([-273.15, 300.85) C)
-                        ##
-                        ##  - T in [574, 654) K  ([300.85, 380.85) C)
-                        ##
-                        ##  - T in [654, 663) K  ([380.85, 389.85) C)
-                        ##
-                        ##  - T in [663, inf) K    ([389.85, inf) C)
+                        ## Valid for freshwater
                         ##
                         ## Note: This EOS does not include pressure or salinity dependence. Reference density is calculated using reference T0.
-                        element Lewis_eos {
+                        element IAPWS1995_eos {
+                           ## Reference temperature (default 298)
+                           element T0 {
+                              real
+                           }?
+                        }|
+                        ## Lewis and Lowell (2009) EOS - "Numerical modeling of two-phase flow in the NaCl-H2O system"
+                        ##
+                        ## Valid for 3.2 wt% salinity
+                        ##
+                        ## Note: This EOS does not include pressure or salinity dependence. Reference density is calculated using reference T0.
+                        element LL2009_eos {
                            ## Reference temperature (default 298)
                            element T0 {
                               real

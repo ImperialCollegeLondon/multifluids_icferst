@@ -5285,7 +5285,7 @@ Introduce the same name as the scalar field being used. For example: Tracer_CO2<
               </zeroOrMore>
             </element>
             <element name="BW_eos">
-              <a:documentation>Batzle and Wang (1992) EOS
+              <a:documentation>Batzle and Wang (1992) EOS - "Seismic properties of pore fluids"
 
 Use for basin scale simulations.
 
@@ -5317,17 +5317,23 @@ NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentati
                 </element>
               </optional>
             </element>
-            <element name="Lewis_eos">
-              <a:documentation>Lewis et al. (2009) EOS
-Valid temperature ranges (K and C) split as:
+            <element name="IAPWS1995_eos">
+              <a:documentation>IAPWS (1995) EOS
 
- - T in [0, 574) K    ([-273.15, 300.85) C)
+Valid for freshwater
 
- - T in [574, 654) K  ([300.85, 380.85) C)
+Note: This EOS does not include pressure or salinity dependence. Reference density is calculated using reference T0.</a:documentation>
+              <optional>
+                <element name="T0">
+                  <a:documentation>Reference temperature (default 298)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+            </element>
+            <element name="LL2009_eos">
+              <a:documentation>Lewis and Lowell (2009) EOS - "Numerical modeling of two-phase flow in the NaCl-H2O system"
 
- - T in [654, 663) K  ([380.85, 389.85) C)
-
- - T in [663, inf) K    ([389.85, inf) C)
+Valid for 3.2 wt% salinity
 
 Note: This EOS does not include pressure or salinity dependence. Reference density is calculated using reference T0.</a:documentation>
               <optional>

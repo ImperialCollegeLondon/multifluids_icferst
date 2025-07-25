@@ -1457,7 +1457,7 @@ the main code, and is not wrapped by the automatic diagnostics
 wrappers.</a:documentation>
       <choice>
         <element name="viscosity_BW">
-          <a:documentation>Batzle and Wang (1992) EOS
+          <a:documentation>Batzle and Wang (1992) EOS - "Seismic properties of pore fluids"
 
 Use for basin scale simulations.
 
@@ -1477,14 +1477,8 @@ Valid for ranges: T in [20,350] degrees Celsius.</a:documentation>
             <value>multiple</value>
           </attribute>
         </element>
-        <element name="viscosity_LEWIS">
-          <a:documentation>Lewis et al. (2009) EOS
-
-Valid temperature ranges (K and C) split as:
-
- - T in [0, 661) K    ([-273.15, 387.85) C)
-
- - T in [661, inf) K  ([387.85, inf) C)</a:documentation>
+        <element name="viscosity_Coumou">
+          <a:documentation>Coumou et al. (2008) EOS - "The Structure and Dynamics of Mid-Ocean Ridge Hydrothermal Systems"</a:documentation>
           <attribute name="name">
             <value>Internal</value>
           </attribute>
