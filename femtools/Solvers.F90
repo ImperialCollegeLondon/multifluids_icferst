@@ -1344,7 +1344,7 @@ logical, optional, intent(in):: nomatrixdump
   ! if a null space is defined for the petsc matrix, make sure it's projected out of the rhs
   call KSPGetOperators(ksp, mat, pmat, ierr)
   call MatGetNullSpace(mat, nullsp, ierr)
-  if (ierr==0 .and. .not. IsNullMatNullSpace(nullsp)) then
+  if (ierr==0 .and. nullsp%v /= -2) then
     ewrite(2,*) "Projecting nullspace from RHS"
     call MatNullSpaceRemove(nullsp, b, ierr)
   end if

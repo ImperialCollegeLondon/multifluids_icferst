@@ -2457,7 +2457,7 @@ end if
         END IF
 
     if ((.not. is_magma) .or. compute_compaction) then 
-        print *, 'enter iter'
+
         !"########################UPDATE PRESSURE STEP####################################"
         !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver, for inertia this is a huge save as for that momemt DGM_petsc is deallocated!)
         sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
@@ -2507,7 +2507,6 @@ end if
           call extract_diagonal(cmc_petsc, diagonal_CMC)
           call scale_PETSc_matrix(cmc_petsc)
         end if
-        print *, 'enter pressure solver'
         ! call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
         ! call solve_and_update_pressure2(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC)
 if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC%val)!Recover original X; X = D^-0.5 * X'
@@ -2521,7 +2520,6 @@ if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC%val) !Recov
 !Now update the pressure
 P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
 
-        print *, 'exit pressure solver'
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
@@ -2530,7 +2528,6 @@ P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
           if ((solve_stokes .or. solve_mom_iteratively)) then
             if (solve_mom_iteratively) then
                 !Solve Schur complement using our own method
-                print *, 'enter stokes'
                 call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
                                               MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its, CMC_scale=cmcscaling)
             else !Solve Schur complement using PETSc
