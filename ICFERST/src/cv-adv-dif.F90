@@ -6158,22 +6158,22 @@ end if
                                     n_bcs = option_count("/material_phase["// int2str( iphase - 1)//"]/scalar_field::Pressure/prognostic/boundary_conditions")
                                     do i = 1, n_bcs
                                         hydrostatic_bc = have_option("/material_phase["// int2str( iphase - 1)//"]/scalar_field::Pressure/prognostic/boundary_conditions["//int2str(i-1)//"]/type::dirichlet/hydrostatic_boundaries")
-
-                                        if (hydrostatic_bc) then!not compatible with hydrostatic presure solver
-                                            Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
-                                            Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
-                                                - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
-                                                * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) - (gravty*&
-                                                SUF_D_BC_ALL( 1, 1, 1 + Mdims%cv_snloc* ( SELE - 1 ) )*&
-                                                abs(top_domain-X_ALL(Mdims%ndim, CV_NODI))*&
-                                                CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
-                                        else
-                                            Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
-                                            Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
-                                                - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
-                                                * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )
-                                        endif
                                     end do
+
+                                    if (hydrostatic_bc) then!not compatible with hydrostatic presure solver
+                                        Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
+                                        Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
+                                            - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
+                                            * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) - (gravty*&
+                                            SUF_D_BC_ALL( 1, 1, 1 + Mdims%cv_snloc* ( SELE - 1 ) )*&
+                                            abs(top_domain-X_ALL(Mdims%ndim, CV_NODI))*&
+                                            CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
+                                    else
+                                        Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
+                                        Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
+                                            - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
+                                            * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )
+                                    endif
 
                                 else
                                     if (show_warn_msg) then
