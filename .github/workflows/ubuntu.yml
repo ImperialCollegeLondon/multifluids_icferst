@@ -30,6 +30,9 @@ jobs:
 
           - name: "Build Focal"
             release: focal
+
+          - name: "Build Noble"
+            release: noble
     steps:
 
       - name: Check Out Repo
