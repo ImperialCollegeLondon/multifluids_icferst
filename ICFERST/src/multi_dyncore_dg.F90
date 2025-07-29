@@ -2509,17 +2509,17 @@ end if
         end if
         print *, 'enter pressure solver'
         ! call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
-        call solve_and_update_pressure2(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC)
-! if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC%val)!Recover original X; X = D^-0.5 * X'
-! call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
-! pres_its_taken = its_taken
+        ! call solve_and_update_pressure2(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC)
+if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC%val)!Recover original X; X = D^-0.5 * X'
+call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
+pres_its_taken = its_taken
 
-! if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
-! !If the system is re-scaled then now it is time to recover the correct solution
-! if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC%val) !Recover original X; X = D^-0.5 * X'
-! !If false update pressure then return before doing so
-! !Now update the pressure
-! P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
+if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
+!If the system is re-scaled then now it is time to recover the correct solution
+if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC%val) !Recover original X; X = D^-0.5 * X'
+!If false update pressure then return before doing so
+!Now update the pressure
+P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
 
         print *, 'exit pressure solver'
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
@@ -2745,7 +2745,8 @@ end if
           real :: petsc_error_scale           
           integer:: max_nonlinear_iteraion
 
-          
+          type( vector_field ) :: packed_vel
+          type( vector_field ), pointer  :: vfield
 
           EXTRA=0
           non_improved_step=0
@@ -2871,7 +2872,26 @@ print *, k,':', conv_test
             !##########################Now solve the equations##########################
             ! ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
                 call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
-                call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)            
+                ! call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)    
+
+!For compaction we only care about the first phase velocity
+vfield => extract_vector_field(state(1), "Velocity")
+packed_vel%name=vfield%name; packed_vel%mesh=vfield%mesh
+packed_vel%option_path=vfield%option_path; packed_vel%dim=vfield%dim
+packed_vel%val => vfield%val
+
+rhs = as_packed_vector(CDP_tensor)
+! call MatView(Mmat%DGM_PETSC%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
+!Compute - u_new = A^-1( - Gradient * P + RHS)
+packed_vel%val = 0.
+rhs%val = rhs%val + Mmat%U_RHS(1,:,:)
+!Rescale RHS (it is given that the matrix has been already re-scaled)
+if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
+call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
+!If the system is re-scaled then now it is time to recover the correct solution
+if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
+if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
+
             ! call force_zero_boundary_value(Mdims, velocity)
                 if (isParallel()) call halo_update(velocity)
             ! end if
@@ -2887,7 +2907,17 @@ print *, k,':', conv_test
             rhs_p%val = - rhs_p%val !Mmat%CT_RHS%val
             call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
             if (compute_compaction) then
-              call solve_and_update_pressure2(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC) !Mmat%petsc_ACV
+            !   call solve_and_update_pressure2(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC) !Mmat%petsc_ACV
+if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC%val)!Recover original X; X = D^-0.5 * X'
+call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
+pres_its_taken = its_taken
+
+if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
+!If the system is re-scaled then now it is time to recover the correct solution
+if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC%val) !Recover original X; X = D^-0.5 * X'
+!If false update pressure then return before doing so
+!Now update the pressure
+P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
             else
               call solve_and_update_pressure2(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC, update_pres = .not. Special_precond)
             end if
