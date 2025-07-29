@@ -12195,8 +12195,10 @@ fi
 # Set your custom PETSc installation directory (adjust as needed)
 # Update PETSC_DIR to match the new build path
 # Set PETSc base
-export PETSC_DIR=/media/hh210/data2/Petsc/petsc-3.19.5
-export PETSC_ARCH=arch-linux-c-debug
+#export PETSC_DIR=/media/hh210/data2/Petsc/petsc-3.19.5
+#export PETSC_ARCH=arch-linux-c-debug
+#export PETSC_DIR=/usr/lib/petscdir/3.19
+#export PETSC_ARCH=arch-linux-c-debug
 
 # Define common PETSc include and library flags
 PETSC_INCLUDE="-I$PETSC_DIR/include -I$PETSC_DIR/$PETSC_ARCH/include"
@@ -15861,26 +15863,3 @@ fi
 
 sed -i "s|\\\$(PETSC_DIR)|$PETSC_DIR|g" femtools/Makefile
 sed -i "s|\\\$(PETSC_ARCH)|$PETSC_ARCH|g" femtools/Makefile
-
-
-
-
-# ./configure \
-#   --with-cc=mpicc \
-#   --with-cxx=mpicxx \
-#   --with-fc=mpif90 \
-#   --download-fblaslapack \
-#   --with-debugging=1 \
-#   --download-metis \
-#   --download-parmetis \
-#   --download-hypre \
-#   --download-superlu_dist \
-#   --download-scalapack \
-#   --download-ptscotch \
-#   --download-mumps \
-#   --download-suitesparse \
-#   --with-shared-libraries=1 \
-#   --with-fortran-bindings=1
-#   --download-zoltan \
-
-make all

@@ -6,14 +6,13 @@ on:
       - pablo_dev3
       - master
       - magma_dev
-      - linfeng_dev
       - geraldine_dev
       - phreeqc_link
-      - geraldine_dev_new
       - vinicius_dev
       - meissam_dev_new
       - hayley_dev
       - ruixiao_dev_new
+      - master_ubuntu24
 jobs:
 
   build:
