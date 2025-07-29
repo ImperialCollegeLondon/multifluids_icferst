@@ -51,9 +51,6 @@ module multiphase_1D_engine
     use parallel_tools, only : allmax, allmin, isparallel
     use, intrinsic :: ieee_arithmetic
     use multi_magma
-
-    use sparse_tools_petsc
-
 ! #include "petsc/finclude/petsc.h"   
 ! #include "petsc/finclude/petscmat.h"   
 !   use petsc 
@@ -2242,7 +2239,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
           call allocate_multi_field( Mdims, UDIFFUSION_VOL_ALL, Mdims%mat_nonods, mem_type = 1)
         end if
         ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
-        call calculate_viscosity( state, packed_state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, magma_phase_coef)
+        call calculate_viscosity( state, packed_state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL)
 
 
         if (compute_compaction) then
@@ -2510,7 +2507,21 @@ end if
           call extract_diagonal(cmc_petsc, diagonal_CMC)
           call scale_PETSc_matrix(cmc_petsc)
         end if
-        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+        print *, 'enter pressure solver'
+        ! call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+        call solve_and_update_pressure2(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC)
+! if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC%val)!Recover original X; X = D^-0.5 * X'
+! call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
+! pres_its_taken = its_taken
+
+! if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
+! !If the system is re-scaled then now it is time to recover the correct solution
+! if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC%val) !Recover original X; X = D^-0.5 * X'
+! !If false update pressure then return before doing so
+! !Now update the pressure
+! P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
+
+        print *, 'exit pressure solver'
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
@@ -2519,6 +2530,7 @@ end if
           if ((solve_stokes .or. solve_mom_iteratively)) then
             if (solve_mom_iteratively) then
                 !Solve Schur complement using our own method
+                print *, 'enter stokes'
                 call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
                                               MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its, CMC_scale=cmcscaling)
             else !Solve Schur complement using PETSc
@@ -2707,7 +2719,8 @@ end if
           REAL, DIMENSION( :, :, : ), intent(in) :: INV_B
           type( vector_field ), intent(inout) :: rhs_p
           type( vector_field ), intent(inout) :: deltap
-          type(tensor_field), intent(inout) :: P_all, velocity
+          type(tensor_field), pointer, intent(inout) :: P_all
+          type(tensor_field) :: velocity
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
           type( vector_field ), intent(inout) :: diagonal_A
           !Local variables
@@ -2874,9 +2887,9 @@ print *, k,':', conv_test
             rhs_p%val = - rhs_p%val !Mmat%CT_RHS%val
             call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
             if (compute_compaction) then
-              call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val) !Mmat%petsc_ACV
+              call solve_and_update_pressure2(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC) !Mmat%petsc_ACV
             else
-              call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val, update_pres = .not. Special_precond)
+              call solve_and_update_pressure2(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC, update_pres = .not. Special_precond)
             end if
             if (isParallel()) call halo_update(deltap)
             if (k == 1) then
@@ -3200,6 +3213,37 @@ print *, k,':', conv_test
           end if
 
         end subroutine solve_and_update_pressure
+
+        subroutine solve_and_update_pressure2(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC, update_pres)
+
+          implicit none
+          type(multi_dimensions), intent(in) :: Mdims
+          type( vector_field ), intent(inout) :: rhs_p
+          type( vector_field ), intent(inout) :: deltap
+          type( tensor_field ), pointer :: P_all
+          type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
+          type( vector_field ) :: diagonal_CMC
+          logical, optional, intent(in) :: update_pres
+          !Local variables
+          integer :: its_taken
+
+          !Rescale RHS (it is given the the matrix has been already re-scaled)
+          if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC%val)!Recover original X; X = D^-0.5 * X'
+          call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
+          pres_its_taken = its_taken
+
+          if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
+          !If the system is re-scaled then now it is time to recover the correct solution
+          if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC%val) !Recover original X; X = D^-0.5 * X'
+          !If false update pressure then return before doing so
+          if (present_and_false(update_pres)) then
+            return
+          else
+            !Now update the pressure
+            P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
+          end if
+
+        end subroutine solve_and_update_pressure2
 
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas

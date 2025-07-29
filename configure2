@@ -12139,7 +12139,7 @@ fi
 # Update PETSC_DIR to match the new build path
 # Set PETSc base
 export PETSC_DIR=/media/hh210/data2/Petsc/petsc-3.19.5
-export PETSC_ARCH=arch-linux-c-debug
+export PETSC_ARCH=arch-linux-c-opt
 
 # Define common PETSc include and library flags
 PETSC_INCLUDE="-I$PETSC_DIR/include -I$PETSC_DIR/$PETSC_ARCH/include"

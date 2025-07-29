@@ -38,7 +38,7 @@ module sparse_tools_petsc
   use halo_data_types
 #include "petsc/finclude/petsc.h"
   use petsc
-
+#include "petsc/finclude/petscmat.h"
   use Sparse_Tools
   use fields_data_types
   use fields_base
@@ -689,13 +689,21 @@ contains
     integer :: entries
     type(petsc_csr_matrix), intent(in) :: matrix
 
+    
+#if PETSC_VERSION_MINOR>=20
+    MatInfo :: matrixinfo
+#else
     PetscReal :: matrixinfo(MAT_INFO_SIZE)
+#endif
     PetscErrorCode:: ierr
 
     ! get the necessary info about the matrix:
     call MatGetInfo(matrix%M, MAT_LOCAL, matrixinfo, ierr)
-    entries = int(matrixinfo(MAT_INFO_NZ_USED))
-
+#if PETSC_VERSION_MINOR>=20
+    entries=int(matrixinfo%nz_used)
+#else
+    entries=matrixinfo(MAT_INFO_NZ_USED)
+#endif
   end function petsc_csr_entries
 
   subroutine petsc_csr_zero(matrix)
@@ -731,16 +739,19 @@ contains
     type(petsc_csr_matrix), intent(inout) :: matrix
     integer, intent(in) :: blocki,blockj
     integer, dimension(:), intent(in) :: i,j
-    real, dimension(size(i),size(j)), intent(in) :: val
+    ! real, dimension(size(i),size(j)), intent(in) :: val
+    PetscScalar, dimension(size(i),size(j)), intent(in) :: val
 
+    PetscInt :: size1, size2
     PetscInt, dimension(size(i)):: idxm
     PetscInt, dimension(size(j)):: idxn
     PetscErrorCode:: ierr
 
     idxm=matrix%row_numbering%gnn2unn(i,blocki)
     idxn=matrix%column_numbering%gnn2unn(j,blockj)
-
-    call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, val, ADD_VALUES, ierr)
+    size1=size(idxm)
+    size2=size(idxn)
+    call MatSetValues(matrix%M, size1, idxm, size2, idxn, reshape(val, [size1*size2]), ADD_VALUES, ierr)
 
     matrix%is_assembled=.false.
 
@@ -752,16 +763,18 @@ contains
     type(petsc_csr_matrix), intent(inout) :: matrix
     integer, intent(in) :: i
     integer, intent(in) :: j
-    real, dimension(:,:), intent(in) :: val
+    PetscScalar, dimension(:,:), intent(in) :: val
 
+    PetscInt :: size1, size2
     PetscInt, dimension(size(matrix%row_numbering%gnn2unn,2)):: idxm
     PetscInt, dimension(size(matrix%column_numbering%gnn2unn,2)):: idxn
     PetscErrorCode:: ierr
 
     idxm=matrix%row_numbering%gnn2unn(i,:)
     idxn=matrix%column_numbering%gnn2unn(j,:)
-
-    call MatSetValues(matrix%M, size(idxm), idxm, size(idxn), idxn, val, ADD_VALUES, ierr)
+    size1=size(idxm)
+    size2=size(idxn)
+    call MatSetValues(matrix%M, size1, idxm, size2, idxn, reshape(val, [size1*size2]), ADD_VALUES, ierr)
 
     matrix%is_assembled=.false.
 
@@ -789,7 +802,7 @@ contains
         ! unfortunately we need a copy here to pass contiguous memory
         value=val(blocki, blockj, :, :)
         call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, &
-              value, ADD_VALUES, ierr)
+              [value], ADD_VALUES, ierr)
       end do
     end do
 
@@ -821,7 +834,7 @@ contains
           ! unfortunately we need a copy here to pass contiguous memory
           value=val(blocki, blockj, :, :)
           call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, &
-                value, ADD_VALUES, ierr)
+                [value], ADD_VALUES, ierr)
         end if
       end do
     end do

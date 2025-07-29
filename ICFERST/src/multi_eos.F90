@@ -38,7 +38,7 @@ module multiphase_EOS
     use initialise_fields_module, only: initialise_field_over_regions, initialise_field
     use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
     use checkpoint
-    use multi_magma, only: magma_phase_diagram
+    ! use multi_magma, only: magma_phase_diagram
 
     implicit none
 
@@ -1844,7 +1844,7 @@ contains
     end subroutine calculate_solute_dispersity
 
     !>@brief: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media
-    subroutine calculate_viscosity( state, packed_state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2, magma_phase_coef)
+    subroutine calculate_viscosity( state, packed_state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2)
       implicit none
       type( multi_dimensions ), intent( in ) :: Mdims
       type( multi_ndgln ), intent( in ) :: ndgln
@@ -1852,7 +1852,7 @@ contains
       type( state_type ), intent( inout ) :: packed_state
       real, dimension( :, :, :, : ), intent( inout ) :: Momentum_Diffusion
       type( multi_field ), intent( inout ) :: Momentum_Diffusion2
-      type(magma_phase_diagram), intent( in ) ::magma_phase_coef
+      ! type(magma_phase_diagram), intent( in ) ::magma_phase_coef
 
       !Local variables
       type( tensor_field ), pointer :: t_field, tp_field, tc_field

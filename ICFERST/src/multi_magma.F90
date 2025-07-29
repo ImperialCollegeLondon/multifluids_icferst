@@ -913,7 +913,7 @@ contains
 
              !Introduce perturbation, positive for the increasing and negative for decreasing phase
              !Make sure that the perturbation is between bounds
-             PERT = 0.00000; allocate(Max_sat(Mdims%nphase), SATURA2(1, Mdims%nphase, Mdims%cv_nonods))
+             PERT = 1e-8; allocate(Max_sat(Mdims%nphase), SATURA2(1, Mdims%nphase, Mdims%cv_nonods))
              OldSatura=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
              do ele = 1, Mdims%totele
                  do cv_iloc = 1, Mdims%cv_nloc
