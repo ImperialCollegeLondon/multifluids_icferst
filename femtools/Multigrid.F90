@@ -358,6 +358,8 @@ logical, intent(in), optional :: no_top_smoothing
   logical forgetlastone
   logical lno_top_smoothing
 
+  PetscInt :: one=1
+  
     ! this might be already done, but it doesn't hurt:
     call PCSetType(prec, PCMG, ierr)
 
@@ -427,7 +429,13 @@ logical, intent(in), optional :: no_top_smoothing
         deallocate(matrices, prolongators, contexts)
         ! Need to set n/o levels (to 1) otherwise PCDestroy will fail:
         ! See note below about PETSC_NULL_KSP argument
-        call PCMGSetLevels(prec, 1, PETSC_NULL_KSP, ierr)
+        ! should be PETSC_NULL_MPI_COMM for petsc 3.20+
+
+#if PETSC_VERSION_MINOR>=20        
+        call PCMGSetLevels(prec, one, PETSC_NULL_MPI_COMM, ierr)
+#else 
+        call PCMGSetLevels(prec, one, PETSC_NULL_KSP, ierr)
+#endif 
         ierror=1
         return
       end if
@@ -451,9 +459,12 @@ logical, intent(in), optional :: no_top_smoothing
     
     ! NOTE: in petsc v3.8 it's unclear what the legal null argument should be for MPI_Comm *comms
     ! it does not accept any scalar null object (e.g. PETSC_NULL_INTEGER) - luckily there's no
-    ! explicit interface so we can pass this instead which does get correctly translated to a null argument
-    call PCMGSetLevels(prec, nolevels, PETSC_NULL_KSP, ierr)
-    
+    ! explicit interface so we can pass this instead which does get correctly translated to a null argument    
+#if PETSC_VERSION_MINOR>=20        
+        call PCMGSetLevels(prec, nolevels, PETSC_NULL_MPI_COMM, ierr)
+#else 
+        call PCMGSetLevels(prec, nolevels, PETSC_NULL_KSP, ierr)
+#endif     
     if (lno_top_smoothing) then
       top_level=nolevels-2
       ! set smoother at finest level to "none"
@@ -724,17 +735,25 @@ integer, optional, dimension(:), intent(out):: cluster
   PetscErrorCode:: ierr
   PetscInt:: diagminloc
   PetscReal:: diagmin
-  Vec:: sqrt_diag, inv_sqrt_diag, diag, one
-  double precision, dimension(MAT_INFO_SIZE):: matrixinfo
+  Vec:: sqrt_diag, inv_sqrt_diag, diag, one  
   integer, dimension(:), allocatable:: findN, N, R
   integer:: nrows, nentries, ncols
   integer:: jc, ccnt, base, end_of_range
-    
+#if PETSC_VERSION_MINOR>=20
+    MatInfo :: matrixinfo
+#else
+    double precision, dimension(MAT_INFO_SIZE):: matrixinfo
+#endif    
   ! find out basic dimensions of A
   call MatGetLocalSize(A, nrows, ncols, ierr)
   ! use Petsc_Tools's MatGetInfo because of bug in earlier patch levels of petsc 3.0
   call MatGetInfo(A, MAT_LOCAL, matrixinfo, ierr)
+
+#if PETSC_VERSION_MINOR>=20  
+  nentries=int(matrixinfo%nz_used)
+#else
   nentries=matrixinfo(MAT_INFO_NZ_USED)
+#endif   
   call MatGetOwnerShipRange(A, base, end_of_range, ierr)
   ! we decrease by 1, so base+i gives 0-based petsc index if i is the local fortran index:
   base=base-1
@@ -866,8 +885,13 @@ subroutine create_prolongator(P, nrows, ncols, findN, N, R, A, base, omega)
     allocate(onnz(1:nrows))
     onnz=0
 
+#if PETSC_VERSION_MINOR>=20
+    call MatCreateAIJ(MPI_COMM_FEMTOOLS, nrows, ncols, PETSC_DECIDE, PETSC_DECIDE, &
+      PETSC_NULL_INTEGER, dnnz, PETSC_NULL_INTEGER, onnz, P, ierr)
+#else
     call MatCreateAIJ(MPI_COMM_FEMTOOLS, nrows, ncols, PETSC_DECIDE, PETSC_DECIDE, &
       PETSC_NULL_INTEGER(1), dnnz, PETSC_NULL_INTEGER(1), onnz, P, ierr)
+#endif
     call MatSetOption(P, MAT_USE_INODES, PETSC_FALSE, ierr)
       
     ! get base for coarse node/cluster numbering
@@ -875,8 +899,13 @@ subroutine create_prolongator(P, nrows, ncols, findN, N, R, A, base, omega)
     ! subtract 1 to convert from 1-based fortran to 0 based petsc
     coarse_base=coarse_base-1
   else
+#if PETSC_VERSION_MINOR>=20
+    call MatCreateAIJ(MPI_COMM_SELF, nrows, ncols, nrows, ncols, &
+      PETSC_NULL_INTEGER, dnnz, 0, PETSC_NULL_INTEGER_ARRAY, P, ierr)
+#else
     call MatCreateAIJ(MPI_COMM_SELF, nrows, ncols, nrows, ncols, &
       PETSC_NULL_INTEGER(1), dnnz, 0, PETSC_NULL_INTEGER(1), P, ierr)
+#endif      
     call MatSetOption(P, MAT_USE_INODES, PETSC_FALSE, ierr)
     ! subtract 1 from each cluster no to get petsc 0-based numbering
     coarse_base=-1
@@ -919,15 +948,16 @@ subroutine Prolongator_init(R, ccnt, findN, N, A, base, epsilon)
 integer, dimension(:), intent(out):: R, findN, N
 integer, intent(out):: ccnt
 Mat, intent(in):: A
-integer, intent(in):: base
 PetscReal, intent(in):: epsilon
 
   PetscErrorCode:: ierr
-  PetscReal, dimension(:), allocatable:: vals(:)
-  integer, dimension(:), allocatable:: cols(:)
   PetscReal aij, eps_sqrt
-  integer i, j, k, p, ncols
-  
+  integer i, j, k, p
+  PetscInt, intent(in):: base
+  PetscInt    :: row,  ncols
+
+  PetscInt, pointer :: cols(:)
+  PetscScalar, pointer :: vals(:)
   ! workspace for MatGetRow
   allocate( vals(1:size(N)), cols(1:size(n)) )
   

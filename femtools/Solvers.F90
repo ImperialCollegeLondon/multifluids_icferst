@@ -277,7 +277,6 @@ subroutine petsc_solve_vector(x, matrix, rhs, option_path, deallocate_matrix)
   type(csr_matrix) :: matrixblock
   type(scalar_field) :: rhsblock, xblock
   integer :: i
-
   assert(x%dim==rhs%dim)
   assert(size(x%val(1,:))==size(rhs%val(1,:)))
   assert(size(x%val(1,:))==block_size(matrix,2))
@@ -983,7 +982,8 @@ type(vector_field), intent(in), optional :: positions
       ksp_pointer = ksp
 
       ! make sure we don't destroy it, the %ksp becomes a separate reference
-      call PetscObjectReferenceWrapper(ksp, ierr)
+      ! call PetscObjectReferenceWrapper(ksp, ierr)
+      call PetscObjectReference(ksp, ierr)
     else
       ! matrices coming from block() can't cache
       FLAbort("User wants to cache solver context, but no proper matrix is provided.")
@@ -993,11 +993,13 @@ type(vector_field), intent(in), optional :: positions
 
     ! ksp is a copy of matrix%ksp, make it a separate reference,
     ! so we can KSPDestroy it without destroying matrix%ksp
-    call PetscObjectReferenceWrapper(ksp, ierr)
+    ! call PetscObjectReferenceWrapper(ksp, ierr)
+    call PetscObjectReference(ksp, ierr)
 
     ! same for the matrix, kspgetoperators returns the matrix reference
     ! owned by the ksp - make it a separate reference
-    call PetscObjectReferenceWrapper(A, ierr)
+    ! call PetscObjectReferenceWrapper(A, ierr)
+    call PetscObjectReference(ksp, ierr)
 
   end if
 
@@ -1375,10 +1377,11 @@ logical, optional, intent(in):: nomatrixdump
   ! Check convergence and give warning+matrixdump if needed.
   ! This needs to be done before we copy back the result as
   ! x still contains the initial guess to be used in the matrixdump.
-  call ConvergenceCheck(reason, iterations, name, solver_option_path, &
-       startfromzero, A, b, petsc_numbering, &
-       x0=x0, vector_x0=vector_x0, &
-       checkconvergence=checkconvergence,nomatrixdump=nomatrixdump)
+
+  ! call ConvergenceCheck(reason, iterations, name, solver_option_path, &
+  !      startfromzero, A, b, petsc_numbering, &
+  !      x0=x0, vector_x0=vector_x0, &
+  !      checkconvergence=checkconvergence,nomatrixdump=nomatrixdump)
 
   ewrite(2, "(A, ' PETSc reason of convergence: ', I0)") trim(name), reason
   ewrite(2, "(A, ' PETSc n/o iterations: ', I0)") trim(name), iterations
@@ -1739,7 +1742,6 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
         if (have_option(trim(solver_option_path)//'/preconditioner::hypre/shift_positive_definite')) then
          shifttype=MAT_SHIFT_POSITIVE_DEFINITE
          call PCFactorSetShiftType(pc,shifttype, ierr) !> shift the mat to positive definite - ao 12-02-20
-         !print *, "MAT shifting to positive definite"
          ewrite(2, *) 'forcing the MAT to shift to a positive definite for CG and HYPRE combo'
         end if
     end if
@@ -1983,6 +1985,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
   integer :: n_local, first_local
 
     KSP:: subksp
+    KSP, pointer, dimension(:) :: subksp_array
     PC:: subpc
     MatNullSpace:: nullsp
     PCType:: pctype, hypretype
@@ -2035,7 +2038,6 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
         if (have_option(trim(option_path)//'/boomeramg_relaxation')) then
           call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_relax_type_all","symmetric-SOR/Jacobi", ierr)
           call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_coarsen_type","Falgout", ierr)
-           !print *, "BoomerAMG relaxation"
         end if
       end if
 
@@ -2069,11 +2071,11 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
       ! need to call this before the subpc can be retrieved:
       call PCSetup(pc, ierr)
 
-#if PETSC_VERSION_MINOR>=14
+#if PETSC_VERSION_MINOR>=14 
       if (pctype==PCBJACOBI) then
-        call PCBJacobiGetSubKSP(pc,n_local,first_local,subksp,ierr)
+        call PCBJacobiGetSubKSP(pc,n_local,first_local,subksp_array,ierr)
       else
-        call PCASMGetSubKSP(pc,n_local,first_local,subksp,ierr)
+        call PCASMGetSubKSP(pc,n_local,first_local,subksp_array,ierr)
       end if
 #else
       if (pctype==PCBJACOBI) then
@@ -2104,7 +2106,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        call PCSetup(pc, ierr)
 #if PETSC_VERSION_MINOR>=14
 ! Extract the array of KSP contexts for the local blocks
-        call PCBJacobiGetSubKSP(pc,n_local,first_local,subksp,ierr)
+        call PCBJacobiGetSubKSP(pc,n_local,first_local,subksp_array,ierr)
 #else
        call PCBJacobiGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
 #endif
@@ -2215,13 +2217,14 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
   type(petsc_numbering_type), intent(in):: petsc_numbering
 
     character(len=128):: fieldsplit_type
-    KSP, dimension(size(petsc_numbering%gnn2unn,2)):: subksps
+    ! KSP, dimension(size(petsc_numbering%gnn2unn,2)):: subksps
+    KSP, pointer, dimension(:) :: subksps
     Mat :: mat, pmat
     MatNullSpace :: null_space
     IS:: index_set
     PetscErrorCode:: ierr
-    integer:: i, n
-
+    integer:: i
+    PetscInt :: n  
     call PCSetType(pc, "fieldsplit", ierr)
 
     call PCFieldSplitGetSubKSP(pc, n, subksps, ierr)
@@ -2251,8 +2254,9 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
       call pcfieldsplitsettype(pc, PC_COMPOSITE_MULTIPLICATIVE, ierr)
     case ("additive")
       call pcfieldsplitsettype(pc, PC_COMPOSITE_ADDITIVE, ierr)
-    case ("symmetric_multiplicative")
-      call pcfieldsplitsettype(pc, PC_COMPOSITE_SYMMETRIC_MULTIPLICATIVE, ierr)
+    ! currently gives error in petsc 3.23
+    ! case ("symmetric_multiplicative")
+    !   call pcfieldsplitsettype(pc, PC_COMPOSITE_SYMMETRIC_MULTIPLICATIVE, ierr)
     case default
       FLAbort("Unknown fieldsplit_type")
     end select
