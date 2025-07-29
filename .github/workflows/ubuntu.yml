@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Build Bionic", "Build Focal" ]
+        name: [ "Build Bionic", "Build Focal" , "Build Noble" ]
         include:
 
           - name: "Build Bionic"
@@ -60,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Bionic", "Focal"]
+        name: [ "Bionic", "Focal", "Noble"]
         include:
 
           - name: "Bionic"
@@ -73,6 +73,10 @@ jobs:
             command: "make THREADS=2 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
+          - name: "Noble"
+            release: noble
+            command: "make THREADS=2 serialtest-mp-xml"
+            output: "multiphase_test_results.xml"
     steps:
 
       - name: ${{ matrix.name }}
