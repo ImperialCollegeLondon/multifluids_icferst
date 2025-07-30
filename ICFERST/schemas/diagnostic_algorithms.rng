@@ -1470,6 +1470,7 @@ Valid for ranges: T in [20,350] degrees Celsius.</a:documentation>
           </attribute>
         </element>
         <element name="viscosity_HP">
+          <a:documentation>Huyakorn and Pinder (1978) EOS - "A pressure-enthalpy finite element model for simulating hydrothermal reservoirs"</a:documentation>
           <attribute name="name">
             <value>Internal</value>
           </attribute>

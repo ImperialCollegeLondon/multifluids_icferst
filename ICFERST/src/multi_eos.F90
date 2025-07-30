@@ -2250,7 +2250,7 @@ contains
                 t_field%val(3, 3, cv_nod) = max(min(t_field%val(1, 1, cv_nod),1.e-3), 1.e-4)
               end do
             end if
-          else if (viscosity_HP) then
+          else if (viscosity_HP) then ! Huyakorn and Pinder (1978) EOS - "A pressure-enthalpy finite element model for simulating hydrothermal reservoirs"
             temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
             have_temperature_field = ( stat == 0 )
             t_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
