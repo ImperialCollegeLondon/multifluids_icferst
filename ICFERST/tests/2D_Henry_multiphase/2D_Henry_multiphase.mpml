@@ -105,9 +105,6 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
-          <output>
-            <exclude_from_vtu/>
-          </output>
         </prescribed>
       </vector_field>
     </gravity>
@@ -306,7 +303,6 @@
           </absolute_measure>
         </adaptivity_options>
         <consistent_interpolation/>
-        <output/>
       </prognostic>
     </scalar_field>
     <scalar_field rank="0" name="Concentration">
@@ -386,7 +382,6 @@
             <solver/>
           </continuous>
         </galerkin_projection>
-        <output/>
       </prognostic>
     </scalar_field>
     <multiphase_properties>
@@ -576,7 +571,6 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
-        <output/>
       </prognostic>
     </scalar_field>
     <multiphase_properties>

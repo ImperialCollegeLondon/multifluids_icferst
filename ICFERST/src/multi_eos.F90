@@ -57,6 +57,7 @@ contains
   !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
   !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
   !>@param get_RhoCp This flags computes rhoCp instead of rho
+  !Ruixiao: An additional flag to force dRhodP to be 0
     subroutine Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp )
 
         implicit none
@@ -415,6 +416,7 @@ contains
         logical, save :: initialised = .false.
         logical :: have_temperature_field
         logical :: have_concentration_field
+        logical, allocatable :: remove_P_dep(:)
         real, parameter :: toler = 1.e-10
         real, dimension( : ), allocatable, save :: reference_pressure
         real, dimension( : ), allocatable :: eos_coefs, perturbation_pressure, RhoPlus, RhoMinus
@@ -594,28 +596,117 @@ contains
             ! Batzle and Wang (1992) EOS
             ! Use for basin scale simulations.
             ! Valid for ranges: 5<=P<=100 MPa, 20<=T<=350 degrees Celsius, C<=0.32 kg/kg salinity.
+            ! You can choose to remove pressure terms from BW EOS for trouble-shooting
+            ! If you want to run BW EOS without Boussinesq approximation, you are recommended to remove pressure terms.
             ! Note: Reference density is calculated using reference C0, T0, P0.
 
-            !Calculate the freshwater density
-            rho = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*pressure%val(1,1,:)*1e-6 - 2*(temperature % val - 273.15)*pressure%val(1,1,:)*1e-6 + 0.016*((temperature % val - 273.15))**2*pressure%val(1,1,:)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*pressure%val(1,1,:)*1e-6 -0.333*(pressure%val(1,1,:)*1e-6)**2 - 0.002*(temperature % val - 273.15)*(pressure%val(1,1,:)*1e-6)**2))
-            !Add the brine contribution
-            if (have_concentration_field) rho = rho + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*pressure%val(1,1,:)*1e-6 - 2400*pressure%val(1,1,:)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*pressure%val(1,1,:)*1e-6 + 47*pressure%val(1,1,:)*1e-6*Concentration % val)))
-            if (has_boussinesq_aprox) then
+            allocate(remove_P_dep(1))
+
+            !Check if user specified to remove pressure terms
+            remove_P_dep(1) = have_option(trim(eos_option_path) // '/Remove_P_dependencies')
+            !Initialize density calculation for fresh water
+            rho = 1e3
+            !Add pressure dependencies if need to
+            if (.not. remove_P_dep(1)) rho = rho + 1e3*1e-6*(489*pressure%val(1,1,:)*1e-6-0.333*(pressure%val(1,1,:)*1e-6)**2)
+            !Add temperature contribution
+            if (have_temperature_field) then
+              rho = rho + 1e3*1e-6*(-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3)
+              !If pressure is not removed, add pressure-related temperature terms
+              if (.not. remove_P_dep(1)) rho = rho + 1e3*1e-6*(- 2*(temperature % val - 273.15)*pressure%val(1,1,:)*1e-6+ 0.016*((temperature % val - 273.15))**2*pressure%val(1,1,:)*1e-6 - &
+              1.3e-5*((temperature % val - 273.15))**3*pressure%val(1,1,:)*1e-6- 0.002*(temperature % val - 273.15)*(pressure%val(1,1,:)*1e-6)**2)
+            endif
+            !Add the brine contribution if salinity is provided
+            if (have_concentration_field) then
+              rho = rho + 1e3*Concentration % val*(0.668 + 0.44*Concentration % val)
+              !If pressure is not removed, add pressure-related salinity terms
+              if (.not. remove_P_dep(1)) rho = rho + 1e3*Concentration % val *1e-6*(300*pressure%val(1,1,:)*1e-6 - 2400*pressure%val(1,1,:)*1e-6*Concentration % val)
+              !Add tempeature-related salinity terms
+              if (have_temperature_field) then
+                rho = rho + 1e3*Concentration % val*1e-6*(temperature % val-273.15) * (80 + 3*(temperature % val-273.15)-3300*Concentration % val)
+                !If pressure is not removed, add pressure-temperature-salinity terms
+                if (.not. remove_P_dep(1)) rho = rho + 1e3*Concentration % val*1e-6*(temperature % val-273.15)*(-13*pressure%val(1,1,:)*1e-6 + 47*pressure%val(1,1,:)*1e-6*Concentration % val)
+              endif
+            endif
+            !Bypass density derivatives if using Boussinesq approx. or pressure dependencies are removed
+            if (has_boussinesq_aprox .or. remove_P_dep(1)) then
               dRhodP = 0.0
             else
               perturbation_pressure = 1.e-5
 
-              RhoPlus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 2*(temperature % val - 273.15)*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2))
+              RhoPlus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 &
+              - 2*(temperature % val - 273.15)*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - &
+              1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2))
 
-              RhoMinus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 2*(temperature % val - 273.15)*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2))
-              if (have_concentration_field) then 
+              RhoMinus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - &
+               2*(temperature % val - 273.15)*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - &
+               1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2))
+              if (have_concentration_field) then
                   !Add the brine contribution
-                  RhoPlus = RhoPlus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val)))
+                  RhoPlus = RhoPlus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * &
+                  (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val)))
                   !Add the brine contribution
-                  RhoMinus = RhoMinus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val)))
+                  RhoMinus = RhoMinus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * &
+                  (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val)))
               end if
               dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             endif
+            deallocate(remove_P_dep)
+          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/IAPWS1995_eos' ) then
+            ! IAPWS (1995) EOS
+            ! Note: Reference density is calculated using reference T0.
+
+            rho = 0.0  ! initialise
+
+            where ((temperature % val) < 574.0)
+              rho = -0.0023328201*(temperature % val)**2 + 1.0869580055*(temperature % val) + 887.5914
+            end where
+
+            where ((temperature % val) >= 574.0 .and. (temperature % val) < 654.0)
+              rho = -0.0011226938*(temperature % val)**3 + 2.0306323768*(temperature % val)**2 - 1226.3606196862*(temperature % val) + 247972.46816223
+            end where
+
+            where ((temperature % val) >= 654.0 .and. (temperature % val) < 663.0)
+              rho = 0.419319282558*(temperature % val)**3 - 829.57097709631*(temperature % val)**2 + 547043.792559283*(temperature % val) - 120240161.260508
+            end where
+
+            where ((temperature % val) >= 663.0)
+              rho = 1.4562424658156e-14*(temperature % val)**6 - 9.882360156382e-11*(temperature % val)**5 + 2.7707846321561e-07*(temperature % val)**4 - 0.000410860340056467*(temperature % val)**3 + 0.339957993811653*(temperature % val)**2 - 148.992636402535*(temperature % val) + 27135.6537310957
+            end where
+
+            ! Note: No pressure or salinity dependence included per original IAPWS 1995 formula
+            ! Density derivative dRhodP not defined (no pressure dependence)
+            dRhodP = 0.0
+
+          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/LL2009_eos' ) then
+            ! Lewis and Lowell (2009) EOS
+            ! Valid for 3.2 wt% salinity
+            ! Note: Reference density is calculated using reference T0.
+
+            rho = 0.0  ! initialise
+
+            where ((temperature % val) < 599.0)
+              rho = -0.0021139540120505*(temperature % val)**2 + 0.917854090105867*(temperature % val) + 947.704830737288
+            end where
+
+            where ((temperature % val) >= 599.0 .and. (temperature % val) < 662.0)
+              rho = -4.91791248168338e-05*(temperature % val)**4 + 0.122423307294122*(temperature % val)**3 - 114.28340270265*(temperature % val)**2 + 47412.7070791346*(temperature % val) - 7374686.34476882
+            end where
+
+            where ((temperature % val) >= 662.0 .and. (temperature % val) < 666.57)
+              rho = 2.62908859436743*(temperature % val)**3 - 5237.39728083828*(temperature % val)**2 + 3477750.2422646*(temperature % val) - 769756993.480138
+            end where
+
+            where ((temperature % val) >= 666.57 .and. (temperature % val) < 721.8)
+              rho = 8.63679470997081e-08*(temperature % val)**6 - 3.61375107871589e-04*(temperature % val)**5 + 0.629951393566949*(temperature % val)**4 - 585.611538256315*(temperature % val)**3 + 306189.623060165*(temperature % val)**2 - 8.53741721794318e+07*(temperature % val) + 9.91764516395852e+09
+            end where
+
+            where ((temperature % val) >= 721.8)
+              rho = 1.4562424658156e-14*(temperature % val)**6 - 9.882360156382e-11*(temperature % val)**5 + 2.7707846321561e-07*(temperature % val)**4 - 0.000410860340056467*(temperature % val)**3 + 0.339957993811653*(temperature % val)**2 - 148.992636402535*(temperature % val) + 27135.6537310957
+            end where
+
+            ! Note: No pressure or salinity dependence included per original Lewis EOS formula
+            ! Density derivative dRhodP not defined (no pressure dependence)
+            dRhodP = 0.0
 
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 
@@ -812,11 +903,14 @@ contains
             elseif( have_option( trim( eos_option_path_out ) // '/exponential_in_pressure' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/exponential_in_pressure'
 
-              elseif( have_option( trim( eos_option_path_out ) // '/Linear_eos' ) ) then
-                  eos_option_path_out = trim( eos_option_path_out ) // '/Linear_eos'
+            elseif( have_option( trim( eos_option_path_out ) // '/Linear_eos' ) ) then
+                eos_option_path_out = trim( eos_option_path_out ) // '/Linear_eos'
 
-              elseif( have_option( trim( eos_option_path_out ) // '/BW_eos' ) ) then
-                    eos_option_path_out = trim( eos_option_path_out ) // '/BW_eos'
+            elseif( have_option( trim( eos_option_path_out ) // '/BW_eos' ) ) then
+                  eos_option_path_out = trim( eos_option_path_out ) // '/BW_eos'
+
+            elseif( have_option( trim( eos_option_path_out ) // '/Lewis_eos' ) ) then
+                  eos_option_path_out = trim( eos_option_path_out ) // '/Lewis_eos'
 
             elseif( have_option( trim( eos_option_path_out ) // '/Temperature_Pressure_correlation' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/Temperature_Pressure_correlation'
@@ -1294,6 +1388,8 @@ contains
           REAL, intent( inout ) :: Kr
           ! Variables for tabulated relperm
           Kr = table_interpolation_linear(relperm_table_data(:,1,iphase), relperm_table_data(:,2,iphase), sat(iphase))
+          Kr = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
+          ! print *, sat(iphase), Kr
         END SUBROUTINE relperm_tabulated
 
         !>@brief:This subroutine calculates the relative permeability for three phases
@@ -1562,13 +1658,18 @@ contains
       logical, optional, intent(in) :: divide_by_rho_CP
       character(len=*), optional, intent(in) :: TracerName
       !Local variables
-      type(scalar_field), pointer :: component, sfield, solid_concentration
+      type(scalar_field), pointer :: component, sfield, solid_concentration, porosity_total_field
       type(tensor_field), pointer :: diffusivity, tfield, den, saturation
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
       logical, parameter :: harmonic_average=.false.
-      logical :: wiener_conductivity
+      logical :: wiener_conductivity, have_porosity_total = .false.
+      logical, save :: have_been_read = .false.
       real :: expo
+      logical :: is_thermal_conductivity_wet
+      real :: dry_thermal_conductivity
+
+      is_thermal_conductivity_wet = have_option("/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/wet_value")
 
       ScalarAdvectionField_Diffusion = 0.0
       if ( Mdims%ncomp > 1 ) then
@@ -1606,6 +1707,18 @@ contains
         if (is_porous_media) then
           !####DIFFUSIVITY FOR POROUS MEDIA ONLY####
           sfield=>extract_scalar_field(state(1),"Porosity")
+
+          if ( .not. have_been_read ) then
+            have_porosity_total = have_option("/porous_media/porous_properties/scalar_field::porosity_total")
+            have_been_read = .true.
+          end if
+
+          if (have_porosity_total) then
+            porosity_total_field=>extract_scalar_field(state(1),"porosity_total")
+          else
+            porosity_total_field=>extract_scalar_field(state(1),"Porosity") ! dummy
+          end if
+
           den => extract_tensor_field( packed_state,"PackedDensity" )
           !expo used to switch between boussinesq (density ==1) or normal
           expo = 1.; if (has_boussinesq_aprox) expo = 0.
@@ -1641,38 +1754,107 @@ contains
             !weighted average of conductivities Wiener method).
             !Default option is to use a more accurate Hashin and Shtrikman definition:
             !lambda_p+3*lambda_p*(lambda_f-lambda_p)*porosity/(3*lambda_p+(lambda_f-lambda_p)(1-porosity))
-            wiener_conductivity =  have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/Wiener_conductivity')
+
+            ! Force Wiener conductivity if wet input is used
+            if (is_thermal_conductivity_wet) then
+              wiener_conductivity = .true.
+            else
+              wiener_conductivity = have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/dry_value/Wiener_conductivity')
+            end if
+
             saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-            do iphase = 1, Mdims%nphase
-              diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-              if (stat /= 0) cycle!If no field defined then cycle
-              tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
-              do ele = 1, Mdims%totele
-                ele_nod = min(size(sfield%val), ele)
-                t_ele_nod = min(size(tfield%val, 3), ele)
-                do iloc = 1, Mdims%mat_nloc
-                  mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-                  cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                  if (wiener_conductivity) then
-                    do idim = 1, Mdims%ndim
-                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
-                      (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                      +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod)) ! for classic weighted approach (Wiener approach)
-                    end do
-                  else
-                    do idim = 1, Mdims%ndim
-                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
-                      (tfield%val(idim, idim, t_ele_nod)+3*tfield%val(idim, idim, t_ele_nod)* &
-                      (node_val( diffusivity, idim, idim, mat_inod ) - tfield%val(idim, idim, t_ele_nod))*sfield%val(ele_nod)/ &
-                      (3*tfield%val(idim, idim, t_ele_nod)+(node_val( diffusivity, idim, idim, mat_inod )-tfield%val(idim, idim, t_ele_nod))* &
-                      (1-sfield%val(ele_nod))))
-                    end do
-                  end if
+
+            if (have_porosity_total) then
+              do iphase = 1, Mdims%nphase
+                diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+                if (stat /= 0) cycle!If no field defined then cycle
+                tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+                do ele = 1, Mdims%totele
+                  ele_nod = min(size(porosity_total_field%val), ele)
+                  t_ele_nod = min(size(tfield%val, 3), ele)
+                  do iloc = 1, Mdims%mat_nloc
+                    mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                    cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+
+                    if (wiener_conductivity) then
+                      do idim = 1, Mdims%ndim
+                        ! Convert wet to dry thermal conductivity if needed
+                        if (is_thermal_conductivity_wet) then
+                          dry_thermal_conductivity = (tfield%val(idim, idim, t_ele_nod) - &
+                            node_val(diffusivity, idim, idim, mat_inod) * porosity_total_field%val(ele_nod)) / &
+                            (1.0 - porosity_total_field%val(ele_nod))
+                        else
+                          dry_thermal_conductivity = tfield%val(idim, idim, t_ele_nod)
+                        end if
+
+                        ! Use Wiener approach (required for wet inputs, optional for dry)
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
+                        (porosity_total_field%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
+                        +(1.0-porosity_total_field%val(ele_nod))* dry_thermal_conductivity)
+                      end do
+                    else
+                      ! This branch will only be reached with dry inputs
+                      do idim = 1, Mdims%ndim
+                        ! Use Hashin-Shtrikman approach (only valid for dry inputs)
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
+                        (tfield%val(idim, idim, t_ele_nod)+3*tfield%val(idim, idim, t_ele_nod)* &
+                        (node_val( diffusivity, idim, idim, mat_inod ) - tfield%val(idim, idim, t_ele_nod))*porosity_total_field%val(ele_nod)/ &
+                        (3*tfield%val(idim, idim, t_ele_nod)+(node_val( diffusivity, idim, idim, mat_inod )-tfield%val(idim, idim, t_ele_nod))* &
+                        (1-porosity_total_field%val(ele_nod))))
+                      end do
+                    end if
+
+                  end do
                 end do
               end do
-            end do
+            else
+              do iphase = 1, Mdims%nphase
+                diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+                if (stat /= 0) cycle!If no field defined then cycle
+                tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+                do ele = 1, Mdims%totele
+                  ele_nod = min(size(sfield%val), ele)
+                  t_ele_nod = min(size(tfield%val, 3), ele)
+                  do iloc = 1, Mdims%mat_nloc
+                    mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                    cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+
+                    if (wiener_conductivity) then
+                      do idim = 1, Mdims%ndim
+                        ! Convert wet to dry thermal conductivity if needed
+                        if (is_thermal_conductivity_wet) then
+                          dry_thermal_conductivity = (tfield%val(idim, idim, t_ele_nod) - &
+                            node_val(diffusivity, idim, idim, mat_inod) * sfield%val(ele_nod)) / &
+                            (1.0 - sfield%val(ele_nod))
+                        else
+                          dry_thermal_conductivity = tfield%val(idim, idim, t_ele_nod)
+                        end if
+
+                        ! Use Wiener approach (required for wet inputs, optional for dry)
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
+                        (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
+                        +(1.0-sfield%val(ele_nod))* dry_thermal_conductivity)
+                      end do
+                    else
+                      ! This branch will only be reached with dry inputs
+                      do idim = 1, Mdims%ndim
+                        ! Use Hashin-Shtrikman approach (only valid for dry inputs)
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
+                        (tfield%val(idim, idim, t_ele_nod)+3*tfield%val(idim, idim, t_ele_nod)* &
+                        (node_val( diffusivity, idim, idim, mat_inod ) - tfield%val(idim, idim, t_ele_nod))*sfield%val(ele_nod)/ &
+                        (3*tfield%val(idim, idim, t_ele_nod)+(node_val( diffusivity, idim, idim, mat_inod )-tfield%val(idim, idim, t_ele_nod))* &
+                        (1-sfield%val(ele_nod))))
+                      end do
+                    end if
+
+                  end do
+                end do
+              end do
+            end if
           endif
         else
           do iphase = 1, Mdims%nphase
@@ -2003,14 +2185,18 @@ contains
       type( tensor_field ), pointer :: t_field
       integer :: iphase, stat, cv_nod
       type( scalar_field ), pointer :: temperature, concentration
-      logical :: viscosity_BW, viscosity_HP, have_temperature_field, have_concentration_field
+      logical :: viscosity_BW, viscosity_HP, viscosity_Coumou
+      logical :: have_temperature_field, have_concentration_field
+      real :: c, T, val
 
         do iphase = 1, Mdims%nphase
           viscosity_BW = have_option("/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
           "::Viscosity/diagnostic/viscosity_EOS/viscosity_BW::Internal")
           viscosity_HP = have_option("/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
           "::Viscosity/diagnostic/viscosity_EOS/viscosity_HP::Internal")
-          if (viscosity_BW) then
+          viscosity_Coumou = have_option("/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
+          "::Viscosity/diagnostic/viscosity_EOS/viscosity_Coumou::Internal")
+          if (viscosity_BW) then ! Batzle and Wang (1992) EOS - "Seismic properties of pore fluids"
             temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
             have_temperature_field = ( stat == 0 )
             Concentration => extract_scalar_field( state( iphase ), 'Concentration', stat )
@@ -2020,7 +2206,8 @@ contains
               FLAbort( "Temperature field needed for BW1992 viscosity EOS." )
             else
               do cv_nod=1,Mdims%cv_nonods
-                if (temperature%val(cv_nod) < 273.15) then
+                T = temperature%val(cv_nod)
+                if (T < 273.15) then
                   t_field%val(1, 1, cv_nod) = 1.e-3
                   t_field%val(1, 2, cv_nod) = 0.0
                   t_field%val(1, 3, cv_nod) = 0.0
@@ -2032,28 +2219,29 @@ contains
                   t_field%val(3, 3, cv_nod) = 1.e-3
                 else
                   if (have_concentration_field) then
-                    t_field%val(1, 1, cv_nod) = 1e-3 * (0.1 + 0.333*concentration%val(cv_nod) + (1.65 + 91.9 * (concentration%val(cv_nod))**3) * exp(-(0.42 * ((concentration%val(cv_nod))**0.8-0.17)**2 + 0.045) &
-                    * (temperature%val(cv_nod) - 273.15)**0.8))
+                    c = concentration%val(cv_nod)
+                    t_field%val(1, 1, cv_nod) = 1e-3 * (0.1 + 0.333*c + (1.65 + 91.9 * (c)**3) * exp(-(0.42 * ((c)**0.8-0.17)**2 + 0.045) &
+                    * (T - 273.15)**0.8))
                     t_field%val(1, 2, cv_nod) = 0.0
                     t_field%val(1, 3, cv_nod) = 0.0
                     t_field%val(2, 1, cv_nod) = 0.0
-                    t_field%val(2, 2, cv_nod) = 1e-3 * (0.1 + 0.333*concentration%val(cv_nod) + (1.65 + 91.9 * (concentration%val(cv_nod))**3) * exp(-(0.42 * ((concentration%val(cv_nod))**0.8-0.17)**2 + 0.045) &
-                    * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(2, 2, cv_nod) = 1e-3 * (0.1 + 0.333*c + (1.65 + 91.9 * (c)**3) * exp(-(0.42 * ((c)**0.8-0.17)**2 + 0.045) &
+                    * (T - 273.15)**0.8))
                     t_field%val(2, 3, cv_nod) = 0.0
                     t_field%val(3, 1, cv_nod) = 0.0
                     t_field%val(3, 2, cv_nod) = 0.0
-                    t_field%val(3, 3, cv_nod) = 1e-3 * (0.1 + 0.333*concentration%val(cv_nod) + (1.65 + 91.9 * (concentration%val(cv_nod))**3) * exp(-(0.42 * ((concentration%val(cv_nod))**0.8-0.17)**2 + 0.045) &
-                    * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(3, 3, cv_nod) = 1e-3 * (0.1 + 0.333*c + (1.65 + 91.9 * (c)**3) * exp(-(0.42 * ((c)**0.8-0.17)**2 + 0.045) &
+                    * (T - 273.15)**0.8))
                   else
-                    t_field%val(1, 1, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(1, 1, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (T - 273.15)**0.8))
                     t_field%val(1, 2, cv_nod) = 0.0
                     t_field%val(1, 3, cv_nod) = 0.0
                     t_field%val(2, 1, cv_nod) = 0.0
-                    t_field%val(2, 2, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(2, 2, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (T - 273.15)**0.8))
                     t_field%val(2, 3, cv_nod) = 0.0
                     t_field%val(3, 1, cv_nod) = 0.0
                     t_field%val(3, 2, cv_nod) = 0.0
-                    t_field%val(3, 3, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(3, 3, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (T - 273.15)**0.8))
                   end if
                 end if
                 ! Make sure viscosity stays between bounds.
@@ -2062,7 +2250,7 @@ contains
                 t_field%val(3, 3, cv_nod) = max(min(t_field%val(1, 1, cv_nod),1.e-3), 1.e-4)
               end do
             end if
-          else if (viscosity_HP) then
+          else if (viscosity_HP) then ! Huyakorn and Pinder (1978) EOS - "A pressure-enthalpy finite element model for simulating hydrothermal reservoirs"
             temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
             have_temperature_field = ( stat == 0 )
             t_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
@@ -2070,15 +2258,47 @@ contains
               FLAbort( "Temperature field needed for HP1978 viscosity EOS." )
             else
               do cv_nod=1,Mdims%cv_nonods
-                t_field%val(1, 1, cv_nod) = (2.414e-5) * 10**(247.8 / (temperature%val(cv_nod) - 140.85))
+                T = temperature%val(cv_nod)
+                t_field%val(1, 1, cv_nod) = (2.414e-5) * 10**(247.8 / (T - 140.85))
                 t_field%val(1, 2, cv_nod) = 0.0
                 t_field%val(1, 3, cv_nod) = 0.0
                 t_field%val(2, 1, cv_nod) = 0.0
-                t_field%val(2, 2, cv_nod) = (2.414e-5) * 10**(247.8 / (temperature%val(cv_nod) - 140.85))
+                t_field%val(2, 2, cv_nod) = (2.414e-5) * 10**(247.8 / (T - 140.85))
                 t_field%val(2, 3, cv_nod) = 0.0
                 t_field%val(3, 1, cv_nod) = 0.0
                 t_field%val(3, 2, cv_nod) = 0.0
-                t_field%val(3, 3, cv_nod) = (2.414e-5) * 10**(247.8 / (temperature%val(cv_nod) - 140.85))
+                t_field%val(3, 3, cv_nod) = (2.414e-5) * 10**(247.8 / (T - 140.85))
+              end do
+            end if
+          else if (viscosity_Coumou) then ! Coumou et al. (2008) EOS - "The Structure and Dynamics of Mid-Ocean Ridge Hydrothermal Systems"
+            temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
+            have_temperature_field = ( stat == 0 )
+            t_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
+            if (.not. (have_temperature_field)) then
+              FLAbort( "Temperature field needed for Coumou viscosity EOS." )
+            else
+              do cv_nod=1,Mdims%cv_nonods
+                T = temperature%val(cv_nod)
+                if (T < 661.0) then
+                  val = (1.1993291118785E-17)*(T)**6 - (3.67231400250083E-14)*(T)**5 + (4.64471272045802E-11)*(T)**4 - (3.10772437406024E-08)*(T)**3 + &
+                        (1.16128996347359E-05)*(T)**2 - (2.30191602207259E-03)*(T) + 0.189765428960157
+                else
+                  val = (3.004344905E-21)*(T)**6 - (1.9773083587236E-17)*(T)**5 + (5.36391646705641E-14)*(T)**4 - (7.67355019144351E-11)*(T)**3 + &
+                        (6.10274937760403E-08)*(T)**2 - (2.55324715090733E-05)*(T) + 0.00440917759095297
+                end if
+
+                ! Assign diagonal terms
+                t_field%val(1,1,cv_nod) = val
+                t_field%val(2,2,cv_nod) = val
+                t_field%val(3,3,cv_nod) = val
+
+                ! Off-diagonal terms zero
+                t_field%val(1,2,cv_nod) = 0.0
+                t_field%val(1,3,cv_nod) = 0.0
+                t_field%val(2,1,cv_nod) = 0.0
+                t_field%val(2,3,cv_nod) = 0.0
+                t_field%val(3,1,cv_nod) = 0.0
+                t_field%val(3,2,cv_nod) = 0.0
               end do
             end if
           end if
@@ -2713,6 +2933,7 @@ contains
       !local variables
       character( len = option_path_len ) :: eos_option_path
       character( len = option_path_len ) :: option_path_comp, option_path_incomp, option_path_python
+      logical, allocatable :: remove_P_dep(:)
       real :: ref_rho, ref_C0, ref_T0, ref_P0
       type (scalar_field) :: sfield
       type (scalar_field), pointer :: pnt_sfield
@@ -2773,14 +2994,52 @@ contains
         !!$ Den = den0 * ( 1 + alpha * solute mass fraction - beta * DeltaT )
         call get_option( trim( eos_option_path ) // '/reference_density', ref_rho )
       elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/BW_eos' ) then
+        allocate(remove_P_dep(1))
+        !Check if pressure dependencies need to be removed
+        remove_P_dep(1) = have_option(trim(eos_option_path) // '/Remove_P_dependencies')
         !!$ Reference density is calculated using reference C0, T0, P0.
         call get_option( trim( eos_option_path ) // '/T0', ref_T0, default=298.)
         call get_option( trim( eos_option_path ) // '/P0', ref_P0, default=1e5)
         call get_option( trim( eos_option_path ) // '/C0', ref_C0 , default=0.)
+        !If user specifies to remove pressure dependency, we mute P terms in BW EOS completely
+        if (remove_P_dep(1)) ref_P0 = 0.
         !Calculate the reference freshwater density
-        ref_rho = 1e3 * ( 1 + 1e-6 * (-80*(ref_T0 - 273.15) - 3.3*((ref_T0 - 273.15))**2 + 0.00175*((ref_T0 - 273.15))**3 + 489*ref_P0*1e-6 - 2*(ref_T0 - 273.15)*ref_P0*1e-6 + 0.016*((ref_T0 - 273.15))**2*ref_P0*1e-6 - 1.3e-5*((ref_T0 - 273.15))**3*ref_P0*1e-6 -0.333*(ref_P0*1e-6)**2 - 0.002*(ref_T0 - 273.15)*(ref_P0*1e-6)**2))
+        ref_rho = 1e3 * ( 1 + 1e-6 * (-80*(ref_T0 - 273.15) - 3.3*((ref_T0 - 273.15))**2 + 0.00175*((ref_T0 - 273.15))**3 + 489*ref_P0*1e-6 - 2*(ref_T0 - 273.15)*ref_P0*1e-6 + &
+        0.016*((ref_T0 - 273.15))**2*ref_P0*1e-6 - 1.3e-5*((ref_T0 - 273.15))**3*ref_P0*1e-6 -0.333*(ref_P0*1e-6)**2 - 0.002*(ref_T0 - 273.15)*(ref_P0*1e-6)**2))
         !Add the reference brine contribution
         ref_rho = ref_rho + 1e3*ref_C0 * (0.668 + 0.44*ref_C0 + 1e-6 * (300*ref_P0*1e-6 - 2400*ref_P0*1e-6*ref_C0 + (ref_T0 - 273.15) * (80 + 3*(ref_T0 - 273.15) - 3300*ref_C0 - 13*ref_P0*1e-6 + 47*ref_P0*1e-6*ref_C0)))
+        deallocate(remove_P_dep)
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/IAPWS1995_eos' ) then ! IAPWS (1995) EOS
+        !!$ Reference density is calculated using reference T0.
+        call get_option( trim( eos_option_path ) // '/T0', ref_T0, default=298.)
+        ! Calculate the reference density
+        if (ref_T0 < 574.0) then
+          ref_rho = -0.0023328201 * ref_T0**2 + 1.0869580055 * ref_T0 + 887.5914
+        elseif (ref_T0 < 654.0) then
+          ref_rho = -0.0011226938 * ref_T0**3 + 2.0306323768 * ref_T0**2 - 1226.3606196862 * ref_T0 + 247972.46816223
+        elseif (ref_T0 < 663.0) then
+          ref_rho = 0.419319282558 * ref_T0**3 - 829.57097709631 * ref_T0**2 + 547043.792559283 * ref_T0 - 120240161.260508
+        else
+          ref_rho = 1.4562424658156E-14 * ref_T0**6 - 9.88236015638392E-11 * ref_T0**5 + 2.7707846321561E-07 * ref_T0**4 &
+                  - 4.10860340056467E-04 * ref_T0**3 + 0.339957993811653 * ref_T0**2 - 148.992636402535 * ref_T0 + 27135.6537310957
+        end if
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/LL2009_eos' ) then ! Lewis and Lowell (2009) EOS - "Numerical modeling of two-phase flow in the NaCl-H2O system"
+        !!$ Reference density is calculated using reference T0.
+        call get_option( trim( eos_option_path ) // '/T0', ref_T0, default=298.)
+        ! Calculate the reference density
+        if (ref_T0 < 599.0) then
+          ref_rho = -0.0021139540120505 * ref_T0**2 + 0.917854090105867 * ref_T0 + 947.704830737288
+        elseif (ref_T0 < 662.0) then
+          ref_rho = -4.91791248168338E-05 * ref_T0**4 + 0.122423307294122 * ref_T0**3 - 114.28340270265 * ref_T0**2 + 47412.7070791346 * ref_T0 - 7374686.34476882
+        elseif (ref_T0 < 666.57) then
+          ref_rho = 2.62908859436743 * ref_T0**3 - 5237.39728083828 * ref_T0**2 + 3477750.2422646 * ref_T0 - 769756993.480138
+        elseif (ref_T0 < 721.8) then
+          ref_rho = 8.63679470997081E-08 * ref_T0**6 - 3.61375107871589E-04 * ref_T0**5 + 0.629951393566949 * ref_T0**4 &
+                  - 585.611538256315 * ref_T0**3 + 306189.623060165 * ref_T0**2 - 8.53741721794318E+07 * ref_T0 + 9.91764516395852E+09
+        else
+          ref_rho = 1.4562424658156E-14 * ref_T0**6 - 9.88236015638392E-11 * ref_T0**5 + 2.7707846321561E-07 * ref_T0**4 &
+                  - 4.10860340056467E-04 * ref_T0**3 + 0.339957993811653 * ref_T0**2 - 148.992636402535 * ref_T0 + 27135.6537310957
+        end if
       else if( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
         call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/rho0', ref_rho)
       elseif( trim( eos_option_path ) == trim( option_path_python ) ) then

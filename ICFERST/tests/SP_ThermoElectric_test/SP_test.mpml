@@ -72,7 +72,7 @@
         </compressible>
         <boundary_conditions name="all">
           <surface_ids>
-            <integer_value shape="4" rank="1">8 7 9 10</integer_value>
+            <integer_value rank="1" shape="4">8 7 9 10</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -125,20 +125,8 @@
           </detectors>
         </prescribed>
       </scalar_field>
-      <tensor_field name="Solute_Diffusivity" rank="2">
-        <prescribed>
-          <value name="WholeMesh">
-            <isotropic>
-              <constant>
-                <real_value rank="0">0</real_value>
-              </constant>
-            </isotropic>
-          </value>
-          <output/>
-        </prescribed>
-      </tensor_field>
     </phase_properties>
-    <scalar_field name="Pressure" rank="0">
+    <scalar_field rank="0" name="Pressure">
       <prognostic>
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
@@ -148,7 +136,7 @@
         </initial_condition>
         <boundary_conditions name="outlet">
           <surface_ids>
-            <integer_value shape="1" rank="1">8</integer_value>
+            <integer_value rank="1" shape="1">8</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -159,7 +147,7 @@
         </boundary_conditions>
         <boundary_conditions name="inlet">
           <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
+            <integer_value rank="1" shape="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -175,17 +163,17 @@
         <output/>
       </prognostic>
     </scalar_field>
-    <vector_field name="Velocity" rank="1">
+    <vector_field rank="1" name="Velocity">
       <prognostic>
         <mesh name="VelocityMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value shape="2" dim1="dim" rank="1">0 0</real_value>
+            <real_value rank="1" dim1="dim" shape="2">0 0</real_value>
           </constant>
         </initial_condition>
         <boundary_conditions name="up">
           <surface_ids>
-            <integer_value shape="1" rank="1">9</integer_value>
+            <integer_value rank="1" shape="1">9</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -205,7 +193,7 @@
         </boundary_conditions>
         <boundary_conditions name="down">
           <surface_ids>
-            <integer_value shape="1" rank="1">10</integer_value>
+            <integer_value rank="1" shape="1">10</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -230,7 +218,7 @@
         <output/>
       </prognostic>
     </vector_field>
-    <scalar_field name="PhaseVolumeFraction" rank="0">
+    <scalar_field rank="0" name="PhaseVolumeFraction">
       <prognostic>
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
@@ -240,7 +228,7 @@
         </initial_condition>
         <boundary_conditions name="inlet">
           <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
+            <integer_value rank="1" shape="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -255,9 +243,13 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
-    <scalar_field name="Concentration" rank="0">
+    <scalar_field rank="0" name="Concentration">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <Impose_min_max>
+          <automatic_min_limit/>
+          <automatic_max_limit/>
+        </Impose_min_max>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.0005</real_value>
@@ -265,7 +257,7 @@
         </initial_condition>
         <boundary_conditions name="inlet">
           <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
+            <integer_value rank="1" shape="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -280,9 +272,13 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
-    <scalar_field name="Temperature" rank="0">
+    <scalar_field rank="0" name="Temperature">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <Impose_min_max>
+          <automatic_min_limit/>
+          <automatic_max_limit/>
+        </Impose_min_max>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">353</real_value>
@@ -290,7 +286,7 @@
         </initial_condition>
         <boundary_conditions name="inlet">
           <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
+            <integer_value rank="1" shape="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -305,7 +301,7 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
-    <scalar_field name="Dummy" rank="0">
+    <scalar_field rank="0" name="Dummy">
       <diagnostic>
         <algorithm name="Internal" material_phase_support="multiple"/>
         <mesh name="PressureMesh"/>
@@ -392,7 +388,7 @@
         <value name="WholeMesh">
           <diagonal>
             <constant>
-              <real_value shape="2" dim1="dim" rank="1">9.869233e-14 9.869233e-15</real_value>
+              <real_value rank="1" dim1="dim" shape="2">9.869233e-14 9.869233e-15</real_value>
             </constant>
           </diagonal>
         </value>
@@ -401,47 +397,53 @@
     </tensor_field>
     <porous_properties>
       <scalar_field name="porous_density">
-        <prescribed>
-          <mesh name="P0DG"/>
-          <value name="WholeMesh">
-            <constant>
-              <real_value rank="0">1600</real_value>
-            </constant>
-          </value>
-          <stat/>
-          <detectors>
-            <exclude_from_detectors/>
-          </detectors>
-          <output/>
-        </prescribed>
+        <dry_value>
+          <prescribed>
+            <mesh name="P0DG" />
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">1600</real_value>
+              </constant>
+            </value>
+            <stat />
+            <detectors>
+              <exclude_from_detectors />
+            </detectors>
+            <output />
+          </prescribed>
+        </dry_value>
       </scalar_field>
       <scalar_field name="porous_heat_capacity">
-        <prescribed>
-          <mesh name="P0DG"/>
-          <value name="WholeMesh">
-            <constant>
-              <real_value rank="0">830</real_value>
-            </constant>
-          </value>
-          <stat/>
-          <detectors>
-            <exclude_from_detectors/>
-          </detectors>
-          <output/>
-        </prescribed>
+        <dry_value>
+          <prescribed>
+            <mesh name="P0DG" />
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">830</real_value>
+              </constant>
+            </value>
+            <stat />
+            <detectors>
+              <exclude_from_detectors />
+            </detectors>
+            <output />
+          </prescribed>
+        </dry_value>
       </scalar_field>
       <tensor_field name="porous_thermal_conductivity">
-        <prescribed>
-          <mesh name="P0DG"/>
-          <value name="WholeMesh">
-            <isotropic>
-              <constant>
-                <real_value rank="0">0.15</real_value>
-              </constant>
-            </isotropic>
-          </value>
-          <output/>
-        </prescribed>
+        <dry_value>
+          <prescribed>
+            <mesh name="P0DG" />
+            <value name="WholeMesh">
+              <isotropic>
+                <constant>
+                  <real_value rank="0">0.15</real_value>
+                </constant>
+              </isotropic>
+            </value>
+            <output />
+          </prescribed>
+        </dry_value>
       </tensor_field>
     </porous_properties>
     <SelfPotential>
@@ -463,32 +465,32 @@
         </diagnostic>
       </scalar_field>
       <reference_coordinates>
-        <real_value shape="2" dim1="dim" rank="1">200 50</real_value>
+        <real_value rank="1" dim1="dim" shape="2">200 50</real_value>
       </reference_coordinates>
       <python_Rock_sat_conductivity_code>
-        <algorithm name="scalar_python_diagnostic" material_phase_support="single">
-          <string_value lines="20" type="code" language="python">for i in range( field.node_count ):
+        <algorithm name="scalar_python_diagnostic">
+          <string_value type="code" language="python" lines="20">for i in range( field.node_count ):
  val = 1#We disable rock saturation conductivity
  field.set( i, val )</string_value>
         </algorithm>
       </python_Rock_sat_conductivity_code>
       <python_ElectroKinetic_code>
-        <algorithm name="scalar_python_diagnostic" material_phase_support="single">
-          <string_value lines="20" type="code" language="python">for i in range( field.node_count ):
+        <algorithm name="scalar_python_diagnostic">
+          <string_value type="code" language="python" lines="20">for i in range( field.node_count ):
  val = 0#we disable EK for this test case
  field.set( i, val )</string_value>
         </algorithm>
       </python_ElectroKinetic_code>
       <python_Electrodiffusive_code>
-        <algorithm name="scalar_python_diagnostic" material_phase_support="single">
-          <string_value lines="20" type="code" language="python">for i in range( field.node_count ):
+        <algorithm name="scalar_python_diagnostic">
+          <string_value type="code" language="python" lines="20">for i in range( field.node_count ):
  val = 0#We disable ED for this test case as well
  field.set( i, val )</string_value>
         </algorithm>
       </python_Electrodiffusive_code>
       <python_Thermoelectric_code>
-        <algorithm name="scalar_python_diagnostic" material_phase_support="single">
-          <string_value lines="20" type="code" language="python">for i in range( field.node_count ):
+        <algorithm name="scalar_python_diagnostic">
+          <string_value type="code" language="python" lines="20">for i in range( field.node_count ):
  val = -0.000188 #We disable ED for this test case as well
  field.set( i, val )</string_value>
         </algorithm>

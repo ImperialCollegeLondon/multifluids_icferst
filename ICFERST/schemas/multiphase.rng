@@ -673,27 +673,27 @@ via a compressible equation of state.</a:documentation>
             <ref name="tensor_field_choice"/>
           </zeroOrMore>
           <optional>
-              <element name="multiphase_properties">
-                <a:documentation>Parameters required to model porous media multiphase flow
-  If modeling multiphase porous media flow and a field left unspecified or all of them, the default values will be used. These are:
+            <element name="multiphase_properties">
+              <a:documentation>Parameters required to model porous media multiphase flow
+If modeling multiphase porous media flow and a field left unspecified or all of them, the default values will be used. These are:
 
-  Relperm: Brooks-Corey model with exponent = 2 and Krmax = 1.
+Relperm: Brooks-Corey model with exponent = 2 and Krmax = 1.
 
-  Capillary pressure disabled.
+Capillary pressure disabled.
 
-  Inmobile fraction = 0.</a:documentation>
-                <choice>
+Inmobile fraction = 0.</a:documentation>
+              <choice>
+                <a:documentation>Option for relperm
+Corey relperm:
+
+relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent
+
+&lt;b&gt; YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES&lt;/b&gt;</a:documentation>
                 <element name="Relperm_Corey">
-                  <a:documentation>Option for relperm
-  Corey relperm:
-
-  relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent
-
-  &lt;b&gt; YOU MUST USE THE SAME EQUATION FOR ALL THE PHASES&lt;/b&gt;</a:documentation>
                   <element name="scalar_field">
                     <a:documentation>Relative permeability end point
 
-  Value between 0 and 1.</a:documentation>
+Value between 0 and 1.</a:documentation>
                     <attribute name="name">
                       <value>relperm_max</value>
                     </attribute>
@@ -705,7 +705,7 @@ via a compressible equation of state.</a:documentation>
                   <element name="scalar_field">
                     <a:documentation>Relative permeability exponent
 
-  Typical value 2.0</a:documentation>
+Typical value 2.0</a:documentation>
                     <attribute name="name">
                       <value>relperm_exponent</value>
                     </attribute>
@@ -716,183 +716,154 @@ via a compressible equation of state.</a:documentation>
                   </element>
                 </element>
                 <element name="Relperm_Tabulated">
-                    <a:documentation>Tabulated relative permeability data.</a:documentation>
-                    <element name="relperm_table">
-                      <a:documentation>CSV file path (e.g., Water): Saturation vs Kr.
-
-CSV format: 2 columns, no header.
-
-Column 1 = Effective Saturation (0–1)
-
-Column 2 = Relative Permeability (Kr)
-
-Example:
-
-0.0,0.0
-
-0.5,0.5
-
-1.0,1.0</a:documentation>
-                      <data type="string"/>
-                    </element>
+                  <a:documentation>Tabulated relative permeability data</a:documentation>
+                  <element name="relperm_table">
+                    <a:documentation>CSV: Saturation vs Kr for each phase</a:documentation>
+                    <data type="string"/>
+                  </element>
                 </element>
-                </choice>
-                <optional>
-                  <element name="capillary_pressure">
-                    <a:documentation>Options for capillary pressure
+              </choice>
+              <optional>
+                <element name="capillary_pressure">
+                  <a:documentation>Options for capillary pressure
 
-  &lt;b&gt;You should specify this ONLY for the wetting phase&lt;/b&gt;</a:documentation>
-                    <optional>
-                      <choice>
-                        <element name="type_Brooks_Corey">
-                          <a:documentation>Brooks-Corey equation
+&lt;b&gt;You should specify this ONLY for the wetting phase&lt;/b&gt;</a:documentation>
+                  <optional>
+                    <choice>
+                      <element name="type_Brooks_Corey">
+                        <a:documentation>Brooks-Corey equation
 
-  Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a; here c is the entry pressure
+Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a; here c is the entry pressure
 
-  For imbibition swith the formula is:
+For imbibition swith the formula is:
 
-  ## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure</a:documentation>
+## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure</a:documentation>
+                        <element name="scalar_field">
+                          <a:documentation>Entry pressure of the formula</a:documentation>
+                          <attribute name="name">
+                            <value>C</value>
+                          </attribute>
+                          <element name="prescribed">
+                            <ref name="material_mesh_choice"/>
+                            <ref name="prescribed_scalar_field"/>
+                          </element>
+                        </element>
+                        <optional>
                           <element name="scalar_field">
-                            <a:documentation>Entry pressure of the formula</a:documentation>
+                            <a:documentation>Imbibition term. if on, entry pressure = C - B;
+By default this value is set to zero.</a:documentation>
                             <attribute name="name">
-                              <value>C</value>
+                              <value>B</value>
                             </attribute>
                             <element name="prescribed">
                               <ref name="material_mesh_choice"/>
                               <ref name="prescribed_scalar_field"/>
                             </element>
                           </element>
-                          <optional>
-                            <element name="scalar_field">
-                              <a:documentation>Imbibition term. if on, entry pressure = C - B;
-  By default this value is set to zero.</a:documentation>
-                              <attribute name="name">
-                                <value>B</value>
-                              </attribute>
-                              <element name="prescribed">
-                                <ref name="material_mesh_choice"/>
-                                <ref name="prescribed_scalar_field"/>
-                              </element>
+                        </optional>
+                        <element name="scalar_field">
+                          <a:documentation>exponent -a</a:documentation>
+                          <attribute name="name">
+                            <value>a</value>
+                          </attribute>
+                          <choice>
+                            <element name="prescribed">
+                              <ref name="material_mesh_choice"/>
+                              <ref name="prescribed_scalar_field"/>
                             </element>
-                          </optional>
-                          <element name="scalar_field">
-                            <a:documentation>exponent -a</a:documentation>
-                            <attribute name="name">
-                              <value>a</value>
-                            </attribute>
-                            <choice>
-                              <element name="prescribed">
-                                <ref name="material_mesh_choice"/>
-                                <ref name="prescribed_scalar_field"/>
-                              </element>
-                              <element name="aliased">
-                                <ref name="generic_aliased_field"/>
-                              </element>
-                            </choice>
-                          </element>
+                            <element name="aliased">
+                              <ref name="generic_aliased_field"/>
+                            </element>
+                          </choice>
                         </element>
-                        <element name="type_Power_Law">
-                          <a:documentation>Power Law equation
-
-  Pc = c*(1-s_eff)**a
-
-  where s_eff = (S_w-Swir)/(1-Swir-Sor)
-
-  c = maximum pc pressure; a = pc exponent
-
-  (no entry pressure)
-
-  ONLY specify for the wetting phase</a:documentation>
-                          <element name="scalar_field">
-                            <a:documentation>Maximum pressure</a:documentation>
-                            <attribute name="name">
-                              <value>C</value>
-                            </attribute>
-                            <choice>
-                              <element name="prescribed">
-                                <ref name="material_mesh_choice"/>
-                                <ref name="prescribed_scalar_field"/>
-                              </element>
-                              <element name="aliased">
-                                <ref name="generic_aliased_field"/>
-                              </element>
-                            </choice>
-                          </element>
-                          <element name="scalar_field">
-                            <a:documentation>exponent a</a:documentation>
-                            <attribute name="name">
-                              <value>a</value>
-                            </attribute>
-                            <choice>
-                              <element name="prescribed">
-                                <ref name="material_mesh_choice"/>
-                                <ref name="prescribed_scalar_field"/>
-                              </element>
-                              <element name="aliased">
-                                <ref name="generic_aliased_field"/>
-                              </element>
-                            </choice>
-                          </element>
-                        </element>
-                        <element name="type_Tabulated">
-                          <a:documentation>Tabulated capillary pressure data.</a:documentation>
-                          <element name="capillary_pressure_table">
-                            <a:documentation>CSV file path: Saturation vs Pc.
-
-CSV format: 2 columns, no header.
-
-Column 1 = Effective Saturation (0–1)
-
-Column 2 = Capillary Pressure (Pc)
-
-Example:
-
-0.0,50000
-
-0.5,14000
-
-1.0,0</a:documentation>
-                            <data type="string"/>
-                          </element>
-                        </element>
-                      </choice>
-                    </optional>
-                  </element>
-                </optional>
-                <element name="immobile_fraction">
-                  <a:documentation>Immobile volume of fluid phase</a:documentation>
-                  <choice>
-                    <a:documentation>Immobile fraction</a:documentation>
-                    <element name="scalar_field">
-                      <attribute name="name">
-                        <value>value</value>
-                      </attribute>
-                      <element name="prescribed">
-                        <ref name="material_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
                       </element>
-                    </element>
-                    <element name="scalar_field">
-                      <a:documentation>For drainage the immobile fraction is computed dynamically using the Land formula.
-  NOTE: No thermal effects considered to change the trapping, i.e. trapping is permanent
-
-  High hysteresis ~ 0.2. Low hysteresis &gt; 5
-
-  Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".</a:documentation>
-                      <attribute name="name">
-                        <value>Land_coefficient</value>
-                      </attribute>
-                      <element name="prescribed">
-                        <ref name="material_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
+                      <element name="type_Tabulated">
+                        <a:documentation>Tabulated capillary pressure model</a:documentation>
+                        <element name="capillary_pressure_table">
+                          <data type="string"/>
+                        </element>
                       </element>
-                    </element>
-                  </choice>
+                      <element name="type_Power_Law">
+                        <a:documentation>Power Law equation
+
+Pc = c*(1-s_eff)**a
+
+where s_eff = (S_w-Swir)/(1-Swir-Sor)
+
+c = maximum pc pressure; a = pc exponent
+
+(no entry pressure)
+
+ONLY specify for the wetting phase</a:documentation>
+                        <element name="scalar_field">
+                          <a:documentation>Maximum pressure</a:documentation>
+                          <attribute name="name">
+                            <value>C</value>
+                          </attribute>
+                          <choice>
+                            <element name="prescribed">
+                              <ref name="material_mesh_choice"/>
+                              <ref name="prescribed_scalar_field"/>
+                            </element>
+                            <element name="aliased">
+                              <ref name="generic_aliased_field"/>
+                            </element>
+                          </choice>
+                        </element>
+                        <element name="scalar_field">
+                          <a:documentation>exponent a</a:documentation>
+                          <attribute name="name">
+                            <value>a</value>
+                          </attribute>
+                          <choice>
+                            <element name="prescribed">
+                              <ref name="material_mesh_choice"/>
+                              <ref name="prescribed_scalar_field"/>
+                            </element>
+                            <element name="aliased">
+                              <ref name="generic_aliased_field"/>
+                            </element>
+                          </choice>
+                        </element>
+                      </element>
+                    </choice>
+                  </optional>
                 </element>
+              </optional>
+              <element name="immobile_fraction">
+                <a:documentation>Immobile volume of fluid phase</a:documentation>
+                <choice>
+                  <a:documentation>Immobile fraction</a:documentation>
+                  <element name="scalar_field">
+                    <attribute name="name">
+                      <value>value</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                    </element>
+                  </element>
+                  <element name="scalar_field">
+                    <a:documentation>For drainage the immobile fraction is computed dynamically using the Land formula.
+NOTE: No thermal effects considered to change the trapping, i.e. trapping is permanent
+
+High hysteresis ~ 0.2. Low hysteresis &gt; 5
+
+Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".</a:documentation>
+                    <attribute name="name">
+                      <value>Land_coefficient</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                    </element>
+                  </element>
+                </choice>
               </element>
-            </optional>
-          </element>
-        </oneOrMore>
+            </element>
+          </optional>
+        </element>
+      </oneOrMore>
       <optional>
         <ref name="mesh_adaptivity_options"/>
       </optional>
@@ -1017,75 +988,130 @@ if not, vector_field is much faster and the results are the same</a:documentatio
           <optional>
             <element name="porous_properties">
               <a:documentation>Rock properties
-For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conductivity are &lt;b&gt;MANDATORY&lt;/b&gt;</a:documentation>
-              <element name="scalar_field">
-                <a:documentation>Specify scalar field density of the porous media
+For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity, and conductivity are &lt;b&gt;MANDATORY&lt;/b&gt;.
 
-&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
-Double check and convert your input values so they only represent the matrix property
-(e.g. bulk measurement divided by porosity)</a:documentation>
+
+Properties can be specified as either:
+
+- wet_value: effective property calculated as a porosity-weighted average (e.g., phi * water_value + (1 - phi) * dry_value)
+
+- dry_value: property of the dry matrix alone
+
+
+Choose the appropriate input depending on your model.</a:documentation>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field density of the porous media</a:documentation>
                 <attribute name="name">
                   <value>porous_density</value>
                 </attribute>
                 <choice>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
-                    <ref name="output_options"/>
+                  <element name="dry_value">
+                    <choice>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                      <element name="aliased">
+                        <ref name="generic_aliased_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                    </choice>
                   </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
+                  <element name="wet_value">
+                    <choice>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                      <element name="aliased">
+                        <ref name="generic_aliased_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                    </choice>
                   </element>
                 </choice>
               </element>
               <optional>
                 <element name="scalar_field">
-                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
-
-&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
-Double check and convert your input values so they only represent the matrix property
-(e.g. bulk measurement divided by porosity)</a:documentation>
+                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )</a:documentation>
                   <attribute name="name">
                     <value>porous_heat_capacity</value>
                   </attribute>
                   <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
+                    <element name="dry_value">
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                      </choice>
                     </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
+                    <element name="wet_value">
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                      </choice>
                     </element>
                   </choice>
                 </element>
               </optional>
               <optional>
                 <element name="tensor_field">
-                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )
-
-&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
-Double check and convert your input values so they only represent the matrix property
-(e.g. bulk measurement divided by porosity)</a:documentation>
+                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )</a:documentation>
                   <attribute name="name">
                     <value>porous_thermal_conductivity</value>
                   </attribute>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_tensor_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <optional>
-                    <element name="Wiener_conductivity">
-                      <a:documentation>Apply Wiener method for calculating effective thermal conductivity k = phi*k_f+(1-phi)*k_s
-This method will overestimate the effective thermal conductivity. Default is to use Hashin &amp; Shtrikman
-method which provides a better estimate of the effective thermal conductivity. Only select this option
-if you want to use the Wiener method.</a:documentation>
-                      <empty/>
+                  <choice>
+                    <element name="dry_value">
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_tensor_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                      </choice>
+                      <optional>
+                        <element name="Wiener_conductivity">
+                          <a:documentation>Apply Wiener method for calculating effective thermal conductivity k = phi*k_f+(1-phi)*k_s
+This method will overestimate the effective thermal conductivity.
+Default is Hashin &amp; Shtrikman method which provides a better estimate.
+Select this option only to use Wiener method.</a:documentation>
+                          <empty/>
+                        </element>
+                      </optional>
                     </element>
-                  </optional>
+                    <element name="wet_value">
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_tensor_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                      </choice>
+                    </element>
+                  </choice>
                 </element>
               </optional>
               <optional>
@@ -1113,6 +1139,34 @@ Temporarily P_surface can be defined from /numerical_methods/Surface_pressure</a
                   </choice>
                 </element>
               </optional>
+              <optional>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field: total porosity
+This field defines the *total porosity* of the porous medium, which is the sum of effective and non-effective porosity.
+It represents the full volume fraction of pore space, including both flow-connected (effective) and non-connected (non-effective) voids.
+When activated, this field is used to calculate *wet* thermophysical properties, such as thermal conductivity, density and heat capacity.
+
+*** IMPORTANT NOTE ***
+
+If the option is enabled, you must define the total porosity field across all regions, even those where total porosity equals the effective porosity.
+In such cases, simply assign the same value to both the "Porosity" and "porosity_total" fields.
+The effective porosity is specified via the "Porosity" field in IC-FERST and is used in flow and transport calculations.</a:documentation>
+                  <attribute name="name">
+                    <value>porosity_total</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
+                </element>
+              </optional>
             </element>
           </optional>
           <optional>
@@ -1122,7 +1176,7 @@ Temporarily P_surface can be defined from /numerical_methods/Surface_pressure</a
                 <a:documentation>Specify where and how much the well/pipes are opened
 It goes from 0 to 1. If completely opened, set it to 1.
 
-If gamma is specified to 666, the simulation will stop. This is to be used in combination with the optimiser Halite. </a:documentation>
+If gamma is specified to 666, the simulation will stop. This is to be used in combination with the optimiser Halite.</a:documentation>
                 <attribute name="name">
                   <value>Gamma</value>
                 </attribute>
@@ -1484,310 +1538,306 @@ The dissolution/precipitation is considered instantaneous (flash). The units are
 
 It requires to have the following scalar fields defined:
 
-- a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer").
+- a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer"), PassiveTracer_Metal.
 
 - a static field for the solid metal concentration (e.g., "Metal_solid" - name has to start with anything but "PassiveTracer").
 
-- The temperature/salt coefficient fields for the partition coefficient (K_c, K_T, K_c2, K_T2, K_cT, K_const, K_A), defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties. Physical interpretation of the partition coefficient : Low partition_coef - tendency to dissolution. High partition_coef - tendency to precipitation.
+-  The temperature/salt coefficient fields for the partition coefficient (K_c, K_T, K_c2, K_T2, K_cT, K_const, K_A), defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties. Physical interpretation of the partition coefficient : Low partition_coef - tendency to dissolution. High partition_coef - tendency to precipitation.
 
 Modelling choice here: the partition coefficient is the following function of temperature (T) and salt (c),
-&lt;b&gt;partition_coef = K_A * exp( K_const + K_c * c + K_T * T + K_c2 * c^2 + + K_T2 * T^2 + K_cT * c*T ) &lt;/b&gt;.
+&lt;b&gt; partition_coef = K_A * exp( K_const + K_c * c + K_T * T + K_c2 * c^2 + + K_T2 * T^2 + K_cT * c*T ) &lt;/b&gt;.
 
 If a salt tracer field is involved, its name needs to be defined in "Tracer_Salt".
 
 Also, it is required to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.</a:documentation>
-              <group>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the K_A coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>K_A</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the K_const coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>K_const</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the K_c coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>K_c</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the K_T coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>K_T</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the K_c2 coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>K_c2</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the K_T2 coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>K_T2</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the K_cT coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>K_cT</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <optional>
-                  <element name="Tracer_Salt">
-                    <a:documentation>Name of the salt tracer. Name is either "Concentration" (if active tracer), or else it has to start with "PassiveTracer" (if passive tracer).</a:documentation>
-                    <data type="string" datatypeLibrary=""/>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the K_A coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>K_A</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
                   </element>
-                </optional>
-                <element name="tracer_field_solid">
-                  <a:documentation>Name of the solid metal tracer (dissolves into tracer_field_fluid). /!\ Name has to start with anything but "PassiveTracer". We suggest "Metal_solid".</a:documentation>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the K_const coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>K_const</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the K_c coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>K_c</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the K_T coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>K_T</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the K_c2 coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>K_c2</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the K_T2 coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>K_T2</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the K_cT coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>K_cT</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <optional>
+                <element name="Tracer_Salt">
+                  <a:documentation>Name of the salt tracer. Name is either "Concentration" (if active tracer), or else it has to start with "PassiveTracer" (if passive tracer).</a:documentation>
                   <data type="string" datatypeLibrary=""/>
                 </element>
-                <element name="tracer_field_fluid">
-                  <a:documentation>Name of the fluid metal tracer (precipitates into tracer_field_solid). /!\ Name has to start with "PassiveTracer".</a:documentation>
-                  <data type="string" datatypeLibrary=""/>
-                </element>
-              </group>
+              </optional>
+              <element name="tracer_field_solid">
+                <a:documentation>Name of the solid metal tracer (dissolves into tracer_field_fluid). /!\ Name has to start with anything but "PassiveTracer". We suggest "Metal_solid".</a:documentation>
+                <data type="string" datatypeLibrary=""/>
+              </element>
+              <element name="tracer_field_fluid">
+                <a:documentation>Name of the fluid metal tracer (precipitates into tracer_field_solid). /!\ Name has to start with "PassiveTracer".</a:documentation>
+                <data type="string" datatypeLibrary=""/>
+              </element>
             </element>
           </optional>
           <optional>
             <element name="Metal_precipitation">
-              <a:documentation>This parameter specifies how metal precipitates using a precipitation rate.
+              <a:documentation>This parameter specifies how metal dissolves/precipitates using a partition coefficient (Jackson et al., 2017).
 
-The units are kg/kg for concentrations.
+The dissolution/precipitation is considered instantaneous (flash). The units are kg/kg for concentrations.
 
 It requires to have the following scalar fields defined:
 
-- a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer").
+- a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer"), PassiveTracer_Metal.
 
 - a static field for the solid metal concentration (e.g., "Metal_solid" - name has to start with anything but "PassiveTracer").
 
-- The temperature/salt coefficient fields for the precipitation rate (P_c, P_T, P_c2, P_T2, P_cT, P_const, P_A), defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties. Physical interpretation of the precipitation rate : Low precipitation rate - low tendency to precipitation. High precipitation rate - high tendency to precipitation.
+-  The temperature/salt coefficient fields for the precipitation rate (P_c, P_T, P_c2, P_T2, P_cT, P_const, P_A), defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties. Physical interpretation of the precipitation rate : Low precipitation rate - low tendency to precipitation. High precipitation rate - high tendency to precipitation.
 
 Modelling choice here: the precipitation rate is the following function of temperature (T) and salt (c),
-&lt;b&gt;precipitation_rate = P_A * exp( P_const + P_c * c + P_T * T + P_c2 * c^2 + + P_T2 * T^2 + P_cT * c*T ) &lt;/b&gt;.
+&lt;b&gt; partition_coef = P_A * exp( P_const + P_c * c + P_T * T + P_c2 * c^2 + + P_T2 * T^2 + P_cT * c*T ) &lt;/b&gt;.
 
 If a salt tracer field is involved, its name needs to be defined in "Tracer_Salt".
 
 Also, it is required to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.</a:documentation>
-              <group>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the P_A coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>P_A</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the P_const coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>P_const</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the P_c coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>P_c</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the P_T coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>P_T</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the P_c2 coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>P_c2</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the P_T2 coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>P_T2</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <element name="scalar_field">
-                  <a:documentation>Specify scalar field for the P_cT coefficient.</a:documentation>
-                  <attribute name="name">
-                    <value>P_cT</value>
-                  </attribute>
-                  <choice>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                    <element name="aliased">
-                      <ref name="generic_aliased_field"/>
-                      <ref name="output_options"/>
-                    </element>
-                  </choice>
-                </element>
-                <optional>
-                  <element name="Tracer_Salt">
-                    <a:documentation>Name of the salt tracer. Name is either "Concentration" (if active tracer), or else it has to start with "PassiveTracer" (if passive tracer).</a:documentation>
-                    <data type="string" datatypeLibrary=""/>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the P_A coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>P_A</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
                   </element>
-                </optional>
-                <element name="tracer_field_solid">
-                  <a:documentation>Name of the solid metal tracer (dissolves into tracer_field_fluid). /!\ Name has to start with anything but "PassiveTracer". We suggest "Metal_solid".</a:documentation>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the P_const coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>P_const</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the P_c coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>P_c</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the P_T coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>P_T</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the P_c2 coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>P_c2</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the P_T2 coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>P_T2</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field for the P_cT coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>P_cT</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <optional>
+                <element name="Tracer_Salt">
+                  <a:documentation>Name of the salt tracer. Name is either "Concentration" (if active tracer), or else it has to start with "PassiveTracer" (if passive tracer).</a:documentation>
                   <data type="string" datatypeLibrary=""/>
                 </element>
-                <element name="tracer_field_fluid">
-                  <a:documentation>Name of the fluid metal tracer (precipitates into tracer_field_solid). /!\ Name has to start with "PassiveTracer".</a:documentation>
-                  <data type="string" datatypeLibrary=""/>
-                </element>
-              </group>
+              </optional>
+              <element name="tracer_field_solid">
+                <a:documentation>Name of the solid metal tracer (dissolves into tracer_field_fluid). /!\ Name has to start with anything but "PassiveTracer". We suggest "Metal_solid".</a:documentation>
+                <data type="string" datatypeLibrary=""/>
+              </element>
+              <element name="tracer_field_fluid">
+                <a:documentation>Name of the fluid metal tracer (precipitates into tracer_field_solid). /!\ Name has to start with "PassiveTracer".</a:documentation>
+                <data type="string" datatypeLibrary=""/>
+              </element>
             </element>
           </optional>
           <optional>
@@ -3432,16 +3482,13 @@ This imposes the tracer to be between bounds.</a:documentation>
               </element>
             </choice>
             <ref name="prognostic_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
-            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -3545,16 +3592,13 @@ This imposes the tracer to be between bounds.</a:documentation>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
-            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -3570,16 +3614,13 @@ This imposes the tracer to be between bounds.</a:documentation>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
             <ref name="prognostic_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
-            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -3596,18 +3637,15 @@ Required in porous_media and multiphase problem types</a:documentation>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
             <ref name="prognostic_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="diagnostic">
             <ref name="pressure_mesh_choice"/>
             <ref name="internal_algorithm"/>
             <ref name="diagnostic_scalar_field_no_adapt"/>
-            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -3832,16 +3870,13 @@ This imposes the tracer to be between bounds.</a:documentation>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
-            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -3922,16 +3957,13 @@ This imposes the tracer to be between bounds.</a:documentation>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
-            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -4018,16 +4050,13 @@ This imposes the tracer to be between bounds.</a:documentation>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
-            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
-            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -4055,12 +4084,12 @@ This imposes the tracer to be between bounds.</a:documentation>
         - - Second is a list of fields that are primarily prescribed,
            but can be aliased. An example is wind velocity.
         - - The list is in order of most frequently used.
-
+        
                 ## Prescribed scalar fields below this
                 element ___Prescribed_fields_below___ {
                    empty
                 }|
-
+        
         Insert new prescribed scalar fields here using the template:
                element scalar_field {
                    attribute rank { "0" },
@@ -4075,11 +4104,11 @@ This imposes the tracer to be between bounds.</a:documentation>
                       }
                    )
                }
-
+        
         - - Last is a list of fields that are primarily diagnostic,
            but can be aliased. An example is Tidal Range.
         - - The list is in order of most frequently used.
-
+        
       -->
       <element name="___Diagnostic_Fields_Below___">
         <a:documentation>Diagnostic scalar fields below this</a:documentation>
@@ -4245,7 +4274,7 @@ Adapting to this field is not recommended</a:documentation>
       </element>
       <element name="scalar_field">
         <a:documentation>Copied Field of the Metal Field BEFORE the exchange steps happen (dissolution or precipitation).
-         Name has to start with CopiedField_Metal (e.g., CopiedField_Metal_Cu).</a:documentation>
+Name has to start with CopiedField_Metal (e.g., CopiedField_Metal_Cu).</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
@@ -4255,9 +4284,9 @@ Adapting to this field is not recommended</a:documentation>
         <choice>
           <element name="diagnostic">
             <ref name="internal_algorithm"/>
-              <attribute name="metal_field_name">
-                <data type="string" datatypeLibrary=""/>
-              </attribute>
+            <attribute name="metal_field_name">
+              <data type="string" datatypeLibrary=""/>
+            </attribute>
             <ref name="pressure_mesh_choice"/>
             <ref name="diagnostic_scalar_field"/>
           </element>
@@ -4321,11 +4350,11 @@ Adapting to this field is not recommended</a:documentation>
         </choice>
       </element>
       <!--
-
+        
         - - List of fields that are primarily prognostic,
            but can be aliased.
         - - The list is in order of most frequently used.
-
+        
                 ## Prescribed vector fields below this
                 element ___Prognostic_fields_below___ {
                    empty
@@ -4335,14 +4364,14 @@ Adapting to this field is not recommended</a:documentation>
         - - List of fields that are primarily prescribed,
            but can be aliased.
         - - The list is in order of most frequently used.
-
+        
                 ## Prescribed vector fields below this
                 element ___Prescribed_fields_below___ {
                    empty
                 }|
       -->
       <!--
-
+        
         Insert new prescribed vector fields here using the template:
                element vector_field {
                    attribute rank { "1" },
@@ -4357,11 +4386,11 @@ Adapting to this field is not recommended</a:documentation>
                       }
                    )
                }
-
+        
         - - Last is a list of fields that are primarily diagnostic,
            but can be aliased. An example is Tidal Range.
         - - The list is in order of most frequently used.
-
+        
       -->
       <element name="___Diagnostic_Fields_Below___">
         <a:documentation>Diagnostic vector fields below this</a:documentation>
@@ -4559,18 +4588,18 @@ to impose an absorption term for the momentum equation using a diagnostic tensor
         </choice>
       </element>
       <!--
-
+        
         - - Second is a list of tensor fields that are primarily prescribed,
            but can be aliased.
         - - The list is in order of most frequently used.
-
+        
       -->
       <element name="___Prescribed_fields_below___">
         <a:documentation>Prescribed scalar fields below this</a:documentation>
         <empty/>
       </element>
       <!--
-
+        
         Insert new prescribed tensor fields here using the template:
                element tensor_field {
                    attribute rank { "2" },
@@ -4585,11 +4614,11 @@ to impose an absorption term for the momentum equation using a diagnostic tensor
                       }
                    )
                }|
-
+        
         - - Last is a list of fields that are primarily diagnostic,
            but can be aliased.
         - - The list is in order of most frequently used.
-
+        
       -->
       <element name="___Diagnostic_Fields_Below___">
         <a:documentation>Diagnostic tensor fields below this</a:documentation>
@@ -5067,7 +5096,7 @@ Defaults to zero at machine tolerance (epsilon(0.0)) if not selected.</a:documen
   </define>
   <define name="phase_viscosity">
     <element name="tensor_field">
-      <a:documentation>Viscosity of the current phase (tensor field)</a:documentation>
+      <a:documentation>Use this option to specify the viscosity of fluids</a:documentation>
       <attribute name="name">
         <value>Viscosity</value>
       </attribute>
@@ -5256,11 +5285,13 @@ Introduce the same name as the scalar field being used. For example: Tracer_CO2<
               </zeroOrMore>
             </element>
             <element name="BW_eos">
-              <a:documentation>Batzle and Wang (1992) EOS.
-  Use for basin scale simulations.
-  Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg salinity.
+              <a:documentation>Batzle and Wang (1992) EOS - "Seismic properties of pore fluids"
 
-  NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentation>
+Use for basin scale simulations.
+
+Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg salinity.
+
+NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentation>
               <optional>
                 <element name="C0">
                   <a:documentation>Reference concentration (default 0)</a:documentation>
@@ -5276,6 +5307,38 @@ Introduce the same name as the scalar field being used. For example: Tracer_CO2<
               <optional>
                 <element name="P0">
                   <a:documentation>Reference pressure (default 1e5 Pa)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="Remove_P_dependencies">
+                  <a:documentation>Remove pressure terms in BW EOS by setting P=0. This is a temporary fix to running sim with well domains with non-Boussinesq</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+            <element name="IAPWS1995_eos">
+              <a:documentation>IAPWS (1995) EOS
+
+Valid for freshwater
+
+Note: This EOS does not include pressure or salinity dependence. Reference density is calculated using reference T0.</a:documentation>
+              <optional>
+                <element name="T0">
+                  <a:documentation>Reference temperature (default 298)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+            </element>
+            <element name="LL2009_eos">
+              <a:documentation>Lewis and Lowell (2009) EOS - "Numerical modeling of two-phase flow in the NaCl-H2O system"
+
+Valid for 3.2 wt% salinity
+
+Note: This EOS does not include pressure or salinity dependence. Reference density is calculated using reference T0.</a:documentation>
+              <optional>
+                <element name="T0">
+                  <a:documentation>Reference temperature (default 298)</a:documentation>
                   <ref name="real"/>
                 </element>
               </optional>
@@ -5324,8 +5387,8 @@ Component properties overwrite the ones given for a phase and are mandatory for 
         <a:documentation>Phase density</a:documentation>
       </ref>
       <element name="Viscosity">
-        <a:documentation>Use this option to specify the viscosity of fluids</a:documentation>
-          <ref name="phase_viscosity"/>
+        <a:documentation>Viscosity of the current phase (tensor field)</a:documentation>
+        <ref name="phase_viscosity"/>
         <optional>
           <element name="linearise_viscosity">
             <a:documentation>Linearises a P2 field. Use this if having stability issues with high-order discretisations</a:documentation>
