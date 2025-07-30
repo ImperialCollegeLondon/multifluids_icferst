@@ -150,11 +150,11 @@ contains
           CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, &
           SUF_SIG_DIAGTEN_BC, &
           DERIV, CV_P, &
-          SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &
+          SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, VOLFRA_PORE_TOTAL, &
           GETCV_DISC, GETCT, &
           IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
           THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-          MEAN_PORE_CV, &
+          MEAN_PORE_CV, MEAN_PORE_CV_TOTAL, &
           MASS_MN_PRES, THERMAL, &
           got_free_surf,  MASS_SUF, &
           MASS_ELE_TRANSP, &
@@ -316,10 +316,10 @@ contains
           REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
           REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
           REAL, DIMENSION( :, :, : ), pointer, intent( in ) :: ABSORBT_ALL
-          REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+          REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE, VOLFRA_PORE_TOTAL
           LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, got_free_surf
           ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
-          REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV
+          REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV, MEAN_PORE_CV_TOTAL
           REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
           type(tensor_field), intent(in), optional, target :: saturation
           REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION
@@ -329,6 +329,8 @@ contains
           !Variables to cache get_int_vel OLD
           real, optional, dimension(:), intent(inout) :: Courant_number
           type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
+          logical :: have_porosity_total = .false.
+          logical, save :: have_been_read = .false.
           ! Calculate_mass variable
           real, dimension(:,:), optional :: calculate_mass_delta
           type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
@@ -445,7 +447,7 @@ contains
           real, dimension( final_phase ) :: DIAG_SCALE_PRES_phase
           real, dimension( final_phase ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
           real, dimension(Mdims%npres) :: R_PRES
-          real, dimension( final_phase ) :: R_PHASE, ct_rhs_phase
+          real, dimension( final_phase ) :: R_PHASE, R_PHASE_TOTAL, ct_rhs_phase
 
           !! boundary_condition fields
           type(tensor_field) :: velocity_BCs,tracer_BCs, density_BCs, saturation_BCs
@@ -469,7 +471,7 @@ contains
           real, dimension( final_phase) :: LOC_CV_RHS_I, LOC_CV_RHS_J, LOC_MAT_II, LOC_MAT_JJ, LOC_MAT_IJ, LOC_MAT_JI
           REAL, DIMENSION( final_phase ) :: wrelax, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
           REAL, DIMENSION ( Mdims%ndim,final_phase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
-          type( vector_field ), pointer :: MeanPoreCV
+          type( vector_field ), pointer :: MeanPoreCV, MeanPoreCV_total
           real, dimension(:), allocatable :: DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU
           real, dimension(final_phase) :: DENOIN_B, CTILIN_B, DENOOU_B, CTILOU_B, FTILIN_B, FTILOU_B
           !! femdem
@@ -952,9 +954,34 @@ contains
         END DO
         DO IPRES = 1, Mdims%npres
           MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
+          MEAN_PORE_CV_TOTAL(IPRES,:) = MEAN_PORE_CV(IPRES,:) ! dummy, if not. have_porosity_total
         END DO
         MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
         MeanPoreCV%val=MEAN_PORE_CV
+        MeanPoreCV_total=>extract_vector_field(packed_state,"MeanPoreCV_total")
+        MeanPoreCV_total%val=MEAN_PORE_CV ! dummy, if not. have_porosity_total
+
+        if ( .not. have_been_read ) then
+          have_porosity_total = have_option("/porous_media/porous_properties/scalar_field::porosity_total")
+          have_been_read = .true.
+        end if
+
+        ! Calculate MEAN_PORE_CV_TOTAL
+        if (have_porosity_total) then
+          MEAN_PORE_CV_TOTAL = 0.0 ; SUM_CV = 0.0
+          DO ELE = 1, Mdims%totele
+            DO CV_ILOC = 1, Mdims%cv_nloc
+              CV_INOD = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+              SUM_CV( CV_INOD ) = SUM_CV( CV_INOD ) + MASS_ELE( ELE )
+              MEAN_PORE_CV_TOTAL( :, CV_INOD ) = MEAN_PORE_CV_TOTAL( :, CV_INOD ) + &
+              MASS_ELE( ELE ) * VOLFRA_PORE_TOTAL( :, ELE )
+            END DO
+          END DO
+          DO IPRES = 1, Mdims%npres
+            MEAN_PORE_CV_TOTAL(IPRES,:) = MEAN_PORE_CV_TOTAL(IPRES,:) / SUM_CV
+          END DO
+          MeanPoreCV_total%val=MEAN_PORE_CV_TOTAL
+        end if
 
         if (activate_limiters) then
           ALLOCATE( T2UPWIND_MAT_ALL( 1*i_use_volume_frac_t2:final_phase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( 1*i_use_volume_frac_t2:final_phase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
@@ -1943,6 +1970,8 @@ contains
 
                   LOC_CV_RHS_I=0.0; LOC_MAT_II =0.
                   R_PHASE = MEAN_PORE_CV( 1, CV_NODI ) * Mass_CV( CV_NODI ) / DT
+                  if (have_porosity_total) R_PHASE_TOTAL = MEAN_PORE_CV_TOTAL( 1, CV_NODI ) * Mass_CV( CV_NODI ) / DT
+
                   IF ( THERMAL .and. Mdims%npres == 1) THEN
                       LOC_CV_RHS_I = LOC_CV_RHS_I &
                           - CV_P( 1, 1, CV_NODI ) * ( Mass_CV( CV_NODI ) / DT ) * ( LOC_T2_I - LOC_T2OLD_I)
@@ -1953,6 +1982,21 @@ contains
                       LOC_CV_RHS_I(iphase) = LOC_CV_RHS_I(iphase)  + Mass_CV(CV_NODI) * SOURCT_ALL( iphase, CV_NODI )
                     end do
                       if (thermal .and. is_porous_media) then
+                        if (have_porosity_total) then
+                          !In this case for the time-integration term the effective rho Cp is a combination of the porous media
+                          ! and the fluids. Here we add the porous media contribution. Multiplied by the saturation so we use the same
+                          !paradigm that for the phases, but in the equations it isn't, but here because we iterate over phases and collapse
+                          !this is required
+                          LOC_MAT_II = LOC_MAT_II + porous_heat_coef( CV_NODI ) * LOC_T2_I &
+                                  * R_PHASE_TOTAL * (1-MEAN_PORE_CV_TOTAL( 1, CV_NODI ))/MEAN_PORE_CV_TOTAL( 1, CV_NODI )
+
+                          !R_PHASE_TOTAL includes the porosity. Since in this case we are interested in what is NOT porous
+                              !we divide to remove that term and multiply by the correct term (1-porosity)
+                          LOC_CV_RHS_I=LOC_CV_RHS_I  &
+                          + (CV_BETA * porous_heat_coef_old( CV_NODI ) * LOC_T2OLD_I &
+                          + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * LOC_T2_I ) &
+                          * R_PHASE_TOTAL * LOC_TOLD_I* (1-MEAN_PORE_CV_TOTAL( 1, CV_NODI ))/MEAN_PORE_CV_TOTAL( 1, CV_NODI )
+                        else
                           !In this case for the time-integration term the effective rho Cp is a combination of the porous media
                           ! and the fluids. Here we add the porous media contribution. Multiplied by the saturation so we use the same
                           !paradigm that for the phases, but in the equations it isn't, but here because we iterate over phases and collapse
@@ -1966,24 +2010,45 @@ contains
                           + (CV_BETA * porous_heat_coef_old( CV_NODI ) * LOC_T2OLD_I &
                           + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * LOC_T2_I ) &
                           * R_PHASE * LOC_TOLD_I* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
-
+                        end if
                       end if
 
-                      LOC_MAT_II = LOC_MAT_II + LOC_DEN_I * LOC_T2_I * R_PHASE
-                      LOC_CV_RHS_I=LOC_CV_RHS_I  + (CV_BETA * LOC_DENOLD_I * LOC_T2OLD_I + &
-                              (ONE_M_CV_BETA) * LOC_DEN_I * LOC_T2_I ) * R_PHASE * LOC_TOLD_I
+                      IF (thermal) THEN
+                        IF (have_porosity_total) THEN
+                          LOC_MAT_II = LOC_MAT_II + LOC_DEN_I * LOC_T2_I * R_PHASE_TOTAL
+                          LOC_CV_RHS_I = LOC_CV_RHS_I + (CV_BETA * LOC_DENOLD_I * LOC_T2OLD_I &
+                                            +(ONE_M_CV_BETA) * LOC_DEN_I * LOC_T2_I ) * R_PHASE_TOTAL * LOC_TOLD_I
+                        ELSE
+                          LOC_MAT_II = LOC_MAT_II + LOC_DEN_I * LOC_T2_I * R_PHASE
+                          LOC_CV_RHS_I = LOC_CV_RHS_I + (CV_BETA * LOC_DENOLD_I * LOC_T2OLD_I &
+                                            +(ONE_M_CV_BETA) * LOC_DEN_I * LOC_T2_I ) * R_PHASE * LOC_TOLD_I
+                        END IF
+                      ELSE
+                        ! For salt or other scalar equations, use effective porosity only
+                        LOC_MAT_II = LOC_MAT_II + LOC_DEN_I * LOC_T2_I * R_PHASE
+                        LOC_CV_RHS_I = LOC_CV_RHS_I + (CV_BETA * LOC_DENOLD_I * LOC_T2OLD_I &
+                                          +(ONE_M_CV_BETA) * LOC_DEN_I * LOC_T2_I ) * R_PHASE * LOC_TOLD_I
+                      END IF
 
                   ELSE
 
                     !Diagonal term Vol/dt * rho and accompaniying rhs term
-                    LOC_MAT_II = LOC_MAT_II + LOC_DEN_I * R_PHASE
-                    do iphase = 1, final_phase
-                      LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
-                          + Mass_CV( CV_NODI ) * SOURCT_ALL( IPHASE, CV_NODI )&
-                          + ( CV_BETA * LOC_DENOLD_I(IPHASE) &
-                          + (ONE_M_CV_BETA) * LOC_DEN_I(IPHASE) ) &
-                          * R_PHASE(IPHASE) * LOC_TOLD_I(IPHASE)
-                   END DO
+                    IF (have_porosity_total) THEN
+                      LOC_MAT_II = LOC_MAT_II + LOC_DEN_I * R_PHASE_TOTAL
+                      DO IPHASE = 1, final_phase
+                        LOC_CV_RHS_I(IPHASE) = LOC_CV_RHS_I(IPHASE) + Mass_CV(CV_NODI) * SOURCT_ALL(IPHASE, CV_NODI) + &
+                          (CV_BETA * LOC_DENOLD_I(IPHASE) + &
+                           (ONE_M_CV_BETA) * LOC_DEN_I(IPHASE)) * R_PHASE_TOTAL(IPHASE) * LOC_TOLD_I(IPHASE)
+                      END DO
+                    ELSE
+                      LOC_MAT_II = LOC_MAT_II + LOC_DEN_I * R_PHASE
+                      DO IPHASE = 1, final_phase
+                        LOC_CV_RHS_I(IPHASE) = LOC_CV_RHS_I(IPHASE) + Mass_CV(CV_NODI) * SOURCT_ALL(IPHASE, CV_NODI) + &
+                          (CV_BETA * LOC_DENOLD_I(IPHASE) + &
+                           (ONE_M_CV_BETA) * LOC_DEN_I(IPHASE)) * R_PHASE(IPHASE) * LOC_TOLD_I(IPHASE)
+                      END DO
+                    END IF
+
                   END IF
 
 
@@ -2061,7 +2126,7 @@ contains
                                 final_phase, &! final_phase => reservoir domain
                                 Mdims, ndgln, DERIV, CV_P, SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
                                 SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, &
-                                pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES,mean_pore_cv, eles_with_pipe, thermal,&
+                                pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES,mean_pore_cv, MEAN_PORE_CV_TOTAL, eles_with_pipe, thermal,&
                                 CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes,&
                                 porous_heat_coef, loc_assemble_collapsed_to_one_phase )
 
@@ -6093,22 +6158,22 @@ end if
                                     n_bcs = option_count("/material_phase["// int2str( iphase - 1)//"]/scalar_field::Pressure/prognostic/boundary_conditions")
                                     do i = 1, n_bcs
                                         hydrostatic_bc = have_option("/material_phase["// int2str( iphase - 1)//"]/scalar_field::Pressure/prognostic/boundary_conditions["//int2str(i-1)//"]/type::dirichlet/hydrostatic_boundaries")
-
-                                        if (hydrostatic_bc) then!not compatible with hydrostatic presure solver
-                                            Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
-                                            Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
-                                                - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
-                                                * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) - (gravty*&
-                                                SUF_D_BC_ALL( 1, 1, 1 + Mdims%cv_snloc* ( SELE - 1 ) )*&
-                                                abs(top_domain-X_ALL(Mdims%ndim, CV_NODI))*&
-                                                CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
-                                        else
-                                            Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
-                                            Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
-                                                - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
-                                                * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )
-                                        endif
                                     end do
+
+                                    if (hydrostatic_bc) then!not compatible with hydrostatic presure solver
+                                        Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
+                                        Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
+                                            - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
+                                            * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) - (gravty*&
+                                            SUF_D_BC_ALL( 1, 1, 1 + Mdims%cv_snloc* ( SELE - 1 ) )*&
+                                            abs(top_domain-X_ALL(Mdims%ndim, CV_NODI))*&
+                                            CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
+                                    else
+                                        Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
+                                        Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
+                                            - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
+                                            * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )
+                                    endif
 
                                 else
                                     if (show_warn_msg) then

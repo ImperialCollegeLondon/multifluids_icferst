@@ -105,9 +105,6 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
-          <output>
-            <exclude_from_vtu/>
-          </output>
         </prescribed>
       </vector_field>
     </gravity>
@@ -291,7 +288,6 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
-        <output/>
       </prognostic>
     </scalar_field>
     <scalar_field rank="0" name="Concentration">
@@ -375,7 +371,6 @@
             <solver/>
           </continuous>
         </galerkin_projection>
-        <output/>
       </prognostic>
     </scalar_field>
   </material_phase>
@@ -481,47 +476,53 @@
     </Dispersion>
     <porous_properties>
       <scalar_field name="porous_density">
-        <prescribed>
-          <mesh name="P0DG"/>
-          <value name="WholeMesh">
-            <constant>
-              <real_value rank="0">0</real_value>
-            </constant>
-          </value>
-          <stat/>
-          <detectors>
-            <exclude_from_detectors/>
-          </detectors>
-          <output/>
-        </prescribed>
-      </scalar_field>
-      <scalar_field name="porous_heat_capacity">
-        <prescribed>
-          <mesh name="P0DG"/>
-          <value name="WholeMesh">
-            <constant>
-              <real_value rank="0">0</real_value>
-            </constant>
-          </value>
-          <stat/>
-          <detectors>
-            <exclude_from_detectors/>
-          </detectors>
-          <output/>
-        </prescribed>
-      </scalar_field>
-      <tensor_field name="porous_thermal_conductivity">
-        <prescribed>
-          <mesh name="P0DG"/>
-          <value name="WholeMesh">
-            <isotropic>
+        <dry_value>
+          <prescribed>
+            <mesh name="P0DG" />
+            <value name="WholeMesh">
               <constant>
                 <real_value rank="0">0</real_value>
               </constant>
-            </isotropic>
-          </value>
-          <output/>
-        </prescribed>
+            </value>
+            <stat />
+            <detectors>
+              <exclude_from_detectors />
+            </detectors>
+            <output />
+          </prescribed>
+        </dry_value>
+      </scalar_field>
+      <scalar_field name="porous_heat_capacity">
+        <dry_value>
+          <prescribed>
+            <mesh name="P0DG" />
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">0</real_value>
+              </constant>
+            </value>
+            <stat />
+            <detectors>
+              <exclude_from_detectors />
+            </detectors>
+            <output />
+          </prescribed>
+        </dry_value>
+      </scalar_field>
+      <tensor_field name="porous_thermal_conductivity">
+        <dry_value>
+          <prescribed>
+            <mesh name="P0DG" />
+            <value name="WholeMesh">
+              <isotropic>
+                <constant>
+                  <real_value rank="0">0</real_value>
+                </constant>
+              </isotropic>
+            </value>
+            <output />
+          </prescribed>
+        </dry_value>
       </tensor_field>
     </porous_properties>
   </porous_media>
