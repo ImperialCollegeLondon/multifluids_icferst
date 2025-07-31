@@ -1047,8 +1047,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    end if
 
                    !Apply if required the min max principle
-                   call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
-
+                   if (.not. is_magma) call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
                    !Update halo communications
@@ -2762,7 +2761,8 @@ P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
                  petsc_error_scale=max(petsc_error_scale,0.2)
             end if
             ! Let the convergence criteria more relaxed on the first non-linear steps and decreases as the iteration increases
-            solver_tolerance=solver_tolerance*10**(-2.*no_nonlinear_iteration/real(max_nonlinear_iteraion-1)+2./real(max_nonlinear_iteraion-1)+2.)
+            ! solver_tolerance=solver_tolerance*10**(-2.*no_nonlinear_iteration/real(max_nonlinear_iteraion-1)+2./real(max_nonlinear_iteraion-1)+2.)
+            solver_tolerance=solver_tolerance*10./(1.+9.*(no_nonlinear_iteration-1)/(max_nonlinear_iteraion-1))
             print *, 'no_nonlinear_iteration:', no_nonlinear_iteration
             print *, 'solver_tolerance:', solver_tolerance
             show_FPI_conv = 1

@@ -475,7 +475,7 @@ contains
         end if
 
         !HH Initialize all the magma simulation related coefficients
-        if (have_option("/magma_parameters") ) then
+        if (is_magma) then
           call initialize_magma_parameters(magma_phase_coef,  magma_coupling)
           call magma_Coupling_generate (magma_c_phi_series, state, magma_coupling)
           !This is important to specify EnthalpyOld based on the temperature which is easier for the user

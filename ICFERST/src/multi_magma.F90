@@ -486,7 +486,7 @@ contains
   real :: fx, fdashx, Loc_Cp, rho
   !Parameters for the non_linear solvers (Maybe a newton solver here makes sense?)
   real, parameter :: phi_min = 1e-8 !Need to be at least 1e-5 to obtain a relative stable result
-  integer, parameter :: max_its = 100
+  integer, parameter :: max_its = 120
   !!
   integer :: CV_ILOC, cv_nodi
   real :: ELE, He
@@ -507,7 +507,7 @@ contains
   
   is_solid=.true. ! use solid solution phase diagram
   alpha=1
-  n_order=30
+  n_order=35
 
   step_size=0.3
 
@@ -627,7 +627,7 @@ contains
           Composition%val(1,2,cv_nodi)=BulkComposition(cv_nodi)/saturation%val(1,2, cv_nodi)
         end if
       end do
-    else
+    else    
       do cv_nodi = 1, Mdims%cv_nonods
         Ts_local=(alpha*(1.-BulkComposition(cv_nodi))**n_order+(1.-alpha)*(1-BulkComposition(cv_nodi)**(1./n_order)))*(phase_coef%C1-phase_coef%Ts)+phase_coef%Ts
         Loc_Cp = node_val(Cp,cv_nodi) ! Cp%val(cv_nodi)
