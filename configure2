@@ -12138,7 +12138,7 @@ fi
 # Set your custom PETSc installation directory (adjust as needed)
 # Update PETSC_DIR to match the new build path
 # Set PETSc base
-export PETSC_DIR=/media/hh210/data2/Petsc/petsc-3.23.4
+export PETSC_DIR=/media/hh210/data2/Petsc/petsc-3.19.5
 export PETSC_ARCH=arch-linux-c-opt
 
 # Define common PETSc include and library flags
