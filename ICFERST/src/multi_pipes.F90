@@ -1030,7 +1030,7 @@ contains
   subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, final_phase, Mdims, ndgln, DERIV, CV_P, &
                   SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL,&
                   getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, &
-                  mean_pore_cv, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes, porous_heat_coef, assemble_collapsed_to_one_phase )
+                  mean_pore_cv, MEAN_PORE_CV_TOTAL, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes, porous_heat_coef, assemble_collapsed_to_one_phase )
       type(tensor_field), intent(inout) :: tracer
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
