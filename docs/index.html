@@ -107,7 +107,7 @@ Installation</h1>
 <p>1) Download it from github with the following one-line command  
  <CODE>
  <PRE>
- mkdir ICFERST && cd ICFERST && git init && git remote add -t  main  -f origin git@github.com:Multifluids/icferst.git && git checkout main
+ mkdir MultiFluids_Dev && cd MultiFluids_Dev && git init && git remote add -t  master  -f origin git@github.com:ImperialCollegeLondon/multifluids_icferst.git && git checkout master
  </PRE>
  </CODE>
  </p>
@@ -245,7 +245,7 @@ Code Diagram</h2>
     │        │ Loop until        │                 ├─────────────┬───────┤  │    └──►│solve system│
     │        │ convergence       │                 │Compositional├───────┴──┤        └────────────┘ ┌─────────────────────────┐
     │        └───────────────────┤                 └─────────────┘          └──────────────────────►│PHREEQC Update Species   │
-    │                            │                                                                  └─────────────────────────┘ 
+    │                            │                                                                  └─────────────────────────┘
     │                            │       ┌──────────────┐       ┌──────────────┐   ┌─────────┐   ┌───────────┐
     │                            ├──────►│PassiveTracers├───────►multi_dyncore ├──►│cv_assemb│──►│multi_pipes│
     │                            │       └──────────────┘       └┬─────────────┘   └─────────┘   └───────────┘
@@ -456,12 +456,12 @@ Input using python</h3>
    f     = 20./60. #20 breath/min
    angle = np.radians(30.)
    v_ejecta = alpha*np.sin(2.*np.pi*f*t)
-   
+
    if v_ejecta < 0.:
      u = 0.0
    else:
-     u = v_ejecta  * np.cos(angle)  
-   
+     u = v_ejecta  * np.cos(angle)
+
    return u # Return value
  </PRE>
  </CODE>
@@ -481,14 +481,14 @@ Input using python</h3>
  <CODE>
  <PRE>
  import numpy as np
- 
+
  C = state.scalar_fields['PassiveTracer_H2O']
  P = 1.01325e+5
- 
+
  T  = state.scalar_fields['Temperature']
  UV = 0.0
  Ref_temp = 20.615+273.15
- 
+
  for nodeID in range(field.node_count):
    #Convert to relative humidity
    RH=0.263*P*C.node_val(nodeID)*1./(np.exp((17.67*(T.node_val(nodeID)-273.15))/(T.node_val(nodeID)-29.65)))

@@ -988,37 +988,143 @@ if not, vector_field is much faster and the results are the same</a:documentatio
           <optional>
             <element name="porous_properties">
               <a:documentation>Rock properties
-For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conductivity are &lt;b&gt;MANDATORY&lt;/b&gt;</a:documentation>
-              <element name="scalar_field">
-                <a:documentation>Specify scalar field density of the porous media
+For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity, and conductivity are &lt;b&gt;MANDATORY&lt;/b&gt;.
 
-&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
-Double check and convert your input values so they only represent the matrix property
-(e.g. bulk measurement divided by porosity)</a:documentation>
+
+Properties can be specified as either:
+
+- wet_value: effective property calculated as a porosity-weighted average (e.g., phi * water_value + (1 - phi) * dry_value)
+
+- dry_value: property of the dry matrix alone
+
+
+Choose the appropriate input depending on your model.</a:documentation>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field density of the porous media</a:documentation>
                 <attribute name="name">
                   <value>porous_density</value>
                 </attribute>
                 <choice>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
-                    <ref name="output_options"/>
+                  <element name="dry_value">
+                    <choice>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                      <element name="aliased">
+                        <ref name="generic_aliased_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                    </choice>
                   </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
+                  <element name="wet_value">
+                    <choice>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                      <element name="aliased">
+                        <ref name="generic_aliased_field"/>
+                        <ref name="output_options"/>
+                      </element>
+                    </choice>
                   </element>
                 </choice>
               </element>
               <optional>
                 <element name="scalar_field">
-                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
-
-&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
-Double check and convert your input values so they only represent the matrix property
-(e.g. bulk measurement divided by porosity)</a:documentation>
+                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )</a:documentation>
                   <attribute name="name">
                     <value>porous_heat_capacity</value>
+                  </attribute>
+                  <choice>
+                    <element name="dry_value">
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                      </choice>
+                    </element>
+                    <element name="wet_value">
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                      </choice>
+                    </element>
+                  </choice>
+                </element>
+              </optional>
+              <optional>
+                <element name="tensor_field">
+                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )</a:documentation>
+                  <attribute name="name">
+                    <value>porous_thermal_conductivity</value>
+                  </attribute>
+                  <choice>
+                    <element name="dry_value">
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_tensor_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                      </choice>
+                      <optional>
+                        <element name="Wiener_conductivity">
+                          <a:documentation>Apply Wiener method for calculating effective thermal conductivity k = phi*k_f+(1-phi)*k_s
+This method will overestimate the effective thermal conductivity.
+Default is Hashin &amp; Shtrikman method which provides a better estimate.
+Select this option only to use Wiener method.</a:documentation>
+                          <empty/>
+                        </element>
+                      </optional>
+                    </element>
+                    <element name="wet_value">
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_tensor_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                          <ref name="output_options"/>
+                        </element>
+                      </choice>
+                    </element>
+                  </choice>
+                </element>
+              </optional>
+              <optional>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field compressibility of the porous media
+( in Pa-1 den = den_surface*exp(Coef*(P_res-P_surface))
+with P_surf = 10^5 Pa )
+
+Here the term &lt;b&gt;Coef&lt;/b&gt; is specified.
+
+Temporarily P_surface can be defined from /numerical_methods/Surface_pressure</a:documentation>
+                  <attribute name="name">
+                    <value>porous_compressibility</value>
                   </attribute>
                   <choice>
                     <element name="prescribed">
@@ -1034,42 +1140,19 @@ Double check and convert your input values so they only represent the matrix pro
                 </element>
               </optional>
               <optional>
-                <element name="tensor_field">
-                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )
-
-&lt;b&gt;NOTE&lt;/b&gt;: Property specified here is &lt;b&gt;matrix value&lt;/b&gt;(bulk = pore space + matrix).
-Double check and convert your input values so they only represent the matrix property
-(e.g. bulk measurement divided by porosity)</a:documentation>
-                  <attribute name="name">
-                    <value>porous_thermal_conductivity</value>
-                  </attribute>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_tensor_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <optional>
-                    <element name="Wiener_conductivity">
-                      <a:documentation>Apply Wiener method for calculating effective thermal conductivity k = phi*k_f+(1-phi)*k_s
-This method will overestimate the effective thermal conductivity. Default is to use Hashin &amp; Shtrikman
-method which provides a better estimate of the effective thermal conductivity. Only select this option
-if you want to use the Wiener method.</a:documentation>
-                      <empty/>
-                    </element>
-                  </optional>
-                </element>
-              </optional>
-              <optional>
                 <element name="scalar_field">
-                  <a:documentation>Specify scalar field compressibility of the porous media
-( in Pa-1 den = den_surface*exp(Coef*(P_res-P_surface))
-with P_surf = 10^5 Pa )
+                  <a:documentation>Specify scalar field: total porosity
+This field defines the *total porosity* of the porous medium, which is the sum of effective and non-effective porosity.
+It represents the full volume fraction of pore space, including both flow-connected (effective) and non-connected (non-effective) voids.
+When activated, this field is used to calculate *wet* thermophysical properties, such as thermal conductivity, density and heat capacity.
 
-Here the term &lt;b&gt;Coef&lt;/b&gt; is specified.
+*** IMPORTANT NOTE ***
 
-Temporarily P_surface can be defined from /numerical_methods/Surface_pressure</a:documentation>
+If the option is enabled, you must define the total porosity field across all regions, even those where total porosity equals the effective porosity.
+In such cases, simply assign the same value to both the "Porosity" and "porosity_total" fields.
+The effective porosity is specified via the "Porosity" field in IC-FERST and is used in flow and transport calculations.</a:documentation>
                   <attribute name="name">
-                    <value>porous_compressibility</value>
+                    <value>porosity_total</value>
                   </attribute>
                   <choice>
                     <element name="prescribed">
@@ -1511,6 +1594,8 @@ Also, it is required to define porous_properties (porous_density, porous_heat_ca
                     <ref name="material_mesh_choice"/>
                     <ref name="prescribed_scalar_field"/>
                     <ref name="output_options"/>
+<<<<<<< HEAD
+=======
                   </element>
                   <element name="aliased">
                     <ref name="generic_aliased_field"/>
@@ -1528,6 +1613,7 @@ Also, it is required to define porous_properties (porous_density, porous_heat_ca
                     <ref name="material_mesh_choice"/>
                     <ref name="prescribed_scalar_field"/>
                     <ref name="output_options"/>
+>>>>>>> b5880beadc9d73db73d6ca1c7a904372a0243262
                   </element>
                   <element name="aliased">
                     <ref name="generic_aliased_field"/>
@@ -1536,6 +1622,26 @@ Also, it is required to define porous_properties (porous_density, porous_heat_ca
                 </choice>
               </element>
               <element name="scalar_field">
+<<<<<<< HEAD
+                <a:documentation>Specify scalar field for the K_T coefficient.</a:documentation>
+                <attribute name="name">
+                  <value>K_T</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+=======
+>>>>>>> b5880beadc9d73db73d6ca1c7a904372a0243262
                 <a:documentation>Specify scalar field for the K_c2 coefficient.</a:documentation>
                 <attribute name="name">
                   <value>K_c2</value>
@@ -5216,10 +5322,19 @@ Introduce the same name as the scalar field being used. For example: Tracer_CO2<
               </zeroOrMore>
             </element>
             <element name="BW_eos">
+<<<<<<< HEAD
               <a:documentation>Batzle and Wang (1992) EOS
 Use for basin scale simulations.
 Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg salinity.
 
+=======
+              <a:documentation>Batzle and Wang (1992) EOS - "Seismic properties of pore fluids"
+
+Use for basin scale simulations.
+
+Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg salinity.
+
+>>>>>>> b5880beadc9d73db73d6ca1c7a904372a0243262
 NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentation>
               <optional>
                 <element name="C0">
@@ -5236,6 +5351,38 @@ NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentati
               <optional>
                 <element name="P0">
                   <a:documentation>Reference pressure (default 1e5 Pa)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="Remove_P_dependencies">
+                  <a:documentation>Remove pressure terms in BW EOS by setting P=0. This is a temporary fix to running sim with well domains with non-Boussinesq</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+            <element name="IAPWS1995_eos">
+              <a:documentation>IAPWS (1995) EOS
+
+Valid for freshwater
+
+Note: This EOS does not include pressure or salinity dependence. Reference density is calculated using reference T0.</a:documentation>
+              <optional>
+                <element name="T0">
+                  <a:documentation>Reference temperature (default 298)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+            </element>
+            <element name="LL2009_eos">
+              <a:documentation>Lewis and Lowell (2009) EOS - "Numerical modeling of two-phase flow in the NaCl-H2O system"
+
+Valid for 3.2 wt% salinity
+
+Note: This EOS does not include pressure or salinity dependence. Reference density is calculated using reference T0.</a:documentation>
+              <optional>
+                <element name="T0">
+                  <a:documentation>Reference temperature (default 298)</a:documentation>
                   <ref name="real"/>
                 </element>
               </optional>

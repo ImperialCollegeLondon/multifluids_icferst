@@ -184,7 +184,8 @@ contains
         real, dimension( :, :, : ), allocatable :: &
             Velocity_Absorption, Temperature_Absorption
         real, dimension( :, : ), allocatable ::sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
-        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter, SFPI_taken, pres_its_taken
+        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter, SFPI_taken, pres_its_taken, n_bcs
+        logical :: global_hydrostatic_bc
         real, dimension( : ), allocatable :: rsum
         real, dimension(:, :), allocatable :: SUF_SIG_DIAGTEN_BC
         type( scalar_field ), pointer :: cfl, rc_field
@@ -207,7 +208,9 @@ contains
         type(tensor_field), pointer :: tracer_field, tracer_field2, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(tensor_field), pointer :: perm_field
-        type(vector_field), pointer :: positions, porosity_field, MeanPoreCV, PythonPhaseVolumeFractionSource
+        type(vector_field), pointer :: positions, porosity_field, MeanPoreCV, PythonPhaseVolumeFractionSource, porosity_total_field
+        logical :: have_porosity_total = .false.
+        logical, save :: have_been_read = .false.
         type(scalar_field), pointer :: DensitySource, T
         !Variables that are used to define the pipe pos
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
@@ -386,10 +389,24 @@ contains
           end do
         end if
 
-!Check that we have specified Boundary conditions for density
+        ! Check if hydrostatic boundary conditions are present in any phase
+        global_hydrostatic_bc = .false.  ! Initialize flag to false
+        do iphase = 0, Mdims%nphase - 1
+          n_bcs = option_count("/material_phase[" // int2str(iphase) // "]/scalar_field::Pressure/prognostic/boundary_conditions")
+          do i = 1, n_bcs
+            if (have_option("/material_phase[" // int2str(iphase) // "]/scalar_field::Pressure/prognostic/boundary_conditions[" // int2str(i - 1) // "]/type::dirichlet/hydrostatic_boundaries")) then
+              global_hydrostatic_bc = .true.
+              exit
+            end if
+          end do
+          ! Exit the outer loop early if hydrostatic BC already found in any phase
+          if (global_hydrostatic_bc) exit
+        end do
+
+        ! Check that we have specified Boundary conditions for density
         if (have_option_for_any_phase("phase_properties/Density/compressible", Mdims%ndim) .or. &
           have_option_for_any_phase("phase_properties/Density/python_state", Mdims%ndim) .or. &
-          have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/hydrostatic_boundaries' )) then
+          global_hydrostatic_bc) then
           do i = 1, Mdims%nphase
             if (getprocno() == 1 .and. &
             (.not. (have_option('/material_phase[' // int2str( i - 1 ) // ']/phase_properties/Density/boundary_conditions') .or. &
@@ -593,6 +610,18 @@ contains
             call copy_packed_new_to_old( packed_state )
             ExitNonLinearLoop = .false.
             porosity_field=>extract_vector_field(packed_state,"Porosity")
+
+            if ( .not. have_been_read ) then
+              have_porosity_total = have_option("/porous_media/porous_properties/scalar_field::porosity_total")
+              have_been_read = .true.
+            end if
+
+            if (have_porosity_total) then
+              porosity_total_field=>extract_vector_field(packed_state,"porosity_total")
+            else
+              porosity_total_field=>extract_vector_field(packed_state,"Porosity") ! dummy
+            end if
+
             ! evaluate prescribed fields at time = current_time+dt
             call set_prescribed_field_values( state, exclude_interpolated = .true., &
                 exclude_nonreprescribed = .true., time = acctim )
@@ -679,7 +708,7 @@ contains
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
-                        dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
+                        dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, porosity_total_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
                         calculate_mass_delta, outfluxes, pres_its_taken, its, Courant_number)
                 end if Conditional_ForceBalanceEquation
@@ -715,7 +744,7 @@ contains
                       call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
-                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
+                        ScalarField_Source_Store, Porosity_field%val,porosity_total_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
                     else 
                       ! print *, "Newton iteration", its, picard_its
@@ -756,7 +785,7 @@ contains
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                        suf_sig_diagten_bc, Porosity_field%val, &
+                        suf_sig_diagten_bc, Porosity_field%val, porosity_total_field%val, &
                         !!$
                         0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                         THETA_GDIFF, eles_with_pipe, pipes_aux, &
@@ -816,7 +845,7 @@ contains
                       call Tracer_Assemble_Solve( trim(option_name), state, packed_state, &
                       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                       tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                      suf_sig_diagten_bc, Porosity_field%val, &
+                      suf_sig_diagten_bc, Porosity_field%val, porosity_total_field%val, &
                       !!$
                       0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                       THETA_GDIFF, eles_with_pipe, pipes_aux, &
@@ -895,7 +924,7 @@ contains
                   call Tracer_Assemble_Solve( trim(option_name), state, packed_state, &
                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                     tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                    suf_sig_diagten_bc, Porosity_field%val, &
+                    suf_sig_diagten_bc, Porosity_field%val, porosity_total_field%val, &
                     !!$
                     0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                     THETA_GDIFF, eles_with_pipe, pipes_aux, &
@@ -1742,6 +1771,12 @@ contains
             end do
             !Pointing to porosity again is required
             porosity_field=>extract_vector_field(packed_state,"Porosity")
+            if (have_porosity_total) then
+              porosity_total_field=>extract_vector_field(packed_state,"porosity_total")
+            else
+              porosity_total_field=>extract_vector_field(packed_state,"Porosity") ! dummy
+            end if
+
             !Now we have to converge again within the same time-step
             ExitNonLinearLoop = .false.; its = 1
             adapt_mesh_in_FPI = .false.

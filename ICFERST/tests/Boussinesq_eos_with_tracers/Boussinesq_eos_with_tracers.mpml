@@ -96,7 +96,7 @@
           <mesh name="CoordinateMesh"/>
           <value name="WholeMesh">
             <constant>
-              <real_value shape="2" dim1="dim" rank="1">-1 0</real_value>
+              <real_value rank="1" dim1="dim" shape="2">-1 0</real_value>
             </constant>
           </value>
           <stat>
@@ -151,7 +151,7 @@
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
-    <scalar_field name="Pressure" rank="0">
+    <scalar_field rank="0" name="Pressure">
       <prognostic>
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
@@ -166,17 +166,17 @@
         <output/>
       </prognostic>
     </scalar_field>
-    <vector_field name="Velocity" rank="1">
+    <vector_field rank="1" name="Velocity">
       <prognostic>
         <mesh name="VelocityMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value shape="2" dim1="dim" rank="1">0 0</real_value>
+            <real_value rank="1" dim1="dim" shape="2">0 0</real_value>
           </constant>
         </initial_condition>
         <boundary_conditions name="up_down">
           <surface_ids>
-            <integer_value shape="2" rank="1">9 10</integer_value>
+            <integer_value rank="1" shape="2">9 10</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -196,7 +196,7 @@
         </boundary_conditions>
         <boundary_conditions name="right_left">
           <surface_ids>
-            <integer_value shape="2" rank="1">7 8</integer_value>
+            <integer_value rank="1" shape="2">7 8</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -240,7 +240,7 @@
         <output/>
       </prognostic>
     </vector_field>
-    <scalar_field name="PhaseVolumeFraction" rank="0">
+    <scalar_field rank="0" name="PhaseVolumeFraction">
       <prognostic>
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
@@ -254,7 +254,7 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
-    <scalar_field name="Concentration" rank="0">
+    <scalar_field rank="0" name="Concentration">
       <prognostic>
         <mesh name="PressureMesh"/>
         <Impose_min_max>
@@ -276,7 +276,7 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
-    <scalar_field name="PassiveTracer_Example2" rank="0">
+    <scalar_field rank="0" name="PassiveTracer_Example2">
       <prognostic>
         <mesh name="PressureMesh"/>
         <Impose_min_max>
@@ -296,6 +296,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
   </material_phase>

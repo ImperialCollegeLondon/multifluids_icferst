@@ -240,7 +240,7 @@ class vtu:
   def ApplyCoordinateTransformation(self,f):
     """Applys a coordinate transformation to the grid coordinates. This overwrites the existing values."""
     npoints = self.ugrid.GetNumberOfPoints ()
-    
+
     for i in range (npoints):
       (x,y,z) = self.ugrid.GetPoint (i)
       newX = f(arr([x,y,z]),t=0)
@@ -249,7 +249,7 @@ class vtu:
   def ApplyEarthProjection(self):
     """ Assume the input geometry is the Earth in Cartesian geometry and project to longatude, latitude, depth."""
     npoints = self.ugrid.GetNumberOfPoints ()
-    
+
     earth_radius = 6378000.0
     rad_to_deg = 180.0/math.pi
     deg_to_rad = math.pi/180.0
@@ -260,8 +260,8 @@ class vtu:
       r = math.sqrt(x*x+y*y+z*z)
       depth = r - earth_radius
       longitude = rad_to_deg*math.atan2(y, x)
-      latitude = 90.0 - rad_to_deg*math.acos(z/r)   
-      
+      latitude = 90.0 - rad_to_deg*math.acos(z/r)
+
       self.ugrid.GetPoints ().SetPoint (i, longitude, latitude, depth)
 
   def ProbeData(self, coordinates, name):
@@ -340,16 +340,16 @@ class vtu:
     integral = 0.0
 
     n_cells = self.ugrid.GetNumberOfCells()
-    vtkGhostLevels = self.ugrid.GetCellData().GetArray("vtkGhostLevels")
+    vtkGhostType = self.ugrid.GetCellData().GetArray("vtkGhostType")
     for cell_no in range(n_cells):
       integrate_cell = True
-      
-      if vtkGhostLevels:
-        integrate_cell = (vtkGhostLevels.GetTuple1(cell_no) == 0)
+
+      if vtkGhostType:
+        integrate_cell = (vtkGhostType.GetTuple1(cell_no) == 0)
 
       if integrate_cell:
         Cell = self.ugrid.GetCell(cell_no)
-        
+
         Cell_points = Cell.GetPoints ()
         nCell_points = Cell.GetNumberOfPoints()
         if nCell_points == 4:
@@ -365,11 +365,11 @@ class vtu:
           raise Exception("Unexpected number of points: " + str(nCell_points))
 
         Cell_ids = Cell.GetPointIds()
-        
+
         for point in range(Cell_ids.GetNumberOfIds()):
           PointId = Cell_ids.GetId(point)
           integral = integral + (Volume*field[PointId] / float(nCell_points))
-          
+
     return integral
 
   def GetCellVolume(self, id):
@@ -446,7 +446,7 @@ class vtu:
     probe.Update ()
 
     return probe.GetOutput()
-  
+
   def GetDerivative(self, name):
     """
     Returns the derivative of field 'name', a
@@ -557,7 +557,7 @@ class VTU_Probe(object):
     nc=vtkdata.GetNumberOfComponents()
     nt=vtkdata.GetNumberOfTuples()
     array = arr([vtkdata.GetValue(i) for i in range(nt * nc)])
-    
+
     # Fix the point data at invalid nodes
     if len(self.invalidNodes) > 0:
       oldField = self.ugrid.GetPointData().GetArray(name)
@@ -569,7 +569,7 @@ class VTU_Probe(object):
       for invalidNode, nearest in self.invalidNodes:
         for comp in range(nc):
           array[invalidNode * nc + comp] = oldField.GetValue(nearest * nc + comp)
-          
+
     # this is a copy and paster from vtu.GetField above:
     if nc==9:
       return array.reshape(nt,3,3)
@@ -577,9 +577,9 @@ class VTU_Probe(object):
       return array.reshape(nt,2,2)
     else:
       return array.reshape(nt,nc)
-          
+
     return array
-    
+
 def VtuMatchLocations(vtu1, vtu2, tolerance = 1.0e-6):
   """
   Check that the locations in the supplied vtus match exactly, returning True if they
@@ -606,13 +606,13 @@ def VtuMatchLocationsArbitrary(vtu1, vtu2, tolerance = 1.0e-6):
   match and False otherwise.
   The locations may be in a different order.
   """
-   
+
   locations1 = vtu1.GetLocations()
   locations2 = vtu2.GetLocations()
 
   if not locations1.shape == locations2.shape:
-    return False   
-    
+    return False
+
   for j in range(locations1.shape[1]):
     # compute the smallest possible precision given the range of this coordinate
     epsilon = numpy.finfo(numpy.float).eps * numpy.abs(locations1[:,j]).max()
@@ -631,7 +631,7 @@ def VtuMatchLocationsArbitrary(vtu1, vtu2, tolerance = 1.0e-6):
   # lexical sort on x,y and z coordinates resp. of locations1 and locations2
   sort_index1=numpy.lexsort(locations1.T)
   sort_index2=numpy.lexsort(locations2.T)
-  
+
   # should now be in same order, so we can check for its biggest difference
   return numpy.allclose(locations1[sort_index1],locations2[sort_index2], atol=tolerance)
 
@@ -679,14 +679,14 @@ def VtuDiff(vtu1, vtu2, filename = None):
   if useProbe:
     # meshes are different - we can't interpolate cell-based fields so let's just remove them from the output
     for fieldName in fieldNames1:
-      if fieldName=='vtkGhostLevels':
+      if fieldName=='vtkGhostType':
         # this field should just be passed on unchanged
         continue
       resultVtu.RemoveField(fieldName)
   else:
     # meshes are the same - we can simply subtract
     for fieldName in fieldNames1:
-      if fieldName=='vtkGhostLevels':
+      if fieldName=='vtkGhostType':
         # this field should just be passed on unchanged
         continue
       elif fieldName in fieldNames2:
@@ -696,4 +696,4 @@ def VtuDiff(vtu1, vtu2, filename = None):
       else:
         resultVtu.RemoveField(fieldName)
 
-  return resultVtu  
+  return resultVtu

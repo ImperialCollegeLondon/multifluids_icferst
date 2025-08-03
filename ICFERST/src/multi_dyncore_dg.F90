@@ -102,7 +102,7 @@ contains
   SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
-       SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
+       SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, VOLFRA_PORE_TOTAL, &
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
        THETA_GDIFF, eles_with_pipe, pipes_aux, &
        option_path, &
@@ -131,7 +131,7 @@ contains
            REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
            REAL, intent( in ) :: DT
            REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-           REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+           REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE, VOLFRA_PORE_TOTAL
            character( len = * ), intent( in ), optional :: option_path
            real, dimension( : ), intent( inout ), optional :: mass_ele_transp
            type(tensor_field), intent(in), optional :: saturation
@@ -153,7 +153,7 @@ contains
            type( tensor_field ), pointer :: P, Q
            INTEGER :: IPHASE, its_taken, ipres
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
-           type( vector_field ), pointer  :: MeanPoreCV, python_vfield
+           type( vector_field ), pointer  :: MeanPoreCV, python_vfield, MeanPoreCV_total
            integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat, stat
            type(vector_field)  :: vtracer, residual
            type(csr_sparsity), pointer :: sparsity
@@ -342,6 +342,7 @@ contains
            call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+           MeanPoreCV_total=>extract_vector_field(packed_state,"MeanPoreCV_total")
 NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
                 !we set up 5 iterations but if it converges => we exit straigth away
 temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the petsc bug hits us here, we can retry
@@ -407,11 +408,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
                    SUF_SIG_DIAGTEN_BC, &
                    DERIV%val(1,:,:), P%val, &
-                   T_SOURCE, T_ABSORB, VOLFRA_PORE, &
+                   T_SOURCE, T_ABSORB, VOLFRA_PORE, VOLFRA_PORE_TOTAL, &
                    GETCV_DISC, GETCT, &
                    IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                   MeanPoreCV%val, &
+                   MeanPoreCV%val, MeanPoreCV_total%val, &
                    mass_Mn_pres, THERMAL, &
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, &
@@ -480,31 +481,164 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
           implicit none
         REAL, DIMENSION( : ), intent(inout) :: porous_heat_coef, porous_heat_coef_old
         !Local variables
-        type( scalar_field ), pointer :: porosity, density_porous, Cp_porous, density_porous_old
-        integer :: ele, cv_inod, iloc, p_den, h_cap, ele_nod
+        type( scalar_field ), pointer :: porosity, porosity_total, density_porous, Cp_porous, density_porous_old
+        type( tensor_field ), pointer :: density, density_old, rho_cp
+        integer :: ele, cv_inod, iloc, p_den, h_cap, ele_nod, iphase
         real, dimension(Mdims%cv_nonods) :: cv_counter
-        real :: auxR
+        real :: auxR, dry_density, dry_cp, dry_density_old, wet_density, ref_density, ref_density_old, cp_fluid, phi, one_minus_phi
+        logical :: is_cp_porous_wet, is_density_porous_wet, have_porosity_total = .false.
+        logical, save :: have_been_read = .false.
+
+        is_cp_porous_wet = have_option("/porous_media/porous_properties/scalar_field::porous_heat_capacity/wet_value")
+        is_density_porous_wet = have_option("/porous_media/porous_properties/scalar_field::porous_density/wet_value")
 
         density_porous => extract_scalar_field( state(1), "porous_density" )
         density_porous_old => extract_scalar_field( state(1), "porous_density_old" )
         Cp_porous => extract_scalar_field( state(1), "porous_heat_capacity" )
         porosity=>extract_scalar_field(state(1),"Porosity")
+        density => extract_tensor_field( packed_state, "PackedDensity" )
+        density_old => extract_tensor_field( packed_state, "PackedOldDensity" )
+        rho_cp => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+
+        if ( .not. have_been_read ) then
+          have_porosity_total = have_option("/porous_media/porous_properties/scalar_field::porosity_total")
+          have_been_read = .true.
+        end if
+
+        if (have_porosity_total) then
+          porosity_total=>extract_scalar_field(state(1),"porosity_total")
+        else
+          porosity_total=>extract_scalar_field(state(1),"Porosity") ! dummy
+        end if
+
         porous_heat_coef = 0.
         porous_heat_coef_old = 0.
         cv_counter = 0
-        do ele = 1, Mdims%totele
-            p_den = min(size(density_porous%val), ele)
-            h_cap = min(size(Cp_porous%val), ele)
-            ele_nod = min(size(porosity%val), ele)
-            do iloc = 1, Mdims%cv_nloc
-                cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
-                porous_heat_coef( cv_inod ) = porous_heat_coef( cv_inod ) + &
-                density_porous%val(p_den ) * Cp_porous%val( h_cap )
-                porous_heat_coef_old( cv_inod ) = porous_heat_coef_old( cv_inod ) + &
-                    density_porous_old%val(p_den ) * Cp_porous%val( h_cap )
+
+        if (have_porosity_total) then
+          do iphase = 1, Mdims%nphase
+            if (has_boussinesq_aprox) then
+                ref_density = retrieve_reference_density(state, packed_state, iphase, lcomp, Mdims%nphase)
+                ref_density_old = ref_density
+            end if
+
+            do ele = 1, Mdims%totele
+                p_den = min(size(density_porous%val), ele)
+                h_cap = min(size(Cp_porous%val), ele)
+                ele_nod = min(size(porosity_total%val), ele)
+                do iloc = 1, Mdims%cv_nloc
+                    cv_inod = ndgln%cv((ele - 1) * Mdims%cv_nloc + iloc)
+                    cv_counter(cv_inod) = cv_counter(cv_inod) + 1.0
+
+                    phi = porosity_total%val(ele_nod)
+                    one_minus_phi = 1.0 - phi
+
+                    ! Get local density or reference density
+                    if (.not. has_boussinesq_aprox) then
+                        ref_density = density%val(1, iphase, cv_inod)
+                        ref_density_old = density_old%val(1, iphase, cv_inod)
+                    end if
+
+                    cp_fluid = rho_cp%val(1, iphase, cv_inod) / density%val(1, iphase, cv_inod)
+
+                    ! Handle all wet/dry combinations
+                    if (is_cp_porous_wet .and. is_density_porous_wet) then
+                        ! Convert both
+                        dry_density = (density_porous%val(p_den) - ref_density * phi) / one_minus_phi
+                        dry_density_old = (density_porous_old%val(p_den) - ref_density_old * phi) / one_minus_phi
+                        dry_cp = (density_porous%val(p_den) * Cp_porous%val(h_cap) - ref_density * cp_fluid * phi) / (dry_density * one_minus_phi)
+
+                    elseif (.not. is_cp_porous_wet .and. is_density_porous_wet) then
+                        ! Only density is wet
+                        dry_density = (density_porous%val(p_den) - ref_density * phi) / one_minus_phi
+                        dry_density_old = (density_porous_old%val(p_den) - ref_density_old * phi) / one_minus_phi
+                        dry_cp = Cp_porous%val(h_cap)
+
+                    elseif (is_cp_porous_wet .and. .not. is_density_porous_wet) then
+                        ! Only cp is wet
+                        dry_density = density_porous%val(p_den)
+                        dry_density_old = density_porous_old%val(p_den)
+                        wet_density = phi * ref_density + one_minus_phi * dry_density
+                        dry_cp = (wet_density * Cp_porous%val(h_cap) - ref_density * cp_fluid * phi) / (dry_density * one_minus_phi)
+
+                    else
+                        ! Use both as dry
+                        dry_density = density_porous%val(p_den)
+                        dry_density_old = density_porous_old%val(p_den)
+                        dry_cp = Cp_porous%val(h_cap)
+
+                    end if
+
+                    ! Add contribution
+                    porous_heat_coef(cv_inod) = porous_heat_coef(cv_inod) + dry_density * dry_cp
+                    porous_heat_coef_old(cv_inod) = porous_heat_coef_old(cv_inod) + dry_density_old * dry_cp
+
+                end do
             end do
-        end do
+          end do
+        else
+          do iphase = 1, Mdims%nphase
+            if (has_boussinesq_aprox) then
+                ref_density = retrieve_reference_density(state, packed_state, iphase, lcomp, Mdims%nphase)
+                ref_density_old = ref_density
+            end if
+
+            do ele = 1, Mdims%totele
+                p_den = min(size(density_porous%val), ele)
+                h_cap = min(size(Cp_porous%val), ele)
+                ele_nod = min(size(porosity%val), ele)
+                do iloc = 1, Mdims%cv_nloc
+                    cv_inod = ndgln%cv((ele - 1) * Mdims%cv_nloc + iloc)
+                    cv_counter(cv_inod) = cv_counter(cv_inod) + 1.0
+
+                    phi = porosity%val(ele_nod)
+                    one_minus_phi = 1.0 - phi
+
+                    ! Get local density or reference density
+                    if (.not. has_boussinesq_aprox) then
+                        ref_density = density%val(1, iphase, cv_inod)
+                        ref_density_old = density_old%val(1, iphase, cv_inod)
+                    end if
+
+                    cp_fluid = rho_cp%val(1, iphase, cv_inod) / density%val(1, iphase, cv_inod)
+
+                    ! Handle all wet/dry combinations
+                    if (is_cp_porous_wet .and. is_density_porous_wet) then
+                        ! Convert both
+                        dry_density = (density_porous%val(p_den) - ref_density * phi) / one_minus_phi
+                        dry_density_old = (density_porous_old%val(p_den) - ref_density_old * phi) / one_minus_phi
+                        dry_cp = (density_porous%val(p_den) * Cp_porous%val(h_cap) - ref_density * cp_fluid * phi) / (dry_density * one_minus_phi)
+
+                    elseif (.not. is_cp_porous_wet .and. is_density_porous_wet) then
+                        ! Only density is wet
+                        dry_density = (density_porous%val(p_den) - ref_density * phi) / one_minus_phi
+                        dry_density_old = (density_porous_old%val(p_den) - ref_density_old * phi) / one_minus_phi
+                        dry_cp = Cp_porous%val(h_cap)
+
+                    elseif (is_cp_porous_wet .and. .not. is_density_porous_wet) then
+                        ! Only cp is wet
+                        dry_density = density_porous%val(p_den)
+                        dry_density_old = density_porous_old%val(p_den)
+                        wet_density = phi * ref_density + one_minus_phi * dry_density
+                        dry_cp = (wet_density * Cp_porous%val(h_cap) - ref_density * cp_fluid * phi) / (dry_density * one_minus_phi)
+
+                    else
+                        ! Use both as dry
+                        dry_density = density_porous%val(p_den)
+                        dry_density_old = density_porous_old%val(p_den)
+                        dry_cp = Cp_porous%val(h_cap)
+
+                    end if
+
+                    ! Add contribution
+                    porous_heat_coef(cv_inod) = porous_heat_coef(cv_inod) + dry_density * dry_cp
+                    porous_heat_coef_old(cv_inod) = porous_heat_coef_old(cv_inod) + dry_density_old * dry_cp
+
+                end do
+            end do
+          end do
+        end if
+
         !Since nodes are visited more than once, this performs a simple average
         !This is the order it has to be done
         auxR = 1.0
@@ -612,7 +746,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
   SUBROUTINE Tracer_Assemble_Solve( Tracer_name, state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
-       SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
+       SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, VOLFRA_PORE_TOTAL, &
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
        THETA_GDIFF, eles_with_pipe, pipes_aux, &
        mass_ele_transp, &
@@ -640,7 +774,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
            REAL, intent( in ) :: DT
            REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-           REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+           REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE, VOLFRA_PORE_TOTAL
            real, dimension( : ), intent( inout ), optional :: mass_ele_transp
            type(tensor_field), intent(in), optional :: saturation
            type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
@@ -662,7 +796,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type( tensor_field ), pointer :: P, Q
            INTEGER :: IPHASE, its_taken, ipres, i, stat
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
-           type( vector_field ), pointer  :: MeanPoreCV, python_vfield
+           type( vector_field ), pointer  :: MeanPoreCV, python_vfield, MeanPoreCV_total
            integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat
            type(vector_field)  :: residual
            type(csr_sparsity), pointer :: sparsity
@@ -700,6 +834,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            old_tracer_field=>extract_tensor_field(packed_state,"PackedOld"//trim(Tracer_name), stat)
            old_density_field => extract_tensor_field(packed_state,"PackedOldDensity")
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+           MeanPoreCV_total=>extract_vector_field(packed_state,"MeanPoreCV_total")
            cv_volume=> extract_vector_field(packed_state,"CVIntegral")
 
            !Initialise with an out of range value to be able to check it hasn't been
@@ -872,11 +1007,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
                    SUF_SIG_DIAGTEN_BC, &
                    DERIV%val(1,:,:), P%val, &
-                   T_SOURCE, T_ABSORB, VOLFRA_PORE, &
+                   T_SOURCE, T_ABSORB, VOLFRA_PORE, VOLFRA_PORE_TOTAL, &
                    GETCV_DISC, GETCT, &
                    IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                   MeanPoreCV%val, &
+                   MeanPoreCV%val, MeanPoreCV_total%val, &
                    mass_Mn_pres, .false., &
                    .true.,  mass_Mn_pres, &
                    mass_ele_transp, &
@@ -950,7 +1085,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
-         V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
+         V_SOURCE, VOLFRA_PORE, VOLFRA_PORE_TOTAL, igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, time_step, SFPI_taken, SFPI_its, Courant_number,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
              implicit none
@@ -972,7 +1107,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
              REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
              !REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
-             REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+             REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE, VOLFRA_PORE_TOTAL
              real, dimension( : ), intent( inout ) :: mass_ele_transp
              integer, intent(in) :: nonlinear_iteration
              integer, intent(in) :: time_step
@@ -990,7 +1125,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
              REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
              REAL, DIMENSION( :, : ), allocatable :: T2, T2OLD
-             REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
+             REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV, MEAN_PORE_CV_TOTAL
              LOGICAL :: GET_THETA_FLUX
              INTEGER :: STAT, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES, cv_nodi
              LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
@@ -1079,6 +1214,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !#### Create dummy variables required for_cv_assemb with no memory usage ####
              deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
              ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods ) )
+             ALLOCATE( MEAN_PORE_CV_TOTAL( Mdims%npres, Mdims%cv_nonods ) )
              ALLOCATE( mass_mn_pres(size(Mspars%small_acv%col)) ) ; mass_mn_pres = 0.
 
 
@@ -1138,11 +1274,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
                      SUF_SIG_DIAGTEN_BC, &
                      DERIV%val(1,:,:), P, &
-                     V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+                     V_SOURCE, V_ABSORB, VOLFRA_PORE, VOLFRA_PORE_TOTAL, &
                      GETCV_DISC, GETCT, &
                      IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
                      THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                     MEAN_PORE_CV, &
+                     MEAN_PORE_CV, MEAN_PORE_CV_TOTAL, &
                      mass_Mn_pres, THERMAL, &
                      .false.,  mass_Mn_pres, &
                      mass_ele_transp, &          !Capillary variables
@@ -1330,7 +1466,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              deallocate( THETA_GDIFF, Mmat%CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
              !#### Deallocate dummy variables required for_cv_assemb with no memory usage ####
 
-             DEALLOCATE( mass_mn_pres, MEAN_PORE_CV)
+             DEALLOCATE( mass_mn_pres, MEAN_PORE_CV, MEAN_PORE_CV_TOTAL)
              DEALLOCATE( sat_bak, backtrack_sat )
              call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
              if (backtrack_par_factor < 1.01) call deallocate(residual)
@@ -1996,8 +2132,10 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
          type(tensor_field), pointer :: tracer_field, velocity_field, multicomp_density_field, saturation_field, old_saturation_field   !, tracer_source
          type(tensor_field), pointer :: PhaseVolumeFractionComponentSource, PhaseDensity, ComponentDensity, OldComponentDensity
          type(tensor_field), pointer :: Component_Absorption, perm_field, ComponentMassFraction, OldComponentMassFraction
-         type(vector_field), pointer :: porosity_field, MeanPoreCV
+         type(vector_field), pointer :: porosity_field, MeanPoreCV, MeanPoreCV_total, porosity_total_field
          real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j
+         logical :: have_porosity_total = .false.
+         logical, save :: have_been_read = .false.
 
          !Obtain the number of faces in the control volume space
          ncv_faces=CV_count_faces( Mdims, Mdisopt%cv_ele_type, CV_GIDIMS = CV_GIdims)
@@ -2027,6 +2165,19 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         ComponentMassFraction  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
         OldComponentMassFraction  => extract_tensor_field( packed_state, "PackedOldComponentMassFraction" )
 
+        if ( .not. have_been_read ) then
+          have_porosity_total = have_option("/porous_media/porous_properties/scalar_field::porosity_total")
+          have_been_read = .true.
+        end if
+
+        if (have_porosity_total) then
+          porosity_total_field=>extract_vector_field(packed_state,"porosity_total")
+          MeanPoreCV_total=>extract_vector_field(packed_state,"MeanPoreCV_total")
+        else
+          porosity_total_field=>extract_vector_field(packed_state,"Porosity") ! dummy
+          MeanPoreCV_total => extract_vector_field(packed_state,"MeanPoreCV") ! dummy
+        end if
+
         !!$ Starting loop over components
         Loop_Components: do icomp = 1, Mdims%ncomp
             tracer_field=>extract_tensor_field(multicomponent_state(icomp),"PackedComponentMassFraction")
@@ -2050,7 +2201,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                 call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                     tracer_field,velocity_field,multicomp_density_field, multi_absorp, dt, &
-                    SUF_SIG_DIAGTEN_BC, Porosity_field%val, &
+                    SUF_SIG_DIAGTEN_BC, Porosity_field%val, porosity_total_field%val, &
                     1, 1, &!igot_t2, igot_theta_flux
                     Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux, &
                     theta_gdiff, eles_with_pipe, pipes_aux,&
@@ -2220,7 +2371,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt,  &
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
-        DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, &
+        DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, VOLFRA_PORE_TOTAL, &
         IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J,&
         calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, Courant_number)
         IMPLICIT NONE
@@ -2245,7 +2396,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         REAL, intent( in ) :: DT
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
         !REAL, DIMENSION(  : ,  : ,: ), intent( in ) :: V_ABSORB
-        REAL, DIMENSION(  :, :  ), intent( in ) :: VOLFRA_PORE
+        REAL, DIMENSION(  :, :  ), intent( in ) :: VOLFRA_PORE, VOLFRA_PORE_TOTAL
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         type (multi_outfluxes), intent(inout) :: outfluxes
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
@@ -2528,7 +2679,7 @@ end if
             CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
             DT, MASS_MN_PRES, MASS_ELE,& ! pressure matrix for projection method
             got_free_surf,  MASS_SUF, SUF_SIG_DIAGTEN_BC, &
-            V_SOURCE, VOLFRA_PORE, Courant_number, &
+            V_SOURCE, VOLFRA_PORE, VOLFRA_PORE_TOTAL, Courant_number, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
@@ -3357,7 +3508,7 @@ end if
         MASS_MN_PRES, MASS_ELE,&
         got_free_surf,  MASS_SUF, &
         SUF_SIG_DIAGTEN_BC, &
-        V_SOURCE, VOLFRA_PORE, Courant_number, &
+        V_SOURCE, VOLFRA_PORE, VOLFRA_PORE_TOTAL, Courant_number, &
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, &
@@ -3396,7 +3547,7 @@ end if
         REAL, intent( in ) :: DT
         REAL, DIMENSION(  : , : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
-        REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+        REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE, VOLFRA_PORE_TOTAL
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES, MASS_ELE
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
@@ -3417,7 +3568,7 @@ end if
         REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
         REAL, DIMENSION( : , : ), allocatable :: DENOLD_OR_ONE
         REAL, DIMENSION( : , : ), target, allocatable :: DEN_OR_ONE
-        REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
+        REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV, MEAN_PORE_CV_TOTAL
         LOGICAL :: GET_THETA_FLUX
         INTEGER :: IGOT_T2, I
         INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM
@@ -3429,6 +3580,7 @@ end if
         IGOT_T2 = 0
         ALLOCATE( THETA_GDIFF( Mdims%nphase * IGOT_T2, Mdims%cv_nonods * IGOT_T2 )) ; THETA_GDIFF = 0.
         ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods )) ; MEAN_PORE_CV = 0.
+        ALLOCATE( MEAN_PORE_CV_TOTAL( Mdims%npres, Mdims%cv_nonods )) ; MEAN_PORE_CV_TOTAL = 0.
         allocate( dummy_transp( Mdims%totele ) ) ; dummy_transp = 0.
         ! Obtain the momentum and Mmat%C matricies
         if (is_porous_media .and. Mmat%CV_pressure) then
@@ -3473,11 +3625,11 @@ end if
             Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, v_beta, &
             SUF_SIG_DIAGTEN_BC, &
             DERIV, CV_P, &
-            V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+            V_SOURCE, V_ABSORB, VOLFRA_PORE, VOLFRA_PORE_TOTAL, &
             GETCV_DISC, GETCT, &
             IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, Mdisopt%volfra_use_theta_flux, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-            MEAN_PORE_CV, &
+            MEAN_PORE_CV, MEAN_PORE_CV_TOTAL, &
             MASS_MN_PRES, THERMAL,&
             got_free_surf,  MASS_SUF, &
             dummy_transp, &
@@ -3494,6 +3646,7 @@ end if
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
         DEALLOCATE( THETA_GDIFF )
         DEALLOCATE( MEAN_PORE_CV )
+        DEALLOCATE( MEAN_PORE_CV_TOTAL )
         ewrite(3,*) 'Leaving CV_ASSEMB_FORCE_CTY'
 
       contains

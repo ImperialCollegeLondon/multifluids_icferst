@@ -151,7 +151,6 @@
         <real_value rank="0">0.1</real_value>
       </constant>
     </dump_period>
-    <Detailed_stat_file/>
     <detectors>
       <static_detector name="P2">
         <location>

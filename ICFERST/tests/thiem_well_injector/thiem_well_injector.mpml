@@ -30,7 +30,6 @@
         <integer_value rank="0">5</integer_value>
       </constant>
     </dump_period_in_timesteps>
-    <Detailed_stat_file/>
   </io>
   <timestepping>
     <current_time>

@@ -1337,21 +1337,48 @@ contains
       !Insert if required thermal porous media fields
       if (have_option('/porous_media/porous_properties/')) then
         big_porous_density_mem = have_option("/porous_media/porous_properties/scalar_field::porous_compressibility")
-        call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
-        states(1), field_name='porous_density', dont_save_memory = big_porous_density_mem)
-        call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
-        states(1), field_name='porous_density_old', dont_save_memory = big_porous_density_mem)  !only for 1 phase because porous medium (to calculate porous_heat_coef_old)
-        call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_heat_capacity', &
-        states(1), field_name='porous_heat_capacity')
+        if ( have_option("/porous_media/porous_properties/scalar_field::porous_density/dry_value") ) then
+          call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density/dry_value', &
+          states(1), field_name='porous_density', dont_save_memory = big_porous_density_mem)
+          call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density/dry_value', &
+          states(1), field_name='porous_density_old', dont_save_memory = big_porous_density_mem)  !only for 1 phase because porous medium (to calculate porous_heat_coef_old)
+        else
+          call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density/wet_value', &
+          states(1), field_name='porous_density', dont_save_memory = big_porous_density_mem)
+          call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density/wet_value', &
+          states(1), field_name='porous_density_old', dont_save_memory = big_porous_density_mem)  !only for 1 phase because porous medium (to calculate porous_heat_coef_old)
+        end if
+
+        if ( have_option("/porous_media/porous_properties/scalar_field::porous_heat_capacity/dry_value") ) then
+          call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_heat_capacity/dry_value', &
+          states(1), field_name='porous_heat_capacity')
+        else
+          call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_heat_capacity/wet_value', &
+          states(1), field_name='porous_heat_capacity')
+        end if
+
         if (have_option("/porous_media/porous_properties/scalar_field::porous_compressibility")) then
           call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
           states(1), field_name='porous_density_initial', dont_save_memory = big_porous_density_mem)  !only for 1 phase because porous medium (this is to calculate porous density)
           call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_compressibility', &
           states(1), field_name='porous_compressibility')
         end if
+
         if (have_option("/porous_media/porous_properties/tensor_field::porous_thermal_conductivity")) then
-          call allocate_and_insert_tensor_field('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity', &
-          states(1))
+
+          if ( have_option("/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/dry_value") ) then
+            call allocate_and_insert_tensor_field('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/dry_value', &
+            states(1))
+          else
+            call allocate_and_insert_tensor_field('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/wet_value', &
+            states(1))
+          end if
+
+        end if
+
+        if (have_option("/porous_media/porous_properties/scalar_field::porosity_total")) then
+          call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porosity_total', &
+          states(1), field_name='porosity_total')
         end if
       end if
       if (have_option("/porous_media/SelfPotential")) then
@@ -2248,7 +2275,12 @@ contains
     ! Save option_path
     path=trim(option_path)
 
-    call get_option(trim(path)//"/name", field_name)
+    if (path=="/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/dry_value" .or. path=="/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/wet_value") then
+      field_name = "porous_thermal_conductivity"
+    else
+      call get_option(trim(path)//"/name", field_name)
+    end if
+
     if(present(parent_name)) then
        if(trim(field_name)/="Viscosity") then
           field_name=trim(parent_name)//trim(field_name)
