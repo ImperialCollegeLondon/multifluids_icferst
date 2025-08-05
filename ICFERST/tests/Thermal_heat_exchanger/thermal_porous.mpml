@@ -465,41 +465,41 @@
       <scalar_field name="porous_density">
         <dry_value>
           <prescribed>
-            <mesh name="P0DG" />
+            <mesh name="P0DG"/>
             <value name="WholeMesh">
               <constant>
                 <real_value rank="0">1600</real_value>
               </constant>
             </value>
-            <stat />
+            <stat/>
             <detectors>
-              <exclude_from_detectors />
+              <exclude_from_detectors/>
             </detectors>
-            <output />
+            <output/>
           </prescribed>
         </dry_value>
       </scalar_field>
       <scalar_field name="porous_heat_capacity">
         <dry_value>
           <prescribed>
-            <mesh name="P0DG" />
+            <mesh name="P0DG"/>
             <value name="WholeMesh">
               <constant>
                 <real_value rank="0">830</real_value>
               </constant>
             </value>
-            <stat />
+            <stat/>
             <detectors>
-              <exclude_from_detectors />
+              <exclude_from_detectors/>
             </detectors>
-            <output />
+            <output/>
           </prescribed>
         </dry_value>
       </scalar_field>
       <tensor_field name="porous_thermal_conductivity">
         <dry_value>
           <prescribed>
-            <mesh name="P0DG" />
+            <mesh name="P0DG"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -507,7 +507,7 @@
                 </constant>
               </isotropic>
             </value>
-            <output />
+            <output/>
           </prescribed>
         </dry_value>
       </tensor_field>
@@ -572,7 +572,7 @@
             <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <constant>
-                <real_value rank="0">43</real_value>
+                <real_value rank="0">21.5</real_value>
               </constant>
             </value>
             <stat/>

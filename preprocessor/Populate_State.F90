@@ -1358,8 +1358,15 @@ contains
         end if
 
         if (have_option("/porous_media/porous_properties/scalar_field::porous_compressibility")) then
-          call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
-          states(1), field_name='porous_density_initial', dont_save_memory = big_porous_density_mem)  !only for 1 phase because porous medium (this is to calculate porous density)
+          if ( have_option("/porous_media/porous_properties/scalar_field::porous_density/dry_value") ) then
+            call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density/dry_value', &
+            states(1), field_name='porous_density_initial', dont_save_memory = big_porous_density_mem)
+          else
+            call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density/wet_value', &
+            states(1), field_name='porous_density_initial', dont_save_memory = big_porous_density_mem)
+          end if
+          ! call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_density', &
+          ! states(1), field_name='porous_density_initial', dont_save_memory = big_porous_density_mem)  !only for 1 phase because porous medium (this is to calculate porous density)
           call allocate_and_insert_scalar_field('/porous_media/porous_properties/scalar_field::porous_compressibility', &
           states(1), field_name='porous_compressibility')
         end if
