@@ -635,11 +635,6 @@ start =
                     element type_Tabulated {
                         element capillary_pressure_table { xsd:string }
                     }|
-<<<<<<< HEAD
-      
-=======
-
->>>>>>> b5880beadc9d73db73d6ca1c7a904372a0243262
 	          ## Power Law equation
                   ##
                   ## Pc = c*(1-s_eff)**a

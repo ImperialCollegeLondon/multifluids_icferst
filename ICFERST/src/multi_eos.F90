@@ -1452,7 +1452,7 @@ contains
             type(multi_dev_shape_funs) :: DevFuns ! derivative of the shape functions of the reference control volumes
             INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
             logical, save :: Cap_Brooks = .true., Cap_Power = .false.
-            logical :: use_tabulated_pc = .false.
+            logical, save :: use_tabulated_pc = .false.
             logical, save :: first_time = .true.
             !Working pointers
             real, dimension(:,:), pointer :: Satura, CapPressure, CV_Immobile_Fraction, Cap_entry_pressure, Cap_exponent, Imbibition_term, X_ALL
@@ -2506,7 +2506,6 @@ contains
         integer :: iphase, nphase, ele, cv_iloc, cv_nod
         character(len=500) :: path, path2, path3, table_path, path_relperm_tab, path_pc_tab
         real, allocatable :: temp_relperm_table(:,:), temp_pc_table(:,:)
-        logical, save :: first_time = .true.
         logical, allocatable :: use_tabulated_pc_phase(:), use_tabulated_relperm_phase(:)
 
         t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
@@ -2529,18 +2528,16 @@ contains
         use_tabulated_relperm_phase = .false.
         use_tabulated_pc_phase = .false.
 
-        if (first_time) then
-          do iphase = 1, nphase
-            path_relperm_tab = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated'
-            path_pc_tab = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/capillary_pressure/type_Tabulated'
-            use_tabulated_relperm_phase(iphase) = have_option(trim(path_relperm_tab))
-            use_tabulated_pc_phase(iphase) = have_option(trim(path_pc_tab))
-          end do
-          first_time = .false.
-        end if
+        do iphase = 1, nphase
+          path_relperm_tab = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated'
+          path_pc_tab = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/capillary_pressure/type_Tabulated'
+          use_tabulated_relperm_phase(iphase) = have_option(trim(path_relperm_tab))
+          use_tabulated_pc_phase(iphase) = have_option(trim(path_pc_tab))
+        end do
 
         if (.not. tables_loaded) then
             do iphase = 1, nphase
+              path = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated'
                 ! Tabulated relperm
                 if ( use_tabulated_relperm_phase(iphase) ) then
                     ! call get_option('/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated/relperm_table', table_path)

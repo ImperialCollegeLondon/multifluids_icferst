@@ -559,7 +559,7 @@ contains
         !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
-
+            total_lIts = 0  ! Initialise counter of linear iterations of the different solvers
             ! initialise the porous media model if needed. Simulation will stop once gravity capillary equilibration is reached
             !Prepapre the pipes
             if (Mdims%npres > 1) call initialize_pipes_package_and_gamma(state, packed_state, pipes_aux, Mdims, Mspars, ndgln)!Re-read pipe properties such as gamma
@@ -756,6 +756,10 @@ contains
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
                   end if
                   !Update the prev_sat field (pscpsc only if VAD defined)
+                  ! Especial handler only required by adapt within FPI, which should removed as it is never used
+                  if (size(saturation_field%val,3)/=size(prev_sat,2)) then 
+                    deallocate(prev_sat); allocate(prev_sat(Mdims%nphase, Mdims%cv_nonods))
+                  end if
                   prev_sat = saturation_field%val(1,:,:)
 
                 end if Conditional_PhaseVolumeFraction

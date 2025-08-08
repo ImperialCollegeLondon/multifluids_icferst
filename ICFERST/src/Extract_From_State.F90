@@ -2123,7 +2123,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
     type(tensor_field), pointer :: temperature, Concentration, enthalpy, tracer_field
     real, dimension(:,:,:), pointer :: velocity
     character (len = PYTHON_FUNC_LEN) :: output_message =''
-    character (len = OPTION_PATH_LEN) :: temp_string ='', temp_string2 ='', temp_string3 ='',sitime ='', snits =''
+    character (len = OPTION_PATH_LEN) :: temp_string ='', temp_string2 ='', temp_string3 ='',sitime ='', snits ='', slits=''
     character( len = option_path_len ) :: option_name
     !Variables for automatic non-linear iterations
     real, save :: dt_by_user = -1
@@ -2428,8 +2428,8 @@ ts_ref_val = 0d0;
                   output_message = ''; temp_string = ''
                   ! Print header for the output
                   if ((itime == 1 .or. mod(itime,20) == 0)) then
-                    write(temp_string ,'(a)') "  Step|   nits|     dT["//trim(output_units)//"]|   Time["//trim(output_units)//"]|   Pres[-]|   Mass[-]|"
-                    write(temp_string2,'(a)') "------|-------|----------|----------|----------|----------|"
+                    write(temp_string ,'(a)') "  Step|   nits|   lits|     dT["//trim(output_units)//"]|   Time["//trim(output_units)//"]|   Pres[-]|   Mass[-]|"
+                    write(temp_string2,'(a)') "------|-------|-------|----------|----------|----------|----------|"
                     if (abs(inf_norm_val)   > 1e-30) then 
                       write(temp_string3,'(a)') "    Sat[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
@@ -2459,8 +2459,9 @@ ts_ref_val = 0d0;
 
                   write(sitime,'(I6)') itime
                   write(snits ,'(I6)') nonlinear_its
+                  write(slits ,'(I6)') total_lIts
 
-                  write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| " //printPretty(dt/conversor) // "| " // printPretty(acctim/conversor) // "| " // &
+                  write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| "//trim(slits) // "| " //printPretty(dt/conversor) // "| " // printPretty(acctim/conversor) // "| " // &
                        printPretty(inf_norm_pres) // "| " // printPretty(max_calculate_mass_delta) // "| "
                   if (abs(inf_norm_val)    > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_val)    // "| "   
                   if (abs(inf_norm_temp)   > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_temp)   // "| "

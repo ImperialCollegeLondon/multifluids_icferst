@@ -1450,30 +1450,6 @@ Water::Velocity</a:documentation>
     </element>
   </define>
   <define name="viscosity_EOS_algorithm">
-<<<<<<< HEAD
-    <choice>
-      <element name="viscosity_BW">
-        <a:documentation>Viscosity equation of state.
-This diagnostic is internal - i.e. it is calculated somewhere within
-the main code, and is not wrapped by the automatic diagnostics
-wrappers.</a:documentation>
-        <attribute name="name">
-          <value>Internal</value>
-        </attribute>
-        <attribute name="material_phase_support">
-          <value>multiple</value>
-        </attribute>
-      </element>
-      <element name="viscosity_HP">
-        <attribute name="name">
-          <value>Internal</value>
-        </attribute>
-        <attribute name="material_phase_support">
-          <value>multiple</value>
-        </attribute>
-      </element>
-    </choice>
-=======
     <element name="viscosity_EOS">
       <a:documentation>Viscosity equation of state.
 This diagnostic is internal - i.e. it is calculated somewhere within
@@ -1513,7 +1489,6 @@ Valid for ranges: T in [20,350] degrees Celsius.</a:documentation>
         </element>
       </choice>
     </element>
->>>>>>> b5880beadc9d73db73d6ca1c7a904372a0243262
   </define>
   <!-- Adaptivity diagnostics -->
   <define name="scalar_edge_lengths_algorithm">

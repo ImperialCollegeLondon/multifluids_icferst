@@ -1594,8 +1594,6 @@ Also, it is required to define porous_properties (porous_density, porous_heat_ca
                     <ref name="material_mesh_choice"/>
                     <ref name="prescribed_scalar_field"/>
                     <ref name="output_options"/>
-<<<<<<< HEAD
-=======
                   </element>
                   <element name="aliased">
                     <ref name="generic_aliased_field"/>
@@ -1613,7 +1611,6 @@ Also, it is required to define porous_properties (porous_density, porous_heat_ca
                     <ref name="material_mesh_choice"/>
                     <ref name="prescribed_scalar_field"/>
                     <ref name="output_options"/>
->>>>>>> b5880beadc9d73db73d6ca1c7a904372a0243262
                   </element>
                   <element name="aliased">
                     <ref name="generic_aliased_field"/>
@@ -1622,26 +1619,6 @@ Also, it is required to define porous_properties (porous_density, porous_heat_ca
                 </choice>
               </element>
               <element name="scalar_field">
-<<<<<<< HEAD
-                <a:documentation>Specify scalar field for the K_T coefficient.</a:documentation>
-                <attribute name="name">
-                  <value>K_T</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                </choice>
-              </element>
-              <element name="scalar_field">
-=======
->>>>>>> b5880beadc9d73db73d6ca1c7a904372a0243262
                 <a:documentation>Specify scalar field for the K_c2 coefficient.</a:documentation>
                 <attribute name="name">
                   <value>K_c2</value>
@@ -4316,7 +4293,7 @@ Name has to start with CopiedField_Metal (e.g., CopiedField_Metal_Cu).</a:docume
           <value>0</value>
         </attribute>
         <attribute name="name">
-          <data type="string"/>
+          <value>CopiedField_Metal</value>
         </attribute>
         <choice>
           <element name="diagnostic">
@@ -5322,19 +5299,12 @@ Introduce the same name as the scalar field being used. For example: Tracer_CO2<
               </zeroOrMore>
             </element>
             <element name="BW_eos">
-<<<<<<< HEAD
-              <a:documentation>Batzle and Wang (1992) EOS
-Use for basin scale simulations.
-Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg salinity.
-
-=======
               <a:documentation>Batzle and Wang (1992) EOS - "Seismic properties of pore fluids"
 
 Use for basin scale simulations.
 
 Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg salinity.
 
->>>>>>> b5880beadc9d73db73d6ca1c7a904372a0243262
 NOTE: Reference density is calculated using reference C0, T0, P0.</a:documentation>
               <optional>
                 <element name="C0">
