@@ -12674,13 +12674,18 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
+CPPFLAGS="$CPPFLAGS -I$HOME/zoltan-install/include"
+LDFLAGS="$LDFLAGS -L$HOME/zoltan-install/lib"
+LIBS="$LIBS -lzoltan -lmpi -lm"
+
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking zoltan automagic" >&5
 $as_echo_n "checking zoltan automagic... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-void Zoltan_Create();
+#include <mpi.h>
+#include <zoltan.h>
 
 #ifdef F77_DUMMY_MAIN
 
@@ -12690,6 +12695,7 @@ void Zoltan_Create();
    int F77_DUMMY_MAIN() { return 1; }
 
 #endif
+
 #ifdef FC_DUMMY_MAIN
 #ifndef FC_DUMMY_MAIN_EQ_F77
 #  ifdef __cplusplus
@@ -12698,14 +12704,18 @@ void Zoltan_Create();
    int FC_DUMMY_MAIN() { return 1; }
 #endif
 #endif
-int
-main ()
+
+int main(int argc, char **argv)
 {
+    MPI_Init(&argc, &argv);
 
-Zoltan_Create();
+    struct Zoltan_Struct *zz = Zoltan_Create(MPI_COMM_WORLD);
 
-  ;
-  return 0;
+    Zoltan_Destroy(&zz);
+
+    MPI_Finalize();
+
+    return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :

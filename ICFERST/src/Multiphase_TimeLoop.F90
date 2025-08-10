@@ -649,16 +649,14 @@ contains
                 !$ Now solving the Momentum Equation ( = Force Balance Equation )
                 if (is_magma) compute_compaction= .true.
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
-                    if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
+                   if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
                         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
                         calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling, magma_phase_coef)
-                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                 end if Conditional_ForceBalanceEquation
-                
 
                 
 
@@ -896,9 +894,8 @@ contains
                 end if
             end if
             current_time = acctim
-            call Calculate_All_Rhos( state, packed_state, Mdims )
-
-            !!$ Calculate diagnostic fields
+            call Calculate_All_Rhos( state, packed_state, Mdims ) 
+             !!$ Calculate diagnostic fields
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
 
@@ -1034,7 +1031,12 @@ contains
             end if
             first_time_step = .false.
             ! For magma, stop when melt fraction reaches below 0.001
-            if (is_magma .and. maxval(saturation_field%val(1,2,:))<1e-3) exit Loop_Time
+            if (is_magma) then 
+                saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                if (maxval(saturation_field%val(1,2,:))<1e-3) then
+                    exit Loop_Time
+                end if
+            end if 
         end do Loop_Time
 
 

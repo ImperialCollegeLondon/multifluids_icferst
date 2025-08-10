@@ -507,7 +507,7 @@ contains
   
   is_solid=.true. ! use solid solution phase diagram
   alpha=1
-  n_order=35
+  n_order=40
 
   step_size=0.3
 
