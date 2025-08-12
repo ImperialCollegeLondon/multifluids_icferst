@@ -157,7 +157,7 @@ contains
             mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
         !!$ Defining time- and nonlinear interations-loops variables
         integer :: itime, dump_period_in_timesteps, final_timestep, &
-            NonLinearIteration, NonLinearIteration_Components, itimeflag
+            NonLinearIteration, NonLinearIteration_Components, itimeflag, picard_its
         real :: acctim, finish_time, dump_period
         !!$ Defining problem that will be solved
         logical :: have_temperature_field, have_concentration_field, have_component_field, have_extra_DiffusionLikeTerm, &
@@ -229,6 +229,9 @@ contains
         !!-Variable to keep track of dt reduction for meeting dump_period requirements
         real, save :: stored_dt = -1
         real :: old_acctim, nonlinear_dt
+        
+        ! VAD related saturation
+        real, allocatable, dimension(:,:) :: prev_sat
 
         !! Variables to initialise porous media models
         logical :: exit_initialise_porous_media = .false.
@@ -248,7 +251,7 @@ contains
         logical :: have_Active_Tracers = .true.
         logical :: have_Passive_Tracers = .true.
         integer :: fields
-        character( len = option_path_len ) :: option_name
+        character( len = option_path_len ) :: option_name, sim_qlty
         integer :: phreeqc_id
         double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
         real :: total_mass_metal_before_adapt, total_mass_metal_after_adapt, total_mass_metal_after_correction, total_mass_metal_after_bound
@@ -440,6 +443,16 @@ contains
             call get_option('/io/dump_period/constant', dump_period, default = 0.01)
         end if
         call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
+        call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Picard_its', picard_its, default = NonLinearIteration+1 )
+
+        call get_option("/geometry/simulation_quality", sim_qlty)
+        if (trim(sim_qlty) /= "fast" .and. have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Picard_its')) then 
+            ewrite(0,*) "====================================================================="
+            ewrite(0,*) "WARNING: Newton solver should be used with simulation_quality = fast."
+            ewrite(0,*) "====================================================================="
+        end if
+
+
         !!$
         have_temperature_field = .false. ; have_component_field = .false. ; have_extra_DiffusionLikeTerm = .false.
         do istate = 1, Mdims%nstate
@@ -545,7 +558,7 @@ contains
         !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
-
+            total_lIts = 0  ! Initialise counter of linear iterations of the different solvers
             ! initialise the porous media model if needed. Simulation will stop once gravity capillary equilibration is reached
             !Prepapre the pipes
             if (Mdims%npres > 1) call initialize_pipes_package_and_gamma(state, packed_state, pipes_aux, Mdims, Mspars, ndgln)!Re-read pipe properties such as gamma
@@ -589,7 +602,7 @@ contains
             its = 1
 
             !Store backup to be able to repeat a timestep
-            if (nonLinearAdaptTs) call Adaptive_NonLinear(mdims, packed_state, reference_field, its, &
+            if (nonLinearAdaptTs) call Adaptive_NonLinear(mdims, packed_state, reference_field, its,itime,&
                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 1)
 
             !! Update all fields from time-step 'N - 1'
@@ -641,7 +654,7 @@ contains
                 if (adapt_mesh_in_FPI) call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 1)
 
                 !Store the field we want to compare with to check how are the computations going
-                call Adaptive_NonLinear(Mdims, packed_state, reference_field, its, &
+                call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,itime,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
                 call Calculate_All_Rhos( state, packed_state, Mdims )
 
@@ -710,6 +723,9 @@ contains
                 !#=================================================================================================================
 
                 if (after_adapt .or. (itime == 1 .and. its == 1)) then
+                  ! After adapt, we need to reallocate the prev_sat array
+                  if (allocated(prev_sat)) deallocate(prev_sat)
+                  allocate(prev_sat(Mdims%nphase, Mdims%cv_nonods))
                   if (have_option("/porous_media/Phreeqc_coupling"))then
 #ifdef USING_PHREEQC
                     call init_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc, after_adapt)
@@ -719,12 +735,31 @@ contains
                   end if
                 end if
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
-
-                    call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
+                  ! Ensure that sat_bak is always defined (pscpsc only if VAD defined)
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    
+                    if (its <= picard_its) then 
+                      ! print *, "Picard iteration", its, picard_its
+                      call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val,porosity_total_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
+                    else 
+                      ! print *, "Newton iteration", its, picard_its
+                      if (its==1)  prev_sat = saturation_field%val(1,:,:)
+                      call VolumeFraction_Assemble_Solve_Newton( state, packed_state, multicomponent_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
+                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, prev_sat, &
+                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
+                        sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
+                  end if
+                  !Update the prev_sat field (pscpsc only if VAD defined)
+                  ! Especial handler only required by adapt within FPI, which should removed as it is never used
+                  if (size(saturation_field%val,3)/=size(prev_sat,2)) then 
+                    deallocate(prev_sat); allocate(prev_sat(Mdims%nphase, Mdims%cv_nonods))
+                  end if
+                  prev_sat = saturation_field%val(1,:,:)
 
                 end if Conditional_PhaseVolumeFraction
               call petsc_logging(3,stages,ierrr,default=.true.)
@@ -833,7 +868,7 @@ contains
                 end if
 
                 !Finally calculate if the time needs to be adapted or not
-                call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
+                call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,itime,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 3, calculate_mass_delta, &
                         adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Courant_number(2), first_time_step)
 
@@ -959,9 +994,9 @@ contains
 
             if (is_porous_media .and. getprocno() == 1) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
-                    ewrite(0,*) "Courant_number and shock-front Courant number", Courant_number
+                    ewrite(0,'(a, 1PE10.3, 1PE10.3)') "Courant_number and shock-front Courant number: ", Courant_number(1), Courant_number(2)
                 else !printout only in the log
-                    ewrite(1,*) "Courant_number and shock-front Courant number", Courant_number
+                    ewrite(1,'(a, 1PE10.3, 1PE10.3)') "Courant_number and shock-front Courant number: ", Courant_number(1), Courant_number(2)
                 end if
             end if
 

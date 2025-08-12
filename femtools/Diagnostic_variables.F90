@@ -1120,7 +1120,7 @@ contains
 #else
     value_buffer="Unknown"
 #endif
-    buffer=constant_tag(name="FluidityVersion", type="string", value=trim(value_buffer))
+    buffer=constant_tag(name="ICFERST", type="string", value=trim(value_buffer))
     write(unit, '(a)') trim(buffer)
 
     value_buffer = __DATE__ // " " // __TIME__

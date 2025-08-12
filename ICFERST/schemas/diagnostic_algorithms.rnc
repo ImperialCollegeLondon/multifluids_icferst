@@ -1096,11 +1096,22 @@ viscosity_EOS_algorithm =
         ## the main code, and is not wrapped by the automatic diagnostics
         ## wrappers.
         element viscosity_EOS {
+          ## Batzle and Wang (1992) EOS - "Seismic properties of pore fluids"
+          ##
+          ## Use for basin scale simulations.
+          ##
+          ## Valid for ranges: T in [20,350] degrees Celsius.
           element viscosity_BW {
              attribute name { "Internal" },
              attribute material_phase_support { "multiple" }
           }|
+          ## Huyakorn and Pinder (1978) EOS - "A pressure-enthalpy finite element model for simulating hydrothermal reservoirs"
           element viscosity_HP {
+             attribute name { "Internal" },
+             attribute material_phase_support { "multiple" }
+          }|
+          ## Coumou et al. (2008) EOS - "The Structure and Dynamics of Mid-Ocean Ridge Hydrothermal Systems"
+          element viscosity_Coumou {
              attribute name { "Internal" },
              attribute material_phase_support { "multiple" }
           }

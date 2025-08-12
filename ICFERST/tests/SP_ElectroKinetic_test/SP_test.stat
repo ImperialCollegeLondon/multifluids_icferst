@@ -1,0 +1,65 @@
+<header>
+<constant name="FluidityVersion" type="string" value="master_ubuntu24:e20846173746e3d3ef948e605ca7fb67fe52eba3" />
+<constant name="CompileTime" type="string" value="Aug 12 2025 18:27:50" />
+<constant name="StartTime" type="string" value="20250812 183541.524+0100" />
+<constant name="HostName" type="string" value="Unknown" />
+<constant name="format" type="string" value="plain_text" />
+<field column="1" name="ElapsedTime" statistic="value"/>
+<field column="2" name="dt" statistic="value"/>
+<field column="3" name="ElapsedWallTime" statistic="value"/>
+<field column="4" name="EqNonLinearIterations" statistic="value"/>
+<field column="5" name="CoordinateMesh" statistic="nodes"/>
+<field column="6" name="CoordinateMesh" statistic="elements"/>
+<field column="7" name="CoordinateMesh" statistic="surface_elements"/>
+<field column="8" name="Pressure" statistic="min" material_phase="phase1"/>
+<field column="9" name="Pressure" statistic="max" material_phase="phase1"/>
+<field column="10" name="Pressure" statistic="l2norm" material_phase="phase1"/>
+<field column="11" name="Pressure" statistic="integral" material_phase="phase1"/>
+<field column="12" name="PhaseVolumeFraction" statistic="min" material_phase="phase1"/>
+<field column="13" name="PhaseVolumeFraction" statistic="max" material_phase="phase1"/>
+<field column="14" name="PhaseVolumeFraction" statistic="l2norm" material_phase="phase1"/>
+<field column="15" name="PhaseVolumeFraction" statistic="integral" material_phase="phase1"/>
+<field column="16" name="Concentration" statistic="min" material_phase="phase1"/>
+<field column="17" name="Concentration" statistic="max" material_phase="phase1"/>
+<field column="18" name="Concentration" statistic="l2norm" material_phase="phase1"/>
+<field column="19" name="Concentration" statistic="integral" material_phase="phase1"/>
+<field column="20" name="Dummy" statistic="min" material_phase="phase1"/>
+<field column="21" name="Dummy" statistic="max" material_phase="phase1"/>
+<field column="22" name="Dummy" statistic="l2norm" material_phase="phase1"/>
+<field column="23" name="Dummy" statistic="integral" material_phase="phase1"/>
+<field column="24" name="Density" statistic="min" material_phase="phase1"/>
+<field column="25" name="Density" statistic="max" material_phase="phase1"/>
+<field column="26" name="Density" statistic="l2norm" material_phase="phase1"/>
+<field column="27" name="Density" statistic="integral" material_phase="phase1"/>
+<field column="28" name="Porosity" statistic="min" material_phase="phase1"/>
+<field column="29" name="Porosity" statistic="max" material_phase="phase1"/>
+<field column="30" name="Porosity" statistic="l2norm" material_phase="phase1"/>
+<field column="31" name="Porosity" statistic="integral" material_phase="phase1"/>
+<field column="32" name="SelfPotential" statistic="min" material_phase="phase1"/>
+<field column="33" name="SelfPotential" statistic="max" material_phase="phase1"/>
+<field column="34" name="SelfPotential" statistic="l2norm" material_phase="phase1"/>
+<field column="35" name="SelfPotential" statistic="integral" material_phase="phase1"/>
+<field column="36" name="Velocity%magnitude" statistic="min" material_phase="phase1"/>
+<field column="37" name="Velocity%magnitude" statistic="max" material_phase="phase1"/>
+<field column="38" name="Velocity%magnitude" statistic="l2norm" material_phase="phase1"/>
+<field column="39" name="Velocity%1" statistic="min" material_phase="phase1"/>
+<field column="40" name="Velocity%1" statistic="max" material_phase="phase1"/>
+<field column="41" name="Velocity%1" statistic="l2norm" material_phase="phase1"/>
+<field column="42" name="Velocity%1" statistic="integral" material_phase="phase1"/>
+<field column="43" name="Velocity%2" statistic="min" material_phase="phase1"/>
+<field column="44" name="Velocity%2" statistic="max" material_phase="phase1"/>
+<field column="45" name="Velocity%2" statistic="l2norm" material_phase="phase1"/>
+<field column="46" name="Velocity%2" statistic="integral" material_phase="phase1"/>
+<field column="47" name="DarcyVelocity%magnitude" statistic="min" material_phase="phase1"/>
+<field column="48" name="DarcyVelocity%magnitude" statistic="max" material_phase="phase1"/>
+<field column="49" name="DarcyVelocity%magnitude" statistic="l2norm" material_phase="phase1"/>
+<field column="50" name="DarcyVelocity%1" statistic="min" material_phase="phase1"/>
+<field column="51" name="DarcyVelocity%1" statistic="max" material_phase="phase1"/>
+<field column="52" name="DarcyVelocity%1" statistic="l2norm" material_phase="phase1"/>
+<field column="53" name="DarcyVelocity%1" statistic="integral" material_phase="phase1"/>
+<field column="54" name="DarcyVelocity%2" statistic="min" material_phase="phase1"/>
+<field column="55" name="DarcyVelocity%2" statistic="max" material_phase="phase1"/>
+<field column="56" name="DarcyVelocity%2" statistic="l2norm" material_phase="phase1"/>
+<field column="57" name="DarcyVelocity%2" statistic="integral" material_phase="phase1"/>
+</header>
+  0.78840000000000000E+005  0.78840000000000000E+005  0.85000000000000006E-001  0.30000000000000000E+001 605 960 248  0.28599999999995541E+008  0.29299999947292268E+008  0.28950705226807456E+010  0.28949999996521411E+012  0.10000000000000000E+001  0.10000000000000000E+001  0.99999999999999943E+002  0.99999999999999909E+004  0.49999999999951505E-003  0.50000000000000001E-003  0.49999999999988616E-001  0.49999999999988720E+001  0.25000000000000001E-008  0.25000000000000001E-008  0.25000000000000020E-006  0.24999999999999994E-004  0.10000007305000000E+004  0.10000007305000000E+004  0.10000007305000004E+006  0.10000007305000000E+008  0.25000000000000000E+000  0.25000000000000000E+000  0.24999999999999989E+002  0.24999999999999977E+004 -0.93807365304440782E-011  0.17499997496983387E-002  0.10103629016099143E+000  0.87499992825791733E+001  0.34999974432577183E+004  0.35000025620031424E+004  0.35000000000224198E+006  0.34999974432491344E+004  0.35000025567502234E+004  0.35000000000000710E+006  0.35000000000000216E+008 -0.19175625030745685E+000  0.19175625004852812E+000  0.12507491208456036E+001 -0.42079477080569916E-006  0.34542290266830833E-006  0.34542340733682101E-006  0.34542315500002929E-004  0.34542290266829986E-006  0.34542340733163680E-006  0.34542315500000720E-004  0.34542315500000250E-002 -0.18924871134906135E-011  0.18924871109351852E-011  0.12343934498170420E-010 -0.41529216382465178E-017

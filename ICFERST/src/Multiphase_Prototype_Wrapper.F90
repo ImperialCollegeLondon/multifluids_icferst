@@ -794,10 +794,12 @@ subroutine multiphase_prototype_wrapper() bind(C)
     character(len = option_path_len) :: simulation_name, dump_format
 
     real :: finish_time, nonlinear_iteration_tolerance, auxR, dump_period
-
+    real :: start_cpu, finish_cpu, elapsed_time
     PetscErrorCode :: ierr
     PetscLogStage,dimension(0:9) :: stages
 
+    ! Measure wall time
+    call cpu_time(start_cpu)
 
     ! Establish signal handlers
     call initialise_signals()
@@ -962,6 +964,22 @@ call petsc_logging(3,stages,ierr,default=.true.)
 
     call toc(TICTOC_ID_SIMULATION)
     call tictoc_report(2, TICTOC_ID_SIMULATION)
+
+
+    ! End measure of walltime and report to use
+    call cpu_time(finish_cpu)
+
+    if (GetProcNo() == 1) then
+      ewrite(0,'(A)') "##########################################"
+      ewrite(0,'(A)') "# Run finished!                          #"
+      elapsed_time = finish_cpu - start_cpu
+      if (elapsed_time > 3600) then 
+        ewrite(0,'(A, G12.6, A)')  "# Elapsed CPU time: ", elapsed_time/3600., " hours   #"
+      else
+        ewrite(0,'(A, G12.6, A)')  "# Elapsed CPU time: ", elapsed_time      , " seconds #"
+      end if
+      ewrite(0,'(A)') "##########################################"
+    end if
 
 contains
 

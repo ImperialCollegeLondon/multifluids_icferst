@@ -542,7 +542,7 @@ start =
             scalar_field_choice*,
             vector_field_choice*,
             tensor_field_choice*,
-            ## Parameters required to model porous media multiphase flow
+## Parameters required to model porous media multiphase flow
             ## If modeling multiphase porous media flow and a field left unspecified or all of them, the default values will be used. These are:
             ##
             ## Relperm: Brooks-Corey model with exponent = 2 and Krmax = 1.
@@ -635,7 +635,6 @@ start =
                     element type_Tabulated {
                         element capillary_pressure_table { xsd:string }
                     }|
-      
 	          ## Power Law equation
                   ##
                   ## Pc = c*(1-s_eff)**a
@@ -1919,6 +1918,20 @@ solver_options =
                     integer
                     }?
                   )
+                }?
+              ),
+              (
+                ## <b>Recommended settings: 0</b>
+                ##
+                ## <b>Recommended infinite norm tol: 1e-3 to 1-5. Recommended 5e-4</b>
+                ##
+                ## Controls how many non-linear iterations are perfomed using the classical Picard with acceleration
+                ## solver. Once the number of iterations pass the value provided here a Newton solver without backtracking will be used.
+                ##
+                ## NOTE1: Still in development. VAD disabled. Only fast discretisation. Wells not fully functional yet.
+                ##
+                element Picard_its{
+                integer
                 }?
               ),
               (
@@ -4349,8 +4362,10 @@ element Density{(
                               real
                            })}*
                         }|
-                        ## Batzle and Wang (1992) EOS
+                        ## Batzle and Wang (1992) EOS - "Seismic properties of pore fluids"
+                        ##
                         ## Use for basin scale simulations.
+                        ##
                         ## Valid for ranges: P in [5,100] MPa, T in [20,350] degrees Celsius, C in [0,0.32] kg/kg salinity.
                         ##
                         ## NOTE: Reference density is calculated using reference C0, T0, P0.
@@ -4369,6 +4384,28 @@ element Density{(
                            }?,
                            ## Remove pressure terms in BW EOS by setting P=0. This is a temporary fix to running sim with well domains with non-Boussinesq
                            element Remove_P_dependencies { empty }?
+                        }|
+                        ## IAPWS (1995) EOS
+                        ##
+                        ## Valid for freshwater
+                        ##
+                        ## Note: This EOS does not include pressure or salinity dependence. Reference density is calculated using reference T0.
+                        element IAPWS1995_eos {
+                           ## Reference temperature (default 298)
+                           element T0 {
+                              real
+                           }?
+                        }|
+                        ## Lewis and Lowell (2009) EOS - "Numerical modeling of two-phase flow in the NaCl-H2O system"
+                        ##
+                        ## Valid for 3.2 wt% salinity
+                        ##
+                        ## Note: This EOS does not include pressure or salinity dependence. Reference density is calculated using reference T0.
+                        element LL2009_eos {
+                           ## Reference temperature (default 298)
+                           element T0 {
+                              real
+                           }?
                         }
                       ),      ## Use the boussinesq approximation. Useful for small variations of density.
                       ## For porous media only the formulate, including linear pressure, with a reference density work with this.

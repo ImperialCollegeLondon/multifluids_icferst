@@ -30,7 +30,7 @@
 module adapt_state_module
   use spud
   use fldebug
-  use global_parameters, only : OPTION_PATH_LEN, periodic_boundary_option_path, adaptivity_mesh_name, adaptivity_mesh_name, domain_bbox, topology_mesh_name, FIELD_NAME_LEN
+  use global_parameters, only : OPTION_PATH_LEN, periodic_boundary_option_path, adaptivity_mesh_name, adaptivity_mesh_name, domain_bbox, topology_mesh_name, FIELD_NAME_LEN,nDMOWarnings
   use futils, only: int2str, int2str_len, present_and_false, present_and_true
   use reference_counting, only: tag_references, print_tagged_references
   use quadrature
@@ -161,7 +161,8 @@ contains
               call adapt_mesh_3d(stripped_positions, stripped_metric, new_positions, &
                   force_preserve_regions=force_preserve_regions, lock_faces=lock_faces, adapt_error = adapt_error)
               call allor(adapt_error)
-              if (adapt_error) call show_fail_safe_message()
+              if (adapt_error) nDMOWarnings = nDMOWarnings + 1!call show_fail_safe_message()
+              call allsum(nDMOWarnings)
               !#####Section to ensure that mesh adaptivity does not stop the simulation#######
               if (.not.adapt_error .or. i == Max_FS_attempts) then
                 FS_succeded = .true.

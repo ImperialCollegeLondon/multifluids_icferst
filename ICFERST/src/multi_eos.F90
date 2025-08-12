@@ -45,7 +45,7 @@ module multiphase_EOS
     implicit none
 
     real, parameter :: flooding_hmin = 1e-5
-    logical, save :: use_tabulated_relperm = .false., use_tabulated_pc = .false.
+    ! logical, save :: use_tabulated_relperm = .false., use_tabulated_pc = .false.
     logical, save :: tables_loaded = .false.
     real, dimension(:,:,:), allocatable, save :: relperm_table_data, pc_table_data
 
@@ -597,7 +597,7 @@ contains
             ! Use for basin scale simulations.
             ! Valid for ranges: 5<=P<=100 MPa, 20<=T<=350 degrees Celsius, C<=0.32 kg/kg salinity.
             ! You can choose to remove pressure terms from BW EOS for trouble-shooting
-            ! If you want to run BW EOS without Boussinesq approximation, you are recommended to remove pressure terms. 
+            ! If you want to run BW EOS without Boussinesq approximation, you are recommended to remove pressure terms.
             ! Note: Reference density is calculated using reference C0, T0, P0.
 
             allocate(remove_P_dep(1))
@@ -612,7 +612,8 @@ contains
             if (have_temperature_field) then
               rho = rho + 1e3*1e-6*(-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3)
               !If pressure is not removed, add pressure-related temperature terms
-              if (.not. remove_P_dep(1)) rho = rho + 1e3*1e-6*(- 2*(temperature % val - 273.15)*pressure%val(1,1,:)*1e-6+ 0.016*((temperature % val - 273.15))**2*pressure%val(1,1,:)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*pressure%val(1,1,:)*1e-6- 0.002*(temperature % val - 273.15)*(pressure%val(1,1,:)*1e-6)**2)
+              if (.not. remove_P_dep(1)) rho = rho + 1e3*1e-6*(- 2*(temperature % val - 273.15)*pressure%val(1,1,:)*1e-6+ 0.016*((temperature % val - 273.15))**2*pressure%val(1,1,:)*1e-6 - &
+              1.3e-5*((temperature % val - 273.15))**3*pressure%val(1,1,:)*1e-6- 0.002*(temperature % val - 273.15)*(pressure%val(1,1,:)*1e-6)**2)
             endif
             !Add the brine contribution if salinity is provided
             if (have_concentration_field) then
@@ -623,7 +624,7 @@ contains
               if (have_temperature_field) then
                 rho = rho + 1e3*Concentration % val*1e-6*(temperature % val-273.15) * (80 + 3*(temperature % val-273.15)-3300*Concentration % val)
                 !If pressure is not removed, add pressure-temperature-salinity terms
-                if (.not. remove_P_dep(1)) rho = rho + 1e3*Concentration % val*1e-6*(temperature % val-273.15)*(-13*pressure%val(1,1,:)*1e-6 + 47*pressure%val(1,1,:)*1e-6*Concentration % val)          
+                if (.not. remove_P_dep(1)) rho = rho + 1e3*Concentration % val*1e-6*(temperature % val-273.15)*(-13*pressure%val(1,1,:)*1e-6 + 47*pressure%val(1,1,:)*1e-6*Concentration % val)
               endif
             endif
             !Bypass density derivatives if using Boussinesq approx. or pressure dependencies are removed
@@ -632,18 +633,81 @@ contains
             else
               perturbation_pressure = 1.e-5
 
-              RhoPlus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 2*(temperature % val - 273.15)*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2))
+              RhoPlus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 &
+              - 2*(temperature % val - 273.15)*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - &
+              1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2))
 
-              RhoMinus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 2*(temperature % val - 273.15)*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2))
-              if (have_concentration_field) then 
+              RhoMinus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - &
+               2*(temperature % val - 273.15)*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - &
+               1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2))
+              if (have_concentration_field) then
                   !Add the brine contribution
-                  RhoPlus = RhoPlus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val)))
+                  RhoPlus = RhoPlus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * &
+                  (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val)))
                   !Add the brine contribution
-                  RhoMinus = RhoMinus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val)))
+                  RhoMinus = RhoMinus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * &
+                  (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val)))
               end if
               dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             endif
             deallocate(remove_P_dep)
+          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/IAPWS1995_eos' ) then
+            ! IAPWS (1995) EOS
+            ! Note: Reference density is calculated using reference T0.
+
+            rho = 0.0  ! initialise
+
+            where ((temperature % val) < 574.0)
+              rho = -0.0023328201*(temperature % val)**2 + 1.0869580055*(temperature % val) + 887.5914
+            end where
+
+            where ((temperature % val) >= 574.0 .and. (temperature % val) < 654.0)
+              rho = -0.0011226938*(temperature % val)**3 + 2.0306323768*(temperature % val)**2 - 1226.3606196862*(temperature % val) + 247972.46816223
+            end where
+
+            where ((temperature % val) >= 654.0 .and. (temperature % val) < 663.0)
+              rho = 0.419319282558*(temperature % val)**3 - 829.57097709631*(temperature % val)**2 + 547043.792559283*(temperature % val) - 120240161.260508
+            end where
+
+            where ((temperature % val) >= 663.0)
+              rho = 1.4562424658156e-14*(temperature % val)**6 - 9.882360156382e-11*(temperature % val)**5 + 2.7707846321561e-07*(temperature % val)**4 - 0.000410860340056467*(temperature % val)**3 + 0.339957993811653*(temperature % val)**2 - 148.992636402535*(temperature % val) + 27135.6537310957
+            end where
+
+            ! Note: No pressure or salinity dependence included per original IAPWS 1995 formula
+            ! Density derivative dRhodP not defined (no pressure dependence)
+            dRhodP = 0.0
+
+          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/LL2009_eos' ) then
+            ! Lewis and Lowell (2009) EOS
+            ! Valid for 3.2 wt% salinity
+            ! Note: Reference density is calculated using reference T0.
+
+            rho = 0.0  ! initialise
+
+            where ((temperature % val) < 599.0)
+              rho = -0.0021139540120505*(temperature % val)**2 + 0.917854090105867*(temperature % val) + 947.704830737288
+            end where
+
+            where ((temperature % val) >= 599.0 .and. (temperature % val) < 662.0)
+              rho = -4.91791248168338e-05*(temperature % val)**4 + 0.122423307294122*(temperature % val)**3 - 114.28340270265*(temperature % val)**2 + 47412.7070791346*(temperature % val) - 7374686.34476882
+            end where
+
+            where ((temperature % val) >= 662.0 .and. (temperature % val) < 666.57)
+              rho = 2.62908859436743*(temperature % val)**3 - 5237.39728083828*(temperature % val)**2 + 3477750.2422646*(temperature % val) - 769756993.480138
+            end where
+
+            where ((temperature % val) >= 666.57 .and. (temperature % val) < 721.8)
+              rho = 8.63679470997081e-08*(temperature % val)**6 - 3.61375107871589e-04*(temperature % val)**5 + 0.629951393566949*(temperature % val)**4 - 585.611538256315*(temperature % val)**3 + 306189.623060165*(temperature % val)**2 - 8.53741721794318e+07*(temperature % val) + 9.91764516395852e+09
+            end where
+
+            where ((temperature % val) >= 721.8)
+              rho = 1.4562424658156e-14*(temperature % val)**6 - 9.882360156382e-11*(temperature % val)**5 + 2.7707846321561e-07*(temperature % val)**4 - 0.000410860340056467*(temperature % val)**3 + 0.339957993811653*(temperature % val)**2 - 148.992636402535*(temperature % val) + 27135.6537310957
+            end where
+
+            ! Note: No pressure or salinity dependence included per original Lewis EOS formula
+            ! Density derivative dRhodP not defined (no pressure dependence)
+            dRhodP = 0.0
+
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 
             density => extract_scalar_field( state( iphase ), 'Density', stat )
@@ -839,11 +903,14 @@ contains
             elseif( have_option( trim( eos_option_path_out ) // '/exponential_in_pressure' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/exponential_in_pressure'
 
-              elseif( have_option( trim( eos_option_path_out ) // '/Linear_eos' ) ) then
-                  eos_option_path_out = trim( eos_option_path_out ) // '/Linear_eos'
+            elseif( have_option( trim( eos_option_path_out ) // '/Linear_eos' ) ) then
+                eos_option_path_out = trim( eos_option_path_out ) // '/Linear_eos'
 
-              elseif( have_option( trim( eos_option_path_out ) // '/BW_eos' ) ) then
-                    eos_option_path_out = trim( eos_option_path_out ) // '/BW_eos'
+            elseif( have_option( trim( eos_option_path_out ) // '/BW_eos' ) ) then
+                  eos_option_path_out = trim( eos_option_path_out ) // '/BW_eos'
+
+            elseif( have_option( trim( eos_option_path_out ) // '/Lewis_eos' ) ) then
+                  eos_option_path_out = trim( eos_option_path_out ) // '/Lewis_eos'
 
             elseif( have_option( trim( eos_option_path_out ) // '/Temperature_Pressure_correlation' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/Temperature_Pressure_correlation'
@@ -1227,6 +1294,7 @@ contains
                 CV_Immobile_fract => CV_Immobile_Fraction%val(:, cv_nod)
                 visc_node = (CV_NOD-1)*one_or_zero + 1
                 DO IPHASE = 1, n_in_pres
+                  ! print *, SATURA(:, CV_NOD)
                     CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * Mdims%cv_nonods
                     call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(1, 1, iphase, mat_nod),&
                         SATURA(:, CV_NOD), viscosities(:,visc_node),CV_Immobile_fract, Corey_exponent,&
@@ -1234,6 +1302,7 @@ contains
                 END DO
             END DO
         END DO
+        ! read*
         ewrite(3,*) 'Leaving calculate_absorption2'
         RETURN
     END SUBROUTINE calculate_absorption2
@@ -1285,6 +1354,11 @@ contains
         !Local parameters
         real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
         real, parameter :: epsilon = 1d-8!This value should in theory never be used, the real lower limit
+        logical :: use_tabulated_relperm = .false.
+        character(len=500) :: path
+
+        path = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated'
+        use_tabulated_relperm = have_option(trim(path))
 
         select case (nphase)
             case (1)
@@ -1299,7 +1373,7 @@ contains
               end if
         end select
 
-      contains
+        contains
         !>@brief: Brooks corey model of relperm.
         !>This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
         !>when dividing it to obtain the sigma.
@@ -1321,7 +1395,7 @@ contains
           REAL, intent( inout ) :: Kr
           ! Variables for tabulated relperm
           Kr = table_interpolation_linear(relperm_table_data(:,1,iphase), relperm_table_data(:,2,iphase), sat(iphase))
-          Kr = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
+          KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
           ! print *, sat(iphase), Kr
         END SUBROUTINE relperm_tabulated
 
@@ -1378,6 +1452,7 @@ contains
             type(multi_dev_shape_funs) :: DevFuns ! derivative of the shape functions of the reference control volumes
             INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
             logical, save :: Cap_Brooks = .true., Cap_Power = .false.
+            logical, save :: use_tabulated_pc = .false.
             logical, save :: first_time = .true.
             !Working pointers
             real, dimension(:,:), pointer :: Satura, CapPressure, CV_Immobile_Fraction, Cap_entry_pressure, Cap_exponent, Imbibition_term, X_ALL
@@ -1431,16 +1506,22 @@ contains
                         end if
                     end do
 
-                else if ( use_tabulated_pc ) then
-                    do jphase = 1, nphase
-                      do ele = 1, totele
-                          do cv_iloc = 1, cv_nloc
-                              cv_nod = ndgln%cv((ele-1)*cv_nloc + cv_iloc)
-                              CapPressure(jphase, cv_nod) = table_interpolation_linear(pc_table_data(:,1,jphase), pc_table_data(:,2,jphase), satura(jphase,cv_nod))
-                          end do
+              else if ( use_tabulated_pc ) then
+                do jphase = 1, nphase
+                  if (jphase /= iphase) then
+                    do ele = 1, totele
+                      do cv_iloc = 1, cv_nloc
+                        cv_nod = ndgln%cv((ele-1)*cv_nloc + cv_iloc)
+                        CapPressure(jphase, cv_nod) = table_interpolation_linear( &
+                          pc_table_data(:,1,jphase), &
+                          pc_table_data(:,2,jphase), &
+                          satura(iphase, cv_nod))
                       end do
                     end do
-                end if
+                  end if
+                end do
+              end if
+
             END DO
 
         deallocate(Cont_correction)
@@ -1484,6 +1565,7 @@ contains
         real :: aux, s1, s2, p1, p2
         integer :: i
         logical, save :: Cap_Brooks = .true., Cap_Power = .false.
+        logical :: use_tabulated_pc = .false.
         logical, save :: first_time = .true.
 
         aux = ( 1.0 - sum(CV_Immobile_Fraction(:)) )
@@ -1492,15 +1574,12 @@ contains
             Cap_Power = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Power_Law", nphase)
             Cap_Brooks = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Brooks_Corey", nphase)
             use_tabulated_pc = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Tabulated", nphase)
+            first_time = .false.
         end if
 
         if(Cap_Power) then
             Get_DevCapPressure = &
                 -a*Pe/(1.0 - sum(CV_Immobile_Fraction(:)) )  * ( 1.0 - ( sat - CV_Immobile_Fraction(iphase) )/( 1.0 - sum(CV_Immobile_Fraction(:)) ) ) **(a-1)
-
-        else if (Cap_Brooks) then
-            Get_DevCapPressure = &
-                -a * Pe * aux**a * min((sat - CV_Immobile_Fraction(iphase) + eps), 1.0) ** (-a-1)
 
         else if (use_tabulated_pc) then
             ! Find closest interval in table
@@ -1516,6 +1595,10 @@ contains
             end do
             ! Saturation outside table bounds - zero slope
             Get_DevCapPressure = 0.0
+
+        else
+            Get_DevCapPressure = &
+                -a * Pe * aux**a * min((sat - CV_Immobile_Fraction(iphase) + eps), 1.0) ** (-a-1)
         end if
 
     end function Get_DevCapPressure
@@ -2118,14 +2201,18 @@ contains
       type( tensor_field ), pointer :: t_field
       integer :: iphase, stat, cv_nod
       type( scalar_field ), pointer :: temperature, concentration
-      logical :: viscosity_BW, viscosity_HP, have_temperature_field, have_concentration_field
+      logical :: viscosity_BW, viscosity_HP, viscosity_Coumou
+      logical :: have_temperature_field, have_concentration_field
+      real :: c, T, val
 
         do iphase = 1, Mdims%nphase
           viscosity_BW = have_option("/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
           "::Viscosity/diagnostic/viscosity_EOS/viscosity_BW::Internal")
           viscosity_HP = have_option("/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
           "::Viscosity/diagnostic/viscosity_EOS/viscosity_HP::Internal")
-          if (viscosity_BW) then
+          viscosity_Coumou = have_option("/material_phase["// int2str( iphase - 1 )//"]/phase_properties/Viscosity/tensor_field"//&
+          "::Viscosity/diagnostic/viscosity_EOS/viscosity_Coumou::Internal")
+          if (viscosity_BW) then ! Batzle and Wang (1992) EOS - "Seismic properties of pore fluids"
             temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
             have_temperature_field = ( stat == 0 )
             Concentration => extract_scalar_field( state( iphase ), 'Concentration', stat )
@@ -2135,7 +2222,8 @@ contains
               FLAbort( "Temperature field needed for BW1992 viscosity EOS." )
             else
               do cv_nod=1,Mdims%cv_nonods
-                if (temperature%val(cv_nod) < 273.15) then
+                T = temperature%val(cv_nod)
+                if (T < 273.15) then
                   t_field%val(1, 1, cv_nod) = 1.e-3
                   t_field%val(1, 2, cv_nod) = 0.0
                   t_field%val(1, 3, cv_nod) = 0.0
@@ -2147,28 +2235,29 @@ contains
                   t_field%val(3, 3, cv_nod) = 1.e-3
                 else
                   if (have_concentration_field) then
-                    t_field%val(1, 1, cv_nod) = 1e-3 * (0.1 + 0.333*concentration%val(cv_nod) + (1.65 + 91.9 * (concentration%val(cv_nod))**3) * exp(-(0.42 * ((concentration%val(cv_nod))**0.8-0.17)**2 + 0.045) &
-                    * (temperature%val(cv_nod) - 273.15)**0.8))
+                    c = concentration%val(cv_nod)
+                    t_field%val(1, 1, cv_nod) = 1e-3 * (0.1 + 0.333*c + (1.65 + 91.9 * (c)**3) * exp(-(0.42 * ((c)**0.8-0.17)**2 + 0.045) &
+                    * (T - 273.15)**0.8))
                     t_field%val(1, 2, cv_nod) = 0.0
                     t_field%val(1, 3, cv_nod) = 0.0
                     t_field%val(2, 1, cv_nod) = 0.0
-                    t_field%val(2, 2, cv_nod) = 1e-3 * (0.1 + 0.333*concentration%val(cv_nod) + (1.65 + 91.9 * (concentration%val(cv_nod))**3) * exp(-(0.42 * ((concentration%val(cv_nod))**0.8-0.17)**2 + 0.045) &
-                    * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(2, 2, cv_nod) = 1e-3 * (0.1 + 0.333*c + (1.65 + 91.9 * (c)**3) * exp(-(0.42 * ((c)**0.8-0.17)**2 + 0.045) &
+                    * (T - 273.15)**0.8))
                     t_field%val(2, 3, cv_nod) = 0.0
                     t_field%val(3, 1, cv_nod) = 0.0
                     t_field%val(3, 2, cv_nod) = 0.0
-                    t_field%val(3, 3, cv_nod) = 1e-3 * (0.1 + 0.333*concentration%val(cv_nod) + (1.65 + 91.9 * (concentration%val(cv_nod))**3) * exp(-(0.42 * ((concentration%val(cv_nod))**0.8-0.17)**2 + 0.045) &
-                    * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(3, 3, cv_nod) = 1e-3 * (0.1 + 0.333*c + (1.65 + 91.9 * (c)**3) * exp(-(0.42 * ((c)**0.8-0.17)**2 + 0.045) &
+                    * (T - 273.15)**0.8))
                   else
-                    t_field%val(1, 1, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(1, 1, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (T - 273.15)**0.8))
                     t_field%val(1, 2, cv_nod) = 0.0
                     t_field%val(1, 3, cv_nod) = 0.0
                     t_field%val(2, 1, cv_nod) = 0.0
-                    t_field%val(2, 2, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(2, 2, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (T - 273.15)**0.8))
                     t_field%val(2, 3, cv_nod) = 0.0
                     t_field%val(3, 1, cv_nod) = 0.0
                     t_field%val(3, 2, cv_nod) = 0.0
-                    t_field%val(3, 3, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (temperature%val(cv_nod) - 273.15)**0.8))
+                    t_field%val(3, 3, cv_nod) = 1e-3 * (0.1 + (1.65) * exp(-(0.42 * (-0.17)**2 + 0.045) * (T - 273.15)**0.8))
                   end if
                 end if
                 ! Make sure viscosity stays between bounds.
@@ -2177,7 +2266,7 @@ contains
                 t_field%val(3, 3, cv_nod) = max(min(t_field%val(1, 1, cv_nod),1.e-3), 1.e-4)
               end do
             end if
-          else if (viscosity_HP) then
+          else if (viscosity_HP) then ! Huyakorn and Pinder (1978) EOS - "A pressure-enthalpy finite element model for simulating hydrothermal reservoirs"
             temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
             have_temperature_field = ( stat == 0 )
             t_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
@@ -2185,15 +2274,47 @@ contains
               FLAbort( "Temperature field needed for HP1978 viscosity EOS." )
             else
               do cv_nod=1,Mdims%cv_nonods
-                t_field%val(1, 1, cv_nod) = (2.414e-5) * 10**(247.8 / (temperature%val(cv_nod) - 140.85))
+                T = temperature%val(cv_nod)
+                t_field%val(1, 1, cv_nod) = (2.414e-5) * 10**(247.8 / (T - 140.85))
                 t_field%val(1, 2, cv_nod) = 0.0
                 t_field%val(1, 3, cv_nod) = 0.0
                 t_field%val(2, 1, cv_nod) = 0.0
-                t_field%val(2, 2, cv_nod) = (2.414e-5) * 10**(247.8 / (temperature%val(cv_nod) - 140.85))
+                t_field%val(2, 2, cv_nod) = (2.414e-5) * 10**(247.8 / (T - 140.85))
                 t_field%val(2, 3, cv_nod) = 0.0
                 t_field%val(3, 1, cv_nod) = 0.0
                 t_field%val(3, 2, cv_nod) = 0.0
-                t_field%val(3, 3, cv_nod) = (2.414e-5) * 10**(247.8 / (temperature%val(cv_nod) - 140.85))
+                t_field%val(3, 3, cv_nod) = (2.414e-5) * 10**(247.8 / (T - 140.85))
+              end do
+            end if
+          else if (viscosity_Coumou) then ! Coumou et al. (2008) EOS - "The Structure and Dynamics of Mid-Ocean Ridge Hydrothermal Systems"
+            temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
+            have_temperature_field = ( stat == 0 )
+            t_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
+            if (.not. (have_temperature_field)) then
+              FLAbort( "Temperature field needed for Coumou viscosity EOS." )
+            else
+              do cv_nod=1,Mdims%cv_nonods
+                T = temperature%val(cv_nod)
+                if (T < 661.0) then
+                  val = (1.1993291118785E-17)*(T)**6 - (3.67231400250083E-14)*(T)**5 + (4.64471272045802E-11)*(T)**4 - (3.10772437406024E-08)*(T)**3 + &
+                        (1.16128996347359E-05)*(T)**2 - (2.30191602207259E-03)*(T) + 0.189765428960157
+                else
+                  val = (3.004344905E-21)*(T)**6 - (1.9773083587236E-17)*(T)**5 + (5.36391646705641E-14)*(T)**4 - (7.67355019144351E-11)*(T)**3 + &
+                        (6.10274937760403E-08)*(T)**2 - (2.55324715090733E-05)*(T) + 0.00440917759095297
+                end if
+
+                ! Assign diagonal terms
+                t_field%val(1,1,cv_nod) = val
+                t_field%val(2,2,cv_nod) = val
+                t_field%val(3,3,cv_nod) = val
+
+                ! Off-diagonal terms zero
+                t_field%val(1,2,cv_nod) = 0.0
+                t_field%val(1,3,cv_nod) = 0.0
+                t_field%val(2,1,cv_nod) = 0.0
+                t_field%val(2,3,cv_nod) = 0.0
+                t_field%val(3,1,cv_nod) = 0.0
+                t_field%val(3,2,cv_nod) = 0.0
               end do
             end if
           end if
@@ -2383,8 +2504,9 @@ contains
         real :: auxR
         real, dimension(:,:), pointer :: CV_immobile_fraction
         integer :: iphase, nphase, ele, cv_iloc, cv_nod
-        character(len=500) :: path, path2, path3, table_path
+        character(len=500) :: path, path2, path3, table_path, path_relperm_tab, path_pc_tab
         real, allocatable :: temp_relperm_table(:,:), temp_pc_table(:,:)
+        logical, allocatable :: use_tabulated_pc_phase(:), use_tabulated_relperm_phase(:)
 
         t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
         Saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
@@ -2399,12 +2521,25 @@ contains
         Auxmesh = fl_mesh
         call allocate (targ_Store, Auxmesh, "Temporary_get_RockFluidProp")
 
+        if (allocated(use_tabulated_relperm_phase)) deallocate(use_tabulated_relperm_phase)
+        if (allocated(use_tabulated_pc_phase)) deallocate(use_tabulated_pc_phase)
+        allocate(use_tabulated_relperm_phase(nphase))
+        allocate(use_tabulated_pc_phase(nphase))
+        use_tabulated_relperm_phase = .false.
+        use_tabulated_pc_phase = .false.
+
+        do iphase = 1, nphase
+          path_relperm_tab = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated'
+          path_pc_tab = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/capillary_pressure/type_Tabulated'
+          use_tabulated_relperm_phase(iphase) = have_option(trim(path_relperm_tab))
+          use_tabulated_pc_phase(iphase) = have_option(trim(path_pc_tab))
+        end do
+
         if (.not. tables_loaded) then
             do iphase = 1, nphase
+              path = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated'
                 ! Tabulated relperm
-                path = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated'
-                use_tabulated_relperm = have_option(trim(path))
-                if ( use_tabulated_relperm ) then
+                if ( use_tabulated_relperm_phase(iphase) ) then
                     ! call get_option('/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated/relperm_table', table_path)
                     call get_option(trim(path)//'/relperm_table', table_path)
                     call read_csv_table_standard(temp_relperm_table, trim(table_path))
@@ -2417,9 +2552,7 @@ contains
                 end if
 
                 ! Tabulated capillary pressure
-                path = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/capillary_pressure/type_Tabulated'
-                use_tabulated_pc = have_option(trim(path))
-                if ( use_tabulated_pc ) then
+                if ( use_tabulated_pc_phase(iphase) ) then
                     call get_option(trim(path)//'/capillary_pressure_table', table_path)
                     ! call get_option('/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated/capillary_pressure_table', table_path)
                     call read_csv_table_standard(temp_pc_table, trim(table_path))
@@ -2436,98 +2569,112 @@ contains
 
         !If only updating there is no need to update the other parameters
         if (.not.present_and_true(update_only)) then
-          if (.not. use_tabulated_relperm) then
-              !Now obtain relpermMax
-              do iphase = 1, nphase
-                path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
-                if (have_option(trim(path))) then
-                  call initialise_field_over_regions(targ_Store, trim(path), position)
-                  t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
+          !Now obtain relpermMax
+          do iphase = 1, nphase
+            if ( .not. use_tabulated_relperm_phase(iphase) ) then
+              ! Now obtain relpermMax
+              path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
+              if (have_option(trim(path))) then
+                call initialise_field_over_regions(targ_Store, trim(path), position)
+                t_field%val(2,iphase,:) = max(min(targ_Store%val, 1.0), 0.0)
+              else
+                !Only for reservoir phases
+                if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
+                  FLAbort("For multiphase porous media flow, relperm max needs to be defined for all the regions of the model.")
                 else
-                  !Only for reservoir phases
-                  if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
-                    FLAbort("For multiphase porous media flow, relperm max needs to be defined for all the regions of the model.")
-                  else
-                    t_field%val(2,iphase,:) = 1.0
-                  end if
+                  t_field%val(2,iphase,:) = 1.0
                 end if
-              end do
-
-              !Retrieve relperm exponent
-              do iphase = 1, nphase
-                  path = "/material_phase["//int2str(iphase-1)//&
-                      "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_exponent/prescribed/value"
-                  if (have_option(trim(path))) then
-                      call initialise_field_over_regions(targ_Store, trim(path) , position)
-                      t_field%val(3,iphase,:) = targ_Store%val
-                  else !default value
-                  !Only for reservoir phases
-                    if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
-                      FLAbort("For multiphase porous media flow, relperm exponent needs to be defined for all the regions of the model.")
-                    else
-                      t_field%val(3,iphase,:) = 1.0
-                    end if
-                  end if
-              end do
-          else ! Using tabulated relperm, set dummy values
-              t_field%val(2,:,:) = 1.0 ! relperm_max
-              t_field%val(3,:,:) = 1.0 ! relperm_exponent
-          end if
-
-          !Initialize capillary pressure parameters only if not using tabulated Pc
-          if (.not. use_tabulated_pc) then
-              if (have_option_for_any_phase( '/material_phase/multiphase_properties/capillary_pressure', nphase ) ) then
-                  !Get cap pressure constant, C (Entry pressure for Brooks-Corey, Max Pc for Power Law)
-                  do iphase = 1, nphase
-                      path = "/material_phase["//int2str(iphase-1)//&
-                          "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
-                      path3 = "/material_phase["//int2str(iphase-1)//&
-                          "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::C/prescribed/value"
-                      if (have_option(trim(path))) then
-                          call initialise_field_over_regions(targ_Store, trim(path) , position)
-                          t_field%val(4,iphase,:) = targ_Store%val
-                      elseif (have_option(trim(path3))) then
-                          call initialise_field_over_regions(targ_Store, trim(path3) , position)
-                          t_field%val(4,iphase,:) = targ_Store%val
-                      else !default value
-                          t_field%val(4,iphase,:) = 0.0
-                      end if
-                  end do
-
-                  !Get cap exponent, a
-                  do iphase = 1, nphase
-                      path = "/material_phase["//int2str(iphase-1)//&
-                          "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-                      path3 = "/material_phase["//int2str(iphase-1)//&
-                          "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::a/prescribed/value"
-                      if (have_option(trim(path))) then
-                          call initialise_field_over_regions(targ_Store, trim(path) , position)
-                          t_field%val(5,iphase,:) = targ_Store%val
-                      elseif (have_option(trim(path3))) then
-                          call initialise_field_over_regions(targ_Store, trim(path3) , position)
-                          t_field%val(5,iphase,:) = targ_Store%val
-                      else !default value
-                          t_field%val(5,iphase,:) = 1.0
-                      end if
-                  end do
-                  !Get imbibition term
-                  do iphase = 1, nphase
-                      path = "/material_phase["//int2str(iphase-1)//&
-                          "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::B/prescribed/value"
-                      if (have_option(trim(path))) then
-                          call initialise_field_over_regions(targ_Store, trim(path) , position)
-                          t_field%val(6,iphase,:) = targ_Store%val
-                      else !default value
-                          t_field%val(6,iphase,:) = 0.0
-                      end if
-                  end do
               end if
-          else ! Using tabulated Pc, set dummy values
-              t_field%val(4,:,:) = 0.0 ! Cap_entry_pressure / Max Pc
-              t_field%val(5,:,:) = 1.0 ! Cap_exponent
-              t_field%val(6,:,:) = 0.0 ! Imbibition_term
+            else ! Using tabulated relperm, set dummy values
+              t_field%val(2,iphase,:) = 1.0 ! relperm_max
+            end if
+          end do
+
+          ! Retrieve relperm exponent
+          do iphase = 1, nphase
+            if ( .not. use_tabulated_relperm_phase(iphase) ) then
+              path = "/material_phase["//int2str(iphase-1)//&
+                  "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_exponent/prescribed/value"
+              if (have_option(trim(path))) then
+                call initialise_field_over_regions(targ_Store, trim(path) , position)
+                t_field%val(3,iphase,:) = targ_Store%val
+              else
+              !Only for reservoir phases
+                if (mdims%n_in_pres>1 .and. iphase <= Mdims%n_in_pres) then
+                  FLAbort("For multiphase porous media flow, relperm exponent needs to be defined for all the regions of the model.")
+                else
+                  t_field%val(3,iphase,:) = 1.0
+                end if
+              end if
+            else ! Using tabulated relperm, set dummy values
+              t_field%val(3,iphase,:) = 1.0 ! relperm_exponent
+            end if
+          end do
+
+          ! Capillary pressure
+          if (have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
+            !Get cap pressure constant, C
+            do iphase = 1, nphase
+              if ( .not. use_tabulated_pc_phase(iphase) ) then
+                !Get cap pressure constant, C (Entry pressure for Brooks-Corey, Max Pc for Power Law)
+                path = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
+                path3 = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::C/prescribed/value"
+                if (have_option(trim(path))) then
+                    call initialise_field_over_regions(targ_Store, trim(path) , position)
+                    t_field%val(4,iphase,:) = targ_Store%val
+                elseif (have_option(trim(path3))) then
+                    call initialise_field_over_regions(targ_Store, trim(path3) , position)
+                    t_field%val(4,iphase,:) = targ_Store%val
+                else !default value
+                    t_field%val(4,iphase,:) = 0.0
+                end if
+              else ! Using tabulated pc, set dummy values
+                t_field%val(4,iphase,:) = 0.0 ! Cap_entry_pressure / Max Pc
+              end if
+            end do
+
+            !Get cap exponent, a
+            do iphase = 1, nphase
+              if ( .not. use_tabulated_pc_phase(iphase) ) then
+                path = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
+                path3 = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::a/prescribed/value"
+                if (have_option(trim(path))) then
+                    call initialise_field_over_regions(targ_Store, trim(path) , position)
+                    t_field%val(5,iphase,:) = targ_Store%val
+                elseif (have_option(trim(path3))) then
+                    call initialise_field_over_regions(targ_Store, trim(path3) , position)
+                    t_field%val(5,iphase,:) = targ_Store%val
+                else !default value
+                    t_field%val(5,iphase,:) = 1.0
+                end if
+              else ! Using tabulated pc, set dummy values
+                t_field%val(5,iphase,:) = 1.0 ! Cap_exponent
+              end if
+            end do
+
+            !Get imbibition term
+            do iphase = 1, nphase
+              if ( .not. use_tabulated_pc_phase(iphase) ) then
+                path = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::B/prescribed/value"
+                if (have_option(trim(path))) then
+                    call initialise_field_over_regions(targ_Store, trim(path) , position)
+                    t_field%val(6,iphase,:) = targ_Store%val
+                else !default value
+                    t_field%val(6,iphase,:) = 0.0
+                end if
+              else ! Using tabulated pc, set dummy values
+                t_field%val(6,iphase,:) = 0.0 ! Imbibition_term
+              end if
+            end do
+
           end if
         end if
+
         !Retrieve Immobile fractions
         CV_immobile_fraction= 1e10!Initialise with an artificial high value
         do iphase = 1, nphase
@@ -2588,6 +2735,8 @@ contains
             end if
         end do
         call deallocate(targ_Store)
+        if (allocated(use_tabulated_relperm_phase)) deallocate(use_tabulated_relperm_phase)
+        if (allocated(use_tabulated_pc_phase)) deallocate(use_tabulated_pc_phase)
 
     contains
 
@@ -2899,10 +3048,42 @@ contains
         !If user specifies to remove pressure dependency, we mute P terms in BW EOS completely
         if (remove_P_dep(1)) ref_P0 = 0.
         !Calculate the reference freshwater density
-        ref_rho = 1e3 * ( 1 + 1e-6 * (-80*(ref_T0 - 273.15) - 3.3*((ref_T0 - 273.15))**2 + 0.00175*((ref_T0 - 273.15))**3 + 489*ref_P0*1e-6 - 2*(ref_T0 - 273.15)*ref_P0*1e-6 + 0.016*((ref_T0 - 273.15))**2*ref_P0*1e-6 - 1.3e-5*((ref_T0 - 273.15))**3*ref_P0*1e-6 -0.333*(ref_P0*1e-6)**2 - 0.002*(ref_T0 - 273.15)*(ref_P0*1e-6)**2))
+        ref_rho = 1e3 * ( 1 + 1e-6 * (-80*(ref_T0 - 273.15) - 3.3*((ref_T0 - 273.15))**2 + 0.00175*((ref_T0 - 273.15))**3 + 489*ref_P0*1e-6 - 2*(ref_T0 - 273.15)*ref_P0*1e-6 + &
+        0.016*((ref_T0 - 273.15))**2*ref_P0*1e-6 - 1.3e-5*((ref_T0 - 273.15))**3*ref_P0*1e-6 -0.333*(ref_P0*1e-6)**2 - 0.002*(ref_T0 - 273.15)*(ref_P0*1e-6)**2))
         !Add the reference brine contribution
         ref_rho = ref_rho + 1e3*ref_C0 * (0.668 + 0.44*ref_C0 + 1e-6 * (300*ref_P0*1e-6 - 2400*ref_P0*1e-6*ref_C0 + (ref_T0 - 273.15) * (80 + 3*(ref_T0 - 273.15) - 3300*ref_C0 - 13*ref_P0*1e-6 + 47*ref_P0*1e-6*ref_C0)))
         deallocate(remove_P_dep)
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/IAPWS1995_eos' ) then ! IAPWS (1995) EOS
+        !!$ Reference density is calculated using reference T0.
+        call get_option( trim( eos_option_path ) // '/T0', ref_T0, default=298.)
+        ! Calculate the reference density
+        if (ref_T0 < 574.0) then
+          ref_rho = -0.0023328201 * ref_T0**2 + 1.0869580055 * ref_T0 + 887.5914
+        elseif (ref_T0 < 654.0) then
+          ref_rho = -0.0011226938 * ref_T0**3 + 2.0306323768 * ref_T0**2 - 1226.3606196862 * ref_T0 + 247972.46816223
+        elseif (ref_T0 < 663.0) then
+          ref_rho = 0.419319282558 * ref_T0**3 - 829.57097709631 * ref_T0**2 + 547043.792559283 * ref_T0 - 120240161.260508
+        else
+          ref_rho = 1.4562424658156E-14 * ref_T0**6 - 9.88236015638392E-11 * ref_T0**5 + 2.7707846321561E-07 * ref_T0**4 &
+                  - 4.10860340056467E-04 * ref_T0**3 + 0.339957993811653 * ref_T0**2 - 148.992636402535 * ref_T0 + 27135.6537310957
+        end if
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/LL2009_eos' ) then ! Lewis and Lowell (2009) EOS - "Numerical modeling of two-phase flow in the NaCl-H2O system"
+        !!$ Reference density is calculated using reference T0.
+        call get_option( trim( eos_option_path ) // '/T0', ref_T0, default=298.)
+        ! Calculate the reference density
+        if (ref_T0 < 599.0) then
+          ref_rho = -0.0021139540120505 * ref_T0**2 + 0.917854090105867 * ref_T0 + 947.704830737288
+        elseif (ref_T0 < 662.0) then
+          ref_rho = -4.91791248168338E-05 * ref_T0**4 + 0.122423307294122 * ref_T0**3 - 114.28340270265 * ref_T0**2 + 47412.7070791346 * ref_T0 - 7374686.34476882
+        elseif (ref_T0 < 666.57) then
+          ref_rho = 2.62908859436743 * ref_T0**3 - 5237.39728083828 * ref_T0**2 + 3477750.2422646 * ref_T0 - 769756993.480138
+        elseif (ref_T0 < 721.8) then
+          ref_rho = 8.63679470997081E-08 * ref_T0**6 - 3.61375107871589E-04 * ref_T0**5 + 0.629951393566949 * ref_T0**4 &
+                  - 585.611538256315 * ref_T0**3 + 306189.623060165 * ref_T0**2 - 8.53741721794318E+07 * ref_T0 + 9.91764516395852E+09
+        else
+          ref_rho = 1.4562424658156E-14 * ref_T0**6 - 9.88236015638392E-11 * ref_T0**5 + 2.7707846321561E-07 * ref_T0**4 &
+                  - 4.10860340056467E-04 * ref_T0**3 + 0.339957993811653 * ref_T0**2 - 148.992636402535 * ref_T0 + 27135.6537310957
+        end if
       else if( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
         call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/rho0', ref_rho)
       elseif( trim( eos_option_path ) == trim( option_path_python ) ) then

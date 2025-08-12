@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>3D_template_porous_case_Newton</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml DCVFEM 3d_temp newton </tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst Newton_normal_fault.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="int_sat1" language="python">from fluidity_tools import stat_parser as stat
+int_sat1 = stat("Newton_normal_fault.stat")["phase1"]["PhaseVolumeFraction"]["integral"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="Assert integral saturation 1" language="python">assert(abs(int_sat1 - 275464.644)/275464.644 &lt; 0.01)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

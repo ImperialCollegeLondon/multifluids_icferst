@@ -1,0 +1,38 @@
+<header>
+<constant name="FluidityVersion" type="string" value="master_ubuntu24:e20846173746e3d3ef948e605ca7fb67fe52eba3" />
+<constant name="CompileTime" type="string" value="Aug 12 2025 18:27:50" />
+<constant name="StartTime" type="string" value="20250812 183751.748+0100" />
+<constant name="HostName" type="string" value="Unknown" />
+<constant name="format" type="string" value="plain_text" />
+<field column="1" name="ElapsedTime" statistic="value"/>
+<field column="2" name="dt" statistic="value"/>
+<field column="3" name="ElapsedWallTime" statistic="value"/>
+<field column="4" name="EqNonLinearIterations" statistic="value"/>
+<field column="5" name="CoordinateMesh" statistic="nodes"/>
+<field column="6" name="CoordinateMesh" statistic="elements"/>
+<field column="7" name="CoordinateMesh" statistic="surface_elements"/>
+<field column="8" name="Pressure" statistic="min" material_phase="phase1"/>
+<field column="9" name="Pressure" statistic="max" material_phase="phase1"/>
+<field column="10" name="Pressure" statistic="l2norm" material_phase="phase1"/>
+<field column="11" name="Pressure" statistic="integral" material_phase="phase1"/>
+<field column="12" name="PhaseVolumeFraction" statistic="min" material_phase="phase1"/>
+<field column="13" name="PhaseVolumeFraction" statistic="max" material_phase="phase1"/>
+<field column="14" name="PhaseVolumeFraction" statistic="l2norm" material_phase="phase1"/>
+<field column="15" name="PhaseVolumeFraction" statistic="integral" material_phase="phase1"/>
+<field column="16" name="Density" statistic="min" material_phase="phase1"/>
+<field column="17" name="Density" statistic="max" material_phase="phase1"/>
+<field column="18" name="Density" statistic="l2norm" material_phase="phase1"/>
+<field column="19" name="Density" statistic="integral" material_phase="phase1"/>
+<field column="20" name="Velocity%magnitude" statistic="min" material_phase="phase1"/>
+<field column="21" name="Velocity%magnitude" statistic="max" material_phase="phase1"/>
+<field column="22" name="Velocity%magnitude" statistic="l2norm" material_phase="phase1"/>
+<field column="23" name="Velocity%1" statistic="min" material_phase="phase1"/>
+<field column="24" name="Velocity%1" statistic="max" material_phase="phase1"/>
+<field column="25" name="Velocity%1" statistic="l2norm" material_phase="phase1"/>
+<field column="26" name="Velocity%1" statistic="integral" material_phase="phase1"/>
+<field column="27" name="Velocity%2" statistic="min" material_phase="phase1"/>
+<field column="28" name="Velocity%2" statistic="max" material_phase="phase1"/>
+<field column="29" name="Velocity%2" statistic="l2norm" material_phase="phase1"/>
+<field column="30" name="Velocity%2" statistic="integral" material_phase="phase1"/>
+</header>
+  0.10000000000000000E+001  0.10000000000000000E+001  0.48399999999999999E+000  0.20000000000000000E+001 1203 2184 220 -0.93494884580749629E-001  0.21220172587037127E+001  0.36072973401731556E+000  0.98484635760260453E-001  0.10000000000000000E+001  0.10000000000000000E+001  0.31622776601683833E+000  0.10000000000000026E+000  0.10000000000000000E+001  0.10000000000000000E+001  0.31622776601683833E+000  0.10000000000000026E+000  0.44514702207220925E-003  0.34154819013655765E-002  0.80814088148733467E-003  0.44104757318776008E-003  0.34154556125291172E-002  0.80807603747912106E-003  0.24148458302284607E-003 -0.21199652330953350E-003  0.25941558722122763E-003  0.10237283974151557E-004 -0.38386816146619695E-007
