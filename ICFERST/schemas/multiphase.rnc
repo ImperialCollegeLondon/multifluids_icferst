@@ -542,7 +542,7 @@ start =
             scalar_field_choice*,
             vector_field_choice*,
             tensor_field_choice*,
-            ## Parameters required to model porous media multiphase flow
+## Parameters required to model porous media multiphase flow
             ## If modeling multiphase porous media flow and a field left unspecified or all of them, the default values will be used. These are:
             ##
             ## Relperm: Brooks-Corey model with exponent = 2 and Krmax = 1.
@@ -635,7 +635,6 @@ start =
                     element type_Tabulated {
                         element capillary_pressure_table { xsd:string }
                     }|
-
 	          ## Power Law equation
                   ##
                   ## Pc = c*(1-s_eff)**a
@@ -1919,6 +1918,20 @@ solver_options =
                     integer
                     }?
                   )
+                }?
+              ),
+              (
+                ## <b>Recommended settings: 0</b>
+                ##
+                ## <b>Recommended infinite norm tol: 1e-3 to 1-5. Recommended 5e-4</b>
+                ##
+                ## Controls how many non-linear iterations are perfomed using the classical Picard with acceleration
+                ## solver. Once the number of iterations pass the value provided here a Newton solver without backtracking will be used.
+                ##
+                ## NOTE1: Still in development. VAD disabled. Only fast discretisation. Wells not fully functional yet.
+                ##
+                element Picard_its{
+                integer
                 }?
               ),
               (

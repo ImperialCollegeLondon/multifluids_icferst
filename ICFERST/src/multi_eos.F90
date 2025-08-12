@@ -1294,6 +1294,7 @@ contains
                 CV_Immobile_fract => CV_Immobile_Fraction%val(:, cv_nod)
                 visc_node = (CV_NOD-1)*one_or_zero + 1
                 DO IPHASE = 1, n_in_pres
+                  ! print *, SATURA(:, CV_NOD)
                     CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * Mdims%cv_nonods
                     call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(1, 1, iphase, mat_nod),&
                         SATURA(:, CV_NOD), viscosities(:,visc_node),CV_Immobile_fract, Corey_exponent,&
@@ -1301,6 +1302,7 @@ contains
                 END DO
             END DO
         END DO
+        ! read*
         ewrite(3,*) 'Leaving calculate_absorption2'
         RETURN
     END SUBROUTINE calculate_absorption2
@@ -1371,7 +1373,7 @@ contains
               end if
         end select
 
-      contains
+        contains
         !>@brief: Brooks corey model of relperm.
         !>This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
         !>when dividing it to obtain the sigma.
@@ -1393,7 +1395,7 @@ contains
           REAL, intent( inout ) :: Kr
           ! Variables for tabulated relperm
           Kr = table_interpolation_linear(relperm_table_data(:,1,iphase), relperm_table_data(:,2,iphase), sat(iphase))
-          Kr = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
+          KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
           ! print *, sat(iphase), Kr
         END SUBROUTINE relperm_tabulated
 
@@ -1450,7 +1452,7 @@ contains
             type(multi_dev_shape_funs) :: DevFuns ! derivative of the shape functions of the reference control volumes
             INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
             logical, save :: Cap_Brooks = .true., Cap_Power = .false.
-            logical :: use_tabulated_pc = .false.
+            logical, save :: use_tabulated_pc = .false.
             logical, save :: first_time = .true.
             !Working pointers
             real, dimension(:,:), pointer :: Satura, CapPressure, CV_Immobile_Fraction, Cap_entry_pressure, Cap_exponent, Imbibition_term, X_ALL
@@ -2504,7 +2506,6 @@ contains
         integer :: iphase, nphase, ele, cv_iloc, cv_nod
         character(len=500) :: path, path2, path3, table_path, path_relperm_tab, path_pc_tab
         real, allocatable :: temp_relperm_table(:,:), temp_pc_table(:,:)
-        logical, save :: first_time = .true.
         logical, allocatable :: use_tabulated_pc_phase(:), use_tabulated_relperm_phase(:)
 
         t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
@@ -2527,18 +2528,16 @@ contains
         use_tabulated_relperm_phase = .false.
         use_tabulated_pc_phase = .false.
 
-        if (first_time) then
-          do iphase = 1, nphase
-            path_relperm_tab = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated'
-            path_pc_tab = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/capillary_pressure/type_Tabulated'
-            use_tabulated_relperm_phase(iphase) = have_option(trim(path_relperm_tab))
-            use_tabulated_pc_phase(iphase) = have_option(trim(path_pc_tab))
-          end do
-          first_time = .false.
-        end if
+        do iphase = 1, nphase
+          path_relperm_tab = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated'
+          path_pc_tab = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/capillary_pressure/type_Tabulated'
+          use_tabulated_relperm_phase(iphase) = have_option(trim(path_relperm_tab))
+          use_tabulated_pc_phase(iphase) = have_option(trim(path_pc_tab))
+        end do
 
         if (.not. tables_loaded) then
             do iphase = 1, nphase
+              path = '/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated'
                 ! Tabulated relperm
                 if ( use_tabulated_relperm_phase(iphase) ) then
                     ! call get_option('/material_phase[' // int2str(iphase - 1) // ']/multiphase_properties/Relperm_Tabulated/relperm_table', table_path)

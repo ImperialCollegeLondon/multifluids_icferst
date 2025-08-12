@@ -1,3 +1,2 @@
- MESSAGE: Using default options for the linear solver: GMRES(30) + HYPRE
 Running the model
-Henry saline intrusion works OK
+Henry saline intrusion does NOT work

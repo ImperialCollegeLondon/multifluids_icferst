@@ -2359,6 +2359,20 @@ The field selected in "adaptive_timestep_nonlinear" has preference over this</a:
                 </element>
               </optional>
               <optional>
+                <element name="Picard_its">
+                  <a:documentation>&lt;b&gt;Recommended settings: 0&lt;/b&gt;
+
+&lt;b&gt;Recommended infinite norm tol: 1e-3 to 1-5. Recommended 5e-4&lt;/b&gt;
+
+Controls how many non-linear iterations are perfomed using the classical Picard with acceleration
+solver. Once the number of iterations pass the value provided here a Newton solver without backtracking will be used.
+
+NOTE1: Still in development. VAD disabled. Only fast discretisation. Wells not fully functional yet.
+</a:documentation>
+                  <ref name="integer"/>
+                </element>
+              </optional>
+              <optional>
                 <element name="Backtracking_factor">
                   <a:documentation>
 &lt;b&gt;Recommended settings: Non-linear iterations ~ 20&lt;/b&gt;

@@ -52,7 +52,8 @@ module solvers_module
 
     public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
          Initialise_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess, &
-         non_porous_ensure_sum_to_one, duplicate_petsc_matrix, scale_PETSc_matrix, petsc_Stokes_solver
+         non_porous_ensure_sum_to_one, duplicate_petsc_matrix, scale_PETSc_matrix, petsc_Stokes_solver,&
+         scale_PETSc_matrix_by_vector
 
 
 contains
@@ -1093,6 +1094,26 @@ contains
       end if
 
     end subroutine get_Anderson_acceleration_new_guess
+
+
+    !---------------------------------------------------------------------------
+    !> @author Pablo Salinas
+    !> @brief In this subroutine the matrix is multiplied by vfield
+    !> A is-written
+    !---------------------------------------------------------------------------
+    subroutine scale_PETSc_matrix_by_vector(Mat_petsc, vfield)
+        type(petsc_csr_matrix), intent(inout)::  Mat_petsc 
+        type(vector_field), intent(in) :: vfield
+        ! Local variables
+        Vec :: bvec
+        Integer :: ierr
+
+        bvec=PetscNumberingCreateVec(Mat_petsc%row_numbering)  ! copy vfield to petsc vector
+        call field2petsc(vfield, Mat_petsc%row_numbering, bvec)
+        call MatDiagonalScale(Mat_petsc%M, bvec, PETSC_NULL_VEC, ierr)
+
+    end subroutine
+
 
     !---------------------------------------------------------------------------
     !> @author Pablo Salinas
