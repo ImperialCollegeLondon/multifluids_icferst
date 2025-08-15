@@ -1645,7 +1645,7 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
      PetscViewer :: viewer
      PetscErrorCode :: ierr
 
-     ewrite(0, *) 'Dumping matrix equation in file called '//filename
+     ewrite(1, *) 'Dumping matrix equation in file called '//filename
      call PetscViewerBinaryOpen(MPI_COMM_FEMTOOLS, &
           filename, FILE_MODE_WRITE, &
           viewer, ierr)
