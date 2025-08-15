@@ -1,4 +1,0 @@
-FLUIDITY_PYTHON_MODULE_PATH = /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/python
- MESSAGE: Using default options for the linear solver: GMRES(30) + HYPRE
- MESSAGE: Using default options for the non-linear solver. Convergence check of 1% of Pressure, saturation and all the tracers with a maximum of 20 its. For multiphase porous media VAD and automatic backtracking are on.
-Running the model

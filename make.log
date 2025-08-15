@@ -64,7 +64,7 @@ libtool: install: ranlib /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/spati
 libtool: install: /usr/bin/install -c .libs/libspatialindex_c.a /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/spatialindex-1.8.0/../lib/libspatialindex_c.a
 libtool: install: chmod 644 /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/spatialindex-1.8.0/../lib/libspatialindex_c.a
 libtool: install: ranlib /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/spatialindex-1.8.0/../lib/libspatialindex_c.a
-libtool: finish: PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/sbin" ldconfig -n /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/spatialindex-1.8.0/../lib
+libtool: finish: PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/sbin" ldconfig -n /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/spatialindex-1.8.0/../lib
 ----------------------------------------------------------------------
 Libraries have been installed in:
    /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/spatialindex-1.8.0/../lib
