@@ -35,6 +35,11 @@ AC_CONFIG_HEADERS(include/config.h)
 # instead we pass on FLUIDITY_VERSION from the env. if it is set
 AC_SUBST(FLUIDITY_VERSION)
 
+
+# Get the current date and Git commit
+echo "character(len=*), parameter :: compile_date = '$(date +"%Y-%m-%d %H:%M:%S")'" > version.inc
+echo "character(len=*), parameter :: git_commit = '$(git log -1 --pretty=format:"%H")'" >> version.inc
+
 echo "Hostname: `hostname`"
 
 # Store enviroment variables

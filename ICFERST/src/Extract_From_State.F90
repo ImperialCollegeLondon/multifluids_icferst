@@ -2139,6 +2139,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
     real, save :: conversor = 1.0 ! Variables to convert output time into days if it is very big
     character (len = OPTION_PATH_LEN), save :: output_units =' ', option_path
     character(len=PYTHON_FUNC_LEN) :: pyfunc
+    !Variables to output type of state of the simulation
+    Integer, save :: nSolverWarningsOld = 0, nDMOWarningsOld = 0
 
     !We need an acumulative nonlinear_its if adapting within the FPI we don't want to restart the reference field neither
     !consider less iterations of the total ones if adapting time using PID
@@ -2420,6 +2422,20 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
             ! write(temp_string, '(a, i0, a, 1PE10.3, a, 1PE10.3)' ) "Iterations: ", nonlinear_its, " | Pressure:", inf_norm_pres, " | Mass check:", max_calculate_mass_delta
             output_message = trim(temp_string); temp_string = ''
 ts_ref_val = 0d0;
+
+            !Automatic non-linear iteration checking
+            if (is_porous_media) then
+                ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
+                    .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_conc < Infinite_norm_tol &
+                    .and. max_calculate_mass_delta < calculate_mass_tol .and. Tracers_ref_val < Infinite_norm_tol &
+                    .and. inf_norm_temp < Infinite_norm_tol) .or. its >= NonLinearIteration )
+            else
+                ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres) .or. its >= NonLinearIteration
+            end if
+            !At least two non-linear iterations
+            ExitNonLinearLoop =  ExitNonLinearLoop .and. its >= 2
+
+
             if (is_porous_media) then
                 select case (variable_selection)
                 case (2)
@@ -2428,8 +2444,12 @@ ts_ref_val = 0d0;
                   output_message = ''; temp_string = ''
                   ! Print header for the output
                   if ((itime == 1 .or. mod(itime,20) == 0)) then
-                    write(temp_string ,'(a)') "  Step|   nits|   lits|     dT["//trim(output_units)//"]|   Time["//trim(output_units)//"]|   Pres[-]|   Mass[-]|"
-                    write(temp_string2,'(a)') "------|-------|-------|----------|----------|----------|----------|"
+                    write(temp_string ,'(a)') "   Step| nits| lits|     dT["//trim(output_units)//"]|   Time["//trim(output_units)//"]|   Pres[-]|"
+                    write(temp_string2,'(a)') "-------|-----|-----|----------|----------|----------|"
+                    if (Mdims%n_in_pres     > 1)     then 
+                      write(temp_string3,'(a)') "   Mass[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+                      write(temp_string3,'(a)') "----------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+                    end if                    
                     if (abs(inf_norm_val)   > 1e-30) then 
                       write(temp_string3,'(a)') "    Sat[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
@@ -2457,22 +2477,29 @@ ts_ref_val = 0d0;
                     temp_string = ''; temp_string2 = ' '
                   end if
 
-                  write(sitime,'(I6)') itime
-                  write(snits ,'(I6)') nonlinear_its
-                  write(slits ,'(I6)') total_lIts
+                  write(sitime,'(I7)') itime
+                  write(snits ,'(I4)') nonlinear_its
+                  write(slits ,'(I4)') total_lIts/nonlinear_its
 
                   write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| "//trim(slits) // "| " //printPretty(dt/conversor) // "| " // printPretty(acctim/conversor) // "| " // &
-                       printPretty(inf_norm_pres) // "| " // printPretty(max_calculate_mass_delta) // "| "
-                  if (abs(inf_norm_val)    > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_val)    // "| "   
-                  if (abs(inf_norm_temp)   > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_temp)   // "| "
-                  if (abs(inf_norm_conc)   > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_conc)   // "| "
-                  if (abs(Tracers_ref_val) > 1e-30) temp_string = trim(temp_string)//" "// printPretty(Tracers_ref_val) // "| "
-                  if (its >= NonLinearIteration)    then 
-                                                    temp_string = trim(temp_string) //"  Fail|"
-                  else                                                                 
-                                                    temp_string = trim(temp_string) //"    OK|"
-                  end if   
-                  write(snits,'(I6)') nDMOWarnings !re=use string variable snits
+                       printPretty(inf_norm_pres) // "| " 
+                  if (Mdims%n_in_pres      > 1    ) temp_string = trim(temp_string)//" "// printPretty(max_calculate_mass_delta)// "| " 
+                  if (abs(inf_norm_val)    > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_val)            // "| "   
+                  if (abs(inf_norm_temp)   > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_temp)           // "| "
+                  if (abs(inf_norm_conc)   > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_conc)           // "| "
+                  if (abs(Tracers_ref_val) > 1e-30) temp_string = trim(temp_string)//" "// printPretty(Tracers_ref_val)         // "| "
+                  if (its >= NonLinearIteration .and. .not. ExitNonLinearLoop)    then 
+                    temp_string = trim(temp_string)   //"  Fail|"
+                  else              
+                    if (nSolverWarnings>nSolverWarningsOld) then 
+                      temp_string = trim(temp_string) //"LinSol|"
+                    else if (nDMOWarnings>nDMOWarningsOld) then 
+                      temp_string = trim(temp_string) //"   DMO|"
+                    else
+                      temp_string = trim(temp_string) //"    OK|"
+                    end if
+                  end if
+                  write(snits,'(I6)') nDMOWarnings+nSolverWarnings !re=use string variable snits
                   temp_string = trim(temp_string) // snits; temp_string = trim(temp_string) // "| "  
                   if (getprocno() == 1) then 
                     if ((itime == 1 .or. mod(itime,20) == 0)) then 
@@ -2509,18 +2536,6 @@ ts_ref_val = 0d0;
 
             !Asssemble finally the output message
             output_message = trim(output_message) // " "// trim(temp_string)
-
-            !Automatic non-linear iteration checking
-            if (is_porous_media) then
-                ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
-                    .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_conc < Infinite_norm_tol &
-                    .and. max_calculate_mass_delta < calculate_mass_tol .and. Tracers_ref_val < Infinite_norm_tol &
-                    .and. inf_norm_temp < Infinite_norm_tol) .or. its >= NonLinearIteration )
-            else
-                ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres) .or. its >= NonLinearIteration
-            end if
-            !At least two non-linear iterations
-            ExitNonLinearLoop =  ExitNonLinearLoop .and. its >= 2
 
             !(Maybe unnecessary) If it is parallel then we want to be consistent between cpus
             if (IsParallel()) call allor(ExitNonLinearLoop)
@@ -2596,6 +2611,8 @@ ts_ref_val = 0d0;
                         !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step changed to:", dt/conversor, trim(output_units)
                         ! end if
                         ExitNonLinearLoop = .true.
+                        ! Update comparison variables
+                        nSolverWarningsOld = nSolverWarnings;  nDMOWarningsOld = nDMOWarnings;
                         return
                     end if
                 end if
@@ -2614,6 +2631,8 @@ ts_ref_val = 0d0;
                     ! end if
                     ExitNonLinearLoop = .true.
                     call set_option( '/timestepping/timestep', dt )
+                    ! Update comparison variables
+                    nSolverWarningsOld = nSolverWarnings;  nDMOWarningsOld = nDMOWarnings;
                     return
                 end if
                 if (its >= NonLinearIteration .or. Repeat_time_step) then
@@ -2635,6 +2654,8 @@ ts_ref_val = 0d0;
                         ! end if
                         !If PID_controller then update the status
                         if (PID_controller) auxR = PID_time_controller(reset=.true.)
+                        ! Update comparison variables
+                        nSolverWarningsOld = nSolverWarnings;  nDMOWarningsOld = nDMOWarnings;
                         return
                     end if
                     !Decrease time step, reset the time and repeat!
@@ -2655,6 +2676,8 @@ ts_ref_val = 0d0;
                     ! end if
                     Repeat_time_step = .true.
                     ExitNonLinearLoop = .true.
+                    ! Update comparison variables
+                    nSolverWarningsOld = nSolverWarnings;  nDMOWarningsOld = nDMOWarnings;
                     return
                 end if
                 if (ExitNonLinearLoop.and..not.Repeat_time_step) then
@@ -2671,6 +2694,8 @@ ts_ref_val = 0d0;
                             adjusted_ts_to_dump = .true.
                         end if
                     end if
+                    ! Update comparison variables
+                    nSolverWarningsOld = nSolverWarnings;  nDMOWarningsOld = nDMOWarnings;
                     return
                 end if
             end if

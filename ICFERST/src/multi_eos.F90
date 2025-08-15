@@ -126,7 +126,7 @@ contains
         allocate( Component_l( cv_nonods ) ) ; Component_l = 0.
         allocate( drhodp_porous( cv_nonods ) ); drhodp_porous = 0.
         !If boussinesq then we do not consider variations in rock density either
-        if (.not. has_boussinesq_aprox) then
+        if (.not. has_boussinesq_aprox .and. iphase <= Mdims%n_in_pres) then  ! Only for the porous media domain
           if (have_option('/porous_media/porous_properties/scalar_field::porous_compressibility')) &
             call Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, drhodp_porous  )
         end if

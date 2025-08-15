@@ -2126,7 +2126,7 @@ contains
               !Introduce into the RHS
               call addto(Mmat%CT_RHS, 1, cv_nodi, SUM( ct_rhs_phase) )
               !and diagonal scaling
-              DIAG_SCALE_PRES( 1,CV_NODI ) = DIAG_SCALE_PRES( 1,CV_NODI ) + sum( DIAG_SCALE_PRES_phase)
+              DIAG_SCALE_PRES( 1,CV_NODI ) = DIAG_SCALE_PRES( 1,CV_NODI ) + sum( DIAG_SCALE_PRES_phase(1:final_phase))
             END DO
           END IF
 
