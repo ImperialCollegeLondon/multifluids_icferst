@@ -110,7 +110,7 @@ jobs:
 
     strategy:
       matrix:
-        name: [ "Bionic", "Focal" ]
+        name: [ "Bionic Report", "Focal Report" ]
         include:
           - name: "Bionic"
             release: bionic
@@ -131,4 +131,3 @@ jobs:
           check_name: Test report ${{ matrix.release }}
           fail_on_failure: true
           detailed_summary: true
-          update_check: true
