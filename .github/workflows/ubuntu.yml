@@ -117,3 +117,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Test report ${{ matrix.release }}
           fail_on_failure: true
+          detailed_summary: true
+          update_check: true
