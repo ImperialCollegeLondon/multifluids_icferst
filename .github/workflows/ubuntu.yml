@@ -15,10 +15,6 @@ on:
       - hayley_dev
       - ruixiao_dev_new
 
-permissions:
-  checks: write
-  contents: read
-
 jobs:
 
   build:
@@ -81,17 +77,25 @@ jobs:
 
     steps:
 
-      - name: ${{ matrix.name }}
+      - name: Run tests (${{ matrix.name }})
         run: |
          chmod 777 .
          docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
-         docker run -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} /bin/bash -c "${{ matrix.command }} && cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
+         docker run -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
+           /bin/bash -c "${{ matrix.command }} 2>&1 | tee /host/${{ matrix.release }}-testrun.log && \
+           cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
 
       - uses: actions/upload-artifact@v4
         with:
-          # Use a unique artifact name to avoid conflicts
+          # Upload XML test results
           name: ${{ matrix.release }}-test-results-${{ github.run_id }}
           path: ${{ matrix.release }}-${{ matrix.output }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          # Upload full stdout/stderr log
+          name: ${{ matrix.release }}-test-log-${{ github.run_id }}
+          path: ${{ matrix.release }}-testrun.log
 
   Report:
 
