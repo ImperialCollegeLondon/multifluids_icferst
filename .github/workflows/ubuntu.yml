@@ -95,6 +95,15 @@ jobs:
     if: always()
     needs: testing
 
+    strategy:
+      matrix:
+        name: [ "Bionic", "Focal" ]
+        include:
+          - name: "Bionic"
+            release: bionic
+          - name: "Focal"
+            release: focal
+
     steps:
       - uses: actions/download-artifact@v4
         with:
