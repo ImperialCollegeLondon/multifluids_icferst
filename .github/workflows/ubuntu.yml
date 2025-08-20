@@ -110,11 +110,11 @@ jobs:
 
     strategy:
       matrix:
-        name: [ "Bionic Report", "Focal Report" ]
+        name: [ "Report Bionic", "Report Focal" ]
         include:
-          - name: "Bionic"
+          - name: "Report Bionic"
             release: bionic
-          - name: "Focal"
+          - name: "Report Focal"
             release: focal
 
     steps:
