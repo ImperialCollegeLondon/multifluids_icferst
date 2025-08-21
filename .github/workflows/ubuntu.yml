@@ -71,12 +71,12 @@ jobs:
 
           - name: "Bionic"
             release: bionic
-            command: "make THREADS=2 serialtest-mp-xml"
+            command: "make THREADS=1 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
           - name: "Focal"
             release: focal
-            command: "make THREADS=2 serialtest-mp-xml"
+            command: "make THREADS=1 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
     steps:
