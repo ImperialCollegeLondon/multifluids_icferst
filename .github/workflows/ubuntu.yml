@@ -83,23 +83,28 @@ jobs:
 
       - name: Run tests (${{ matrix.name }})
         run: |
-         chmod 777 .
-         docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
-         docker run -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
-           /bin/bash -c "${{ matrix.command }} 2>&1 | tee /host/${{ matrix.release }}-testrun.log && \
-           cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
+          chmod 777 .
+          docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
+
+          # Run tests in groups to reduce memory use
+          for i in 0 1; do
+            echo "Running group $i ..."
+            docker run -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
+              /bin/bash -c "${{ matrix.command }} GROUP=$i 2>&1 | tee /host/${{ matrix.release }}-group${i}.log && \
+              cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-group${i}-${{ matrix.output }}"
+          done
 
       - uses: actions/upload-artifact@v4
         with:
-          # Upload XML test results
+          # Upload XML test results (all groups)
           name: ${{ matrix.release }}-test-results-${{ github.run_id }}
-          path: ${{ matrix.release }}-${{ matrix.output }}
+          path: ${{ matrix.release }}-group*-${{ matrix.output }}
 
       - uses: actions/upload-artifact@v4
         with:
-          # Upload full stdout/stderr log
+          # Upload full stdout/stderr logs (all groups)
           name: ${{ matrix.release }}-test-log-${{ github.run_id }}
-          path: ${{ matrix.release }}-testrun.log
+          path: ${{ matrix.release }}-group*.log
 
   Report:
 
