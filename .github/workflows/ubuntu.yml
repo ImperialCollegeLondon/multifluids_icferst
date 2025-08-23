@@ -71,13 +71,11 @@ jobs:
 
           - name: "Bionic"
             release: bionic
-            groups: "0 1"
             command: "make THREADS=2 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
           - name: "Focal"
             release: focal
-            groups: "0 1 2 3"
             command: "make THREADS=1 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
@@ -85,27 +83,23 @@ jobs:
 
       - name: Run tests (${{ matrix.name }})
         run: |
-          chmod 777 .
-          docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
-
-          for i in ${{ matrix.groups }}; do
-            echo "Running group $i ..."
-            docker run -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
-              /bin/bash -c "${{ matrix.command }} GROUP=$i 2>&1 | tee /host/${{ matrix.release }}-group${i}.log && \
-              cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-group${i}-${{ matrix.output }}"
-          done
+         chmod 777 .
+         docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
+         docker run -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
+           /bin/bash -c "${{ matrix.command }} 2>&1 | tee /host/${{ matrix.release }}-testrun.log && \
+           cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
 
       - uses: actions/upload-artifact@v4
         with:
-          # Upload XML test results (all groups)
+          # Upload XML test results
           name: ${{ matrix.release }}-test-results-${{ github.run_id }}
-          path: ${{ matrix.release }}-group*-${{ matrix.output }}
+          path: ${{ matrix.release }}-${{ matrix.output }}
 
       - uses: actions/upload-artifact@v4
         with:
-          # Upload full stdout/stderr logs (all groups)
+          # Upload full stdout/stderr log
           name: ${{ matrix.release }}-test-log-${{ github.run_id }}
-          path: ${{ matrix.release }}-group*.log
+          path: ${{ matrix.release }}-testrun.log
 
   Report:
 
