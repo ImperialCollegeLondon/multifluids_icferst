@@ -2133,7 +2133,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
     real, dimension(2) :: totally_min_max
     logical :: PID_controller ! Are we using a Proportional integration derivator controller of the time-step size?
     !Variables for adaptive time stepping based on non-linear iterations
-    real :: Tracers_ref_val, increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val, finish_time
+    real :: Tracers_ref_val, increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val, finish_time, sim_progress
     integer :: variable_selection, NonLinearIteration
     !Variables to convert output time into days if it is very big
     real, save :: conversor = 1.0 ! Variables to convert output time into days if it is very big
@@ -2446,23 +2446,23 @@ ts_ref_val = 0d0;
                   if ((itime == 1 .or. mod(itime,20) == 0)) then
                     write(temp_string ,'(a)') "   Step| nits| lits|     dT["//trim(output_units)//"]|   Time["//trim(output_units)//"]|   Pres[-]|"
                     write(temp_string2,'(a)') "-------|-----|-----|----------|----------|----------|"
-                    if (Mdims%n_in_pres     > 1)     then 
+                    if (Mdims%n_in_pres     > 1)     then
                       write(temp_string3,'(a)') "   Mass[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
-                    end if                    
-                    if (abs(inf_norm_val)   > 1e-30) then 
+                    end if
+                    if (abs(inf_norm_val)   > 1e-30) then
                       write(temp_string3,'(a)') "    Sat[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
-                    if (abs(inf_norm_temp)   > 1e-30) then 
+                    if (abs(inf_norm_temp)   > 1e-30) then
                       write(temp_string3,'(a)') "   Temp[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
-                    if (abs(inf_norm_conc)   > 1e-30) then 
+                    if (abs(inf_norm_conc)   > 1e-30) then
                       write(temp_string3,'(a)') "   Trac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
-                    if (abs(Tracers_ref_val) > 1e-30) then 
+                    if (abs(Tracers_ref_val) > 1e-30) then
                       write(temp_string3,'(a)') "  PTrac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
@@ -2470,6 +2470,9 @@ ts_ref_val = 0d0;
                     write(temp_string3,'(a)') "------|"      ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     write(temp_string3,'(a)') "nWarng|"      ; temp_string  = trim(temp_string ) // trim(temp_string3)
                     write(temp_string3,'(a)') "------|"      ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+                    write(temp_string3,'(a)') " Progress[%]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+                    write(temp_string3,'(a)') "------------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+
 
                     write(output_message,*)  trim(temp_string)//ACHAR(10)//"  "//trim(temp_string2)//ACHAR(10)
                     ! print*,trim(temp_string)
@@ -2482,29 +2485,32 @@ ts_ref_val = 0d0;
                   write(slits ,'(I4)') total_lIts/nonlinear_its
 
                   write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| "//trim(slits) // "| " //printPretty(dt/conversor) // "| " // printPretty(acctim/conversor) // "| " // &
-                       printPretty(inf_norm_pres) // "| " 
-                  if (Mdims%n_in_pres      > 1    ) temp_string = trim(temp_string)//" "// printPretty(max_calculate_mass_delta)// "| " 
-                  if (abs(inf_norm_val)    > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_val)            // "| "   
+                       printPretty(inf_norm_pres) // "| "
+                  if (Mdims%n_in_pres      > 1    ) temp_string = trim(temp_string)//" "// printPretty(max_calculate_mass_delta)// "| "
+                  if (abs(inf_norm_val)    > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_val)            // "| "
                   if (abs(inf_norm_temp)   > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_temp)           // "| "
                   if (abs(inf_norm_conc)   > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_conc)           // "| "
                   if (abs(Tracers_ref_val) > 1e-30) temp_string = trim(temp_string)//" "// printPretty(Tracers_ref_val)         // "| "
-                  if (its >= NonLinearIteration .and. .not. ExitNonLinearLoop)    then 
+                  if (its >= NonLinearIteration .and. .not. ExitNonLinearLoop)    then
                     temp_string = trim(temp_string)   //"  Fail|"
-                  else              
-                    if (nSolverWarnings>nSolverWarningsOld) then 
+                  else
+                    if (nSolverWarnings>nSolverWarningsOld) then
                       temp_string = trim(temp_string) //"LinSol|"
-                    else if (nDMOWarnings>nDMOWarningsOld) then 
+                    else if (nDMOWarnings>nDMOWarningsOld) then
                       temp_string = trim(temp_string) //"   DMO|"
                     else
                       temp_string = trim(temp_string) //"    OK|"
                     end if
                   end if
                   write(snits,'(I6)') nDMOWarnings+nSolverWarnings !re=use string variable snits
-                  temp_string = trim(temp_string) // snits; temp_string = trim(temp_string) // "| "  
-                  if (getprocno() == 1) then 
-                    if ((itime == 1 .or. mod(itime,20) == 0)) then 
+                  temp_string = trim(temp_string) // snits; temp_string = trim(temp_string) // "| "
+                  sim_progress = 100.0d0 * acctim / finish_time
+                  write(temp_string3,'(F12.2)') sim_progress
+                  temp_string = trim(temp_string)//trim(temp_string3)//"| "
+                  if (getprocno() == 1) then
+                    if ((itime == 1 .or. mod(itime,20) == 0)) then
                       output_message = trim(output_message) // " "//trim(temp_string)
-                    else 
+                    else
                       output_message = trim(output_message) // trim(temp_string)
                     end if
                   end if

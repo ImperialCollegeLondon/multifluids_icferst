@@ -1413,26 +1413,26 @@ contains
                       ! and the fluids. Here we add the porous media contribution
                       DO IPHASE = wells_first_phase, final_phase*2
                         LOC_MAT_II(iphase) = LOC_MAT_II(iphase) +  porous_heat_coef( CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
-                        * R_PHASE(IPHASE) * (1-MEAN_PORE_CV_TOTAL( 1, CV_NODI ))/MEAN_PORE_CV_TOTAL( 1, CV_NODI )
+                        * R_PHASE(IPHASE) * (1-MEAN_PORE_CV_TOTAL( Mdims%npres, CV_NODI ))/MEAN_PORE_CV_TOTAL( Mdims%npres, CV_NODI )
                               !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
                                   !we divide to remove that term and multiply by the correct term (1-porosity)
                           LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
                               + (CV_BETA * porous_heat_coef( CV_NODI ) * T2OLD_ALL( iphase, CV_NODI ) &
                               + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * T2_ALL( iphase, CV_NODI ) ) &
-                              * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV_TOTAL( 1, CV_NODI ))/MEAN_PORE_CV_TOTAL( 1, CV_NODI )
+                              * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV_TOTAL( Mdims%npres, CV_NODI ))/MEAN_PORE_CV_TOTAL( Mdims%npres, CV_NODI )
                       END DO
                     else
                       !In this case for the time-integration term the effective rho Cp is a combination of the porous media
                       ! and the fluids. Here we add the porous media contribution
                       DO IPHASE = wells_first_phase, final_phase*2
                         LOC_MAT_II(iphase) = LOC_MAT_II(iphase) +  porous_heat_coef( CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
-                        * R_PHASE(IPHASE) * (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
+                        * R_PHASE(IPHASE) * (1-MEAN_PORE_CV( Mdims%npres, CV_NODI ))/MEAN_PORE_CV( Mdims%npres, CV_NODI )
                               !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
                                   !we divide to remove that term and multiply by the correct term (1-porosity)
                           LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
                               + (CV_BETA * porous_heat_coef( CV_NODI ) * T2OLD_ALL( iphase, CV_NODI ) &
                               + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * T2_ALL( iphase, CV_NODI ) ) &
-                              * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
+                              * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV( Mdims%npres, CV_NODI ))/MEAN_PORE_CV( Mdims%npres, CV_NODI )
                       END DO
                     end if
                   end if
