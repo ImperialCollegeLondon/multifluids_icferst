@@ -59,7 +59,7 @@ jobs:
   testing:
 
     name: ${{ matrix.name }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     needs: build
     if: always()
 
@@ -71,12 +71,14 @@ jobs:
 
           - name: "Bionic"
             release: bionic
+            runner: ubuntu-latest
             command: "make THREADS=2 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
           - name: "Focal"
             release: focal
-            command: "make THREADS=1 serialtest-mp-xml"
+            runner: ubuntu-latest
+            command: "make THREADS=2 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
     steps:
@@ -85,7 +87,7 @@ jobs:
         run: |
          chmod 777 .
          docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
-         docker run -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
+         docker run --memory=6g --oom-kill-disable=false -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
            /bin/bash -c "${{ matrix.command }} 2>&1 | tee /host/${{ matrix.release }}-testrun.log && \
            cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
 
