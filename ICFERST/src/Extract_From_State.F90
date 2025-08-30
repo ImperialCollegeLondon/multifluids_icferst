@@ -3615,10 +3615,12 @@ end subroutine get_DarcyVelocity
         character (len=1000000) :: numbers
         integer :: iphase, ifields
         ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
-        character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: fluxstring
-        character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: intfluxstring
-        character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: tempstring
+        character (len = 100000), dimension(size(outfluxes%intflux,1)) :: fluxstring
+        character (len = 100000), dimension(size(outfluxes%intflux,1)) :: intfluxstring
+        character (len = 100000), dimension(size(outfluxes%intflux,1)) :: tempstring
         character (len = 50) :: simulation_name
+        character(len = FIELD_NAME_LEN) :: phase_name
+        character(len = OPTION_PATH_LEN) :: path
         !Ensure consistency for averaged fields in parallel, i.e. not saturation
         if (isparallel()) then
             do ioutlet = 1, size(outfluxes%outlet_id)
@@ -3653,27 +3655,31 @@ end subroutine get_DarcyVelocity
             counter = 0
             if(itime.eq.1) then
                 if (is_porous_media) then
-                    write(whole_line,*) "Current Time (s)" // "," // "Current Time (years)" // "," // "Pore Volume"
+                    write(whole_line,*) "Time[s]" // "," // "Time[y]" // "," // "PoreVolume"
                 else
-                    write(whole_line,*) "Current Time (s)" // "," // "Current Time (minutes)" // "," // "Volume"
+                    write(whole_line,*) "Time[s]" // "," // "Time[m]" // "," // "Volume"
                 end if
                 whole_line = trim(whole_line)
                 do ioutlet =1, size(outfluxes%intflux,2)
                     do iphase = 1, size(outfluxes%intflux,1)
-                        write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, "-S", outfluxes%outlet_id(ioutlet), "- Volume rate"
+
+                        path = "/material_phase[" // int2str(iphase-1) // "]"; call get_option(trim(path) // "/name", phase_name)
+                        write(fluxstring(iphase),'(a, a, i0, a)')   trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]VolRate"
                         whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                     enddo
                     do iphase = 1, size(outfluxes%intflux,1)
-                        write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Cumulative production"
+                        path = "/material_phase[" // int2str(iphase-1) // "]"; call get_option(trim(path) // "/name", phase_name)
+                        write(intfluxstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]TotProd"
                         whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                     enddo
 
                 !Averaged value over the surface
                     do ifields = 1, size(outfluxes%field_names,2)
                         do iphase = 1, size(outfluxes%field_names,1)
-                            write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),&
-                                                                                    "- Averaged "//trim(outfluxes%field_names(iphase, ifields))
-                            whole_line = trim(whole_line) //","// trim(tempstring(iphase))
+                          path = "/material_phase[" // int2str(iphase-1) // "]"; call get_option(trim(path) // "/name", phase_name)
+                          write(tempstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S", outfluxes%outlet_id(ioutlet),&
+                                                                                  "]AVG("//trim(outfluxes%field_names(iphase, ifields))//")"
+                          whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                         end do
                     end do
                 end do
@@ -3681,31 +3687,32 @@ end subroutine get_DarcyVelocity
                 write(89,*), trim(whole_line)
             endif
             ! Write the actual numbers to the file now
+            
             if (is_porous_media) then
-                write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
+                write(numbers,'(a,a,a,a,a)') printEng(current_time), "," , printEng(current_time/(86400.*365.)), ",",  printEng(outfluxes%porevolume)
             else
-                write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(60.) , ",",  outfluxes%porevolume
+                write(numbers,'(a,a,a,a,a)') printEng(current_time), "," , printEng(current_time/(60.)), ",",  printEng(outfluxes%porevolume)
             end if
 
             whole_line =  trim(numbers)
             do ioutlet =1, size(outfluxes%intflux,2)
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(fluxstring(iphase),'(E17.11)') outfluxes%totout(iphase,ioutlet)
+                    write(fluxstring(iphase),'(a)') printEng(outfluxes%totout(iphase,ioutlet))
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(intfluxstring(iphase),'(E17.11)') outfluxes%intflux(iphase,ioutlet)
+                    write(intfluxstring(iphase),'(a)') printEng(outfluxes%intflux(iphase,ioutlet))
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
                 do ifields = 1, size(outfluxes%field_names,2)
                     do iphase = 1, size(outfluxes%intflux,1)
-                        if (trim(outfluxes%field_names(iphase, ifields)) == "Temperature") then
-                            write(tempstring(iphase),'(E17.11)') &
-                                outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet) - 273.15 ! Print the temperature outfluxes in Celsius, not Kelvin
+                        if (trim(outfluxes%field_names(iphase, ifields)) == "Temp") then
+                            write(tempstring(iphase),'(a)') &
+                                printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet) - 273.15) ! Print the temperature outfluxes in Celsius, not Kelvin
                         else
-                            write(tempstring(iphase),'(E17.11)') &
-                                outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)
+                            write(tempstring(iphase),'(a)') &
+                                printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet))
                         end if
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     end do
@@ -3983,16 +3990,43 @@ end subroutine get_DarcyVelocity
             avg_value_for_BC = outfluxes%avgout(ifield, iphase, pos(1))/outfluxes%area_outlet(iphase, pos(1))
         end function avg_value_for_BC
 
-      end subroutine Impose_connected_BCs
+    end subroutine Impose_connected_BCs
 
-function printPretty(val) result(eng_format)
-    implicit none
-    real, intent(in) :: val
-    !Local variables
-    character(len=9) :: eng_format
+    !> Print double using 9 characters for the terminal table output
+    function printPretty(val) result(eng_format)
+        implicit none
+        real, intent(in) :: val
+        !Local variables
+        character(len=9) :: eng_format
 
-    write(eng_format,'(1PE8.2)') val
+        write(eng_format,'(1PE8.2)') val
 
-end function printPretty
+    end function printPretty
+
+    !> Print double using an engineering format and using 8 digits of precision
+    function printEng(val) result(eng_format)
+        implicit none
+        real, intent(in) :: val
+        !Local variables
+        real :: val2
+        character(len=100) :: auxS
+        Integer :: ipos
+        integer, parameter :: prec = 10
+        character(len=prec+6) :: eng_format
+
+        val2 = val
+        if (abs(val2) < 1e-20) val2 = 0d0
+
+        write(auxS,'(ES25.18)') val2
+
+        ipos = index(auxS,"E");
+        if (ipos > 0) then 
+          eng_format = auxS(1:prec)//auxS(ipos:len_trim(auxS))
+        else
+          write(eng_format,'(F16.8)') val2
+        endif
+
+    end function printEng
+
 
 end module Copy_Outof_State
