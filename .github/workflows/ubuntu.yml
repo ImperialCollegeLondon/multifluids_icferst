@@ -85,11 +85,27 @@ jobs:
 
       - name: Run tests (${{ matrix.name }})
         run: |
-         chmod 777 .
-         docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
-         docker run --memory=12g --cpus=4 --oom-kill-disable=false -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
-           /bin/bash -c "${{ matrix.command }} 2>&1 | tee /host/${{ matrix.release }}-testrun.log && \
-           cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
+          chmod 777 .
+          docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
+
+          if [ "${{ matrix.release }}" == "focal" ]; then
+            # Optimized Focal test: container-local execution
+            docker run --memory=12g --cpus=4 -v $PWD:/host \
+              icferst/actions:${{ matrix.release }}-${{ github.sha }} \
+              /bin/bash -c "
+                mkdir -p /tmp/test_run &&
+                cd /tmp/test_run &&
+                ${{ matrix.command }} > testrun.log 2>&1 &&
+                cp ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}} &&
+                cp testrun.log /host/${{ matrix.release }}-testrun.log
+              "
+          else
+            # Bionic: original behavior
+            docker run --memory=6g -v $PWD:/host \
+              icferst/actions:${{ matrix.release }}-${{ github.sha }} \
+              /bin/bash -c "${{ matrix.command }} 2>&1 | tee /host/${{ matrix.release }}-testrun.log && \
+              cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
