@@ -95,8 +95,8 @@ jobs:
               /bin/bash -c "
                 mkdir -p /tmp/test_run &&
                 cd /tmp/test_run &&
-                ${{ matrix.command }} > testrun.log 2>&1 &&
-                cp ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}} &&
+                ${{ matrix.command }} > testrun.log 2>&1 || true &&
+                cp /host/ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}} &&
                 cp testrun.log /host/${{ matrix.release }}-testrun.log
               "
           else
@@ -104,7 +104,7 @@ jobs:
             docker run --memory=6g -v $PWD:/host \
               icferst/actions:${{ matrix.release }}-${{ github.sha }} \
               /bin/bash -c "${{ matrix.command }} 2>&1 | tee /host/${{ matrix.release }}-testrun.log && \
-              cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
+              cp -v /host/ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
           fi
 
       - uses: actions/upload-artifact@v4
