@@ -69,7 +69,7 @@ jobs:
           - name: "Focal"
             release: focal
             runner: ubuntu-latest
-            command: "make THREADS=2 serialtest-mp-xml"
+            command: "make THREADS=1 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
     steps:
