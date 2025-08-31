@@ -93,11 +93,10 @@ jobs:
             docker run --memory=12g --cpus=4 -v $PWD:/host \
               icferst/actions:${{ matrix.release }}-${{ github.sha }} \
               /bin/bash -c "
-                mkdir -p /tmp/test_run &&
-                cd /tmp/test_run &&
-                ${{ matrix.command }} > testrun.log 2>&1 || true &&
-                cp /host/ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}} &&
-                cp testrun.log /host/${{ matrix.release }}-testrun.log
+                cd /host &&
+                ${{ matrix.command }} > /tmp/testrun.log 2>&1 || true &&
+                cp ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}} &&
+                cp /tmp/testrun.log /host/${{ matrix.release }}-testrun.log
               "
           else
             # Bionic: original behavior
