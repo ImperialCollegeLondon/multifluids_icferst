@@ -465,6 +465,9 @@ contains
                 have_component_field = .true.
             !!$
             call Calculate_All_Rhos( state, packed_state, Mdims )
+            
+            if (have_temperature_field) call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
+            
             if( have_component_field ) then
                 call get_option( '/numerical_methods/Max_compositional_its', NonLinearIteration_Components, default = 1 )
             end if
