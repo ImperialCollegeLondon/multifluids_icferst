@@ -51,9 +51,9 @@ module multiphase_1D_engine
     use parallel_tools, only : allmax, allmin, isparallel
     use, intrinsic :: ieee_arithmetic
     use multi_magma
-! #include "petsc/finclude/petsc.h"   
-! #include "petsc/finclude/petscmat.h"   
-!   use petsc 
+#include "petsc/finclude/petsc.h"
+    use petsc  
+! #include "petsc/finclude/petscmat.h"   !    
 ! use petscmat
 ! use petscsys
     implicit none
@@ -1972,7 +1972,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
         DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, &
         IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J,&
-        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, magma_coupling,magma_phase_coef)
+        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, magma_coupling,magma_phase_coef, magma_c_phi_series)
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -1991,7 +1991,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type( tensor_field ), intent(inout) :: velocity        
         type( tensor_field ), intent(inout) :: pressure
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, nonlinear_its
-        REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
+        REAL, DIMENSION(  : , :  ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
         !REAL, DIMENSION(  : ,  : ,: ), intent( in ) :: V_ABSORB
@@ -2003,6 +2003,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         type(coupling_term_coef), intent( in ) :: magma_coupling
         type(magma_phase_diagram), intent( in ) ::magma_phase_coef
+        real , DIMENSION(:), intent(inout) :: magma_c_phi_series
+
         ! Local Variables
         character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
         character(len=option_path_len) :: solver_option_velocity = "/solver_options/Linear_solver"
@@ -2039,8 +2041,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         REAL, DIMENSION( :, : ), allocatable :: sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: OLDvelocity, den_all2, denold_all2, tfield, den_all3!, u_all2
-        type( tensor_field ), pointer :: p_all, cvp_all, deriv, python_tfield
-        type( vector_field ), pointer :: x_all2, U
+        type( tensor_field ), pointer :: p_all, cvp_all, deriv, python_tfield, saturation_field
+        type( vector_field ), pointer :: x_all2, U, x_all3
         type( scalar_field ), pointer :: sf, soldf, gamma, cvp
         type( vector_field ) :: packed_vel, rhs
         type( vector_field ) :: deltap, rhs_p
@@ -2078,21 +2080,120 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         logical :: second_compaction_formulation    
         
         integer :: TEST_temperal
-        real :: cmcscaling
+        real, save :: cmcscaling
         integer :: cmcscaling2
 
         logical :: diverged
         logical :: first_time= .true.
         real, dimension (:,:,:),allocatable :: velocity_backup
         real, dimension (:,:,:),allocatable :: P_backup
-        
-        save cmcscaling
+
+        logical :: direct_solve_stokes = .false.
+
+        logical :: scale_dynamics_system = .false.
+        real :: mu0, C0, drhog, P0, T0, U0, L0
+        type (vector_field_pointer) ::darcy_velocity
+
+        compute_compaction=.true. 
+        second_compaction_formulation=.false. 
+        if (compute_compaction) then
+          final_phase=1
+        else
+          final_phase=Mdims%nphase
+        end if
+
+        IGOT_CMC_PRECON = 0
+        if ( FEM_continuity_equation ) IGOT_CMC_PRECON = 1
+        !sprint_to_do!this looks like a place than can be easily optimized
+        ALLOCATE( UDEN_ALL( Mdims%nphase, Mdims%cv_nonods ), UDENOLD_ALL( Mdims%nphase, Mdims%cv_nonods ) ) ! UDEN still needs all phases for magma
+        UDEN_ALL = 0.; UDENOLD_ALL = 0.
+        ewrite(3,*) 'In FORCE_BAL_CTY_ASSEM_SOLVE'
+        ALLOCATE( Mmat%CT( Mdims%ndim,final_phase, Mspars%CT%ncol )) ; Mmat%CT=0.
+        call allocate(Mmat%CT_RHS,Mdims%npres,pressure%mesh,"Mmat%CT_RHS")
+        ALLOCATE( Mmat%U_RHS( Mdims%ndim, final_phase, Mdims%u_nonods )) ; !initialised inside the subroutines
+        ALLOCATE( DIAG_SCALE_PRES( Mdims%npres,Mdims%cv_nonods )) ; DIAG_SCALE_PRES=0.
+        ALLOCATE(DIAG_SCALE_PRES_COUP(Mdims%npres,Mdims%npres,Mdims%cv_nonods),INV_B(final_phase,final_phase,Mdims%cv_nonods))
+        ALLOCATE( CMC_PRECON( Mdims%npres, Mdims%npres, Mspars%CMC%ncol*IGOT_CMC_PRECON)) ; IF(IGOT_CMC_PRECON.NE.0) CMC_PRECON=0.
+        ALLOCATE( MASS_MN_PRES( Mspars%CMC%ncol )) ; MASS_MN_PRES=0.
+        ALLOCATE( MASS_CV( Mdims%cv_nonods )) ; MASS_CV=0.
+        allocate(UDIFFUSION_ALL(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods))
+
+        if (is_magma) then !We need to allocate for the bulk viscosity
+          call allocate_multi_field( Mdims, UDIFFUSION_VOL_ALL, Mdims%mat_nonods, mem_type = 1)
+        end if
+        ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
+        call calculate_viscosity( state, packed_state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL)
+        DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
+        DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
+        !Calculate gravity source terms
+        allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
+        U_SOURCE_CV_ALL=0.0
+        if ( is_porous_media )then
+           call calculate_u_source_cv( Mdims, state, packed_state, DEN_ALL, U_SOURCE_CV_ALL )
+        else
+           if ( linearise_density ) then
+              call linearise_field( DEN_ALL2, UDEN_ALL )
+              call linearise_field( DENOLD_ALL2, UDENOLD_ALL )
+           else
+              UDEN_ALL = DEN_ALL2%VAL( 1, :, : )
+              UDENOLD_ALL = DENOLD_ALL2%VAL( 1, :, : )
+           end if
+           if ( .not. have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) then
+            if (second_compaction_formulation) then
+                call allocate(drhog_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), final_phase/)); call zero(drhog_tensor)
+                call allocate(drhog_tensor2,velocity%mesh,"CDP",dim = (/velocity%dim(1), final_phase/)); call zero(drhog_tensor2)
+                call calculate_u_source_cv( Mdims, state, packed_state, uden_all, U_SOURCE_CV_ALL, compute_compaction, ndgln, drhog_tensor=drhog_tensor, drhog_tensor2=drhog_tensor2, upwnd=upwnd)
+            else
+                call calculate_u_source_cv( Mdims, state, packed_state, DEN_ALL2%VAL( 1, :, : ), U_SOURCE_CV_ALL, compute_compaction, ndgln)
+            end if
+           end if
+           if ( has_boussinesq_aprox ) then
+              UDEN_ALL=1.0; UDENOLD_ALL=1.0
+           end if
+           if (solve_stokes) then
+             !For Stokes we need to disable all the inertia terms that are dependant on velocity and density
+             !By making uden =0. these terms will be effectively zeroed.
+              UDEN_ALL=0.0; UDENOLD_ALL=0.0  ! turn off the time derivative term
+           end if
+        end if
+
+        X_ALL2 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
+        X_ALL3 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "VelocityCoordinate" )
+        if (scale_dynamics_system) then
+            mu0=maxval(UDIFFUSION_ALL)
+            print *, 'mu0: ', mu0
+            print *, 'min_max_cphi:', magma_c_phi_series(1), magma_c_phi_series(1000000)
+            C0=1e5 !1./minval(magma_c_phi_series)*1e2   !magma_Coupling_generate is phi^2/c
+            print *, 'C0: ', C0
+            L0=(mu0/C0)**0.5
+            print *, 'L0:', L0
+            drhog= 400.*9.81
+            P0=drhog*L0
+            T0=(mu0*C0)**0.5/drhog 
+            U0=L0/T0
+            print *, 'U0:', U0
+            UDIFFUSION_ALL=UDIFFUSION_ALL/mu0 
+            UDIFFUSION_VOL_ALL%val=UDIFFUSION_VOL_ALL%val/mu0
+            X_ALL2%val=X_ALL2%val/L0
+            X_ALL3%val=X_ALL3%val/L0
+            U_SOURCE_CV_ALL=U_SOURCE_CV_ALL/drhog
+        else 
+            C0=1.
+        end if 
+        if ( is_magma ) then
+            !update_magma_coupling_coefficients must go first!
+            saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+            call update_magma_coupling_coefficients(Mdims, state, saturation_field%val, ndgln, multi_absorp%Magma%val,  magma_c_phi_series*C0,Magma_absorp_capped=multi_absorp%Magma_capped%val)
+            call Calculate_Magma_AbsorptionTerms( state, packed_state, multi_absorp%Magma, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
+                                                            upwnd, suf_sig_diagten_bc, magma_c_phi_series*C0, multi_absorp%Magma_capped )                  
+        end if
+
         if (first_time) then 
             call get_option("/numerical_methods/max_sat_its", cmcscaling2, default = 15)
             cmcscaling=cmcscaling2
             first_time=.false.
         else
-            cmcscaling=cmcscaling*0.99 ! gradually decreasing the scaling to ensure best convergent speed
+            cmcscaling=cmcscaling*0.9998 ! gradually decreasing the cmc scaling to ensure best convergent speed
         end if
         
         ! if (is_magma) compute_compaction= .true.  ! For magma only the first phase is assembled for the momentum equation.
@@ -2103,12 +2204,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         ! else
         !     second_compaction_formulation=.false.            
         ! end if
-        second_compaction_formulation=.false. 
-        if (compute_compaction) then
-          final_phase=1
-        else
-          final_phase=Mdims%nphase
-        end if
+
 
         !For the time being, let the user decide whether to rescale the mom matrices
         rescale_mom_matrices = have_option("/solver_options/Momemtum_matrix/rescale_mom_matrices")
@@ -2158,25 +2254,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               exit
            end if
         end do
-        IGOT_CMC_PRECON = 0
-        if ( FEM_continuity_equation ) IGOT_CMC_PRECON = 1
-        !sprint_to_do!this looks like a place than can be easily optimized
-        ALLOCATE( UDEN_ALL( Mdims%nphase, Mdims%cv_nonods ), UDENOLD_ALL( Mdims%nphase, Mdims%cv_nonods ) ) ! UDEN still needs all phases for magma
-        UDEN_ALL = 0.; UDENOLD_ALL = 0.
-        ewrite(3,*) 'In FORCE_BAL_CTY_ASSEM_SOLVE'
-        ALLOCATE( Mmat%CT( Mdims%ndim,final_phase, Mspars%CT%ncol )) ; Mmat%CT=0.
-        call allocate(Mmat%CT_RHS,Mdims%npres,pressure%mesh,"Mmat%CT_RHS")
-        ALLOCATE( Mmat%U_RHS( Mdims%ndim, final_phase, Mdims%u_nonods )) ; !initialised inside the subroutines
-        ALLOCATE( DIAG_SCALE_PRES( Mdims%npres,Mdims%cv_nonods )) ; DIAG_SCALE_PRES=0.
-        ALLOCATE(DIAG_SCALE_PRES_COUP(Mdims%npres,Mdims%npres,Mdims%cv_nonods),INV_B(final_phase,final_phase,Mdims%cv_nonods))
-        ALLOCATE( CMC_PRECON( Mdims%npres, Mdims%npres, Mspars%CMC%ncol*IGOT_CMC_PRECON)) ; IF(IGOT_CMC_PRECON.NE.0) CMC_PRECON=0.
-        ALLOCATE( MASS_MN_PRES( Mspars%CMC%ncol )) ; MASS_MN_PRES=0.
-        ALLOCATE( MASS_CV( Mdims%cv_nonods )) ; MASS_CV=0.
+
 
         
         ! U_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
         OLDvelocity => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
-        X_ALL2 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
+        
         P_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
         !For porous media we do not need PackedCVPressure
         if (.not. is_porous_media) then
@@ -2186,8 +2269,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         end if
         linearise_density = have_option_for_any_phase('phase_properties/Density/linearise_density', Mdims%n_in_pres)
 
-        DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
-        DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
+
 
         DEN_ALL(1:, 1:) => DEN_ALL2%VAL( 1, :, : )
         DENOLD_ALL(1:, 1:) => DENOLD_ALL2%VAL( 1, :, : )
@@ -2195,44 +2277,16 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         call allocate(deltaP,Mdims%npres,pressure%mesh,"DeltaP")
         call allocate(rhs_p,Mdims%npres,pressure%mesh,"PressureCorrectionRHS")
 
-        allocate(velocity_backup( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ))
-        allocate( P_backup(size(P_ALL%val,1),size(P_ALL%val,2),size(P_ALL%val,3)))
+        
+        if (.not. direct_solve_stokes) then 
+            allocate( P_backup(size(P_ALL%val,1),size(P_ALL%val,2),size(P_ALL%val,3)))
+            allocate(velocity_backup( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ))
+        end if
 
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         JUST_BL_DIAG_MAT = .false.
 
-        !Calculate gravity source terms
-        allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
-        U_SOURCE_CV_ALL=0.0
-        if ( is_porous_media )then
-           call calculate_u_source_cv( Mdims, state, packed_state, DEN_ALL, U_SOURCE_CV_ALL )
-        else
-           if ( linearise_density ) then
-              call linearise_field( DEN_ALL2, UDEN_ALL )
-              call linearise_field( DENOLD_ALL2, UDENOLD_ALL )
-           else
-              UDEN_ALL = DEN_ALL2%VAL( 1, :, : )
-              UDENOLD_ALL = DENOLD_ALL2%VAL( 1, :, : )
-           end if
-           if ( .not. have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) then
-            if (second_compaction_formulation) then
-                call allocate(drhog_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), final_phase/)); call zero(drhog_tensor)
-                call allocate(drhog_tensor2,velocity%mesh,"CDP",dim = (/velocity%dim(1), final_phase/)); call zero(drhog_tensor2)
-                call calculate_u_source_cv( Mdims, state, packed_state, uden_all, U_SOURCE_CV_ALL, compute_compaction, ndgln, drhog_tensor=drhog_tensor, drhog_tensor2=drhog_tensor2, upwnd=upwnd)
-            else
-                call calculate_u_source_cv( Mdims, state, packed_state, DEN_ALL2%VAL( 1, :, : ), U_SOURCE_CV_ALL, compute_compaction, ndgln)
-            end if
-           end if
-            
-           if ( has_boussinesq_aprox ) then
-              UDEN_ALL=1.0; UDENOLD_ALL=1.0
-           end if
-           if (solve_stokes) then
-             !For Stokes we need to disable all the inertia terms that are dependant on velocity and density
-             !By making uden =0. these terms will be effectively zeroed.
-              UDEN_ALL=0.0; UDENOLD_ALL=0.0  ! turn off the time derivative term
-           end if
-        end if
+        
 
         if ( have_option( '/blasting' ) ) then
             RETRIEVE_SOLID_CTY = .true.
@@ -2251,18 +2305,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               END DO
            ENDIF
         ENDIF
-        allocate(UDIFFUSION_ALL(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods))
-        if (is_magma) then !We need to allocate for the bulk viscosity
-          call allocate_multi_field( Mdims, UDIFFUSION_VOL_ALL, Mdims%mat_nonods, mem_type = 1)
-        end if
-        ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
-        call calculate_viscosity( state, packed_state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL)
 
 
-        if (compute_compaction) then
-            allocate(Compaction_Length (Mdims%mat_nonods))
-            call calculate_compaction_length ( state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, Compaction_Length, magma_coupling)
-        end if
+
+        ! if (compute_compaction) then
+        !     allocate(Compaction_Length (Mdims%mat_nonods))
+        !     call calculate_compaction_length ( state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, Compaction_Length, magma_coupling)
+        ! end if
         allocate(velocity_absorption(Mdims%ndim * final_phase, Mdims%ndim * final_phase, Mdims%mat_nonods))
         ! define velocity_absorption here...
         velocity_absorption=0.0
@@ -2413,165 +2462,182 @@ end if
         end if
 
 
-        diverged =.true.
-        velocity_backup=velocity%val
-        P_backup=P_all%val
-DO WHILE (diverged)
-        print '(A, F6.1)', 'cmcscaling: ', cmcscaling        
-        velocity%val=velocity_backup
-        P_all%val=P_backup
-        ! form pres eqn.
-        if (.not.Mmat%Stored .or. .not.is_porous_media) then
-            !Retrieve the diagonal of the momentum matrix only once if required
-            if (((solve_stokes .or. solve_mom_iteratively) &
-                .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
-                rescale_mom_matrices ) then
-                call allocate(diagonal_A, final_phase*Mdims%ndim, velocity%mesh, "diagonal_A")
-                call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
-            end if
-            if (solve_stokes .or. solve_mom_iteratively) then
-                if (compute_compaction) then
-                    if (solve_mom_iteratively) then
-                        call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, Compaction_length, CMC_scale=cmcscaling)  !using AA 
-                    else
-                        call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, Compaction_length)  !using petsc
-                    end if 
-                else
-                    call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 1)
-                end if
-            end if
-          !Now invert the Mass matrix
-          if (.not. compute_compaction)CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
-        end if
-        ! solve using a projection method
-        call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), final_phase/)); call zero(cdp_tensor)
 
-        ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
-        call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
-
-        if ( high_order_Ph ) then
-            if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
-              !UABSORBIN HAS NEVER BEEN CONSIDERED FOR THE PRESSURE SOLVER, IT SHOULD BE REMOVED!
-                allocate (U_ABSORBIN(Mdims%ndim * final_phase, Mdims%ndim * final_phase, Mdims%mat_nonods))
-                ! call update_velocity_absorption( state, Mdims%ndim, final_phase, U_ABSORBIN )
-                ! call update_velocity_absorption_coriolis( state, Mdims%ndim, final_phase, U_ABSORBIN )
-                call high_order_pressure_solve( Mdims, ndgln, Mmat%u_rhs, state, packed_state, final_phase, U_ABSORBIN*0.0 )
-                deallocate(U_ABSORBIN)
-            end if
-        end if
-
-
-        !"########################UPDATE VELOCITY STEP####################################"
-        !(Is this needed? The pressure hasn't changed yet, so the old velocity should do)!SPRINT_TO_DO
-        !MAYBE ONLY AFTER ADAPT/START OF TIME?
-        IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE) THEN
-            !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
-            CALL Mass_matrix_MATVEC( velocity % VAL, Mmat%PIVIT_MAT, Mmat%U_RHS + CDP_tensor%val, Mdims%ndim, final_phase, &
-                Mdims%totele, Mdims%u_nloc, ndgln%u )
-        else
-            if ( .not. ( after_adapt .and. cty_proj_after_adapt )) then
-
-              if (rescale_mom_matrices) call scale_PETSc_matrix(Mmat%DGM_PETSC)
-              !For a velocity field the diagonal of A needs to be extracted using a vector field
-              call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)              
-            end if
-! call MatView(Mmat%DGM_PETSC%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
-            if ( .not. (solve_stokes .or. solve_mom_iteratively) )  call deallocate(Mmat%DGM_PETSC)
-        END IF
-
-    if ((.not. is_magma) .or. compute_compaction) then 
-
-        !"########################UPDATE PRESSURE STEP####################################"
-        !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver, for inertia this is a huge save as for that momemt DGM_petsc is deallocated!)
-        sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
-        diag = Mdims%npres == 1!Make it non-diagonal to allow coupling between reservoir and pipes domains
-        call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc",diag)
-        CALL COLOR_GET_CMC_PHA( Mdims, final_phase, Mspars, ndgln, Mmat,&
-        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-        CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-        pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
-
-! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
-
-        if (compute_compaction) then  !generate D matrix
+        
+        if (direct_solve_stokes) then
+            ! obtain D=Ct*phi/c^2*C
             call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 2)
             CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
+            sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
             call allocate(CMC_petsc2,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc2",diag)
+
             CALL COLOR_GET_CMC_PHA( Mdims, final_phase, Mspars, ndgln, Mmat,&
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc2, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
             pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
-        end if
-        !This section is to impose a pressure of zero at some node (when solving for only a gradient of pressure)
-        !This is deprecated as the remove_null space method works much better (provided by PETSc)
-        call get_option( '/material_phase[0]/scalar_field::Pressure/' // 'prognostic/reference_node', ndpset, default = 0 )
-        if ( ndpset /= 0 ) rhs_p%val( 1, ndpset ) = 0.0
-        !======================================================================================
-        ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
-        ewrite(3,*)'about to solve for pressure'
-        !Perform Div * U for the RHS of the pressure equation
-        rhs_p%val = 0.
-        if (second_compaction_formulation) then 
-            call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p, drhog_tensor=drhog_tensor%val)
+
+            call petsc_Stokes_solver_direct(packed_state, Mdims, Mmat, ndgln, Mspars, CMC_petsc2, P_all, velocity, rhs_p, solver_option_velocity)
         else
-            call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
-        end if
-        if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
-        rhs_p%val = - rhs_p%val! + Mmat%CT_RHS%val
-        call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-        !Re-scale system so we can deal with SI units of permeability
-        if (is_porous_media) then
-          call scale(cmc_petsc, 1.0/rescaleVal)
-          rhs_p%val = rhs_p%val / rescaleVal
-        end if
-        if (rescale_mom_matrices) then
-          !Retrieve diagonal and re-scale matrix
-          call allocate(diagonal_CMC, Mdims%npres, pressure%mesh, "diagonal_CMC")
-          call extract_diagonal(cmc_petsc, diagonal_CMC)
-          call scale_PETSc_matrix(cmc_petsc)
-        end if
-        ! call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
-        ! call solve_and_update_pressure2(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC)
-if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC%val)!Recover original X; X = D^-0.5 * X'
-call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
-pres_its_taken = its_taken
+            diverged =.true.
+            velocity_backup=velocity%val
+            P_backup=P_all%val
+            DO WHILE (diverged)
+                    print '(A, F6.1)', 'cmcscaling: ', cmcscaling        
+                    velocity%val=velocity_backup
+                    P_all%val=P_backup
+                    ! form pres eqn.
+                    if (.not.Mmat%Stored .or. .not.is_porous_media) then
+                        !Retrieve the diagonal of the momentum matrix only once if required
+                        if (((solve_stokes .or. solve_mom_iteratively) &
+                            .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
+                            rescale_mom_matrices ) then
+                            call allocate(diagonal_A, final_phase*Mdims%ndim, velocity%mesh, "diagonal_A")
+                            call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
+                        end if
+                        if (solve_stokes .or. solve_mom_iteratively) then
+                            if (compute_compaction) then
+                                if (solve_mom_iteratively) then
+                                    call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, Compaction_length, CMC_scale=cmcscaling)  !using AA 
+                                else
+                                    call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 4, Compaction_length)  !using petsc
+                                end if 
+                            else
+                                call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 1)
+                            end if
+                        end if
+                    !Now invert the Mass matrix
+                    if (.not. compute_compaction)CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
+                    end if
+                    ! solve using a projection method
+                    call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), final_phase/)); call zero(cdp_tensor)
 
-if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
-!If the system is re-scaled then now it is time to recover the correct solution
-if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC%val) !Recover original X; X = D^-0.5 * X'
-!If false update pressure then return before doing so
-!Now update the pressure
-P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
+                    ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
+                    call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
 
-        if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
-        if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
-        if (isParallel()) call halo_update(P_all)
-        !"########################UPDATE PRESSURE STEP####################################"
-        !We may apply the Anderson acceleration method
-          if ((solve_stokes .or. solve_mom_iteratively)) then
-            if (solve_mom_iteratively) then
-                !Solve Schur complement using our own method
-                call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
-                                              MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its, diverged, CMC_scale=cmcscaling)
-            else !Solve Schur complement using PETSc
-                if (is_magma)  then
-                    call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, CMC_petsc2, P_all, &
-                                            deltaP, rhs_p, solver_option_pressure, Dmat = CMC_petsc2) !Dmat cmc2
-                else
-                    call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, CMC_petsc, P_all, &
-                                            deltaP, rhs_p, solver_option_pressure)
+                    if ( high_order_Ph ) then
+                        if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
+                        !UABSORBIN HAS NEVER BEEN CONSIDERED FOR THE PRESSURE SOLVER, IT SHOULD BE REMOVED!
+                            allocate (U_ABSORBIN(Mdims%ndim * final_phase, Mdims%ndim * final_phase, Mdims%mat_nonods))
+                            ! call update_velocity_absorption( state, Mdims%ndim, final_phase, U_ABSORBIN )
+                            ! call update_velocity_absorption_coriolis( state, Mdims%ndim, final_phase, U_ABSORBIN )
+                            call high_order_pressure_solve( Mdims, ndgln, Mmat%u_rhs, state, packed_state, final_phase, U_ABSORBIN*0.0 )
+                            deallocate(U_ABSORBIN)
+                        end if
+                    end if
+
+
+                    !"########################UPDATE VELOCITY STEP####################################"
+                    !(Is this needed? The pressure hasn't changed yet, so the old velocity should do)!SPRINT_TO_DO
+                    !MAYBE ONLY AFTER ADAPT/START OF TIME?
+                    IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE) THEN
+                        !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
+                        CALL Mass_matrix_MATVEC( velocity % VAL, Mmat%PIVIT_MAT, Mmat%U_RHS + CDP_tensor%val, Mdims%ndim, final_phase, &
+                            Mdims%totele, Mdims%u_nloc, ndgln%u )
+                    else
+                        if ( .not. ( after_adapt .and. cty_proj_after_adapt )) then
+
+                        if (rescale_mom_matrices) call scale_PETSc_matrix(Mmat%DGM_PETSC)
+                        !For a velocity field the diagonal of A needs to be extracted using a vector field
+                        call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)              
+                        end if
+            ! call MatView(Mmat%DGM_PETSC%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
+                        if ( .not. (solve_stokes .or. solve_mom_iteratively) )  call deallocate(Mmat%DGM_PETSC)
+                    END IF
+
+                if ((.not. is_magma) .or. compute_compaction) then 
+
+                    !"########################UPDATE PRESSURE STEP####################################"
+                    !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver, for inertia this is a huge save as for that momemt DGM_petsc is deallocated!)
+                    sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
+                    diag = Mdims%npres == 1!Make it non-diagonal to allow coupling between reservoir and pipes domains
+                    call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc",diag)
+
+                    CALL COLOR_GET_CMC_PHA( Mdims, final_phase, Mspars, ndgln, Mmat,&
+                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                    CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
+                    pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
+
+            ! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
+
+                    if (compute_compaction) then  !generate D matrix
+                        call generate_Pivit_matrix_Stokes(state, ndgln, Mdims, final_phase, Mmat, MASS_ELE, diagonal_A, upwnd, 2)
+                        CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
+                        call allocate(CMC_petsc2,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc2",diag)
+                        CALL COLOR_GET_CMC_PHA( Mdims, final_phase, Mspars, ndgln, Mmat,&
+                        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                        CMC_petsc2, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
+                        pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
+                    end if
+                    !This section is to impose a pressure of zero at some node (when solving for only a gradient of pressure)
+                    !This is deprecated as the remove_null space method works much better (provided by PETSc)
+                    call get_option( '/material_phase[0]/scalar_field::Pressure/' // 'prognostic/reference_node', ndpset, default = 0 )
+                    if ( ndpset /= 0 ) rhs_p%val( 1, ndpset ) = 0.0
+                    !======================================================================================
+                    ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
+                    ewrite(3,*)'about to solve for pressure'
+                    !Perform Div * U for the RHS of the pressure equation
+                    rhs_p%val = 0.
+                    if (second_compaction_formulation) then 
+                        call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p, drhog_tensor=drhog_tensor%val)
+                    else
+                        call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
+                    end if
+                    if (compute_compaction) call include_Laplacian_P_into_RHS(Mmat, Pressure, rhs_p, deltap)
+                    rhs_p%val = - rhs_p%val! + Mmat%CT_RHS%val
+                    call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+                    !Re-scale system so we can deal with SI units of permeability
+                    if (is_porous_media) then
+                    call scale(cmc_petsc, 1.0/rescaleVal)
+                    rhs_p%val = rhs_p%val / rescaleVal
+                    end if
+                    if (rescale_mom_matrices) then
+                    !Retrieve diagonal and re-scale matrix
+                    call allocate(diagonal_CMC, Mdims%npres, pressure%mesh, "diagonal_CMC")
+                    call extract_diagonal(cmc_petsc, diagonal_CMC)
+                    call scale_PETSc_matrix(cmc_petsc)
+                    end if
+                    ! call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+                    ! call solve_and_update_pressure2(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC)
+            if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC%val)!Recover original X; X = D^-0.5 * X'
+            call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
+            pres_its_taken = its_taken
+
+            if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
+            !If the system is re-scaled then now it is time to recover the correct solution
+            if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC%val) !Recover original X; X = D^-0.5 * X'
+            !If false update pressure then return before doing so
+            !Now update the pressure
+            P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
+
+                    if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
+                    if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
+                    if (isParallel()) call halo_update(P_all)
+                    !"########################UPDATE PRESSURE STEP####################################"
+                    !We may apply the Anderson acceleration method
+                    if ((solve_stokes .or. solve_mom_iteratively)) then
+                        if (solve_mom_iteratively) then
+                            !Solve Schur complement using our own method
+                            call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
+                                                        MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its, diverged, CMC_scale=cmcscaling)
+                        else !Solve Schur complement using PETSc
+                            if (is_magma)  then
+                                call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, CMC_petsc2, P_all, &
+                                                        deltaP, rhs_p, solver_option_pressure, Dmat = CMC_petsc2) !Dmat cmc2
+                            else
+                                call petsc_Stokes_solver(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase, CMC_petsc, P_all, &
+                                                        deltaP, rhs_p, solver_option_pressure)
+                            end if
+                            !Now recompute velocity
+                            call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
+                            call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
+                        end if
+                    end if
+
+
                 end if
-                !Now recompute velocity
-                call C_MULT2_MULTI_PRES(Mdims, final_phase, Mspars, Mmat, P_ALL%val, CDP_tensor)
-                call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
-            end if
+                if (diverged) cmcscaling=cmcscaling*1.3
+            END DO
         end if
-
-    end if
-    if (diverged) cmcscaling=cmcscaling*1.3
-END DO
-
-
     ! if (is_magma) call cal_contribution()
                 !######################## CORRECTION VELOCITY STEP####################################
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases
@@ -2581,27 +2647,37 @@ END DO
             call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, Pressure, deltap, cdp_tensor, rhs_p, upwnd)
         end if
         call deallocate(deltaP)
-
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases, must put after the corection velocity step for magma
         if (compute_compaction) then 
             call get_Darcy_phases_velocity()            
         end if
-        
+
+        if(is_porous_media .or. is_magma) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
+
+        if (scale_dynamics_system) then
+            X_ALL2%val=X_ALL2%val*L0
+            X_ALL3%val=X_ALL3%val*L0
+            velocity%val(:,1,:)=velocity%val(:,1,:)*U0
+            Pressure%val=Pressure%val*P0
+
+            ! darcy_velocity%ptr => extract_vector_field(state(2),"DarcyVelocity")
+            ! darcy_velocity%ptr%val=darcy_velocity%ptr%val*U0
+        end if 
+
         ! call force_zero_boundary_value(Mdims, velocity)
-        
         if (isParallel()) call halo_update(velocity)
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
-        call DEALLOCATE( CDP_tensor )
-        if ((solve_stokes .or. solve_mom_iteratively) .and. .not. (is_magma .and. .not. compute_compaction)) then
-            call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
+        call DEALLOCATE( CDP_tensor )  
+        if ((solve_stokes .or. solve_mom_iteratively) .and. .not. (is_magma .and. .not. compute_compaction)) then  
+            if (.not. direct_solve_stokes) call deallocate(cmc_petsc)          
+            call deallocate(rhs_p)
+            call deallocate(Mmat%DGM_PETSC)
             if (compute_compaction) call deallocate(cmc_petsc2)
         end if
-        !######################## CORRECTION VELOCITY STEP####################################
+          !######################## CORRECTION VELOCITY STEP####################################
         ! Calculate control volume averaged pressure CV_P from fem pressure P
         !Ensure that prior to comming here the halos have been updated
         if (.not. is_porous_media) call calc_CVPres_from_FEPres()!No need for porous media
-!       
-        
         DEALLOCATE( Mmat%CT )
         DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
         DEALLOCATE( Mmat%U_RHS )
@@ -2615,9 +2691,9 @@ END DO
         if (((solve_stokes .or. solve_mom_iteratively) &
              .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
             rescale_mom_matrices ) then
-            call deallocate(diagonal_A)
+            if (.not. direct_solve_stokes) call deallocate(diagonal_A)
         end if
-        if (rescale_mom_matrices)  call deallocate(diagonal_CMC)
+        if (rescale_mom_matrices .and. (.not. direct_solve_stokes))  call deallocate(diagonal_CMC)
         if (is_magma) call deallocate_multi_field(UDIFFUSION_VOL_ALL)
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
@@ -2814,7 +2890,7 @@ END DO
           call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
           conv_test = maxval(abs(rhs_p%val(1,:)))
           if ( conv_test < solver_tolerance) then
-            ewrite(1,*)"No need for AA"
+            print *, 'conv_test= ',conv_test, ' No need for AA'
             deallocate(ref_pressure)
             return
           end if
@@ -2869,7 +2945,7 @@ END DO
             conv_test = maxval(abs(rhs_p%val(1,:)))
             if (conv_test>1e-1) then 
                 diverged=.true.
-                print *, 'cmcscaling too small, iteration abandoned. A new stokes iteration will restart'
+                print *, 'conv_test=',conv_test, ';  cmcscaling too small, iteration abandoned. A new stokes iteration will restart'
                 exit stokesloop
             end if 
 
@@ -3443,7 +3519,7 @@ P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
                         Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, &
                         Mmat%CT( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
                     END DO
-                else
+                else ! magma
                     DO IPRES = 1, Mdims%npres
                             CALL CT_MULT2( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*one_or_n_in_press : IPRES*one_or_n_in_press, : ), &
                             Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, one_or_n_in_press, &
@@ -3494,19 +3570,17 @@ P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
           Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL2%val, U_SOURCE_CV_ALL)
         deallocate(U_SOURCE_CV_ALL)
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
-        call deallocate(CDP_tensor);
-        call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), darcy_phases/)); call zero(cdp_tensor)
-
+        ! call deallocate(CDP_tensor);
+        call allocate(cdp_tensor,velocity%mesh,"CDP",dim = (/velocity%dim(1), darcy_phases/)); 
+        call zero(cdp_tensor)
         call C_MULT2( CDP_tensor%val, P_ALL%val, Mdims%CV_NONODS, Mdims%U_NONODS, Mdims%NDIM, darcy_phases, &
            Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-        
         ! Here we use the updated pressure gradient CDP_tensor which is passed down from velocity correction to calculated the darcy velocity of the liquid phase
         !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
         CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         CALL Mass_matrix_MATVEC( velocity % VAL(:, 2:Mdims%nphase,:), Mmat%PIVIT_MAT, Mmat%U_RHS(:,2:Mdims%nphase,:)*0 + CDP_tensor%val,&
             Mdims%ndim, darcy_phases, Mdims%totele, Mdims%u_nloc, ndgln%u )
         if (second_compaction_formulation) velocity % VAL(:, 2,:)=velocity % VAL(:, 2,:)+drhog_tensor2%val(:,1,:)
-
       end subroutine get_Darcy_phases_velocity
 
 
@@ -3785,7 +3859,6 @@ P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
                 IPLIKE_GRAD_SOU,DIAG_BIGM_CON, BIGM_CON, &
                 got_free_surf, MASS_SUF, FEM_continuity_equation, MASS_ELE)
         end if
-
         ALLOCATE( DEN_OR_ONE( final_phase, Mdims%cv_nonods )); DEN_OR_ONE = 1.
         ALLOCATE( DENOLD_OR_ONE( final_phase, Mdims%cv_nonods )); DENOLD_OR_ONE = 1.
         IF ( Mdisopt%volfra_use_theta_flux .or. has_boussinesq_aprox) THEN ! We have already put density in theta... or

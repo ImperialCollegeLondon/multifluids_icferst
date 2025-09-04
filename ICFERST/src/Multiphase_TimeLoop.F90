@@ -596,13 +596,7 @@ contains
                         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                 end if
 
-                if ( is_magma ) then
-                  !update_magma_coupling_coefficients must go first!
-                  saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                  call update_magma_coupling_coefficients(Mdims, state, saturation_field%val, ndgln, multi_absorp%Magma%val,  magma_c_phi_series,Magma_absorp_capped=multi_absorp%Magma_capped%val)
-                  call Calculate_Magma_AbsorptionTerms( state, packed_state, multi_absorp%Magma, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
-                                                                    upwnd, suf_sig_diagten_bc, magma_c_phi_series, multi_absorp%Magma_capped )                  
-                end if
+
                 
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
@@ -655,10 +649,10 @@ contains
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
                         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling, magma_phase_coef)
+                        calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling, magma_phase_coef, magma_c_phi_series)
                 end if Conditional_ForceBalanceEquation
 
-                
+                velocity_field%val=0.
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
@@ -683,7 +677,7 @@ contains
                 !#=================================================================================================================
 
                 !!$ Calculate Darcy velocity with the most up-to-date information
-                if(is_porous_media .or. is_magma) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
+                ! if(is_porous_media .or. is_magma) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
 
                 !#=================================================================================================================
                 !# End Velocity Update -> Move to ->the rest

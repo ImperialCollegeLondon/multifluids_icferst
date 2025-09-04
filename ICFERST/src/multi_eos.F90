@@ -1949,14 +1949,14 @@ contains
                         x_inod = ndgln%x ( (ele - 1 ) * Mdims%cv_nloc + iloc )
                         if (is_magma) then
                           if (iphase==1) then !only the solid phase has viscosity terms
-                            ! CALL CALCULATE_VISCOSITY_COSTA(SATURATION%VAL(CV_NOD),1E8,MUS_SCALE, MUB_SCALE)
-                            ! mu_tmp( :, :, iloc )=mus_scale
-                            ! momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
-                            ! momentum_diffusion2%val(1, 1, iphase, mat_nod)=MUB_SCALE
+                            CALL CALCULATE_VISCOSITY_COSTA(SATURATION2%VAL(CV_NOD), 1e15,MUS_SCALE, MUB_SCALE)
+                            mu_tmp( :, :, iloc )=mus_scale
+                            momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
+                            momentum_diffusion2%val(1, 1, iphase, mat_nod)=MUB_SCALE
 
-                            mu_tmp( :, :, iloc )=mus_varied(saturation%val(cv_nod), 5e11) !mu_tmp( 1, 1, iloc )
-                            momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )  !mu_tmp( :, :, iloc )
-                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc )*5e-1, exp_zeta_function, saturation%val(cv_nod))*0.01! make it 1/10
+                            ! mu_tmp( :, :, iloc )=mus_varied(saturation%val(cv_nod), 8e11) !mu_tmp( 1, 1, iloc )
+                            ! momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )  !mu_tmp( :, :, iloc )
+                            ! momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc )*5e-1, exp_zeta_function, saturation%val(cv_nod))*0.01! make it 1/10
                             
                             
                             
@@ -1985,7 +1985,6 @@ momentum_diffusion2%val(:, :, iphase, mat_nod)  = momentum_diffusion2%val(:, :, 
                         ! else
                         !    t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
                         ! end if
-
                      end do
                   end do
                end do
@@ -1993,7 +1992,8 @@ momentum_diffusion2%val(:, :, iphase, mat_nod)  = momentum_diffusion2%val(:, :, 
             deallocate( component_tmp, mu_tmp )
          end if
       end if
-
+! print *, 'max_mus:', maxval(momentum_diffusion( :, :, 1, : ))
+! print *, 'min_mus:', minval(momentum_diffusion( :, :, 1, : ))  
       return
     Contains
       !---------------------------------------------------------------------------
@@ -2065,27 +2065,34 @@ momentum_diffusion2%val(:, :, iphase, mat_nod)  = momentum_diffusion2%val(:, :, 
         real, parameter :: B_vis=2
         real, parameter :: phistar=0.78
         real, parameter :: gamma=12.5
-        real, parameter :: sigma= 13-gamma
+        real, parameter :: sigma= 13.-gamma
         real, parameter :: pi=3.141592653
         real, parameter :: BS_ratio=0.6
 
         real, parameter ::epsilon=1e-2
-        real ::f, PHI
+        real ::f, PHI, mus0
+
+        logical, save :: initialized = .false.
+        real, save :: ref_mus
 
         real, intent( in ) :: phi_S, mu0 !mu0 is the 'effective' viscosity that we use after the Schmeling model, tipical value 1e13
         real, intent( inout ) :: mus, mub
 
-        PHI=MAX(1-PHI_S,1E-2)
-        PHI=MIN(1-1E-2,PHI)
-
-        if (phi_s>-1e-3) then
-          f = (1 - EPSILON) * ERF(pi**0.5 / 2.0 / (1 - EPSILON) * phi/ PHISTAR * (1 + (phi / PHISTAR)**GAMMA))
-          mus = (1 + (phi / PHISTAR)**SIGMA) / (1 - f)**(b_VIS * PHISTAR)*mu0
-          mub = mus / MAX(1e-2, phi) / max(1 - phi,1e-2) * bs_RATIO*mu0*1e-2
-        else
-          mus=1e20
-          mub=mu0*1e-2 
+        if (.not. initialized) then
+          PHI=1-2e-2
+          f = (1. - EPSILON) * ERF(pi**0.5 / 2.0 / (1. - EPSILON) * phi/ PHISTAR * (1. + (phi / PHISTAR)**GAMMA))
+          ref_mus = (1. + (phi / PHISTAR)**SIGMA) / (1. - f)**(b_VIS * PHISTAR)
+          initialized = .true.
         end if
+
+        PHI=MAX(PHI_S,1E-2)
+        PHI=MIN(1.-2E-2,PHI)
+
+        f = (1. - EPSILON) * ERF(pi**0.5 / 2.0 / (1. - EPSILON) * phi/ PHISTAR * (1. + (phi / PHISTAR)**GAMMA))
+        mus0 = (1. + (phi / PHISTAR)**SIGMA) / (1. - f)**(b_VIS * PHISTAR)
+        mus=mus0*mu0/ref_mus
+        mub = mus0 / MAX(1e-2, phi) / max(1. - phi,1e-2) * bs_RATIO*mu0/ref_mus
+
       end subroutine calculate_viscosity_costa
     end subroutine calculate_viscosity
 

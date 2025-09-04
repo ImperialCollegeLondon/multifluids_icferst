@@ -33,7 +33,9 @@ module solvers_module
     use halo_data_types
 #include "petsc/finclude/petsc.h"    
     use petsc
-
+#include "petsc/finclude/petscvec.h"  
+    use petscvec
+    
     use Copy_Outof_State
     use shape_functions_Linear_Quadratic
     use shape_functions_prototype
@@ -46,8 +48,7 @@ module solvers_module
 
     public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
          Initialise_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess, &
-         non_porous_ensure_sum_to_one, duplicate_petsc_matrix, scale_PETSc_matrix, petsc_Stokes_solver
-
+         non_porous_ensure_sum_to_one, duplicate_petsc_matrix, scale_PETSc_matrix, petsc_Stokes_solver, petsc_Stokes_solver_direct
 
 contains
 
@@ -1105,6 +1106,232 @@ contains
       call assemble(MAT_B)
 
     end subroutine
+    !---------------------------------------------------------------------------
+    !> @author Haiyang Hu
+    !> @brief In this subroutine direct solve the Stokes and continuity equation in one go
+    subroutine petsc_Stokes_solver_direct(packed_state, Mdims, Mmat, ndgln, Mspars, CMC_petsc2, P_all, velocity, rhs_p, solver_option_path)
+    use Full_Projection
+    use petsc_tools
+    use solvers
+    implicit none
+
+    type(state_type), intent(inout) :: packed_state
+    type(multi_dimensions), intent(in) :: Mdims
+    type(multi_matrices), intent(inout) :: Mmat
+    type(multi_ndgln), intent(in) :: ndgln
+    type(multi_sparsities), intent(in) :: Mspars
+    type(petsc_csr_matrix), intent(inout) :: CMC_petsc2
+    type(vector_field), intent(in) :: rhs_p
+    type(tensor_field), intent(inout) :: P_all, velocity
+    character(len=*), intent(in) :: solver_option_path
+
+    integer :: i, j, ncols 
+    integer, allocatable :: cols(:)
+    PetscScalar, allocatable :: vals(:)
+    PetscScalar :: maxval
+
+    type(petsc_numbering_type) :: petsc_numbering_p, petsc_numbering_v
+    type(csr_sparsity), pointer :: sparsity
+
+    Vec :: b1, b2, rhs, D
+    Vec, save :: x_save 
+    integer :: x_size
+    logical, save :: first_call = .true.
+
+    PetscInt    :: nb1(Mdims%u_nonods*2), nb2(Mdims%p_nonods)
+
+    Mat :: mats(4)
+    Mat :: T
+    KSP :: ksp_midori
+    MatNullSpace :: nullsp
+    PetscErrorCode :: ierr
+    PetscScalar, pointer :: xarray(:), arr_rhs(:),  arr1(:), arr2(:)
+    PetscReal :: rtol
+    PetscInt  :: maxits
+    Vec, dimension(2) :: rhs_sub
+    PetscReal :: max_val, rnorm
+    Vec :: rowMax
+    PetscScalar, allocatable :: u_rhs_flat(:) 
+    PetscInt :: its
+    KSPConvergedReason :: reason
+    PC   ::    pc
+! external MyKSPMonitor
+
+    rtol   = 1.0e-12
+    maxits = 1000
+    
+    call Convert_C_and_CT_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, Mspars, 1) 
+
+    sparsity => extract_csr_sparsity(packed_state, "CMatrixSparsity")
+    call allocate(petsc_numbering_p, node_count(rhs_p), rhs_p%dim, halo = sparsity%row_halo)
+    b2 = PetscNumberingCreateVec(petsc_numbering_p)
+    call field2petsc(rhs_p, petsc_numbering_p, b2)
+    call VecSetUp(b2, ierr)
+    call VecScale(b2, -1., ierr)
+
+    ! sparsity => extract_csr_sparsity(packed_state, "CTMatrixSparsity")
+    ! call allocate(petsc_numbering_v, size(Mmat%U_RHS,3), rhs_p%dim, halo = sparsity%row_halo)
+    ! b1 = PetscNumberingCreateVec(petsc_numbering_v)
+    ! call field2petsc(Mmat%U_RHS, petsc_numbering_v, b1)
+    allocate(u_rhs_flat(Mdims%u_nonods*2))    
+    u_rhs_flat(1: Mdims%u_nonods) = Mmat%U_RHS(1,1,:)
+    u_rhs_flat(Mdims%u_nonods+1: Mdims%u_nonods*2) = Mmat%U_RHS(2,1,:)
+
+    call VecCreateSeqWithArray(PETSC_COMM_SELF, 1, Mdims%u_nonods*2, u_rhs_flat, b1, ierr)    
+    call VecSetUp(b1, ierr)
+
+
+    call MatScale(Mmat%C_PETSC%M, real(-1.0, kind=PetscScalar_kind), ierr)
+    call MatScale(CMC_petsc2%M, real(-1.0, kind=PetscScalar_kind), ierr)
+    !--------------------------------------------------------------------
+    ! apply scaling for the momentum matrix
+    !--------------------------------------------------------------------
+    ! call MatAssemblyBegin(Mmat%DGM_PETSC%M, MAT_FINAL_ASSEMBLY, ierr)
+    ! call MatAssemblyEnd(Mmat%DGM_PETSC%M, MAT_FINAL_ASSEMBLY, ierr)
+
+    ! call MatScale(Mmat%DGM_PETSC%M, 1e-15, ierr)
+
+    ! call MatAssemblyBegin(Mmat%C_PETSC%M, MAT_FINAL_ASSEMBLY, ierr)
+    ! call MatAssemblyEnd(Mmat%C_PETSC%M, MAT_FINAL_ASSEMBLY, ierr)
+    ! call MatScale(Mmat%C_PETSC%M, 1e-15, ierr)
+    ! call VecScale(b1, 1e-15, ierr)
+
+    ! ----------------------------------
+    ! Build nested matrix T
+    ! ----------------------------------
+    mats(1) = Mmat%DGM_PETSC%M
+    mats(2) = Mmat%C_PETSC%M
+    mats(3) = Mmat%CT_PETSC%M
+    mats(4) = CMC_petsc2%M
+
+    call MatCreateNest(PETSC_COMM_WORLD, 2, PETSC_NULL_INTEGER, 2, PETSC_NULL_INTEGER, mats, T, ierr)
+    if (ierr /= 0) stop 'Error creating nested matrix T'
+    call MatAssemblyBegin(T, MAT_FINAL_ASSEMBLY, ierr)
+    call MatAssemblyEnd(T, MAT_FINAL_ASSEMBLY, ierr)
+    
+    ! if (first_call) then         
+        call MatCreateVecs(T,x_save,rhs,ierr)
+        call VecSet(x_save,0.0,ierr)
+    !     first_call=.false.
+    ! else
+    !     call MatCreateVecs(T,PETSC_NULL_VEC,rhs,ierr)
+    !     call VecGetSize(x_save, x_size, ierr)
+    !     if (x_size /= Mdims%u_nonods*2+Mdims%p_nonods) then 
+    !         call MatCreateVecs(T,x_save,rhs,ierr)
+    !         call VecSet(x_save,0.0,ierr)
+    !     end if
+    ! end if
+    call VecGetArrayF90(rhs, arr_rhs, ierr)
+    call VecGetArrayReadF90(b1, arr1, ierr)
+    arr_rhs(1:Mdims%u_nonods*2) = arr1(1:Mdims%u_nonods*2)
+    call VecRestoreArrayReadF90(b1, arr1, ierr)
+
+    call VecGetArrayReadF90(b2, arr2, ierr)
+    arr_rhs(Mdims%u_nonods*2+1:Mdims%u_nonods*2+Mdims%p_nonods) = arr2(1:Mdims%p_nonods)
+    call VecRestoreArrayReadF90(b2, arr2, ierr)
+
+    call VecRestoreArrayF90(rhs, arr_rhs, ierr)
+
+    ! Remove null spaces
+    call MatNullSpaceCreate(PETSC_COMM_SELF, PETSC_TRUE, 0, PETSC_NULL_VEC, nullsp, ierr)
+
+    call MatSetNullSpace(T, nullsp, ierr)
+    ! Remove null space component from RHS vector
+    call MatNullSpaceRemove(nullsp, rhs, ierr)    
+
+    ! ----------------------------------
+    ! Create and setup KSP solver
+    ! ----------------------------------
+    call KSPCreate(PETSC_COMM_SELF, ksp_midori, ierr)
+
+    call MatConvert(T, MATAIJ, MAT_INPLACE_MATRIX, T, ierr)
+
+    !Set ksp
+    call KSPSetOperators(ksp_midori, T, T, ierr)
+    call KSPSetTolerances(ksp_midori, rtol, rtol, PETSC_DEFAULT_REAL, maxits, ierr)
+
+    call KSPGMRESSetRestart(ksp_midori, 100, ierr)
+    !preconditioner
+    call KSPGetPC(ksp_midori, pc, ierr)
+    !GAMG
+    ! call PCSetType(pc, PCGAMG, ierr)
+    ! call PCGAMGSetType(pc, PCGAMGAGG, ierr)   ! aggregation type
+    ! call PCGAMGSetNSmooths(pc, 1, ierr)       ! number of smoothing steps
+
+    ! call PCGAMGSetThresholdScale(pc, 1.0, ierr)
+    ! call PCGAMGSetThreshold(pc, (/ 0.01/), 1, ierr)
+    !Hypre
+    ! call PCSetType(pc, PCHYPRE, ierr)
+    ! call PCHYPRESetType(pc, 'boomeramg', ierr)
+
+    ! Set solver type: direct solve (no Krylov iterations)
+    ! Set PC type to LU
+    ! Tell PETSc to use UMFPACK for the LU factorization
+    ! call KSPSetType(ksp_midori, KSPPREONLY, ierr)    
+    call PCSetType(pc, PCLU, ierr)
+    call PCFactorSetMatSolverType(pc, MATSOLVERUMFPACK , ierr) !MATSOLVERUMFPACK
+    
+    call KSPSetFromOptions(ksp_midori, ierr) 
+
+    ! set monitor (optional)
+    ! call PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_DEFAULT,vf,ierr)
+    call KSPMonitorSet(ksp_midori, MyKSPMonitor, PETSC_NULL_VEC, PETSC_NULL_FUNCTION, ierr)
+
+    ! ! ----------------------------------
+    ! Solve system
+    ! ----------------------------------
+    call KSPSolve(ksp_midori, rhs, x_save, ierr)
+    if (ierr /= 0) stop 'Error solving system'
+
+    call KSPGetConvergedReason(ksp_midori, reason, ierr)
+    print *, "Convergence reason:", reason
+
+    call KSPGetIterationNumber(ksp_midori, its, ierr)
+    print *, "KSP solver took ", its, " iterations."
+
+    call KSPGetResidualNorm(ksp_midori, rnorm, ierr)
+    print *, "Final residual norm: ", rnorm
+
+    ! ----------------------------------
+    ! Extract solution arrays and assign to Fortran arrays
+    ! ----------------------------------
+    call VecGetArrayF90(x_save, xarray, ierr)
+    if (ierr /= 0) stop 'Error getting array from Vec'
+
+    velocity%val(1,1,:) = xarray(1:Mdims%u_nonods)
+    velocity%val(2,1,:) = xarray(Mdims%u_nonods+1:2*Mdims%u_nonods)
+    P_all%val(1,1,:)    = xarray(2*Mdims%u_nonods+1 : 2*Mdims%u_nonods+Mdims%p_nonods)
+
+    call VecRestoreArrayF90(x_save, xarray, ierr)
+    if (ierr /= 0) stop 'Error restoring array to Vec'
+
+    ! ----------------------------------
+    ! Cleanup PETSc objects created in this subroutine
+    ! ----------------------------------
+    ! call VecDestroy(x_save, ierr)
+    call VecDestroy(b1, ierr)
+    call VecDestroy(b2, ierr)
+    call VecDestroy(rhs, ierr)
+
+    call MatNullSpaceDestroy(nullsp, ierr)
+    call MatDestroy(T, ierr)
+
+    call KSPDestroy(ksp_midori, ierr)    
+    end subroutine petsc_Stokes_solver_direct
+
+subroutine MyKSPMonitor(ksp,it,rnorm,dummy,ierr)
+  use petscksp
+  implicit none
+  integer, intent(in) :: ksp, it
+  PetscReal, intent(in) :: rnorm
+  PetscObject, intent(in) :: dummy
+  integer, intent(out) :: ierr
+
+  ierr = 0
+  write(*,'(A,I4,2X,E12.5)') 'Iteration ', it, rnorm
+end subroutine MyKSPMonitor
+    
+    !---------------------------------------------------------------------------
 
     !---------------------------------------------------------------------------
     !> @author Pablo Salinas
@@ -1115,7 +1342,7 @@ contains
         use Full_Projection
         use petsc_tools
         use solvers
-        
+     
         IMPLICIT NONE
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
