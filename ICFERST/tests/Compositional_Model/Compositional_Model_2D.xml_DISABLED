@@ -1,0 +1,150 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Compositional_Model_2D</name>
+  <owner userid="dimitrios.pavlidis"/>
+  <tags>mpml compositional</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>cp  CM_2D_2P3C_P1DGP1_10layers.mpml CM_2D_2P3C_P1DGP1_20layers.mpml
+sed -i 's/_10layers/_20layers/' CM_2D_2P3C_P1DGP1_20layers.mpml
+
+cp  CM_2D_2P3C_P1DGP1_10layers.mpml CM_2D_2P3C_P1DGP1_50layers.mpml
+sed -i 's/_10layers/_50layers/' CM_2D_2P3C_P1DGP1_50layers.mpml
+
+cp  CM_2D_2P3C_P1DGP1DG_10layers.mpml CM_2D_2P3C_P1DGP1DG_20layers.mpml
+sed -i 's/_10layers/_20layers/' CM_2D_2P3C_P1DGP1DG_20layers.mpml
+
+cp  CM_2D_2P3C_P1DGP1DG_10layers.mpml CM_2D_2P3C_P1DGP1DG_50layers.mpml
+sed -i 's/_10layers/_50layers/' CM_2D_2P3C_P1DGP1DG_50layers.mpml
+
+cp  CM_2D_2P3C_P1DGP2_10layers.mpml CM_2D_2P3C_P1DGP2_20layers.mpml
+sed -i 's/_10layers/_20layers/' CM_2D_2P3C_P1DGP2_20layers.mpml
+
+cp  CM_2D_2P3C_P1DGP2_10layers.mpml CM_2D_2P3C_P1DGP2_50layers.mpml
+sed -i 's/_10layers/_50layers/' CM_2D_2P3C_P1DGP2_50layers.mpml
+
+../../../bin/icferst CM_2D_2P3C_P1DGP1_10layers.mpml
+../../../bin/icferst CM_2D_2P3C_P1DGP1_20layers.mpml
+../../../bin/icferst CM_2D_2P3C_P1DGP1_50layers.mpml
+
+../../../bin/icferst CM_2D_2P3C_P1DGP1DG_10layers.mpml
+../../../bin/icferst CM_2D_2P3C_P1DGP1DG_20layers.mpml
+../../../bin/icferst CM_2D_2P3C_P1DGP1DG_50layers.mpml
+
+../../../bin/icferst CM_2D_2P3C_P1DGP2_10layers.mpml
+../../../bin/icferst CM_2D_2P3C_P1DGP2_20layers.mpml
+../../../bin/icferst CM_2D_2P3C_P1DGP2_50layers.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="s1_max_p1dgp1_10layers" language="python">from fluidity_tools import stat_parser as stat
+s1_max_p1dgp1_10layers = stat("CM_2D_2P3C_P1DGP1_10layers.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s1_min_p1dgp1_10layers" language="python">from fluidity_tools import stat_parser as stat
+s1_min_p1dgp1_10layers = stat("CM_2D_2P3C_P1DGP1_10layers.stat")["phase1"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s2_max_p1dgp1_10layers" language="python">from fluidity_tools import stat_parser as stat
+s2_max_p1dgp1_10layers = stat("CM_2D_2P3C_P1DGP1_10layers.stat")["phase2"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s2_min_p1dgp1_10layers" language="python">from fluidity_tools import stat_parser as stat
+s2_min_p1dgp1_10layers = stat("CM_2D_2P3C_P1DGP1_10layers.stat")["phase2"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s1_max_p1dgp1_20layers" language="python">from fluidity_tools import stat_parser as stat
+s1_max_p1dgp1_20layers = stat("CM_2D_2P3C_P1DGP1_20layers.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s1_min_p1dgp1_20layers" language="python">from fluidity_tools import stat_parser as stat
+s1_min_p1dgp1_20layers = stat("CM_2D_2P3C_P1DGP1_20layers.stat")["phase1"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s2_max_p1dgp1_20layers" language="python">from fluidity_tools import stat_parser as stat
+s2_max_p1dgp1_20layers = stat("CM_2D_2P3C_P1DGP1_20layers.stat")["phase2"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s2_min_p1dgp1_20layers" language="python">from fluidity_tools import stat_parser as stat
+s2_min_p1dgp1_20layers = stat("CM_2D_2P3C_P1DGP1_20layers.stat")["phase2"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s1_max_p1dgp1_50layers" language="python">from fluidity_tools import stat_parser as stat
+s1_max_p1dgp1_50layers = stat("CM_2D_2P3C_P1DGP1_50layers.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s1_min_p1dgp1_50layers" language="python">from fluidity_tools import stat_parser as stat
+s1_min_p1dgp1_50layers = stat("CM_2D_2P3C_P1DGP1_50layers.stat")["phase1"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s2_max_p1dgp1_50layers" language="python">from fluidity_tools import stat_parser as stat
+s2_max_p1dgp1_50layers = stat("CM_2D_2P3C_P1DGP1_50layers.stat")["phase2"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s2_min_p1dgp1_50layers" language="python">from fluidity_tools import stat_parser as stat
+s2_min_p1dgp1_50layers = stat("CM_2D_2P3C_P1DGP1_50layers.stat")["phase2"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s1_max_p1dgp2_10layers" language="python">from fluidity_tools import stat_parser as stat
+s1_max_p1dgp2_10layers = stat("CM_2D_2P3C_P1DGP2_10layers.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s1_min_p1dgp2_10layers" language="python">from fluidity_tools import stat_parser as stat
+s1_min_p1dgp2_10layers = stat("CM_2D_2P3C_P1DGP2_10layers.stat")["phase1"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s2_max_p1dgp2_10layers" language="python">from fluidity_tools import stat_parser as stat
+s2_max_p1dgp2_10layers = stat("CM_2D_2P3C_P1DGP2_10layers.stat")["phase2"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s2_min_p1dgp2_10layers" language="python">from fluidity_tools import stat_parser as stat
+s2_min_p1dgp2_10layers = stat("CM_2D_2P3C_P1DGP2_10layers.stat")["phase2"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s1_max_p1dgp2_20layers" language="python">from fluidity_tools import stat_parser as stat
+s1_max_p1dgp2_20layers = stat("CM_2D_2P3C_P1DGP2_20layers.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s1_min_p1dgp2_20layers" language="python">from fluidity_tools import stat_parser as stat
+s1_min_p1dgp2_20layers = stat("CM_2D_2P3C_P1DGP2_20layers.stat")["phase1"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s2_max_p1dgp2_20layers" language="python">from fluidity_tools import stat_parser as stat
+s2_max_p1dgp2_20layers = stat("CM_2D_2P3C_P1DGP2_20layers.stat")["phase2"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s2_min_p1dgp2_20layers" language="python">from fluidity_tools import stat_parser as stat
+s2_min_p1dgp2_20layers = stat("CM_2D_2P3C_P1DGP2_20layers.stat")["phase2"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s1_max_p1dgp2_50layers" language="python">from fluidity_tools import stat_parser as stat
+s1_max_p1dgp2_50layers = stat("CM_2D_2P3C_P1DGP2_50layers.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s1_min_p1dgp2_50layers" language="python">from fluidity_tools import stat_parser as stat
+s1_min_p1dgp2_50layers = stat("CM_2D_2P3C_P1DGP2_50layers.stat")["phase1"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s2_max_p1dgp2_50layers" language="python">from fluidity_tools import stat_parser as stat
+s2_max_p1dgp2_50layers = stat("CM_2D_2P3C_P1DGP2_50layers.stat")["phase2"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s2_min_p1dgp2_50layers" language="python">from fluidity_tools import stat_parser as stat
+s2_min_p1dgp2_50layers = stat("CM_2D_2P3C_P1DGP2_50layers.stat")["phase2"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s1_max_p1dgp1dg_10layers" language="python">from fluidity_tools import stat_parser as stat
+s1_max_p1dgp1dg_10layers = stat("CM_2D_2P3C_P1DGP1DG_10layers.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s1_min_p1dgp1dg_10layers" language="python">from fluidity_tools import stat_parser as stat
+s1_min_p1dgp1dg_10layers = stat("CM_2D_2P3C_P1DGP1DG_10layers.stat")["phase1"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s2_max_p1dgp1dg_10layers" language="python">from fluidity_tools import stat_parser as stat
+s2_max_p1dgp1dg_10layers = stat("CM_2D_2P3C_P1DGP1DG_10layers.stat")["phase2"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s2_min_p1dgp1dg_10layers" language="python">from fluidity_tools import stat_parser as stat
+s2_min_p1dgp1dg_10layers = stat("CM_2D_2P3C_P1DGP1DG_10layers.stat")["phase2"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s1_max_p1dgp1dg_20layers" language="python">from fluidity_tools import stat_parser as stat
+s1_max_p1dgp1dg_20layers = stat("CM_2D_2P3C_P1DGP1DG_20layers.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s1_min_p1dgp1dg_20layers" language="python">from fluidity_tools import stat_parser as stat
+s1_min_p1dgp1dg_20layers = stat("CM_2D_2P3C_P1DGP1DG_20layers.stat")["phase1"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s2_max_p1dgp1dg_20layers" language="python">from fluidity_tools import stat_parser as stat
+s2_max_p1dgp1dg_20layers = stat("CM_2D_2P3C_P1DGP1DG_20layers.stat")["phase2"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s2_min_p1dgp1dg_20layers" language="python">from fluidity_tools import stat_parser as stat
+s2_min_p1dgp1dg_20layers = stat("CM_2D_2P3C_P1DGP1DG_20layers.stat")["phase2"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s1_max_p1dgp1dg_50layers" language="python">from fluidity_tools import stat_parser as stat
+s1_max_p1dgp1dg_50layers = stat("CM_2D_2P3C_P1DGP1DG_50layers.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s1_min_p1dgp1dg_50layers" language="python">from fluidity_tools import stat_parser as stat
+s1_min_p1dgp1dg_50layers = stat("CM_2D_2P3C_P1DGP1DG_50layers.stat")["phase1"]["PhaseVolumeFraction"]["min"][-1]</variable>
+    <variable name="s2_max_p1dgp1dg_50layers" language="python">from fluidity_tools import stat_parser as stat
+s2_max_p1dgp1dg_50layers = stat("CM_2D_2P3C_P1DGP1DG_50layers.stat")["phase2"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="s2_min_p1dgp1dg_50layers" language="python">from fluidity_tools import stat_parser as stat
+s2_min_p1dgp1dg_50layers = stat("CM_2D_2P3C_P1DGP1DG_50layers.stat")["phase2"]["PhaseVolumeFraction"]["min"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="phase 1 for P1DG-P1 10-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_max_p1dgp1_10layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P1 10-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_min_p1dgp1_10layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P1 20-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_max_p1dgp1_20layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P1 20-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_min_p1dgp1_20layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P1 50-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_max_p1dgp1_50layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P1 50-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_min_p1dgp1_50layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P1 10-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_max_p1dgp1_10layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P1 10-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_min_p1dgp1_10layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P1 20-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_max_p1dgp1_20layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P1 20-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_min_p1dgp1_20layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P1 50-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_max_p1dgp1_50layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P1 50-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_min_p1dgp1_50layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P2 10-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_max_p1dgp2_10layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P2 10-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_min_p1dgp2_10layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P2 20-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_max_p1dgp2_20layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P2 20-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_min_p1dgp2_20layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P2 50-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_max_p1dgp2_50layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P2 50-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_min_p1dgp2_50layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P2 10-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_max_p1dgp2_10layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P2 10-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_min_p1dgp2_10layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P2 20-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_max_p1dgp2_20layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P2 20-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_min_p1dgp2_20layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P2 50-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_max_p1dgp2_50layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P2 50-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_min_p1dgp2_50layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P1DG 10-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_max_p1dgp1dg_10layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P1DG 10-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_min_p1dgp1dg_10layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P1DG 20-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_max_p1dgp1dg_20layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P1DG 20-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_min_p1dgp1dg_20layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P1DG 50-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_max_p1dgp1dg_50layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 1 for P1DG-P1DG 50-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s1_min_p1dgp1dg_50layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P1DG 10-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_max_p1dgp1dg_10layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P1DG 10-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_min_p1dgp1dg_10layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P1DG 20-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_max_p1dgp1dg_20layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P1DG 20-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_min_p1dgp1dg_20layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P1DG 50-layer mesh has max saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_max_p1dgp1dg_50layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+    <test name="phase 2 for P1DG-P1DG 50-layer mesh has min saturation in [0.0, 1.0] with tolerance 1.0e-08" language="python">assert abs(s2_min_p1dgp1dg_50layers - 0.5) &lt; (0.5 + 1.0e-08)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

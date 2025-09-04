@@ -3687,7 +3687,7 @@ end subroutine get_DarcyVelocity
                 write(89,*), trim(whole_line)
             endif
             ! Write the actual numbers to the file now
-            
+
             if (is_porous_media) then
                 write(numbers,'(a,a,a,a,a)') printEng(current_time), "," , printEng(current_time/(86400.*365.)), ",",  printEng(outfluxes%porevolume)
             else
@@ -3707,7 +3707,7 @@ end subroutine get_DarcyVelocity
                 !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
                 do ifields = 1, size(outfluxes%field_names,2)
                     do iphase = 1, size(outfluxes%intflux,1)
-                        if (trim(outfluxes%field_names(iphase, ifields)) == "Temp") then
+                        if (trim(outfluxes%field_names(iphase, ifields)) == "Temperature") then
                             write(tempstring(iphase),'(a)') &
                                 printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet) - 273.15) ! Print the temperature outfluxes in Celsius, not Kelvin
                         else
@@ -4020,7 +4020,7 @@ end subroutine get_DarcyVelocity
         write(auxS,'(ES25.18)') val2
 
         ipos = index(auxS,"E");
-        if (ipos > 0) then 
+        if (ipos > 0) then
           eng_format = auxS(1:prec)//auxS(ipos:len_trim(auxS))
         else
           write(eng_format,'(F16.8)') val2

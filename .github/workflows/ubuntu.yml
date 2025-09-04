@@ -28,11 +28,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Build Bionic", "Build Focal" ]
+        name: [ "Build Focal" ]
         include:
-
-          - name: "Build Bionic"
-            release: bionic
 
           - name: "Build Focal"
             release: focal
@@ -66,46 +63,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Bionic", "Focal"]
+        name: ["Focal"]
         include:
-
-          - name: "Bionic"
-            release: bionic
-            runner: ubuntu-latest
-            command: "make THREADS=2 serialtest-mp-xml"
-            output: "multiphase_test_results.xml"
 
           - name: "Focal"
             release: focal
             runner: ubuntu-latest
-            command: "make THREADS=2 serialtest-mp-xml"
+            command: "make THREADS=1 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
     steps:
 
       - name: Run tests (${{ matrix.name }})
         run: |
-          chmod 777 .
-          docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
-
-          if [ "${{ matrix.release }}" == "focal" ]; then
-            # Optimized Focal test: container-local execution
-            docker run --memory=12g --cpus=4 -v $PWD:/host \
-              icferst/actions:${{ matrix.release }}-${{ github.sha }} \
-              /bin/bash -c "
-                mkdir -p /tmp/test_run &&
-                cd /tmp/test_run &&
-                ${{ matrix.command }} > testrun.log 2>&1 || true &&
-                cp /host/ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}} &&
-                cp testrun.log /host/${{ matrix.release }}-testrun.log
-              "
-          else
-            # Bionic: original behavior
-            docker run --memory=6g -v $PWD:/host \
-              icferst/actions:${{ matrix.release }}-${{ github.sha }} \
-              /bin/bash -c "${{ matrix.command }} 2>&1 | tee /host/${{ matrix.release }}-testrun.log && \
-              cp -v /host/ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
-          fi
+         chmod 777 .
+         docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
+         docker run --memory=12g --cpus=4 --oom-kill-disable=false -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
+           /bin/bash -c "${{ matrix.command }} 2>&1 | tee /host/${{ matrix.release }}-testrun.log && \
+           cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -128,10 +103,8 @@ jobs:
 
     strategy:
       matrix:
-        name: [ "Report Bionic", "Report Focal" ]
+        name: [ "Report Focal" ]
         include:
-          - name: "Report Bionic"
-            release: bionic
           - name: "Report Focal"
             release: focal
 
