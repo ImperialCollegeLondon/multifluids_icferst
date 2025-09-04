@@ -28,8 +28,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Build Focal" ]
+        name: [ "Build Bionic", "Build Focal" ]
         include:
+
+          - name: "Build Bionic"
+            release: bionic
 
           - name: "Build Focal"
             release: focal
@@ -63,8 +66,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: ["Focal"]
+        name: [ "Bionic", "Focal"]
         include:
+
+          - name: "Bionic"
+            release: bionic
+            runner: ubuntu-latest
+            command: "make THREADS=2 serialtest-mp-xml"
+            output: "multiphase_test_results.xml"
 
           - name: "Focal"
             release: focal
@@ -103,8 +112,10 @@ jobs:
 
     strategy:
       matrix:
-        name: [ "Report Focal" ]
+        name: [ "Report Bionic", "Report Focal" ]
         include:
+          - name: "Report Bionic"
+            release: bionic
           - name: "Report Focal"
             release: focal
 
