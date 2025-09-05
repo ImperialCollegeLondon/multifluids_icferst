@@ -681,8 +681,11 @@ extern "C" {
 #endif
     writer->SetFileName( fl_vtkFileName.c_str() );
 
-    // Set to true binary format (not encoded as base 64)
-    writer->SetDataModeToAppended();
+    // writer->SetDataModeToAppended();
+    writer->SetDataModeToBinary();
+    writer->SetEncodeAppendedData(1);       // Base64-encode appended payload
+    writer->SetCompressorTypeToNone();  
+
     writer->EncodeAppendedDataOff();
 
 #if VTK_MAJOR_VERSION <= 5
@@ -745,8 +748,10 @@ extern "C" {
 
     compressor->Delete();
 
-    // Set to true binary format (not encoded as base 64)
-    writer->SetDataModeToAppended();
+    writer->SetDataModeToBinary();
+    writer->SetEncodeAppendedData(1);       // Base64-encode appended payload
+    writer->SetCompressorTypeToNone();  
+
     writer->EncodeAppendedDataOff();
 #ifdef VTK_USES_MPI
     // From version 6.3 VTK uses parallel communication to decide
