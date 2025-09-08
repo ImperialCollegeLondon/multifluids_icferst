@@ -4,3 +4,4 @@
 #autoconf temp folders/files/logs
 autom4te.cache
 config.log
+ICFERST/tests/Makefile
