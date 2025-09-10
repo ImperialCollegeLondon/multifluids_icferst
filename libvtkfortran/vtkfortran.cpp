@@ -522,7 +522,10 @@ extern "C" {
     vtkZLibDataCompressor* compressor = vtkZLibDataCompressor::New();
     
     writer->SetFileName( fl_vtkFileName.c_str() );
-    writer->SetDataModeToAppended();
+    // writer->SetDataModeToAppended();
+    writer->SetDataModeToBinary();
+    writer->SetEncodeAppendedData(1);       // Base64-encode appended payload
+    writer->SetCompressorTypeToNone();  
     writer->EncodeAppendedDataOff();
     writer->SetInputData(dataSet);
     writer->SetCompressor(compressor);
@@ -563,7 +566,10 @@ extern "C" {
     writer->SetInputData(dataSet);
     writer->SetCompressor(compressor);
     compressor->Delete();
-    writer->SetDataModeToAppended();
+    // writer->SetDataModeToAppended();
+    writer->SetDataModeToBinary();
+    writer->SetEncodeAppendedData(1);       // Base64-encode appended payload
+    writer->SetCompressorTypeToNone();  
     writer->EncodeAppendedDataOff();
 
 #ifdef HAVE_MPI
