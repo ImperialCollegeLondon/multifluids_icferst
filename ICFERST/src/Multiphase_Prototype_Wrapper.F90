@@ -783,6 +783,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     implicit none
 
 #include "petsc_legacy.h"
+#include "../version.inc"
 
     !Local variables
     type(state_type), dimension(:), pointer :: state
@@ -797,6 +798,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     real :: start_cpu, finish_cpu, elapsed_time
     PetscErrorCode :: ierr
     PetscLogStage,dimension(0:9) :: stages
+
 
     ! Measure wall time
     call cpu_time(start_cpu)
@@ -822,6 +824,11 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     !Flag the first time step
     first_time_step = .true.
+
+    if (GetProcNo() == 1) then
+      print *, "IC-FERST was compiled on: ", compile_date
+      print *, "IC-FERST GIT commit: ", git_commit
+    end if
 
     ! Read state from .mpml file
     call populate_multi_state(state)

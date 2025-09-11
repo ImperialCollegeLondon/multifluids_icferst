@@ -38,7 +38,7 @@
         <real_value rank="0">1e-8</real_value>
       </absolute_error>
       <max_iterations>
-        <integer_value rank="0">300</integer_value>
+        <integer_value rank="0">500</integer_value>
       </max_iterations>
       <ignore_all_solver_failures/>
       <diagnostics>
@@ -71,7 +71,7 @@
       </Custom_solver_configuration>
     </Linear_solver>
     <Non_Linear_Solver>
-      <integer_value rank="0">20</integer_value>
+      <integer_value rank="0">7</integer_value>
       <Fixed_Point_Iteration>
         <real_value rank="0">5e-2</real_value>
         <Infinite_norm_tol>

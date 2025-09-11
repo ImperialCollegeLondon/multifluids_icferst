@@ -1521,7 +1521,8 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
     if ( abs(reason) == 3 .and. &
        have_option(trim(solver_option_path)//'/ignore_all_solver_failures'))  then
        if (getprocno() == 1) then
-         ewrite(-1,*) 'Maximum number of iterations reached for '// trim(name)// ' solver, moving on.'
+         nSolverWarnings = nSolverWarnings + 1
+         ewrite(1,*) 'Maximum number of iterations reached for '// trim(name)// ' solver, moving on.'
        end if
        return
      end if
@@ -1532,19 +1533,19 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
         if (.not. checkconvergence .and. reason==-3) return
      end if
      ! write reason+iterations to STDERR so we never miss it:
-     ewrite(-1,*) 'WARNING: Failed to converge.'
-     ewrite(-1,*) "PETSc did not converge for matrix solve of: " // trim(name)
+     ewrite(1,*) 'WARNING: Failed to converge.'
+     ewrite(1,*) "PETSc did not converge for matrix solve of: " // trim(name)
      if((reason>=-10) .and. (reason<=-1)) then
-        ewrite(-1,*) 'Reason for non-convergence: ', reasons(-reason)
+        ewrite(1,*) 'Reason for non-convergence: ', reasons(-reason)
      else
-        ewrite(-1,*) 'Reason for non-convergence is undefined: ', reason
+        ewrite(1,*) 'Reason for non-convergence is undefined: ', reason
      endif
-     ewrite(-1,*) 'Number of iterations: ', iterations
+     ewrite(1,*) 'Number of iterations: ', iterations
 
      if (have_option(trim(solver_option_path)//'/ignore_all_solver_failures')) then
-        ewrite(0,*) 'Specified ignore_all_solver_failures, therefore continuing'
+        ewrite(1,*) 'Specified ignore_all_solver_failures, therefore continuing'
      elseif (reason/=-3 .or. have_option(trim(solver_option_path)//'/never_ignore_solver_failures')) then
-        ewrite(-1,*) "Sending signal to dump and finish"
+        ewrite(1,*) "Sending signal to dump and finish"
         ! Setting SIGINT in Signal_Vars module will cause dump and crash
         sig_int=.true.
      elseif (have_option(trim(solver_option_path)//'/allow_non_convergence_during_spinup')) then
@@ -1555,7 +1556,7 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
         if (current_time<spin_up_time) then
            ewrite(0,*) "Non-convergence during spin up, therefore continuing"
         else
-           ewrite(-1,*) "Non-convergence after spin up period,", &
+           ewrite(1,*) "Non-convergence after spin up period,", &
                         " therefore sending signal to dump and finish"
            sig_int=.true.
         end if
@@ -1566,7 +1567,7 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
         matrixdumped=.true.
      else
         ! legacy case if none if the 3 choices are set:
-        ewrite(-1,*) "Sending signal to dump and finish"
+        ewrite(1,*) "Sending signal to dump and finish"
         sig_int=.true.
      endif
 

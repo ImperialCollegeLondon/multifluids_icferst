@@ -199,6 +199,7 @@ module global_parameters
   character(len=OPTION_PATH_LEN) :: multi_generic_warning =""
 
   integer :: nDMOWarnings = 0
+  integer :: nSolverWarnings = 0
 
 contains
 

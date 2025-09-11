@@ -1,18 +1,24 @@
 name: Build and Test
 
+permissions:
+  checks: write
+  contents: read
+
 on:
   push:
     branches:
       - pablo_dev3
       - master
       - magma_dev
+      - linfeng_dev
       - geraldine_dev
       - phreeqc_link
+      - geraldine_dev_new
       - vinicius_dev
       - meissam_dev_new
       - hayley_dev
       - ruixiao_dev_new
-      - master_ubuntu24
+
 jobs:
 
   build:
@@ -22,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Build Bionic", "Build Focal" , "Build Noble" ]
+        name: [ "Build Bionic", "Build Focal" ]
         include:
 
           - name: "Build Bionic"
@@ -30,23 +36,20 @@ jobs:
 
           - name: "Build Focal"
             release: focal
-
-          - name: "Build Noble"
-            release: noble
     steps:
 
       - name: Check Out Repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Build and push
         id: docker_build
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/actions/Dockerfile.actions.${{ matrix.release }}
@@ -56,43 +59,49 @@ jobs:
   testing:
 
     name: ${{ matrix.name }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     needs: build
     if: always()
 
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Bionic", "Focal", "Noble"]
+        name: [ "Bionic", "Focal"]
         include:
 
           - name: "Bionic"
             release: bionic
+            runner: ubuntu-latest
             command: "make THREADS=2 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
           - name: "Focal"
             release: focal
-            command: "make THREADS=2 serialtest-mp-xml"
+            runner: ubuntu-latest
+            command: "make THREADS=1 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
-          - name: "Noble"
-            release: noble
-            command: "make THREADS=2 serialtest-mp-xml"
-            output: "multiphase_test_results.xml"
     steps:
 
-      - name: ${{ matrix.name }}
+      - name: Run tests (${{ matrix.name }})
         run: |
          chmod 777 .
          docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
-         docker run -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} /bin/bash -c "${{ matrix.command }} && cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
+         docker run --memory=12g --cpus=4 --oom-kill-disable=false -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
+           /bin/bash -c "${{ matrix.command }} 2>&1 | tee /host/${{ matrix.release }}-testrun.log && \
+           cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
 
       - uses: actions/upload-artifact@v4
         with:
-          # Use a unique artifact name to avoid conflicts
+          # Upload XML test results
           name: ${{ matrix.release }}-test-results-${{ github.run_id }}
           path: ${{ matrix.release }}-${{ matrix.output }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          # Upload full stdout/stderr log
+          name: ${{ matrix.release }}-test-log-${{ github.run_id }}
+          path: ${{ matrix.release }}-testrun.log
 
   Report:
 
@@ -101,15 +110,26 @@ jobs:
     if: always()
     needs: testing
 
+    strategy:
+      matrix:
+        name: [ "Report Bionic", "Report Focal" ]
+        include:
+          - name: "Report Bionic"
+            release: bionic
+          - name: "Report Focal"
+            release: focal
+
     steps:
       - uses: actions/download-artifact@v4
         with:
+          name: ${{ matrix.release }}-test-results-${{ github.run_id }}
           path: ./artifact
 
       - name: ${{ matrix.name }}
-        uses: mikepenz/action-junit-report@v2
+        uses: mikepenz/action-junit-report@v4
         with:
           report_paths: './artifact/*-multiphase_test_results.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Test report ${{ matrix.release }}
           fail_on_failure: true
+          detailed_summary: true
