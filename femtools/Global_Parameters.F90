@@ -186,7 +186,13 @@ module global_parameters
   logical :: has_boussinesq_aprox = .false.
   !! Porous media, anisotropic permeability
   logical :: has_anisotropic_permeability = .false.
-  
+  !! Output unit system and converters
+  integer, parameter :: SI_UNITS = 0, METRIC_UNITS = 1
+  real, parameter :: PaToBar = 1e-5;
+  real, parameter :: m2TomD =  9.869233e-16;
+  real, parameter :: KtoC = 273.15;
+  integer :: outUNITS = SI_UNITS
+
   !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
   real :: backtrack_or_convergence
   logical :: FPI_have_converged = .false.

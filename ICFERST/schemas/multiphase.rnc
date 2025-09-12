@@ -62,6 +62,21 @@ start =
                }
             },
             (
+               ## Outputs in SI units
+               element dump_units_SI { empty
+               }|
+               ## Outputs in METRIC system. This are SI units except for:
+               ##
+               ## Pressure -> bar
+               ##
+               ## Temperature -> Celsius
+               ##
+               ## Permeability -> milliDarcy
+               element dump_units_METRIC {
+                 empty
+               }
+            ),
+            (
                ## Period between dumps in time units.
                ##
                ## Specifies the period between each dump of the solution to disk.

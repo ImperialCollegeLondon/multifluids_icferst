@@ -64,7 +64,7 @@ module Copy_Outof_State
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         have_option_for_any_phase, Get_Ele_Type_new,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions, &
-        EnterForceBalanceEquation, update_outfluxes, Impose_connected_BCs
+        EnterForceBalanceEquation, update_outfluxes, Impose_connected_BCs, getOutputConverter,convertToOutUnits
 
 
     !>@brief: Obtain the surface global to local conversor
@@ -3614,11 +3614,12 @@ end subroutine get_DarcyVelocity
         character (len=1000000) :: whole_line
         character (len=1000000) :: numbers
         integer :: iphase, ifields
+        real :: outSysFactor, outSysShft
         ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: fluxstring
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: intfluxstring
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: tempstring
-        character (len = 50) :: simulation_name
+        character (len = 50) :: simulation_name, fieldName
         character(len = FIELD_NAME_LEN) :: phase_name
         character(len = OPTION_PATH_LEN) :: path
         !Ensure consistency for averaged fields in parallel, i.e. not saturation
@@ -3660,28 +3661,20 @@ end subroutine get_DarcyVelocity
                     write(whole_line,*) "Time[s]" // "," // "Time[m]" // "," // "Volume"
                 end if
                 whole_line = trim(whole_line)
-                do ioutlet =1, size(outfluxes%intflux,2)
-                    do iphase = 1, size(outfluxes%intflux,1)
-
-                        path = "/material_phase[" // int2str(iphase-1) // "]"; call get_option(trim(path) // "/name", phase_name)
-                        write(fluxstring(iphase),'(a, a, i0, a)')   trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]VolRate"
-                        whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
-                    enddo
-                    do iphase = 1, size(outfluxes%intflux,1)
-                        path = "/material_phase[" // int2str(iphase-1) // "]"; call get_option(trim(path) // "/name", phase_name)
-                        write(intfluxstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]TotProd"
-                        whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
-                    enddo
-
-                !Averaged value over the surface
+                do iphase = 1, size(outfluxes%intflux,1)
+                  path = "/material_phase[" // int2str(iphase-1) // "]"; call get_option(trim(path) // "/name", phase_name)
+                  do ioutlet =1, size(outfluxes%intflux,2)
+                    write(fluxstring(iphase),'(a, a, i0, a)')   trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]VolRate"
+                    whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+                    write(intfluxstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]TotProd"
+                    whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+                    !Averaged value over the surface
                     do ifields = 1, size(outfluxes%field_names,2)
-                        do iphase = 1, size(outfluxes%field_names,1)
-                          path = "/material_phase[" // int2str(iphase-1) // "]"; call get_option(trim(path) // "/name", phase_name)
-                          write(tempstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S", outfluxes%outlet_id(ioutlet),&
-                                                                                  "]AVG("//trim(outfluxes%field_names(iphase, ifields))//")"
-                          whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                        end do
+                      write(tempstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S", outfluxes%outlet_id(ioutlet),&
+                                                                              "]AVG("//trim(outfluxes%field_names(iphase, ifields))//")"
+                      whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     end do
+                  end do
                 end do
                 ! Write out the line
                 write(89,*), trim(whole_line)
@@ -3695,28 +3688,26 @@ end subroutine get_DarcyVelocity
             end if
 
             whole_line =  trim(numbers)
-            do ioutlet =1, size(outfluxes%intflux,2)
-                do iphase = 1, size(outfluxes%intflux,1)
-                    write(fluxstring(iphase),'(a)') printEng(outfluxes%totout(iphase,ioutlet))
-                    whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
-                enddo
-                do iphase = 1, size(outfluxes%intflux,1)
-                    write(intfluxstring(iphase),'(a)') printEng(outfluxes%intflux(iphase,ioutlet))
-                    whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
-                enddo
+            do iphase = 1, size(outfluxes%intflux,1)
+              do ioutlet =1, size(outfluxes%intflux,2)
+                write(fluxstring(iphase),'(a)') printEng(outfluxes%totout(iphase,ioutlet))
+                whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+                write(intfluxstring(iphase),'(a)') printEng(outfluxes%intflux(iphase,ioutlet))
+                whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
                 do ifields = 1, size(outfluxes%field_names,2)
-                    do iphase = 1, size(outfluxes%intflux,1)
-                        if (trim(outfluxes%field_names(iphase, ifields)) == "Temperature") then
-                            write(tempstring(iphase),'(a)') &
-                                printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet) - 273.15) ! Print the temperature outfluxes in Celsius, not Kelvin
-                        else
-                            write(tempstring(iphase),'(a)') &
-                                printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet))
-                        end if
-                        whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                    end do
+                  fieldName = trim(outfluxes%field_names(iphase, ifields))
+                  call getOutputConverter(fieldName,outSysFactor, outSysShft)
+                  if (fieldName == "Temperature") then
+                      write(tempstring(iphase),'(a)') &
+                          printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)*outSysFactor+outSysShft) ! Print the temperature outfluxes in Celsius, not Kelvin
+                  else
+                      write(tempstring(iphase),'(a)') &
+                          printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)*outSysFactor+outSysShft)
+                  end if
+                  whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                 end do
+              end do
             end do
             ! Write out the line
             write(89,*), trim(whole_line)
@@ -4028,5 +4019,103 @@ end subroutine get_DarcyVelocity
 
     end function printEng
 
+  !> Returns the factor to convert from internal (SI) to the output system
+  !> For temperature it returns the shift term not the factor
+  subroutine getOutputConverter(fieldname, factor, shft)
+    implicit none
+    real, intent(out) :: factor, shft
+    character( len = * ), intent(in) :: fieldname
+
+    factor = 1d0;
+    shft   = 0d0;
+    if (outUNITS /= SI_UNITS) then
+      if (is_substring(fieldname,'pressure')) then
+        factor = PaToBar;
+      else if (is_substring(fieldname,'permeability')) then
+        factor = 1d0/m2TomD;
+      else if (is_substring(fieldname,'temperature')) then
+        shft = -KtoC;
+      end if
+    end if
+  end subroutine getOutputConverter
+
+  !> Check is a string is within another string
+  logical function is_substring(str, substr)
+      character(len=*), intent(in) :: str, substr
+      character(len=len(str)) :: str_lower, substr_lower
+
+      ! Convert both strings to lowercase
+      str_lower = to_lower(str)
+      substr_lower = to_lower(substr)
+
+      is_substring = INDEX(str_lower, substr_lower) > 0
+  end function is_substring
+
+  !> Converts string to lowercase
+  function to_lower(str) result(lower_str)
+    character(len=*), intent(in) :: str
+    character(len=len(str)) :: lower_str
+    integer :: i, ic
+
+    do i = 1, len(str)
+        ic = ichar(str(i:i))
+        if (ic >= 65 .and. ic <= 90) then
+            lower_str(i:i) = char(ic + 32)
+        else
+            lower_str(i:i) = str(i:i)
+        end if
+    end do
+  end function to_lower
+
+    !>@brief: Convert fields to out units. Also has a backwards options as we need to undo this after dumping the VTK files
+    subroutine convertToOutUnits( state, Mdims, convertBack )
+      implicit none
+      type( state_type ), dimension( : ), intent( in ) :: state
+      type (multi_dimensions) :: Mdims
+      logical, intent(in) :: convertBack
+      ! Local variables
+      type(scalar_field), pointer :: sfield
+      type(vector_field), pointer :: vfield
+      type(tensor_field), pointer :: tfield
+      integer                     :: iphase, fields, k
+      character( len = option_path_len ) :: option_path, option_name
+      real :: outSysFactor, outSysShft
+      do iphase = 1, Mdims%nphase
+        !First scalar prognostic fields
+        option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field"
+        fields = option_count("/material_phase["// int2str( iphase - 1 )//"]/scalar_field")
+        do k = 1, fields
+          call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+          option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field::"//trim(option_name)
+          if (have_option(trim(option_path)//"/aliased" )) cycle
+          sfield => extract_scalar_field( state(iphase),  trim(option_name))
+          call getOutputConverter(trim(option_name), outSysFactor, outSysShft)
+          if (convertBack) then
+            outSysFactor = 1./outSysFactor; outSysShft = -outSysShft;
+          end if
+          sfield%val = sfield%val*outSysFactor + outSysShft
+        end do
+      end do
+
+      !Finally permeability as well
+      if (is_porous_media) then
+        call getOutputConverter("Permeability", outSysFactor, outSysShft)
+        if (convertBack) then
+          outSysFactor = 1./outSysFactor; outSysShft = -outSysShft;
+        end if
+        if(has_scalar_field(state(1),"Permeability")) then
+            sfield=>extract_scalar_field(state(1),"Permeability")
+            sfield%val = sfield%val*outSysFactor + outSysShft
+        else if(has_vector_field(state(1),"Permeability")) then
+            vfield=>extract_vector_field(state(1),"Permeability")
+            vfield%val = vfield%val*outSysFactor + outSysShft
+        else if(has_tensor_field(state(1),"Permeability")) then
+          tfield=>extract_tensor_field(state(1),"Permeability")
+          tfield%val = tfield%val*outSysFactor + outSysShft
+        end if
+      end if
+
+    end subroutine convertToOutUnits
 
 end module Copy_Outof_State
+
