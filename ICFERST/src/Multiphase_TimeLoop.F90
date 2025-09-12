@@ -523,7 +523,7 @@ contains
              end if
              !not_to_move_det_yet = .false. ;
 !-------------------------------------------------------------------------------
-              call write_state(dump_no, state)
+            call write_state_units(dump_no, state)
 
         end if
         !Initialise FPI_eq_taken
@@ -741,15 +741,15 @@ contains
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                   ! Ensure that sat_bak is always defined (pscpsc only if VAD defined)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                    
-                    if (its <= picard_its) then 
+
+                    if (its <= picard_its) then
                       ! print *, "Picard iteration", its, picard_its
                       call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val,porosity_total_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
-                    else 
+                    else
                       ! print *, "Newton iteration", its, picard_its
                       if (its==1)  prev_sat = saturation_field%val(1,:,:)
                       call VolumeFraction_Assemble_Solve_Newton( state, packed_state, multicomponent_state,&
@@ -760,7 +760,7 @@ contains
                   end if
                   !Update the prev_sat field (pscpsc only if VAD defined)
                   ! Especial handler only required by adapt within FPI, which should removed as it is never used
-                  if (size(saturation_field%val,3)/=size(prev_sat,2)) then 
+                  if (size(saturation_field%val,3)/=size(prev_sat,2)) then
                     deallocate(prev_sat); allocate(prev_sat(Mdims%nphase, Mdims%cv_nonods))
                   end if
                   prev_sat = saturation_field%val(1,:,:)
@@ -1092,7 +1092,7 @@ contains
                   if(dt < minc) then
                     ewrite(0, *) "Minimum timestep reached - terminating"
                     SIG_INT = .true.
-                    ! call write_state(dump_no, state)
+                    ! call write_state_units(dump_no, state)
                   end if
                 end if
                 dt = max( min( dt , maxc ), minc )
@@ -1148,7 +1148,7 @@ contains
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
         ! Dump at end, unless explicitly disabled
         if(.not. have_option("/io/disable_dump_at_end")) then
-            call write_state(dump_no, state)
+            call write_state_units(dump_no, state)
         end if
         call tag_references()
         call deallocate(packed_state)
@@ -1381,7 +1381,7 @@ contains
                         call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     end if
                     not_to_move_det_yet = .false. ;
-                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                    call write_state_units( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
             else if (have_option('/io/dump_period')) then
                 ! dump based on the prescribed period of real time
@@ -1400,7 +1400,7 @@ contains
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
                     if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
-                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                    call write_state_units( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_RealTime
             end if
         end subroutine create_dump_vtu_and_checkpoints
@@ -1796,10 +1796,22 @@ contains
 
     end subroutine adapt_mesh_within_FPI
 
+    ! Convert to out units and then back
+    subroutine write_state_units(dump_no, state)
+      integer, intent(inout) :: dump_no
+      type(state_type), dimension(:), intent(inout) :: state
 
+      logical, parameter :: CONVERT_OUT = .false., CONVERT_IN = .true.
+
+      call convertToOutUnits( state, Mdims, CONVERT_OUT )
+      call write_state( dump_no, state ) ! Now writing into the vtu files
+      call convertToOutUnits( state, Mdims, CONVERT_IN )
+
+    end subroutine write_state_units
 
  end subroutine MultiFluids_SolveTimeLoop
 
 
 
 end module multiphase_time_loop
+

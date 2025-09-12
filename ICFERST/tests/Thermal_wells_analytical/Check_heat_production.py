@@ -37,7 +37,7 @@ with open(filename, 'r') as csvfile:
     for row in datareader:
         try:
             time.append(float(row[1]))#time in years
-            temp.append(float(row[10]))#this is the closest BC to the production
+            temp.append(float(row[16]))#this is the closest BC to the production
         except:
             continue
 pos = 0
