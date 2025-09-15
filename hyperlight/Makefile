@@ -40,9 +40,9 @@ CXX = mpicxx
 FC = mpif90
 
 CXX = mpicxx
-CXXFLAGS = -I../include -std=c++11  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/usr/lib/petscdir/3.19/include -I/usr/lib/petscdir/3.19//include -DHAVE_PETSC  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
+CXXFLAGS = -I../include -std=c++11  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/media/hh210/data2/Petsc/petsc-3.19.5/include -I/media/hh210/data2/Petsc/petsc-3.19.5/arch-linux-c-debug/include -DHAVE_PETSC  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
 
-FCFLAGS   = -I../include @MODFLAG@../include -ffast-math -frecord-marker=4 -I/usr/include -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -fno-realloc-lhs -ffree-line-length-none -ffixed-line-length-none  -O3 -I/usr/lib/petscdir/3.19/include -I/usr/lib/petscdir/3.19//include -I/usr/include/python3.12 -fdefault-real-8 -fdefault-double-8  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/usr/lib/petscdir/3.19/include -I/usr/lib/petscdir/3.19//include -DHAVE_PETSC  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi -I/usr/include
+FCFLAGS   = -I../include @MODFLAG@../include -ffast-math -frecord-marker=4  -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -fno-realloc-lhs -ffree-line-length-none -ffixed-line-length-none  -O3 -I/media/hh210/data2/Petsc/petsc-3.19.5/include -I/media/hh210/data2/Petsc/petsc-3.19.5/arch-linux-c-debug/include -I/usr/include/python3.12 -fdefault-real-8 -fdefault-double-8  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/media/hh210/data2/Petsc/petsc-3.19.5/include -I/media/hh210/data2/Petsc/petsc-3.19.5/arch-linux-c-debug/include -DHAVE_PETSC  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi -I/usr/include
 
 LINKER = $(CXX)
 

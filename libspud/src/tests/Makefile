@@ -25,7 +25,7 @@
 #    USA
 
 FC      = gfortran
-FCFLAGS = -I../.. -O3 -ffast-math -frecord-marker=4 -I/usr/include -I/usr/include -ffree-line-length-none -ffixed-line-length-none
+FCFLAGS = -I../.. -O3 -ffast-math -frecord-marker=4 -I/usr/include -ffree-line-length-none -ffixed-line-length-none
 
 CXX     = g++
 CXXFLAGS=  -DUSING_GFORTRAN=1 -DNDEBUG=1 -O3  -I../../include

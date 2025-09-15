@@ -27,7 +27,7 @@
 SHELL = /bin/sh
 
 FC      = gfortran
-FCFLAGS = -Iinclude  -DUSING_GFORTRAN=1 -DNDEBUG=1 -O3 -ffast-math -frecord-marker=4 -I/usr/include -I/usr/include -ffree-line-length-none -ffixed-line-length-none
+FCFLAGS = -Iinclude  -DUSING_GFORTRAN=1 -DNDEBUG=1 -O3 -ffast-math -frecord-marker=4 -I/usr/include -ffree-line-length-none -ffixed-line-length-none
 
 CXX     = g++
 CXXFLAGS= -Iinclude  -DUSING_GFORTRAN=1 -DNDEBUG=1 -O3 
@@ -55,7 +55,7 @@ VPATH = src/
 default: libspud.la build-diamond
 
 libspud.la: $(OBJS)
-	./libtool --mode=link --tag=FC $(FC) $(FCFLAGS) -o $(LIB) $(OBJS) $(LIBS) -rpath /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../lib 
+	./libtool --mode=link --tag=FC $(FC) $(FCFLAGS) -o $(LIB) $(OBJS) $(LIBS) -rpath /media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../lib 
 	if test -f .libs/libspud.a; then cp .libs/libspud.a .; fi
 	(if test -f .libs/libspud.so; then cp .libs/libspud.so ./libspud.so.0; ln -s libspud.so.0 libspud.so; fi) || true
 
@@ -76,38 +76,38 @@ doc:
 install: install-libspud install-spudtools install-diamond install-pyspud install-dxdiff
 
 install-libspud: libspud.la
-	/usr/bin/install -c -d $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../lib
-	/usr/bin/install -c -d $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../include
-	/usr/bin/install -c libspud.a $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../lib
-	(if test -f libspud.so.0; then /usr/bin/install -c libspud.so.0 $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../lib; fi) || true
-	(if test -f libspud.so; then cd $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../lib/; ln -s libspud.so.0 libspud.so; cd -; fi) || true
-	/usr/bin/install -c $(MODS) $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../include
-	/usr/bin/install -c $(HEADERS) $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../include
+	/usr/bin/install -c -d $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../lib
+	/usr/bin/install -c -d $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../include
+	/usr/bin/install -c libspud.a $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../lib
+	(if test -f libspud.so.0; then /usr/bin/install -c libspud.so.0 $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../lib; fi) || true
+	(if test -f libspud.so; then cd $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../lib/; ln -s libspud.so.0 libspud.so; cd -; fi) || true
+	/usr/bin/install -c $(MODS) $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../include
+	/usr/bin/install -c $(HEADERS) $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../include
 
 install-spudtools: 
-	/usr/bin/install -c -d $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../share/spud
-	/usr/bin/install -c -d $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../bin
-	/usr/bin/install -c -m755 bin/spud-preprocess $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../bin
-	/usr/bin/install -c -m755 bin/spud-set $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../bin
-	/usr/bin/install -c -m755 bin/spud-update-options $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../bin
-	/usr/bin/install -c -m644 schema/spud_base.rnc $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../share/spud
-	/usr/bin/install -c -m644 schema/spud_base.rng $(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/../share/spud
+	/usr/bin/install -c -d $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../share/spud
+	/usr/bin/install -c -d $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../bin
+	/usr/bin/install -c -m755 bin/spud-preprocess $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../bin
+	/usr/bin/install -c -m755 bin/spud-set $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../bin
+	/usr/bin/install -c -m755 bin/spud-update-options $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../bin
+	/usr/bin/install -c -m644 schema/spud_base.rnc $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../share/spud
+	/usr/bin/install -c -m644 schema/spud_base.rng $(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/../share/spud
 
 install-diamond:
-	cd diamond;	python3 setup.py install --prefix=$(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/..; cd ..
+	cd diamond;	python3 setup.py install --prefix=$(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/..; cd ..
 
 install-pyspud:
 ifeq ($(origin BUILDING_DEBIAN),undefined)
-	cd python; python3 setup.py install --prefix=$(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/..; cd ..
+	cd python; python3 setup.py install --prefix=$(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/..; cd ..
 else
-	cd python; for python in $(shell py3versions -r); do $$python setup.py install --prefix=$(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/.. --install-layout=deb; done; cd ..
+	cd python; for python in $(shell py3versions -r); do $$python setup.py install --prefix=$(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/.. --install-layout=deb; done; cd ..
 endif
 
 install-dxdiff:
 ifeq ($(origin BUILDING_DEBIAN),undefined)
-	cd dxdiff; python3 setup.py install --prefix=$(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/..; cd ..
+	cd dxdiff; python3 setup.py install --prefix=$(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/..; cd ..
 else
-	cd dxdiff; for python in $(shell py3versions -r); do $$python setup.py install --prefix=$(DESTDIR)/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/libspud/.. --install-layout=deb; done; cd ..
+	cd dxdiff; for python in $(shell py3versions -r); do $$python setup.py install --prefix=$(DESTDIR)/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/libspud/.. --install-layout=deb; done; cd ..
 endif
 
 clean:

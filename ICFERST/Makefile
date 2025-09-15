@@ -29,17 +29,17 @@ PACKAGE_NAME = fluidity
 
 FLUIDITY = $(PACKAGE_NAME)
 FC      = mpif90
-FCFLAGS = -ffast-math -frecord-marker=4 -I/usr/include -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -fno-realloc-lhs -ffree-line-length-none -ffixed-line-length-none  -O3 -I/usr/lib/petscdir/3.19/include -I/usr/lib/petscdir/3.19//include -I/usr/include/python3.12 -fdefault-real-8 -fdefault-double-8
+FCFLAGS = -ffast-math -frecord-marker=4  -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -fno-realloc-lhs -ffree-line-length-none -ffixed-line-length-none  -O3 -I/media/hh210/data2/Petsc/petsc-3.19.5/include -I/media/hh210/data2/Petsc/petsc-3.19.5/arch-linux-c-debug/include -I/usr/include/python3.12 -fdefault-real-8 -fdefault-double-8
 
 MPIF90  = mpif90
 MPICC   = mpicc
 MPICXX  = mpicxx
 
 CC	= mpicc
-CFLAGS	=  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/usr/lib/petscdir/3.19/include -I/usr/lib/petscdir/3.19//include -DHAVE_PETSC  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -DFLUIDITY_PYTHON_MODULE_PATH=\"/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/python\"  -O3 -I/usr/lib/petscdir/3.19/include -I/usr/lib/petscdir/3.19//include
+CFLAGS	=  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/media/hh210/data2/Petsc/petsc-3.19.5/include -I/media/hh210/data2/Petsc/petsc-3.19.5/arch-linux-c-debug/include -DHAVE_PETSC  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -DFLUIDITY_PYTHON_MODULE_PATH=\"/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/python\"  -O3 -I/media/hh210/data2/Petsc/petsc-3.19.5/include -I/media/hh210/data2/Petsc/petsc-3.19.5/arch-linux-c-debug/include
 
 CXX	= mpicxx
-CXXFLAGS=  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/usr/lib/petscdir/3.19/include -I/usr/lib/petscdir/3.19//include -DHAVE_PETSC  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi -std=c++11 -I./include
+CXXFLAGS=  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/media/hh210/data2/Petsc/petsc-3.19.5/include -I/media/hh210/data2/Petsc/petsc-3.19.5/arch-linux-c-debug/include -DHAVE_PETSC  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi -std=c++11 -I./include
 CXXFLAGS += -I../include
 
 LINKER  = mpicxx    $(CXXFLAGS)

@@ -50,7 +50,7 @@ CPPFLAGS= -I./include -I../include  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-lin
 
 CFLAGS	= $(CPPFLAGS)     -O3
 CXXFLAGS= $(CPPFLAGS) -std=c++11  -O3
-FCFLAGS = $(CPPFLAGS) -ffast-math -frecord-marker=4 -I/usr/include   -ffree-line-length-none -ffixed-line-length-none  -O3 -fdefault-real-8
+FCFLAGS = $(CPPFLAGS) -ffast-math -frecord-marker=4    -ffree-line-length-none -ffixed-line-length-none  -O3 -fdefault-real-8
 
 LFLAGS	= -L./lib -lparmetis -lmetis  -llapack -lblas -lpthread -lm -lstdc++  -L/usr/lib/x86_64-linux-gnu -lvtkParallelMPI-9.1 -lvtkIOParallelXML-9.1 -lvtkIOGeometry-9.1 -lvtkIOLegacy-9.1 -lvtkCommonExecutionModel-9.1 -lvtkCommonDataModel-9.1 -lvtkCommonCore-9.1 -lvtkIOCore-9.1 -lvtkIOXML-9.1 -lvtkFiltersCore-9.1 -L/usr/lib/x86_64-linux-gnu/openmpi/lib -lmpi_cxx -lmpi  -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. -lgfortran -lm -lquadmath -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. -lgfortran -lm -lquadmath -L./lib -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. -lgfortran -lm -lquadmath     
 

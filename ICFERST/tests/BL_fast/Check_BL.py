@@ -19,7 +19,7 @@ print('Running the model')
 #Get path
 
 path = os.getcwd()
-binpath = path[:path.index('ICFERST')] + 'bin/icferst'
+binpath = path[:path.rindex('ICFERST')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
 os.system(binpath + ' ' + path + '/BL_fast.mpml')
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P2DGP1DG AND 

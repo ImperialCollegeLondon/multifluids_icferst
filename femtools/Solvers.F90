@@ -34,6 +34,8 @@ module solvers
   use parallel_tools
 #include "petsc/finclude/petsc.h"
   use petsc
+#include <petsc/finclude/petscksp.h>
+  use petscksp  
   use Sparse_Tools
   use Fields
   use profiler
@@ -49,7 +51,6 @@ module solvers
 
 ! Module to provide explicit interfaces to matrix solvers.  
 #include "petsc_legacy.h"
-  ! use petscksp
 implicit none 
 
 #if PETSC_VERSION_MINOR>12
@@ -1718,7 +1719,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     ! =========================================================
     call KSPGetPC(ksp, pc, ierr)
 
-    call setup_pc_from_options(pc, pmat, &
+    call setup_pc_from_options(ksp, pc, pmat, &
        trim(solver_option_path)//'/preconditioner[0]', &
        petsc_numbering=petsc_numbering, &
        prolongators=prolongators, surface_node_list=surface_node_list, &
@@ -1967,9 +1968,10 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
 
   end subroutine attach_null_space_from_options
 
-  recursive subroutine setup_pc_from_options(pc, pmat, option_path, &
+  recursive subroutine setup_pc_from_options(ksp, pc, pmat, option_path, &
     petsc_numbering, prolongators, surface_node_list, matrix_csr, &
     internal_smoothing_option, is_subpc)
+  KSP, intent(inout) :: ksp  
   PC, intent(inout):: pc
   Mat, intent(in):: pmat
   character(len=*), intent(in):: option_path
@@ -1983,10 +1985,10 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
   ! if present and true, don't setup sor and eisenstat as subpc (again)
   logical, optional, intent(in) :: is_subpc
   character( len = option_path_len ) :: opt
-  integer :: n_local, first_local
+  
 
     KSP:: subksp
-    KSP, pointer, dimension(:) :: subksp_array
+    KSP,pointer      ::   subksp_array(:) => null()
     PC:: subpc
     MatNullSpace:: nullsp
     PCType:: pctype, hypretype
@@ -1994,12 +1996,13 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     PCJacobiType:: pc_jacobi_type
     PetscBool :: abs
     PetscReal :: def
+    PetscInt :: n_local, first_local
 #if PETSC_VERSION_MINOR >=9
     MatSolverType:: matsolvertype
 #else
     MatSolverPackage:: matsolverpackage
 #endif
-
+    integer :: i
 
     call get_option(trim(option_path)//'/name', pctype)
 
@@ -2073,28 +2076,48 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
       call PCSetup(pc, ierr)
 
 #if PETSC_VERSION_MINOR>=14 
+      call KSPSetUp(ksp,ierr)
       if (pctype==PCBJACOBI) then
-        call PCBJacobiGetSubKSP(pc,n_local,first_local,subksp_array,ierr)
+        call PCBJacobiGetSubKSP(pc,n_local,first_local, PETSC_NULL_KSP,ierr)
+        allocate(subksp_array(n_local))
+        call PCBJacobiGetSubKSP(pc,n_local , first_local,subksp_array,ierr)
       else
         call PCASMGetSubKSP(pc,n_local,first_local,subksp_array,ierr)
       end if
+
+       !##############################################
+       ! not using recursive way of setting the sub pc
+      ewrite(2,*) "Going into setup_pc_from_options for the subpc within the local domain."
+      do i=1, n_local
+        call KSPGetPC(subksp_array(i), subpc, ierr)
+        call setup_pc_from_options(ksp, subpc, pmat, &
+         trim(option_path)//'/preconditioner[0]', &
+         petsc_numbering=petsc_numbering, &
+         prolongators=prolongators, surface_node_list=surface_node_list, &
+         matrix_csr=matrix_csr, internal_smoothing_option=internal_smoothing_option, &
+         is_subpc=.true.)
+      end do
+      ewrite(2,*) "Finished setting up subpc."
 #else
       if (pctype==PCBJACOBI) then
         call PCBJacobiGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
       else
         call PCASMGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
       end if
-#endif
       call KSPGetPC(subksp, subpc, ierr)
+      !##############################################
+      ! This recursive way of setting this subroutine only works for old versions of petsc........
       ! recursively call to setup the subpc
       ewrite(2,*) "Going into setup_pc_from_options for the subpc within the local domain."
-      call setup_pc_from_options(subpc, pmat, &
+      call setup_pc_from_options(ksp, subpc, pmat, &
          trim(option_path)//'/preconditioner[0]', &
          petsc_numbering=petsc_numbering, &
          prolongators=prolongators, surface_node_list=surface_node_list, &
          matrix_csr=matrix_csr, internal_smoothing_option=internal_smoothing_option, &
          is_subpc=.true.)
       ewrite(2,*) "Finished setting up subpc."
+#endif      
+
 
     else if (IsParallel() .and. (pctype==PCSOR .or. &
       pctype==PCEISENSTAT) .and. .not. present_and_true(is_subpc)) then
@@ -2107,11 +2130,17 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        call PCSetup(pc, ierr)
 #if PETSC_VERSION_MINOR>=14
 ! Extract the array of KSP contexts for the local blocks
+        call KSPSetUp(ksp,ierr)
+        call PCBJacobiGetSubKSP(pc,n_local,first_local, PETSC_NULL_KSP,ierr)
+        allocate(subksp_array(n_local))
+
         call PCBJacobiGetSubKSP(pc,n_local,first_local,subksp_array,ierr)
+        call KSPGetPC(subksp_array(1), subpc, ierr)
 #else
        call PCBJacobiGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
-#endif
        call KSPGetPC(subksp, subpc, ierr)
+#endif
+       
        call PCSetType(subpc, pctype, ierr)
 
     else if (pctype==PCFIELDSPLIT) then

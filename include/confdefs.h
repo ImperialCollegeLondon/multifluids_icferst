@@ -36,7 +36,6 @@
 #define HAVE_LIBMETIS 1
 #define HAVE_LIBPARMETIS 1
 #define HAVE_PARMETIS_H 1
-#define HAVE_ZOLTAN 1
 #define DOUBLEP 1
 #define STREAM_IO
 #define SIGNAL

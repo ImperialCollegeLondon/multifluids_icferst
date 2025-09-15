@@ -33,7 +33,7 @@ F77     = mpif90
 FFLAGS  = $(CPPFLAGS) -ffast-math -frecord-marker=4    -ffree-line-length-none -ffixed-line-length-none  -O3 -fdefault-real-8
 
 FC      = mpif90
-FCFLAGS = $(CPPFLAGS) -ffast-math -frecord-marker=4 -I/usr/include   -ffree-line-length-none -ffixed-line-length-none  -O3 -fdefault-real-8
+FCFLAGS = $(CPPFLAGS) -ffast-math -frecord-marker=4    -ffree-line-length-none -ffixed-line-length-none  -O3 -fdefault-real-8
 
 CC      = mpicc
 CCFLAGS = $(CPPFLAGS) @CCFLAGS@
