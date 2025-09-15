@@ -1949,14 +1949,14 @@ contains
                         x_inod = ndgln%x ( (ele - 1 ) * Mdims%cv_nloc + iloc )
                         if (is_magma) then
                           if (iphase==1) then !only the solid phase has viscosity terms
-                            CALL CALCULATE_VISCOSITY_COSTA(SATURATION2%VAL(CV_NOD), 1e15,MUS_SCALE, MUB_SCALE)
-                            mu_tmp( :, :, iloc )=mus_scale
-                            momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
-                            momentum_diffusion2%val(1, 1, iphase, mat_nod)=MUB_SCALE
+                            ! CALL CALCULATE_VISCOSITY_COSTA(SATURATION2%VAL(CV_NOD), 1e15,MUS_SCALE, MUB_SCALE)
+                            ! mu_tmp( :, :, iloc )=mus_scale
+                            ! momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
+                            ! momentum_diffusion2%val(1, 1, iphase, mat_nod)=MUB_SCALE
 
-                            ! mu_tmp( :, :, iloc )=mus_varied(saturation%val(cv_nod), 8e11) !mu_tmp( 1, 1, iloc )
-                            ! momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )  !mu_tmp( :, :, iloc )
-                            ! momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc )*5e-1, exp_zeta_function, saturation%val(cv_nod))*0.01! make it 1/10
+                            mu_tmp( :, :, iloc )=mus_varied(saturation%val(cv_nod), 1e12) !mu_tmp( 1, 1, iloc )
+                            momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )  !mu_tmp( :, :, iloc )
+                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc )*5e-1, exp_zeta_function, saturation%val(cv_nod))*0.01! make it 1/10
                             
                             
                             

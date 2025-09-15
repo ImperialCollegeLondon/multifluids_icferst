@@ -1158,7 +1158,7 @@ contains
 ! external MyKSPMonitor
 
     rtol   = 1.0e-12
-    maxits = 1000
+    maxits = 1500
     
     call Convert_C_and_CT_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, Mspars, 1) 
 
@@ -1254,7 +1254,7 @@ contains
     !preconditioner
     call KSPGetPC(ksp_midori, pc, ierr)
     !GAMG
-    ! call PCSetType(pc, PCGAMG, ierr)
+    call PCSetType(pc, PCGAMG, ierr)
     ! call PCGAMGSetType(pc, PCGAMGAGG, ierr)   ! aggregation type
     ! call PCGAMGSetNSmooths(pc, 1, ierr)       ! number of smoothing steps
 
@@ -1268,8 +1268,8 @@ contains
     ! Set PC type to LU
     ! Tell PETSc to use UMFPACK for the LU factorization
     ! call KSPSetType(ksp_midori, KSPPREONLY, ierr)    
-    call PCSetType(pc, PCLU, ierr)
-    call PCFactorSetMatSolverType(pc, MATSOLVERUMFPACK , ierr) !MATSOLVERUMFPACK
+    ! call PCSetType(pc, PCLU, ierr)
+    ! call PCFactorSetMatSolverType(pc, MATSOLVERUMFPACK , ierr) !MATSOLVERUMFPACK
     
     call KSPSetFromOptions(ksp_midori, ierr) 
 

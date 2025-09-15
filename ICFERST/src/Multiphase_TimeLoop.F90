@@ -215,6 +215,13 @@ contains
         character( len = option_path_len ) :: option_name
 
         logical :: redo_time_step=.true.
+
+        logical :: scale_dynamics_system           
+        real, target :: dynamic_scale(7)! mu0, C0, drhog, P0, T0, U0, L0
+        real, pointer :: dynamic_scale_p(:)
+        type (vector_field_pointer) ::darcy_velocity
+
+        type( vector_field_pointer ), dimension(1) :: PSI_AVE
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -596,8 +603,33 @@ contains
                         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                 end if
 
+                scale_dynamics_system= .true. 
+                dynamic_scale=1.
+                if (scale_dynamics_system) then  ! dynamic_scale: [mu0,C0, L0, drhog, P0, T0, U0]
+                    dynamic_scale(1)=1e12!1e12 !maxval(UDIFFUSION_ALL)
+                    print *, 'mu0: ', dynamic_scale(1)
+                    dynamic_scale(2)=1e5!1e5 !1./minval(magma_c_phi_series)*1e2   !magma_Coupling_generate is phi^2/c
+                    print *, 'C0: ', dynamic_scale(2)
+                    dynamic_scale(3)=(dynamic_scale(1)/dynamic_scale(2))**0.5  !L0=sqrt(m0/C0)
+                    print *, 'L0: ', dynamic_scale(3)
+                    dynamic_scale(4)= 400*9.81 !400.*9.81
+                    dynamic_scale(5)=dynamic_scale(4)*dynamic_scale(3) !p0=drhog*L0
+                    print *, 'P0: ', dynamic_scale(5)
+                    dynamic_scale(6)=(dynamic_scale(1)*dynamic_scale(2))**0.5/dynamic_scale(4)    !T0=sqrt(mu0*C0)/drhog;
+                    print *, 'T0: ', dynamic_scale(6)
+                    dynamic_scale(7)=dynamic_scale(3)/dynamic_scale(6)
+                    print *, 'U0:', dynamic_scale(7)
 
-                
+                    dynamic_scale_p =>dynamic_scale
+                end if 
+
+                if ( is_magma ) then
+                  !update_magma_coupling_coefficients must go first!
+                  saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                  call update_magma_coupling_coefficients(Mdims, state, saturation_field%val, ndgln, multi_absorp%Magma%val,  magma_c_phi_series*dynamic_scale(2),Magma_absorp_capped=multi_absorp%Magma_capped%val)
+                  call Calculate_Magma_AbsorptionTerms( state, packed_state, multi_absorp%Magma, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
+                                                                    upwnd, suf_sig_diagten_bc, magma_c_phi_series*dynamic_scale(2), multi_absorp%Magma_capped )                  
+                end if                
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
                    PhaseVolumeFractionComponentSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionComponentSource")
@@ -647,12 +679,12 @@ contains
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
-                        dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
+                        dt/dynamic_scale(6), SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling, magma_phase_coef, magma_c_phi_series)
+                        calculate_mass_delta, outfluxes, pres_its_taken, its,magma_coupling, magma_phase_coef, dynamic_scale_p)
                 end if Conditional_ForceBalanceEquation
 
-                velocity_field%val=0.
+                ! velocity_field%val=0.
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
@@ -677,8 +709,18 @@ contains
                 !#=================================================================================================================
 
                 !!$ Calculate Darcy velocity with the most up-to-date information
-                ! if(is_porous_media .or. is_magma) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
+                if(is_porous_media .or. is_magma) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
+                
+                if (scale_dynamics_system) then  ! dynamic_scale: [mu0,C0, L0, drhog, P0, T0, U0]
+                    velocity_field%val(:,1,:)=velocity_field%val(:,1,:)*dynamic_scale(7)
 
+                    velocity_field%val(:,2,:)=velocity_field%val(:,2,:)*dynamic_scale(7) !gradP scale is just drhog?
+                    ! pressure_field%val=pressure_field%val*dynamic_scale(5)
+
+                     darcy_velocity%ptr => extract_vector_field(state(2),"DarcyVelocity")
+                     darcy_velocity%ptr%val=darcy_velocity%ptr%val*dynamic_scale(7)
+     
+                end if 
                 !#=================================================================================================================
                 !# End Velocity Update -> Move to ->the rest
                 !#=================================================================================================================

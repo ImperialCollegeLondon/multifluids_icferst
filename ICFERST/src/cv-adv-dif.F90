@@ -1164,7 +1164,7 @@ contains
                                   HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-X_ALL(1:Mdims%ndim,X_NODI))**2) )
                               ELSE
                                   HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-XC_CV_ALL(1:Mdims%ndim,CV_NODJ))**2) )
-                              END IF
+                              END IF   
                               DO COUNT = Mspars%small_acv%fin( CV_NODI ), Mspars%small_acv%fin( CV_NODI + 1 ) - 1
                                   IF ( Mspars%small_acv%col( COUNT ) == CV_NODJ ) THEN
                                       count_out = COUNT
@@ -1504,7 +1504,7 @@ contains
                                 ELSE
                                   !Average of the coefficient in shared CVs between elements
                                   ENTH_RHS_DIFF_COEF_DIVDX = 0.5* ( TDIFFUSION(MAT_NODJ, 1, 1, :)  + TDIFFUSION(MAT_NODI, 1, 1, :)) /HDC
-                                ENDIF
+                                ENDIF                                
                               end if
 
 

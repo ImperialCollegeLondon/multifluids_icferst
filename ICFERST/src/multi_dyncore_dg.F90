@@ -621,6 +621,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !WE EITHER CREATE OUR OWN ARE TO SPECIFY THE DIFFUSION COEFFICIENT, LIKE FOR CONCENTRATION
            !OR WE NEED A PROGNOSTIC TEMPERATURE FIELD, WHICH IS "FINE" BUT STRANGE FOR THE USER
            call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, divide_by_rho_CP = .true.)
+           
            ! Check for a python-set absorption field when solving for Enthalpy/internal energy
            python_tfield => extract_tensor_field( state(1), "TAbsorB", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_ABSORB = python_tfield%val
@@ -1972,7 +1973,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
         DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, &
         IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J,&
-        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, magma_coupling,magma_phase_coef, magma_c_phi_series)
+        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its, magma_coupling,magma_phase_coef, dynamic_scale_p)
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -2003,7 +2004,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         type(coupling_term_coef), intent( in ) :: magma_coupling
         type(magma_phase_diagram), intent( in ) ::magma_phase_coef
-        real , DIMENSION(:), intent(inout) :: magma_c_phi_series
 
         ! Local Variables
         character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
@@ -2089,10 +2089,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         real, dimension (:,:,:),allocatable :: P_backup
 
         logical :: direct_solve_stokes = .false.
+        real, pointer :: dynamic_scale_p(:)
 
-        logical :: scale_dynamics_system = .false.
-        real :: mu0, C0, drhog, P0, T0, U0, L0
-        type (vector_field_pointer) ::darcy_velocity
+        type( vector_field_pointer ), dimension(1) :: PSI_AVE
 
         compute_compaction=.true. 
         second_compaction_formulation=.false. 
@@ -2159,33 +2158,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         X_ALL2 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
         X_ALL3 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "VelocityCoordinate" )
-        if (scale_dynamics_system) then
-            mu0=maxval(UDIFFUSION_ALL)
-            print *, 'mu0: ', mu0
-            print *, 'min_max_cphi:', magma_c_phi_series(1), magma_c_phi_series(1000000)
-            C0=1e5 !1./minval(magma_c_phi_series)*1e2   !magma_Coupling_generate is phi^2/c
-            print *, 'C0: ', C0
-            L0=(mu0/C0)**0.5
-            print *, 'L0:', L0
-            drhog= 400.*9.81
-            P0=drhog*L0
-            T0=(mu0*C0)**0.5/drhog 
-            U0=L0/T0
-            print *, 'U0:', U0
-            UDIFFUSION_ALL=UDIFFUSION_ALL/mu0 
-            UDIFFUSION_VOL_ALL%val=UDIFFUSION_VOL_ALL%val/mu0
-            X_ALL2%val=X_ALL2%val/L0
-            X_ALL3%val=X_ALL3%val/L0
-            U_SOURCE_CV_ALL=U_SOURCE_CV_ALL/drhog
-        else 
-            C0=1.
-        end if 
-        if ( is_magma ) then
-            !update_magma_coupling_coefficients must go first!
-            saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-            call update_magma_coupling_coefficients(Mdims, state, saturation_field%val, ndgln, multi_absorp%Magma%val,  magma_c_phi_series*C0,Magma_absorp_capped=multi_absorp%Magma_capped%val)
-            call Calculate_Magma_AbsorptionTerms( state, packed_state, multi_absorp%Magma, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
-                                                            upwnd, suf_sig_diagten_bc, magma_c_phi_series*C0, multi_absorp%Magma_capped )                  
+
+        if (associated(dynamic_scale_p)) then  ! dynamic_scale_p: [mu0,C0, L0, drhog, P0, T0, U0]
+            UDIFFUSION_ALL=UDIFFUSION_ALL/dynamic_scale_p(1) 
+            UDIFFUSION_VOL_ALL%val=UDIFFUSION_VOL_ALL%val/dynamic_scale_p(1)
+            X_ALL2%val=X_ALL2%val/dynamic_scale_p(3)
+            ! X_ALL3%val=X_ALL3%val/dynamic_scale_p(3)
+            U_SOURCE_CV_ALL=U_SOURCE_CV_ALL/dynamic_scale_p(4)
         end if
 
         if (first_time) then 
@@ -2415,6 +2394,7 @@ end if
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON ) !
         deallocate(UDIFFUSION_ALL)
+
 
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
@@ -2649,19 +2629,16 @@ end if
         call deallocate(deltaP)
         !If solving for compaction now we proceed to obtain the velocity for the Darcy phases, must put after the corection velocity step for magma
         if (compute_compaction) then 
-            call get_Darcy_phases_velocity()            
+            call get_Darcy_phases_velocity()          
         end if
 
-        if(is_porous_media .or. is_magma) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
 
-        if (scale_dynamics_system) then
-            X_ALL2%val=X_ALL2%val*L0
-            X_ALL3%val=X_ALL3%val*L0
-            velocity%val(:,1,:)=velocity%val(:,1,:)*U0
-            Pressure%val=Pressure%val*P0
+        if (associated(dynamic_scale_p)) then  ! dynamic_scale_p: [mu0,C0, L0, drhog, P0, T0, U0]
+            X_ALL2%val=X_ALL2%val*dynamic_scale_p(3)
+            ! X_ALL3%val=X_ALL3%val*dynamic_scale_p(3)
+            ! Pressure%val=Pressure%val*dynamic_scale_p(5)
 
-            ! darcy_velocity%ptr => extract_vector_field(state(2),"DarcyVelocity")
-            ! darcy_velocity%ptr%val=darcy_velocity%ptr%val*U0
+            nullify(CV_funs%CV2FE%refcount)
         end if 
 
         ! call force_zero_boundary_value(Mdims, velocity)
@@ -2870,7 +2847,7 @@ end if
             end if
             ! Let the convergence criteria more relaxed on the first non-linear steps and decreases as the iteration increases
             ! solver_tolerance=solver_tolerance*10**(-2.*no_nonlinear_iteration/real(max_nonlinear_iteraion-1)+2./real(max_nonlinear_iteraion-1)+2.)
-            solver_tolerance=solver_tolerance*10./(1.+9.*(no_nonlinear_iteration-1)/(max_nonlinear_iteraion-1))
+            ! solver_tolerance=solver_tolerance*10./(1.+9.*(no_nonlinear_iteration-1)/(max_nonlinear_iteraion-1))
             print *, 'no_nonlinear_iteration:', no_nonlinear_iteration
             print *, 'solver_tolerance:', solver_tolerance
             show_FPI_conv = 1
@@ -2943,7 +2920,7 @@ end if
             ! call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
             ! conv_test = inf_norm_vector_normalised(CDP_tensor%val, ref_CDP_tensor%val, totally_min_max)
             conv_test = maxval(abs(rhs_p%val(1,:)))
-            if (conv_test>1e-1) then 
+            if (conv_test>100.) then 
                 diverged=.true.
                 print *, 'conv_test=',conv_test, ';  cmcscaling too small, iteration abandoned. A new stokes iteration will restart'
                 exit stokesloop
