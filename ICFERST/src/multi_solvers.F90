@@ -1167,8 +1167,8 @@ contains
     b2 = PetscNumberingCreateVec(petsc_numbering_p)
     call field2petsc(rhs_p, petsc_numbering_p, b2)
     call VecSetUp(b2, ierr)
-    call VecScale(b2, -1., ierr)
 
+    print *,'rhs_p, minmax:', minval(abs(rhs_p%val)), maxval(abs(rhs_p%val))
     ! sparsity => extract_csr_sparsity(packed_state, "CTMatrixSparsity")
     ! call allocate(petsc_numbering_v, size(Mmat%U_RHS,3), rhs_p%dim, halo = sparsity%row_halo)
     ! b1 = PetscNumberingCreateVec(petsc_numbering_v)
@@ -1179,7 +1179,8 @@ contains
 
     call VecCreateSeqWithArray(PETSC_COMM_SELF, 1, Mdims%u_nonods*2, u_rhs_flat, b1, ierr)    
     call VecSetUp(b1, ierr)
-
+    print *,'Mmat%U_RHS(1,1,:):', minval(abs(Mmat%U_RHS(1,1,:))), maxval(abs(Mmat%U_RHS(1,1,:)))
+    print *,'Mmat%U_RHS(2,1,:):', minval(Mmat%U_RHS(2,1,:)), maxval(Mmat%U_RHS(2,1,:))
 
     call MatScale(Mmat%C_PETSC%M, real(-1.0, kind=PetscScalar_kind), ierr)
     call MatScale(CMC_petsc2%M, real(-1.0, kind=PetscScalar_kind), ierr)

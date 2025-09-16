@@ -2921,9 +2921,13 @@ end if
             ! conv_test = inf_norm_vector_normalised(CDP_tensor%val, ref_CDP_tensor%val, totally_min_max)
             conv_test = maxval(abs(rhs_p%val(1,:)))
             if (conv_test>100.) then 
-                diverged=.true.
-                print *, 'conv_test=',conv_test, ';  cmcscaling too small, iteration abandoned. A new stokes iteration will restart'
-                exit stokesloop
+                if (min_residue>solver_tolerance*5) then 
+                    diverged=.true.
+                    print *, 'conv_test=',conv_test, ';  cmcscaling too small, iteration abandoned. A new stokes iteration will restart'
+                    exit stokesloop
+                else
+                    exit stokesloop
+                end if 
             end if 
 
             if (min_residue>conv_test) then

@@ -606,7 +606,7 @@ contains
                 scale_dynamics_system= .true. 
                 dynamic_scale=1.
                 if (scale_dynamics_system) then  ! dynamic_scale: [mu0,C0, L0, drhog, P0, T0, U0]
-                    dynamic_scale(1)=1e12!1e12 !maxval(UDIFFUSION_ALL)
+                    dynamic_scale(1)=1e18!1e12 !maxval(UDIFFUSION_ALL)
                     print *, 'mu0: ', dynamic_scale(1)
                     dynamic_scale(2)=1e5!1e5 !1./minval(magma_c_phi_series)*1e2   !magma_Coupling_generate is phi^2/c
                     print *, 'C0: ', dynamic_scale(2)

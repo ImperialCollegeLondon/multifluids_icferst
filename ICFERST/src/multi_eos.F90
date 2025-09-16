@@ -1468,6 +1468,7 @@ contains
                   do idim = 1, Mdims%ndim
                     u_source_cv( idim, 1, nod ) = (dens-denl)* sat_field%val(1, 1, nod) * g( idim ) !(dens- denl )
                   end do
+                  ! if (idim==2 .and. u_source_cv( idim, 1, nod )<0) print *, 'dens:', dens, 'denl:', denl, 'sat:',sat_field%val(1, 1, nod), 'g:',g( idim )
                 end do
 
             end if
@@ -1956,7 +1957,7 @@ contains
 
                             mu_tmp( :, :, iloc )=mus_varied(saturation%val(cv_nod), 1e12) !mu_tmp( 1, 1, iloc )
                             momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )  !mu_tmp( :, :, iloc )
-                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc )*5e-1, exp_zeta_function, saturation%val(cv_nod))*0.01! make it 1/10
+                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc )*5e-1, exp_zeta_function, saturation%val(cv_nod))
                             
                             
                             
