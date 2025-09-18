@@ -1647,6 +1647,10 @@ start =
             element disable_limiters {
                empty
             }?,
+            ## EoS are calculated with the values calculated at the end of the previous time-step
+            element explicit_density {
+               empty
+            }?,
             ## VAD is multiplied by the normalised flux. This should help focusing the VAD towards moving directions instead of acting as pure diffusion
             element flux_limited_vad {
                empty

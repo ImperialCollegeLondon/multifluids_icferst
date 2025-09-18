@@ -230,7 +230,7 @@ contains
         !!-Variable to keep track of dt reduction for meeting dump_period requirements
         real, save :: stored_dt = -1
         real :: old_acctim, nonlinear_dt
-        
+
         ! VAD related saturation
         real, allocatable, dimension(:,:) :: prev_sat
 
@@ -447,13 +447,14 @@ contains
         call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Picard_its', picard_its, default = NonLinearIteration+1 )
 
         call get_option("/geometry/simulation_quality", sim_qlty)
-        if (trim(sim_qlty) /= "fast" .and. have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Picard_its')) then 
+        if (trim(sim_qlty) /= "fast" .and. have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Picard_its')) then
             ewrite(0,*) "====================================================================="
             ewrite(0,*) "WARNING: Newton solver should be used with simulation_quality = fast."
             ewrite(0,*) "====================================================================="
         end if
 
-
+        ! Copy New to Old if using explicit density
+        if (have_option( '/numerical_methods/explicit_density' )) call copy_packed_new_to_old( packed_state )
         !!$
         have_temperature_field = .false. ; have_component_field = .false. ; have_extra_DiffusionLikeTerm = .false.
         do istate = 1, Mdims%nstate
@@ -523,7 +524,7 @@ contains
              end if
              !not_to_move_det_yet = .false. ;
 !-------------------------------------------------------------------------------
-            call write_state_units(dump_no, state)
+              call write_state(dump_no, state)
 
         end if
         !Initialise FPI_eq_taken
@@ -778,30 +779,6 @@ contains
                 !# End Velocity Update -> Move to ->the rest
                 !#=================================================================================================================
 
-                !!$ Solve advection of the scalar 'Temperature':
-                Conditional_ScalarAdvectionField: if( have_temperature_field ) then
-
-                    ewrite(3,*)'Now advecting Temperature Field'
-                    call set_nu_to_u( packed_state )
-                    !call calculate_diffusivity( state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
-                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
-                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                    call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                        suf_sig_diagten_bc, Porosity_field%val, porosity_total_field%val, &
-                        !!$
-                        0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                        option_path = '/material_phase[0]/scalar_field::Temperature', &
-                        thermal = .true.,&
-                        ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, nonlinear_iteration = its)
-                END IF Conditional_ScalarAdvectionField
-
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
                 !#=================================================================================================================
@@ -863,7 +840,28 @@ contains
                 end if
                 !#=================================================================================================================
 
-
+                !!$ Finally Solve advection of the scalar 'Temperature'. Always solve temperature last to avoid having to recalculate Rhos
+                Conditional_ScalarAdvectionField: if( have_temperature_field ) then
+                    ewrite(3,*)'Now advecting Temperature Field'
+                    call set_nu_to_u( packed_state )
+                    !call calculate_diffusivity( state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
+                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                        suf_sig_diagten_bc, Porosity_field%val, porosity_total_field%val, &
+                        !!$
+                        0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                        option_path = '/material_phase[0]/scalar_field::Temperature', &
+                        thermal = .true.,&
+                        ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        saturation=saturation_field, nonlinear_iteration = its)
+                END IF Conditional_ScalarAdvectionField
 
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then
@@ -1092,7 +1090,7 @@ contains
                   if(dt < minc) then
                     ewrite(0, *) "Minimum timestep reached - terminating"
                     SIG_INT = .true.
-                    ! call write_state_units(dump_no, state)
+                    ! call write_state(dump_no, state)
                   end if
                 end if
                 dt = max( min( dt , maxc ), minc )
@@ -1148,7 +1146,7 @@ contains
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
         ! Dump at end, unless explicitly disabled
         if(.not. have_option("/io/disable_dump_at_end")) then
-            call write_state_units(dump_no, state)
+            call write_state(dump_no, state)
         end if
         call tag_references()
         call deallocate(packed_state)
@@ -1381,7 +1379,7 @@ contains
                         call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     end if
                     not_to_move_det_yet = .false. ;
-                    call write_state_units( dump_no, state ) ! Now writing into the vtu files
+                    call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
             else if (have_option('/io/dump_period')) then
                 ! dump based on the prescribed period of real time
@@ -1400,7 +1398,7 @@ contains
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
                     if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
-                    call write_state_units( dump_no, state ) ! Now writing into the vtu files
+                    call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_RealTime
             end if
         end subroutine create_dump_vtu_and_checkpoints
@@ -1796,22 +1794,10 @@ contains
 
     end subroutine adapt_mesh_within_FPI
 
-    ! Convert to out units and then back
-    subroutine write_state_units(dump_no, state)
-      integer, intent(inout) :: dump_no
-      type(state_type), dimension(:), intent(inout) :: state
 
-      logical, parameter :: CONVERT_OUT = .false., CONVERT_IN = .true.
-
-      call convertToOutUnits( state, Mdims, CONVERT_OUT )
-      call write_state( dump_no, state ) ! Now writing into the vtu files
-      call convertToOutUnits( state, Mdims, CONVERT_IN )
-
-    end subroutine write_state_units
 
  end subroutine MultiFluids_SolveTimeLoop
 
 
 
 end module multiphase_time_loop
-

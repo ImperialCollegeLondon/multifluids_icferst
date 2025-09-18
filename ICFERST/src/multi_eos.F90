@@ -424,25 +424,35 @@ contains
         real, dimension( : ), allocatable :: eos_coefs, perturbation_pressure, RhoPlus, RhoMinus
         real, dimension( : ), allocatable :: pressure_back_up, density_back_up, temperature_local
         real :: dt, current_time
-        integer :: ncoef, stat, nfields, ifield
+        integer :: ncoef, stat, statT, statC, nfields, ifield
         !Variables for python function for the coefficient_B for linear density (this is for bathymetry)
         type (scalar_field) :: sfield
         type (scalar_field), pointer :: pnt_sfield
         type (vector_field), pointer :: position
+        logical, save :: EXPLICIT_EOS = .false.
+        logical, save :: OPTIONS_READ = .false.
 
-        !!$ Den = c1 * ( P + c2 ) / T           :: Stiffened EOS
-        !!$ Den = c1 * P + c2                   :: Linear_1 EOS
-        !!$ Den = c1 * P / T + c2               :: Linear_2 EOS
-        !!$ Den = Den0 * exp[ c0 * ( P - P0 ) ] :: Exponential_1 EOS
-        !!$ Den = c0 * P** c1                   :: Exponential_2 EOS
 
-        pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )
-        if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
+        if (.not.OPTIONS_READ) then
+          EXPLICIT_EOS = have_option( '/numerical_methods/explicit_density' )
+          OPTIONS_READ = .true.
+        end if
 
-        temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
-        have_temperature_field = ( stat == 0 )
-        Concentration => extract_scalar_field( state( iphase ), 'Concentration', stat )
-        have_concentration_field = ( stat == 0 )
+
+        if (EXPLICIT_EOS) then
+          pressure => extract_tensor_field( packed_state, 'PackedOldCVPressure', stat )  ! <= for inertia only
+          if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedOldFEPressure", stat )
+          temperature => extract_scalar_field( state( iphase ), 'OldTemperature', statT )
+          Concentration => extract_scalar_field( state( iphase ), 'OldConcentration', statC )
+        else
+          pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )  ! <= for inertia only
+          if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
+          temperature => extract_scalar_field( state( iphase ), 'Temperature', statT )
+          Concentration => extract_scalar_field( state( iphase ), 'Concentration', statC )
+        end if
+
+        have_temperature_field = ( statT == 0 )
+        have_concentration_field = ( statC == 0 )
 
         assert( node_count( pressure ) == size( rho ) )
         assert( node_count( pressure ) == size( drhodp ) )
@@ -580,7 +590,7 @@ contains
                 density => extract_scalar_field( state( iphase ), 'Density', stat )
                 pressure_back_up = pressure % val(1,1,:); density_back_up = density % val
                 ! redefine p as p+pert and p-pert and then run python state again to get dRho / d P...
-                perturbation_pressure = 1.e-5
+                perturbation_pressure = 1.0
                 pressure % val(1,1,:) = pressure_back_up + perturbation_pressure
                 call linear_EOS_formula(RhoPlus)
                 pressure % val(1,1,:) = pressure_back_up - perturbation_pressure
@@ -594,6 +604,7 @@ contains
               end if
               deallocate( eos_coefs )
 
+print *, minval((dRhodP)), maxval((dRhodP)), minval((pressure % val)), maxval((pressure % val))
           elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/BW_eos' ) then
             ! Batzle and Wang (1992) EOS
             ! Use for basin scale simulations.
@@ -601,9 +612,8 @@ contains
             ! You can choose to remove pressure terms from BW EOS for trouble-shooting
             ! If you want to run BW EOS without Boussinesq approximation, you are recommended to remove pressure terms.
             ! Note: Reference density is calculated using reference C0, T0, P0.
-
+            ! pscpsc AVOID THE POWER FUNCTION WHENEVER POSSIBLE! do this by grouping the terms, example: do T*(a+b*T) instead of aT + bT**2
             allocate(remove_P_dep(1))
-
             !Check if user specified to remove pressure terms
             remove_P_dep(1) = have_option(trim(eos_option_path) // '/Remove_P_dependencies')
             !Initialize density calculation for fresh water
@@ -629,11 +639,12 @@ contains
                 if (.not. remove_P_dep(1)) rho = rho + 1e3*Concentration % val*1e-6*(temperature % val-273.15)*(-13*pressure%val(1,1,:)*1e-6 + 47*pressure%val(1,1,:)*1e-6*Concentration % val)
               endif
             endif
+
             !Bypass density derivatives if using Boussinesq approx. or pressure dependencies are removed
             if (has_boussinesq_aprox .or. remove_P_dep(1)) then
               dRhodP = 0.0
             else
-              perturbation_pressure = 1.e-5
+              perturbation_pressure = 1.0 ! 1 Pascal is a good perturbation
 
               RhoPlus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 &
               - 2*(temperature % val - 273.15)*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - &
@@ -651,12 +662,14 @@ contains
                   (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val)))
               end if
               dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
+
+! dRhodP = 0.0;
             endif
             deallocate(remove_P_dep)
           elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/IAPWS1995_eos' ) then
             ! IAPWS (1995) EOS
             ! Note: Reference density is calculated using reference T0.
-
+            ! pscpsc AVOID THE POWER FUNCTION WHENEVER POSSIBLE! do this by grouping the terms, example: do T*(a+b*T) instead of aT + bT**2
             rho = 0.0  ! initialise
 
             where ((temperature % val) < 574.0)
@@ -726,7 +739,7 @@ contains
               allocate( pressure_back_up( node_count( pressure ) ))
               pressure_back_up = pressure % val(1,1,:)
               ! redefine p as p+pert and p-pert and then run python state again to get dRho / d P...
-              perturbation_pressure = 1.e-5
+              perturbation_pressure = max( toler, 1.e-5 * abs( pressure % val(1,1,1) ) )
               pressure % val(1,1,:) = pressure_back_up + perturbation_pressure; RhoPlus = Rho
               call multi_compute_python_field(state, iphase, trim( option_path_python ), RhoPlus)
               pressure % val(1,1,:) = pressure_back_up - perturbation_pressure; RhoMinus = Rho
@@ -818,8 +831,23 @@ contains
         integer :: ele, cv_inod, iloc, i, k, multiplier, multiplier2
 
         !!$ Den = Den_surface*exp(C0 * ( P_res-P_surf) )
-        pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )
-        if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
+        logical, save :: EXPLICIT_EOS = .false.
+        logical, save :: OPTIONS_READ = .false.
+
+        if (.not.OPTIONS_READ) then
+          EXPLICIT_EOS = have_option( '/numerical_methods/explicit_density' )
+          OPTIONS_READ = .true.
+        end if
+
+
+        if (EXPLICIT_EOS) then
+          pressure => extract_tensor_field( packed_state, 'PackedOldCVPressure', stat )  ! <= for inertia only
+          if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedOldFEPressure", stat )
+        else
+          pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )  ! <= for inertia only
+          if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
+        end if
+
         density_porous => extract_scalar_field( state(1), "porous_density" )
         density_porous_initial  => extract_scalar_field( state(1), "porous_density_initial" )
         density_porous_old => extract_scalar_field(state(1), "porous_density_old")
