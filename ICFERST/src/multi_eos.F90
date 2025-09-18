@@ -604,7 +604,6 @@ contains
               end if
               deallocate( eos_coefs )
 
-print *, minval((dRhodP)), maxval((dRhodP)), minval((pressure % val)), maxval((pressure % val))
           elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/BW_eos' ) then
             ! Batzle and Wang (1992) EOS
             ! Use for basin scale simulations.
