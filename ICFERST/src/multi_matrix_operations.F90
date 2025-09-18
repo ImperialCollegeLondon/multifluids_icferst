@@ -243,7 +243,6 @@ contains
         if (isparallel()) then
             if (GetProcNo()>1) ndpset=0
         end if
-
         IF ( have_option("/numerical_methods/create_P_mat_fast") .or. size(Mmat%PIVIT_MAT,1) == 1) THEN
             ! Fast but memory intensive
             CALL COLOR_GET_CMC_PHA_FAST( Mdims,Mspars, ndgln, Mmat,  &
@@ -378,11 +377,12 @@ contains
                     DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
                         CV_JNOD = Mspars%CMC%col( COUNT )
                         DO IPRES = 1, Mdims%npres
-                          CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) &
-                          + DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC( CV_JNOD )
                           if (ipres >1) then
                             CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) &
                             + DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_CVFEM2PIPE_TRUE( COUNT ) * COLOR_VEC( CV_JNOD )
+                          else
+                            CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) &
+                            + DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC( CV_JNOD )
                           ENDIF
                           if ( got_free_surf) then
                             CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) +&
@@ -648,15 +648,17 @@ contains
                 DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
                     CV_JNOD = Mspars%CMC%col( COUNT )
                     DO IPRES = 1, Mdims%npres
-                      CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
-                      DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
                       if(ipres>1) then
                         CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
                         DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_CVFEM2PIPE_TRUE( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
+                      else
+                        CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
+                        DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
                       ENDIF
+
                       !SPRINT_TO_DO This thing below is repeated and seems therefore wrong?
-                      CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
-                      DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
+                      ! CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
+                      ! DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
 
 
                       if ( got_free_surf ) then
@@ -826,14 +828,14 @@ contains
             DO i = 1, size(eles_with_pipe)
                 ELE = eles_with_pipe(i)%ele!Element with pipe
                 !undo inversion of the diagonal
-                !We have to do this because the list is not necessarily ordered 
+                !We have to do this because the list is not necessarily ordered
                 !and checking might be more expensive than doing/undoing the inversion of the diagonal
                 do k = 1, size(PIVIT_MAT,1)
                     PIVIT_MAT(k,k,ELE) = 1./PIVIT_MAT(k,k,ELE)
                 end do
                 !Perform block-matrix inversion (Veeery slow)
                 CALL MATINVold( PIVIT_MAT( :, :, ele ), Mdims%u_nloc * Mdims%nphase * Mdims%ndim, MAT, B )
-            end do 
+            end do
             deallocate(b)
             deallocate(MAT)
             return

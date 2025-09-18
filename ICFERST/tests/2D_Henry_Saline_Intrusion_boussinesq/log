@@ -1,2 +1,5 @@
+ IC-FERST was compiled on: 2025-09-12 06:20:29
+ IC-FERST GIT commit: b01fc59c92e84d222ba8f34540416a6306cb66e6
+ MESSAGE: Using default options for the linear solver: GMRES(30) + HYPRE
 Running the model
-Henry saline intrusion does NOT work
+Henry saline intrusion works OK

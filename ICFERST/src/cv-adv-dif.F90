@@ -1925,16 +1925,6 @@ contains
                                       end if
                                   END IF ! THERMAL
 
-
-!AT PRESENT THE RESIDUAL DOES NOT MATCH, OPEN EXCEL FILE IN HOME    
-!IT MIGHT BE NOT BECAUSE OF MY PRESENT METHOD BUT FROM THE CODE OF THE FAST BRANCH
-! I NEED TO CHECK IF THAT CODE ALSO HAS THE SAME ISSUE
-!IF IT DOES, BUT THE RESULTS ARE FINE I DONT CARE
-!THEN THE RESIDUAL SHOULD BE FINE. MOVE TO JACOBIAN WHICH RIGHT NOW IS VERY VERY WRONG
-! testing bl_fast
-!TESTING WITH THE FAST CODE THE RESULTS ARE FINE, SO THIS MIGHT JUST BE A RED HERRING WITHOUT ANY PROBLEM ASSOCIATED
-!I WOULD SUGGEST TO MOVE ON TO THE JACOBIAN...
-! if (cv_nodi==61.or.cv_nodi==62)print*, "MIAU2",cv_nodi, cv_nodj
                                   do iphase = 1, final_phase
                                       assembly_phase = iphase
                                       !For the RHS collapsing to assemble into phase 1 can be done just here
@@ -2071,7 +2061,7 @@ contains
                       end do
                     end do
                   END IF Conditional_GETMAT2
-                  
+
 
                   do iphase = 1, final_phase
                       assembly_phase = iphase
@@ -2113,6 +2103,7 @@ contains
                     - DERIV( iphase, CV_NODI ) * CV_P( 1, 1, CV_NODI ) ) * T_ALL( iphase, CV_NODI ) ) / LOC_DEN_I(iphase) )
                 DIAG_SCALE_PRES_phase( iphase ) = DIAG_SCALE_PRES_phase( iphase ) &
                     + MEAN_PORE_CV( 1, CV_NODI ) * LOC_T_I( iphase ) * DERIV( iphase, CV_NODI ) / ( DT * LOC_DEN_I(iphase) )
+
                 ct_rhs_phase(iphase)=ct_rhs_phase(iphase)  &
                     + Mass_CV(CV_NODI ) * SOURCT_ALL( iphase, CV_NODI ) / LOC_DEN_I(iphase)
                 IF ( HAVE_ABSORPTION ) THEN
@@ -4127,7 +4118,7 @@ end if
 
     END SUBROUTINE FIND_OTHER_SIDE_FAST
 
-    
+
     !> We are on the boundary or next to another element. Determine CV_OTHER_LOC,
     !> U_OTHER_LOC.
     !> CVFEM_ON_FACE(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
@@ -7763,7 +7754,7 @@ end if
         assemble_collapsed_to_one_phase, getResidual)
         ! Inputs/Outputs
         IMPLICIT NONE
-        type( state_type ), dimension( : ), intent( inout ) :: state 
+        type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         integer, intent(in) ::  final_phase
         type(multi_dimensions), intent(in) :: Mdims
@@ -7778,16 +7769,16 @@ end if
         real, dimension(:,:) :: sat_prev
         type(tensor_field), intent(in), target :: density
         type(tensor_field), intent(in) :: velocity
-            
+
         REAL, DIMENSION( :, : ), target, intent( inout ) :: DEN_ALL
         REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL
         REAL, intent( in ) :: DT
         REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
         REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
-        REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE 
+        REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
         !Variables for Vanishing artificial diffusion
-        integer, optional, intent(in) :: Phase_with_Pc 
+        integer, optional, intent(in) :: Phase_with_Pc
         real, optional, dimension(:), intent(in) :: VAD_parameter
         ! Calculate_mass variable
         type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
@@ -7797,7 +7788,7 @@ end if
         !Non-linear iteration count
         integer, optional, intent(in) :: nonlinear_iteration
         ! ###################Local variables############################
-        REAL, DIMENSION( :, : ), pointer :: MEAN_PORE_CV 
+        REAL, DIMENSION( :, : ), pointer :: MEAN_PORE_CV
 
         REAL, dimension(:), ALLOCATABLE :: DIFF_COEF, COEF
         !        ===>  LOGICALS  <===
@@ -7978,9 +7969,9 @@ end if
       XC_CV_ALL => psi_ave(1)%ptr%val
       MASS_CV   => psi_int(1)%ptr%val(1,:)
       MEAN_PORE_CV=>MeanPoreCV%val  !pscpsc this should do as meanporecv has been calculated for sure before calling this
-      
+
       !Obtain elements surrounding an element (FACE_ELE) only if it is not stored yet
-      if (.not. associated(Mmat%FACE_ELE)) then 
+      if (.not. associated(Mmat%FACE_ELE)) then
       allocate(Mmat%FACE_ELE(CV_GIdims%nface, Mdims%totele))
       Mmat%FACE_ELE = 0.
       CALL CALC_FACE_ELE( Mmat%FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
@@ -8109,7 +8100,7 @@ end if
                                   do idim = 1, Mdims%ndim
                                       do iv_idim = 1, Mdims%ndim
                                           auxR = auxR + CVNORMX_ALL(idim, GI) * perm%val(idim,iv_idim,ele) * CVNORMX_ALL(iv_idim, GI)
-                                      end do 
+                                      end do
                                   end do
                                   do iphase =1, final_phase
                                       CAP_DIFF_COEF_DIVDX(iphase) = auxR/HDC* (CAP_DIFFUSION( iphase, MAT_NODI )&
@@ -8123,7 +8114,7 @@ end if
                                 !This is very important as it allows to use the over-relaxation parameter safely
                                 !and reduce the cost of using capillary pressure in several orders of magnitude
                                 do iphase =1, final_phase
-                                  if (iphase == phase_with_pc) then 
+                                  if (iphase == phase_with_pc) then
                                       CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
                                   else!VAD is actually divided by wetting density so we need to adjust that when doing the other phases
                                       CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres&
@@ -8133,24 +8124,24 @@ end if
                             ELSE
                                 CAP_DIFF_COEF_DIVDX = 0.0
                             END IF If_GOT_CAPDIFFUS
-                            
-                            !Use upwinding to obtaing the values                        
+
+                            !Use upwinding to obtaing the values
                           IF ( on_domain_boundary ) THEN
                               !saturation
                               do iphase = 1, final_phase
                                   if ( WIC_T_BC_ALL( 1,iphase, SELE ) /= WIC_T_BC_DIRICHLET )then
                                       LIMT(iphase) = LOC_T_I(iphase)
-                                  ELSE 
+                                  ELSE
                                       LIMT(iphase) = LOC_T_I(iphase) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_T_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
                                   END if
                                       !Density
                                   if ( WIC_D_BC_ALL( 1, iphase, SELE ) /= WIC_D_BC_DIRICHLET ) then
                                       LIMD(iphase) = DEN_ALL(iphase, cv_nodi)
-                                  ELSE 
+                                  ELSE
                                       LIMD(iphase) = DEN_ALL(iphase, cv_nodi) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_D_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                  END if  
+                                  END if
                                   !Saturation
-                              end do                                                                      
+                              end do
                           else
                               do iphase = 1, final_phase
                                   LIMT(iphase)=LOC_T_I(iphase)*(1.0-INCOME(iphase)) + LOC_T_J(iphase)*INCOME(iphase)
@@ -8193,7 +8184,7 @@ end if
                             END IF  ! ENDOF IF ( GETMAT ) THEN
 
                             ! Put results into the RHS vector
-                            if (getResidual)  then 
+                            if (getResidual)  then
                               LOC_RES_I =  LOC_RES_I + SdevFuns%DETWEI( GI ) * ( NDOTQNEW * LIMDT)
                               ! Subtract out 1st order term non-conservative adv.
                                   if (VAD_activated) LOC_RES_I =  LOC_RES_I &
@@ -8266,12 +8257,12 @@ end if
 
         ! Deallocating temporary working arrays
         call deallocate_multi_dev_shape_funs(SdevFuns)
-        
+
       call deallocate(saturation_BCs)
       call deallocate(density_BCs)
       call deallocate(velocity_BCs)
       call deallocate(pressure_BCs)
-      
+
         !These three variables are allocated simultaneously so only one need to be checked
         if (allocated(suf_t_bc)) deallocate( suf_t_bc)
         if (VAD_activated) deallocate(CAP_DIFFUSION)
@@ -8369,7 +8360,7 @@ end if
           REAL, DIMENSION( :, :  ), intent( inout ) :: UDGI_ALL
           REAL, intent( in ) :: MASS_CV_I, MASS_CV_J
 
-          UGI_COEF_ELE_ALL=0.0 
+          UGI_COEF_ELE_ALL=0.0
           Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
               !Initialize variables
               forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
@@ -8378,7 +8369,7 @@ end if
               IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
                 DO iv_iphase = 1,final_phase
                       !(vel * shape_functions)/sigma
-                      ! if (is_P0DGP1) then 
+                      ! if (is_P0DGP1) then
                       UDGI_ALL(:, iv_iphase) = I_inv_adv_coef (iv_iphase)* matmul(perm%val(:,:,ele),&
                           LOC_NU( :, iv_iphase, 1 ) )
                       ! else
@@ -8413,12 +8404,12 @@ end if
                       if(iv_incomming_flow) UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) * iv_SUF_SIG_DIAGTEN_BC_GI
                 end do
               ELSE ! Specified vel bc.
-                !Majority of the times the BCs have zero velocity, check that before doing anything to save time 
+                !Majority of the times the BCs have zero velocity, check that before doing anything to save time
                 zero_vel_BC = maxval( abs(SUF_U_BC_ALL(:, :, &
                     1 + Mdims%u_snloc*(SELE-1) : Mdims%u_snloc*(SELE-1) + Mdims%u_snloc) ))<1e-30
                 UDGI_ALL = 0.0; UDGI_ALL_FOR_INV = 0.0; UGI_COEF_ELE_ALL = 0.0
                 DO iv_iphase = 1,final_phase
-                    if (.not.zero_vel_BC) then 
+                    if (.not.zero_vel_BC) then
                       DO iv_u_skloc = 1, Mdims%u_snloc
                           iv_u_kloc = U_SLOC2LOC( iv_u_skloc )
                           IF(WIC_U_BC_ALL( 1, iv_iphase, SELE ) == 10) THEN
@@ -8438,7 +8429,7 @@ end if
               END IF
           ELSE! IF( .not. between_elements) THEN!Only for same element/Continuous formulation !old flag: DISTCONTINUOUS_METHOD
               !vel(GI) = (vel * shape_functions)/sigma
-              ! if (is_P0DGP1) then                  
+              ! if (is_P0DGP1) then
               forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
                   UDGI_ALL(iv_idim, iv_iphase) = I_inv_adv_coef(iv_iphase)*LOC_NU( iv_idim, iv_iphase, 1 )
                   UDGI2_ALL(iv_idim, iv_iphase) = J_inv_adv_coef(iv_iphase)*LOC_NU( iv_idim, iv_iphase, 1 )
@@ -8455,7 +8446,7 @@ end if
               NDOTQ = 0.
               forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
                   NDOTQ(iv_iphase) = NDOTQ(iv_iphase) + CVNORMX_ALL(iv_idim, GI)* UDGI_ALL(iv_idim, iv_iphase)
-              end forall                
+              end forall
               ! NDOTQ  = MATMUL( CVNORMX_ALL(:, GI), UDGI_ALL )
               !Get the direction of the flow
               WHERE (NDOTQ < 0.0)
@@ -8469,11 +8460,11 @@ end if
                   UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) * (1.0-INCOME(iv_iphase)) + UDGI2_ALL(:, iv_iphase) * INCOME(iv_iphase)
               END DO ! PHASE LOOP
               !Now apply the permeability to obtain finally UDGI_ALL
-              if (has_anisotropic_permeability) then 
+              if (has_anisotropic_permeability) then
                   DO iv_iphase = 1,final_phase
                       UDGI_ALL(:, iv_iphase) = matmul(UDGI_ALL(:, iv_iphase), perm%val(:,:,ele))
                   end do
-              else !Avoid tensor multiplication if possible 
+              else !Avoid tensor multiplication if possible
                   forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
                       UDGI_ALL(iv_idim, iv_iphase) = UDGI_ALL(iv_idim, iv_iphase) * perm%val(iv_idim,iv_idim,ele)
                   end forall
@@ -8487,13 +8478,13 @@ end if
                           ROW_SUM_INV_VJ(iv_idim,iv_iphase)=J_inv_adv_coef(iv_iphase) * RSUM
                       end do
                   end do
-              else 
+              else
                   forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
                       ROW_SUM_INV_VI(iv_idim,iv_iphase)=I_inv_adv_coef(iv_iphase) * perm%val(iv_idim,iv_idim,ele)
                       ROW_SUM_INV_VJ(iv_idim,iv_iphase)=J_inv_adv_coef(iv_iphase) * perm%val(iv_idim,iv_idim,ele)
                   end forall
               end if
-              ! if (is_P0DGP1) then 
+              ! if (is_P0DGP1) then
               forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
                   UGI_COEF_ELE_ALL(iv_idim, iv_iphase, 1)=ROW_SUM_INV_VI(iv_idim,iv_iphase)* (1.0-INCOME(iv_iphase)) &
                       + ROW_SUM_INV_VJ(iv_idim,iv_iphase)* INCOME(iv_iphase)
@@ -8594,19 +8585,19 @@ end if
           NDOTQ = 0.
           forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
               NDOTQ(iv_iphase) = NDOTQ(iv_iphase) + CVNORMX_ALL(iv_idim, GI)* UDGI_ALL(iv_idim, iv_iphase)
-          end forall 
+          end forall
           WHERE ( NDOTQ >= 0. )
               INCOME = 0.
           ELSE WHERE
               INCOME = 1.
           END WHERE
           ! Calculate NDOTQNEW from NDOTQ
-          if (is_P0DGP1) then 
+          if (is_P0DGP1) then
               NDOTQNEW = NDOTQ
               forall (iv_iphase = 1:final_phase, iv_idim = 1:Mdims%ndim)
                   NDOTQNEW(iv_iphase) = NDOTQNEW(iv_iphase) + CVNORMX_ALL(iv_idim, GI)* UGI_COEF_ELE_ALL(iv_idim, iv_iphase,1)*&
                       ( LOC_U(iv_idim, iv_iphase,1)-LOC_NU(iv_idim, iv_iphase,1))
-              end forall 
+              end forall
               ! NDOTQNEW = NDOTQ + matmul(CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, :,1)*&
               !     ( LOC_U(:,:,1)-LOC_NU(:,:,1)))
           else

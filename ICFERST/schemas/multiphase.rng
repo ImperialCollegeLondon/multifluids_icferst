@@ -1999,6 +1999,12 @@ Limiters are quite expensive so if your simulation is slow it might be worth try
             </element>
           </optional>
           <optional>
+            <element name="explicit_density">
+              <a:documentation>EoS are calculated with the values calculated at the end of the previous time-step</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
             <element name="flux_limited_vad">
               <a:documentation>VAD is multiplied by the normalised flux. This should help focusing the VAD towards moving directions instead of acting as pure diffusion</a:documentation>
               <empty/>
