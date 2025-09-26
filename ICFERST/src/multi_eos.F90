@@ -429,27 +429,12 @@ contains
         type (scalar_field) :: sfield
         type (scalar_field), pointer :: pnt_sfield
         type (vector_field), pointer :: position
-        logical, save :: EXPLICIT_EOS = .false.
-        logical, save :: OPTIONS_READ = .false.
 
 
-        if (.not.OPTIONS_READ) then
-          EXPLICIT_EOS = have_option( '/numerical_methods/explicit_density' )
-          OPTIONS_READ = .true.
-        end if
-
-
-        if (EXPLICIT_EOS) then
-          pressure => extract_tensor_field( packed_state, 'PackedOldCVPressure', stat )  ! <= for inertia only
-          if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedOldFEPressure", stat )
-          temperature => extract_scalar_field( state( iphase ), 'OldTemperature', statT )
-          Concentration => extract_scalar_field( state( iphase ), 'OldConcentration', statC )
-        else
-          pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )  ! <= for inertia only
-          if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
-          temperature => extract_scalar_field( state( iphase ), 'Temperature', statT )
-          Concentration => extract_scalar_field( state( iphase ), 'Concentration', statC )
-        end if
+        pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )  ! <= for inertia only
+        if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
+        temperature => extract_scalar_field( state( iphase ), 'Temperature', statT )
+        Concentration => extract_scalar_field( state( iphase ), 'Concentration', statC )
 
         have_temperature_field = ( statT == 0 )
         have_concentration_field = ( statC == 0 )
@@ -830,22 +815,8 @@ contains
         integer :: ele, cv_inod, iloc, i, k, multiplier, multiplier2
 
         !!$ Den = Den_surface*exp(C0 * ( P_res-P_surf) )
-        logical, save :: EXPLICIT_EOS = .false.
-        logical, save :: OPTIONS_READ = .false.
-
-        if (.not.OPTIONS_READ) then
-          EXPLICIT_EOS = have_option( '/numerical_methods/explicit_density' )
-          OPTIONS_READ = .true.
-        end if
-
-
-        if (EXPLICIT_EOS) then
-          pressure => extract_tensor_field( packed_state, 'PackedOldCVPressure', stat )  ! <= for inertia only
-          if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedOldFEPressure", stat )
-        else
-          pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )  ! <= for inertia only
-          if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
-        end if
+        pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )  ! <= for inertia only
+        if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
 
         density_porous => extract_scalar_field( state(1), "porous_density" )
         density_porous_initial  => extract_scalar_field( state(1), "porous_density_initial" )

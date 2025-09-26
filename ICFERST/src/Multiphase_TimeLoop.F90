@@ -453,8 +453,6 @@ contains
             ewrite(0,*) "====================================================================="
         end if
 
-        ! Copy New to Old if using explicit density
-        if (have_option( '/numerical_methods/explicit_density' )) call copy_packed_new_to_old( packed_state )
         !!$
         have_temperature_field = .false. ; have_component_field = .false. ; have_extra_DiffusionLikeTerm = .false.
         do istate = 1, Mdims%nstate
