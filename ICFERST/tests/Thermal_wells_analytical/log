@@ -1,8 +1,0 @@
-FLUIDITY_PYTHON_MODULE_PATH = /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/python
- IC-FERST was compiled on: 2025-09-11 13:10:04
- IC-FERST GIT commit: d631056a8c3569711eaef05db60edbcdbcb632bb
- MESSAGE: Using default options for the linear solver: GMRES(30) + HYPRE
- MESSAGE: Using default options for the non-linear solver. Convergence check of 1% of Pressure, saturation and all the tracers with a maximum of 20 its. For multiphase porous media VAD and automatic backtracking are on.
-Running the model
-Lifetime in years: 17.0
-Geothermal well production works OK
