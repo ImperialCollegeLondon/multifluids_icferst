@@ -64,7 +64,7 @@ module Copy_Outof_State
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         have_option_for_any_phase, Get_Ele_Type_new,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions, &
-        EnterForceBalanceEquation, update_outfluxes, Impose_connected_BCs
+        EnterForceBalanceEquation, update_outfluxes, Impose_connected_BCs, getOutputConverter,convertToOutUnits
 
 
     !>@brief: Obtain the surface global to local conversor
@@ -2136,11 +2136,13 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
     real :: Tracers_ref_val, increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val, finish_time, sim_progress
     integer :: variable_selection, NonLinearIteration
     !Variables to convert output time into days if it is very big
-    real, save :: conversor = 1.0 ! Variables to convert output time into days if it is very big
-    character (len = OPTION_PATH_LEN), save :: output_units =' ', option_path
+    real, save :: TimeDtConv = 1.0, TotalTimeConv = 1.0  ! Variables to convert output time into days if it is very big
+    character (len = OPTION_PATH_LEN), save :: DtTimeUnits =' ',TotTimeUnits =' ', option_path
     character(len=PYTHON_FUNC_LEN) :: pyfunc
     !Variables to output type of state of the simulation
     Integer, save :: nSolverWarningsOld = 0, nDMOWarningsOld = 0
+    ! Variables for the table report
+    logical, save :: printSat=.false., printTemp=.false., printTrcrs=.false., printConc=.false.
 
     !We need an acumulative nonlinear_its if adapting within the FPI we don't want to restart the reference field neither
     !consider less iterations of the total ones if adapting time using PID
@@ -2312,10 +2314,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
 
           !We decide a priory if we use days or seconds to show dt to the user
           call get_option( '/timestepping/timestep', dt )
-          conversor = 86400.; output_units ='d'
-          if (dt < 864.) then
-            conversor = 1.0; output_units ='s'
-          end if
 
             !If Automatic_NonLinerIterations then we compare the variation of the a property from one time step to the next one
             ExitNonLinearLoop = .false.
@@ -2324,7 +2322,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
                 phasevolumefraction = phasevolumefraction)
 
             !Initialise convergence check values
-            inf_norm_pres = 0.; inf_norm_val = 0.; ts_ref_val = 0.; inf_norm_temp = 0.; Tracers_ref_val = 0.; inf_norm_conc=0.
+            inf_norm_pres =0d0; inf_norm_val =0d0; ts_ref_val =0d0; inf_norm_temp =0d0; Tracers_ref_val =0d0; inf_norm_conc=0d0
 
             !#################PRESSURE############################
             if (variable_selection/=2) then!not for velocity
@@ -2343,6 +2341,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
               backtrack_or_convergence = 1.0
               inf_norm_val = 0.; ts_ref_val = 0.
             else
+              printSat = .true.;
               !Calculate infinite norm, not consider wells
             !   inf_norm_val = maxval(abs(reference_field(1:Mdims%n_in_pres,:,1)-phasevolumefraction(1:Mdims%n_in_pres,:)))/backtrack_or_convergence
               inf_norm_val = maxval(abs(reference_field(1:Mdims%n_in_pres,:,1)-phasevolumefraction(1:Mdims%n_in_pres,:)))  !! pscpsc add back when backtracking for Newton
@@ -2361,6 +2360,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
 
                   !#################TEMPERATURE############################
                   if (stat1==0) then
+                    printTemp= .true.
                     auxI = 2
                     if (stat2==0) auxI = 3
                     totally_min_max(1)=minval(reference_field(:,:,auxI))
@@ -2373,6 +2373,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
                 end if
                 !#################CONCENTRATION############################
                 if (stat2==0) then
+                    printConc = .true.
                     totally_min_max(1)=minval(reference_field(:,:,2))
                     totally_min_max(2)=maxval(reference_field(:,:,2))
                     !For parallel
@@ -2382,6 +2383,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
                                      reference_field(1:size(Concentration%val,2),:,2), 1.0, totally_min_max)
                 end if
                 if (have_Active_Tracers) then
+                    printTrcrs = .true.
                     allocate(Tracers_avg(Mdims%nphase, Mdims%cv_nonods)); Tracers_avg = 0.
                     totally_min_max(1)=minval(reference_field(:,:,-1))
                     totally_min_max(2)=maxval(reference_field(:,:,-1))
@@ -2442,27 +2444,37 @@ ts_ref_val = 0d0;
                     write(temp_string, '(a, 1PE10.3,a,i0)' ) "| L_inf:", inf_norm_val
                 case default
                   output_message = ''; temp_string = ''
+                  ! When we print the header we also choose the time output units
+                  TimeDtConv = 86400.; DtTimeUnits ='d'
+                  if (dt < 86400.) then
+                    TimeDtConv = 1.0; DtTimeUnits ='s'
+                  end if
+                  TotalTimeConv = 86400.; TotTimeUnits ='d'
+                  if (acctim < 86400.) then
+                    TotalTimeConv = 1.0; TotTimeUnits ='s'
+                  end if
                   ! Print header for the output
-                  if ((itime == 1 .or. mod(itime,20) == 0)) then
-                    write(temp_string ,'(a)') "   Step| nits| lits|     dT["//trim(output_units)//"]|   Time["//trim(output_units)//"]|   Pres[-]|"
+                  if ((itime == 1 .or. mod(itime,15) == 0)) then
+                    write(temp_string ,'(a)') "   Step| nits| lits|     dT["//trim(DtTimeUnits)//"]|   Time["//trim(TotTimeUnits)//"]|   Pres[-]|"
                     write(temp_string2,'(a)') "-------|-----|-----|----------|----------|----------|"
                     if (Mdims%n_in_pres     > 1)     then
                       write(temp_string3,'(a)') "   Mass[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
-                    if (abs(inf_norm_val)   > 1e-30) then
+
+                    if (printSat) then
                       write(temp_string3,'(a)') "    Sat[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
-                    if (abs(inf_norm_temp)   > 1e-30) then
+                    if (printTemp) then
                       write(temp_string3,'(a)') "   Temp[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
-                    if (abs(inf_norm_conc)   > 1e-30) then
+                    if (printConc) then
                       write(temp_string3,'(a)') "   Trac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
-                    if (abs(Tracers_ref_val) > 1e-30) then
+                    if (printTrcrs) then
                       write(temp_string3,'(a)') "  PTrac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
                       write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
                     end if
@@ -2484,13 +2496,13 @@ ts_ref_val = 0d0;
                   write(snits ,'(I4)') nonlinear_its
                   write(slits ,'(I4)') total_lIts/nonlinear_its
 
-                  write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| "//trim(slits) // "| " //printPretty(dt/conversor) // "| " // printPretty(acctim/conversor) // "| " // &
+                  write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| "//trim(slits) // "| " //printPretty(dt/TimeDtConv) // "| " // printPretty(acctim/TotalTimeConv) // "| " // &
                        printPretty(inf_norm_pres) // "| "
                   if (Mdims%n_in_pres      > 1    ) temp_string = trim(temp_string)//" "// printPretty(max_calculate_mass_delta)// "| "
-                  if (abs(inf_norm_val)    > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_val)            // "| "
-                  if (abs(inf_norm_temp)   > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_temp)           // "| "
-                  if (abs(inf_norm_conc)   > 1e-30) temp_string = trim(temp_string)//" "// printPretty(inf_norm_conc)           // "| "
-                  if (abs(Tracers_ref_val) > 1e-30) temp_string = trim(temp_string)//" "// printPretty(Tracers_ref_val)         // "| "
+                  if (printSat)   temp_string = trim(temp_string)//" "// printPretty(inf_norm_val)            // "| "
+                  if (printTemp)  temp_string = trim(temp_string)//" "// printPretty(inf_norm_temp)           // "| "
+                  if (printConc)  temp_string = trim(temp_string)//" "// printPretty(inf_norm_conc)           // "| "
+                  if (printTrcrs) temp_string = trim(temp_string)//" "// printPretty(Tracers_ref_val)         // "| "
                   if (its >= NonLinearIteration .and. .not. ExitNonLinearLoop)    then
                     temp_string = trim(temp_string)   //"  Fail|"
                   else
@@ -2508,7 +2520,7 @@ ts_ref_val = 0d0;
                   write(temp_string3,'(F12.2)') sim_progress
                   temp_string = trim(temp_string)//trim(temp_string3)//"| "
                   if (getprocno() == 1) then
-                    if ((itime == 1 .or. mod(itime,20) == 0)) then
+                    if ((itime == 1 .or. mod(itime,15) == 0)) then
                       output_message = trim(output_message) // " "//trim(temp_string)
                     else
                       output_message = trim(output_message) // trim(temp_string)
@@ -2589,7 +2601,7 @@ ts_ref_val = 0d0;
                     dt = max(min(stored_dt, max_ts), 1d-8)
                     call set_option( '/timestepping/timestep', dt )
                     ! if (getprocno() == 1)then
-                    !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step restored to:", dt/ conversor, trim(output_units)
+                    !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step restored to:", dt/ conversor, trim(DtTimeUnits)
                     ! end if
                     adjusted_ts_to_dump = .false.
                     return
@@ -2614,7 +2626,7 @@ ts_ref_val = 0d0;
                         dt = max(min(dt, max_ts), min_ts)
                         call set_option( '/timestepping/timestep', dt )
                         ! if (getprocno() == 1 .and. abs(auxR-dt)/dt > 1d-3)then
-                        !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step changed to:", dt/conversor, trim(output_units)
+                        !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step changed to:", dt/conversor, trim(DtTimeUnits)
                         ! end if
                         ExitNonLinearLoop = .true.
                         ! Update comparison variables
@@ -2633,7 +2645,7 @@ ts_ref_val = 0d0;
                     !Ensure that period_vtus or the final time are matched, controlled by max_ts
                     dt = max(min(dt, max_ts), min_ts)
                     ! if (getprocno() == 1) then
-                    !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step increased to:", dt/conversor, trim(output_units)
+                    !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step increased to:", dt/conversor, trim(DtTimeUnits)
                     ! end if
                     ExitNonLinearLoop = .true.
                     call set_option( '/timestepping/timestep', dt )
@@ -2656,7 +2668,7 @@ ts_ref_val = 0d0;
                         deallocate(reference_field)
                         !Tell the user the number of FPI and final convergence to help improving the parameters
                         ! if (getprocno() == 1) then
-                        !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)')  "Minimum time-step(", min_ts/conversor, trim(output_units),") reached, advancing time."
+                        !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)')  "Minimum time-step(", min_ts/conversor, trim(DtTimeUnits),") reached, advancing time."
                         ! end if
                         !If PID_controller then update the status
                         if (PID_controller) auxR = PID_time_controller(reset=.true.)
@@ -2678,7 +2690,7 @@ ts_ref_val = 0d0;
                     call set_option( '/timestepping/timestep', dt )
                     stored_dt = dt
                     ! if (getprocno() == 1) then
-                    !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt/conversor, trim(output_units)
+                    !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt/conversor, trim(DtTimeUnits)
                     ! end if
                     Repeat_time_step = .true.
                     ExitNonLinearLoop = .true.
@@ -2696,7 +2708,7 @@ ts_ref_val = 0d0;
                     call set_option( '/timestepping/timestep', dt )
                     if (abs(auxR-dt) > 1d-8) then
                         if (getprocno() == 1)then
-                            ! ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step modified to match final time/dump_period:", dt/conversor, trim(output_units)
+                            ! ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step modified to match final time/dump_period:", dt/conversor, trim(DtTimeUnits)
                             adjusted_ts_to_dump = .true.
                         end if
                     end if
@@ -3614,11 +3626,12 @@ end subroutine get_DarcyVelocity
         character (len=1000000) :: whole_line
         character (len=1000000) :: numbers
         integer :: iphase, ifields
+        real :: outSysFactor, outSysShft
         ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: fluxstring
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: intfluxstring
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: tempstring
-        character (len = 50) :: simulation_name
+        character (len = 50) :: simulation_name, fieldName
         character(len = FIELD_NAME_LEN) :: phase_name
         character(len = OPTION_PATH_LEN) :: path
         !Ensure consistency for averaged fields in parallel, i.e. not saturation
@@ -3660,28 +3673,20 @@ end subroutine get_DarcyVelocity
                     write(whole_line,*) "Time[s]" // "," // "Time[m]" // "," // "Volume"
                 end if
                 whole_line = trim(whole_line)
-                do ioutlet =1, size(outfluxes%intflux,2)
-                    do iphase = 1, size(outfluxes%intflux,1)
-
-                        path = "/material_phase[" // int2str(iphase-1) // "]"; call get_option(trim(path) // "/name", phase_name)
-                        write(fluxstring(iphase),'(a, a, i0, a)')   trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]VolRate"
-                        whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
-                    enddo
-                    do iphase = 1, size(outfluxes%intflux,1)
-                        path = "/material_phase[" // int2str(iphase-1) // "]"; call get_option(trim(path) // "/name", phase_name)
-                        write(intfluxstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]TotProd"
-                        whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
-                    enddo
-
-                !Averaged value over the surface
+                do iphase = 1, size(outfluxes%intflux,1)
+                  path = "/material_phase[" // int2str(iphase-1) // "]"; call get_option(trim(path) // "/name", phase_name)
+                  do ioutlet =1, size(outfluxes%intflux,2)
+                    write(fluxstring(iphase),'(a, a, i0, a)')   trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]VolRate"
+                    whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+                    write(intfluxstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]TotProd"
+                    whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+                    !Averaged value over the surface
                     do ifields = 1, size(outfluxes%field_names,2)
-                        do iphase = 1, size(outfluxes%field_names,1)
-                          path = "/material_phase[" // int2str(iphase-1) // "]"; call get_option(trim(path) // "/name", phase_name)
-                          write(tempstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S", outfluxes%outlet_id(ioutlet),&
-                                                                                  "]AVG("//trim(outfluxes%field_names(iphase, ifields))//")"
-                          whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                        end do
+                      write(tempstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S", outfluxes%outlet_id(ioutlet),&
+                                                                              "]AVG("//trim(outfluxes%field_names(iphase, ifields))//")"
+                      whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     end do
+                  end do
                 end do
                 ! Write out the line
                 write(89,*), trim(whole_line)
@@ -3695,28 +3700,26 @@ end subroutine get_DarcyVelocity
             end if
 
             whole_line =  trim(numbers)
-            do ioutlet =1, size(outfluxes%intflux,2)
-                do iphase = 1, size(outfluxes%intflux,1)
-                    write(fluxstring(iphase),'(a)') printEng(outfluxes%totout(iphase,ioutlet))
-                    whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
-                enddo
-                do iphase = 1, size(outfluxes%intflux,1)
-                    write(intfluxstring(iphase),'(a)') printEng(outfluxes%intflux(iphase,ioutlet))
-                    whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
-                enddo
+            do iphase = 1, size(outfluxes%intflux,1)
+              do ioutlet =1, size(outfluxes%intflux,2)
+                write(fluxstring(iphase),'(a)') printEng(outfluxes%totout(iphase,ioutlet))
+                whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+                write(intfluxstring(iphase),'(a)') printEng(outfluxes%intflux(iphase,ioutlet))
+                whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
                 do ifields = 1, size(outfluxes%field_names,2)
-                    do iphase = 1, size(outfluxes%intflux,1)
-                        if (trim(outfluxes%field_names(iphase, ifields)) == "Temperature") then
-                            write(tempstring(iphase),'(a)') &
-                                printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet) - 273.15) ! Print the temperature outfluxes in Celsius, not Kelvin
-                        else
-                            write(tempstring(iphase),'(a)') &
-                                printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet))
-                        end if
-                        whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                    end do
+                  fieldName = trim(outfluxes%field_names(iphase, ifields))
+                  call getOutputConverter(fieldName,outSysFactor, outSysShft)
+                  if (fieldName == "Temperature") then
+                      write(tempstring(iphase),'(a)') &
+                          printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)*outSysFactor+outSysShft) ! Print the temperature outfluxes in Celsius, not Kelvin
+                  else
+                      write(tempstring(iphase),'(a)') &
+                          printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)*outSysFactor+outSysShft)
+                  end if
+                  whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                 end do
+              end do
             end do
             ! Write out the line
             write(89,*), trim(whole_line)
@@ -4028,5 +4031,103 @@ end subroutine get_DarcyVelocity
 
     end function printEng
 
+  !> Returns the factor to convert from internal (SI) to the output system
+  !> For temperature it returns the shift term not the factor
+  subroutine getOutputConverter(fieldname, factor, shft)
+    implicit none
+    real, intent(out) :: factor, shft
+    character( len = * ), intent(in) :: fieldname
+
+    factor = 1d0;
+    shft   = 0d0;
+    if (outUNITS /= SI_UNITS) then
+      if (is_substring(fieldname,'pressure')) then
+        factor = PaToBar;
+      else if (is_substring(fieldname,'permeability')) then
+        factor = 1d0/m2TomD;
+      else if (is_substring(fieldname,'temperature')) then
+        shft = -KtoC;
+      end if
+    end if
+  end subroutine getOutputConverter
+
+  !> Check is a string is within another string
+  logical function is_substring(str, substr)
+      character(len=*), intent(in) :: str, substr
+      character(len=len(str)) :: str_lower, substr_lower
+
+      ! Convert both strings to lowercase
+      str_lower = to_lower(str)
+      substr_lower = to_lower(substr)
+
+      is_substring = INDEX(str_lower, substr_lower) > 0
+  end function is_substring
+
+  !> Converts string to lowercase
+  function to_lower(str) result(lower_str)
+    character(len=*), intent(in) :: str
+    character(len=len(str)) :: lower_str
+    integer :: i, ic
+
+    do i = 1, len(str)
+        ic = ichar(str(i:i))
+        if (ic >= 65 .and. ic <= 90) then
+            lower_str(i:i) = char(ic + 32)
+        else
+            lower_str(i:i) = str(i:i)
+        end if
+    end do
+  end function to_lower
+
+    !>@brief: Convert fields to out units. Also has a backwards options as we need to undo this after dumping the VTK files
+    subroutine convertToOutUnits( state, Mdims, convertBack )
+      implicit none
+      type( state_type ), dimension( : ), intent( in ) :: state
+      type (multi_dimensions) :: Mdims
+      logical, intent(in) :: convertBack
+      ! Local variables
+      type(scalar_field), pointer :: sfield
+      type(vector_field), pointer :: vfield
+      type(tensor_field), pointer :: tfield
+      integer                     :: iphase, fields, k
+      character( len = option_path_len ) :: option_path, option_name
+      real :: outSysFactor, outSysShft
+      do iphase = 1, Mdims%nphase
+        !First scalar prognostic fields
+        option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field"
+        fields = option_count("/material_phase["// int2str( iphase - 1 )//"]/scalar_field")
+        do k = 1, fields
+          call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+          option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field::"//trim(option_name)
+          if (have_option(trim(option_path)//"/aliased" )) cycle
+          sfield => extract_scalar_field( state(iphase),  trim(option_name))
+          call getOutputConverter(trim(option_name), outSysFactor, outSysShft)
+          if (convertBack) then
+            outSysFactor = 1./outSysFactor; outSysShft = -outSysShft;
+          end if
+          sfield%val = sfield%val*outSysFactor + outSysShft
+        end do
+      end do
+
+      !Finally permeability as well
+      if (is_porous_media) then
+        call getOutputConverter("Permeability", outSysFactor, outSysShft)
+        if (convertBack) then
+          outSysFactor = 1./outSysFactor; outSysShft = -outSysShft;
+        end if
+        if(has_scalar_field(state(1),"Permeability")) then
+            sfield=>extract_scalar_field(state(1),"Permeability")
+            sfield%val = sfield%val*outSysFactor + outSysShft
+        else if(has_vector_field(state(1),"Permeability")) then
+            vfield=>extract_vector_field(state(1),"Permeability")
+            vfield%val = vfield%val*outSysFactor + outSysShft
+        else if(has_tensor_field(state(1),"Permeability")) then
+          tfield=>extract_tensor_field(state(1),"Permeability")
+          tfield%val = tfield%val*outSysFactor + outSysShft
+        end if
+      end if
+
+    end subroutine convertToOutUnits
 
 end module Copy_Outof_State
+

@@ -849,6 +849,13 @@ subroutine multiphase_prototype_wrapper() bind(C)
     ! set the remaining timestepping options, needs to be before any diagnostics are calculated
     call get_option("/timestepping/timestep", dt)
 
+    ! set the output units
+    if (have_option("/io/dump_units_METRIC")) then
+      outUNITS = METRIC_UNITS
+    else
+      outUNITS = SI_UNITS
+    end if
+
     if ( have_option('/io/dump_period') ) then
       !Check, if we are not adapting the timestep that the dump_period is a multiple of the timestep
       if (.not.have_option( '/timestepping/adaptive_timestep' ) .and. &
@@ -980,7 +987,7 @@ call petsc_logging(3,stages,ierr,default=.true.)
       ewrite(0,'(A)') "##########################################"
       ewrite(0,'(A)') "# Run finished!                          #"
       elapsed_time = finish_cpu - start_cpu
-      if (elapsed_time > 3600) then 
+      if (elapsed_time > 3600) then
         ewrite(0,'(A, G12.6, A)')  "# Elapsed CPU time: ", elapsed_time/3600., " hours   #"
       else
         ewrite(0,'(A, G12.6, A)')  "# Elapsed CPU time: ", elapsed_time      , " seconds #"
