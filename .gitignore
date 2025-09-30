@@ -19,9 +19,6 @@ make.log
 libtool
 config.status
 
-# Generated Makefiles
-**/Makefile
-
 # Test outputs (only under ICFERST/tests)
 ICFERST/tests/**/log
 ICFERST/tests/**/*.csv
