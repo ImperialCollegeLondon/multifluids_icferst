@@ -1,0 +1,152 @@
+rm -f *.d.* fluidity.* ocvn
+rm -f flog.dat time_count tempfile CheckSparsityMatrix.dat filedim fvalues mirror_int_data.dat fort.*
+rm -f *.node *.bound *.ele *.face *.stat *.vtu
+rm -f mirror_new.dat matrixdump matrixdump.info
+rm -f *.ele *.bound *.face *.node *.edge
+rm -f src/*.msh
+rm -f *.d.* fluidity.* ocvn
+rm -f flog.dat time_count tempfile CheckSparsityMatrix.dat filedim fvalues mirror_int_data.dat fort.*
+rm -f *.node *.bound *.ele *.face *.stat *.vtu
+rm -f mirror_new.dat matrixdump matrixdump.info
+rm -f *.ele *.bound *.face *.node *.edge
+rm -f src/*.msh
+gmsh -3 src/3d_mesh.geo
+Info    : Running 'gmsh -3 src/3d_mesh.geo' [Gmsh 4.12.1, 1 node, max. 1 thread]
+Info    : Started on Thu Sep 11 14:44:02 2025
+Info    : Reading 'src/3d_mesh.geo'...
+Info    : Done reading 'src/3d_mesh.geo'
+Info    : Meshing 1D...
+Info    : [  0%] Meshing curve 1 (Line)
+Info    : [ 10%] Meshing curve 2 (Line)
+Info    : [ 20%] Meshing curve 3 (Line)
+Info    : [ 30%] Meshing curve 4 (Line)
+Info    : [ 40%] Meshing curve 7 (Line)
+Info    : [ 50%] Meshing curve 8 (Line)
+Info    : [ 50%] Meshing curve 9 (Line)
+Info    : [ 60%] Meshing curve 10 (Line)
+Info    : [ 70%] Meshing curve 12 (Line)
+Info    : [ 80%] Meshing curve 13 (Line)
+Info    : [ 90%] Meshing curve 17 (Line)
+Info    : [100%] Meshing curve 21 (Line)
+Info    : Done meshing 1D (Wall 0.000757s, CPU 0.000758s)
+Info    : Meshing 2D...
+Info    : [  0%] Meshing surface 5 (Surface, Frontal-Delaunay)
+Info    : [ 20%] Meshing surface 14 (Surface, Frontal-Delaunay)
+Info    : [ 40%] Meshing surface 18 (Surface, Frontal-Delaunay)
+Info    : [ 50%] Meshing surface 22 (Surface, Frontal-Delaunay)
+Info    : [ 70%] Meshing surface 26 (Surface, Frontal-Delaunay)
+Info    : [ 90%] Meshing surface 27 (Surface, Frontal-Delaunay)
+Info    : Done meshing 2D (Wall 0.00455579s, CPU 0.004555s)
+Info    : Meshing 3D...
+Info    : 3D Meshing 1 volume with 1 connected component
+Info    : Tetrahedrizing 238 nodes...
+Info    : Done tetrahedrizing 246 nodes (Wall 0.00203414s, CPU 0.002034s)
+Info    : Reconstructing mesh...
+Info    :  - Creating surface mesh
+Info    :  - Identifying boundary edges
+Info    :  - Recovering boundary
+Info    : Done reconstructing mesh (Wall 0.00447506s, CPU 0.004475s)
+Info    : Found volume 1
+Info    : It. 0 - 0 nodes created - worst tet radius 0.737804 (nodes removed 0 0)
+Info    : 3D refinement terminated (238 nodes total):
+Info    :  - 0 Delaunay cavities modified for star shapeness
+Info    :  - 0 nodes could not be inserted
+Info    :  - 556 tetrahedra created in 1.0551e-05 sec. (52696659 tets/s)
+Info    : 0 node relocations
+Info    : Done meshing 3D (Wall 0.00731162s, CPU 0.007311s)
+Info    : Optimizing mesh...
+Info    : Optimizing volume 1
+Info    : Optimization starts (volume = 0.000625) with worst = 0.406172 / average = 0.605461:
+Info    : 0.00 < quality < 0.10 :         0 elements
+Info    : 0.10 < quality < 0.20 :         0 elements
+Info    : 0.20 < quality < 0.30 :         0 elements
+Info    : 0.30 < quality < 0.40 :         0 elements
+Info    : 0.40 < quality < 0.50 :        28 elements
+Info    : 0.50 < quality < 0.60 :       368 elements
+Info    : 0.60 < quality < 0.70 :        45 elements
+Info    : 0.70 < quality < 0.80 :        95 elements
+Info    : 0.80 < quality < 0.90 :        12 elements
+Info    : 0.90 < quality < 1.00 :         8 elements
+Info    : No ill-shaped tets in the mesh :-)
+Info    : 0.00 < quality < 0.10 :         0 elements
+Info    : 0.10 < quality < 0.20 :         0 elements
+Info    : 0.20 < quality < 0.30 :         0 elements
+Info    : 0.30 < quality < 0.40 :         0 elements
+Info    : 0.40 < quality < 0.50 :        28 elements
+Info    : 0.50 < quality < 0.60 :       368 elements
+Info    : 0.60 < quality < 0.70 :        45 elements
+Info    : 0.70 < quality < 0.80 :        95 elements
+Info    : 0.80 < quality < 0.90 :        12 elements
+Info    : 0.90 < quality < 1.00 :         8 elements
+Info    : Done optimizing mesh (Wall 0.000440616s, CPU 0.00044s)
+Info    : 238 nodes 1160 elements
+Info    : Writing 'src/3d_mesh.msh'...
+Info    : Done writing 'src/3d_mesh.msh'
+Info    : Stopped on Thu Sep 11 14:44:02 2025 (From start: Wall 0.0149289s, CPU 0.04108s)
+gmsh -3 src/3d_mesh_f.geo
+Info    : Running 'gmsh -3 src/3d_mesh_f.geo' [Gmsh 4.12.1, 1 node, max. 1 thread]
+Info    : Started on Thu Sep 11 14:44:02 2025
+Info    : Reading 'src/3d_mesh_f.geo'...
+Info    : Done reading 'src/3d_mesh_f.geo'
+Info    : Meshing 1D...
+Info    : [  0%] Meshing curve 1 (Extruded)
+Info    : [ 10%] Meshing curve 2 (Extruded)
+Info    : [ 20%] Meshing curve 3 (Extruded)
+Info    : [ 30%] Meshing curve 4 (Extruded)
+Info    : [ 40%] Meshing curve 7 (Extruded)
+Info    : [ 50%] Meshing curve 8 (Extruded)
+Info    : [ 50%] Meshing curve 9 (Extruded)
+Info    : [ 60%] Meshing curve 10 (Extruded)
+Info    : [ 70%] Meshing curve 12 (Extruded)
+Info    : [ 80%] Meshing curve 13 (Extruded)
+Info    : [ 90%] Meshing curve 17 (Extruded)
+Info    : [100%] Meshing curve 21 (Extruded)
+Info    : Done meshing 1D (Wall 0.000160822s, CPU 0.000129s)
+Info    : Meshing 2D...
+Info    : [  0%] Meshing surface 5 (Extruded)
+Info    : [ 20%] Meshing surface 14 (Extruded)
+Info    : [ 40%] Meshing surface 18 (Extruded)
+Info    : [ 50%] Meshing surface 22 (Extruded)
+Info    : [ 70%] Meshing surface 26 (Extruded)
+Info    : [ 90%] Meshing surface 27 (Extruded)
+Info    : Done meshing 2D (Wall 0.000850572s, CPU 0.00085s)
+Info    : Meshing 3D...
+Info    : Meshing volume 1 (Extruded)
+Info    : Subdividing extruded mesh
+Info    : Swapping 0
+Info    : Remeshing surface 5
+Info    : Meshing surface 5 (Extruded)
+Info    : Remeshing surface 14
+Info    : Meshing surface 14 (Extruded)
+Info    : Remeshing surface 18
+Info    : Meshing surface 18 (Extruded)
+Info    : Remeshing surface 22
+Info    : Meshing surface 22 (Extruded)
+Info    : Remeshing surface 26
+Info    : Meshing surface 26 (Extruded)
+Info    : Done meshing 3D (Wall 0.00319974s, CPU 0.002189s)
+Info    : Optimizing mesh...
+Info    : Done optimizing mesh (Wall 1.19712e-05s, CPU 9e-06s)
+Info    : 604 nodes 2720 elements
+Info    : Writing 'src/3d_mesh_f.msh'...
+Info    : Done writing 'src/3d_mesh_f.msh'
+Info    : Stopped on Thu Sep 11 14:44:02 2025 (From start: Wall 0.00650771s, CPU 0.030833s)
+FLUIDITY_PYTHON_MODULE_PATH = /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/python
+ IC-FERST was compiled on: 2025-09-11 13:10:04
+ IC-FERST GIT commit: d631056a8c3569711eaef05db60edbcdbcb632bb
+ MESSAGE: Using default options for the linear solver: GMRES(30) + HYPRE
+ MESSAGE: Using default options for the linear solver for velocity: GMRES(30) + Jacobi(rowmax)
+First solving the analytical
+Positions:
+Head of Rarefaction : 0.4112588032535058
+Foot of Rarefaction : 0.4947295390579113
+Contact Discontinuity : 0.5695589465036712
+Shock      : 0.6314116799022633
+Regions:
+Region 1   : (1, 1, 0)
+Region 2   : RAREFACTION
+Region 3   : (0.303130178050647, 0.4263194281784954, 0.9274526200489505)
+Region 4   : (0.303130178050647, 0.2655737117053072, 0.9274526200489505)
+Region 5   : (0.1, 0.125, 0.0)
+Now running the numerical model
+Sod shock works OK

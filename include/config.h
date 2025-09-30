@@ -137,7 +137,7 @@
 #define HAVE_UNISTD_H 1
 
 /* Define if you have zoltan library. */
-/* #undef HAVE_ZOLTAN */
+#define HAVE_ZOLTAN 1
 
 /* Define to 1 if `sizeof (long int)' = 8. Obsolete, use `SIZEOF_LONG_INT'. */
 #define LONG_64_BITS 1

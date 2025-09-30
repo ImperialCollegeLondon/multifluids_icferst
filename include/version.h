@@ -1,0 +1,4 @@
+#ifndef _FLUIDITY_VERSION_H
+#define _FLUIDITY_VERSION_H
+#define __FLUIDITY_VERSION__ "master_ubuntu24:822426ba8a939a1e7e200f19c4cfa3a34a5c0af6"
+#endif /* _FLUIDITY_VERSION_H */

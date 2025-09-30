@@ -32,7 +32,7 @@ LIB 	= ../lib/libadaptivity.a
 CPPFLAGS =  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi -I./include -I../include
 
 FC	= mpif90
-FCFLAGS	= $(CPPFLAGS) -ffast-math -frecord-marker=4    -ffree-line-length-none -ffixed-line-length-none  -O3 -fdefault-real-8
+FCFLAGS	= $(CPPFLAGS) -ffast-math -frecord-marker=4 -I/usr/include   -ffree-line-length-none -ffixed-line-length-none  -O3 -fdefault-real-8
 
 CXX	= mpicxx
 CXXFLAGS= $(CPPFLAGS) -std=c++11  -O3

@@ -48,17 +48,17 @@ htmldir = ${docdir}/
 pdfdir = ${docdir}/
 
 FC      = mpif90
-FCFLAGS = -ffast-math -frecord-marker=4  -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -fno-realloc-lhs -ffree-line-length-none -ffixed-line-length-none  -O3 -I/media/hh210/data2/Petsc/petsc-3.19.5/include -I/media/hh210/data2/Petsc/petsc-3.19.5/arch-linux-c-debug/include -I/usr/include/python3.12 -fdefault-real-8 -fdefault-double-8
+FCFLAGS = -ffast-math -frecord-marker=4 -I/usr/include -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -fno-realloc-lhs -ffree-line-length-none -ffixed-line-length-none  -O3 -I/usr/lib/petscdir/3.19/include -I/usr/lib/petscdir/3.19//include -I/usr/include/python3.12 -fdefault-real-8 -fdefault-double-8
 
 MPIF90  = mpif90
 MPICC   = mpicc
 MPICXX  = mpicxx
 
 CC	= mpicc
-CFLAGS	=  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/media/hh210/data2/Petsc/petsc-3.19.5/include -I/media/hh210/data2/Petsc/petsc-3.19.5/arch-linux-c-debug/include -DHAVE_PETSC  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -DFLUIDITY_PYTHON_MODULE_PATH=\"/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/python\"  -O3 -I/media/hh210/data2/Petsc/petsc-3.19.5/include -I/media/hh210/data2/Petsc/petsc-3.19.5/arch-linux-c-debug/include
+CFLAGS	=  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/usr/lib/petscdir/3.19/include -I/usr/lib/petscdir/3.19//include -DHAVE_PETSC  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -DFLUIDITY_PYTHON_MODULE_PATH=\"/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/python\"  -O3 -I/usr/lib/petscdir/3.19/include -I/usr/lib/petscdir/3.19//include
 
 CXX	= mpicxx
-CXXFLAGS=  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/media/hh210/data2/Petsc/petsc-3.19.5/include -I/media/hh210/data2/Petsc/petsc-3.19.5/arch-linux-c-debug/include -DHAVE_PETSC  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi -std=c++11 -I./include
+CXXFLAGS=  -I/usr/include/python3.12 -I/usr/include/python3.12 -DHAVE_NUMPY -I/usr/lib/python3/dist-packages/numpy/core/include -I/usr/lib/petscdir/3.19/include -I/usr/lib/petscdir/3.19//include -DHAVE_PETSC  -I/usr/include/vtk-9.1 -I/usr/lib/x86_64-linux-gnu/openmpi/include -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi -std=c++11 -I./include
 
 LINKER  = mpicxx    $(CXXFLAGS)
 
@@ -66,8 +66,8 @@ FLLINKER = mpif90    $(FCFLAGS)
 
 LIBS = -L./lib -l$(FLUIDITY) -lmpi_mpifh -ltrilinos_zoltan \
         ./lib/libadaptivity.a ./lib/libvtkfortran.a \
-       /media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/lib/libspatialindex.a /media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/lib/libspud.a ./lib/libjudy.a \
-       -lmba2d -lparmetis -lmetis -L/media/hh210/data2/Petsc/petsc-3.19.5/arch-linux-c-debug/lib -lpetsc -lnetcdff -lnetcdf  -llapack -ludunits2 -lpthread -lm -lstdc++  -L/usr/lib/python3.12/config-3.12-x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -lpython3.12 -ldl  -lm  -ldl -lpthread -lutil -lm  -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. -lgfortran -lm -lquadmath  -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. -lgfortran -lm -lquadmath -L./lib  -lvtkCommonCore-9.1 -lvtkCommonDataModel-9.1 -lvtkCommonExecutionModel-9.1 -lvtkFiltersCore-9.1 -lvtkFiltersVerdict-9.1 -lvtkIOCore-9.1 -lvtkIOXML-9.1 -lvtkIOGeometry-9.1 -lvtkIOLegacy-9.1 -lvtkIOParallelXML-9.1 -lvtkParallelMPI-9.1 -lvtkIOXMLParser-9.1 -lvtkCommonSystem-9.1 -lvtkCommonMisc-9.1 -lvtkCommonMath-9.1 -lvtksys-9.1 -ldl -lpthread -L/usr/lib/x86_64-linux-gnu/openmpi/lib -lmpi_cxx -lmpi  -lblas  -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. -lgfortran -lm -lquadmath  
+       /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/lib/libspatialindex.a /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/lib/libspud.a ./lib/libjudy.a \
+       -lmba2d -lzoltan -lparmetis -lmetis -L/usr/lib/petscdir/3.19//lib -lpetsc -lnetcdff -lnetcdf  -llapack -ludunits2 -lpthread -lm -lstdc++  -L/usr/lib/python3.12/config-3.12-x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -lpython3.12 -ldl  -lm  -ldl -lpthread -lutil -lm  -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. -lgfortran -lm -lquadmath  -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. -lgfortran -lm -lquadmath -L./lib  -lvtkCommonCore-9.1 -lvtkCommonDataModel-9.1 -lvtkCommonExecutionModel-9.1 -lvtkFiltersCore-9.1 -lvtkFiltersVerdict-9.1 -lvtkIOCore-9.1 -lvtkIOXML-9.1 -lvtkIOGeometry-9.1 -lvtkIOLegacy-9.1 -lvtkIOParallelXML-9.1 -lvtkParallelMPI-9.1 -lvtkIOXMLParser-9.1 -lvtkCommonSystem-9.1 -lvtkCommonMisc-9.1 -lvtkCommonMath-9.1 -lvtksys-9.1 -ldl -lpthread -L/usr/lib/x86_64-linux-gnu/openmpi/lib -lmpi_cxx -lmpi  -lblas  -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. -lgfortran -lm -lquadmath  
 
 OBJS = $(shell find . -mindepth 2 -maxdepth 2 -name '*.c' -o -name '*.cpp' -o -name '*.[fF]' -o -name '*.F90' | grep -v ^./lib | xargs)
 MAKE = gmake -s
@@ -91,7 +91,7 @@ endif
 THREADS=1
 
 EXCLUDE_TAGS =
-ifneq (no,yes)
+ifneq (yes,yes)
 	EXCLUDE_TAGS := $(EXCLUDE_TAGS) -e zoltan
 else
 	EXCLUDE_TAGS := $(EXCLUDE_TAGS) -e nozoltan
@@ -112,8 +112,8 @@ endif
 default: bin/$(FLUIDITY)
 
 sub_system: $(LIBMBA2D) $(LIBMBA3D)  \
-	lib/libadaptivity.a lib/libvtkfortran.a /media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/lib/libspatialindex.a \
-	/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/lib/libspud.a ./lib/libjudy.a include/version.h
+	lib/libadaptivity.a lib/libvtkfortran.a /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/lib/libspatialindex.a \
+	/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/lib/libspud.a ./lib/libjudy.a include/version.h
 
 ./lib/libjudy.a:
 	@echo '    MKDIR lib'; mkdir -p lib
@@ -135,11 +135,11 @@ lib/libvtkfortran.a:
 	@echo '    MKDIR lib'; mkdir -p lib
 	echo '    MAKE libvtkfortran'; $(MAKE) -C libvtkfortran 2>make.log 2>&1 && cp libvtkfortran/libvtkfortran.a lib/ && cp libvtkfortran/*.mod include/
 
-/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/lib/libspatialindex.a:
+/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/lib/libspatialindex.a:
 	@echo '    MKDIR lib'; mkdir -p lib
 	echo '    MAKE libspatialindex'; $(MAKE) -C spatialindex-1.8.0 && $(MAKE) -C spatialindex-1.8.0 install >> make.log 2>&1
 
-/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/lib/libspud.a:
+/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/lib/libspud.a:
 	@echo '    MKDIR lib'; mkdir -p lib
 ifeq (,yes)
 	echo '    MAKE libspud'; $(MAKE) -C libspud && $(MAKE) -C libspud install-libspud
@@ -160,9 +160,9 @@ ifeq (,yes)
 	@$(MAKE) -C 
 endif
 
-/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/include/spud.h: /media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/lib/libspud.a
+/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/include/spud.h: /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/lib/libspud.a
 
-main.o: include/version.h /media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/include/spud.h
+main.o: include/version.h /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/include/spud.h
 
 include/version.h: version-info
 	@bin/version-info $@
@@ -393,7 +393,7 @@ clean: clean-light clean-test python_clean clean-debian
 	@cd libvtkfortran; $(MAKE) clean
 	@echo "    CLEAN libjudy"
 	@cd libjudy; $(MAKE) clean >> make.log 2>&1
-ifeq ($(abspath /media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/lib/libspud.a),$(abspath lib/libspud.a))
+ifeq ($(abspath /home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/lib/libspud.a),$(abspath lib/libspud.a))
 	@echo "    CLEAN libspud"
 	@cd libspud; $(MAKE) clean
 endif
@@ -500,7 +500,7 @@ setuputs:
 	@ln -sf ../../tests/data bin/tests/data
 
 build_unittest: fluidity_library libfemtools setuputs
-ifeq (/media/hh210/data2/ICFEMRES/ICFERST_petsc3.19/lib/libspud.a,./lib/libspud.a)
+ifeq (/home/mbahlali/Softwares/MultiFluids_Dev_ubuntu24/lib/libspud.a,./lib/libspud.a)
 	@echo "    UNITTEST libspud"
 	@cd libspud/src/tests; $(MAKE) test-binaries; find bin/* -maxdepth 1 -type f -exec ln -sf ../../libspud/src/tests/{} ../../../bin/tests \;
 endif
@@ -544,7 +544,7 @@ ifneq (,yes)
 	@echo "makefile dependency generation requires gfortran (>=4.5)"
 	@false
 endif
-ifneq (no,yes)
+ifneq (yes,yes)
 	@echo "makefile dependency generation requires zoltan"
 	@false
 endif

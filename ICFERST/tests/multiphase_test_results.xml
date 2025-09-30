@@ -1,0 +1,527 @@
+<?xml version="1.0" ?>
+<testsuites disabled="0" errors="0" failures="5" tests="179" time="1937.8870379924774">
+	<testsuite disabled="0" errors="0" failures="5" name="TestHarness" skipped="0" tests="179" time="1937.8870379924774">
+		<testcase name="Thermal_robin_BCs" time="1.898204" classname="short.Thermal_robin_BCs"/>
+		<testcase name="Assert final temp" classname="short.Thermal_robin_BCs">
+			<system-out>Thermal_robin_BCs: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final min" classname="short.Thermal_robin_BCs">
+			<system-out>Thermal_robin_BCs: success.
+</system-out>
+		</testcase>
+		<testcase name="BL_fast_pressure_boundaries" time="2.223870" classname="short.BL_fast_pressure_boundaries"/>
+		<testcase name="BL_fast_pressure_boundaries" classname="short.BL_fast_pressure_boundaries">
+			<system-out>BL_fast_pressure_boundaries: success.
+</system-out>
+		</testcase>
+		<testcase name="Visc_fingering" time="5.933458" classname="short.Visc_fingering"/>
+		<testcase name="Assert final max viscosity" classname="short.Visc_fingering">
+			<system-out>Visc_fingering: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final min viscosity" classname="short.Visc_fingering">
+			<system-out>Visc_fingering: success.
+</system-out>
+		</testcase>
+		<testcase name="Porous_media_general" time="33.773203" classname="short.Porous_media_general_test"/>
+		<testcase name="Assert final max sat 1" classname="short.Porous_media_general_test">
+			<system-out>Porous_media_general_test: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert integral saturation 1" classname="short.Porous_media_general_test">
+			<system-out>Porous_media_general_test: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert density is introduced" classname="short.Porous_media_general_test">
+			<system-out>Porous_media_general_test: success.
+</system-out>
+		</testcase>
+		<testcase name="BL_with_hydrostatic_gravity" time="49.576638" classname="short.BL_with_hydrostatic_gravity"/>
+		<testcase name="BL_with_hydrostatic_gravity" classname="short.BL_with_hydrostatic_gravity">
+			<system-out>BL_with_hydrostatic_gravity: success.
+</system-out>
+		</testcase>
+		<testcase name="Active_tracers" time="1.035889" classname="short.Active_tracers"/>
+		<testcase name="Assert final max tracer 1" classname="short.Active_tracers">
+			<system-out>Active_tracers: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final max tracer 2" classname="short.Active_tracers">
+			<system-out>Active_tracers: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final integral tracer 1" classname="short.Active_tracers">
+			<system-out>Active_tracers: success.
+</system-out>
+		</testcase>
+		<testcase name="2D_P1DGP1_DCV_galproj_th-1" time="16.354595" classname="short.2D_P1DGP1_DCV_galproj_th-1_boussinesq"/>
+		<testcase name="2D_P1DGP1_DCV_galproj_th-1" classname="short.2D_P1DGP1_DCV_galproj_th-1_boussinesq">
+			<system-out>2D_P1DGP1_DCV_galproj_th-1_boussinesq: success.
+</system-out>
+		</testcase>
+		<testcase name="3D_template_porous_case_Newton" time="2.769438" classname="short.3D_template_porous_case_Newton"/>
+		<testcase name="3D_template_porous_case_Newton" classname="short.3D_template_porous_case_Newton">
+			<failure type="failure" message="Failure"/>
+		</testcase>
+		<testcase name="Thermal_analytical_validation" time="1.558482" classname="short.Thermal_analytical_validation"/>
+		<testcase name="Thermal_analytical_validation" classname="short.Thermal_analytical_validation">
+			<system-out>Thermal_analytical_validation: success.
+</system-out>
+		</testcase>
+		<testcase name="stokes_test_petsc_solver" time="1.597231" classname="short.stokes_test"/>
+		<testcase name="stokes_test_petsc_solver" classname="short.stokes_test">
+			<system-out>stokes_test: success.
+</system-out>
+		</testcase>
+		<testcase name="Porous_media_general" time="1.009214" classname="short.Thermal_heat_exchanger"/>
+		<testcase name="Assert final max temperature" classname="short.Thermal_heat_exchanger">
+			<system-out>Thermal_heat_exchanger: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final min temperature" classname="short.Thermal_heat_exchanger">
+			<system-out>Thermal_heat_exchanger: success.
+</system-out>
+		</testcase>
+		<testcase name="Grav_cap_competing_fast" time="4.095773" classname="short.Grav_cap_competing_fast"/>
+		<testcase name="Grav_cap_competing_fast" classname="short.Grav_cap_competing_fast">
+			<system-out>Grav_cap_competing_fast: success.
+</system-out>
+		</testcase>
+		<testcase name="thiem_well_injector" time="22.152902" classname="short.thiem_well_injector"/>
+		<testcase name="phase 1 max pressure check" classname="short.thiem_well_injector">
+			<system-out>thiem_well_injector: success.
+</system-out>
+		</testcase>
+		<testcase name="phase 1 min pressure check" classname="short.thiem_well_injector">
+			<system-out>thiem_well_injector: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final max sat 1" classname="short.thiem_well_injector">
+			<system-out>thiem_well_injector: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final max sat 2" classname="short.thiem_well_injector">
+			<system-out>thiem_well_injector: success.
+</system-out>
+		</testcase>
+		<testcase name="Sod_Shock_3DCVFEM" time="53.729940" classname="short.3D_SSCVFEM"/>
+		<testcase name="3D_SSCVFEM" classname="short.3D_SSCVFEM">
+			<system-out>3D_SSCVFEM: success.
+</system-out>
+		</testcase>
+		<testcase name="Sod_Shock_3D_DCVlumped" time="196.260988" classname="short.3D_SS_DCVlump"/>
+		<testcase name="3D_SSDCVlump" classname="short.3D_SS_DCVlump">
+			<system-out>3D_SS_DCVlump: success.
+</system-out>
+		</testcase>
+		<testcase name="Collapsing_Water_Column" time="4.238831" classname="short.Collapsing_Water_Column_hydro_press"/>
+		<testcase name="Collapsing_Water_Column" classname="short.Collapsing_Water_Column_hydro_press">
+			<system-out>Collapsing_Water_Column_hydro_press: success.
+</system-out>
+		</testcase>
+		<testcase name="Check_monotonicity" time="2.076088" classname="short.BL_solute_monotonicity_test"/>
+		<testcase name="BL__solute_monotonicity_test" classname="short.BL_solute_monotonicity_test">
+			<system-out>BL_solute_monotonicity_test: success.
+</system-out>
+		</testcase>
+		<testcase name="Thin wedge" time="0.693150" classname="short.Thin_wedge"/>
+		<testcase name="Assert final max sat 1" classname="short.Thin_wedge">
+			<system-out>Thin_wedge: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert outlet pressure boundary condition" classname="short.Thin_wedge">
+			<system-out>Thin_wedge: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert inlet pressure boundary condition" classname="short.Thin_wedge">
+			<system-out>Thin_wedge: success.
+</system-out>
+		</testcase>
+		<testcase name="2D_Henry_Saline_Intrusion_boussinesq" time="44.617420" classname="short.2D_Henry_Saline_Intrusion_boussinesq"/>
+		<testcase name="2D_Henry_Saline_Intrusion_boussinesq" classname="short.2D_Henry_Saline_Intrusion_boussinesq">
+			<system-out>2D_Henry_Saline_Intrusion_boussinesq: success.
+</system-out>
+		</testcase>
+		<testcase name="Tunneled_Bcs" time="9.450744" classname="short.tunneled_BCs"/>
+		<testcase name="Assert final max conc" classname="short.tunneled_BCs">
+			<system-out>tunneled_BCs: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final int conc" classname="short.tunneled_BCs">
+			<system-out>tunneled_BCs: success.
+</system-out>
+		</testcase>
+		<testcase name="SP_EK_test" time="2.226299" classname="short.SP_ThermoElectric_test"/>
+		<testcase name="Assert final min Self Potential" classname="short.SP_ThermoElectric_test">
+			<system-out>SP_ThermoElectric_test: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final max Self Potential" classname="short.SP_ThermoElectric_test">
+			<system-out>SP_ThermoElectric_test: success.
+</system-out>
+		</testcase>
+		<testcase name="2D_Dispersive_Saline_Intrusion" time="41.289650" classname="short.2D_Dispersive_Saline_Intrusion"/>
+		<testcase name="2D_Dispersive_Saline_Intrusion" classname="short.2D_Dispersive_Saline_Intrusion">
+			<system-out>2D_Dispersive_Saline_Intrusion: success.
+</system-out>
+		</testcase>
+		<testcase name="BL_3D_P0DGP1" time="1.286706" classname="short.3D_BL_P0DGP1CV"/>
+		<testcase name="BL_3D_P0DGP1" classname="short.3D_BL_P0DGP1CV">
+			<failure type="failure" message="Failure"/>
+			<system-out>3D_BL_P0DGP1CV: failure.
+</system-out>
+		</testcase>
+		<testcase name="BL_CVgalerkin" time="5.552300" classname="short.BL_CVgalerkin"/>
+		<testcase name="BL_CVgalerkin" classname="short.BL_CVgalerkin">
+			<system-out>BL_CVgalerkin: success.
+</system-out>
+		</testcase>
+		<testcase name="Parallel_Buckley_Leverett" time="3.527113" classname="short.Parallel_Buckley_Leverett"/>
+		<testcase name="ParallelDiscrepancy" classname="short.Parallel_Buckley_Leverett">
+			<system-out>Parallel_Buckley_Leverett: success.
+</system-out>
+		</testcase>
+		<testcase name="multiphase_wells" time="1.897147" classname="short.multiphase_wells"/>
+		<testcase name="multiphase_wells" classname="short.multiphase_wells">
+			<failure type="failure" message="Failure"/>
+			<system-out>multiphase_wells: failure.
+</system-out>
+		</testcase>
+		<testcase name="SP_EK_test" time="1.311517" classname="short.SP_ElectroKinetic_test"/>
+		<testcase name="SP_EK_test" classname="short.SP_ElectroKinetic_test">
+			<system-out>SP_ElectroKinetic_test: success.
+</system-out>
+		</testcase>
+		<testcase name="Boussinesq_eos_with_tracers" time="0.673733" classname="short.Boussinesq_eos_with_tracers"/>
+		<testcase name="Assert final max density" classname="short.Boussinesq_eos_with_tracers">
+			<system-out>Boussinesq_eos_with_tracers: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final min density" classname="short.Boussinesq_eos_with_tracers">
+			<system-out>Boussinesq_eos_with_tracers: success.
+</system-out>
+		</testcase>
+		<testcase name="Buckley-Leverett Checkpointing" time="1.383230" classname="short.BL_Checkpointing"/>
+		<testcase name="P1DGP1 pressure difference:" classname="short.BL_Checkpointing">
+			<system-out>BL_Checkpointing: success.
+</system-out>
+		</testcase>
+		<testcase name="2D_Henry_multiphase" time="27.727956" classname="short.2D_Henry_multiphase"/>
+		<testcase name="Assert final max sat 1" classname="short.2D_Henry_multiphase">
+			<system-out>2D_Henry_multiphase: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final max sat 2" classname="short.2D_Henry_multiphase">
+			<system-out>2D_Henry_multiphase: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert integral concentration in water" classname="short.2D_Henry_multiphase">
+			<system-out>2D_Henry_multiphase: success.
+</system-out>
+		</testcase>
+		<testcase name="Drainage_test" time="0.588725" classname="short.Drainage_test"/>
+		<testcase name="Drainage_test" classname="short.Drainage_test">
+			<failure type="failure" message="Failure"/>
+		</testcase>
+		<testcase name="porous_density_compressible" time="2.447881" classname="short.porous_density_compressible"/>
+		<testcase name="Assert final max porous_density" classname="short.porous_density_compressible">
+			<system-out>porous_density_compressible: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final min porous_density" classname="short.porous_density_compressible">
+			<system-out>porous_density_compressible: success.
+</system-out>
+		</testcase>
+		<testcase name="Thermal_Neumann_BCs" time="5.815991" classname="short.Thermal_Neumann_BCs"/>
+		<testcase name="Assert final temp" classname="short.Thermal_Neumann_BCs">
+			<system-out>Thermal_Neumann_BCs: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final min" classname="short.Thermal_Neumann_BCs">
+			<system-out>Thermal_Neumann_BCs: success.
+</system-out>
+		</testcase>
+		<testcase name="BL_fast_pressure_boundaries" time="6.816782" classname="short.BL_fast_pressure_boundaries_bubble"/>
+		<testcase name="BL_fast_pressure_boundaries_bubble" classname="short.BL_fast_pressure_boundaries_bubble">
+			<system-out>BL_fast_pressure_boundaries_bubble: success.
+</system-out>
+		</testcase>
+		<testcase name="Parallel_Collapsing_Water_Column" time="6.025121" classname="short.Parallel_Collapsing_Water_Column"/>
+		<testcase name="ParallelDiscrepancy_P1DGP1" classname="short.Parallel_Collapsing_Water_Column">
+			<system-out>Parallel_Collapsing_Water_Column: success.
+</system-out>
+		</testcase>
+		<testcase name="ParallelDiscrepancy_P1DGP2" classname="short.Parallel_Collapsing_Water_Column">
+			<system-out>Parallel_Collapsing_Water_Column: success.
+</system-out>
+		</testcase>
+		<testcase name="Check_3DBL_fast" time="5.141873" classname="short.3D_BL_Fast_P0DGP1CV"/>
+		<testcase name="Check_3DBL_fast" classname="short.3D_BL_Fast_P0DGP1CV">
+			<system-out>3D_BL_Fast_P0DGP1CV: success.
+</system-out>
+		</testcase>
+		<testcase name="BL_fast_fluxes" time="4.526638" classname="short.BL_fast_fluxes"/>
+		<testcase name="BL_fast_fluxes" classname="short.BL_fast_fluxes">
+			<system-out>BL_fast_fluxes: success.
+</system-out>
+		</testcase>
+		<testcase name="Advection" time="111.102720" classname="short.Advection_SinglePhase_Adaptive"/>
+		<testcase name="Solvers converged" classname="short.Advection_SinglePhase_Adaptive">
+			<system-out>Advection_SinglePhase_Adaptive: success.
+</system-out>
+		</testcase>
+		<testcase name="Adaptive: Temperature Integral Max Comparison is smaller than 0.05" classname="short.Advection_SinglePhase_Adaptive">
+			<system-out>Advection_SinglePhase_Adaptive: success.
+</system-out>
+		</testcase>
+		<testcase name="Adaptive: Temperature Integral Final Comparison is smaller than 0.1" classname="short.Advection_SinglePhase_Adaptive">
+			<system-out>Advection_SinglePhase_Adaptive: success.
+</system-out>
+		</testcase>
+		<testcase name="Adaptive: check max velocity magnitude is within 1-1e-6 to 1+1e-6" classname="short.Advection_SinglePhase_Adaptive">
+			<system-out>Advection_SinglePhase_Adaptive: success.
+</system-out>
+		</testcase>
+		<testcase name="Unstructured: Temperature Integral Max Comparison is smaller than 0.05" classname="short.Advection_SinglePhase_Adaptive">
+			<system-out>Advection_SinglePhase_Adaptive: success.
+</system-out>
+		</testcase>
+		<testcase name="Unstructured: Temperature Integral Final Comparison is smaller than 0.01" classname="short.Advection_SinglePhase_Adaptive">
+			<system-out>Advection_SinglePhase_Adaptive: success.
+</system-out>
+		</testcase>
+		<testcase name="Adaptive: check max velocity magnitude is within 1-1e-6 to 1+1e-6" classname="short.Advection_SinglePhase_Adaptive">
+			<system-out>Advection_SinglePhase_Adaptive: success.
+</system-out>
+		</testcase>
+		<testcase name="Square Adaptive: Temperature Integral Max Comparison is smaller than 0.075" classname="short.Advection_SinglePhase_Adaptive">
+			<system-out>Advection_SinglePhase_Adaptive: success.
+</system-out>
+		</testcase>
+		<testcase name="Square Adaptive: Temperature Integral Final Comparison is smaller than 0.05" classname="short.Advection_SinglePhase_Adaptive">
+			<system-out>Advection_SinglePhase_Adaptive: success.
+</system-out>
+		</testcase>
+		<testcase name="Adaptive: check max velocity magnitude is within sqrt(2)-1e-6 to sqrt(2)+1e-6" classname="short.Advection_SinglePhase_Adaptive">
+			<system-out>Advection_SinglePhase_Adaptive: success.
+</system-out>
+		</testcase>
+		<testcase name="thiem_well_model" time="1.832184" classname="short.thiem_well_model"/>
+		<testcase name="phase 1 max pressure check" classname="short.thiem_well_model">
+			<system-out>thiem_well_model: success.
+</system-out>
+		</testcase>
+		<testcase name="phase 1 min pressure check" classname="short.thiem_well_model">
+			<system-out>thiem_well_model: success.
+</system-out>
+		</testcase>
+		<testcase name="phase 2 max pressure check" classname="short.thiem_well_model">
+			<system-out>thiem_well_model: success.
+</system-out>
+		</testcase>
+		<testcase name="phase 2 min pressure check" classname="short.thiem_well_model">
+			<system-out>thiem_well_model: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final max sat 1" classname="short.thiem_well_model">
+			<system-out>thiem_well_model: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final max sat 2" classname="short.thiem_well_model">
+			<system-out>thiem_well_model: success.
+</system-out>
+		</testcase>
+		<testcase name="Advection_singlePhase" time="129.367087" classname="short.Advection_SinglePhase"/>
+		<testcase name="Assert max absolute regression difference for Temperature Advection Field is less than 1% (1.01)" classname="short.Advection_SinglePhase">
+			<system-out>Advection_SinglePhase: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert min absolute regression difference for Temperature Advection Field is less than 0.95" classname="short.Advection_SinglePhase">
+			<system-out>Advection_SinglePhase: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert max absolute vertical velocity For Temperature field (balanced test) is less than 1e-06 " classname="short.Advection_SinglePhase">
+			<system-out>Advection_SinglePhase: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert max absolute regression difference for Temperature field (balanced test) is less than 1% (1.01)" classname="short.Advection_SinglePhase">
+			<system-out>Advection_SinglePhase: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert L2 norm regression difference for Temperature field (balanced test) is less than 0.3" classname="short.Advection_SinglePhase">
+			<system-out>Advection_SinglePhase: success.
+</system-out>
+		</testcase>
+		<testcase name="BL_3D_Press_BCs" time="340.525007" classname="short.3D_BL"/>
+		<testcase name="BL_3D_Press_BCs" classname="short.3D_BL">
+			<system-out>3D_BL: success.
+</system-out>
+		</testcase>
+		<testcase name="Check_BL_with_gravity" time="18.672001" classname="short.BL_with_gravity"/>
+		<testcase name="Check_BL_with_gravity" classname="short.BL_with_gravity">
+			<system-out>BL_with_gravity: success.
+</system-out>
+		</testcase>
+		<testcase name="Porous_media_general" time="1.283074" classname="short.porous_compositional"/>
+		<testcase name="Assert integral component 2" classname="short.porous_compositional">
+			<system-out>porous_compositional: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert integral component 2" classname="short.porous_compositional">
+			<system-out>porous_compositional: success.
+</system-out>
+		</testcase>
+		<testcase name="BL_fast" time="1.141275" classname="short.BL_fast"/>
+		<testcase name="BL_fast" classname="short.BL_fast">
+			<failure type="failure" message="Failure"/>
+			<system-out>BL_fast: failure.
+</system-out>
+		</testcase>
+		<testcase name="3D_template_porous_case" time="199.628034" classname="short.3D_template_porous_case"/>
+		<testcase name="Assert integral saturation 1" classname="short.3D_template_porous_case">
+			<system-out>3D_template_porous_case: success.
+</system-out>
+		</testcase>
+		<testcase name="Thermal_wells_analytical" time="14.649350" classname="short.Thermal_wells_analytical"/>
+		<testcase name="Thermal_wells_analytical" classname="short.Thermal_wells_analytical">
+			<system-out>Thermal_wells_analytical: success.
+</system-out>
+		</testcase>
+		<testcase name="Passive_tracers" time="0.980759" classname="short.Passive_tracers"/>
+		<testcase name="Assert final max tracer 1" classname="short.Passive_tracers">
+			<system-out>Passive_tracers: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final max tracer 2" classname="short.Passive_tracers">
+			<system-out>Passive_tracers: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final integral tracer 1" classname="short.Passive_tracers">
+			<system-out>Passive_tracers: success.
+</system-out>
+		</testcase>
+		<testcase name="Dissolution_test" time="1.368367" classname="short.Dissolution_test"/>
+		<testcase name="Assert final max concentration" classname="short.Dissolution_test">
+			<system-out>Dissolution_test: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final integral concentration" classname="short.Dissolution_test">
+			<system-out>Dissolution_test: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final integral Saturation CO2" classname="short.Dissolution_test">
+			<system-out>Dissolution_test: success.
+</system-out>
+		</testcase>
+		<testcase name="Porous_media_general" time="2.525294" classname="short.thermal_porous_compressible"/>
+		<testcase name="Assert final max temperature" classname="short.thermal_porous_compressible">
+			<system-out>thermal_porous_compressible: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final min temperature" classname="short.thermal_porous_compressible">
+			<system-out>thermal_porous_compressible: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final max density" classname="short.thermal_porous_compressible">
+			<system-out>thermal_porous_compressible: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final min density" classname="short.thermal_porous_compressible">
+			<system-out>thermal_porous_compressible: success.
+</system-out>
+		</testcase>
+		<testcase name="Sod_Shock_3DNOPETROV" time="191.181866" classname="short.3D_SS_NoPetrov"/>
+		<testcase name="3D_SS_NoPetrov" classname="short.3D_SS_NoPetrov">
+			<system-out>3D_SS_NoPetrov: success.
+</system-out>
+		</testcase>
+		<testcase name="3D_Fractures" time="168.275739" classname="short.3D_Fractures"/>
+		<testcase name="Assert final integral sat 1" classname="short.3D_Fractures">
+			<system-out>3D_Fractures: success.
+</system-out>
+		</testcase>
+		<testcase name="BL_C_CV_fast" time="2.758207" classname="short.BL_C_CV_fast"/>
+		<testcase name="BL_C_CV_fast" classname="short.BL_C_CV_fast">
+			<system-out>BL_C_CV_fast: success.
+</system-out>
+		</testcase>
+		<testcase name="Adapt_based_on_Courant_number" time="1.314509" classname="short.Adapt_based_on_Courant_number"/>
+		<testcase name="Assert final dT to be correct" classname="short.Adapt_based_on_Courant_number">
+			<system-out>Adapt_based_on_Courant_number: success.
+</system-out>
+		</testcase>
+		<testcase name="2D_P1DGP1_galproj_th-1" time="16.619678" classname="short.2D_P1DGP1_galproj_th-1"/>
+		<testcase name="2D_P1DGP1_galproj_th-1" classname="short.2D_P1DGP1_galproj_th-1">
+			<system-out>2D_P1DGP1_galproj_th-1: success.
+</system-out>
+		</testcase>
+		<testcase name="BL_fast_thicker" time="10.791995" classname="short.BL_fast_thicker"/>
+		<testcase name="BL_fast_thicker" classname="short.BL_fast_thicker">
+			<system-out>BL_fast_thicker: success.
+</system-out>
+		</testcase>
+		<testcase name="2D_P1DGP1_DCV_galproj_th-1" time="16.296242" classname="short.2D_P1DGP1_DCV_galproj_th-1"/>
+		<testcase name="2D_P1DGP1_DCV_galproj_th-1" classname="short.2D_P1DGP1_DCV_galproj_th-1">
+			<system-out>2D_P1DGP1_DCV_galproj_th-1: success.
+</system-out>
+		</testcase>
+		<testcase name="Thermal_analytical_validation_two_phases" time="1.671614" classname="short.Thermal_analytical_validation_two_phases"/>
+		<testcase name="Thermal_analytical_validation_two_phases" classname="short.Thermal_analytical_validation_two_phases">
+			<system-out>Thermal_analytical_validation_two_phases: success.
+</system-out>
+		</testcase>
+		<testcase name="Collapsing_Water_Column" time="4.679299" classname="short.Collapsing_Water_Column"/>
+		<testcase name="Collapsing_Water_Column" classname="short.Collapsing_Water_Column">
+			<system-out>Collapsing_Water_Column: success.
+</system-out>
+		</testcase>
+		<testcase name="Collapsing_Water_Column_P0DG" time="2.660797" classname="short.Collapsing_Water_Column_P0DG"/>
+		<testcase name="Collapsing_Water_Column_P0DG" classname="short.Collapsing_Water_Column_P0DG">
+			<system-out>Collapsing_Water_Column_P0DG: success.
+</system-out>
+		</testcase>
+		<testcase name="Porous_media_general" time="4.153898" classname="short.Adapt_within_FPI"/>
+		<testcase name="Assert final max sat 1" classname="short.Adapt_within_FPI">
+			<system-out>Adapt_within_FPI: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert integral saturation 1" classname="short.Adapt_within_FPI">
+			<system-out>Adapt_within_FPI: success.
+</system-out>
+		</testcase>
+		<testcase name="SP_ED_test" time="3.664699" classname="short.SP_ElectroDiffusive_test"/>
+		<testcase name="Assert final min Self Potential" classname="short.SP_ElectroDiffusive_test">
+			<system-out>SP_ElectroDiffusive_test: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert final max Self Potential" classname="short.SP_ElectroDiffusive_test">
+			<system-out>SP_ElectroDiffusive_test: success.
+</system-out>
+		</testcase>
+		<testcase name="Thermal_boussinesq" time="45.534695" classname="short.Thermal_boussinesq"/>
+		<testcase name="Assert final max temperature 1" classname="short.Thermal_boussinesq">
+			<system-out>Thermal_boussinesq: success.
+</system-out>
+		</testcase>
+		<testcase name="Assert integral temperature 1" classname="short.Thermal_boussinesq">
+			<system-out>Thermal_boussinesq: success.
+</system-out>
+		</testcase>
+		<testcase name="stokes_test" time="1.831043" classname="short.stokes_test"/>
+		<testcase name="stokes_test" classname="short.stokes_test">
+			<system-out>stokes_test: success.
+</system-out>
+		</testcase>
+		<testcase name="BL_fast" time="41.906617" classname="short.Three_phases"/>
+		<testcase name="Three_phases" classname="short.Three_phases">
+			<system-out>Three_phases: success.
+</system-out>
+		</testcase>
+		<testcase name="BL_fast" time="28.186268" classname="short.Anisotropic_permeability"/>
+		<testcase name="BL_fast" classname="short.Anisotropic_permeability">
+			<system-out>Anisotropic_permeability: success.
+</system-out>
+		</testcase>
+	</testsuite>
+</testsuites>

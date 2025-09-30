@@ -1,0 +1,16 @@
+<header>
+<constant name="ICFERST" type="string" value="master_ubuntu24_tests:0a9a8a0b1407e1e4d6311d3634d8f78f11495aad" />
+<constant name="CompileTime" type="string" value="Sep 11 2025 14:32:00" />
+<constant name="StartTime" type="string" value="20250911 144458.024+0100" />
+<constant name="HostName" type="string" value="Unknown" />
+<constant name="format" type="string" value="binary" />
+<constant name="real_size" type="integer" value="8" />
+<constant name="integer_size" type="integer" value="4" />
+<field column="1" name="ElapsedTime" statistic="value"/>
+<field column="2" name="dt" statistic="value"/>
+<field column="3" name="P2" statistic="position" components="2"/>
+<field column="5" name="Pressure" statistic="P2" material_phase="phase1"/>
+<field column="6" name="HydrostaticPressure" statistic="P2" material_phase="phase1"/>
+<field column="7" name="ComponentMassFractionPhase1" statistic="P2" material_phase="Component1"/>
+<field column="8" name="ComponentMassFractionPhase1" statistic="P2" material_phase="Component2"/>
+</header>
