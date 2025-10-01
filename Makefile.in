@@ -179,7 +179,7 @@ bin/$(FLUIDITY): main.o lib/lib$(FLUIDITY).a
 	@echo "    LD $(PROGRAM)"
 	@$(EVAL) $(LINKER) -o $(PROGRAM) main.o $(LIBS)
 
-mp: bin/icferst
+mp: bin/icferst fldecomp
 
 bin/icferst: fluidity_library
 	@echo "    MAKE icferst"
