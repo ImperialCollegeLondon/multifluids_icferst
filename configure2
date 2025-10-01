@@ -14053,7 +14053,7 @@ _ACEOF
         if $CXX -o conftest $CXXFLAGS $CPPFLAGS conftest.cpp $LDFLAGS $LIBS 2> config.log.vtk; then
             echo "DEBUG: VTK test compilation successful" >&2
             # Restore flags with VTK/MPI
-            CPPFLAGS="$OLD_CPPFLAGS $VTK_CFLAGS $MPI_CXXFLAGS"
+            CPPFLAGS="$OLD_CPPFLAGS $VTK_CFLAGS $MPI_CXXFLAGS -DHAVE_VTK"
             LIBS="$OLD_LIBS $VTK_LIBS $MPI_LIBS"
             LDFLAGS="$OLD_LDFLAGS"
             { $as_echo "$as_me:${as_lineno-$LINENO}: VTK support enabled" >&5
