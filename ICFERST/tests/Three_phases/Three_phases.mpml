@@ -26,6 +26,7 @@
       <string_value>vtk</string_value>
     </dump_format>
     <dump_units_SI/>
+    <dump_period_in_timesteps>
       <constant>
         <integer_value rank="0">8</integer_value>
       </constant>
