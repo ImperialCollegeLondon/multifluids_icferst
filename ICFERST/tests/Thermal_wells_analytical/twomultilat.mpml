@@ -23,7 +23,7 @@
   <solver_options/>
   <io>
     <dump_format>
-      <string_value>vtk</string_value>
+    <dump_units_SI/>
     </dump_format>
     <dump_units_METRIC/>
     <dump_period_in_timesteps>

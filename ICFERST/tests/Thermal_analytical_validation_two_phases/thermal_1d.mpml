@@ -47,7 +47,7 @@
     <dump_format>
       <string_value>vtk</string_value>
     </dump_format>
-    <dump_units_SI /><dump_period_in_timesteps>
+    <dump_units_SI/>
       <constant>
         <integer_value rank="0">2</integer_value>
       </constant>
