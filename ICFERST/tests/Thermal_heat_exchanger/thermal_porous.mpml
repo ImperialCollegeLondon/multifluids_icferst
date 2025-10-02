@@ -3,16 +3,16 @@
   <simulation_name>
     <string_value lines="1">thermal_porous</string_value>
   </simulation_name>
-  <porous_media_simulator/>
+  <porous_media_simulator />
   <geometry>
     <dimension>
       <integer_value rank="0">3</integer_value>
     </dimension>
     <mesh name="CoordinateMesh">
       <from_file file_name="box">
-        <format name="gmsh"/>
+        <format name="gmsh" />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
         </stat>
       </from_file>
     </mesh>
@@ -20,12 +20,12 @@
       <string_value>balanced</string_value>
     </simulation_quality>
   </geometry>
-  <solver_options/>
+  <solver_options />
   <io>
     <dump_format>
       <string_value>vtk</string_value>
     </dump_format>
-    <dump_period_in_timesteps>
+    <dump_units_SI /><dump_period_in_timesteps>
       <constant>
         <integer_value rank="0">1</integer_value>
       </constant>
@@ -56,7 +56,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
-            <mesh name="PressureMesh"/>
+            <mesh name="PressureMesh" />
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -67,8 +67,8 @@
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <tensor_form />
+          <nonlinear_scheme />
         </viscosity_scheme>
       </Viscosity>
       <tensor_field name="Thermal_Conductivity" rank="2">
@@ -80,7 +80,7 @@
               </constant>
             </isotropic>
           </value>
-          <output/>
+          <output />
         </prescribed>
       </tensor_field>
       <scalar_field name="HeatCapacity" rank="0">
@@ -90,16 +90,16 @@
               <real_value rank="0">4185.5</real_value>
             </constant>
           </value>
-          <stat/>
+          <stat />
           <detectors>
-            <exclude_from_detectors/>
+            <exclude_from_detectors />
           </detectors>
         </prescribed>
       </scalar_field>
     </phase_properties>
     <scalar_field rank="0" name="Pressure">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <initial_condition name="WholeMesh">
           <python>
             <string_value type="code" language="python" lines="20">def val(X, t):
@@ -119,7 +119,7 @@
             <integer_value rank="1" shape="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">1e6</real_value>
             </constant>
@@ -130,14 +130,14 @@
             <integer_value rank="1" shape="1">3</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">5e4</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <exclude_from_detectors/>
+          <exclude_from_detectors />
         </detectors>
         <adaptivity_options>
           <relative_measure>
@@ -148,21 +148,21 @@
                     <real_value rank="0">0.05</real_value>
                   </constant>
                 </value>
-                <stat/>
+                <stat />
                 <detectors>
-                  <exclude_from_detectors/>
+                  <exclude_from_detectors />
                 </detectors>
               </prescribed>
             </scalar_field>
           </relative_measure>
         </adaptivity_options>
-        <consistent_interpolation/>
-        <output/>
+        <consistent_interpolation />
+        <output />
       </prognostic>
     </scalar_field>
     <vector_field rank="1" name="Velocity">
       <prognostic>
-        <mesh name="VelocityMesh"/>
+        <mesh name="VelocityMesh" />
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="1" dim1="dim" shape="3">0 0 0</real_value>
@@ -173,7 +173,7 @@
             <integer_value rank="1" shape="1">2</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -194,15 +194,15 @@
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
-        <output/>
+        <consistent_interpolation />
+        <output />
       </prognostic>
     </vector_field>
     <scalar_field rank="0" name="PhaseVolumeFraction">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">1</real_value>
@@ -213,24 +213,24 @@
             <integer_value rank="1" shape="3">1 2 3</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">1</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
     <scalar_field rank="0" name="Temperature">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <Impose_min_max>
-          <automatic_min_limit/>
-          <automatic_max_limit/>
+          <automatic_min_limit />
+          <automatic_max_limit />
         </Impose_min_max>
         <initial_condition name="WholeMesh">
           <constant>
@@ -242,14 +242,14 @@
             <integer_value rank="1" shape="3">1 3 2</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">80</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <adaptivity_options>
           <absolute_measure>
@@ -260,15 +260,15 @@
                     <real_value rank="0">0.5</real_value>
                   </constant>
                 </value>
-                <stat/>
+                <stat />
                 <detectors>
-                  <exclude_from_detectors/>
+                  <exclude_from_detectors />
                 </detectors>
               </prescribed>
             </scalar_field>
           </absolute_measure>
         </adaptivity_options>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
   </material_phase>
@@ -282,7 +282,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
-            <mesh name="PressureMesh"/>
+            <mesh name="PressureMesh" />
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -293,8 +293,8 @@
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <tensor_form />
+          <nonlinear_scheme />
         </viscosity_scheme>
       </Viscosity>
       <tensor_field name="Thermal_Conductivity" rank="2">
@@ -306,7 +306,7 @@
               </constant>
             </isotropic>
           </value>
-          <output/>
+          <output />
         </prescribed>
       </tensor_field>
       <scalar_field name="HeatCapacity" rank="0">
@@ -316,16 +316,16 @@
               <real_value rank="0">4185.5</real_value>
             </constant>
           </value>
-          <stat/>
+          <stat />
           <detectors>
-            <exclude_from_detectors/>
+            <exclude_from_detectors />
           </detectors>
         </prescribed>
       </scalar_field>
     </phase_properties>
     <scalar_field rank="0" name="Pressure">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0</real_value>
@@ -336,7 +336,7 @@
             <integer_value rank="1" shape="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">1e6</real_value>
             </constant>
@@ -347,37 +347,37 @@
             <integer_value rank="1" shape="1">3</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">5e5</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <exclude_from_detectors/>
+          <exclude_from_detectors />
         </detectors>
-        <consistent_interpolation/>
-        <output/>
+        <consistent_interpolation />
+        <output />
       </prognostic>
     </scalar_field>
     <vector_field rank="1" name="Velocity">
       <prognostic>
-        <mesh name="VelocityMesh"/>
+        <mesh name="VelocityMesh" />
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="1" dim1="dim" shape="3">0 0 0</real_value>
           </constant>
         </initial_condition>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
-        <output/>
+        <consistent_interpolation />
+        <output />
       </prognostic>
     </vector_field>
     <scalar_field rank="0" name="PhaseVolumeFraction">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">1</real_value>
@@ -388,24 +388,24 @@
             <integer_value rank="1" shape="3">1 2 3</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">1</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
     <scalar_field rank="0" name="Temperature">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <Impose_min_max>
-          <automatic_min_limit/>
-          <automatic_max_limit/>
+          <automatic_min_limit />
+          <automatic_max_limit />
         </Impose_min_max>
         <initial_condition name="WholeMesh">
           <constant>
@@ -417,89 +417,89 @@
             <integer_value rank="1" shape="2">1 3</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">30</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
   </material_phase>
   <porous_media>
     <scalar_field name="Porosity">
       <prescribed>
-        <mesh name="P0DG"/>
+        <mesh name="P0DG" />
         <value name="WholeMesh">
           <constant>
             <real_value rank="0">0.2</real_value>
           </constant>
         </value>
-        <stat/>
+        <stat />
         <detectors>
-          <exclude_from_detectors/>
+          <exclude_from_detectors />
         </detectors>
-        <output/>
+        <output />
       </prescribed>
     </scalar_field>
     <scalar_field name="Permeability">
       <prescribed>
-        <mesh name="P0DG"/>
+        <mesh name="P0DG" />
         <value name="WholeMesh">
           <constant>
             <real_value rank="0">1e-13</real_value>
           </constant>
         </value>
-        <stat/>
+        <stat />
         <detectors>
-          <exclude_from_detectors/>
+          <exclude_from_detectors />
         </detectors>
-        <output/>
+        <output />
       </prescribed>
     </scalar_field>
     <porous_properties>
       <scalar_field name="porous_density">
         <dry_value>
           <prescribed>
-            <mesh name="P0DG"/>
+            <mesh name="P0DG" />
             <value name="WholeMesh">
               <constant>
                 <real_value rank="0">1600</real_value>
               </constant>
             </value>
-            <stat/>
+            <stat />
             <detectors>
-              <exclude_from_detectors/>
+              <exclude_from_detectors />
             </detectors>
-            <output/>
+            <output />
           </prescribed>
         </dry_value>
       </scalar_field>
       <scalar_field name="porous_heat_capacity">
         <dry_value>
           <prescribed>
-            <mesh name="P0DG"/>
+            <mesh name="P0DG" />
             <value name="WholeMesh">
               <constant>
                 <real_value rank="0">830</real_value>
               </constant>
             </value>
-            <stat/>
+            <stat />
             <detectors>
-              <exclude_from_detectors/>
+              <exclude_from_detectors />
             </detectors>
-            <output/>
+            <output />
           </prescribed>
         </dry_value>
       </scalar_field>
       <tensor_field name="porous_thermal_conductivity">
         <dry_value>
           <prescribed>
-            <mesh name="P0DG"/>
+            <mesh name="P0DG" />
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -507,7 +507,7 @@
                 </constant>
               </isotropic>
             </value>
-            <output/>
+            <output />
           </prescribed>
         </dry_value>
       </tensor_field>
@@ -515,37 +515,37 @@
     <wells_and_pipes>
       <scalar_field name="Gamma">
         <prescribed>
-          <mesh name="PressureMesh"/>
+          <mesh name="PressureMesh" />
           <value name="WholeMesh">
             <constant>
               <real_value rank="0">0.0</real_value>
             </constant>
           </value>
-          <stat/>
+          <stat />
           <detectors>
-            <exclude_from_detectors/>
+            <exclude_from_detectors />
           </detectors>
-          <output/>
+          <output />
         </prescribed>
       </scalar_field>
       <scalar_field name="Sigma">
         <prescribed>
-          <mesh name="PressureMesh_Discontinuous"/>
+          <mesh name="PressureMesh_Discontinuous" />
           <value name="WholeMesh">
             <constant>
               <real_value rank="0">1.0</real_value>
             </constant>
           </value>
-          <stat/>
+          <stat />
           <detectors>
-            <exclude_from_detectors/>
+            <exclude_from_detectors />
           </detectors>
-          <output/>
+          <output />
         </prescribed>
       </scalar_field>
       <scalar_field name="DiameterPipe">
         <prescribed>
-          <mesh name="PressureMesh"/>
+          <mesh name="PressureMesh" />
           <value name="WholeMesh">
             <python>
               <string_value type="code" language="python" lines="20">def val(X, t):
@@ -559,42 +559,42 @@
  return val</string_value>
             </python>
           </value>
-          <stat/>
+          <stat />
           <detectors>
-            <exclude_from_detectors/>
+            <exclude_from_detectors />
           </detectors>
-          <output/>
+          <output />
         </prescribed>
       </scalar_field>
       <thermal_well_properties>
         <scalar_field name="Conductivity">
           <prescribed>
-            <mesh name="PressureMesh"/>
+            <mesh name="PressureMesh" />
             <value name="WholeMesh">
               <constant>
                 <real_value rank="0">21.5</real_value>
               </constant>
             </value>
-            <stat/>
+            <stat />
             <detectors>
-              <exclude_from_detectors/>
+              <exclude_from_detectors />
             </detectors>
-            <output/>
+            <output />
           </prescribed>
         </scalar_field>
         <scalar_field name="well_thickness">
           <prescribed>
-            <mesh name="PressureMesh"/>
+            <mesh name="PressureMesh" />
             <value name="WholeMesh">
               <constant>
                 <real_value rank="0">0.025</real_value>
               </constant>
             </value>
-            <stat/>
+            <stat />
             <detectors>
-              <exclude_from_detectors/>
+              <exclude_from_detectors />
             </detectors>
-            <output/>
+            <output />
           </prescribed>
         </scalar_field>
       </thermal_well_properties>
