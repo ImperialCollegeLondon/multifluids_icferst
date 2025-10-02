@@ -3,16 +3,16 @@
   <simulation_name>
     <string_value lines="1">3D_Sod_Shock_test</string_value>
   </simulation_name>
-  <inertia_dominated_simulator/>
+  <inertia_dominated_simulator />
   <geometry>
     <dimension>
       <integer_value rank="0">3</integer_value>
     </dimension>
     <mesh name="CoordinateMesh">
       <from_file file_name="src/3d_mesh_f">
-        <format name="gmsh"/>
+        <format name="gmsh" />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
         </stat>
       </from_file>
     </mesh>
@@ -30,7 +30,7 @@
           <real_value rank="0">0.0</real_value>
         </conservative_advection>
       </Conservative_formulation_settings>
-      <FE_Pressure/>
+      <FE_Pressure />
     </Advance_options>
   </geometry>
   <solver_options>
@@ -42,7 +42,7 @@
     <dump_format>
       <string_value>vtk</string_value>
     </dump_format>
-    <dump_period_in_timesteps>
+    <dump_units_SI/>
       <constant>
         <integer_value rank="0">10</integer_value>
       </constant>
@@ -72,7 +72,7 @@
                 <real_value rank="0">0.0</real_value>
               </constant>
             </coefficient_B>
-            <include_internal_energy/>
+            <include_internal_energy />
           </linear_in_pressure>
         </compressible>
       </Density>
@@ -95,15 +95,15 @@ for i in range(field.node_count):
  #Assign the dummy field
  field.set( i, viscosity )</string_value>
             </algorithm>
-            <mesh name="PressureMesh"/>
+            <mesh name="PressureMesh" />
             <stat>
-              <include_in_stat/>
+              <include_in_stat />
             </stat>
           </diagnostic>
         </tensor_field>
         <viscosity_scheme>
-          <compact_discontinuous_galerkin/>
-          <nonlinear_scheme/>
+          <compact_discontinuous_galerkin />
+          <nonlinear_scheme />
         </viscosity_scheme>
       </Viscosity>
       <Stabilisation>
@@ -114,13 +114,13 @@ for i in range(field.node_count):
           <nonlinear_velocity_coefficient>
             <real_value rank="0">1</real_value>
           </nonlinear_velocity_coefficient>
-          <tensor_form/>
+          <tensor_form />
         </Petrov_Galerkin_stabilisation>
       </Stabilisation>
     </phase_properties>
     <scalar_field rank="0" name="Pressure">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <initial_condition name="WholeMesh">
           <python>
             <string_value type="code" language="python" lines="20">def val(X, t):
@@ -135,22 +135,22 @@ for i in range(field.node_count):
             <integer_value rank="1" shape="1">4</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">0.1</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <exclude_from_detectors/>
+          <exclude_from_detectors />
         </detectors>
-        <no_interpolation/>
-        <output/>
+        <no_interpolation />
+        <output />
       </prognostic>
     </scalar_field>
     <vector_field rank="1" name="Velocity">
       <prognostic>
-        <mesh name="VelocityMesh"/>
+        <mesh name="VelocityMesh" />
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="1" dim1="dim" shape="3">0.0 0.0 0.0</real_value>
@@ -161,7 +161,7 @@ for i in range(field.node_count):
             <integer_value rank="1" shape="2">2 3</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -186,7 +186,7 @@ for i in range(field.node_count):
             <integer_value rank="1" shape="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -207,18 +207,18 @@ for i in range(field.node_count):
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
-        <output/>
+        <consistent_interpolation />
+        <output />
       </prognostic>
     </vector_field>
     <scalar_field rank="0" name="Density">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <Impose_min_max>
-          <automatic_min_limit/>
-          <automatic_max_limit/>
+          <automatic_min_limit />
+          <automatic_max_limit />
         </Impose_min_max>
         <initial_condition name="WholeMesh">
           <python>
@@ -233,22 +233,22 @@ for i in range(field.node_count):
             <integer_value rank="1" shape="1">4</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">0.125</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
-        <output/>
+        <consistent_interpolation />
+        <output />
       </prognostic>
     </scalar_field>
     <scalar_field rank="0" name="PhaseVolumeFraction">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">1</real_value>
@@ -259,24 +259,24 @@ for i in range(field.node_count):
             <integer_value rank="1" shape="4">1 2 3 4</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">1</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
     <scalar_field rank="0" name="Temperature">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <Impose_min_max>
-          <automatic_min_limit/>
-          <automatic_max_limit/>
+          <automatic_min_limit />
+          <automatic_max_limit />
         </Impose_min_max>
         <initial_condition name="WholeMesh">
           <python>
@@ -297,7 +297,7 @@ for i in range(field.node_count):
             <integer_value rank="1" shape="1">4</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <python>
               <string_value type="code" language="python" lines="20">def val(X, t):
   g=1.4
@@ -310,9 +310,9 @@ for i in range(field.node_count):
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
   </material_phase>

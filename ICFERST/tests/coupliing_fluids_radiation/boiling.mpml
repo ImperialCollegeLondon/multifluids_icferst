@@ -4,7 +4,7 @@
     <string_value lines="1">400c_20_dtr0.001_real_const_t</string_value>
   </simulation_name>
   <simulation_type>
-    <inertia_dominated/>
+    <inertia_dominated />
   </simulation_type>
   <geometry>
     <dimension>
@@ -12,15 +12,15 @@
     </dimension>
     <mesh name="CoordinateMesh">
       <from_file file_name="cylinder">
-        <format name="gmsh"/>
+        <format name="gmsh" />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
         </stat>
       </from_file>
     </mesh>
     <mesh name="VelocityMesh">
       <from_mesh>
-        <mesh name="CoordinateMesh"/>
+        <mesh name="CoordinateMesh" />
         <mesh_shape>
           <polynomial_degree>
             <integer_value rank="0">1</integer_value>
@@ -33,13 +33,13 @@
           <string_value>discontinuous</string_value>
         </mesh_continuity>
         <stat>
-          <exclude_from_stat/>
+          <exclude_from_stat />
         </stat>
       </from_mesh>
     </mesh>
     <mesh name="PressureMesh">
       <from_mesh>
-        <mesh name="CoordinateMesh"/>
+        <mesh name="CoordinateMesh" />
         <mesh_shape>
           <polynomial_degree>
             <integer_value rank="0">1</integer_value>
@@ -52,13 +52,13 @@
           <string_value>continuous</string_value>
         </mesh_continuity>
         <stat>
-          <exclude_from_stat/>
+          <exclude_from_stat />
         </stat>
       </from_mesh>
     </mesh>
     <mesh name="P0DG">
       <from_mesh>
-        <mesh name="CoordinateMesh"/>
+        <mesh name="CoordinateMesh" />
         <mesh_shape>
           <polynomial_degree>
             <integer_value rank="0">0</integer_value>
@@ -71,13 +71,13 @@
           <string_value>discontinuous</string_value>
         </mesh_continuity>
         <stat>
-          <exclude_from_stat/>
+          <exclude_from_stat />
         </stat>
       </from_mesh>
     </mesh>
     <mesh name="VelocityMesh_Continuous">
       <from_mesh>
-        <mesh name="CoordinateMesh"/>
+        <mesh name="CoordinateMesh" />
         <mesh_shape>
           <polynomial_degree>
             <integer_value rank="0">1</integer_value>
@@ -90,13 +90,13 @@
           <string_value>continuous</string_value>
         </mesh_continuity>
         <stat>
-          <exclude_from_stat/>
+          <exclude_from_stat />
         </stat>
       </from_mesh>
     </mesh>
     <mesh name="PressureMesh_Continuous">
       <from_mesh>
-        <mesh name="CoordinateMesh"/>
+        <mesh name="CoordinateMesh" />
         <mesh_shape>
           <polynomial_degree>
             <integer_value rank="0">1</integer_value>
@@ -109,13 +109,13 @@
           <string_value>continuous</string_value>
         </mesh_continuity>
         <stat>
-          <exclude_from_stat/>
+          <exclude_from_stat />
         </stat>
       </from_mesh>
     </mesh>
     <mesh name="PressureMesh_Discontinuous">
       <from_mesh>
-        <mesh name="CoordinateMesh"/>
+        <mesh name="CoordinateMesh" />
         <mesh_shape>
           <polynomial_degree>
             <integer_value rank="0">1</integer_value>
@@ -128,7 +128,7 @@
           <string_value>discontinuous</string_value>
         </mesh_continuity>
         <stat>
-          <exclude_from_stat/>
+          <exclude_from_stat />
         </stat>
       </from_mesh>
     </mesh>
@@ -142,13 +142,13 @@
     <dump_format>
       <string_value>vtk</string_value>
     </dump_format>
-    <dump_period>
+    <dump_units_SI/>
       <constant>
         <real_value rank="0">0.1</real_value>
       </constant>
     </dump_period>
-    <output_mesh name="P0DG"/>
-    <stat/>
+    <output_mesh name="P0DG" />
+    <stat />
   </io>
   <timestepping>
     <current_time>
@@ -165,7 +165,7 @@
         <real_value rank="0">1.0</real_value>
       </requested_cfl>
       <courant_number name="CFLNumber">
-        <mesh name="VelocityMesh"/>
+        <mesh name="VelocityMesh" />
       </courant_number>
       <maximum_timestep>
         <real_value rank="0">1.0</real_value>
@@ -182,18 +182,18 @@
       </magnitude>
       <vector_field name="GravityDirection" rank="1">
         <prescribed>
-          <mesh name="CoordinateMesh"/>
+          <mesh name="CoordinateMesh" />
           <value name="WholeMesh">
             <constant>
               <real_value shape="3" dim1="dim" rank="1">0.0 0.0 -1.0</real_value>
             </constant>
           </value>
-          <output/>
+          <output />
           <stat>
-            <include_in_stat/>
+            <include_in_stat />
           </stat>
           <detectors>
-            <exclude_from_detectors/>
+            <exclude_from_detectors />
           </detectors>
         </prescribed>
       </vector_field>
@@ -211,11 +211,11 @@
     </equation_of_state>
     <scalar_field name="Pressure" rank="0">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <spatial_discretisation>
-          <continuous_galerkin/>
+          <continuous_galerkin />
         </spatial_discretisation>
-        <symmetric_P/>
+        <symmetric_P />
         <solver>
           <iterative_method name="gmres">
             <restart>
@@ -223,7 +223,7 @@
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
+            <hypre_type name="boomeramg" />
           </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-15</real_value>
@@ -231,9 +231,9 @@
           <max_iterations>
             <integer_value rank="0">15904</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <never_ignore_solver_failures />
           <diagnostics>
-            <monitors/>
+            <monitors />
           </diagnostics>
         </solver>
         <initial_condition name="WholeMesh">
@@ -248,36 +248,36 @@
             <integer_value shape="1" rank="1">3</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">101325.0</real_value>
             </constant>
           </type>
         </boundary_conditions>
-        <output/>
-        <stat/>
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <exclude_from_detectors/>
+          <exclude_from_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
     <scalar_field name="Density" rank="0">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <spatial_discretisation>
           <continuous_galerkin>
             <stabilisation>
-              <no_stabilisation/>
+              <no_stabilisation />
             </stabilisation>
-            <advection_terms/>
-            <mass_terms/>
+            <advection_terms />
+            <mass_terms />
           </continuous_galerkin>
           <conservative_advection>
             <real_value rank="0">1.0</real_value>
@@ -293,39 +293,39 @@
             <real_value rank="0">997.</real_value>
           </constant>
         </initial_condition>
-        <output/>
-        <stat/>
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
       <prognostic>
-        <mesh name="VelocityMesh"/>
-        <equation name="LinearMomentum"/>
+        <mesh name="VelocityMesh" />
+        <equation name="LinearMomentum" />
         <spatial_discretisation>
           <discontinuous_galerkin>
             <mass_terms>
-              <lump_mass_matrix/>
+              <lump_mass_matrix />
             </mass_terms>
             <viscosity_scheme>
-              <stress_form/>
+              <stress_form />
               <linear_scheme>
-                <high_order/>
+                <high_order />
               </linear_scheme>
             </viscosity_scheme>
             <advection_scheme>
-              <upwind/>
+              <upwind />
               <integrate_advection_by_parts>
-                <twice/>
+                <twice />
               </integrate_advection_by_parts>
             </advection_scheme>
             <les_model>
@@ -336,7 +336,7 @@
               <smagorinsky_coefficient>
                 <real_value rank="0">0.1</real_value>
               </smagorinsky_coefficient>
-              <tensor_form/>
+              <tensor_form />
             </les_model>
           </discontinuous_galerkin>
           <conservative_advection>
@@ -358,7 +358,7 @@
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
+            <hypre_type name="boomeramg" />
           </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-7</real_value>
@@ -366,9 +366,9 @@
           <max_iterations>
             <integer_value rank="0">1666</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <never_ignore_solver_failures />
           <diagnostics>
-            <monitors/>
+            <monitors />
           </diagnostics>
         </solver>
         <initial_condition name="WholeMesh">
@@ -381,7 +381,7 @@
             <integer_value shape="1" rank="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -430,7 +430,7 @@
             <integer_value shape="1" rank="1">2</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -503,7 +503,7 @@
             <integer_value shape="1" rank="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet_advection">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -532,48 +532,48 @@
                 </constant>
               </anisotropic_asymmetric>
             </value>
-            <output/>
+            <output />
           </prescribed>
         </tensor_field>
-        <output/>
+        <output />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
           <surface_integral type="normal" name="bot">
             <surface_ids>
               <integer_value shape="1" rank="1">1</integer_value>
             </surface_ids>
           </surface_integral>
           <previous_time_step>
-            <exclude_from_stat/>
+            <exclude_from_stat />
           </previous_time_step>
           <nonlinear_field>
-            <exclude_from_stat/>
+            <exclude_from_stat />
           </nonlinear_field>
         </stat>
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
       <prognostic>
-        <mesh name="PressureMesh"/>
-        <equation name="AdvectionDiffusion"/>
+        <mesh name="PressureMesh" />
+        <equation name="AdvectionDiffusion" />
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FiniteElement">
               <limit_face_value>
-                <limiter name="Sweby"/>
+                <limiter name="Sweby" />
               </limit_face_value>
             </face_value>
-            <diffusion_scheme name="ElementGradient"/>
+            <diffusion_scheme name="ElementGradient" />
           </control_volumes>
           <conservative_advection>
             <real_value rank="0">1.0</real_value>
@@ -591,7 +591,7 @@
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
+            <hypre_type name="boomeramg" />
           </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-15</real_value>
@@ -599,9 +599,9 @@
           <max_iterations>
             <integer_value rank="0">500</integer_value>
           </max_iterations>
-          <ignore_all_solver_failures/>
+          <ignore_all_solver_failures />
           <diagnostics>
-            <monitors/>
+            <monitors />
           </diagnostics>
         </solver>
         <initial_condition name="WholeMesh">
@@ -617,7 +617,7 @@
             <integer_value shape="1" rank="1">3</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">0.0</real_value>
               <comment>0.9975</comment>
@@ -629,71 +629,71 @@
             <integer_value shape="1" rank="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">1.0</real_value>
             </constant>
           </type>
         </boundary_conditions>
-        <output/>
-        <stat/>
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
     <scalar_field name="CFLNumber" rank="0">
       <diagnostic>
-        <algorithm name="Internal" material_phase_support="multiple"/>
-        <mesh name="VelocityMesh"/>
-        <output/>
-        <stat/>
+        <algorithm name="Internal" material_phase_support="multiple" />
+        <mesh name="VelocityMesh" />
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
       </diagnostic>
     </scalar_field>
     <scalar_field name="CV_Pressure" rank="0">
       <diagnostic>
-        <algorithm name="Internal" material_phase_support="multiple"/>
-        <mesh name="PressureMesh"/>
-        <output/>
-        <stat/>
+        <algorithm name="Internal" material_phase_support="multiple" />
+        <mesh name="PressureMesh" />
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
       </diagnostic>
     </scalar_field>
     <scalar_field name="Temperature" rank="0">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <equation name="InternalEnergy">
-          <density name="MaterialDensity"/>
+          <density name="MaterialDensity" />
         </equation>
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FiniteElement">
               <limit_face_value>
-                <limiter name="Sweby"/>
+                <limiter name="Sweby" />
               </limit_face_value>
             </face_value>
-            <diffusion_scheme name="ElementGradient"/>
+            <diffusion_scheme name="ElementGradient" />
           </control_volumes>
           <conservative_advection>
             <real_value rank="0">0.0</real_value>
@@ -711,7 +711,7 @@
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
+            <hypre_type name="boomeramg" />
           </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-15</real_value>
@@ -719,9 +719,9 @@
           <max_iterations>
             <integer_value rank="0">501</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <never_ignore_solver_failures />
           <diagnostics>
-            <monitors/>
+            <monitors />
           </diagnostics>
         </solver>
         <initial_condition name="WholeMesh">
@@ -742,7 +742,7 @@
             <integer_value shape="1" rank="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">20.0</real_value>
             </constant>
@@ -753,7 +753,7 @@
             <integer_value shape="1" rank="1">3</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">110.0</real_value>
             </constant>
@@ -768,7 +768,7 @@
                 </constant>
               </isotropic>
             </value>
-            <output/>
+            <output />
           </prescribed>
         </tensor_field>
         <scalar_field name="HeatCapacity" rank="0">
@@ -778,22 +778,22 @@
                 <real_value rank="0">4200.0</real_value>
               </constant>
             </value>
-            <output/>
-            <stat/>
+            <output />
+            <stat />
             <detectors>
-              <exclude_from_detectors/>
+              <exclude_from_detectors />
             </detectors>
           </prescribed>
         </scalar_field>
-        <output/>
-        <stat/>
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
     <scalar_field name="density_all" rank="0">
@@ -818,53 +818,53 @@ for i in range(Ul.element_count):#Loop over the element
   val = Alpha_l/(Alpha_l+Alpha_g)*denl+Alpha_g/(Alpha_l+Alpha_g)*deng
   field.set(pnod, val)</string_value>
         </algorithm>
-        <mesh name="PressureMesh"/>
-        <output/>
-        <stat/>
+        <mesh name="PressureMesh" />
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
       </diagnostic>
     </scalar_field>
     <scalar_field name="density_to_fetch" rank="0">
       <diagnostic>
-        <algorithm source_field_type="scalar" material_phase_support="single" name="scalar_copy" source_field_name="density_all"/>
-        <mesh name="P0DG"/>
-        <output/>
-        <stat/>
+        <algorithm source_field_type="scalar" material_phase_support="single" name="scalar_copy" source_field_name="density_all" />
+        <mesh name="P0DG" />
+        <output />
+        <stat />
         <convergence>
-          <exclude_from_convergence/>
+          <exclude_from_convergence />
         </convergence>
         <detectors>
-          <exclude_from_detectors/>
+          <exclude_from_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
       </diagnostic>
     </scalar_field>
     <vector_field name="U" rank="1">
       <diagnostic>
-        <algorithm name="Internal" material_phase_support="multiple"/>
-        <mesh name="VelocityMesh"/>
-        <output/>
+        <algorithm name="Internal" material_phase_support="multiple" />
+        <mesh name="VelocityMesh" />
+        <output />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
         </stat>
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
       </diagnostic>
     </vector_field>
@@ -910,19 +910,19 @@ for i in range(field.element_count):
   Sigma[2] =    0.0;
   field.set(pnod, Sigma)</string_value>
         </algorithm>
-        <mesh name="PressureMesh"/>
-        <output/>
+        <mesh name="PressureMesh" />
+        <output />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
         </stat>
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
       </diagnostic>
     </vector_field>
@@ -1011,19 +1011,19 @@ for i in range(field.element_count):
   Sigma[2] = S[pnod]*1e6
   field.set(pnod, Sigma)</string_value>
         </algorithm>
-        <mesh name="PressureMesh"/>
-        <output/>
+        <mesh name="PressureMesh" />
+        <output />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
         </stat>
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
       </diagnostic>
     </vector_field>
@@ -1065,10 +1065,10 @@ for i in range(field.element_count):
   
   field.set(fnod, Sigma)</string_value>
         </algorithm>
-        <mesh name="VelocityMesh"/>
-        <output/>
+        <mesh name="VelocityMesh" />
+        <output />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
         </stat>
       </diagnostic>
     </tensor_field>
@@ -1142,10 +1142,10 @@ for i in range(field.element_count):
   Sigma[2][2] =  St_sl + St_sg  #solid
   field.set(unod, Sigma)</string_value>
         </algorithm>
-        <mesh name="PressureMesh"/>
-        <output/>
+        <mesh name="PressureMesh" />
+        <output />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
         </stat>
       </diagnostic>
     </tensor_field>
@@ -1161,18 +1161,18 @@ for i in range(field.element_count):
       </incompressible>
     </equation_of_state>
     <scalar_field name="Pressure" rank="0">
-      <aliased material_phase_name="phase1" field_name="Pressure"/>
+      <aliased material_phase_name="phase1" field_name="Pressure" />
     </scalar_field>
     <scalar_field name="Density" rank="0">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <spatial_discretisation>
           <continuous_galerkin>
             <stabilisation>
-              <no_stabilisation/>
+              <no_stabilisation />
             </stabilisation>
-            <advection_terms/>
-            <mass_terms/>
+            <advection_terms />
+            <mass_terms />
           </continuous_galerkin>
           <conservative_advection>
             <real_value rank="0">1.0</real_value>
@@ -1188,39 +1188,39 @@ for i in range(field.element_count):
             <real_value rank="0">0.554</real_value>
           </constant>
         </initial_condition>
-        <output/>
-        <stat/>
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
       <prognostic>
-        <mesh name="VelocityMesh"/>
-        <equation name="LinearMomentum"/>
+        <mesh name="VelocityMesh" />
+        <equation name="LinearMomentum" />
         <spatial_discretisation>
           <discontinuous_galerkin>
             <mass_terms>
-              <lump_mass_matrix/>
+              <lump_mass_matrix />
             </mass_terms>
             <viscosity_scheme>
-              <stress_form/>
+              <stress_form />
               <linear_scheme>
-                <high_order/>
+                <high_order />
               </linear_scheme>
             </viscosity_scheme>
             <advection_scheme>
-              <upwind/>
+              <upwind />
               <integrate_advection_by_parts>
-                <twice/>
+                <twice />
               </integrate_advection_by_parts>
             </advection_scheme>
             <les_model>
@@ -1230,7 +1230,7 @@ for i in range(field.element_count):
               <smagorinsky_coefficient>
                 <real_value rank="0">0.1</real_value>
               </smagorinsky_coefficient>
-              <tensor_form/>
+              <tensor_form />
             </les_model>
           </discontinuous_galerkin>
           <conservative_advection>
@@ -1252,7 +1252,7 @@ for i in range(field.element_count):
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
+            <hypre_type name="boomeramg" />
           </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-7</real_value>
@@ -1260,9 +1260,9 @@ for i in range(field.element_count):
           <max_iterations>
             <integer_value rank="0">1666</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <never_ignore_solver_failures />
           <diagnostics>
-            <monitors/>
+            <monitors />
           </diagnostics>
         </solver>
         <initial_condition name="WholeMesh">
@@ -1275,7 +1275,7 @@ for i in range(field.element_count):
             <integer_value shape="1" rank="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -1324,7 +1324,7 @@ for i in range(field.element_count):
             <integer_value shape="1" rank="1">2</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -1401,48 +1401,48 @@ for i in range(field.element_count):
                 </constant>
               </anisotropic_asymmetric>
             </value>
-            <output/>
+            <output />
           </prescribed>
         </tensor_field>
-        <output/>
+        <output />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
           <surface_integral type="normal" name="top">
             <surface_ids>
               <integer_value shape="1" rank="1">3</integer_value>
             </surface_ids>
           </surface_integral>
           <previous_time_step>
-            <exclude_from_stat/>
+            <exclude_from_stat />
           </previous_time_step>
           <nonlinear_field>
-            <exclude_from_stat/>
+            <exclude_from_stat />
           </nonlinear_field>
         </stat>
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
       <prognostic>
-        <mesh name="PressureMesh"/>
-        <equation name="AdvectionDiffusion"/>
+        <mesh name="PressureMesh" />
+        <equation name="AdvectionDiffusion" />
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FiniteElement">
               <limit_face_value>
-                <limiter name="Sweby"/>
+                <limiter name="Sweby" />
               </limit_face_value>
             </face_value>
-            <diffusion_scheme name="ElementGradient"/>
+            <diffusion_scheme name="ElementGradient" />
           </control_volumes>
           <conservative_advection>
             <real_value rank="0">1.0</real_value>
@@ -1460,7 +1460,7 @@ for i in range(field.element_count):
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
+            <hypre_type name="boomeramg" />
           </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-15</real_value>
@@ -1468,9 +1468,9 @@ for i in range(field.element_count):
           <max_iterations>
             <integer_value rank="0">500</integer_value>
           </max_iterations>
-          <ignore_all_solver_failures/>
+          <ignore_all_solver_failures />
           <diagnostics>
-            <monitors/>
+            <monitors />
           </diagnostics>
         </solver>
         <initial_condition name="WholeMesh">
@@ -1486,7 +1486,7 @@ for i in range(field.element_count):
             <integer_value shape="1" rank="1">3</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">1.0</real_value>
               <comment>0.0025</comment>
@@ -1498,19 +1498,19 @@ for i in range(field.element_count):
             <integer_value shape="1" rank="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">0.0</real_value>
             </constant>
           </type>
         </boundary_conditions>
-        <output/>
-        <stat/>
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <adaptivity_options>
           <absolute_measure>
@@ -1521,49 +1521,49 @@ for i in range(field.element_count):
                     <real_value rank="0">0.01</real_value>
                   </constant>
                 </value>
-                <output/>
-                <stat/>
+                <output />
+                <stat />
                 <detectors>
-                  <exclude_from_detectors/>
+                  <exclude_from_detectors />
                 </detectors>
               </prescribed>
             </scalar_field>
           </absolute_measure>
         </adaptivity_options>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
     <scalar_field name="CFLNumber" rank="0">
       <diagnostic>
-        <algorithm name="Internal" material_phase_support="multiple"/>
-        <mesh name="VelocityMesh"/>
-        <output/>
-        <stat/>
+        <algorithm name="Internal" material_phase_support="multiple" />
+        <mesh name="VelocityMesh" />
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
       </diagnostic>
     </scalar_field>
     <scalar_field name="Temperature" rank="0">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <equation name="InternalEnergy">
-          <density name="MaterialDensity"/>
+          <density name="MaterialDensity" />
         </equation>
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FiniteElement">
               <limit_face_value>
-                <limiter name="Sweby"/>
+                <limiter name="Sweby" />
               </limit_face_value>
             </face_value>
-            <diffusion_scheme name="ElementGradient"/>
+            <diffusion_scheme name="ElementGradient" />
           </control_volumes>
           <conservative_advection>
             <real_value rank="0">0.0</real_value>
@@ -1581,7 +1581,7 @@ for i in range(field.element_count):
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
+            <hypre_type name="boomeramg" />
           </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-15</real_value>
@@ -1589,9 +1589,9 @@ for i in range(field.element_count):
           <max_iterations>
             <integer_value rank="0">501</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <never_ignore_solver_failures />
           <diagnostics>
-            <monitors/>
+            <monitors />
           </diagnostics>
         </solver>
         <initial_condition name="WholeMesh">
@@ -1604,7 +1604,7 @@ for i in range(field.element_count):
             <integer_value shape="1" rank="1">3</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">150</real_value>
             </constant>
@@ -1615,7 +1615,7 @@ for i in range(field.element_count):
             <integer_value shape="1" rank="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">110.0</real_value>
             </constant>
@@ -1630,7 +1630,7 @@ for i in range(field.element_count):
                 </constant>
               </isotropic>
             </value>
-            <output/>
+            <output />
           </prescribed>
         </tensor_field>
         <scalar_field name="HeatCapacity" rank="0">
@@ -1640,40 +1640,40 @@ for i in range(field.element_count):
                 <real_value rank="0">1996.0</real_value>
               </constant>
             </value>
-            <output/>
-            <stat/>
+            <output />
+            <stat />
             <detectors>
-              <exclude_from_detectors/>
+              <exclude_from_detectors />
             </detectors>
           </prescribed>
         </scalar_field>
-        <output/>
-        <stat/>
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
     <vector_field name="U" rank="1">
       <diagnostic>
-        <algorithm name="Internal" material_phase_support="multiple"/>
-        <mesh name="VelocityMesh"/>
-        <output/>
+        <algorithm name="Internal" material_phase_support="multiple" />
+        <mesh name="VelocityMesh" />
+        <output />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
         </stat>
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
       </diagnostic>
     </vector_field>
@@ -1689,18 +1689,18 @@ for i in range(field.element_count):
       </incompressible>
     </equation_of_state>
     <scalar_field name="Pressure" rank="0">
-      <aliased material_phase_name="phase1" field_name="Pressure"/>
+      <aliased material_phase_name="phase1" field_name="Pressure" />
     </scalar_field>
     <scalar_field name="Density" rank="0">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <spatial_discretisation>
           <continuous_galerkin>
             <stabilisation>
-              <no_stabilisation/>
+              <no_stabilisation />
             </stabilisation>
-            <advection_terms/>
-            <mass_terms/>
+            <advection_terms />
+            <mass_terms />
           </continuous_galerkin>
           <conservative_advection>
             <real_value rank="0">1.0</real_value>
@@ -1716,39 +1716,39 @@ for i in range(field.element_count):
             <real_value rank="0">0.0</real_value>
           </constant>
         </initial_condition>
-        <output/>
-        <stat/>
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
       <prognostic>
-        <mesh name="VelocityMesh"/>
-        <equation name="LinearMomentum"/>
+        <mesh name="VelocityMesh" />
+        <equation name="LinearMomentum" />
         <spatial_discretisation>
           <discontinuous_galerkin>
             <mass_terms>
-              <lump_mass_matrix/>
+              <lump_mass_matrix />
             </mass_terms>
             <viscosity_scheme>
-              <stress_form/>
+              <stress_form />
               <linear_scheme>
-                <high_order/>
+                <high_order />
               </linear_scheme>
             </viscosity_scheme>
             <advection_scheme>
-              <upwind/>
+              <upwind />
               <integrate_advection_by_parts>
-                <twice/>
+                <twice />
               </integrate_advection_by_parts>
             </advection_scheme>
             <les_model>
@@ -1758,7 +1758,7 @@ for i in range(field.element_count):
               <smagorinsky_coefficient>
                 <real_value rank="0">0.1</real_value>
               </smagorinsky_coefficient>
-              <tensor_form/>
+              <tensor_form />
             </les_model>
           </discontinuous_galerkin>
           <conservative_advection>
@@ -1780,7 +1780,7 @@ for i in range(field.element_count):
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
+            <hypre_type name="boomeramg" />
           </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-7</real_value>
@@ -1788,9 +1788,9 @@ for i in range(field.element_count):
           <max_iterations>
             <integer_value rank="0">1666</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <never_ignore_solver_failures />
           <diagnostics>
-            <monitors/>
+            <monitors />
           </diagnostics>
         </solver>
         <initial_condition name="WholeMesh">
@@ -1803,7 +1803,7 @@ for i in range(field.element_count):
             <integer_value shape="1" rank="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -1852,7 +1852,7 @@ for i in range(field.element_count):
             <integer_value shape="1" rank="1">2</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -1929,43 +1929,43 @@ for i in range(field.element_count):
                 </constant>
               </anisotropic_asymmetric>
             </value>
-            <output/>
+            <output />
           </prescribed>
         </tensor_field>
-        <output/>
+        <output />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
           <previous_time_step>
-            <exclude_from_stat/>
+            <exclude_from_stat />
           </previous_time_step>
           <nonlinear_field>
-            <exclude_from_stat/>
+            <exclude_from_stat />
           </nonlinear_field>
         </stat>
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
       <prognostic>
-        <mesh name="PressureMesh"/>
-        <equation name="AdvectionDiffusion"/>
+        <mesh name="PressureMesh" />
+        <equation name="AdvectionDiffusion" />
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FiniteElement">
               <limit_face_value>
-                <limiter name="Sweby"/>
+                <limiter name="Sweby" />
               </limit_face_value>
             </face_value>
-            <diffusion_scheme name="ElementGradient"/>
+            <diffusion_scheme name="ElementGradient" />
           </control_volumes>
           <conservative_advection>
             <real_value rank="0">1.0</real_value>
@@ -1983,7 +1983,7 @@ for i in range(field.element_count):
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
+            <hypre_type name="boomeramg" />
           </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-15</real_value>
@@ -1991,9 +1991,9 @@ for i in range(field.element_count):
           <max_iterations>
             <integer_value rank="0">500</integer_value>
           </max_iterations>
-          <ignore_all_solver_failures/>
+          <ignore_all_solver_failures />
           <diagnostics>
-            <monitors/>
+            <monitors />
           </diagnostics>
         </solver>
         <initial_condition name="WholeMesh">
@@ -2009,7 +2009,7 @@ for i in range(field.element_count):
             <integer_value shape="1" rank="1">3</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">0.0</real_value>
             </constant>
@@ -2020,54 +2020,54 @@ for i in range(field.element_count):
             <integer_value shape="1" rank="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">0.0</real_value>
             </constant>
           </type>
         </boundary_conditions>
-        <output/>
-        <stat/>
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
     <scalar_field name="CFLNumber" rank="0">
       <diagnostic>
-        <algorithm name="Internal" material_phase_support="multiple"/>
-        <mesh name="VelocityMesh"/>
-        <output/>
-        <stat/>
+        <algorithm name="Internal" material_phase_support="multiple" />
+        <mesh name="VelocityMesh" />
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
       </diagnostic>
     </scalar_field>
     <scalar_field name="Temperature" rank="0">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <equation name="InternalEnergy">
-          <density name="MaterialDensity"/>
+          <density name="MaterialDensity" />
         </equation>
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FiniteElement">
               <limit_face_value>
-                <limiter name="Sweby"/>
+                <limiter name="Sweby" />
               </limit_face_value>
             </face_value>
-            <diffusion_scheme name="ElementGradient"/>
+            <diffusion_scheme name="ElementGradient" />
           </control_volumes>
           <conservative_advection>
             <real_value rank="0">0.0</real_value>
@@ -2085,7 +2085,7 @@ for i in range(field.element_count):
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
+            <hypre_type name="boomeramg" />
           </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-15</real_value>
@@ -2093,9 +2093,9 @@ for i in range(field.element_count):
           <max_iterations>
             <integer_value rank="0">501</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <never_ignore_solver_failures />
           <diagnostics>
-            <monitors/>
+            <monitors />
           </diagnostics>
         </solver>
         <initial_condition name="WholeMesh">
@@ -2112,7 +2112,7 @@ for i in range(field.element_count):
                 </constant>
               </isotropic>
             </value>
-            <output/>
+            <output />
           </prescribed>
         </tensor_field>
         <scalar_field name="HeatCapacity" rank="0">
@@ -2122,58 +2122,58 @@ for i in range(field.element_count):
                 <real_value rank="0">490.0</real_value>
               </constant>
             </value>
-            <output/>
-            <stat/>
+            <output />
+            <stat />
             <detectors>
-              <exclude_from_detectors/>
+              <exclude_from_detectors />
             </detectors>
           </prescribed>
         </scalar_field>
-        <output/>
-        <stat/>
+        <output />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
     <scalar_field name="temperature_to_fetch" rank="0">
       <diagnostic>
-        <algorithm source_field_type="scalar" material_phase_support="single" name="scalar_copy" source_field_name="Temperature"/>
-        <mesh name="P0DG"/>
-        <output/>
-        <stat/>
+        <algorithm source_field_type="scalar" material_phase_support="single" name="scalar_copy" source_field_name="Temperature" />
+        <mesh name="P0DG" />
+        <output />
+        <stat />
         <convergence>
-          <exclude_from_convergence/>
+          <exclude_from_convergence />
         </convergence>
         <detectors>
-          <exclude_from_detectors/>
+          <exclude_from_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </diagnostic>
     </scalar_field>
     <vector_field name="U" rank="1">
       <diagnostic>
-        <algorithm name="Internal" material_phase_support="multiple"/>
-        <mesh name="VelocityMesh"/>
-        <output/>
+        <algorithm name="Internal" material_phase_support="multiple" />
+        <mesh name="VelocityMesh" />
+        <output />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
         </stat>
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
       </diagnostic>
     </vector_field>
