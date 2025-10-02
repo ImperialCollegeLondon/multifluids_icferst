@@ -42,7 +42,8 @@
     <dump_format>
       <string_value>vtk</string_value>
     </dump_format>
-    <dump_units_SI /><dump_period>
+    <dump_units_SI/>
+    <dump_period>
       <constant>
         <real_value rank="0">5e-3</real_value>
       </constant>
