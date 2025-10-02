@@ -3,16 +3,16 @@
   <simulation_name>
     <string_value lines="1">cwc_P1DGP1</string_value>
   </simulation_name>
-  <inertia_dominated_simulator/>
+  <inertia_dominated_simulator />
   <geometry>
     <dimension>
       <integer_value rank="0">2</integer_value>
     </dimension>
     <mesh name="CoordinateMesh">
       <from_file file_name="src/2d_mesh">
-        <format name="gmsh"/>
+        <format name="gmsh" />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
         </stat>
       </from_file>
     </mesh>
@@ -20,12 +20,12 @@
       <string_value>balanced</string_value>
     </simulation_quality>
   </geometry>
-  <solver_options/>
+  <solver_options />
   <io>
     <dump_format>
       <string_value>vtk</string_value>
     </dump_format>
-    <dump_period_in_timesteps>
+    <dump_units_SI /><dump_period_in_timesteps>
       <constant>
         <integer_value rank="0">5</integer_value>
       </constant>
@@ -49,17 +49,17 @@
       </magnitude>
       <vector_field name="GravityDirection" rank="1">
         <prescribed>
-          <mesh name="CoordinateMesh"/>
+          <mesh name="CoordinateMesh" />
           <value name="WholeMesh">
             <constant>
               <real_value rank="1" dim1="dim" shape="2">0.0 -1.0</real_value>
             </constant>
           </value>
           <stat>
-            <include_in_stat/>
+            <include_in_stat />
           </stat>
           <detectors>
-            <exclude_from_detectors/>
+            <exclude_from_detectors />
           </detectors>
         </prescribed>
       </vector_field>
@@ -75,22 +75,22 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <diagnostic>
-            <algorithm name="Internal" material_phase_support="multiple"/>
-            <mesh name="VelocityMesh"/>
+            <algorithm name="Internal" material_phase_support="multiple" />
+            <mesh name="VelocityMesh" />
             <stat>
-              <include_in_stat/>
+              <include_in_stat />
             </stat>
           </diagnostic>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <tensor_form />
+          <nonlinear_scheme />
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
     <scalar_field rank="0" name="Pressure">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">101325.0</real_value>
@@ -101,22 +101,22 @@
             <integer_value rank="1" shape="1">9</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">101325.0</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <exclude_from_detectors/>
+          <exclude_from_detectors />
         </detectors>
-        <consistent_interpolation/>
-        <output/>
+        <consistent_interpolation />
+        <output />
       </prognostic>
     </scalar_field>
     <vector_field rank="1" name="Velocity">
       <prognostic>
-        <mesh name="VelocityMesh"/>
+        <mesh name="VelocityMesh" />
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="1" dim1="dim" shape="2">0.0 0.0</real_value>
@@ -127,7 +127,7 @@
             <integer_value rank="1" shape="1">6</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -147,7 +147,7 @@
             <integer_value rank="1" shape="1">8</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -167,7 +167,7 @@
             <integer_value rank="1" shape="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -202,18 +202,18 @@
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
-        <output/>
+        <consistent_interpolation />
+        <output />
       </prognostic>
     </vector_field>
     <scalar_field rank="0" name="Density">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <Impose_min_max>
-          <automatic_min_limit/>
-          <automatic_max_limit/>
+          <automatic_min_limit />
+          <automatic_max_limit />
         </Impose_min_max>
         <initial_condition name="WholeMesh">
           <constant>
@@ -221,15 +221,15 @@
           </constant>
         </initial_condition>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
-        <output/>
+        <consistent_interpolation />
+        <output />
       </prognostic>
     </scalar_field>
     <scalar_field rank="0" name="PhaseVolumeFraction">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">1.</real_value>
@@ -240,16 +240,16 @@
             <integer_value rank="1" shape="1">9</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">1.</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
   </material_phase>
@@ -267,8 +267,8 @@
         <Relaxation_Coefficient>
           <real_value rank="0">0.1</real_value>
         </Relaxation_Coefficient>
-        <Ensure_Positive/>
-        <Enforce_Comp_Sum2One/>
+        <Ensure_Positive />
+        <Enforce_Comp_Sum2One />
       </Comp_Sum2One>
     </is_multiphase_component>
     <phase_properties>
@@ -280,7 +280,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
-            <mesh name="PressureMesh"/>
+            <mesh name="PressureMesh" />
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -291,17 +291,17 @@
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <tensor_form />
+          <nonlinear_scheme />
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
     <vector_field rank="1" name="Velocity">
-      <aliased material_phase_name="phase1" field_name="Velocity"/>
+      <aliased material_phase_name="phase1" field_name="Velocity" />
     </vector_field>
     <scalar_field rank="0" name="ComponentMassFractionPhase1" material_phase_name="phase1">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <phase_properties>
           <Density>
             <incompressible>
@@ -311,7 +311,7 @@
           <Viscosity>
             <tensor_field name="Viscosity" rank="2">
               <prescribed>
-                <mesh name="PressureMesh"/>
+                <mesh name="PressureMesh" />
                 <value name="WholeMesh">
                   <isotropic>
                     <constant>
@@ -322,8 +322,8 @@
               </prescribed>
             </tensor_field>
             <viscosity_scheme>
-              <tensor_form/>
-              <nonlinear_scheme/>
+              <tensor_form />
+              <nonlinear_scheme />
             </viscosity_scheme>
           </Viscosity>
         </phase_properties>
@@ -340,14 +340,14 @@
             <integer_value rank="1" shape="1">9</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">0</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <adaptivity_options>
           <absolute_measure>
@@ -358,15 +358,15 @@
                     <real_value rank="0">0.0001</real_value>
                   </constant>
                 </value>
-                <stat/>
+                <stat />
                 <detectors>
-                  <exclude_from_detectors/>
+                  <exclude_from_detectors />
                 </detectors>
               </prescribed>
             </scalar_field>
           </absolute_measure>
         </adaptivity_options>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
   </material_phase>
@@ -384,8 +384,8 @@
         <Relaxation_Coefficient>
           <real_value rank="0">0.1</real_value>
         </Relaxation_Coefficient>
-        <Ensure_Positive/>
-        <Enforce_Comp_Sum2One/>
+        <Ensure_Positive />
+        <Enforce_Comp_Sum2One />
       </Comp_Sum2One>
     </is_multiphase_component>
     <phase_properties>
@@ -397,7 +397,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
-            <mesh name="PressureMesh"/>
+            <mesh name="PressureMesh" />
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -408,17 +408,17 @@
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <tensor_form />
+          <nonlinear_scheme />
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
     <vector_field rank="1" name="Velocity">
-      <aliased material_phase_name="phase1" field_name="Velocity"/>
+      <aliased material_phase_name="phase1" field_name="Velocity" />
     </vector_field>
     <scalar_field rank="0" name="ComponentMassFractionPhase1" material_phase_name="phase1">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <phase_properties>
           <Density>
             <incompressible>
@@ -428,7 +428,7 @@
           <Viscosity>
             <tensor_field name="Viscosity" rank="2">
               <prescribed>
-                <mesh name="PressureMesh"/>
+                <mesh name="PressureMesh" />
                 <value name="WholeMesh">
                   <isotropic>
                     <constant>
@@ -439,8 +439,8 @@
               </prescribed>
             </tensor_field>
             <viscosity_scheme>
-              <tensor_form/>
-              <nonlinear_scheme/>
+              <tensor_form />
+              <nonlinear_scheme />
             </viscosity_scheme>
           </Viscosity>
         </phase_properties>
@@ -457,14 +457,14 @@
             <integer_value rank="1" shape="1">9</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">0</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <adaptivity_options>
           <absolute_measure>
@@ -475,15 +475,15 @@
                     <real_value rank="0">0.0001</real_value>
                   </constant>
                 </value>
-                <stat/>
+                <stat />
                 <detectors>
-                  <exclude_from_detectors/>
+                  <exclude_from_detectors />
                 </detectors>
               </prescribed>
             </scalar_field>
           </absolute_measure>
         </adaptivity_options>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
   </material_phase>
@@ -501,8 +501,8 @@
         <Relaxation_Coefficient>
           <real_value rank="0">0.1</real_value>
         </Relaxation_Coefficient>
-        <Ensure_Positive/>
-        <Enforce_Comp_Sum2One/>
+        <Ensure_Positive />
+        <Enforce_Comp_Sum2One />
       </Comp_Sum2One>
     </is_multiphase_component>
     <phase_properties>
@@ -514,7 +514,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
-            <mesh name="PressureMesh"/>
+            <mesh name="PressureMesh" />
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -525,17 +525,17 @@
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <tensor_form />
+          <nonlinear_scheme />
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
     <vector_field rank="1" name="Velocity">
-      <aliased material_phase_name="phase1" field_name="Velocity"/>
+      <aliased material_phase_name="phase1" field_name="Velocity" />
     </vector_field>
     <scalar_field rank="0" name="ComponentMassFractionPhase1" material_phase_name="phase1">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <phase_properties>
           <Density>
             <incompressible>
@@ -545,7 +545,7 @@
           <Viscosity>
             <tensor_field name="Viscosity" rank="2">
               <prescribed>
-                <mesh name="PressureMesh"/>
+                <mesh name="PressureMesh" />
                 <value name="WholeMesh">
                   <isotropic>
                     <constant>
@@ -556,8 +556,8 @@
               </prescribed>
             </tensor_field>
             <viscosity_scheme>
-              <tensor_form/>
-              <nonlinear_scheme/>
+              <tensor_form />
+              <nonlinear_scheme />
             </viscosity_scheme>
           </Viscosity>
         </phase_properties>
@@ -574,14 +574,14 @@
             <integer_value rank="1" shape="1">9</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">0</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <adaptivity_options>
           <absolute_measure>
@@ -592,15 +592,15 @@
                     <real_value rank="0">0.0001</real_value>
                   </constant>
                 </value>
-                <stat/>
+                <stat />
                 <detectors>
-                  <exclude_from_detectors/>
+                  <exclude_from_detectors />
                 </detectors>
               </prescribed>
             </scalar_field>
           </absolute_measure>
         </adaptivity_options>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
   </material_phase>
@@ -618,8 +618,8 @@
         <Relaxation_Coefficient>
           <real_value rank="0">0.1</real_value>
         </Relaxation_Coefficient>
-        <Ensure_Positive/>
-        <Enforce_Comp_Sum2One/>
+        <Ensure_Positive />
+        <Enforce_Comp_Sum2One />
       </Comp_Sum2One>
     </is_multiphase_component>
     <phase_properties>
@@ -631,7 +631,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
-            <mesh name="PressureMesh"/>
+            <mesh name="PressureMesh" />
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -642,17 +642,17 @@
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <tensor_form />
+          <nonlinear_scheme />
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
     <vector_field rank="1" name="Velocity">
-      <aliased material_phase_name="phase1" field_name="Velocity"/>
+      <aliased material_phase_name="phase1" field_name="Velocity" />
     </vector_field>
     <scalar_field rank="0" name="ComponentMassFractionPhase1" material_phase_name="phase1">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <phase_properties>
           <Density>
             <incompressible>
@@ -662,7 +662,7 @@
           <Viscosity>
             <tensor_field name="Viscosity" rank="2">
               <prescribed>
-                <mesh name="PressureMesh"/>
+                <mesh name="PressureMesh" />
                 <value name="WholeMesh">
                   <isotropic>
                     <constant>
@@ -673,8 +673,8 @@
               </prescribed>
             </tensor_field>
             <viscosity_scheme>
-              <tensor_form/>
-              <nonlinear_scheme/>
+              <tensor_form />
+              <nonlinear_scheme />
             </viscosity_scheme>
           </Viscosity>
         </phase_properties>
@@ -691,14 +691,14 @@
             <integer_value rank="1" shape="1">9</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">0</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <adaptivity_options>
           <absolute_measure>
@@ -709,15 +709,15 @@
                     <real_value rank="0">0.0001</real_value>
                   </constant>
                 </value>
-                <stat/>
+                <stat />
                 <detectors>
-                  <exclude_from_detectors/>
+                  <exclude_from_detectors />
                 </detectors>
               </prescribed>
             </scalar_field>
           </absolute_measure>
         </adaptivity_options>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
   </material_phase>
@@ -735,8 +735,8 @@
         <Relaxation_Coefficient>
           <real_value rank="0">0.1</real_value>
         </Relaxation_Coefficient>
-        <Ensure_Positive/>
-        <Enforce_Comp_Sum2One/>
+        <Ensure_Positive />
+        <Enforce_Comp_Sum2One />
       </Comp_Sum2One>
     </is_multiphase_component>
     <phase_properties>
@@ -748,7 +748,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
-            <mesh name="PressureMesh"/>
+            <mesh name="PressureMesh" />
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -759,17 +759,17 @@
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <tensor_form />
+          <nonlinear_scheme />
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
     <vector_field rank="1" name="Velocity">
-      <aliased material_phase_name="phase1" field_name="Velocity"/>
+      <aliased material_phase_name="phase1" field_name="Velocity" />
     </vector_field>
     <scalar_field rank="0" name="ComponentMassFractionPhase1" material_phase_name="phase1">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <phase_properties>
           <Density>
             <incompressible>
@@ -779,7 +779,7 @@
           <Viscosity>
             <tensor_field name="Viscosity" rank="2">
               <prescribed>
-                <mesh name="PressureMesh"/>
+                <mesh name="PressureMesh" />
                 <value name="WholeMesh">
                   <isotropic>
                     <constant>
@@ -790,8 +790,8 @@
               </prescribed>
             </tensor_field>
             <viscosity_scheme>
-              <tensor_form/>
-              <nonlinear_scheme/>
+              <tensor_form />
+              <nonlinear_scheme />
             </viscosity_scheme>
           </Viscosity>
         </phase_properties>
@@ -808,16 +808,16 @@
             <integer_value rank="1" shape="1">9</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">1</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </prognostic>
     </scalar_field>
   </material_phase>
