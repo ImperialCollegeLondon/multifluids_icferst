@@ -1,4 +1,4 @@
-FROM fluidity/baseimages:noble
+FROM benfulton/icferst:noble
 
 USER root
 
@@ -12,8 +12,10 @@ RUN chown -R fluidity /home/fluidity
 
 USER fluidity
 
-ENV FCFLAGS="-I/usr/include"
+ENV FCFLAGS="-I/usr/local/zoltan/include -L/usr/local/zoltan/lib"
 
-RUN ./configure --enable-2d-adaptivity
-RUN make mp
-RUN make fltools
+RUN ./configure2 --enable-2d-adaptivity
+RUN cp libjudy/libtool libspud
+RUN make -j8 mp
+
+# RUN make fltools
