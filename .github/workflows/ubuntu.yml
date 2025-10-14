@@ -20,6 +20,7 @@ on:
       - hayley_dev
       - ruixiao_dev_new
       - master_ubuntu24
+      - master_ubuntu24_new
 
 jobs:
 
