@@ -36,8 +36,10 @@ module multi_pipes
     use multi_data_types
     use write_state_module, only: write_state
     use boundary_conditions
+#include "petsc/finclude/petsc.h"   
+    use petsc
+    
     implicit none
-#include "petsc_legacy.h"
     private
 
     public  :: ASSEMBLE_PIPE_TRANSPORT_AND_CTY, MOD_1D_FORCE_BAL_C, retrieve_pipes_coords, pipe_coords, initialize_pipes_package_and_gamma
@@ -60,7 +62,7 @@ contains
     !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
     !>@param  packed_state  Linked list containing all the fields used by IC-FERST, memory partially shared with state
     !>@param  final_phase This is the final phase to be assembled, in this way we can assemble from phase 1 to final_phase not necessarily being for all the phases
-    !>@param wells_first_phase Starting phase of the well. For two phases this would be 3.    
+    !>@param wells_first_phase Starting phase of the well. For two phases this would be 3.
     !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
     !>@param WIC_T_BC_ALL Boundary conditions for the tracer
     !>@param WIC_D_BC_ALL Boundary conditions for the density
@@ -164,7 +166,7 @@ contains
     !   type(tensor_field), pointer ::temp_field, Concentration_field
       type (tensor_field_pointer), allocatable, DIMENSION(:) :: outfluxes_fields
       logical :: compute_outfluxes
-      PetscScalar :: petsc_dummy_val 
+      PetscScalar :: petsc_dummy_val
       PetscScalar,parameter :: one = 1.0
       PetscErrorCode :: ierr
       PetscInt :: i_indx, j_indx
@@ -587,7 +589,7 @@ contains
                           CV_NODJ = CV_GL_GL(CV_LJLOC)
                           direction_norm = - direction
                       END IF
-                      if (.not. UPWIND_PIPES) then 
+                      if (.not. UPWIND_PIPES) then
                         TUPWIND_OUT=0.0; DUPWIND_OUT=0.0
                         TUPWIND_IN=0.0; DUPWIND_IN=0.0
 
@@ -726,7 +728,7 @@ contains
                             assembly_phase = iphase
                             !For the RHS collapsing to assemble into phase 2 can be done just here
                             if (assemble_collapsed_to_one_phase) assembly_phase = 2
-                            if (getNewtonType) then 
+                            if (getNewtonType) then
                               if (getResidual) call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,(LOC_MAT_II(iphase)*T_CV_NODI(iphase)+LOC_MAT_IJ(iphase)*T_CV_NODJ(iphase)) -LOC_CV_RHS_I(IPHASE))
                               !Introduce the information into the petsc_ACV matrix
                               call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase)*T_CV_NODI(iphase))
@@ -858,7 +860,7 @@ contains
                         if (getNewtonType) then
                           if (getResidual) call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,LOC_MAT_II(iphase)*T_ALL%val(1,iphase,JCV_NOD)-LOC_CV_RHS_I(IPHASE))
                           !Introduce the information into the petsc_ACV matrix
-                          call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,JCV_NOD,JCV_NOD, LOC_MAT_II(iphase)*T_ALL%val(1,iphase,JCV_NOD))                         
+                          call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,JCV_NOD,JCV_NOD, LOC_MAT_II(iphase)*T_ALL%val(1,iphase,JCV_NOD))
                         else
                           call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,LOC_CV_RHS_I(IPHASE))
                           !Introduce the information into the petsc_ACV matrix
@@ -892,12 +894,12 @@ contains
                       cv_nodj = cv_nodi
                       i_indx = Mmat%petsc_ACV%row_numbering%gnn2unn( cv_nodi, assembly_phase )
                       j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, assembly_phase )
-                      if (getNewtonType) then 
+                      if (getNewtonType) then
                         petsc_dummy_val = T_ALL%val(1,iphase,cv_nodi)
-                      else 
+                      else
                         petsc_dummy_val = 1.0
                       end if
-#if PETSC_VERSION_MINOR >=14 
+#if PETSC_VERSION_MINOR >=14
                       call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, petsc_dummy_val, ADD_VALUES, ierr)
 #else
                       call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, real(petsc_dummy_val, kind=PetscScalar_kind), ADD_VALUES, ierr)
@@ -961,9 +963,9 @@ contains
         RETURN
     END SUBROUTINE ONVDLIM_ANO_MANY
 
-    
+
   END SUBROUTINE MOD_1D_CT_AND_ADV
-  
+
   !!>@brief: Obtain sele from a cv_nod that is on the boundary
   !if not found then returns -1. Important to read BCs
   real function sele_from_cv_nod(Mdims, ndgln, cv_jnod)
@@ -1025,7 +1027,7 @@ contains
     !>@param MASS_ELE MAss of the elements, volume of elements
     !>@param bcs_outfluxes Outfluxes that pass boundary conditions, for mass conservation check
     !>@param  outfluxes  Contains all the fields required to compute the outfluxes of the model and create the outfluxes.csv file. Computed when assembling the continuity equation
-    !>@param  porous_heat_coef includes an average of porous and fluid heat coefficients 
+    !>@param  porous_heat_coef includes an average of porous and fluid heat coefficients
     !>@param assemble_collapsed_to_one_phase Collapses phases and solves for one single temperature. When there is thermal equilibrium
   subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, final_phase, Mdims, ndgln, DERIV, CV_P, &
                   SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL,&
@@ -1413,26 +1415,26 @@ contains
                       ! and the fluids. Here we add the porous media contribution
                       DO IPHASE = wells_first_phase, final_phase*2
                         LOC_MAT_II(iphase) = LOC_MAT_II(iphase) +  porous_heat_coef( CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
-                        * R_PHASE(IPHASE) * (1-MEAN_PORE_CV_TOTAL( 1, CV_NODI ))/MEAN_PORE_CV_TOTAL( 1, CV_NODI )
+                        * R_PHASE(IPHASE) * (1-MEAN_PORE_CV_TOTAL( Mdims%npres, CV_NODI ))/MEAN_PORE_CV_TOTAL( Mdims%npres, CV_NODI )
                               !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
                                   !we divide to remove that term and multiply by the correct term (1-porosity)
                           LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
                               + (CV_BETA * porous_heat_coef( CV_NODI ) * T2OLD_ALL( iphase, CV_NODI ) &
                               + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * T2_ALL( iphase, CV_NODI ) ) &
-                              * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV_TOTAL( 1, CV_NODI ))/MEAN_PORE_CV_TOTAL( 1, CV_NODI )
+                              * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV_TOTAL( Mdims%npres, CV_NODI ))/MEAN_PORE_CV_TOTAL( Mdims%npres, CV_NODI )
                       END DO
                     else
                       !In this case for the time-integration term the effective rho Cp is a combination of the porous media
                       ! and the fluids. Here we add the porous media contribution
                       DO IPHASE = wells_first_phase, final_phase*2
                         LOC_MAT_II(iphase) = LOC_MAT_II(iphase) +  porous_heat_coef( CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
-                        * R_PHASE(IPHASE) * (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
+                        * R_PHASE(IPHASE) * (1-MEAN_PORE_CV( Mdims%npres, CV_NODI ))/MEAN_PORE_CV( Mdims%npres, CV_NODI )
                               !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
                                   !we divide to remove that term and multiply by the correct term (1-porosity)
                           LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
                               + (CV_BETA * porous_heat_coef( CV_NODI ) * T2OLD_ALL( iphase, CV_NODI ) &
                               + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * T2_ALL( iphase, CV_NODI ) ) &
-                              * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
+                              * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV( Mdims%npres, CV_NODI ))/MEAN_PORE_CV( Mdims%npres, CV_NODI )
                       END DO
                     end if
                   end if
@@ -1478,7 +1480,7 @@ contains
                       assembly_phase_2 = iphase
                       if (assemble_collapsed_to_one_phase) assembly_phase_2 = 1 + (iphase-1)/Mdims%n_in_pres
                       if (getNewtonType) then
-                        if (getResidual) then 
+                        if (getResidual) then
                           !pscpsc DOES IT GO INTO assembly_phase_2 OR assembly_phase? FOR ME THE LOGIC IS ASSEMBLE_PHASE NOT THE 2... NEITHER SOLVE THE PROBLEM
                           call addto(Mmat%CV_RHS,assembly_phase_2, CV_NODI,MASS_PIPE_FOR_COUP( CV_NODI ) *&
                                                 PIPE_ABS( iphase, compact_phase, CV_NODI )*T_ALL( global_phase, CV_NODI ))
@@ -1488,7 +1490,7 @@ contains
                         call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, &
                             cv_nodi, cv_nodi, &
                             MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI )*T_ALL( global_phase, CV_NODI ))  ! We can use T_ALL because for Newton we only consider saturation
-                      else 
+                      else
                         call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, &
                             cv_nodi, cv_nodi, &
                             MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
@@ -1506,7 +1508,7 @@ contains
                       assembly_phase_2 = iphase
                       if (assemble_collapsed_to_one_phase) assembly_phase_2 = 1 + (iphase-1)/Mdims%n_in_pres
                       if (getNewtonType) then
-                        if (getResidual) then 
+                        if (getResidual) then
                           call addto(Mmat%CV_RHS,assembly_phase_2, CV_NODI,Mass_CV( CV_NODI ) *&
                                         ABSORBT_ALL( iphase, compact_phase, CV_NODI )*T_ALL( jphase, CV_NODI ))
                           ! call addto(Mmat%CV_RHS,assembly_phase_2, CV_NODI,Mass_CV( CV_NODI ) *&
@@ -1514,7 +1516,7 @@ contains
                         end if
                         call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, cv_nodi, cv_nodi, &
                             Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI )*T_ALL( jphase, CV_NODI ))  ! We can use T_ALL because for Newton we only consider saturation
-                      else 
+                      else
                        call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, cv_nodi, cv_nodi, &
                            Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI ))
                       end if
@@ -1527,7 +1529,7 @@ contains
                 assembly_phase = iphase
                 !For the RHS collapsing to assemble into phase 1 can be done just here
                 if (assemble_collapsed_to_one_phase) assembly_phase = 2
-                if (getNewtonType) then 
+                if (getNewtonType) then
                   if (getResidual) call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_MAT_II(iphase)*T_ALL(iphase,cv_nodi)-LOC_CV_RHS_I(IPHASE))
                   !Introduce the information into the petsc_ACV matrix
                   call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase)*T_ALL(iphase,cv_nodi) )
@@ -1566,8 +1568,8 @@ contains
                 ct_rhs_phase(iphase) = ct_rhs_phase(iphase) &
                     - R_PHASE(iphase) * ( &
                     + (1.0-W_SUM_ONE1) * T_ALL( iphase, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( iphase, CV_NODI ) &
-                    + ( TOLD_ALL( iphase, CV_NODI ) * ( DEN_ALL( iphase, CV_NODI ) - DENOLD_ALL( iphase, CV_NODI ) ) &
-                    - DERIV( iphase, CV_NODI ) * CV_P(1, Mdims%npres, cv_nodi ) * T_ALL( iphase, CV_NODI ) ) / DEN_ALL(iphase, CV_NODI ) )
+                    + (( TOLD_ALL( iphase, CV_NODI ) * ( DEN_ALL( iphase, CV_NODI ) - DENOLD_ALL( iphase, CV_NODI ) ) &
+                    - DERIV( iphase, CV_NODI ) * CV_P(1, Mdims%npres, cv_nodi )) * T_ALL( iphase, CV_NODI ))  / DEN_ALL(iphase, CV_NODI ))
                 DIAG_SCALE_PRES_phase( iphase ) = DIAG_SCALE_PRES_phase( iphase ) &
                     +  MEAN_PORE_CV_PHASE(iphase) * T_ALL( iphase, CV_NODI ) * DERIV( iphase, CV_NODI ) &
                     / ( DT * DEN_ALL(iphase, CV_NODI) )
@@ -2863,12 +2865,12 @@ contains
         type(tensor_field), pointer :: pressure
         !Initialize memory, despite we call it, if it is already allocated no memory is re-allocated
         call allocate_multi_pipe_package(pipes_aux, Mdims, Mspars)
-        
+
         !Initialize gamma
         sfield=>extract_scalar_field(state(1),"Gamma",ipres)
         ! This is for Halite optimiser to dynamically stop simulations
-        if (abs(maxval(sfield%val)- 666) < 1e-5) STOP 11011998 
-        
+        if (abs(maxval(sfield%val)- 666) < 1e-5) STOP 11011998
+
         pipes_aux%GAMMA_PRES_ABS = 0.0
         do ipres = 1, Mdims%npres
             do iphase = 1+(ipres-1)*Mdims%n_in_pres, ipres*Mdims%n_in_pres
@@ -2888,7 +2890,7 @@ contains
 
         pipes_aux%impose_strongBCs = .false.
         !Now ensure that gamma is zero at the pressure BCs so the strong BCs work properly (Only P0DGP1)
-        if (is_P0DGP1) then 
+        if (is_P0DGP1) then
             !Retrieve pressure
             pressure=>extract_tensor_field(packed_state,"PackedFEPressure",ipres)
             allocate(WIC_P_BC_ALL(1, Mdims%npres, surface_element_count(pressure)))
@@ -2896,7 +2898,7 @@ contains
             PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
             call get_entire_boundary_condition(pressure, ['weakdirichlet','freesurface  '],&
                                                 pressure_BCs,WIC_P_BC_ALL)
-            
+
             DO SELE = 1, Mdims%stotel
               DO IPRES = 2, Mdims%npres
                 !Find element where we have a pressure BC defined
@@ -2906,15 +2908,15 @@ contains
                     !If pipe diameter = 0, no changes made
                     if (PIPE_Diameter%val(cv_nod) <= 1e-8) cycle
                     !If gamma =0 and pressure bc and P0DG then we need to impose strong BCs
-                    if (maxval(abs(pipes_aux%GAMMA_PRES_ABS(:,:,cv_nod))) < 1e-8) then 
+                    if (maxval(abs(pipes_aux%GAMMA_PRES_ABS(:,:,cv_nod))) < 1e-8) then
                       pipes_aux%impose_strongBCs(cv_nod) = .true.
                     end if
-                  end do 
-                end if 
-              end do 
+                  end do
+                end if
+              end do
             end do
-            
-            if (have_option("/numerical_methods/Strong_BCs_for_P0DG_wells")) then 
+
+            if (have_option("/numerical_methods/Strong_BCs_for_P0DG_wells")) then
               !We impose gamma zero for all the wells since we are imposing strong BCs
               DO SELE = 1, Mdims%stotel
                 DO IPRES = 2, Mdims%npres
@@ -2928,9 +2930,9 @@ contains
                             pipes_aux%impose_strongBCs(cv_nod) = .true.
                             !To show in paraview if possible
                             if (size(sfield%val)> 2) sfield%val(cv_nod) = 0.
-                          end do 
-                      end if 
-                  end do 
+                          end do
+                      end if
+                  end do
               end do
             end if
 

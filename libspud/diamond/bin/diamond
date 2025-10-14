@@ -24,10 +24,7 @@ import string
 
 import gi
 gi.require_version('Gtk', '3.0')
-try:
-  gi.require_version('GtkSource', '4')
-except:
-  gi.require_version('GtkSource', '3.0')
+gi.require_version('GtkSource', '3.0')
 from gi.repository import Gtk as gtk
 from gi.repository import Gdk as gdk
 
@@ -224,7 +221,7 @@ def main():
   # Import the GUI Glade file.
 
   gladefile = None
-  for possible_gladefile in [os.path.join(diamond_path, "gui", "gui.ui"),
+  for possible_gladefile in [os.path.join(diamond_path, "gui", "gui_new.glade"),
                              os.path.join(diamond_path, "share", "diamond", "gui", "gui.ui"),
                              "/usr/share/diamond/gui/gui.ui"]:
     try:

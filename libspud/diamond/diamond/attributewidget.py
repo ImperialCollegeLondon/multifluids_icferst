@@ -28,15 +28,20 @@ class AttributeWidget(gtk.Frame):
   fontsize = 12
 
   def __init__(self):
-    gtk.Frame.__init__(self)
+    super().__init__()
 
     scrolledWindow = gtk.ScrolledWindow()
     scrolledWindow.set_policy(gtk.PolicyType.AUTOMATIC, gtk.PolicyType.AUTOMATIC)
 
     treeview = self.treeview = gtk.TreeView()
 
-    model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_PYOBJECT)
-    treeview.set_model(model)
+    # model = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_PYOBJECT)
+    # treeview.set_model(model)
+    self.store = gtk.ListStore(gobject.TYPE_STRING,
+                               gobject.TYPE_STRING,
+                              gobject.TYPE_PYOBJECT)
+    self.treeview.set_model(self.store) 
+    
     treeview.connect("motion-notify-event", self.treeview_mouse_over)
 
     self.key_renderer = key_renderer = gtk.CellRendererText()
@@ -82,11 +87,14 @@ class AttributeWidget(gtk.Frame):
     self.set_label_widget(label)
     self.set_shadow_type(gtk.ShadowType.NONE)
     self.add(scrolledWindow)
+    
+    self.store = gtk.ListStore(str, str, object)
+    self.treeview.set_model(self.store)
 
   def update(self, node):
 
-    self.treeview.get_model().clear()
-
+    self.store.clear()
+    
     self.node = node
 
     if node is None or node.all_attrs_fixed():

@@ -3,16 +3,16 @@
   <simulation_name>
     <string_value lines="1">3D_Sod_Shock_f</string_value>
   </simulation_name>
-  <inertia_dominated_simulator/>
+  <inertia_dominated_simulator />
   <geometry>
     <dimension>
       <integer_value rank="0">3</integer_value>
     </dimension>
     <mesh name="CoordinateMesh">
       <from_file file_name="src/3d_mesh_f">
-        <format name="gmsh"/>
+        <format name="gmsh" />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
         </stat>
       </from_file>
     </mesh>
@@ -30,7 +30,7 @@
           <real_value rank="0">0.0</real_value>
         </conservative_advection>
       </Conservative_formulation_settings>
-      <FE_Pressure/>
+      <FE_Pressure />
     </Advance_options>
   </geometry>
   <solver_options>
@@ -42,6 +42,7 @@
     <dump_format>
       <string_value>vtk</string_value>
     </dump_format>
+    <dump_units_SI/>
     <dump_period>
       <constant>
         <real_value rank="0">5e-3</real_value>
@@ -63,7 +64,7 @@
         <real_value rank="0">1.0</real_value>
       </requested_cfl>
       <courant_number name="CFLNumber">
-        <mesh name="VelocityMesh"/>
+        <mesh name="VelocityMesh" />
       </courant_number>
     </adaptive_timestep>
   </timestepping>
@@ -80,7 +81,7 @@
                 <real_value rank="0">0.0</real_value>
               </constant>
             </coefficient_B>
-            <include_internal_energy/>
+            <include_internal_energy />
           </linear_in_pressure>
         </compressible>
       </Density>
@@ -103,15 +104,15 @@ for i in range(field.node_count):
  #Assign the dummy field
  field.set( i, viscosity )</string_value>
             </algorithm>
-            <mesh name="PressureMesh"/>
+            <mesh name="PressureMesh" />
             <stat>
-              <include_in_stat/>
+              <include_in_stat />
             </stat>
           </diagnostic>
         </tensor_field>
         <viscosity_scheme>
-          <compact_discontinuous_galerkin/>
-          <nonlinear_scheme/>
+          <compact_discontinuous_galerkin />
+          <nonlinear_scheme />
         </viscosity_scheme>
       </Viscosity>
       <Stabilisation>
@@ -125,13 +126,13 @@ for i in range(field.node_count):
           <include_pressure>
             <real_value rank="0">1</real_value>
           </include_pressure>
-          <stress_form/>
+          <stress_form />
         </Petrov_Galerkin_stabilisation>
       </Stabilisation>
     </phase_properties>
     <scalar_field rank="0" name="Pressure">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <initial_condition name="WholeMesh">
           <python>
             <string_value type="code" language="python" lines="20">def val(X, t):
@@ -145,14 +146,14 @@ for i in range(field.node_count):
             <integer_value rank="1" shape="1">4</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">0.1</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <exclude_from_detectors/>
+          <exclude_from_detectors />
         </detectors>
         <adaptivity_options>
           <absolute_measure>
@@ -163,9 +164,9 @@ for i in range(field.node_count):
                     <real_value rank="0">0.05</real_value>
                   </constant>
                 </value>
-                <stat/>
+                <stat />
                 <detectors>
-                  <exclude_from_detectors/>
+                  <exclude_from_detectors />
                 </detectors>
               </prescribed>
             </scalar_field>
@@ -173,14 +174,14 @@ for i in range(field.node_count):
         </adaptivity_options>
         <galerkin_projection>
           <continuous>
-            <solver/>
+            <solver />
           </continuous>
         </galerkin_projection>
       </prognostic>
     </scalar_field>
     <vector_field rank="1" name="Velocity">
       <prognostic>
-        <mesh name="VelocityMesh"/>
+        <mesh name="VelocityMesh" />
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="1" dim1="dim" shape="3">0.0 0.0 0.0</real_value>
@@ -191,7 +192,7 @@ for i in range(field.node_count):
             <integer_value rank="1" shape="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -216,7 +217,7 @@ for i in range(field.node_count):
             <integer_value rank="1" shape="2">2 3</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -237,16 +238,16 @@ for i in range(field.node_count):
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <galerkin_projection>
-          <discontinuous/>
+          <discontinuous />
         </galerkin_projection>
       </prognostic>
     </vector_field>
     <scalar_field rank="0" name="Density">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <initial_condition name="WholeMesh">
           <python>
             <string_value type="code" language="python" lines="20">def val(X, t):
@@ -260,14 +261,14 @@ for i in range(field.node_count):
             <integer_value rank="1" shape="1">4</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">0.125</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <adaptivity_options>
           <absolute_measure>
@@ -278,9 +279,9 @@ for i in range(field.node_count):
                     <real_value rank="0">0.05</real_value>
                   </constant>
                 </value>
-                <stat/>
+                <stat />
                 <detectors>
-                  <exclude_from_detectors/>
+                  <exclude_from_detectors />
                 </detectors>
               </prescribed>
             </scalar_field>
@@ -288,14 +289,14 @@ for i in range(field.node_count):
         </adaptivity_options>
         <galerkin_projection>
           <continuous>
-            <solver/>
+            <solver />
           </continuous>
         </galerkin_projection>
       </prognostic>
     </scalar_field>
     <scalar_field rank="0" name="PhaseVolumeFraction">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">1</real_value>
@@ -306,25 +307,25 @@ for i in range(field.node_count):
             <integer_value rank="1" shape="4">1 2 3 4</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <constant>
               <real_value rank="0">1</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <galerkin_projection>
           <continuous>
-            <solver/>
+            <solver />
           </continuous>
         </galerkin_projection>
       </prognostic>
     </scalar_field>
     <scalar_field rank="0" name="Temperature">
       <prognostic>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <initial_condition name="WholeMesh">
           <python>
             <string_value type="code" language="python" lines="20">def val(X, t):
@@ -342,7 +343,7 @@ for i in range(field.node_count):
             <integer_value rank="1" shape="1">4</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly/>
+            <apply_weakly />
             <python>
               <string_value type="code" language="python" lines="20">def val(X, t):
   g=1.4
@@ -353,7 +354,7 @@ for i in range(field.node_count):
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <adaptivity_options>
           <absolute_measure>
@@ -364,9 +365,9 @@ for i in range(field.node_count):
                     <real_value rank="0">0.10</real_value>
                   </constant>
                 </value>
-                <stat/>
+                <stat />
                 <detectors>
-                  <exclude_from_detectors/>
+                  <exclude_from_detectors />
                 </detectors>
               </prescribed>
             </scalar_field>
@@ -374,43 +375,43 @@ for i in range(field.node_count):
         </adaptivity_options>
         <galerkin_projection>
           <continuous>
-            <solver/>
+            <solver />
           </continuous>
         </galerkin_projection>
       </prognostic>
     </scalar_field>
     <scalar_field rank="0" name="CFLNumber">
       <diagnostic>
-        <algorithm name="Internal" material_phase_support="multiple"/>
-        <mesh name="VelocityMesh"/>
-        <stat/>
+        <algorithm name="Internal" material_phase_support="multiple" />
+        <mesh name="VelocityMesh" />
+        <stat />
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <exclude_from_detectors/>
+          <exclude_from_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
       </diagnostic>
     </scalar_field>
     <vector_field rank="1" name="GalerkinProjection">
       <diagnostic>
-        <algorithm name="Internal" material_phase_support="multiple" legacy="true"/>
+        <algorithm name="Internal" material_phase_support="multiple" legacy="true" />
         <source_field_name>Velocity</source_field_name>
-        <mesh name="PressureMesh"/>
+        <mesh name="PressureMesh" />
         <stat>
-          <include_in_stat/>
+          <include_in_stat />
         </stat>
         <convergence>
-          <include_in_convergence/>
+          <include_in_convergence />
         </convergence>
         <detectors>
-          <include_in_detectors/>
+          <include_in_detectors />
         </detectors>
         <steady_state>
-          <include_in_steady_state/>
+          <include_in_steady_state />
         </steady_state>
         <adaptivity_options>
           <absolute_measure>
@@ -422,16 +423,16 @@ for i in range(field.node_count):
                   </constant>
                 </value>
                 <stat>
-                  <include_in_stat/>
+                  <include_in_stat />
                 </stat>
                 <detectors>
-                  <exclude_from_detectors/>
+                  <exclude_from_detectors />
                 </detectors>
               </prescribed>
             </vector_field>
           </absolute_measure>
         </adaptivity_options>
-        <consistent_interpolation/>
+        <consistent_interpolation />
       </diagnostic>
     </vector_field>
   </material_phase>
@@ -475,7 +476,7 @@ for i in range(field.node_count):
       <metric_advection>
         <spatial_discretisation>
           <control_volumes>
-            <face_value name="FirstOrderUpwind"/>
+            <face_value name="FirstOrderUpwind" />
           </control_volumes>
           <conservative_advection>
             <real_value rank="0">0</real_value>
@@ -487,9 +488,9 @@ for i in range(field.node_count):
           </theta>
           <maximum_courant_number_per_subcycle>
             <real_value rank="0">0.75</real_value>
-            <courant_number name="ControlVolumeCFLNumber"/>
+            <courant_number name="ControlVolumeCFLNumber" />
           </maximum_courant_number_per_subcycle>
-          <control_volumes/>
+          <control_volumes />
         </temporal_discretisation>
         <solver>
           <relative_error>
@@ -498,15 +499,15 @@ for i in range(field.node_count):
           <max_iterations>
             <integer_value rank="0">500</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <never_ignore_solver_failures />
           <diagnostics>
-            <monitors/>
+            <monitors />
           </diagnostics>
         </solver>
-        <output/>
+        <output />
       </metric_advection>
-      <project_continuity/>
+      <project_continuity />
     </hr_adaptivity>
   </mesh_adaptivity>
-  <numerical_methods/>
+  <numerical_methods />
 </icferst_options>

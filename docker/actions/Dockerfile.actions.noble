@@ -1,0 +1,21 @@
+FROM benfulton/icferst:noble
+
+USER root
+
+RUN apt-get -y update && \
+      apt-get -y dist-upgrade && \
+      rm -rf /var/cache/apt/archives && \
+      rm -rf /var/lib/apt/lists
+
+COPY . /home/fluidity
+RUN chown -R fluidity /home/fluidity
+
+USER fluidity
+
+ENV FCFLAGS="-I/usr/local/zoltan/include -L/usr/local/zoltan/lib"
+
+RUN ./configure2 --enable-2d-adaptivity
+RUN cp libjudy/libtool libspud
+RUN make -j8 mp
+
+# RUN make fltools

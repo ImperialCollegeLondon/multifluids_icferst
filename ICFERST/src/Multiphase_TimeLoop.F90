@@ -29,9 +29,8 @@
 !----------------------------------------------------------------------------------------
 module multiphase_time_loop
 
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
   use petsc
-#endif
 
 #ifdef USING_PHREEQC
   use multi_phreeqc
@@ -230,7 +229,7 @@ contains
         !!-Variable to keep track of dt reduction for meeting dump_period requirements
         real, save :: stored_dt = -1
         real :: old_acctim, nonlinear_dt
-        
+
         ! VAD related saturation
         real, allocatable, dimension(:,:) :: prev_sat
 
@@ -447,12 +446,11 @@ contains
         call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Picard_its', picard_its, default = NonLinearIteration+1 )
 
         call get_option("/geometry/simulation_quality", sim_qlty)
-        if (trim(sim_qlty) /= "fast" .and. have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Picard_its')) then 
+        if (trim(sim_qlty) /= "fast" .and. have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Picard_its')) then
             ewrite(0,*) "====================================================================="
             ewrite(0,*) "WARNING: Newton solver should be used with simulation_quality = fast."
             ewrite(0,*) "====================================================================="
         end if
-
 
         !!$
         have_temperature_field = .false. ; have_component_field = .false. ; have_extra_DiffusionLikeTerm = .false.
@@ -738,15 +736,15 @@ contains
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                   ! Ensure that sat_bak is always defined (pscpsc only if VAD defined)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                    
-                    if (its <= picard_its) then 
+
+                    if (its <= picard_its) then
                       ! print *, "Picard iteration", its, picard_its
                       call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val,porosity_total_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
-                    else 
+                    else
                       ! print *, "Newton iteration", its, picard_its
                       if (its==1)  prev_sat = saturation_field%val(1,:,:)
                       call VolumeFraction_Assemble_Solve_Newton( state, packed_state, multicomponent_state,&
@@ -757,7 +755,7 @@ contains
                   end if
                   !Update the prev_sat field (pscpsc only if VAD defined)
                   ! Especial handler only required by adapt within FPI, which should removed as it is never used
-                  if (size(saturation_field%val,3)/=size(prev_sat,2)) then 
+                  if (size(saturation_field%val,3)/=size(prev_sat,2)) then
                     deallocate(prev_sat); allocate(prev_sat(Mdims%nphase, Mdims%cv_nonods))
                   end if
                   prev_sat = saturation_field%val(1,:,:)
@@ -774,30 +772,6 @@ contains
                 !#=================================================================================================================
                 !# End Velocity Update -> Move to ->the rest
                 !#=================================================================================================================
-
-                !!$ Solve advection of the scalar 'Temperature':
-                Conditional_ScalarAdvectionField: if( have_temperature_field ) then
-
-                    ewrite(3,*)'Now advecting Temperature Field'
-                    call set_nu_to_u( packed_state )
-                    !call calculate_diffusivity( state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
-                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
-                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                    call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                        suf_sig_diagten_bc, Porosity_field%val, porosity_total_field%val, &
-                        !!$
-                        0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                        option_path = '/material_phase[0]/scalar_field::Temperature', &
-                        thermal = .true.,&
-                        ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, nonlinear_iteration = its)
-                END IF Conditional_ScalarAdvectionField
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
@@ -860,7 +834,28 @@ contains
                 end if
                 !#=================================================================================================================
 
-
+                !!$ Finally Solve advection of the scalar 'Temperature'. Always solve temperature last to avoid having to recalculate Rhos
+                Conditional_ScalarAdvectionField: if( have_temperature_field ) then
+                    ewrite(3,*)'Now advecting Temperature Field'
+                    call set_nu_to_u( packed_state )
+                    !call calculate_diffusivity( state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
+                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                        suf_sig_diagten_bc, Porosity_field%val, porosity_total_field%val, &
+                        !!$
+                        0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                        option_path = '/material_phase[0]/scalar_field::Temperature', &
+                        thermal = .true.,&
+                        ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        saturation=saturation_field, nonlinear_iteration = its)
+                END IF Conditional_ScalarAdvectionField
 
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then

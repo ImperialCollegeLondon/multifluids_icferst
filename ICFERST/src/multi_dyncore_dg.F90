@@ -1353,7 +1353,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                  call zero(solution)
                  !########Solve the system#############
-                 
+
 ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 ! read*
                  call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken);total_lIts = total_lIts + its_taken;
@@ -1771,11 +1771,11 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
 
                  call zero(solution)
                  btrk = 1.0
-                if (nonlinear_iteration > 3) then 
+                if (nonlinear_iteration > 3) then
                   btrk = 0.75;
-                else if (nonlinear_iteration > 10) then 
+                else if (nonlinear_iteration > 10) then
                   btrk = 0.5;
-                else if (nonlinear_iteration > 15) then 
+                else if (nonlinear_iteration > 15) then
                   btrk = 0.25;
                 end if
 
@@ -1789,7 +1789,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                       if ( .not. node_owned( sat_field, cv_nodi ) ) cycle
                       if (ipres>1) then
                         if(pipe_diameter%val(cv_nodi)<=1d-8) cycle
-                      end if      
+                      end if
                       do iphase = 1 , n_in_pres
                         sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,cv_nodi) = &
                           sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,cv_nodi) + btrk*solution%val(iphase+(ipres-1)*n_in_pres,cv_nodi)
@@ -1797,15 +1797,15 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                     end do
                   end do
 
-                  ! Impose boundedness to the saturation 
+                  ! Impose boundedness to the saturation
                   call Set_Saturation_to_sum_one(mdims, packed_state, state, do_not_update_halos = .TRUE. )
                   !Set to zero the fields
                   call zero(Mmat%CV_RHS)
-                  
+
                   if (its > max_allowed_its) then ! used to have as well res < 1e-8.or. but tends to exit after just one
                     ! print *, "Newton solve: ", its, " ", res
                     backtrack_or_convergence = 1
-                    if (IsParallel()) call halo_update(sat_field) 
+                    if (IsParallel()) call halo_update(sat_field)
                     exit Loop_NonLinearFlux
                   end if
                  its = its + 1
@@ -1907,7 +1907,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         assemble_collapsed_to_one_phase)
  ! Inputs/Outputs
         IMPLICIT NONE
-        type( state_type ), dimension( : ), intent( inout ) :: state 
+        type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         integer, intent(in) ::  final_phase
         type(multi_dimensions), intent(in) :: Mdims
@@ -1928,8 +1928,8 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         INTEGER, intent( in ) :: CV_DISOPT, CV_DG_VEL_INT_OPT, &
             IGOT_T2, IGOT_THETA_FLUX
         REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
-        REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP 
-        REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: INV_B 
+        REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP
+        REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: INV_B
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         REAL, DIMENSION( :, : ), target, intent( inout ) :: DEN_ALL
@@ -1938,19 +1938,19 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         REAL, intent( in ) :: DT, CV_THETA, CV_BETA
         REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
-        REAL, DIMENSION( :, : ), intent( in ) :: DERIV 
+        REAL, DIMENSION( :, : ), intent( in ) :: DERIV
         REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
         REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
         REAL, DIMENSION( :, :, : ), pointer, intent( in ) :: ABSORBT_ALL
-        REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE 
+        REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
         LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, got_free_surf
         ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
-        REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV 
+        REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV
         REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
         type(tensor_field), intent(in), optional, target :: saturation
         REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION
         !Variables for Vanishing artificial diffusion
-        integer, optional, intent(inout) :: Phase_with_Pc 
+        integer, optional, intent(inout) :: Phase_with_Pc
         real, optional, dimension(:), intent(in) :: VAD_parameter
         !Variables to cache get_int_vel OLD
         real, optional, dimension(:), intent(inout) :: Courant_number
@@ -1989,19 +1989,8 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         !Also recalculate the Over-relaxation parameter
         call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
 
-!TODO PSCPSC
-! 2) OPTIMISE: II) MAYBE NOT NEEDED IF ONLY ONE NEWTON PER PICARD? => MATRICES SHOULD BE AN INPUT OF SATURATION_ASSEMB SO I DON'T NEED TO REALLOCATE THEM SO OFTEN
-! 3) ADD OVER_RELAXATION. DONE, NOT SURE IF IT IS WORKING FINE... WE USE THE PREVIOUS SATURATION TO CALCULATE THE OVER_RELAXATION PARAMETER
-        ! I AM SURE THIS COULD BE DONE BASED ON dS AND MAKE IT IMPLICIT, BUT I WILL NEED TO REFORMULATE IT...
-! 5) ADD WELLS TO JACOBIAN AND RESIDUAL. DONE QUICKLY... NOT WORTH THE TIME CONSIDERING THE SMALL PERCENTAGE THAT IT TAKES.
-        ! THE MALLOC IS BECAUSE IT IS NOT THE SAME NON-ZERO PATTERN BETWEEN THE ORIGINAL AND UNPERTURBED => FIXED. ALLOW TO ASSEMBLE TO A GIVEN MATRIX
-        ! I HAVE TRIED ASSEMBLING DIRECTLY THE JACOBIAN AS IT IS NOT DEPENDANT ON SATURATION. BUT THAT ALSO FAILED FOR SOME REASON...
-        ! NOT WORKING YET. THE USE OF MatAYPX TO DO THE DIFFERENCE DOES NOT ALWAYS MAKE THE DIFFERENCE... FRUSTRATING
-        ! OPTION A) JUST ASSEMBLE DIRECTLY THE JACOBIAN AND RESIDUAL (UGLY CODE BUT COULD DO, LAST TIME THIS FAILED)
-        ! OPTION B) TRY WITH A NEW PETSC THAT HAS MORE OPTION TO DIFFERENCES BETWEEN THE MATRICES
-
 ! print *, "ASSEMBLE FIRST"
-! read*        
+! read*
         call SATURATION_ASSEMB( state, packed_state, &
         Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
         sat_field, sat_bak, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
@@ -2020,7 +2009,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
 ! call MatView(petsc_ACV2%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
 ! read*
 
-        ! pscpsc avoid reallocating => THE MATRIX TO STORE INTO THE SUBROUTINES...     
+        ! pscpsc avoid reallocating => THE MATRIX TO STORE INTO THE SUBROUTINES...
         call deallocate(Mmat%petsc_ACV)
         call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, Mdims%nphase)
 
@@ -2029,7 +2018,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
             OldPhaseVolumeFraction = OldSatura, CV_Immobile_Fraction = CV_Immobile_Fraction)
         call allocate(vpert,Mdims%nphase,sat_field%mesh,"vpert"); vpert%val = 0d0;
         do cv_inod = 1, Mdims%cv_nonods
-          
+
           where (satura(:, cv_inod) - PERT > CV_Immobile_Fraction(:, cv_inod))
             vpert%val(:,cv_inod) = -PERT
           elsewhere
@@ -2069,8 +2058,8 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         vpert%val = 1d0/vpert%val
         call scale_PETSc_matrix_by_vector(Mmat%petsc_ACV, vpert)
 ! print*, "GENERATED JACOBIAN"
-! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)        
-! read*     
+! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
+! read*
 
         ! Clean up memory
         call deallocate(petsc_ACV2);call deallocate(vpert);
@@ -2780,6 +2769,7 @@ end if
         sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
         diag = Mdims%npres == 1!Make it non-diagonal to allow coupling between reservoir and pipes domains
         call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc",diag)
+
         CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
@@ -2813,7 +2803,8 @@ end if
           call extract_diagonal(cmc_petsc, diagonal_CMC)
           call scale_PETSc_matrix(cmc_petsc)
         end if
-        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+
+        call solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
@@ -2891,7 +2882,8 @@ end if
           REAL, DIMENSION( :, :, : ), intent(in) :: INV_B
           type( vector_field ), intent(inout) :: rhs_p
           type( vector_field ), intent(inout) :: deltap
-          type(tensor_field), intent(inout) :: P_all, velocity
+          type(tensor_field), pointer, intent(inout) :: P_all
+          type(tensor_field), intent(inout) :: velocity
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
           type( vector_field ), intent(inout) :: diagonal_A
           !Local variables
@@ -2998,7 +2990,7 @@ end if
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-            call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val, update_pres = .not. Special_precond)!don
+            call solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC, update_pres = .not. Special_precond)
             if (isParallel()) call halo_update(deltap)
             if (k == 1) then
               Omega = 1.0
@@ -3019,7 +3011,7 @@ end if
               !Ct x previous
               call compute_DIV_U(Mdims, Mmat, Mspars, aux_velocity%val, INV_B, rhs_p)
               !Solve again the system to finish the preconditioner
-              call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+              call solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC)
             end if
             if (isParallel()) call halo_update(P_all)
             !Update residual with the variation from the guessed value and the actual value obtained after appliying the function
@@ -3195,27 +3187,27 @@ end if
           type(multi_dimensions), intent(in) :: Mdims
           type( vector_field ), intent(inout) :: rhs_p
           type( vector_field ), intent(inout) :: deltap
-          real, dimension(Mdims%npres, Mdims%cv_nonods), intent(inout) :: P_all!Ensure dynamic conversion from three entries to two
+          type( tensor_field ), pointer :: P_all
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
-          real, dimension(Mdims%npres, Mdims%cv_nonods), intent(in) :: diagonal_CMC
+          type( vector_field ) :: diagonal_CMC
           logical, optional, intent(in) :: update_pres
           !Local variables
           integer :: its_taken
 
           !Rescale RHS (it is given the the matrix has been already re-scaled)
-          if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC)!Recover original X; X = D^-0.5 * X'
+          if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC%val)!Recover original X; X = D^-0.5 * X'
           call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken);total_lIts = total_lIts + its_taken;
           pres_its_taken = its_taken
 
           if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
           !If the system is re-scaled then now it is time to recover the correct solution
-          if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC) !Recover original X; X = D^-0.5 * X'
+          if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC%val) !Recover original X; X = D^-0.5 * X'
           !If false update pressure then return before doing so
           if (present_and_false(update_pres)) then
             return
           else
             !Now update the pressure
-            P_all = P_all + deltap%val
+            P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
           end if
 
         end subroutine solve_and_update_pressure

@@ -69,6 +69,22 @@ characters in the simulation name should be avoided.</a:documentation>
           </element>
         </element>
         <choice>
+          <element name="dump_units_SI">
+            <a:documentation>Outputs in SI units</a:documentation>
+            <empty/>
+          </element>
+          <element name="dump_units_METRIC">
+            <a:documentation>Outputs in METRIC system. This are SI units except for:
+
+Pressure -&gt; bar
+
+Temperature -&gt; Celsius
+
+Permeability -&gt; milliDarcy</a:documentation>
+            <empty/>
+          </element>
+        </choice>
+        <choice>
           <element name="dump_period">
             <a:documentation>Period between dumps in time units.
 

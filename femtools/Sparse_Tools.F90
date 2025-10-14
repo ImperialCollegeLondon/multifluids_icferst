@@ -37,9 +37,9 @@ module sparse_tools
   use memory_diagnostics
   use ieee_arithmetic
   use data_structures
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"  
   use petsc
-#endif
+
 
   implicit none
 

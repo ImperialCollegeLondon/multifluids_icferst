@@ -69,6 +69,7 @@
     <dump_format>
       <string_value>vtk</string_value>
     </dump_format>
+    <dump_units_SI/>
     <dump_period_in_timesteps>
       <constant>
         <integer_value rank="0">1</integer_value>
@@ -478,41 +479,41 @@
       <scalar_field name="porous_density">
         <dry_value>
           <prescribed>
-            <mesh name="P0DG" />
+            <mesh name="P0DG"/>
             <value name="WholeMesh">
               <constant>
                 <real_value rank="0">0</real_value>
               </constant>
             </value>
-            <stat />
+            <stat/>
             <detectors>
-              <exclude_from_detectors />
+              <exclude_from_detectors/>
             </detectors>
-            <output />
+            <output/>
           </prescribed>
         </dry_value>
       </scalar_field>
       <scalar_field name="porous_heat_capacity">
         <dry_value>
           <prescribed>
-            <mesh name="P0DG" />
+            <mesh name="P0DG"/>
             <value name="WholeMesh">
               <constant>
                 <real_value rank="0">0</real_value>
               </constant>
             </value>
-            <stat />
+            <stat/>
             <detectors>
-              <exclude_from_detectors />
+              <exclude_from_detectors/>
             </detectors>
-            <output />
+            <output/>
           </prescribed>
         </dry_value>
       </scalar_field>
       <tensor_field name="porous_thermal_conductivity">
         <dry_value>
           <prescribed>
-            <mesh name="P0DG" />
+            <mesh name="P0DG"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -520,7 +521,7 @@
                 </constant>
               </isotropic>
             </value>
-            <output />
+            <output/>
           </prescribed>
         </dry_value>
       </tensor_field>

@@ -31,9 +31,8 @@
     use global_parameters
     use elements
     use spud
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
     use petsc
-#endif
     use parallel_tools
     use data_structures
     use sparse_tools
@@ -62,7 +61,7 @@
     
 !--------------------------------------------------------------------------------------------------------------------
     subroutine petsc_solve_full_projection(x,ctp_m,inner_m,ct_m,rhs,pmat, velocity, &
-      state, inner_mesh, auxiliary_matrix)
+      state, inner_mesh, auxiliary_matrix, ct_m_is_gradient)
 !--------------------------------------------------------------------------------------------------------------------
 
       ! Solve Schur complement problem the nice way (using petsc) !!
@@ -83,6 +82,7 @@
       type(mesh_type), intent(in):: inner_mesh
       ! p1-p1 stabilization matrix or free surface terms:
       type(csr_matrix), optional, intent(in) :: auxiliary_matrix
+      logical, optional, intent(in):: ct_m_is_gradient
 
       KSP ksp ! Object type for outer solve (i.e. A * delta_p = rhs)
       Mat A ! PETSc Schur complement matrix (i.e. G^t*m^-1*G) 
@@ -106,7 +106,7 @@
       ewrite(2,*) 'Entering PETSc setup for Full Projection Solve'
       call petsc_solve_setup_full_projection(y,A,b,ksp,petsc_numbering,name,solver_option_path, &
            lstartfromzero,inner_m,ctp_m,ct_m,x%option_path,pmat, &
-           rhs, velocity, state, inner_mesh, auxiliary_matrix)
+           rhs, velocity, state, inner_mesh, auxiliary_matrix, ct_m_is_gradient)
 
       ewrite(2,*) 'Create RHS and solution Vectors in PETSc Format'
       ! create PETSc vec for rhs using above numbering:
@@ -139,7 +139,7 @@
 !--------------------------------------------------------------------------------------------------------
     subroutine petsc_solve_setup_full_projection(y,A,b,ksp,petsc_numbering_p,name,solver_option_path, &
          lstartfromzero,inner_m,div_matrix_comp, div_matrix_incomp,option_path,preconditioner_matrix,rhs, &
-         velocity, state, inner_mesh, auxiliary_matrix)
+         velocity, state, inner_mesh, auxiliary_matrix, ct_m_is_gradient)
          
 !--------------------------------------------------------------------------------------------------------
 
@@ -159,6 +159,8 @@
       character(len=*), intent(out) :: name
       ! Solver option paths:
       character(len=*), intent(out) :: solver_option_path
+
+      logical, optional, INTENT(IN) :: ct_m_is_gradient
 
       ! Stuff that comes in:
       !
@@ -208,9 +210,14 @@
       type(integer_set), dimension(velocity%dim):: boundary_row_set      
       integer reference_node, i, rotation_stat
       logical parallel, have_auxiliary_matrix, have_preconditioner_matrix
-
+      logical :: local_ct_m_is_gradient
       logical :: apply_reference_node, apply_reference_node_from_coordinates, reference_node_owned
 
+
+      local_ct_m_is_gradient = .false.
+      if (present(ct_m_is_gradient)) then 
+         local_ct_m_is_gradient= ct_m_is_gradient
+      end if
       ! Sort option paths etc...
       solver_option_path=complete_solver_option_path(option_path)
       inner_option_path= trim(option_path)//&
@@ -318,7 +325,12 @@
       ! Convert Divergence matrix (currently stored as block_csr matrix) to petsc format:   
       ! Create PETSc Div Matrix (comp & incomp) using this numbering:
       G_t_comp=block_csr2petsc(div_matrix_comp, petsc_numbering_p, petsc_numbering_u)
-      G_t_incomp=block_csr2petsc(div_matrix_incomp, petsc_numbering_p, petsc_numbering_u)
+      
+      if (.not.local_ct_m_is_gradient) then
+         G_t_incomp=block_csr2petsc(div_matrix_incomp, petsc_numbering_p, petsc_numbering_u)
+      else
+         G_t_incomp=block_csr2petsc(div_matrix_incomp, petsc_numbering_u, petsc_numbering_p)
+      end if
 
       ! restore petsc_numbering_u - since we have the only reference to petsc_numbering_u
       ! (as we've only just allocated it above) we can simply repoint %gnn2unn
@@ -330,7 +342,7 @@
       call MatScale(G_t_comp,real(-1.0, kind = PetscScalar_kind),ierr)
 
       ! Determine transpose of G_t_incomp to form Gradient Matrix (G):
-      call MatCreateTranspose(G_t_incomp,G,ierr)
+      if (.not.local_ct_m_is_gradient) call MatCreateTranspose(G_t_incomp,G,ierr)
       call MatSetOption(G, MAT_USE_INODES, PETSC_FALSE, ierr)
 
       ! Convert Stabilization matrix --> PETSc format if required:
@@ -413,7 +425,8 @@
         call MatSchurComplementGetKSP(A,ksp_schur,ierr)
 
         ! we keep our own reference, so it can be re-used in the velocity correction solve
-        call PetscObjectReferenceWrapper(ksp_schur, ierr)
+      !   call PetscObjectReferenceWrapper(ksp_schur, ierr)
+        call PetscObjectReference(ksp_schur, ierr)
         inner_M%ksp = ksp_schur
       else
         ! we have a ksp (presumably from the first velocity solve), try to reuse it

@@ -31,7 +31,7 @@ def write_in_binary_format(fname):
     tmp = numpy.empty(len(node_dict), dtype=dtype)
     tmp["index"] = 1 + numpy.arange(len(node_dict))
     tmp["x"] = numpy.asarray(rnode_dict)
-    file.write(tmp.tostring())
+    file.write(tmp.tobytes())
 
 
     file.write("\n".encode("utf-8"))    

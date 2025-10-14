@@ -738,9 +738,11 @@
 
 subroutine multiphase_prototype_wrapper() bind(C)
 
-#ifdef HAVE_PETSC_MODULES
+
+
+#include "petsc/finclude/petsc.h"  
   use petsc
-#endif
+
 
     use fldebug
     use elements
@@ -781,6 +783,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     implicit none
 
 #include "petsc_legacy.h"
+#include "../version.inc"
 
     !Local variables
     type(state_type), dimension(:), pointer :: state
@@ -795,6 +798,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     real :: start_cpu, finish_cpu, elapsed_time
     PetscErrorCode :: ierr
     PetscLogStage,dimension(0:9) :: stages
+
 
     ! Measure wall time
     call cpu_time(start_cpu)
@@ -821,6 +825,11 @@ subroutine multiphase_prototype_wrapper() bind(C)
     !Flag the first time step
     first_time_step = .true.
 
+    if (GetProcNo() == 1) then
+      print *, "IC-FERST was compiled on: ", compile_date
+      print *, "IC-FERST GIT commit: ", git_commit
+    end if
+
     ! Read state from .mpml file
     call populate_multi_state(state)
 
@@ -839,6 +848,13 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     ! set the remaining timestepping options, needs to be before any diagnostics are calculated
     call get_option("/timestepping/timestep", dt)
+
+    ! set the output units
+    if (have_option("/io/dump_units_METRIC")) then
+      outUNITS = METRIC_UNITS
+    else
+      outUNITS = SI_UNITS
+    end if
 
     if ( have_option('/io/dump_period') ) then
       !Check, if we are not adapting the timestep that the dump_period is a multiple of the timestep
@@ -971,7 +987,7 @@ call petsc_logging(3,stages,ierr,default=.true.)
       ewrite(0,'(A)') "##########################################"
       ewrite(0,'(A)') "# Run finished!                          #"
       elapsed_time = finish_cpu - start_cpu
-      if (elapsed_time > 3600) then 
+      if (elapsed_time > 3600) then
         ewrite(0,'(A, G12.6, A)')  "# Elapsed CPU time: ", elapsed_time/3600., " hours   #"
       else
         ewrite(0,'(A, G12.6, A)')  "# Elapsed CPU time: ", elapsed_time      , " seconds #"
