@@ -33,15 +33,6 @@ module detector_parallel
   use futils, only: int2str
   use integer_hash_table_module
   use mpi_interfaces
-! Avoid clashes with mpi_interfaces
-  use mpi, only: &
-    MPI_SUCCESS, MPI_COMM_WORLD, &
-    MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_PROC_NULL, &
-    MPI_STATUS_SIZE, MPI_STATUS_IGNORE, MPI_STATUSES_IGNORE, MPI_SOURCE, &
-    MPI_REQUEST_NULL, &
-    MPI_INTEGER, MPI_DOUBLE_PRECISION, MPI_LOGICAL, MPI_CHARACTER, MPI_BYTE, &
-    MPI_SUM, MPI_MAX, MPI_MIN, &
-    MPI_IN_PLACE
   use elements
   use parallel_tools
   use parallel_fields
