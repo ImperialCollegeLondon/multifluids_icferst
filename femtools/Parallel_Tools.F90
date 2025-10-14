@@ -29,6 +29,8 @@
 
 module parallel_tools
 
+  use, intrinsic :: iso_c_binding, only: c_int
+  use mpi,    only: MPI_COMM_WORLD   ! legacy (integer-handle) interface
   use fldebug
   use mpi_interfaces
   use iso_c_binding
@@ -39,6 +41,7 @@ module parallel_tools
   implicit none
 
   private
+
 
   public :: halgetnb, halgetnb_simple, abort_if_in_parallel_region
   public :: allor, alland, allmax, allmin, allsum, allmean, allfequals,&
