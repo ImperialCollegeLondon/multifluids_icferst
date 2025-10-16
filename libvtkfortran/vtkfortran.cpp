@@ -680,9 +680,10 @@ extern "C" {
     cerr<<"fl_vtkFileName - "<<fl_vtkFileName<<endl;
 #endif
     writer->SetFileName( fl_vtkFileName.c_str() );
-    writer->SetDataModeToBinary();
-    writer->SetCompressorTypeToZLib();
-    writer->SetEncodeAppendedData(0);
+
+    // Set to true binary format (not encoded as base 64)
+    writer->SetDataModeToAppended();
+    writer->EncodeAppendedDataOff();
 
 #if VTK_MAJOR_VERSION <= 5
     writer->SetInput(dataSet);
@@ -744,10 +745,9 @@ extern "C" {
 
     compressor->Delete();
 
-    writer->SetDataModeToBinary();
-    writer->SetCompressorTypeToZLib();
-    writer->SetEncodeAppendedData(0);
-
+    // Set to true binary format (not encoded as base 64)
+    writer->SetDataModeToAppended();
+    writer->EncodeAppendedDataOff();
 #ifdef VTK_USES_MPI
     // From version 6.3 VTK uses parallel communication to decide
     // which files have been written
