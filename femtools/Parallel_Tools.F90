@@ -29,6 +29,10 @@
 
 module parallel_tools
 
+#ifdef HAVE_MPI_F08
+  use, intrinsic :: iso_c_binding, only: c_int
+  use mpi,    only: MPI_COMM_WORLD   ! legacy (integer-handle) interface
+#endif
   use fldebug
   use mpi_interfaces
   use iso_c_binding
@@ -39,6 +43,7 @@ module parallel_tools
   implicit none
 
   private
+
 
   public :: halgetnb, halgetnb_simple, abort_if_in_parallel_region
   public :: allor, alland, allmax, allmin, allsum, allmean, allfequals,&

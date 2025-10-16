@@ -38,6 +38,13 @@ module diagnostic_variables
   use elements
   use spud
   use mpi_interfaces
+#ifdef HAVE_MPI_F08
+     ! Avoid clashes with mpi_interfaces
+  use mpi, only: MPI_STATUS_SIZE, MPI_ANY_SOURCE, MPI_SOURCE, MPI_STATUS_IGNORE, &
+                 MPI_STATUSES_IGNORE, MPI_REQUEST_NULL, MPI_INTEGER, MPI_SUCCESS, &
+                 MPI_OFFSET_KIND, MPI_INFO_NULL, MPI_MODE_CREATE, MPI_MODE_RDWR, &
+                 MPI_MODE_DELETE_ON_CLOSE
+#endif
   use parallel_tools
   use memory_diagnostics
   use integer_hash_table_module

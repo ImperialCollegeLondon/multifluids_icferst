@@ -32,6 +32,11 @@ module halos_derivation
    use data_structures
    use elements, only: boundary_numbering
    use mpi_interfaces
+#ifdef HAVE_MPI_F08
+   ! Avoid clashes with mpi_interfaces
+   use mpi, only: MPI_STATUS_SIZE, MPI_ANY_SOURCE, MPI_SOURCE, &
+                  MPI_REQUEST_NULL, MPI_INTEGER, MPI_SUCCESS
+#endif
    use halo_data_types
    use parallel_tools
    use halos_base
