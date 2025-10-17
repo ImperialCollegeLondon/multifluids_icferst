@@ -983,8 +983,7 @@ type(vector_field), intent(in), optional :: positions
       ksp_pointer = ksp
 
       ! make sure we don't destroy it, the %ksp becomes a separate reference
-      ! call PetscObjectReferenceWrapper(ksp, ierr)
-      call PetscObjectReference(ksp, ierr)
+      call PetscObjectReferenceWrapper(ksp, ierr)
     else
       ! matrices coming from block() can't cache
       FLAbort("User wants to cache solver context, but no proper matrix is provided.")
@@ -994,14 +993,12 @@ type(vector_field), intent(in), optional :: positions
 
     ! ksp is a copy of matrix%ksp, make it a separate reference,
     ! so we can KSPDestroy it without destroying matrix%ksp
-    ! call PetscObjectReferenceWrapper(ksp, ierr)
-    call PetscObjectReference(ksp, ierr)
+    call PetscObjectReferenceWrapper(ksp, ierr)
 
     ! same for the matrix, kspgetoperators returns the matrix reference
     ! owned by the ksp - make it a separate reference
-    ! call PetscObjectReferenceWrapper(A, ierr)
-    call PetscObjectReference(ksp, ierr)
-
+    call PetscObjectReferenceWrapper(A, ierr)
+    
   end if
 
   b=PetscNumberingCreateVec(petsc_numbering)
