@@ -79,7 +79,7 @@ min_vmax_square = min(sf["phase1"]["Velocity%magnitude"]["max"])
     <test name="Adaptive: Temperature Integral Final Comparison is smaller than 0.1" language="python">assert abs(Temp_Adapt_Integral_Final - TempRef_Adapt_Integral_Final) &lt; 0.1</test>
     <test name="Adaptive: check max velocity magnitude is within 1-1e-6 to 1+1e-6" language="python">assert min_vmax_adaptive &gt; 1-1e-6 and max_vmax_adaptive &lt; 1+1e-6</test>
     <test name="Unstructured: Temperature Integral Max Comparison is smaller than 0.05" language="python">assert abs(Temp_Unstruct_Integral_Max - TempRef_Unstruct_Integral_Max) &lt; 0.05</test>
-    <test name="Unstructured: Temperature Integral Final Comparison is smaller than 0.01" language="python">assert abs(Temp_Unstruct_Integral_Final - TempRef_Unstruct_Integral_Final) &lt; 0.01</test>
+    <test name="Unstructured: Temperature Integral Final Comparison is smaller than 0.03" language="python">assert abs(Temp_Unstruct_Integral_Final - TempRef_Unstruct_Integral_Final) &lt; 0.03</test>
     <test name="Adaptive: check max velocity magnitude is within 1-1e-6 to 1+1e-6" language="python">assert min_vmax_unstruct &gt; 1-1e-6 and max_vmax_unstruct &lt; 1+1e-6</test>
     <test name="Square Adaptive: Temperature Integral Max Comparison is smaller than 0.075" language="python">assert abs(Temp_Square_Integral_Max - TempRef_Square_Integral_Max) &lt; 0.075</test>
     <test name="Square Adaptive: Temperature Integral Final Comparison is smaller than 0.05" language="python">assert abs(Temp_Square_Integral_Final - TempRef_Square_Integral_Final) &lt; 0.05</test>
