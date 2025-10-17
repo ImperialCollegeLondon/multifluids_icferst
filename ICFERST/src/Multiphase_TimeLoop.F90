@@ -463,7 +463,10 @@ contains
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/is_multiphase_component' ) ) &
                 have_component_field = .true.
             !!$
-            call Calculate_All_Rhos( state, packed_state, Mdims )
+            call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
+            
+            !if (have_temperature_field) call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
+            
             if( have_component_field ) then
                 call get_option( '/numerical_methods/Max_compositional_its', NonLinearIteration_Components, default = 1 )
             end if
@@ -656,7 +659,7 @@ contains
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,itime,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
-                call Calculate_All_Rhos( state, packed_state, Mdims )
+                call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
 
                 if ( is_porous_media ) then
                     call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
@@ -965,7 +968,7 @@ contains
             endif
 
             current_time = acctim
-            call Calculate_All_Rhos( state, packed_state, Mdims )
+            call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
             !!$ Calculate diagnostic fields (it should be outside the timeloop as a one-way coupling field only)
             call get_option( '/timestepping/timestep', dt); !Backup of dt
@@ -1629,7 +1632,7 @@ contains
                     DEALLOCATE( RSUM )
                 end if
 
-                call Calculate_All_Rhos( state, packed_state, Mdims )
+                call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
             end if Conditional_ReallocatingFields
         end subroutine adapt_mesh_mp
 

@@ -1062,7 +1062,7 @@ contains
       real :: auxR, cc, deltaP, rp, rp_nano, skin, h, h_nano, INV_SIGMA_ND, INV_SIGMA_NANO_N, w_sum_one1, w_sum_one2, one_m_cv_beta, beta, beta_min, beta_max, k_beta, tol
       INTEGER :: u_lnloc, ele, i, jpres, u_iloc, x_iloc, idim, cv_lkloc, u_knod, u_lngi, &
           U_NOD, U_SILOC, MAT_NODI, ipres, k, CV_NODI, IPHASE, COUNT, cv_iloc, jphase, iphase_ipres, jphase_jpres,&
-          compact_phase, global_phase, wells_first_phase
+          compact_phase, global_phase, wells_first_phase, count2
       type(scalar_field), pointer :: porosity_total_field
       logical :: have_porosity_total = .false.
       logical, save :: have_been_read = .false.
@@ -1358,9 +1358,10 @@ contains
                   !Apply only where wells are closed, this is a good approximation
                   !Gamma should be the same for at least the well phases, so we check nphase
                   if (pipes_aux%GAMMA_PRES_ABS( Mdims%nphase, Mdims%nphase, CV_NODI )<1d-8) then
-                      count = min(1,cv_nodi)
+                      count = min(size(conductivity_pipes%val),cv_nodi)
+                      count2= min(size(well_thickness%val),cv_nodi)
                       !Rp is the internal radius of the well
-                      rp = max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) - well_thickness%val(count)
+                      rp = max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) - well_thickness%val(count2)
                       h = 1./(PI * (0.5*pipe_Diameter%val( cv_nodi ))**2.)!height/volume pipe
                       !we apply Q = 1/WellVolume * (Tin-Tout) * 2 * PI * K * L/(ln(Rout/Rin))
                       auxR = conductivity_pipes%val(count) * 2.0 * PI * h / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
