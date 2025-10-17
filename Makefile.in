@@ -70,7 +70,7 @@ FLLINKER = @FLLINKER@ @LDFLAGS@ $(FCFLAGS)
 export FC F77 CC CXX MPIF90 MPIF77 MPICC MPICXX
 
 
-LIBS = -L./lib -lfluidity -lmpi_mpifh -ltrilinos_zoltan -lgfortran \
+LIBS = -L./lib -lfluidity -lmpi_mpifh -lgfortran \
        @LIB_FEMDEM@ ./lib/libadaptivity.a ./lib/libvtkfortran.a \
        @LIBSPATIALINDEX@ @SPUDLIB@ @FLIBJUDY@ \
        @LIBS@ @BLAS_LIBS@ @LIB_XGBOOST@ @LIB_PHREEQC@

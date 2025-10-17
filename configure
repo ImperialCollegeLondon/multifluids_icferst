@@ -6245,6 +6245,7 @@ EOD`
 
 cat >>confdefs.h <<_ACEOF
 #define HAVE_PYTHON "$ac_python_version"
+#define FLUIDITY_PYTHON_MODULE_PATH "$(pwd)/python"
 _ACEOF
 
 
