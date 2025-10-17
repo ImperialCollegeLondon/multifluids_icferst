@@ -64,7 +64,6 @@
 
 #include <iostream>
 
-#ifdef HAVE_VTK
 #include <stdio.h>
 #include <assert.h>
 #include <math.h>
@@ -1339,6 +1338,3 @@ int freadvtkfile(char *fortname, int *namelen,
 
   return status;
 }
-#else
-#include "vtkmeshio-dummy.cpp"
-#endif
