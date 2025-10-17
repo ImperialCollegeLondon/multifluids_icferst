@@ -5,6 +5,9 @@
 autom4te.cache
 config.log
 
+# Backup files
+*~
+
 # Build artifacts
 *.o
 *.so
