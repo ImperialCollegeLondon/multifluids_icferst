@@ -40,7 +40,9 @@ module multi_pipes
 #include "petsc_legacy.h"
     private
 
-    public  :: ASSEMBLE_PIPE_TRANSPORT_AND_CTY, MOD_1D_FORCE_BAL_C, retrieve_pipes_coords, pipe_coords, initialize_pipes_package_and_gamma
+    public  :: ASSEMBLE_PIPE_TRANSPORT_AND_CTY, MOD_1D_FORCE_BAL_C,&
+              retrieve_pipes_coords, pipe_coords, initialize_pipes_package_and_gamma,&
+              WELLS_SATURATION_ASSEMB
 
     !Parameters for boundary conditions copied from cv_adv-diff.F90
     INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1, WIC_T_BC_ROBIN = 2, &
@@ -55,6 +57,141 @@ module multi_pipes
     real:: tolerancePipe = 1d-2!> tolerancePipe has to be around 1e-2 because that is the precision of the nastran input file
 
 contains
+
+    SUBROUTINE WELLS_SATURATION_ASSEMB( state, packed_state, &
+      final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+      saturation, sat_prev, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+      SOURCT_ALL, VOLFRA_PORE, VAD_parameter, Phase_with_Pc, &
+      eles_with_pipe, pipes_aux, nonlinear_iteration,&
+      assemble_collapsed_to_one_phase, getResidual)
+      ! Inputs/Outputs
+      IMPLICIT NONE
+      type( state_type ), dimension( : ), intent( inout ) :: state
+      type( state_type ), intent( inout ) :: packed_state
+      integer, intent(in) ::  final_phase
+      type(multi_dimensions), intent(in) :: Mdims
+      type(multi_GI_dimensions), intent(in) :: CV_GIdims
+      type(multi_shape_funs), intent(inout) :: CV_funs
+      type(multi_sparsities), intent(in) :: Mspars
+      type(multi_ndgln), intent(in) :: ndgln
+      type (multi_discretization_opts) :: Mdisopt
+      type (multi_matrices), intent(inout) :: Mmat
+      type (porous_adv_coefs), intent(inout) :: upwnd
+      type(tensor_field), intent(inout), target :: saturation
+      real, dimension(:,:) :: sat_prev
+      type(tensor_field), intent(in), target :: density
+      type(tensor_field), intent(in) :: velocity
+
+      REAL, DIMENSION( :, : ), target, intent( inout ) :: DEN_ALL
+      REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL
+      REAL, intent( in ) :: DT
+      REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
+      REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
+      REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
+      REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+      !Variables for Vanishing artificial diffusion
+      integer, optional, intent(in) :: Phase_with_Pc
+      real, optional, dimension(:), intent(in) :: VAD_parameter
+      ! Calculate_mass variable
+      type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
+      type (multi_pipe_package), intent(in) :: pipes_aux
+      logical, optional, intent(in) ::  assemble_collapsed_to_one_phase
+      logical, optional, intent(in) ::  getResidual
+      !Non-linear iteration count
+      integer, optional, intent(in) :: nonlinear_iteration
+      ! ###################Local variables############################
+      !! boundary_condition fields
+      type(tensor_field) :: velocity_BCs,saturation_BCs, density_BCs
+      type(tensor_field) :: pressure_BCs
+      INTEGER, DIMENSION( 1 , Mdims%nphase , surface_element_count(saturation) ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_T2_BC_ALL
+      INTEGER, DIMENSION( Mdims%ndim , Mdims%nphase , surface_element_count(saturation) ) :: WIC_U_BC_ALL
+      type( tensor_field ), pointer ::  pressure
+      INTEGER, DIMENSION ( 1,Mdims%npres,surface_element_count(saturation) ) :: WIC_P_BC_ALL
+      REAL, DIMENSION( :,:,: ), pointer :: SUF_T_BC_ALL
+      REAL, DIMENSION(:,:,: ), pointer :: SUF_D_BC_ALL
+      REAL, DIMENSION(:,:,: ), pointer :: SUF_U_BC_ALL
+      REAL, DIMENSION( :,:,: ), allocatable, target :: SUF_T_BC
+
+      type( tensor_field ), pointer :: old_saturation
+      type(vector_field), pointer :: vfield
+      REAL, DIMENSION( :,: ), pointer :: XC_CV_ALL
+      real, dimension (:), pointer :: MASS_ELE
+      type( vector_field_pointer ), dimension(1) :: PSI_INT
+      type( vector_field ), pointer :: MeanPoreCV
+      REAL, DIMENSION( :, : ), pointer :: MEAN_PORE_CV
+
+      ! Dummy variables to call the wells subroutine
+      REAL, DIMENSION(:),allocatable :: well_dummy1
+      real, dimension(:,:),allocatable :: well_dummy6, well_dummy7
+      real, dimension(:,:,:),allocatable:: well_dummy2,well_dummy4,well_dummy5
+      REAL, DIMENSION(:,:,:),pointer :: well_dummy8 => null()
+      type (multi_outfluxes) :: well_dummy3
+      ! variables for pipes (that are needed in cv_assemb as well), allocatable because they are big and barely used
+      Real, dimension(:), pointer :: MASS_CV
+      !Variable to decide if we are introducing the sum of phases = 1 in Ct or elsewhere
+      logical :: Solve_all_phases
+      !Variables for assemble_collapsed_to_one_phase; Note that diffusion parameters etc need
+      logical :: loc_assemble_collapsed_to_one_phase !to be then scaled before getting into this subroutine
+
+      logical, parameter :: getcv_disc =.true., getct=.false., getNewtonType=.true.
+      !Decide if we are solving for nphases-1
+      Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
+
+      loc_assemble_collapsed_to_one_phase = .false.
+      if (present_and_true(assemble_collapsed_to_one_phase)) then
+        loc_assemble_collapsed_to_one_phase = .true.
+      end if
+
+      !! Get boundary conditions from field
+      call get_entire_boundary_condition(saturation,['weakdirichlet'],saturation_BCs,WIC_T_BC_ALL)
+      call get_entire_boundary_condition(density,['weakdirichlet'],density_BCs,WIC_D_BC_ALL)
+      call get_entire_boundary_condition(velocity,['weakdirichlet'],velocity_BCs,WIC_U_BC_ALL)
+      pressure => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
+      call get_entire_boundary_condition(pressure,['weakdirichlet','freesurface  '],pressure_BCs,WIC_P_BC_ALL)
+
+      !! reassignments to old arrays, to be discussed
+      SUF_T_BC_ALL=>saturation_BCs%val
+      SUF_D_BC_ALL=>density_BCs%val
+      SUF_U_BC_ALL=>velocity_BCs%val
+
+      !###############Conditional allocations######################
+
+      ! Retrieve from packed_state he mass of the CVs and their barycentres
+      psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
+      vfield => extract_vector_field(packed_state,"MASS_ELE")
+      MASS_ELE => vfield%val(1,:)
+      MASS_CV   => psi_int(1)%ptr%val(1,:)
+      MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+      MEAN_PORE_CV=>MeanPoreCV%val  !pscpsc this should do as meanporecv has been calculated for sure before calling this
+      !Obtain elements surrounding an element (FACE_ELE) only if it is not stored yet
+      if (.not. associated(Mmat%FACE_ELE)) then
+        allocate(Mmat%FACE_ELE(CV_GIdims%nface, Mdims%totele))
+        Mmat%FACE_ELE = 0.
+        CALL CALC_FACE_ELE( Mmat%FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
+              Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+              CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
+      end if
+
+      call ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, saturation, den_all, denold_all, &
+        final_phase, &! final_phase => reservoir domain
+        Mdims, ndgln, well_dummy7, CV_P, SOURCT_ALL, well_dummy8, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
+        SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, getcv_disc, getct, getNewtonType, getResidual,Mmat, Mspars, upwnd, .false., DT, &
+        pipes_aux, well_dummy4, well_dummy6,MEAN_PORE_CV, MEAN_PORE_CV, eles_with_pipe, .false.,&  ! pscpsc to be added MEN_PORE_CV_TOTAL?
+        1.0, MASS_CV, well_dummy4, MASS_ELE, well_dummy2, well_dummy3,&
+        well_dummy1, loc_assemble_collapsed_to_one_phase )
+
+
+      call deallocate(saturation_BCs)
+      call deallocate(density_BCs)
+      call deallocate(velocity_BCs)
+      call deallocate(pressure_BCs)
+
+
+    END SUBROUTINE WELLS_SATURATION_ASSEMB
+
+
+
+
 
     !>@brief: This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
     !>@param  state   Linked list containing all the fields defined in diamond and considered by Fluidity
@@ -729,8 +866,8 @@ contains
                             if (getNewtonType) then
                               if (getResidual) call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,(LOC_MAT_II(iphase)*T_CV_NODI(iphase)+LOC_MAT_IJ(iphase)*T_CV_NODJ(iphase)) -LOC_CV_RHS_I(IPHASE))
                               !Introduce the information into the petsc_ACV matrix
-                              call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase)*T_CV_NODI(iphase))
-                              call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodj, LOC_MAT_IJ(iphase)*T_CV_NODJ(iphase))
+                              call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase))!*T_CV_NODI(iphase)
+                              call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodj, LOC_MAT_IJ(iphase))!*T_CV_NODJ(iphase)
                             else
                               call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_CV_RHS_I(IPHASE))
                               !Introduce the information into the petsc_ACV matrix
@@ -858,7 +995,7 @@ contains
                         if (getNewtonType) then
                           if (getResidual) call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,LOC_MAT_II(iphase)*T_ALL%val(1,iphase,JCV_NOD)-LOC_CV_RHS_I(IPHASE))
                           !Introduce the information into the petsc_ACV matrix
-                          call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,JCV_NOD,JCV_NOD, LOC_MAT_II(iphase)*T_ALL%val(1,iphase,JCV_NOD))
+                          call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,JCV_NOD,JCV_NOD, LOC_MAT_II(iphase))!*T_ALL%val(1,iphase,JCV_NOD)
                         else
                           call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,LOC_CV_RHS_I(IPHASE))
                           !Introduce the information into the petsc_ACV matrix
@@ -892,11 +1029,11 @@ contains
                       cv_nodj = cv_nodi
                       i_indx = Mmat%petsc_ACV%row_numbering%gnn2unn( cv_nodi, assembly_phase )
                       j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, assembly_phase )
-                      if (getNewtonType) then
-                        petsc_dummy_val = T_ALL%val(1,iphase,cv_nodi)
-                      else
+                      ! if (getNewtonType) then
+                      !   petsc_dummy_val = T_ALL%val(1,iphase,cv_nodi)
+                      ! else
                         petsc_dummy_val = 1.0
-                      end if
+                      ! end if
 #if PETSC_VERSION_MINOR >=14
                       call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, petsc_dummy_val, ADD_VALUES, ierr)
 #else
@@ -1487,7 +1624,7 @@ contains
                         end if
                         call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, &
                             cv_nodi, cv_nodi, &
-                            MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI )*T_ALL( global_phase, CV_NODI ))  ! We can use T_ALL because for Newton we only consider saturation
+                            MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI )) !*T_ALL( global_phase, CV_NODI ) ! We can use T_ALL because for Newton we only consider saturation
                       else
                         call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, &
                             cv_nodi, cv_nodi, &
@@ -1513,7 +1650,7 @@ contains
                           !               ABSORBT_ALL( iphase, compact_phase, CV_NODI )*T_ALL( compact_phase, CV_NODI ))
                         end if
                         call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, cv_nodi, cv_nodi, &
-                            Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI )*T_ALL( jphase, CV_NODI ))  ! We can use T_ALL because for Newton we only consider saturation
+                            Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI ))!*T_ALL( jphase, CV_NODI )  ! We can use T_ALL because for Newton we only consider saturation
                       else
                        call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, cv_nodi, cv_nodi, &
                            Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI ))
@@ -1530,7 +1667,7 @@ contains
                 if (getNewtonType) then
                   if (getResidual) call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_MAT_II(iphase)*T_ALL(iphase,cv_nodi)-LOC_CV_RHS_I(IPHASE))
                   !Introduce the information into the petsc_ACV matrix
-                  call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase)*T_ALL(iphase,cv_nodi) )
+                  call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase))!*T_ALL(iphase,cv_nodi)
                 else
                   call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_CV_RHS_I(IPHASE))
                   !Introduce the information into the petsc_ACV matrix
@@ -2281,7 +2418,7 @@ contains
             !Overwrite the first dump with the values of the diameter of the pipe, don't remove this section
             ewrite(1,*) "Overwritting the initial vtu file with the updated values of the diameter of the well"
             k = 0
-            call write_state( k, state )
+            call write_state_units( k, Mdims, state )
             dump_vtu_zero = .false.
         end if
     contains

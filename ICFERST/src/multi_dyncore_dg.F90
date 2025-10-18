@@ -1966,7 +1966,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         !Non-linear iteration count
         integer, optional, intent(in) :: nonlinear_iteration
         ! ###################Local variables############################
-        type(petsc_csr_matrix) :: petsc_ACV2
+        type(petsc_csr_matrix) :: petsc_ACV2, Jac
         Integer :: cv_inod
         !Working fields
         type(csr_sparsity), pointer :: sparsity
@@ -1977,17 +1977,15 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         type(vector_field) :: vpert
 
         type( scalar_field ), pointer :: pipe_diameter
-
-
         !Variables for capillary pressure
         real, dimension(Mdims%cv_nonods) :: OvRelax_param
-
         ! 1) Create unperturbed matrix A
 
         call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
         !Also recalculate the Over-relaxation parameter
         call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
+
 
 ! print *, "ASSEMBLE FIRST"
 ! read*
@@ -2018,13 +2016,13 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
             OldPhaseVolumeFraction = OldSatura, CV_Immobile_Fraction = CV_Immobile_Fraction)
         call allocate(vpert,Mdims%nphase,sat_field%mesh,"vpert"); vpert%val = 0d0;
         do cv_inod = 1, Mdims%cv_nonods
-
           where (satura(:, cv_inod) - PERT > CV_Immobile_Fraction(:, cv_inod))
             vpert%val(:,cv_inod) = -PERT
           elsewhere
             vpert%val(:,cv_inod) = PERT
           end where
         end do
+
         ! Apply perturbation
         Satura = Satura + vpert%val
         ! Recalculate parameters
@@ -2050,17 +2048,38 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         ! 1) A - A_pertb (Note that petsc_ACV is the perturbed matrix)
         call MatAYPX(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
 
-        ! call MatAXPY(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
 ! print*, "DIFF MATRICES"
 ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
 ! read*
         ! 2) Divide by the perturbation (it is row-wise)
         vpert%val = 1d0/vpert%val
         call scale_PETSc_matrix_by_vector(Mmat%petsc_ACV, vpert)
+
+! Once I have generated the Jacobian of the reservoir by perturbation I add the Jacobian of the Well
+! call duplicate_petsc_matrix(Mmat%petsc_ACV, Jac)
+
+! Very inneficient, just for testing
+call duplicate_petsc_matrix(Mmat%petsc_ACV, PETSC_ACV2)
+call deallocate(Mmat%petsc_ACV)
+call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, Mdims%nphase)
+    if (Mdims%npres >1) call WELLS_SATURATION_ASSEMB(state, packed_state, &
+        Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+        sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+        SOURCT_ALL, VOLFRA_PORE, &
+        VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+        eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+        nonlinear_iteration = nonlinear_iteration, getResidual = .true.)
+
+! call allocate(RHS_BAK,Mdims%nphase,sat_field%mesh,"RHS_BAK"); RHS_BAK%val = 0d0;
+! vtracer=as_vector(sat_field,dim=2)
+        call assemble(Mmat%petsc_ACV)
+! call PETSc_MatVec(Mmat%petsc_ACV, vtracer, RHS_BAK)
+! Mmat%CV_RHS%val = (Mmat%CV_RHS%val-RHS_BAK%val)
+
+call MatAYPX(Mmat%petsc_ACV%M, real(1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
 ! print*, "GENERATED JACOBIAN"
 ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
 ! read*
-
         ! Clean up memory
         call deallocate(petsc_ACV2);call deallocate(vpert);
     end subroutine ASSEMB_SAT_JAC_AND_RES

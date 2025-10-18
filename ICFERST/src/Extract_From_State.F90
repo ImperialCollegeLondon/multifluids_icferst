@@ -23,6 +23,7 @@
 module Copy_Outof_State
 
     use fldebug
+    use write_state_module
     use state_module
     use fields
     use field_options
@@ -62,7 +63,7 @@ module Copy_Outof_State
         Get_Ele_Type, Get_Discretisation_Options, inf_norm_scalar_normalised, &
         pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
-        have_option_for_any_phase, Get_Ele_Type_new,&
+        have_option_for_any_phase, Get_Ele_Type_new,write_state_units,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions, &
         EnterForceBalanceEquation, update_outfluxes, Impose_connected_BCs, getOutputConverter,convertToOutUnits
 
@@ -4128,6 +4129,18 @@ end subroutine get_DarcyVelocity
       end if
 
     end subroutine convertToOutUnits
+
+    ! Convert to out units and then back
+    subroutine write_state_units(dump_no, Mdims, state)
+      type (multi_dimensions) :: Mdims
+      integer, intent(inout) :: dump_no
+      type(state_type), dimension(:), intent(inout) :: state
+
+      logical, parameter :: CONVERT_OUT = .false., CONVERT_IN = .true.
+      call convertToOutUnits( state, Mdims, CONVERT_OUT )
+      call write_state( dump_no, state ) ! Now writing into the vtu files
+      call convertToOutUnits( state, Mdims, CONVERT_IN )
+    end subroutine write_state_units
 
 end module Copy_Outof_State
 

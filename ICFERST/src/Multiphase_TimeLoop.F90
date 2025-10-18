@@ -511,7 +511,7 @@ contains
         if( current_time < finish_time .and. &
          .not. have_option("/io/disable_dump_at_start") ) then
 !-------------------------------------------------------------------------------
-! To allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state)
+! To allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state_units)
              if (do_checkpoint_simulation(dump_no)) then
                   checkpoint_number=0
                   call checkpoint_simulation(state,cp_no=checkpoint_number,&
@@ -519,7 +519,7 @@ contains
              end if
              !not_to_move_det_yet = .false. ;
 !-------------------------------------------------------------------------------
-              call write_state(dump_no, state)
+              call write_state_units(dump_no,Mdims,  state)
 
         end if
         !Initialise FPI_eq_taken
@@ -1085,7 +1085,7 @@ contains
                   if(dt < minc) then
                     ewrite(0, *) "Minimum timestep reached - terminating"
                     SIG_INT = .true.
-                    ! call write_state(dump_no, state)
+                    ! call write_state_units(dump_no,Mdims,  state)
                   end if
                 end if
                 dt = max( min( dt , maxc ), minc )
@@ -1141,7 +1141,7 @@ contains
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
         ! Dump at end, unless explicitly disabled
         if(.not. have_option("/io/disable_dump_at_end")) then
-            call write_state(dump_no, state)
+            call write_state_units(dump_no, Mdims, state)
         end if
         call tag_references()
         call deallocate(packed_state)
@@ -1374,7 +1374,7 @@ contains
                         call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     end if
                     not_to_move_det_yet = .false. ;
-                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                    call write_state_units( dump_no, Mdims, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
             else if (have_option('/io/dump_period')) then
                 ! dump based on the prescribed period of real time
@@ -1393,7 +1393,7 @@ contains
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
                     if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
-                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                    call write_state_units( dump_no, Mdims, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_RealTime
             end if
         end subroutine create_dump_vtu_and_checkpoints
@@ -1788,8 +1788,6 @@ contains
         end select
 
     end subroutine adapt_mesh_within_FPI
-
-
 
  end subroutine MultiFluids_SolveTimeLoop
 

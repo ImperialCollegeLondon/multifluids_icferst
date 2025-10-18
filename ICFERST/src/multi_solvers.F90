@@ -53,7 +53,7 @@ module solvers_module
     public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
          Initialise_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess, &
          non_porous_ensure_sum_to_one, duplicate_petsc_matrix, scale_PETSc_matrix, petsc_Stokes_solver,&
-         scale_PETSc_matrix_by_vector
+         scale_PETSc_matrix_by_vector,PETSc_MatVec
 
 
 contains
@@ -988,11 +988,11 @@ contains
     !> Prepared to be passed unallocated from M = 1 and allocated internally
     subroutine get_Anderson_acceleration_new_guess(N, M, NewField, History_field, stored_residuals, max_its, prev_small_matrix,restart_now)
       implicit none
-      integer, intent(in) :: N 
-      integer, intent(in) :: M 
-      real, dimension(N), intent(out) :: NewField 
-      real, dimension(N, M+2), intent(inout) :: History_field 
-      real, dimension(N, M+1), intent(inout) :: stored_residuals 
+      integer, intent(in) :: N
+      integer, intent(in) :: M
+      real, dimension(N), intent(out) :: NewField
+      real, dimension(N, M+2), intent(inout) :: History_field
+      real, dimension(N, M+1), intent(inout) :: stored_residuals
       integer, optional :: max_its
       real, dimension(:,:), allocatable, optional, intent(inout) :: prev_small_matrix
       logical, intent(inout) :: restart_now
@@ -1102,7 +1102,7 @@ contains
     !> A is-written
     !---------------------------------------------------------------------------
     subroutine scale_PETSc_matrix_by_vector(Mat_petsc, vfield)
-        type(petsc_csr_matrix), intent(inout)::  Mat_petsc 
+        type(petsc_csr_matrix), intent(inout)::  Mat_petsc
         type(vector_field), intent(in) :: vfield
         ! Local variables
         Vec :: bvec
@@ -1114,6 +1114,27 @@ contains
 
     end subroutine
 
+    !---------------------------------------------------------------------------
+    !> @author Pablo Salinas
+    !> @brief Performs y=Ax using fluidity vectors (not very efficient)
+    !---------------------------------------------------------------------------
+    subroutine PETSc_MatVec(Mat_petsc, vfield, sol)
+        type(petsc_csr_matrix), intent(inout)::  Mat_petsc
+        type(vector_field), intent(in) :: vfield
+        type(vector_field), intent(inout) :: sol
+        ! Local variables
+        Vec :: bvec, bsol
+        Integer :: ierr
+
+
+        bvec=PetscNumberingCreateVec(Mat_petsc%row_numbering)  ! copy vfield to petsc vector
+        bsol=PetscNumberingCreateVec(Mat_petsc%row_numbering)
+        call field2petsc(vfield, Mat_petsc%row_numbering, bvec)
+        ! call field2petsc(vfield, Mat_petsc%row_numbering, bsol)
+        call MatMult(Mat_petsc%M, bvec, bsol, ierr)
+        call petsc2field(bsol, Mat_petsc%row_numbering, sol)
+
+    end subroutine
 
     !---------------------------------------------------------------------------
     !> @author Pablo Salinas
@@ -1161,7 +1182,7 @@ contains
 
       call allocate(MAT_B, MAT_A%M, MAT_A%row_numbering, MAT_A%column_numbering, "DGM_PETSC_scaled")
       call MatDuplicate(MAT_A%M,MAT_COPY_VALUES,MAT_B%M, ierr)!Deep copy
-      call assemble(MAT_B)
+      ! call assemble(MAT_B)
 
     end subroutine
 
@@ -1185,7 +1206,7 @@ contains
         use Full_Projection
         use petsc_tools
         use solvers
-        
+
         IMPLICIT NONE
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
@@ -1211,7 +1232,7 @@ contains
         KSP ksp_schur
 
         !Convert the matrices from ICFERST to PETSC format (not ideal...)
-        call Convert_C_and_CT_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase) 
+        call Convert_C_and_CT_mat_to_PETSc_format(packed_state, Mdims, Mmat, ndgln, Mspars, final_phase)
 
         !generate sparsity so we can communicate with PETSc
         sparsity=>extract_csr_sparsity(packed_state,"CMatrixSparsity")
@@ -1248,7 +1269,7 @@ contains
         b = PetscNumberingCreateVec(petsc_numbering); call VecDuplicate(b,y,ierr)
         call field2petsc(rhs_p, petsc_numbering, b)
         call field2petsc(deltaP, petsc_numbering, y)
-  
+
         ! Solve Schur complement system
         call petsc_solve_core(y, Schur_mat, b, ksp_schur, petsc_numbering, solver_option_path, .true., &
             literations, nomatrixdump=.true., vector_x0 = deltaP, vfield = deltaP)
@@ -1297,7 +1318,7 @@ contains
         Pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
 
         !C does not need to be recomputed every time-level
-        if (.not. Mmat%stored) then 
+        if (.not. Mmat%stored) then
             !TEMPORARY, Mmat%C_PETSC DOES NOT NEED TO BE REDONE UNLESS THE MESH CHANGES
             if (associated(Mmat%C_PETSC%refcount)) call deallocate(Mmat%C_PETSC)
             sparsity=>extract_csr_sparsity(packed_state,"CMatrixSparsity")
@@ -1310,7 +1331,7 @@ contains
                         do iphase = 1, Nphase
         !WE SHOULD USE NPRES IN ANY CASE, NOT PHASES HERE...
                         call addto(Mmat%C_PETSC, idim, iphase, IU_NOD, P_JNOD, Mmat%C( idim, iphase, COUNT ))
-                        end do 
+                        end do
                     end do
                 end do
             end do
@@ -1320,7 +1341,7 @@ contains
         if (associated(Mmat%CT_PETSC%refcount)) call deallocate(Mmat%CT_PETSC)
         sparsity=>extract_csr_sparsity(packed_state,"CTMatrixSparsity")
         call allocate(Mmat%CT_PETSC,sparsity,[NPHASE,Mdims%ndim],name="CT_PETSC"); call zero(Mmat%CT_PETSC)
-        
+
         DO P_JNOD = 1, Mdims%CV_NONODS
             DO COUNT = mspars%CT%fin( P_JNOD ), mspars%CT%fin( P_JNOD + 1 ) - 1
                 IU_NOD = mspars%CT%col( COUNT )
@@ -1340,7 +1361,7 @@ contains
         ! Mmat%PIVIT_PETSC = allocate_momentum_matrix(sparsity, velocity, nphase)
         ! !Try to make it diagonal...
         ! call allocate(Mmat%PIVIT_PETSC,sparsity,[Mdims%u_nloc*Mdims%ndim*NPHASE,1],"PIVIT_PETSC"); call zero(Mmat%PIVIT_PETSC)
-        
+
         ! DO ELE = 1, Mdims%totele
         !     do j = 1, Mdims%u_nloc * nphase *Mdims%ndim
         !         call addto(Mmat%PIVIT_PETSC, j, 1, ELE, ELE,  Mmat%PIVIT_MAT( 1, 1, ele ))
