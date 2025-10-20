@@ -98,7 +98,7 @@ jobs:
         run: |
          chmod 777 .
          docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
-         docker run --memory=12g --cpus=4 --oom-kill-disable=false -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
+         docker run --memory=16g --cpus=4 --oom-kill-disable=false -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
            /bin/bash -c "${{ matrix.command }} 2>&1 | tee /host/${{ matrix.release }}-testrun.log && \
            cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
 
