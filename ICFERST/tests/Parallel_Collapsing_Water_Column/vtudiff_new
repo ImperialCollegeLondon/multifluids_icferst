@@ -36,6 +36,11 @@ for i in range(data1.GetPointData().GetNumberOfArrays()):
         diff_arr = np.abs(np1 - np2)
         vtk_diff_arr = numpy_to_vtk(diff_arr)
         vtk_diff_arr.SetName(arr1.GetName())
+        # Zero out tiny values (< 1e-100)
+        tmp = vtk_to_numpy(vtk_diff_arr)
+        tmp[tmp < 1e-100] = 0
+        vtk_diff_arr = numpy_to_vtk(tmp)
+        vtk_diff_arr.SetName(arr1.GetName())
         diff.GetPointData().RemoveArray(arr1.GetName())
         diff.GetPointData().AddArray(vtk_diff_arr)
 
