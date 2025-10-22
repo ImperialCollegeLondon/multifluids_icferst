@@ -2619,15 +2619,16 @@ ts_ref_val = 0d0;
                         else
                             dt = dt * min(auxR, 1.5*increaseFactor)
                         end if
-                        auxR = stored_dt
+
                         call set_option( '/timestepping/timestep', dt )
-                        stored_dt = dt
                         !Ensure that period_vtus or the final time are matched, controlled by max_ts
                         dt = max(min(dt, max_ts), min_ts)
                         call set_option( '/timestepping/timestep', dt )
                         ! if (getprocno() == 1 .and. abs(auxR-dt)/dt > 1d-3)then
                         !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step changed to:", dt/conversor, trim(DtTimeUnits)
                         ! end if
+                        stored_dt = dt
+                        auxR = stored_dt               
                         ExitNonLinearLoop = .true.
                         ! Update comparison variables
                         nSolverWarningsOld = nSolverWarnings;  nDMOWarningsOld = nDMOWarnings;
