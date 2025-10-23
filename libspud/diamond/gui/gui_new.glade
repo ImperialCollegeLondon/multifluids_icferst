@@ -31,6 +31,7 @@
                         <property name="label">_New</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_new" swapped="no"/>
+                        <accelerator key="N" signal="activate" modifiers="GDK_CONTROL_MASK" />
                       </object>
                     </child>
                     <child>
@@ -39,6 +40,7 @@
                         <property name="label">_Open</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_open" swapped="no"/>
+                        <accelerator key="O" signal="activate" modifiers="GDK_CONTROL_MASK" />
                       </object>
                     </child>
                     <child>
@@ -47,6 +49,7 @@
                         <property name="label" translatable="yes">Open schema</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_open_schema" swapped="no"/>
+                        <accelerator key="O" signal="activate" modifiers="GDK_CONTROL_MASK|GDK_SHIFT_MASK" />
                       </object>
                     </child>
                     <child>
@@ -55,6 +58,7 @@
                         <property name="label">_Save</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_save" swapped="no"/>
+                        <accelerator key="S" signal="activate" modifiers="GDK_CONTROL_MASK" />
                       </object>
                     </child>
                     <child>
@@ -63,6 +67,7 @@
                         <property name="label">Save _As</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_save_as" swapped="no"/>
+                        <accelerator key="S" signal="activate" modifiers="GDK_CONTROL_MASK|GDK_SHIFT_MASK" />
                       </object>
                     </child>
                     <child>
@@ -76,6 +81,7 @@
                         <property name="label">_Quit</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_quit" swapped="no"/>
+                        <accelerator key="Q" signal="activate" modifiers="GDK_CONTROL_MASK" />
                       </object>
                     </child>
                   </object>
@@ -97,6 +103,7 @@
                         <property name="label" translatable="yes">_Find</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_find" swapped="no"/>
+                        <accelerator key="F" signal="activate" modifiers="GDK_CONTROL_MASK" />
                       </object>
                     </child>
                     <child>
@@ -115,6 +122,7 @@
                         <property name="label" translatable="yes">_Copy</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_copy" swapped="no"/>
+                        <accelerator key="C" signal="activate" modifiers="GDK_CONTROL_MASK" />
                       </object>
                     </child>
                     <child>
@@ -124,6 +132,7 @@
                         <property name="label" translatable="yes">_Paste</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_paste" swapped="no"/>
+                        <accelerator key="V" signal="activate" modifiers="GDK_CONTROL_MASK" />
                       </object>
                     </child>
                     <child>
@@ -131,6 +140,7 @@
                         <property name="visible">True</property>
                         <property name="label" translatable="yes">Group</property>
                         <signal name="activate" handler="on_group" swapped="no"/>
+                        <accelerator key="G" signal="activate" modifiers="GDK_CONTROL_MASK" />
                       </object>
                     </child>
                     <child>
@@ -138,6 +148,7 @@
                         <property name="visible">False</property>
                         <property name="label" translatable="yes">Ungroup</property>
                         <signal name="activate" handler="on_ungroup" swapped="no"/>
+                        <accelerator key="G" signal="activate" modifiers="GDK_CONTROL_MASK|GDK_SHIFT_MASK" />
                       </object>
                     </child>
                   </object>
@@ -160,6 +171,7 @@
                         <property name="label" translatable="yes">_Expand all</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_expand_all" swapped="no"/>
+                        <accelerator key="E" signal="activate" modifiers="GDK_CONTROL_MASK" />
                       </object>
                     </child>
                     <child>
@@ -168,6 +180,7 @@
                         <property name="label" translatable="yes">_Collapse all</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_collapse_all" swapped="no"/>
+                        <accelerator key="E" signal="activate" modifiers="GDK_CONTROL_MASK|GDK_SHIFT_MASK" />
                       </object>
                     </child>
                   </object>
@@ -190,6 +203,7 @@
                         <property name="label" translatable="yes">Validate _XML</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_validate" swapped="no"/>
+                        <accelerator key="V" signal="activate" modifiers="GDK_CONTROL_MASK|GDK_SHIFT_MASK" />
                       </object>
                     </child>
                     <child>
@@ -198,6 +212,7 @@
                         <property name="label" translatable="yes">Validate _Schematron</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_validate_schematron" swapped="no"/>
+                        <accelerator key="V" signal="activate" modifiers="GDK_CONTROL_MASK|GDK_MOD1_MASK" />
                       </object>
                     </child>
                   </object>
@@ -219,6 +234,7 @@
                         <property name="visible">True</property>
                         <property name="label" translatable="yes">_Diff</property>
                         <signal name="activate" handler="on_diff" swapped="no"/>
+                        <accelerator key="D" signal="activate" modifiers="GDK_CONTROL_MASK" />
                       </object>
                     </child>
                     <child>
@@ -243,6 +259,7 @@
                         <property name="use-underline">True</property>
                         <property name="active">True</property>
                         <signal name="toggled" handler="on_display_properties_toggled" swapped="no"/>
+                        <accelerator key="P" signal="activate" modifiers="GDK_CONTROL_MASK" />
                       </object>
                     </child>
                     <child>
@@ -251,6 +268,7 @@
                         <property name="label" translatable="yes">_Console</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_console" swapped="no"/>
+                        <accelerator key="grave" signal="activate" modifiers="GDK_CONTROL_MASK" />
                       </object>
                     </child>
                   </object>
@@ -272,6 +290,7 @@
                         <property name="label" translatable="yes">_About</property>
                         <property name="use-underline">True</property>
                         <signal name="activate" handler="on_about" swapped="no"/>
+                        <accelerator key="F1" signal="activate" />
                       </object>
                     </child>
                   </object>
@@ -486,6 +505,7 @@
         <property name="label" translatable="yes">_Copy</property>
         <property name="use-underline">True</property>
         <signal name="activate" handler="on_copy" swapped="no"/>
+  <accelerator key="C" signal="activate" modifiers="GDK_CONTROL_MASK" />
       </object>
     </child>
     <child>
@@ -494,6 +514,7 @@
         <property name="label" translatable="yes">_Paste</property>
         <property name="use-underline">True</property>
         <signal name="activate" handler="on_paste" swapped="no"/>
+  <accelerator key="V" signal="activate" modifiers="GDK_CONTROL_MASK" />
       </object>
     </child>
     <child>
@@ -502,6 +523,7 @@
         <property name="label" translatable="yes">_Slice</property>
         <property name="use-underline">True</property>
         <signal name="activate" handler="on_slice" swapped="no"/>
+  <accelerator key="L" signal="activate" modifiers="GDK_CONTROL_MASK" />
       </object>
     </child>
     <child>
@@ -509,6 +531,7 @@
         <property name="visible">True</property>
         <property name="label" translatable="yes">Group</property>
         <signal name="activate" handler="on_group" swapped="no"/>
+  <accelerator key="G" signal="activate" modifiers="GDK_CONTROL_MASK" />
       </object>
     </child>
     <child>
@@ -516,6 +539,7 @@
         <property name="visible">False</property>
         <property name="label" translatable="yes">Ungroup</property>
         <signal name="activate" handler="on_ungroup" swapped="no"/>
+  <accelerator key="G" signal="activate" modifiers="GDK_CONTROL_MASK|GDK_SHIFT_MASK" />
       </object>
     </child>
   </object>
