@@ -1720,63 +1720,75 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                 !To avoid a petsc warning error we need to re-allocate the matrix always
                 call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
 
-                 call ASSEMB_SAT_JAC_AND_RES( state, packed_state, &
-                 n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                 sat_field, prev_sat, velocity, density, multi_absorp, &
-                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                 DEN_ALL, DENOLD_ALL, &
-                 Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
-                 SUF_SIG_DIAGTEN_BC, &
-                 DERIV%val(1,:,:), P, &
-                 V_SOURCE, V_ABSORB, VOLFRA_PORE, &
-                 GETCV_DISC, GETCT, &
-                 IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
-                 THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                 MEAN_PORE_CV, &
-                 mass_Mn_pres, THERMAL, &
-                 .false.,  mass_Mn_pres, &
-                 mass_ele_transp, &          !Capillary variables
-                 VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                 Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-                 nonlinear_iteration = nonlinear_iteration)
+                call ASSEMB_SAT_JAC_AND_RES( state, packed_state, &
+                n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                sat_field, prev_sat, velocity, density, multi_absorp, &
+                DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                DEN_ALL, DENOLD_ALL, &
+                Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
+                SUF_SIG_DIAGTEN_BC, &
+                DERIV%val(1,:,:), P, &
+                V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+                GETCV_DISC, GETCT, &
+                IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
+                THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                MEAN_PORE_CV, &
+                mass_Mn_pres, THERMAL, &
+                .false.,  mass_Mn_pres, &
+                mass_ele_transp, &          !Capillary variables
+                VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+                Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                nonlinear_iteration = nonlinear_iteration)
 
-                 !Make the inf norm of the Courant number across cpus
-                 !Normally computed when dealing with the continuity equation but
-                 !if solving for saturation it is useful to have up to date information
-                 if (IsParallel()) then
-                    call allmax(Courant_number(1)); call allmax(Courant_number(2))
-                 end if
+                !Make the inf norm of the Courant number across cpus
+                !Normally computed when dealing with the continuity equation but
+                !if solving for saturation it is useful to have up to date information
+                if (IsParallel()) then
+                  call allmax(Courant_number(1)); call allmax(Courant_number(2))
+                end if
 
-                 !Time to solve the system
-                 !If using FPI with backtracking
-                 if (backtrack_par_factor < 1.01) then
-                     !Backup of the saturation field, to adjust the solution
-                     sat_bak = satura
+                !Time to solve the system
+                !If using FPI with backtracking
+                if (backtrack_par_factor < 1.01) then
+                    !Backup of the saturation field, to adjust the solution
+                    sat_bak = satura
 
-                     !If using ADAPTIVE FPI with backtracking
-                     if (backtrack_par_factor < 0) then
-                        if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
-                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
-                        end if
-                        if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
-                        resold = res; res = maxval(abs(Mmat%CV_RHS%val))
-                        !We use the highest residual across the domain
-                        if (IsParallel()) call allmax(res)
+                    !If using ADAPTIVE FPI with backtracking
+                    if (backtrack_par_factor < 0) then
+                      if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                          call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                      end if
+                      if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
+                      resold = res; res = maxval(abs(Mmat%CV_RHS%val))
+                      !We use the highest residual across the domain
+                      if (IsParallel()) call allmax(res)
 
-                        if (its == 1) then
-                            first_res = res !Variable to check total convergence of the SFPI method
-                        end if
-                     end if
-                 end if
+                      if (its == 1) then
+                          first_res = res !Variable to check total convergence of the SFPI method
+                      end if
+                    end if
+                end if
 
-                 call zero(solution)
-                 btrk = 1.0
-                if (nonlinear_iteration > 3) then
+                call zero(solution)
+
+                ! Choose a backtrack option
+                btrk = 1.0
+                if      (nonlinear_iteration <=1) then
+                  btrk = 0.75
+                else if (nonlinear_iteration <=5) then
+                  btrk = 1.0
+                else if (nonlinear_iteration <=8) then
                   btrk = 0.75;
-                else if (nonlinear_iteration > 10) then
-                  btrk = 0.5;
-                else if (nonlinear_iteration > 15) then
-                  btrk = 0.25;
+                else if (nonlinear_iteration <=13) then  ! Slowly increases the backtracking
+                  btrk = -0.04*float(nonlinear_iteration)+1.0;
+                else if (nonlinear_iteration <=15) then  ! One final push to try to get convergence
+                  btrk = 0.75
+                else
+                  if (mod(nonlinear_iteration,3)==0) then
+                    btrk = 0.75;
+                  else
+                    btrk = 0.25;
+                  end if
                 end if
 
                  !########Solve the system#############
@@ -1802,7 +1814,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                   !Set to zero the fields
                   call zero(Mmat%CV_RHS)
 
-                  if (its > max_allowed_its) then ! used to have as well res < 1e-8.or. but tends to exit after just one
+                  if (its > max_allowed_its) then ! used to have as well res < RM8.or. but tends to exit after just one
                     ! print *, "Newton solve: ", its, " ", res
                     backtrack_or_convergence = 1
                     if (IsParallel()) call halo_update(sat_field)
@@ -2059,24 +2071,27 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
 ! call duplicate_petsc_matrix(Mmat%petsc_ACV, Jac)
 
 ! Very inneficient, just for testing
-call duplicate_petsc_matrix(Mmat%petsc_ACV, PETSC_ACV2)
-call deallocate(Mmat%petsc_ACV)
-call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, Mdims%nphase)
-    if (Mdims%npres >1) call WELLS_SATURATION_ASSEMB(state, packed_state, &
-        Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-        sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
-        SOURCT_ALL, VOLFRA_PORE, &
-        VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-        eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-        nonlinear_iteration = nonlinear_iteration, getResidual = .true.)
+        if (Mdims%npres >1) then
+          call duplicate_petsc_matrix(Mmat%petsc_ACV, PETSC_ACV2)  ! pscpsc maybe I can avoid this copy?
+          call deallocate(Mmat%petsc_ACV)
+          call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, Mdims%nphase)
 
-! call allocate(RHS_BAK,Mdims%nphase,sat_field%mesh,"RHS_BAK"); RHS_BAK%val = 0d0;
-! vtracer=as_vector(sat_field,dim=2)
-        call assemble(Mmat%petsc_ACV)
-! call PETSc_MatVec(Mmat%petsc_ACV, vtracer, RHS_BAK)
-! Mmat%CV_RHS%val = (Mmat%CV_RHS%val-RHS_BAK%val)
+          call WELLS_SATURATION_ASSEMB(state, packed_state, &
+                  Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                  sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+                  SOURCT_ALL, VOLFRA_PORE, &
+                  VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+                  eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                  nonlinear_iteration = nonlinear_iteration, getResidual = .true.)
 
-call MatAYPX(Mmat%petsc_ACV%M, real(1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
+          ! call allocate(RHS_BAK,Mdims%nphase,sat_field%mesh,"RHS_BAK"); RHS_BAK%val = 0d0;
+          ! vtracer=as_vector(sat_field,dim=2)
+          call assemble(Mmat%petsc_ACV)
+          ! call PETSc_MatVec(Mmat%petsc_ACV, vtracer, RHS_BAK)
+          ! Mmat%CV_RHS%val = (Mmat%CV_RHS%val-RHS_BAK%val)
+
+          call MatAYPX(Mmat%petsc_ACV%M, real(1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
+        end if
 ! print*, "GENERATED JACOBIAN"
 ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
 ! read*
@@ -8448,7 +8463,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      ! if (Mdims%npres >1) THEN !If we have pipes, reduce VAD in the CVs that have pipes, they do not get along...
      !   PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
      !   do cv_nodi = 1, Mdims%cv_nonods
-     !     IF ( PIPE_DIAMETER%VAL(CV_NODI) > 1e-8 ) THEN
+     !     IF ( PIPE_DIAMETER%VAL(CV_NODI) > RM8 ) THEN
      !        Overrelaxation(CV_NODI) = Overrelaxation(CV_NODI) * 1e-2!Severely reduce Overrelaxation around wells
      !     end if
      !   end do

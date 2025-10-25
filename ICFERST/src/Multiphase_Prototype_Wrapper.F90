@@ -860,7 +860,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
       .not. have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear')) then
         call get_option('/io/dump_period/constant', dump_period, default = 0.01)
         auxR = mod(dump_period,dt)
-        if ( abs(auxR) > 1e-8 .or. dt > dump_period) then
+        if ( abs(auxR) > RM8 .or. dt > dump_period) then
           dt = dump_period/ceiling(dump_period/dt)
           ewrite(0, *) "WARNING: Dump period has to be a multiple of the time-step. Time-step adjusted to: ", dt
           call set_option("/timestepping/timestep", dt)
@@ -1529,7 +1529,7 @@ contains
           call add_option("/solver_options/Linear_solver/relative_error", stat = stat)
           call set_option("/solver_options/Linear_solver/relative_error", 1e-10)
           call add_option("/solver_options/Linear_solver/absolute_error", stat = stat)
-          call set_option("/solver_options/Linear_solver/absolute_error", 1e-8)
+          call set_option("/solver_options/Linear_solver/absolute_error", RM8)
           call add_option("/solver_options/Linear_solver/max_iterations", stat = stat)
           call set_option("/solver_options/Linear_solver/max_iterations", 300)
           !Copy an option that always exists to ensure ignore all solver failues
@@ -1556,7 +1556,7 @@ contains
           call add_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/relative_error", stat = stat)
           call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/relative_error", 1e-10)
           call add_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/absolute_error", stat = stat)
-          call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/absolute_error", 1e-8)
+          call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/absolute_error", RM8)
           call add_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/max_iterations", stat = stat)
           call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/max_iterations", 500)
           !Copy an option that always exists to ensure ignore all solver failues
@@ -1582,7 +1582,7 @@ contains
       !   call add_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/relative_error", stat = stat)
       !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/relative_error", 1e-10)
       !   call add_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/absolute_error", stat = stat)
-      !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/absolute_error", 1e-8)
+      !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/absolute_error", RM8)
       !   call add_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/max_iterations", stat = stat)
       !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/max_iterations", 300)
       !   !Remove null space for this option

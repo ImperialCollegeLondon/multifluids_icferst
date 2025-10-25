@@ -2215,7 +2215,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
     if (auxI == 0) max_ts = min(max_ts, auxR)
 
     !Ensure that even adapting the time, the final time is matched
-    max_ts = max(min(max_ts, abs(finish_time - acctim)), 1e-8)
+    max_ts = max(min(max_ts, abs(finish_time - acctim)), RM8)
     if (stored_dt<0) then!for the first time only
         call get_option( '/timestepping/timestep', dt )
         stored_dt = dt
@@ -2440,115 +2440,7 @@ ts_ref_val = 0d0;
 
 
             if (is_porous_media) then
-                select case (variable_selection)
-                case (2)
-                    write(temp_string, '(a, 1PE10.3,a,i0)' ) "| L_inf:", inf_norm_val
-                case default
-                  output_message = ''; temp_string = ''
-                  ! When we print the header we also choose the time output units
-                  TimeDtConv = 86400.; DtTimeUnits ='d'
-                  if (dt < 86400.) then
-                    TimeDtConv = 1.0; DtTimeUnits ='s'
-                  end if
-                  TotalTimeConv = 86400.; TotTimeUnits ='d'
-                  if (acctim < 86400.) then
-                    TotalTimeConv = 1.0; TotTimeUnits ='s'
-                  end if
-                  ! Print header for the output
-                  if ((itime == 1 .or. mod(itime,15) == 0)) then
-                    write(temp_string ,'(a)') "   Step| nits| lits|     dT["//trim(DtTimeUnits)//"]|   Time["//trim(TotTimeUnits)//"]|   Pres[-]|"
-                    write(temp_string2,'(a)') "-------|-----|-----|----------|----------|----------|"
-                    if (Mdims%n_in_pres     > 1)     then
-                      write(temp_string3,'(a)') "   Mass[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
-                      write(temp_string3,'(a)') "----------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
-                    end if
-
-                    if (printSat) then
-                      write(temp_string3,'(a)') "    Sat[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
-                      write(temp_string3,'(a)') "----------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
-                    end if
-                    if (printTemp) then
-                      write(temp_string3,'(a)') "   Temp[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
-                      write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
-                    end if
-                    if (printConc) then
-                      write(temp_string3,'(a)') "   Trac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
-                      write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
-                    end if
-                    if (printTrcrs) then
-                      write(temp_string3,'(a)') "  PTrac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
-                      write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
-                    end if
-                    write(temp_string3,'(a)') " State|"      ; temp_string  = trim(temp_string ) // trim(temp_string3)
-                    write(temp_string3,'(a)') "------|"      ; temp_string2 = trim(temp_string2) // trim(temp_string3)
-                    write(temp_string3,'(a)') "nWarng|"      ; temp_string  = trim(temp_string ) // trim(temp_string3)
-                    write(temp_string3,'(a)') "------|"      ; temp_string2 = trim(temp_string2) // trim(temp_string3)
-                    write(temp_string3,'(a)') " Progress[%]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
-                    write(temp_string3,'(a)') "------------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
-
-
-                    write(output_message,*)  trim(temp_string)//ACHAR(10)//"  "//trim(temp_string2)//ACHAR(10)
-                    ! print*,trim(temp_string)
-                    ! print*,trim(temp_string2)
-                    temp_string = ''; temp_string2 = ' '
-                  end if
-
-                  write(sitime,'(I7)') itime
-                  write(snits ,'(I4)') nonlinear_its
-                  write(slits ,'(I4)') total_lIts/nonlinear_its
-
-                  write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| "//trim(slits) // "| " //printPretty(dt/TimeDtConv) // "| " // printPretty(acctim/TotalTimeConv) // "| " // &
-                       printPretty(inf_norm_pres) // "| "
-                  if (Mdims%n_in_pres      > 1    ) temp_string = trim(temp_string)//" "// printPretty(max_calculate_mass_delta)// "| "
-                  if (printSat)   temp_string = trim(temp_string)//" "// printPretty(inf_norm_val)            // "| "
-                  if (printTemp)  temp_string = trim(temp_string)//" "// printPretty(inf_norm_temp)           // "| "
-                  if (printConc)  temp_string = trim(temp_string)//" "// printPretty(inf_norm_conc)           // "| "
-                  if (printTrcrs) temp_string = trim(temp_string)//" "// printPretty(Tracers_ref_val)         // "| "
-                  if (its >= NonLinearIteration .and. .not. ExitNonLinearLoop)    then
-                    temp_string = trim(temp_string)   //"  Fail|"
-                  else
-                    if (nSolverWarnings>nSolverWarningsOld) then
-                      temp_string = trim(temp_string) //"LinSol|"
-                    else if (nDMOWarnings>nDMOWarningsOld) then
-                      temp_string = trim(temp_string) //"   DMO|"
-                    else
-                      temp_string = trim(temp_string) //"    OK|"
-                    end if
-                  end if
-                  write(snits,'(I6)') nDMOWarnings+nSolverWarnings !re=use string variable snits
-                  temp_string = trim(temp_string) // snits; temp_string = trim(temp_string) // "| "
-                  sim_progress = 100.0d0 * acctim / finish_time
-                  write(temp_string3,'(F12.2)') sim_progress
-                  temp_string = trim(temp_string)//trim(temp_string3)//"| "
-                  if (getprocno() == 1) then
-                    if ((itime == 1 .or. mod(itime,15) == 0)) then
-                      output_message = trim(output_message) // " "//trim(temp_string)
-                    else
-                      output_message = trim(output_message) // trim(temp_string)
-                    end if
-                  end if
-                  temp_string = ''
-                    ! if (abs(inf_norm_val) > 1e-30) then
-                    !     write(temp_string, '(a, a)' ) "| Saturation: ", printPretty(inf_norm_val)
-                    !     output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
-                    ! end if
-                    ! if (abs(ts_ref_val) > 1e-30) then
-                    !     write(temp_string, '(a, a)' ) "| Saturation(Rel L2): ", printPretty(ts_ref_val)
-                    !     output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
-                    ! end if
-                    ! if (abs(inf_norm_temp) > 1e-30) then
-                    !     write(temp_string, '(a, a)' ) "| Temperature: ",printPretty(inf_norm_temp)
-                    !     output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
-                    ! end if
-                    ! if (abs(inf_norm_conc) > 1e-30) then
-                    !     write(temp_string, '(a, a)' ) "| Tracer: ", printPretty(inf_norm_conc)
-                    !     output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
-                    ! end if
-                    ! if (abs(Tracers_ref_val) > 1e-30) then
-                    !     write(temp_string, '(a, a)' ) "| PassiveTracers/Species: ", printPretty(Tracers_ref_val)
-                    !     output_message = trim(output_message) // " "// trim(temp_string) ; temp_string=''
-                    ! end if
-                end select
+              call printHeader()
             else
                 write(temp_string, '(a, 1PE10.3,a,i0)' ) "| L_inf:", inf_norm_val
             end if
@@ -2574,7 +2466,7 @@ ts_ref_val = 0d0;
 
 
            if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Test_mass_consv/stop_at_min_ts")) then
-             if (its >= NonLinearIteration .and. max_calculate_mass_delta > calculate_mass_tol .and. abs(dt - min_ts)/min_ts < 1e-8) THEN
+             if (its >= NonLinearIteration .and. max_calculate_mass_delta > calculate_mass_tol .and. abs(dt - min_ts)/min_ts < RM8) THEN
                ewrite(0,*) trim(output_message)
                FLAbort("WARNING: SIMULATION TERMINATED AS MASS IS NOT BEING CONSERVED AND THE MINIMUM TIME-STEP HAS BEEN REACHED. RE-RUN WITH DIFFERENT SETTINGS.")
              end if
@@ -2616,7 +2508,7 @@ ts_ref_val = 0d0;
                         dt = stored_dt
                         auxR = abs(PID_time_controller())
                         if (auxR < 1.0 )then!Reduce Ts
-                            dt = max(dt * max(auxR, 1./(1.5*decreaseFactor)), min_ts)
+                            dt = max(dt/decreaseFactor, min_ts)
                         else
                             dt = dt * min(auxR, 1.5*increaseFactor)
                         end if
@@ -2681,8 +2573,9 @@ ts_ref_val = 0d0;
                     call set_option( '/timestepping/current_time', old_acctim )
                     if (PID_controller) then
                        auxR = PID_time_controller()
+                       dt = max(dt/decreaseFactor, min_ts)  ! Halve the time-step size. Otherwise it tends to over do it
                        !Maybe the PID controller thinks is better to reduce more than just half, up to 0.25
-                       dt = max(min(0.5/decreaseFactor * dt, auxR*dt), min_ts)
+                      !  dt = max(min(0.5/decreaseFactor * dt, auxR*dt), min_ts)
                        !If PID_controller then update the status
                        auxR = PID_time_controller(reset=.true.)
                      else
@@ -2739,7 +2632,7 @@ contains
         ! 1.0 => Forces the number of iterations, almost ignore other criteria
         ! 0.6 => soft constrain, it will try but not very much, considers other criteria
         real, parameter :: impose_FPI_num = 2.0 !Whether to strongly enforce the number of iterations and ignores other criteria, now on.
-        real, parameter :: tol = 1e-8
+        real, parameter :: tol = RM8
         logical, parameter :: max_criteria = .false.!If false, use an average with different weights
 
 
@@ -2799,6 +2692,104 @@ contains
         call allmin(PID_time_controller)
 
     end function PID_time_controller
+
+
+
+    !>@brief: This function prints the header for the terminal
+    subroutine printHeader()
+
+      select case (variable_selection)
+      case (2)
+          write(temp_string, '(a, 1PE10.3,a,i0)' ) "| L_inf:", inf_norm_val
+      case default
+        output_message = ''; temp_string = ''
+        if (itime == 1 .or. mod(itime,15) == 0) then
+          ! When we print the header we also choose the time output units
+          if (dt < SECS_IN_DAY) then
+            TimeDtConv = 1.0; DtTimeUnits ='s'
+          else
+            TimeDtConv = SECS_IN_DAY; DtTimeUnits ='d'
+          end if
+          if (acctim < SECS_IN_DAY) then
+            TotalTimeConv = 1.0; TotTimeUnits ='s'
+          else
+            TotalTimeConv = SECS_IN_DAY; TotTimeUnits ='d'
+          end if
+          ! Print header for the output
+          write(temp_string ,'(a)') "   Step| nits| lits|     dT["//trim(DtTimeUnits)//"]|   Time["//trim(TotTimeUnits)//"]|   Pres[-]|"
+          write(temp_string2,'(a)') "-------|-----|-----|----------|----------|----------|"
+          if (Mdims%n_in_pres     > 1)     then
+            write(temp_string3,'(a)') "   Mass[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+            write(temp_string3,'(a)') "----------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+          end if
+
+          if (printSat) then
+            write(temp_string3,'(a)') "    Sat[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+            write(temp_string3,'(a)') "----------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+          end if
+          if (printTemp) then
+            write(temp_string3,'(a)') "   Temp[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+            write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+          end if
+          if (printConc) then
+            write(temp_string3,'(a)') "   Trac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+            write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+          end if
+          if (printTrcrs) then
+            write(temp_string3,'(a)') "  PTrac[-]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+            write(temp_string3,'(a)') "----------|"  ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+          end if
+          write(temp_string3,'(a)') " State|"      ; temp_string  = trim(temp_string ) // trim(temp_string3)
+          write(temp_string3,'(a)') "------|"      ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+          write(temp_string3,'(a)') "nWarng|"      ; temp_string  = trim(temp_string ) // trim(temp_string3)
+          write(temp_string3,'(a)') "------|"      ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+          write(temp_string3,'(a)') " Progress[%]|" ; temp_string  = trim(temp_string ) // trim(temp_string3)
+          write(temp_string3,'(a)') "------------|" ; temp_string2 = trim(temp_string2) // trim(temp_string3)
+
+
+          write(output_message,*)  trim(temp_string)//ACHAR(10)//"  "//trim(temp_string2)//ACHAR(10)
+          ! print*,trim(temp_string)
+          ! print*,trim(temp_string2)
+          temp_string = ''; temp_string2 = ' '
+        end if
+
+        write(sitime,'(I7)') itime
+        write(snits ,'(I4)') nonlinear_its
+        write(slits ,'(I4)') total_lIts/nonlinear_its
+
+        write(temp_string ,*) trim(sitime)// "| " //trim(snits) // "| "//trim(slits) // "| " //printPretty(dt/TimeDtConv) // "| " // printPretty(acctim/TotalTimeConv) // "| " // &
+              printPretty(inf_norm_pres) // "| "
+        if (Mdims%n_in_pres      > 1    ) temp_string = trim(temp_string)//" "// printPretty(max_calculate_mass_delta)// "| "
+        if (printSat)   temp_string = trim(temp_string)//" "// printPretty(inf_norm_val)            // "| "
+        if (printTemp)  temp_string = trim(temp_string)//" "// printPretty(inf_norm_temp)           // "| "
+        if (printConc)  temp_string = trim(temp_string)//" "// printPretty(inf_norm_conc)           // "| "
+        if (printTrcrs) temp_string = trim(temp_string)//" "// printPretty(Tracers_ref_val)         // "| "
+        if (its >= NonLinearIteration .and. .not. ExitNonLinearLoop)    then
+          temp_string = trim(temp_string)   //"  Fail|"
+        else
+          if (nSolverWarnings>nSolverWarningsOld) then
+            temp_string = trim(temp_string) //"LinSol|"
+          else if (nDMOWarnings>nDMOWarningsOld) then
+            temp_string = trim(temp_string) //"   DMO|"
+          else
+            temp_string = trim(temp_string) //"    OK|"
+          end if
+        end if
+        write(snits,'(I6)') nDMOWarnings+nSolverWarnings !re=use string variable snits
+        temp_string = trim(temp_string) // snits; temp_string = trim(temp_string) // "| "
+        sim_progress = 100.0d0 * acctim / finish_time
+        write(temp_string3,'(F12.2)') sim_progress
+        temp_string = trim(temp_string)//trim(temp_string3)//"| "
+        if (getprocno() == 1) then
+          if (itime == 1 .or. mod(itime,15) == 0) then
+            output_message = trim(output_message) // " "//trim(temp_string)
+          else
+            output_message = trim(output_message) // trim(temp_string)
+          end if
+        end if
+        temp_string = ''
+      end select
+    end subroutine printHeader
 
 end subroutine Adaptive_NonLinear
 
@@ -3695,7 +3686,7 @@ end subroutine get_DarcyVelocity
             ! Write the actual numbers to the file now
 
             if (is_porous_media) then
-                write(numbers,'(a,a,a,a,a)') printEng(current_time), "," , printEng(current_time/(86400.*365.)), ",",  printEng(outfluxes%porevolume)
+                write(numbers,'(a,a,a,a,a)') printEng(current_time), "," , printEng(current_time/(SECS_IN_DAY*365.)), ",",  printEng(outfluxes%porevolume)
             else
                 write(numbers,'(a,a,a,a,a)') printEng(current_time), "," , printEng(current_time/(60.)), ",",  printEng(outfluxes%porevolume)
             end if
@@ -3803,13 +3794,12 @@ end subroutine get_DarcyVelocity
        integer, intent(in)    :: its, itime
        real   , intent(in)    :: t_adapt_threshold, acctim, PVF_cfl
        logical                :: flag_enter_after_adapt
-       real                   :: epsilon, rc
+       real                   :: rc
        integer                :: rcp
 
        !Initialization===============================================================
        EnterSolve             = .true.
        flag_enter_after_adapt = .false.
-       epsilon                =  1e-3
        !End Initialization===========================================================
 
        ! Main Subroutine=============================================================
@@ -4046,6 +4036,8 @@ end subroutine get_DarcyVelocity
         factor = PaToBar;
       else if (is_substring(fieldname,'permeability')) then
         factor = 1d0/m2TomD;
+      else if (is_substring(fieldname,'Time')) then
+        factor = 1d0/SECS_IN_DAY;
       else if (is_substring(fieldname,'temperature')) then
         shft = -KtoC;
       end if
@@ -4110,7 +4102,15 @@ end subroutine get_DarcyVelocity
         end do
       end do
 
-      !Finally permeability as well
+      ! Convert Time
+      sfield => extract_scalar_field(state(1), "Time")
+      call getOutputConverter("Time", outSysFactor, outSysShft)
+      if (convertBack) then
+        outSysFactor = 1./outSysFactor; outSysShft = -outSysShft;
+      end if
+      sfield%val = sfield%val*outSysFactor + outSysShft
+
+      ! Finally permeability as well
       if (is_porous_media) then
         call getOutputConverter("Permeability", outSysFactor, outSysShft)
         if (convertBack) then

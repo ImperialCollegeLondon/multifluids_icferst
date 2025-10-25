@@ -76,11 +76,13 @@ characters in the simulation name should be avoided.</a:documentation>
           <element name="dump_units_METRIC">
             <a:documentation>Outputs in METRIC system. This are SI units except for:
 
-Pressure -&gt; bar
+Time			-&gt; days
 
-Temperature -&gt; Celsius
+Pressure		-&gt; bar
 
-Permeability -&gt; milliDarcy</a:documentation>
+Temperature 	-&gt; Celsius
+
+Permeability	-&gt; milliDarcy</a:documentation>
             <empty/>
           </element>
         </choice>
@@ -2378,7 +2380,7 @@ The field selected in "adaptive_timestep_nonlinear" has preference over this</a:
                 <element name="Picard_its">
                   <a:documentation>&lt;b&gt;Recommended settings: 0&lt;/b&gt;
 
-&lt;b&gt;Recommended infinite norm tol: 1e-3 to 1-5. Recommended 5e-4&lt;/b&gt;
+&lt;b&gt;Recommended infinite norm tol: 1e-3 to 1e-5. Recommended 5e-4&lt;/b&gt;
 
 Controls how many non-linear iterations are perfomed using the classical Picard with acceleration
 solver. Once the number of iterations pass the value provided here a Newton solver without backtracking will be used.

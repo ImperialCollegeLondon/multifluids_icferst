@@ -484,7 +484,7 @@ contains
       end if
 
       DO CV_NODI = 1, Mdims%cv_nonods
-          IF ( PIPE_DIAMETER%VAL(CV_NODI) > 1e-8 ) THEN
+          IF ( PIPE_DIAMETER%VAL(CV_NODI) > RM8 ) THEN
               do count = Mspars%small_acv%fin(cv_nodi), Mspars%small_acv%fin(cv_nodi+1)-1
                   cv_nodj = Mspars%small_acv%col(count)
                   IF ( PIPE_DIAMETER%VAL(CV_NODJ) /= 0.0 ) THEN
@@ -1025,7 +1025,7 @@ contains
             assembly_phase = iphase
             if (assemble_collapsed_to_one_phase) assembly_phase = 2
               do cv_nodi = 1, Mdims%cv_nonods
-                  if ( pipe_diameter%val(cv_nodi) <= 1e-8 ) then
+                  if ( pipe_diameter%val(cv_nodi) <= RM8 ) then
                       cv_nodj = cv_nodi
                       i_indx = Mmat%petsc_ACV%row_numbering%gnn2unn( cv_nodi, assembly_phase )
                       j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, assembly_phase )
@@ -1276,7 +1276,7 @@ contains
         DO CV_ILOC = 1, Mdims%cv_nloc
             CV_NODI = ndgln%cv( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
             !Only go through the nodes that have a well
-            if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
+            if (PIPE_DIAMETER%val(cv_nodi) < RM8) cycle
             MAT_NODI = ndgln%mat( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
             if (is_porous_media) then
                 RSUM_VEC = 0.0
@@ -1298,7 +1298,7 @@ contains
       if (is_porous_media) then
           DO CV_NODI = 1, Mdims%cv_nonods
               !Only go through the nodes that have a well
-              if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
+              if (PIPE_DIAMETER%val(cv_nodi) < RM8) cycle
               SIGMA_INV_APPROX(:, CV_NODI) = 1.0 / ( OPT_VEL_UPWIND_COEFS_NEW_CV(:, CV_NODI) / N(CV_NODI) )
           end do
       else
@@ -1316,7 +1316,7 @@ contains
       DO CV_NODI = 1, Mdims%cv_nonods
 
           !Only go through the nodes that have a well
-          if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
+          if (PIPE_DIAMETER%val(cv_nodi) < RM8) cycle
 
           ! variables used in the edge approach
           h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi), 1.0e-10))**2 )
@@ -1401,7 +1401,7 @@ contains
           PIPE_ABS = 0.0
           DO CV_NODI = 1, Mdims%cv_nonods
               !Only go through the nodes that have a well
-              if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
+              if (PIPE_DIAMETER%val(cv_nodi) < RM8) cycle
 
               h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
               h = max( h, 1.0e-10 )
@@ -1527,7 +1527,7 @@ contains
       Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
           Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
               !Only go through the nodes that have a well
-              if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
+              if (PIPE_DIAMETER%val(cv_nodi) < RM8) cycle
 
               LOC_CV_RHS_I=0.0; LOC_MAT_II = 0.
               R_PHASE(wells_first_phase:final_phase*2) = MEAN_PORE_CV( Mdims%npres, CV_NODI ) * pipes_aux%MASS_PIPE( cv_nodi ) / DT
@@ -1616,11 +1616,8 @@ contains
                       if (assemble_collapsed_to_one_phase) assembly_phase_2 = 1 + (iphase-1)/Mdims%n_in_pres
                       if (getNewtonType) then
                         if (getResidual) then
-                          !pscpsc DOES IT GO INTO assembly_phase_2 OR assembly_phase? FOR ME THE LOGIC IS ASSEMBLE_PHASE NOT THE 2... NEITHER SOLVE THE PROBLEM
                           call addto(Mmat%CV_RHS,assembly_phase_2, CV_NODI,MASS_PIPE_FOR_COUP( CV_NODI ) *&
                                                 PIPE_ABS( iphase, compact_phase, CV_NODI )*T_ALL( global_phase, CV_NODI ))
-                          ! call addto(Mmat%CV_RHS,assembly_phase_2, CV_NODI,MASS_PIPE_FOR_COUP( CV_NODI ) *&
-                          !                       PIPE_ABS( iphase, compact_phase, CV_NODI )*T_ALL( compact_phase, CV_NODI ))
                         end if
                         call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, &
                             cv_nodi, cv_nodi, &
@@ -1646,8 +1643,6 @@ contains
                         if (getResidual) then
                           call addto(Mmat%CV_RHS,assembly_phase_2, CV_NODI,Mass_CV( CV_NODI ) *&
                                         ABSORBT_ALL( iphase, compact_phase, CV_NODI )*T_ALL( jphase, CV_NODI ))
-                          ! call addto(Mmat%CV_RHS,assembly_phase_2, CV_NODI,Mass_CV( CV_NODI ) *&
-                          !               ABSORBT_ALL( iphase, compact_phase, CV_NODI )*T_ALL( compact_phase, CV_NODI ))
                         end if
                         call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, cv_nodi, cv_nodi, &
                             Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI ))!*T_ALL( jphase, CV_NODI )  ! We can use T_ALL because for Newton we only consider saturation
@@ -1688,7 +1683,7 @@ contains
           DIAG_SCALE_PRES_COUP=0.0
           DO CV_NODI = 1, Mdims%cv_nonods
             !Only go through the nodes that have a well
-            if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
+            if (PIPE_DIAMETER%val(cv_nodi) < RM8) cycle
               ct_rhs_phase=0.0 ; DIAG_SCALE_PRES_phase=0.0
               IPRES= Mdims%npres
               R_PRES(IPRES) = pipes_aux%MASS_PIPE( cv_nodi ) * MEAN_PORE_CV( IPRES, CV_NODI ) / DT
@@ -2435,7 +2430,7 @@ contains
             !To compare if a mesh node falls within the well section we need
             !to use a tighter tolerance than when checking if the node is within a cirtual well cylinder
             !this is because we are not affected by the lack of precision of the nastran .bdf files
-            real, parameter :: single_precision_tol = 1e-8
+            real, parameter :: single_precision_tol = RM8
             !Initialiase variables
             is_within_pipe = .false.
 
@@ -2500,7 +2495,7 @@ contains
             !This should definetively work in parallel and be cheap
             l = 0; aux_pipe_seeds = -1
             element_loop: do ele = 1, size(well_domains%val)
-                if (well_domains%val(ele) <= 1e-8) cycle!Only look at elements within the well regions, the rest is set to 0
+                if (well_domains%val(ele) <= RM8) cycle!Only look at elements within the well regions, the rest is set to 0
                 do iloc  = 1, Mdims%cv_nloc
                     inod = ndgln%p( ( ele - 1 ) * Mdims%cv_nloc + iloc )
                     do edge = 1, size(edges,2)
@@ -3041,9 +3036,9 @@ contains
                   DO CV_SILOC = 1, Mdims%cv_snloc
                     CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
                     !If pipe diameter = 0, no changes made
-                    if (PIPE_Diameter%val(cv_nod) <= 1e-8) cycle
+                    if (PIPE_Diameter%val(cv_nod) <= RM8) cycle
                     !If gamma =0 and pressure bc and P0DG then we need to impose strong BCs
-                    if (maxval(abs(pipes_aux%GAMMA_PRES_ABS(:,:,cv_nod))) < 1e-8) then
+                    if (maxval(abs(pipes_aux%GAMMA_PRES_ABS(:,:,cv_nod))) < RM8) then
                       pipes_aux%impose_strongBCs(cv_nod) = .true.
                     end if
                   end do
@@ -3060,7 +3055,7 @@ contains
                         DO CV_SILOC = 1, Mdims%cv_snloc
                             CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
                             !If pipe diameter = 0, no changes made
-                            if (PIPE_Diameter%val(cv_nod) <= 1e-8) cycle
+                            if (PIPE_Diameter%val(cv_nod) <= RM8) cycle
                             pipes_aux%GAMMA_PRES_ABS(:,:,cv_nod) = 0.
                             pipes_aux%impose_strongBCs(cv_nod) = .true.
                             !To show in paraview if possible

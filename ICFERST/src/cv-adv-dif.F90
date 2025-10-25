@@ -664,7 +664,7 @@ contains
 
           !cv_beta == 1 means conservative, meaning that everything multiplied by one_m_cv_beta can be ignored
           one_m_cv_beta = 1.0 - cv_beta
-          conservative_advection = abs(one_m_cv_beta) <= 1e-8
+          conservative_advection = abs(one_m_cv_beta) <= RM8
           QUAD_OVER_WHOLE_ELE=.FALSE.
           ! Allocate memory for the control volume surface shape functions, etc.
           IF(GETCT) THEN
@@ -1245,7 +1245,7 @@ contains
                           !For the discontinuous formulation we want to use the discontinuous method only where there is a permeability jump
                           !elsewhere the normal method should work better as it is also more reliable
                           if (is_porous_media .and. between_elements) then
-                            permeability_jump = abs(perm%val(1,1,ele) - perm%val(1,1,ele2)/perm%val(1,1,ele)) > 1e-8
+                            permeability_jump = abs(perm%val(1,1,ele) - perm%val(1,1,ele2)/perm%val(1,1,ele)) > RM8
                           end if
                           !Create local variables to reduce slicing
                           LOC_T_J = T_ALL(1:final_phase, cv_nodj); LOC_TOLD_J = TOLD_ALL(1:final_phase, cv_nodj)
@@ -2914,7 +2914,7 @@ end if
                             end if
                         end if
                       !Only compute limited value if the field is not constant in the region
-                      if ( maxval(abs(F_CV_NODI - F_CV_NODJ)/VTOLFUN(F_CV_NODI)) > 1e-8) then
+                      if ( maxval(abs(F_CV_NODI - F_CV_NODJ)/VTOLFUN(F_CV_NODI)) > RM8) then
                         CALL ONVDLIM_ANO_MANY( NFIELD, &
                             LIMF , FEMFGI , F_INCOME , &
                             F_CV_NODI , F_CV_NODJ ,int_XI_LIMIT ,  &
@@ -3191,7 +3191,7 @@ end if
                 !Calculate velocity on the interface, either using upwinding or high order methods
                 if (use_porous_limiter) then!high order
                     !Check if there is any point on using the limiter
-                  if (maxval(abs(LOC_T_I - LOC_T_J)/VTOLFUN(LOC_T_I)) > 1e-8) then
+                  if (maxval(abs(LOC_T_I - LOC_T_J)/VTOLFUN(LOC_T_I)) > RM8) then
                     !Calculate saturation at GI, necessary for the limiter
                     FEMTGI_IPHA = matmul(LOC_FEMT, CV_funs%scvfen(:,GI) )
                     ! ************NEW LIMITER**************************

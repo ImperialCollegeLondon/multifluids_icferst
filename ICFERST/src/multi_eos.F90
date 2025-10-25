@@ -603,24 +603,24 @@ contains
             !Initialize density calculation for fresh water
             rho = 1e3
             !Add pressure dependencies if need to
-            if (.not. remove_P_dep(1)) rho = rho + 1e3*1e-6*(489*pressure%val(1,1,:)*1e-6-0.333*(pressure%val(1,1,:)*1e-6)**2)
+            if (.not. remove_P_dep(1)) rho = rho + 1e3*RM6*(489*pressure%val(1,1,:)*RM6-0.333*(pressure%val(1,1,:)*RM6)**2)
             !Add temperature contribution
             if (have_temperature_field) then
-              rho = rho + 1e3*1e-6*(-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3)
+              rho = rho + 1e3*RM6*(-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3)
               !If pressure is not removed, add pressure-related temperature terms
-              if (.not. remove_P_dep(1)) rho = rho + 1e3*1e-6*(- 2*(temperature % val - 273.15)*pressure%val(1,1,:)*1e-6+ 0.016*((temperature % val - 273.15))**2*pressure%val(1,1,:)*1e-6 - &
-              1.3e-5*((temperature % val - 273.15))**3*pressure%val(1,1,:)*1e-6- 0.002*(temperature % val - 273.15)*(pressure%val(1,1,:)*1e-6)**2)
+              if (.not. remove_P_dep(1)) rho = rho + 1e3*RM6*(- 2*(temperature % val - 273.15)*pressure%val(1,1,:)*RM6+ 0.016*((temperature % val - 273.15))**2*pressure%val(1,1,:)*RM6 - &
+              1.3e-5*((temperature % val - 273.15))**3*pressure%val(1,1,:)*RM6- 0.002*(temperature % val - 273.15)*(pressure%val(1,1,:)*RM6)**2)
             endif
             !Add the brine contribution if salinity is provided
             if (have_concentration_field) then
               rho = rho + 1e3*Concentration % val*(0.668 + 0.44*Concentration % val)
               !If pressure is not removed, add pressure-related salinity terms
-              if (.not. remove_P_dep(1)) rho = rho + 1e3*Concentration % val *1e-6*(300*pressure%val(1,1,:)*1e-6 - 2400*pressure%val(1,1,:)*1e-6*Concentration % val)
+              if (.not. remove_P_dep(1)) rho = rho + 1e3*Concentration % val *RM6*(300*pressure%val(1,1,:)*RM6 - 2400*pressure%val(1,1,:)*RM6*Concentration % val)
               !Add tempeature-related salinity terms
               if (have_temperature_field) then
-                rho = rho + 1e3*Concentration % val*1e-6*(temperature % val-273.15) * (80 + 3*(temperature % val-273.15)-3300*Concentration % val)
+                rho = rho + 1e3*Concentration % val*RM6*(temperature % val-273.15) * (80 + 3*(temperature % val-273.15)-3300*Concentration % val)
                 !If pressure is not removed, add pressure-temperature-salinity terms
-                if (.not. remove_P_dep(1)) rho = rho + 1e3*Concentration % val*1e-6*(temperature % val-273.15)*(-13*pressure%val(1,1,:)*1e-6 + 47*pressure%val(1,1,:)*1e-6*Concentration % val)
+                if (.not. remove_P_dep(1)) rho = rho + 1e3*Concentration % val*RM6*(temperature % val-273.15)*(-13*pressure%val(1,1,:)*RM6 + 47*pressure%val(1,1,:)*RM6*Concentration % val)
               endif
             endif
 
@@ -630,20 +630,20 @@ contains
             else
               perturbation_pressure = 1.0 ! 1 Pascal is a good perturbation
 
-              RhoPlus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 &
-              - 2*(temperature % val - 273.15)*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - &
-              1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) + perturbation_pressure)*1e-6)**2))
+              RhoPlus = 1e3 * ( 1 + RM6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) + perturbation_pressure)*RM6 &
+              - 2*(temperature % val - 273.15)*(pressure%val(1,1,:) + perturbation_pressure)*RM6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) + perturbation_pressure)*RM6 - &
+              1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) + perturbation_pressure)*RM6 -0.333*((pressure%val(1,1,:) + perturbation_pressure)*RM6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) + perturbation_pressure)*RM6)**2))
 
-              RhoMinus = 1e3 * ( 1 + 1e-6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - &
-               2*(temperature % val - 273.15)*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - &
-               1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 -0.333*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) - perturbation_pressure)*1e-6)**2))
+              RhoMinus = 1e3 * ( 1 + RM6 * (-80*(temperature % val - 273.15) - 3.3*((temperature % val - 273.15))**2 + 0.00175*((temperature % val - 273.15))**3 + 489*(pressure%val(1,1,:) - perturbation_pressure)*RM6 - &
+               2*(temperature % val - 273.15)*(pressure%val(1,1,:) - perturbation_pressure)*RM6 + 0.016*((temperature % val - 273.15))**2*(pressure%val(1,1,:) - perturbation_pressure)*RM6 - &
+               1.3e-5*((temperature % val - 273.15))**3*(pressure%val(1,1,:) - perturbation_pressure)*RM6 -0.333*((pressure%val(1,1,:) - perturbation_pressure)*RM6)**2 - 0.002*(temperature % val - 273.15)*((pressure%val(1,1,:) - perturbation_pressure)*RM6)**2))
               if (have_concentration_field) then
                   !Add the brine contribution
-                  RhoPlus = RhoPlus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * &
-                  (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) + perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) + perturbation_pressure)*1e-6*Concentration % val)))
+                  RhoPlus = RhoPlus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + RM6 * (300*(pressure%val(1,1,:) + perturbation_pressure)*RM6 - 2400*(pressure%val(1,1,:) + perturbation_pressure)*RM6*Concentration % val + (temperature % val - 273.15) * &
+                  (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) + perturbation_pressure)*RM6 + 47*(pressure%val(1,1,:) + perturbation_pressure)*RM6*Concentration % val)))
                   !Add the brine contribution
-                  RhoMinus = RhoMinus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + 1e-6 * (300*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 - 2400*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val + (temperature % val - 273.15) * &
-                  (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) - perturbation_pressure)*1e-6 + 47*(pressure%val(1,1,:) - perturbation_pressure)*1e-6*Concentration % val)))
+                  RhoMinus = RhoMinus + 1e3*Concentration % val * (0.668 + 0.44*Concentration % val + RM6 * (300*(pressure%val(1,1,:) - perturbation_pressure)*RM6 - 2400*(pressure%val(1,1,:) - perturbation_pressure)*RM6*Concentration % val + (temperature % val - 273.15) * &
+                  (80 + 3*(temperature % val - 273.15) - 3300*Concentration % val - 13*(pressure%val(1,1,:) - perturbation_pressure)*RM6 + 47*(pressure%val(1,1,:) - perturbation_pressure)*RM6*Concentration % val)))
               end if
               dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
 
@@ -2707,9 +2707,9 @@ contains
               saturation_flip => extract_scalar_field(state(iphase), "Saturation_flipping")
               !Only for the first time ever, not for checkpointing, overwrite the saturation flipping value with the initial one
               if (present(current_time)) then
-               if( current_time < 1e-8) then
+               if( current_time < RM8) then
                 do cv_nod = 1, Mdims%cv_nonods
-                  saturation_flip%val(cv_nod) = max(Saturation%val(1,iphase,cv_nod), 1e-8)!limit because we need to store signs also
+                  saturation_flip%val(cv_nod) = max(Saturation%val(1,iphase,cv_nod), RM8)!limit because we need to store signs also
                 end do
                end if
               end if
@@ -3048,10 +3048,10 @@ contains
         !If user specifies to remove pressure dependency, we mute P terms in BW EOS completely
         if (remove_P_dep(1)) ref_P0 = 0.
         !Calculate the reference freshwater density
-        ref_rho = 1e3 * ( 1 + 1e-6 * (-80*(ref_T0 - 273.15) - 3.3*((ref_T0 - 273.15))**2 + 0.00175*((ref_T0 - 273.15))**3 + 489*ref_P0*1e-6 - 2*(ref_T0 - 273.15)*ref_P0*1e-6 + &
-        0.016*((ref_T0 - 273.15))**2*ref_P0*1e-6 - 1.3e-5*((ref_T0 - 273.15))**3*ref_P0*1e-6 -0.333*(ref_P0*1e-6)**2 - 0.002*(ref_T0 - 273.15)*(ref_P0*1e-6)**2))
+        ref_rho = 1e3 * ( 1 + RM6 * (-80*(ref_T0 - 273.15) - 3.3*((ref_T0 - 273.15))**2 + 0.00175*((ref_T0 - 273.15))**3 + 489*ref_P0*RM6 - 2*(ref_T0 - 273.15)*ref_P0*RM6 + &
+        0.016*((ref_T0 - 273.15))**2*ref_P0*RM6 - 1.3e-5*((ref_T0 - 273.15))**3*ref_P0*RM6 -0.333*(ref_P0*RM6)**2 - 0.002*(ref_T0 - 273.15)*(ref_P0*RM6)**2))
         !Add the reference brine contribution
-        ref_rho = ref_rho + 1e3*ref_C0 * (0.668 + 0.44*ref_C0 + 1e-6 * (300*ref_P0*1e-6 - 2400*ref_P0*1e-6*ref_C0 + (ref_T0 - 273.15) * (80 + 3*(ref_T0 - 273.15) - 3300*ref_C0 - 13*ref_P0*1e-6 + 47*ref_P0*1e-6*ref_C0)))
+        ref_rho = ref_rho + 1e3*ref_C0 * (0.668 + 0.44*ref_C0 + RM6 * (300*ref_P0*RM6 - 2400*ref_P0*RM6*ref_C0 + (ref_T0 - 273.15) * (80 + 3*(ref_T0 - 273.15) - 3300*ref_C0 - 13*ref_P0*RM6 + 47*ref_P0*RM6*ref_C0)))
         deallocate(remove_P_dep)
       elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/IAPWS1995_eos' ) then ! IAPWS (1995) EOS
         !!$ Reference density is calculated using reference T0.
@@ -3164,7 +3164,7 @@ contains
                   MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)
         ! Update dissolved CO2 (passive tracer, in mol/m3)
         concentration_field%val(1,receiving_phase_pos,cv_nod) = concentration_field%val(1,receiving_phase_pos,cv_nod) + &
-                          min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*max(saturation_field%val(1,receiving_phase_pos,cv_nod),1e-8))
+                          min(delta_n, n_co2_gas)/(MeanPoreCV%val(1,cv_nod)*cv_volume%val(1,cv_nod)*max(saturation_field%val(1,receiving_phase_pos,cv_nod),RM8))
         ! Compute the gas CO2 present in the CV (in mol))
         ! Update gas CO2 (in mol)
         n_co2_gas = n_co2_gas - min(delta_n, n_co2_gas)

@@ -67,11 +67,13 @@ start =
                }|
                ## Outputs in METRIC system. This are SI units except for:
                ##
-               ## Pressure -> bar
+               ## Time			-> days
                ##
-               ## Temperature -> Celsius
+               ## Pressure		-> bar
                ##
-               ## Permeability -> milliDarcy
+               ## Temperature 	-> Celsius
+               ##
+               ## Permeability	-> milliDarcy
                element dump_units_METRIC {
                  empty
                }
@@ -1938,7 +1940,7 @@ solver_options =
               (
                 ## <b>Recommended settings: 0</b>
                 ##
-                ## <b>Recommended infinite norm tol: 1e-3 to 1-5. Recommended 5e-4</b>
+                ## <b>Recommended infinite norm tol: 1e-3 to 1e-5. Recommended 5e-4</b>
                 ##
                 ## Controls how many non-linear iterations are perfomed using the classical Picard with acceleration
                 ## solver. Once the number of iterations pass the value provided here a Newton solver without backtracking will be used.

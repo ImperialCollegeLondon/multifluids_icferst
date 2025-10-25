@@ -82,7 +82,7 @@ module global_parameters
   !! The current timestep number
   integer, save, target :: timestep = 0
 
-  real, parameter:: pi = 3.1415926535897931
+  real, parameter:: pi = 3.1415926535897931d0
 
   !------------------------------------------------------------------------
   ! Parameters for parallel
@@ -188,9 +188,10 @@ module global_parameters
   logical :: has_anisotropic_permeability = .false.
   !! Output unit system and converters
   integer, parameter :: SI_UNITS = 0, METRIC_UNITS = 1
-  real, parameter :: PaToBar = 1e-5;
-  real, parameter :: m2TomD =  9.869233e-16;
-  real, parameter :: KtoC = 273.15;
+  real, parameter :: PaToBar = 1d-5;
+  real, parameter :: m2TomD =  9.869233d-16;
+  real, parameter :: KtoC = 273.15d0;
+  real, parameter :: SECS_IN_DAY = 86400d0;
   integer :: outUNITS = SI_UNITS
 
   !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
@@ -203,6 +204,9 @@ module global_parameters
   integer :: total_lIts ! Linear iterations of the different solvers until achieving convergence
   !!Public string containing a generic warning and tips to get the code working
   character(len=OPTION_PATH_LEN) :: multi_generic_warning =""
+  ! Tolerances
+  real, parameter :: RM6 = 1d-6
+  real, parameter :: RM8 = 1d-8
 
   integer :: nDMOWarnings = 0
   integer :: nSolverWarnings = 0
