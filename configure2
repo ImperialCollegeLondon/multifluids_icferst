@@ -12731,6 +12731,11 @@ if test "$enable_sam" = "yes"; then
   HAVE_ZOLTAN=no
 else
 
+if test -r "/usr/lib/x86_64-linux-gnu/libtrilinos_zoltan.so"; then
+  ZOLTAN_LIB=trilinos_zoltan
+else
+  ZOLTAN_LIB=zoltan
+fi
 
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -12782,13 +12787,13 @@ else
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Zoltan_Create in -lzoltan" >&5
-$as_echo_n "checking for Zoltan_Create in -lzoltan... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Zoltan_Create in -l$ZOLTAN_LIB" >&5
+$as_echo_n "checking for Zoltan_Create in -l$ZOLTAN_LIB... " >&6; }
 if ${ac_cv_lib_zoltan_Zoltan_Create+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
-LIBS="-lzoltan  $LIBS"
+LIBS="-l$ZOLTAN_LIB  $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -12836,7 +12841,7 @@ fi
 $as_echo "$ac_cv_lib_zoltan_Zoltan_Create" >&6; }
 if test "x$ac_cv_lib_zoltan_Zoltan_Create" = xyes; then :
 
-       LIBS="-lzoltan $LIBS"
+       LIBS="-l$ZOLTAN_LIB $LIBS"
 else
 
       { $as_echo "$as_me:${as_lineno-$LINENO}: Fluidity can be built without zoltan by configuring with the --enable-sam flag. This gives limited functionality when using parallel adaptivity. See the manual for more details." >&5
@@ -13952,6 +13957,7 @@ if test "$enable_vtk" != "no"; then
         VTK_LIBS="$VTK_LIBS -lvtkCommonDataModel-9.1"
         VTK_LIBS="$VTK_LIBS -lvtkCommonExecutionModel-9.1"
         VTK_LIBS="$VTK_LIBS -lvtkFiltersCore-9.1"
+        VTK_LIBS="$VTK_LIBS -lvtkFiltersGeneral-9.1"
         VTK_LIBS="$VTK_LIBS -lvtkFiltersVerdict-9.1"
         VTK_LIBS="$VTK_LIBS -lvtkIOCore-9.1"
         VTK_LIBS="$VTK_LIBS -lvtkIOXML-9.1"

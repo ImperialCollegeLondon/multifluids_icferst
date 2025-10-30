@@ -1,21 +1,26 @@
-FROM benfulton/icferst:noble
+FROM benfulton/icferst:noble_trilinos
 
 USER root
 
 RUN apt-get -y update && \
       apt-get -y dist-upgrade && \
+      apt-get -y install autoconf-archive python-is-python3 pkg-config vim && \
       rm -rf /var/cache/apt/archives && \
       rm -rf /var/lib/apt/lists
 
 COPY . /home/fluidity
 RUN chown -R fluidity /home/fluidity
 
-USER fluidity
+ENV FCFLAGS="-I/usr/include"
 
-ENV FCFLAGS="-I/usr/local/zoltan/include -L/usr/local/zoltan/lib"
+USER fluidity
 
 RUN ./configure2 --enable-2d-adaptivity
 RUN cp libjudy/libtool libspud
 RUN make -j8 mp
 
+# RUN autoreconf --install --force
+# RUN ./configure --enable-2d-adaptivity
+# RUN cp libjudy/libtool libspud
+# RUN make mp
 # RUN make fltools
