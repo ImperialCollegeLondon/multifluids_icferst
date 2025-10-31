@@ -50,11 +50,11 @@
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="bjacobi">
-            <preconditioner name="ilu"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
-            <real_value rank="0">1e-5</real_value>
+            <real_value rank="0">1e-8</real_value>
           </relative_error>
           <absolute_error>
             <real_value rank="0">1e-8</real_value>

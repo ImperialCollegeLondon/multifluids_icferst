@@ -61,8 +61,7 @@ contains
     SUBROUTINE WELLS_SATURATION_ASSEMB( state, packed_state, &
       final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
       saturation, sat_prev, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
-      SOURCT_ALL, VOLFRA_PORE, VAD_parameter, Phase_with_Pc, &
-      eles_with_pipe, pipes_aux, nonlinear_iteration,&
+      SOURCT_ALL, VOLFRA_PORE, eles_with_pipe, pipes_aux,&
       assemble_collapsed_to_one_phase, getResidual)
       ! Inputs/Outputs
       IMPLICIT NONE
@@ -89,16 +88,11 @@ contains
       REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
       REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
       REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
-      !Variables for Vanishing artificial diffusion
-      integer, optional, intent(in) :: Phase_with_Pc
-      real, optional, dimension(:), intent(in) :: VAD_parameter
       ! Calculate_mass variable
       type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
       type (multi_pipe_package), intent(in) :: pipes_aux
       logical, optional, intent(in) ::  assemble_collapsed_to_one_phase
       logical, optional, intent(in) ::  getResidual
-      !Non-linear iteration count
-      integer, optional, intent(in) :: nonlinear_iteration
       ! ###################Local variables############################
       !! boundary_condition fields
       type(tensor_field) :: velocity_BCs,saturation_BCs, density_BCs

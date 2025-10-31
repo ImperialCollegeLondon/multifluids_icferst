@@ -1779,7 +1779,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                   btrk = 1.0
                 else if (nonlinear_iteration <=8) then
                   btrk = 0.75;
-                else if (nonlinear_iteration <=13) then  ! Slowly increases the backtracking
+                else if (nonlinear_iteration <=13) then  ! Slowly increase the backtracking
                   btrk = -0.04*float(nonlinear_iteration)+1.0;
                 else if (nonlinear_iteration <=15) then  ! One final push to try to get convergence
                   btrk = 0.75
@@ -1978,54 +1978,33 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         !Non-linear iteration count
         integer, optional, intent(in) :: nonlinear_iteration
         ! ###################Local variables############################
-        type(petsc_csr_matrix) :: petsc_ACV2, Jac
+        type(petsc_csr_matrix) :: petsc_ACV2, petsc_JAC
         Integer :: cv_inod
         !Working fields
         type(csr_sparsity), pointer :: sparsity
-        real, dimension(:), allocatable :: Max_sat
-        real, dimension(:,:), pointer :: Satura, OldSatura, CV_Immobile_Fraction
+        real, dimension(:,:), pointer :: Satura, CV_Immobile_Fraction
         Integer :: ierr, j_indx, i_indx, iphase, cv_nodi;
         Real, parameter :: PERT = 1d-5;
         type(vector_field) :: vpert
-
         type( scalar_field ), pointer :: pipe_diameter
-        !Variables for capillary pressure
-        real, dimension(Mdims%cv_nonods) :: OvRelax_param
-        ! 1) Create unperturbed matrix A
 
+        call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,CV_Immobile_Fraction = CV_Immobile_Fraction)
+
+        ! 1) Create unperturbed matrix A
         call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
-        !Also recalculate the Over-relaxation parameter
-        call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
+        !Allocate temp matrix for unperturbed reservoir matrix
+        sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+        call allocate_global_multiphase_petsc_csr(PETSC_ACV2,sparsity,sat_field, Mdims%nphase)
 
-
-! print *, "ASSEMBLE FIRST"
-! read*
-        call SATURATION_ASSEMB( state, packed_state, &
+        call SATURATION_ASSEMB( PETSC_ACV2, state, packed_state, &
         Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
         sat_field, sat_bak, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
-        SOURCT_ALL, VOLFRA_PORE, &
-        VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-        eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-        nonlinear_iteration = nonlinear_iteration, getResidual = .true.)
+        SOURCT_ALL, VOLFRA_PORE,eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+        Phase_with_Pc = Phase_with_Pc,getResidual = .true.)  ! Calculate residual with current Saturation guess
+        call assemble(PETSC_ACV2)
 
-        ! Calculate residual with current Saturation guess
-        call assemble(Mmat%petsc_ACV)
-
-        ! Store matrix
-        sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-        call duplicate_petsc_matrix(Mmat%petsc_ACV, PETSC_ACV2)  ! pscpsc avoid duplication and assemble to given matrix
-
-! call MatView(petsc_ACV2%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
-! read*
-
-        ! pscpsc avoid reallocating => THE MATRIX TO STORE INTO THE SUBROUTINES...
-        call deallocate(Mmat%petsc_ACV)
-        call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, Mdims%nphase)
-
-        !Introduce perturbation. Make sure that the perturbation is between bounds
-        call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,&
-            OldPhaseVolumeFraction = OldSatura, CV_Immobile_Fraction = CV_Immobile_Fraction)
+        !2) Introduce perturbation. Make sure that the perturbation is between bounds
         call allocate(vpert,Mdims%nphase,sat_field%mesh,"vpert"); vpert%val = 0d0;
         do cv_inod = 1, Mdims%cv_nonods
           where (satura(:, cv_inod) - PERT > CV_Immobile_Fraction(:, cv_inod))
@@ -2037,66 +2016,66 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
 
         ! Apply perturbation
         Satura = Satura + vpert%val
+
         ! Recalculate parameters
         call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
-        call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
-        ! Calculate perturbated matrix
-        call SATURATION_ASSEMB(state, packed_state, &
-        Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-        sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
-        SOURCT_ALL, VOLFRA_PORE, &
-        VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-        eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-        nonlinear_iteration = nonlinear_iteration, getResidual = .false.)
-        ! Undo perturbation
-        Satura = Satura - vpert%val
-        ! Compute Jacobian as (A-A_pertb/pertb)
-        call assemble(Mmat%petsc_ACV)
-! print*, "ASSEMBLED SECOND MATRIX"
-! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
-! read*
 
-        ! 1) A - A_pertb (Note that petsc_ACV is the perturbed matrix)
-        call MatAYPX(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
 
-! print*, "DIFF MATRICES"
-! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
-! read*
-        ! 2) Divide by the perturbation (it is row-wise)
-        vpert%val = 1d0/vpert%val
-        call scale_PETSc_matrix_by_vector(Mmat%petsc_ACV, vpert)
-
-! Once I have generated the Jacobian of the reservoir by perturbation I add the Jacobian of the Well
-! call duplicate_petsc_matrix(Mmat%petsc_ACV, Jac)
-
-! Very inneficient, just for testing
         if (Mdims%npres >1) then
-          call duplicate_petsc_matrix(Mmat%petsc_ACV, PETSC_ACV2)  ! pscpsc maybe I can avoid this copy?
-          call deallocate(Mmat%petsc_ACV)
-          call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, Mdims%nphase)
+          !Allocate temp matrix for perturbed reservoir matrix and later on Jacobian
+          sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+          call allocate_global_multiphase_petsc_csr(petsc_JAC,sparsity,sat_field, Mdims%nphase)
+          ! Calculate perturbated matrix
+          call SATURATION_ASSEMB(petsc_JAC, state, packed_state, &
+          Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+          sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+          SOURCT_ALL, VOLFRA_PORE,eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+          Phase_with_Pc = Phase_with_Pc,getResidual = .false.)
+          call assemble(petsc_JAC)
+          ! Undo perturbation
+          Satura = Satura - vpert%val
 
+          ! 3) Compute Jacobian as (A-A_pertb)/pertb
+          ! 3.1) Calculate Jacobian of the reservoir part => A - A_pertb (Note that petsc_JAC is the perturbed matrix)
+          call MatAYPX(petsc_JAC%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
+          call deallocate(petsc_ACV2)
+          ! 3.2) Divide by the perturbation (it is row-wise)
+          vpert%val = 1d0/vpert%val
+          call scale_PETSc_matrix_by_vector(petsc_JAC, vpert)
+          ! 4) To avoid a PETSc bug, once I have generated the Jacobian of the
+          !   reservoir by perturbation I add the Jacobian of the Well (Mmat%petsc_ACV)
+          !   which is just the A matrix as it is sat * A
           call WELLS_SATURATION_ASSEMB(state, packed_state, &
                   Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                   sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
-                  SOURCT_ALL, VOLFRA_PORE, &
-                  VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                  eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-                  nonlinear_iteration = nonlinear_iteration, getResidual = .true.)
-
-          ! call allocate(RHS_BAK,Mdims%nphase,sat_field%mesh,"RHS_BAK"); RHS_BAK%val = 0d0;
-          ! vtracer=as_vector(sat_field,dim=2)
+                  SOURCT_ALL, VOLFRA_PORE, eles_with_pipe, pipes_aux,getResidual = .true.)
           call assemble(Mmat%petsc_ACV)
-          ! call PETSc_MatVec(Mmat%petsc_ACV, vtracer, RHS_BAK)
-          ! Mmat%CV_RHS%val = (Mmat%CV_RHS%val-RHS_BAK%val)
+          ! Assemble the overall Jacobian in Mmat%petsc_ACV
+          call MatAYPX(Mmat%petsc_ACV%M, real(1.0, kind = PetscScalar_kind), petsc_JAC%M, DIFFERENT_NONZERO_PATTERN, ierr)
+          call deallocate(petsc_JAC);
+        else
+          ! Calculate perturbated matrix
+          call SATURATION_ASSEMB(Mmat%petsc_ACV, state, packed_state, &
+          Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+          sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+          SOURCT_ALL, VOLFRA_PORE,eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+          Phase_with_Pc = Phase_with_Pc,getResidual = .false.)
+          call assemble(Mmat%petsc_ACV)
+          ! Undo perturbation
+          Satura = Satura - vpert%val
 
-          call MatAYPX(Mmat%petsc_ACV%M, real(1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
+          ! 3) Compute Jacobian as (A-A_pertb)/pertb
+          ! 3.1) Calculate Jacobian of the reservoir part => A - A_pertb (Note that Mmat%petsc_ACV is the perturbed matrix)
+          call MatAYPX(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
+          call deallocate(petsc_ACV2)
+          ! 3.2) Divide by the perturbation (it is row-wise)
+          vpert%val = 1d0/vpert%val
+          call scale_PETSc_matrix_by_vector(Mmat%petsc_ACV, vpert)
         end if
-! print*, "GENERATED JACOBIAN"
-! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
-! read*
+
         ! Clean up memory
-        call deallocate(petsc_ACV2);call deallocate(vpert);
+        call deallocate(vpert);
     end subroutine ASSEMB_SAT_JAC_AND_RES
 
     !>@brief:In this subroutine the components are solved for all the phases.

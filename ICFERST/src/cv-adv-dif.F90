@@ -7746,14 +7746,15 @@ end if
     ! end subroutine sum_saturation_to_unity
 
 
-      SUBROUTINE SATURATION_ASSEMB( state, packed_state, &
+      SUBROUTINE SATURATION_ASSEMB( petsc_ACV, state, packed_state, &
         final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
         saturation, sat_prev, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
         SOURCT_ALL, VOLFRA_PORE, VAD_parameter, Phase_with_Pc, &
-        eles_with_pipe, pipes_aux, nonlinear_iteration,&
+        eles_with_pipe, pipes_aux,&
         assemble_collapsed_to_one_phase, getResidual)
         ! Inputs/Outputs
         IMPLICIT NONE
+        type(petsc_csr_matrix), intent( inout ) :: petsc_ACV
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         integer, intent(in) ::  final_phase
@@ -7785,8 +7786,6 @@ end if
         type (multi_pipe_package), intent(in) :: pipes_aux
         logical, optional, intent(in) ::  assemble_collapsed_to_one_phase
         logical, optional, intent(in) ::  getResidual
-        !Non-linear iteration count
-        integer, optional, intent(in) :: nonlinear_iteration
         ! ###################Local variables############################
         REAL, DIMENSION( :, : ), pointer :: MEAN_PORE_CV
 
@@ -7980,7 +7979,7 @@ end if
       end if
       if (getResidual) call zero(Mmat%CV_RHS)
       IF ( GETMAT ) THEN
-          call zero(Mmat%petsc_ACV)
+          call zero(petsc_ACV)
       END IF
       GLOBAL_FACE = 0
 
@@ -8210,10 +8209,10 @@ end if
                                 call addto(Mmat%CV_RHS,assembly_phase, CV_NODJ,LOC_RES_J(iphase))
                               endif
                               !Introduce the information into the petsc_ACV matrix
-                              call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
-                              call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodj,cv_nodj, LOC_MAT_JJ(iphase) )
-                              call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodj, LOC_MAT_IJ(iphase) )
-                              call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodj,cv_nodi, LOC_MAT_JI(iphase) )
+                              call addto(petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
+                              call addto(petsc_ACV,assembly_phase,assembly_phase,cv_nodj,cv_nodj, LOC_MAT_JJ(iphase) )
+                              call addto(petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodj, LOC_MAT_IJ(iphase) )
+                              call addto(petsc_ACV,assembly_phase,assembly_phase,cv_nodj,cv_nodi, LOC_MAT_JI(iphase) )
                           end do
                         endif ! if(CV_NODJ.ge.CV_NODI) then
                   END IF Conditional_integration
@@ -8240,7 +8239,7 @@ end if
               if (loc_assemble_collapsed_to_one_phase) assembly_phase = 1
               if (getResidual)  call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_RES_I(IPHASE))
               !Introduce the information into the petsc_ACV matrix
-              call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
+              call addto(petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
         end do
       END DO Loop_CVNODI2
 
