@@ -1492,6 +1492,7 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
   logical, optional, intent(in):: checkconvergence
   !! if present do not dump matrix equation:
   logical, optional, intent(in):: nomatrixdump
+  logical, save :: show_convergence_detailed
 
   ! did we dump before? :
   logical, save:: matrixdumped=.false.
@@ -1499,6 +1500,8 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
   PetscErrorCode ierr
   character(len=30) reasons(10)
   real spin_up_time, current_time
+
+  show_convergence_detailed = have_option( '/io/Show_Convergence_Detailed')
 
   reasons(1)  = "Undefined"
   reasons(2)  = "KSP_DIVERGED_NULL"
@@ -1520,7 +1523,11 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
        have_option(trim(solver_option_path)//'/ignore_all_solver_failures'))  then
        if (getprocno() == 1) then
          nSolverWarnings = nSolverWarnings + 1
-         ewrite(1,*) 'Maximum number of iterations reached for '// trim(name)// ' solver, moving on.'
+         if (show_convergence_detailed) then
+           ewrite(-1,*) 'Maximum number of iterations reached for '// trim(name)// ' solver, moving on.'
+         else
+           ewrite(1,*) 'Maximum number of iterations reached for '// trim(name)// ' solver, moving on.'
+         end if
        end if
        return
      end if
@@ -1531,19 +1538,46 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
         if (.not. checkconvergence .and. reason==-3) return
      end if
      ! write reason+iterations to STDERR so we never miss it:
-     ewrite(1,*) 'WARNING: Failed to converge.'
-     ewrite(1,*) "PETSc did not converge for matrix solve of: " // trim(name)
-     if((reason>=-10) .and. (reason<=-1)) then
-        ewrite(1,*) 'Reason for non-convergence: ', reasons(-reason)
+     if (show_convergence_detailed) then
+       ewrite(-1,*) 'WARNING: Failed to converge.'
+       ewrite(-1,*) "PETSc did not converge for matrix solve of: " // trim(name)
      else
-        ewrite(1,*) 'Reason for non-convergence is undefined: ', reason
+       ewrite(1,*) 'WARNING: Failed to converge.'
+       ewrite(1,*) "PETSc did not converge for matrix solve of: " // trim(name)
+     end if
+
+     if((reason>=-10) .and. (reason<=-1)) then
+       if (show_convergence_detailed) then
+         ewrite(-1,*) 'Reason for non-convergence: ', reasons(-reason)
+       else
+         ewrite(1,*) 'Reason for non-convergence: ', reasons(-reason)
+       end if
+     else
+       if (show_convergence_detailed) then
+         ewrite(-1,*) 'Reason for non-convergence is undefined: ', reason
+       else
+         ewrite(1,*) 'Reason for non-convergence is undefined: ', reason
+       end if
      endif
-     ewrite(1,*) 'Number of iterations: ', iterations
+
+     if (show_convergence_detailed) then
+       ewrite(-1,*) 'Number of iterations: ', iterations
+     else
+       ewrite(1,*) 'Number of iterations: ', iterations
+     end if
 
      if (have_option(trim(solver_option_path)//'/ignore_all_solver_failures')) then
-        ewrite(1,*) 'Specified ignore_all_solver_failures, therefore continuing'
+       if (show_convergence_detailed) then
+         ewrite(-1,*) 'Specified ignore_all_solver_failures, therefore continuing'
+       else
+         ewrite(1,*) 'Specified ignore_all_solver_failures, therefore continuing'
+       end if
      elseif (reason/=-3 .or. have_option(trim(solver_option_path)//'/never_ignore_solver_failures')) then
-        ewrite(1,*) "Sending signal to dump and finish"
+       if (show_convergence_detailed) then
+         ewrite(-1,*) "Sending signal to dump and finish"
+       else
+         ewrite(1,*) "Sending signal to dump and finish"
+       end if
         ! Setting SIGINT in Signal_Vars module will cause dump and crash
         sig_int=.true.
      elseif (have_option(trim(solver_option_path)//'/allow_non_convergence_during_spinup')) then
