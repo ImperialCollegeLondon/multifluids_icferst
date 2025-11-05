@@ -2180,7 +2180,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
         decreaseFactor, default = 2.0 )
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
         incr_threshold, default = int(0.25 * NonLinearIteration) )
-    show_FPI_conv = .not.have_option( '/io/Show_Convergence')
+    show_FPI_conv = .not. (have_option( '/io/Show_Convergence') .or. have_option( '/io/Show_Convergence_Detailed'))
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
         Aim_num_FPI, default = int(0.20 * NonLinearIteration) )
     Aim_num_FPI = min(Aim_num_FPI, NonLinearIteration)!People may ask for higher Aim_num_FPI...
