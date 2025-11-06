@@ -141,9 +141,24 @@ start =
           element PropertiesFromFile {xsd:string
           }?,
 
-            ## Prints the number of iterations and
-            ## the final convergence achieved by the FPI solver
-            element Show_Convergence{comment}?,
+
+          (
+              ## Prints the number of iterations and
+              ## the final convergence achieved by the FPI solver
+              ##
+              ## Simple convergence printout
+              element Show_Convergence {
+                  comment
+              }|
+              ## Prints the number of iterations and
+              ## the final convergence achieved by the FPI solver
+              ##
+              ## Detailed convergence printout
+              element Show_Convergence_Detailed {
+                  comment
+              }
+          )?,
+
             ## If porous_media, printout the Courant number every time-step
             element Courant_number {
                comment

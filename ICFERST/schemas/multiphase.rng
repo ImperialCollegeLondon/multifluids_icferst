@@ -154,11 +154,22 @@ If using this, all the modifiable fields need to have the option to read from a 
           </element>
         </optional>
         <optional>
-          <element name="Show_Convergence">
-            <a:documentation>Prints the number of iterations and
-the final convergence achieved by the FPI solver</a:documentation>
-            <ref name="comment"/>
-          </element>
+          <choice>
+            <element name="Show_Convergence">
+              <a:documentation>Prints the number of iterations and
+the final convergence achieved by the FPI solver
+
+Simple convergence printout</a:documentation>
+              <ref name="comment"/>
+            </element>
+            <element name="Show_Convergence_Detailed">
+              <a:documentation>Prints the number of iterations and
+the final convergence achieved by the FPI solver
+
+Detailed convergence printout</a:documentation>
+              <ref name="comment"/>
+            </element>
+          </choice>
         </optional>
         <optional>
           <element name="Courant_number">
