@@ -1875,9 +1875,6 @@ contains
                                 VISC_GI = VISC_GI + wm%val(1,1,CV_KNOD) * SCVFEN( CV_LILOC, GI )
                             END DO
 
-                            print *, "den_gi ", DEN_GI
-                            print *, "visc_gi", VISC_GI
-
                             CALL SIGMA_PIPE_FRICTION( SIGMA_GI( IPHASE, GI ), U_GI, MIN_DIAM, DEN_GI, VISC_GI, E_ROUGHNESS )
                         END DO
                     END DO
