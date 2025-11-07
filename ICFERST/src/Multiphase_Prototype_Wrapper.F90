@@ -1173,7 +1173,7 @@ contains
                 !For hysteresis relperms we need to keep track of when the saturation flips from drainage to imbibition
                 !We generate the memory here because we need to be able to interpolate...
                 if (have_option("/material_phase["//int2str(i-1)//&
-                "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then
+                "]/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then
                   option_path = "/material_phase["// int2str( i -1 )//"]/scalar_field::Saturation_flipping"
                   if (.not.have_option(option_path)) then
                     call add_option(trim(option_path),  stat=stat)

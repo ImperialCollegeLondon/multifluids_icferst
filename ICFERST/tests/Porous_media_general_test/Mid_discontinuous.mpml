@@ -281,34 +281,35 @@
       </prognostic>
     </scalar_field>
     <multiphase_properties>
-      <Relperm_Corey>
-        <scalar_field name="relperm_max">
-          <prescribed>
-            <mesh name="P0DG" />
-            <value name="WholeMesh">
+      <type_Formula>
+        <Relperm_Corey>
+          <scalar_field name="relperm_max">
+            <prescribed>
+              <mesh name="P0DG" />
+              <value name="WholeMesh">
               <csv_file />
-            </value>
+              </value>
             <stat />
             <detectors>
               <exclude_from_detectors />
             </detectors>
-          </prescribed>
-        </scalar_field>
-        <scalar_field name="relperm_exponent">
-          <prescribed>
-            <mesh name="P0DG" />
-            <value name="WholeMesh">
+            </prescribed>
+          </scalar_field>
+          <scalar_field name="relperm_exponent">
+            <prescribed>
+              <mesh name="P0DG" />
+              <value name="WholeMesh">
               <csv_file />
-            </value>
+              </value>
             <stat />
             <detectors>
               <exclude_from_detectors />
             </detectors>
-          </prescribed>
-        </scalar_field>
-      </Relperm_Corey>
-      <capillary_pressure>
-        <type_Brooks_Corey>
+            </prescribed>
+          </scalar_field>
+        </Relperm_Corey>
+          <capillary_pressure>
+          <type_Brooks_Corey>
           <scalar_field name="C">
             <prescribed>
               <mesh name="P0DG" />
@@ -316,9 +317,9 @@
                 <csv_file />
               </value>
               <stat />
-              <detectors>
+            <detectors>
                 <exclude_from_detectors />
-              </detectors>
+            </detectors>
             </prescribed>
           </scalar_field>
           <scalar_field name="a">
@@ -328,27 +329,28 @@
                 <csv_file />
               </value>
               <stat />
-              <detectors>
+            <detectors>
                 <exclude_from_detectors />
-              </detectors>
+            </detectors>
             </prescribed>
           </scalar_field>
-        </type_Brooks_Corey>
-      </capillary_pressure>
-      <immobile_fraction>
-        <scalar_field name="value">
-          <prescribed>
-            <mesh name="P0DG" />
-            <value name="WholeMesh">
+          </type_Brooks_Corey>
+          </capillary_pressure>
+        <immobile_fraction>
+          <scalar_field name="value">
+            <prescribed>
+              <mesh name="P0DG" />
+              <value name="WholeMesh">
               <csv_file />
-            </value>
+              </value>
             <stat />
             <detectors>
               <exclude_from_detectors />
             </detectors>
-          </prescribed>
-        </scalar_field>
-      </immobile_fraction>
+            </prescribed>
+          </scalar_field>
+        </immobile_fraction>
+      </type_Formula>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
@@ -500,46 +502,48 @@
       </prognostic>
     </scalar_field>
     <multiphase_properties>
-      <Relperm_Corey>
-        <scalar_field name="relperm_max">
-          <prescribed>
-            <mesh name="P0DG" />
-            <value name="WholeMesh">
+      <type_Formula>
+        <Relperm_Corey>
+          <scalar_field name="relperm_max">
+            <prescribed>
+              <mesh name="P0DG" />
+              <value name="WholeMesh">
               <csv_file />
-            </value>
+              </value>
             <stat />
             <detectors>
               <exclude_from_detectors />
             </detectors>
-          </prescribed>
-        </scalar_field>
-        <scalar_field name="relperm_exponent">
-          <prescribed>
-            <mesh name="P0DG" />
-            <value name="WholeMesh">
+            </prescribed>
+          </scalar_field>
+          <scalar_field name="relperm_exponent">
+            <prescribed>
+              <mesh name="P0DG" />
+              <value name="WholeMesh">
               <csv_file />
-            </value>
+              </value>
             <stat />
             <detectors>
               <exclude_from_detectors />
             </detectors>
-          </prescribed>
-        </scalar_field>
-      </Relperm_Corey>
-      <immobile_fraction>
-        <scalar_field name="value">
-          <prescribed>
-            <mesh name="P0DG" />
-            <value name="WholeMesh">
+            </prescribed>
+          </scalar_field>
+        </Relperm_Corey>
+        <immobile_fraction>
+          <scalar_field name="value">
+            <prescribed>
+              <mesh name="P0DG" />
+              <value name="WholeMesh">
               <csv_file />
-            </value>
+              </value>
             <stat />
             <detectors>
               <exclude_from_detectors />
             </detectors>
-          </prescribed>
-        </scalar_field>
-      </immobile_fraction>
+            </prescribed>
+          </scalar_field>
+        </immobile_fraction>
+      </type_Formula>
     </multiphase_properties>
   </material_phase>
   <mesh_adaptivity>

@@ -2642,7 +2642,7 @@ end if
             Mmat%PIVIT_MAT=0.0
         end if
 
-        if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', Mdims%nphase ) )then
+        if (have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure',Mdims%nphase) .or. have_option_for_any_phase('/multiphase_properties/type_Tabulated/capillary_pressure',Mdims%nphase)) then
             call calculate_capillary_pressure(packed_state, ndgln, Mdims%totele, Mdims%cv_nloc, CV_funs)
         end if
 
@@ -3706,8 +3706,8 @@ end if
                 gravity_on = have_option("/physical_parameters/gravity/magnitude")
                 call get_option( "/physical_parameters/gravity/magnitude", gravty, default = 0. )
                 !Check capillary options
-                capillary_pressure_activated = have_option_for_any_phase('/multiphase_properties/capillary_pressure', Mdims%nphase)
-                Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
+                capillary_pressure_activated = (have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure',Mdims%nphase) .or. have_option_for_any_phase('/multiphase_properties/type_Tabulated/capillary_pressure',Mdims%nphase))
+                Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
             end if
 
             CapPressure => extract_tensor_field( packed_state, "PackedCapPressure", stat )
@@ -4248,8 +4248,8 @@ end if
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
         position=>extract_vector_field(packed_state,"PressureCoordinate")
         !Check capillary options
-        capillary_pressure_activated = have_option_for_any_phase('/multiphase_properties/capillary_pressure', Mdims%nphase)
-        Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
+        capillary_pressure_activated = (have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure',Mdims%nphase) .or. have_option_for_any_phase('/multiphase_properties/type_Tabulated/capillary_pressure',Mdims%nphase))
+        Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
         CapPressure => extract_tensor_field( packed_state, "PackedCapPressure", stat )
         !We set the value of logicals
         PIVIT_ON_VISC = .false.
@@ -8306,7 +8306,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      !Check capillary pressure options
      do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
          !this way we try to avoid problems if someone introduces 0 capillary pressure in the second phase
-         if (have_option( "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure" )) then
+         if (have_option( "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/type_Formula/capillary_pressure" ) .or. have_option( "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/type_Tabulated/capillary_pressure" )) then
              Phase_with_Pc = iphase
          end if
      end do
@@ -8315,8 +8315,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      if (Phase_with_Pc>0) then
          !Get information for capillary pressure to be used
          if ( (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
-             "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) .or. (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
-             "]/multiphase_properties/capillary_pressure/type_Power_Law") ) )then
+             "]/multiphase_properties/type_Formula/capillary_pressure/type_Brooks_Corey") ) .or. (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
+             "]/multiphase_properties/type_Formula/capillary_pressure/type_Power_Law") ) )then
              call get_var_from_packed_state(packed_state, Cap_entry_pressure = Cap_entry_pressure,&
                  Cap_exponent = Cap_exponent)!no need for the imbibition because we need the derivative which will be zero as it is a constant
          end if
@@ -9875,7 +9875,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             !!! gravity !!!
             gravity = have_option("/physical_parameters/gravity")
             !!! Capillary pressure !!!
-            cap_pressure = have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)
+            cap_pressure = have_option_for_any_phase("/multiphase_properties/type_Formula/capillary_pressure", Mdims%nphase) .or. have_option_for_any_phase("/multiphase_properties/type_Tabulated/capillary_pressure", Mdims%nphase)
             !!! Single-phase flow !!!
             one_phase = (Mdims%n_in_pres == 1)
             !!! Black Oil

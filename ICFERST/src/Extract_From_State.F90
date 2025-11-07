@@ -669,7 +669,7 @@ contains
         ! pack rock-fluid properties
         ! if there is capillary pressure, we store 5 entries, otherwise just 3:
         ! (Immobile fraction, Krmax, relperm exponent, [capillary entry pressure, capillary exponent])
-        if(have_option_for_any_phase('/multiphase_properties/capillary_pressure',nphase)) then
+        if(have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure',nphase) .or. have_option_for_any_phase('/multiphase_properties/type_Tabulated/capillary_pressure',nphase)) then
             call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[6,nphase])
         else
             call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[3,nphase])
@@ -821,7 +821,7 @@ contains
            call insert_sfield(packed_state,"PhaseVolumeFractionComponentSource",1,nphase)
         end if
 
-        if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
+        if (have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure',nphase) .or. have_option_for_any_phase('/multiphase_properties/type_Tabulated/capillary_pressure',nphase)) then
             call allocate(ten_field,pressure%mesh,"PackedCapPressure",dim=[1,nphase])
             call insert(packed_state,ten_field,"PackedCapPressure")
             call deallocate(ten_field)
@@ -2521,7 +2521,7 @@ ts_ref_val = 0d0;
                         !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step changed to:", dt/conversor, trim(DtTimeUnits)
                         ! end if
                         stored_dt = dt
-                        auxR = stored_dt               
+                        auxR = stored_dt
                         ExitNonLinearLoop = .true.
                         ! Update comparison variables
                         nSolverWarningsOld = nSolverWarnings;  nDMOWarningsOld = nDMOWarnings;
@@ -4144,4 +4144,3 @@ end subroutine get_DarcyVelocity
     end subroutine write_state_units
 
 end module Copy_Outof_State
-
