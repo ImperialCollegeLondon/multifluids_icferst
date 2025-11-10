@@ -1304,7 +1304,7 @@ contains
                 Number_region_ids = k - 1
                 if (bar_pos>0) then
                     !It is a fluid property
-                    diamond_path = '/multiphase_properties/'//property(1:bar_pos-1)//'/scalar_field::'//property(bar_pos+1:len_trim(property))//'/prescribed/value'
+                    diamond_path = '/multiphase_properties/type_Formula/'//property(1:bar_pos-1)//'/scalar_field::'//property(bar_pos+1:len_trim(property))//'/prescribed/value'
                     !Get value
                     read(csv_table_strings(i,4) , *) value
 
