@@ -15,12 +15,6 @@ ENV FCFLAGS="-I/usr/include"
 
 USER fluidity
 
-RUN ./configure2 --enable-2d-adaptivity
-RUN cp libjudy/libtool libspud
+RUN autoreconf --force --install
+RUN ./configure --enable-2d-adaptivity
 RUN make -j8 mp
-
-# RUN autoreconf --install --force
-# RUN ./configure --enable-2d-adaptivity
-# RUN cp libjudy/libtool libspud
-# RUN make mp
-# RUN make fltools
