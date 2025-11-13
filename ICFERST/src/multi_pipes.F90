@@ -1872,7 +1872,11 @@ contains
                             DO CV_LILOC = 1, CV_LNLOC
                                 CV_KNOD = CV_GL_GL( CV_LILOC )
                                 DEN_GI = DEN_GI + wd%val(CV_KNOD) * SCVFEN( CV_LILOC, GI )
-                                VISC_GI = VISC_GI + wm%val(1,1,CV_KNOD) * SCVFEN( CV_LILOC, GI )
+                                if (size(wm%val,3) == 1) then
+                                  VISC_GI = VISC_GI + wm%val(1,1,1) * SCVFEN( CV_LILOC, GI )
+                                else
+                                  VISC_GI = VISC_GI + wm%val(1,1,CV_KNOD) * SCVFEN( CV_LILOC, GI )
+                                end if
                             END DO
 
                             CALL SIGMA_PIPE_FRICTION( SIGMA_GI( IPHASE, GI ), U_GI, MIN_DIAM, DEN_GI, VISC_GI, E_ROUGHNESS )
