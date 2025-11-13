@@ -32,7 +32,7 @@ FC = @FC@
 FCFLAGS = -I./include @CPPFLAGS@ @FCFLAGS@
 
 CXX = @CXX@
-CXXFLAGS = -I./include @CPPFLAGS@ @CXXFLAGS@
+CXXFLAGS = -I./include -I../include @CPPFLAGS@ @CXXFLAGS@
 
 LINKER = @CXX@
 LIBS = @LIBS@

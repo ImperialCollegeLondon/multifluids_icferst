@@ -29,10 +29,6 @@
 
 module parallel_tools
 
-#ifdef HAVE_MPI_F08
-  use, intrinsic :: iso_c_binding, only: c_int
-  use mpi,    only: MPI_COMM_WORLD   ! legacy (integer-handle) interface
-#endif
   use fldebug
   use mpi_interfaces
   use iso_c_binding

@@ -5,7 +5,7 @@ module metric_assemble
   use spud
   use fldebug
   use global_parameters, only: domain_bbox
-  use mpi_interfaces, only: mpi_allreduce
+  use mpi, only: mpi_allreduce
   use parallel_tools
   use sparse_tools
   use quadrature

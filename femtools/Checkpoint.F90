@@ -34,12 +34,6 @@ module checkpoint
   use global_parameters, only : FIELD_NAME_LEN, OPTION_PATH_LEN, simulation_start_time
   use futils
   use mpi_interfaces
-#ifdef HAVE_MPI_F08
-  ! Avoid clashes with mpi_interfaces
-  use mpi, only: MPI_OFFSET_KIND, MPI_MODE_CREATE, MPI_MODE_RDWR, &
-                 MPI_INFO_NULL, MPI_STATUS_SIZE, MPI_STATUS_IGNORE, &
-                 MPI_STATUSES_IGNORE, MPI_SUCCESS
-#endif
   use parallel_tools
   use spud
   use fields

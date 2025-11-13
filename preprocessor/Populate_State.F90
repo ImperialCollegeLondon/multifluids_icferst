@@ -37,7 +37,7 @@ periodic_boundary_option_path, domain_bbox, domain_volume, surface_radius
   use element_numbering
   use elements
   use spud
-  use mpi_interfaces, only: MPI_bcast
+  use mpi, only: MPI_bcast
   use parallel_tools
   use data_structures
   use metric_tools

@@ -27,6 +27,14 @@ AC_PROG_FC
 AC_PROG_LN_S
 AC_CANONICAL_HOST
 
+if test "$FC" = "gfortran"; then
+    AC_DEFINE([USING_GFORTRAN],[1],[Define to 1 if gfortran is the compiler])
+fi
+
+# Get the current date and Git commit
+echo "character(len=*), parameter :: compile_date = '$(date +"%Y-%m-%d %H:%M:%S")'" > version.inc
+echo "character(len=*), parameter :: git_commit = '$(git log -1 --pretty=format:"%H")'" >> version.inc
+
 dnl ---- Let users override wrappers from env (MPIF90, MPIF77, MPICC, MPICXX)
 AC_ARG_VAR([MPIF90], [MPI Fortran 90/2003 wrapper, e.g. mpifort/mpif90])
 AC_ARG_VAR([MPIF77], [MPI Fortran 77 wrapper, e.g. mpif77])
@@ -148,6 +156,7 @@ AS_IF([test -n "$FC_MAJOR" -a "$FC_MAJOR" -ge 10], [
     FCFLAGS="$FCFLAGS -fallow-argument-mismatch"
   ])
 ])
+
 
 dnl --- OpenMP detection (compile + link) ---
 m4_ifdef([AX_OPENMP], [
@@ -324,15 +333,18 @@ AS_IF([test "x$enable_python" != "xno"], [
         PKG_CHECK_MODULES([PY3EMB], [python-3.12-embed], [
           HAVE_PYTHON=yes
           AC_DEFINE([HAVE_PYTHON],[1],[Define to 1 to embed Python])
-          CPPFLAGS="$CPPFLAGS $PY3EMB_CFLAGS"
-          CFLAGS="$CFLAGS $PY3EMB_CFLAGS"
-          CXXFLAGS="$CXXFLAGS $PY3EMB_CFLAGS"
-          LIBS="$LIBS $PY3EMB_LIBS"
+          CPPFLAGS="$CPPFLAGS $PY3_EMB_CFLAGS"
+          CFLAGS="$CFLAGS $PY3_EMB_CFLAGS"
+          CXXFLAGS="$CXXFLAGS $PY3_EMB_CFLAGS"
+          LIBS="$LIBS $PY3_EMB_LIBS"
         ], [
           AC_MSG_WARN([No python embed development files found; disabling Python embedding])
           HAVE_PYTHON=no
         ])
       ])
+      dnl Define the module path in config.h (as a C string) instead of injecting via -D into CFLAGS
+      AC_DEFINE_UNQUOTED([FLUIDITY_PYTHON_MODULE_PATH], ["$(pwd)/python"], [Path to Fluidity Python module directory])
+      AC_SUBST([FLUIDITY_PYTHON_MODULE_PATH])
     ], [
       AC_MSG_WARN([No AX_PYTHON_DEVEL or pkg-config macros available; disabling Python embedding])
       HAVE_PYTHON=no
@@ -359,6 +371,13 @@ PY`
     ])
   ])
 
+  dnl --- existing code ---
+
+  dnl Define the module path in config.h (as a C string) instead of injecting via -D into CFLAGS
+  AC_DEFINE_UNQUOTED([FLUIDITY_PYTHON_MODULE_PATH], ["$(pwd)/python"], [Path to Fluidity Python module directory])
+  AC_SUBST([FLUIDITY_PYTHON_MODULE_PATH])
+
+  dnl --- existing code ---
 ], [
   HAVE_PYTHON=no
 ])
@@ -494,10 +513,27 @@ CXX="$MPICXX"
 FC="$MPIFC"
 
 AC_DEFINE([HAVE_MPI],[1],[Define if MPI is available])
+AC_DEFINE([HAVE_MPI_CXX],[1],[Define if legacy MPI extensions are available])
+AC_DEFINE([_MPI_CPP_BINDINGS],[1],[Define if legacy MPI extensions are available])
 FLLINKER="$FC"
 LINKER="$CXX"
 AC_SUBST([FLLINKER])
 AC_SUBST([LINKER])
+
+AC_MSG_CHECKING([for MPI compile and link flags using mpicxx])
+AS_IF([command -v mpicxx >/dev/null], [
+    MPI_CXXFLAGS=`mpicxx --showme:compile`
+    MPI_LIBS=`mpicxx --showme:link`
+    AC_MSG_NOTICE([DEBUG: MPI flags: $MPI_CXXFLAGS, $MPI_LIBS])
+], [
+    MPI_CXXFLAGS=""
+    MPI_LIBS=""
+])
+AC_SUBST([MPI_CXXFLAGS])
+AC_SUBST([MPI_LIBS])
+
+CPPFLAGS="$CPPFLAGS $MPI_CXXFLAGS"
+LIBS="$LIBS $MPI_LIBS"
 
 dnl -------- BLAS/LAPACK --------
 have_blaslapack=no
@@ -546,6 +582,10 @@ dnl -------- UDUNITS2 (optional) --------
 PKG_CHECK_MODULES([UDUNITS2],[udunits2],[
   CPPFLAGS="$CPPFLAGS $UDUNITS2_CFLAGS"
   LIBS="$LIBS $UDUNITS2_LIBS"
+  AC_DEFINE([HAVE_LIBUDUNITS],[1],[Have UDUNITS2])
+],[ : ])
+AC_CHECK_LIB([udunits2],[utInit],[
+  LIBS="$LIBS -ludunits2"
   AC_DEFINE([HAVE_LIBUDUNITS],[1],[Have UDUNITS2])
 ],[ : ])
 
@@ -646,7 +686,10 @@ dnl -------- METIS / ParMETIS --------
 AC_CHECK_HEADERS([metis.h])
 AC_CHECK_HEADERS([parmetis.h])
 AC_CHECK_LIB([metis],[METIS_PartGraphKway],[AC_DEFINE([HAVE_LIBMETIS],[1],[Have METIS])],[])
-AC_CHECK_LIB([parmetis],[ParMETIS_V3_AdaptiveRepart],[AC_DEFINE([HAVE_LIBPARMETIS],[1],[Have ParMETIS])],[])
+AC_CHECK_LIB([parmetis],[ParMETIS_V3_AdaptiveRepart],[
+  AC_DEFINE([HAVE_LIBPARMETIS],[1],[Have ParMETIS])
+  LIBS="$LIBS -lparmetis -lmetis"
+],[])
 AC_LANG_PUSH([C])
 AC_MSG_CHECKING([if ParMETIS major version <= 3])
 AC_COMPILE_IFELSE(
@@ -686,7 +729,15 @@ AS_IF([test "x$enable_sam" = "xyes"], [
     LDFLAGS="$LDFLAGS -L$with_zoltan/lib"
   ])
   AC_CHECK_HEADERS([zoltan.h],[],[have_zoltan_hdr=no])
-  AC_CHECK_LIB([zoltan],[Zoltan_Create],[ZOLTAN_LIBS="-lzoltan"; AC_SUBST([ZOLTAN_LIBS])],[have_zoltan_lib=no])
+  AC_MSG_CHECKING([whether to link against zoltan or trilinos_zoltan])
+  have_zoltan_lib=no
+  AC_CHECK_LIB([trilinos_zoltan],[Zoltan_Create],[have_zoltan_lib=yes; ZOLTAN_LIBS="-ltrilinos_zoltan"],[
+    AC_CHECK_LIB([zoltan],[Zoltan_Create],[have_zoltan_lib=yes; ZOLTAN_LIBS="-lzoltan"],[
+      AC_MSG_WARN([Neither zoltan nor trilinos_zoltan library found])
+    ])
+  ])
+  AC_SUBST([ZOLTAN_LIBS])
+  LIBS="$LIBS $ZOLTAN_LIBS"
   AS_IF([test "x$have_zoltan_hdr" != "xno" -a "x$have_zoltan_lib" != "xno"], [
     AC_LANG_PUSH([Fortran])
     AC_MSG_CHECKING([for usable zoltan Fortran module])
@@ -938,6 +989,15 @@ AS_IF([test "x$enable_vtk" != "xno"], [
   AS_IF([test -z "$VTK_CFLAGS"], [
     AC_MSG_ERROR([Could not determine VTK headers. Install libvtk9-dev or pass --with-vtk=/path/to/vtk-9.1 CMake dir])
   ])
+  AS_IF([test -z "$VTK_LIBS"], [
+    VTK_LIBS_ARRAY=""
+    for lib in vtkCommonCore vtkCommonDataModel vtkCommonExecutionModel vtkFiltersCore vtkFiltersGeneral \
+                vtkFiltersVerdict vtkIOCore vtkIOXML vtkIOGeometry vtkIOLegacy vtkIOParallelXML \
+                vtkParallelMPI vtkIOXMLParser vtkCommonSystem vtkCommonMisc vtkCommonMath vtksys; do
+      VTK_LIBS_ARRAY="$VTK_LIBS_ARRAY -l$lib-9.1"
+    done
+    VTK_LIBS="$VTK_LIBS_ARRAY"
+  ])
 
   AC_SUBST([VTK_CFLAGS])
   AC_SUBST([VTK_LIBS])
@@ -967,20 +1027,6 @@ AS_IF([test "x$enable_debugging" = "xyes"], [
   ])
 ])
 AC_SUBST([MEMORY_STATS])
-
-dnl -------- MBA2D/MBA3D optional libs --------
-AS_IF([test "x$enable_2d_adaptivity" = "xyes"],[
-  echo "#define HAVE_MBA_2D 1" >> include/confdefs.h
-  LIBS="-lmba2d $LIBS"
-  MBA2D="yes"
-  AC_SUBST([MBA2D])
-])
-AS_IF([test "x$enable_mba3d" = "xyes"],[
-  echo "#define HAVE_MBA_3D 1" >> include/confdefs.h
-  LIBS="$LIBS -lmba3d"
-  MBA3D="yes"
-  AC_SUBST([MBA3D])
-])
 
 dnl -------- Hyperlight module --------
 AS_IF([test "x$enable_hyperlight" = "xyes"],[
@@ -1045,6 +1091,20 @@ AS_IF([test -n "$with_judy"],[
   ])
 ])
 AC_SUBST([FLIBJUDY])
+
+dnl -------- MBA2D/MBA3D optional libs --------
+AS_IF([test "x$enable_2d_adaptivity" = "xyes"],[
+  AC_DEFINE([HAVE_MBA_2D],[1],[2d adaptivity enabled])
+  LIBS="-lmba2d $LIBS"
+  MBA2D="yes"
+  AC_SUBST([MBA2D])
+])
+AS_IF([test "x$enable_mba3d" = "xyes"],[
+  AC_DEFINE([HAVE_MBA_3D],[1],[3d adaptivity enabled])
+  LIBS="$LIBS -lmba3d"
+  MBA3D="yes"
+  AC_SUBST([MBA3D])
+])
 
 dnl -------- Subproject: libspud (internal or external) --------
 AS_IF([test -n "$with_libspud_root"],[
@@ -1122,6 +1182,11 @@ grep "^#define F77_FUNC" confdefs.h >> libvtkfortran/include/confdefs.h 2>/dev/n
 grep "^#define VTK" confdefs.h >> libvtkfortran/include/confdefs.h 2>/dev/null || true
 grep "^#define MPI" confdefs.h >> libvtkfortran/include/confdefs.h 2>/dev/null || true
 grep "^#define HAVE_HYPRE" confdefs.h >> libvtkfortran/include/confdefs.h 2>/dev/null || true
+
+echo "#define USING_CONFIG_H 1" >> include/confdefs.h
+echo "#include \"config.h\"" >> include/confdefs.h
+echo "#define USING_CONFIG_H 1" >> libvtkfortran/include/confdefs.h
+echo "#include \"config.h\"" >> libvtkfortran/include/confdefs.h
 
 dnl -------- Summary --------
 AC_MSG_NOTICE([==== Summary ====])
