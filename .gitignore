@@ -35,3 +35,10 @@ bin/icferst
 include/version.h
 spatialindex-1.8.0/make.log
 version.inc
+
+# Generated / build files
+diagnostics/Diagnostic_Fields_New.F90
+include/vtk.h
+libspud/diamond/diamond/plugins.py
+libspud/diamond/diamond/preprocess.py
+
