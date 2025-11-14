@@ -1670,7 +1670,7 @@ contains
         INTEGER :: PHASE_EXCLUDE
         LOGICAL, DIMENSION( Mdims%ndim + 1 ) :: PIPE_INDEX_LOGICAL
         REAL, dimension(Mdims%ndim) :: DIRECTION, DIRECTION_NORM
-        REAL :: DX, ELE_ANGLE, NN, NM, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI, E_ROUGHNESS
+        REAL :: DX, ELE_ANGLE, NN, NM, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI, E_ROUGHNESS, DEN_GI, VISC_GI
         REAL :: S_WATER, S_WATER_MIN, S_WATER_MAX, SIGMA_SWITCH_ON_OFF_PIPE_GI, PIPE_SWITCH
         INTEGER :: ncorner, scvngi, k, &
             &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc, ICORNER1, ICORNER2, ICORNER3, ICORNER4
@@ -1683,12 +1683,6 @@ contains
         ! Add the sigma associated with the switch to switch the pipe flow on and off...
         if ( CALC_SIGMA_PIPE ) then
             allocate( well_density(Mdims%nphase), well_viscosity(Mdims%nphase) )
-            do iphase = Mdims%n_in_pres+1, Mdims%nphase
-                wd => extract_scalar_field( state(iphase), "Density" )
-                wm => extract_tensor_field( state(iphase), "Viscosity" )
-                well_density( iphase ) = wd%val(1)
-                well_viscosity( iphase ) = wm%val(1,1,1)
-            end do
         end if
         ! Set rhs of the force balce equation to zero just for the pipes...
         Mmat%U_RHS( :, Mdims%n_in_pres+1:Mdims%nphase, : ) = 0.0
@@ -1863,16 +1857,35 @@ contains
                 IF ( CALC_SIGMA_PIPE ) THEN
                     MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
                     DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
-                        IPHASE_IN_PIPE=IPHASE-Mdims%n_in_pres
+                        wd => extract_scalar_field( state(iphase), "Density" )
+                        wm => extract_tensor_field( state(iphase), "Viscosity" )
+
                         DO GI = 1, scvngi
                             U_GI = 0.0
+                            DEN_GI = 0.0
+                            VISC_GI = 0.0
+
+                            ! Calculate velocity at integration point
                             DO IDIM = 1, Mdims%ndim
                                 U_GI = U_GI + SUM( SUFEN( : , GI ) * NU_ALL( IDIM, IPHASE, U_GL_GL( : ) ) ) * DIRECTION( IDIM )
                             END DO
-                            CALL SIGMA_PIPE_FRICTION( SIGMA_GI( IPHASE, GI ), U_GI, MIN_DIAM, WELL_DENSITY( IPHASE ), WELL_VISCOSITY( IPHASE ), E_ROUGHNESS )
+
+                            ! Density and viscosity at this integration point (note, we're taking the (1,1) value of viscosity - assuming it's isotropic - can be changed if needed later...)
+                            DO CV_LILOC = 1, CV_LNLOC
+                                CV_KNOD = CV_GL_GL( CV_LILOC )
+                                DEN_GI = DEN_GI + wd%val(CV_KNOD) * SCVFEN( CV_LILOC, GI )
+                                if (size(wm%val,3) == 1) then
+                                  VISC_GI = VISC_GI + wm%val(1,1,1) * SCVFEN( CV_LILOC, GI )
+                                else
+                                  VISC_GI = VISC_GI + wm%val(1,1,CV_KNOD) * SCVFEN( CV_LILOC, GI )
+                                end if
+                            END DO
+
+                            CALL SIGMA_PIPE_FRICTION( SIGMA_GI( IPHASE, GI ), U_GI, MIN_DIAM, DEN_GI, VISC_GI, E_ROUGHNESS )
                         END DO
                     END DO
                 END IF
+
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
                 ! Adjust according to the volume of the pipe...
                 DETWEI = SCVFEWEIGH * 0.5* DX * PI * ( (0.5*PIPE_DIAM_GI)**2 ) * ELE_ANGLE / ( 2.0 * PI )
