@@ -724,7 +724,7 @@ extern "C" {
   #ifdef HAVE_MPI
       if (!writer->GetController()) {
         vtkMPIController *cont = vtkMPIController::New();
-        cont->Initialize();
+        // cont->Initialize();
         writer->SetController(cont);
         cont->Delete();
       }
