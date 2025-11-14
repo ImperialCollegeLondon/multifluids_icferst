@@ -94,22 +94,22 @@ module vtk_interfaces
      end subroutine vtk_get_sizes
   end interface
 
-! #if VTK_MAJOR_VERSION>=9
-!     interface
-!       subroutine vtkwriteghostlevels(ghost_levels) bind(C, name="vtkwriteghostlevels")
-!         use iso_c_binding
-!         implicit none
-!         integer(c_int) :: ghost_levels(*)
-!       end subroutine vtkwriteghostlevels
-!     end interface
-! #else
+#if VTK_MAJOR_VERSION>=9
+    interface
+      subroutine vtkwriteghostlevels(ghost_levels) bind(C, name="vtkwriteghostlevels")
+        use iso_c_binding
+        implicit none
+        integer(c_int) :: ghost_levels(*)
+      end subroutine vtkwriteghostlevels
+    end interface
+#else
     interface vtkwriteghostlevels
        subroutine vtkwriteghostlevels(ghost_levels)
          implicit none
          integer ghost_levels(*)
        end subroutine vtkwriteghostlevels
     end interface
-! #endif
+#endif
 
 contains
 
