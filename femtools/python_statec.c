@@ -25,11 +25,11 @@ void python_init_(void){
   PyImport_AppendInittab("spud_manager", &PyInit_spud_manager);
 #endif
   Py_Initialize();
-  #ifdef FLUIDITY_PYTHON_MODULE_PATH
-      printf("FLUIDITY_PYTHON_MODULE_PATH = %s\n", FLUIDITY_PYTHON_MODULE_PATH);
-  #else
-      printf("FLUIDITY_PYTHON_MODULE_PATH is NOT defined!\n");
-  #endif
+  // #ifdef FLUIDITY_PYTHON_MODULE_PATH
+  //     printf("FLUIDITY_PYTHON_MODULE_PATH = %s\n", FLUIDITY_PYTHON_MODULE_PATH);
+  // #else
+  //     printf("FLUIDITY_PYTHON_MODULE_PATH is NOT defined!\n");
+  // #endif
   char python_path_cmd[512];
   snprintf(python_path_cmd, sizeof(python_path_cmd),
           "import sys; sys.path.insert(0, '%s')", FLUIDITY_PYTHON_MODULE_PATH);
