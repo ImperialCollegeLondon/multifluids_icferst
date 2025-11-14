@@ -725,6 +725,7 @@ extern "C" {
       if (!writer->GetController()) {
         vtkMPIController *cont = vtkMPIController::New();
         // cont->Initialize();
+        cont->SetCommunicator(vtkMPICommunicator::GetWorldCommunicator());
         writer->SetController(cont);
         cont->Delete();
       }
