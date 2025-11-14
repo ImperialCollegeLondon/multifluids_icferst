@@ -38,7 +38,6 @@ version.inc
 
 # Generated / build files
 diagnostics/Diagnostic_Fields_New.F90
-include/vtk.h
 libspud/diamond/diamond/plugins.py
 libspud/diamond/diamond/preprocess.py
 
