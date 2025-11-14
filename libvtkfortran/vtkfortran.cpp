@@ -720,29 +720,58 @@ extern "C" {
     writer->SetCompressorTypeToZLib();
     writer->SetEncodeAppendedData(0);
 
-#ifdef HAVE_MPI
-    if (!writer->GetController()) {
-      vtkMPIController *cont = vtkMPIController::New();
-      cont->Initialize();
-      writer->SetController(cont);
-      cont->Delete();
-    }
-    writer->SetWriteSummaryFile(1);
+#if VTK_MAJOR_VERSION >= 9
+  #ifdef HAVE_MPI
+      if (!writer->GetController()) {
+        vtkMPIController *cont = vtkMPIController::New();
+        cont->Initialize();
+        writer->SetController(cont);
+        cont->Delete();
+      }
+      writer->SetWriteSummaryFile(1);
+  #else
+      writer->SetWriteSummaryFile((*rank)==0);
+  #endif
+
+      writer->Write();
+      writer->Delete();
+
+      // Finished
+      dataSet->Delete();
+      dataSet = NULL;
+
+      if(is_pvtu && (*rank)==0){
+        rename(filename.c_str(), fl_vtkFileName.c_str());
+        pvtu_fix_path(fl_vtkFileName.c_str(), basename.c_str());
+      }
 #else
-    writer->SetWriteSummaryFile((*rank)==0);
+  #ifdef VTK_USES_MPI
+      // From version 6.3 VTK uses parallel communication to decide
+      // which files have been written
+      if (!writer->GetController()) {
+        vtkMPIController *cont = vtkMPIController::New();
+        cont->SetCommunicator(vtkMPICommunicator::GetWorldCommunicator());
+        writer->SetController(cont);
+      }
+      writer->SetWriteSummaryFile(true);
+  #else
+      writer->SetWriteSummaryFile((*rank)==0);
+  #endif
+
+      writer->Write();
+      writer->Delete();
+
+      // Finished
+      dataSet->Delete();
+      dataSet = NULL;
+
+      if(is_pvtu){
+        if((*rank)==0){
+          rename(filename.c_str(), fl_vtkFileName.c_str());
+          pvtu_fix_path(fl_vtkFileName.c_str(), basename.c_str());
+        }
+      }
 #endif
-
-    writer->Write();
-    writer->Delete();
-
-    // Finished
-    dataSet->Delete();
-    dataSet = NULL;
-
-    if(is_pvtu && (*rank)==0){
-      rename(filename.c_str(), fl_vtkFileName.c_str());
-      pvtu_fix_path(fl_vtkFileName.c_str(), basename.c_str());
-    }
 
     return;
   }
