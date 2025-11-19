@@ -1,4 +1,4 @@
-FROM benfulton/icferst:noble_trilinos
+FROM fluidity/baseimages:noble
 
 USER root
 
@@ -10,8 +10,6 @@ RUN apt-get -y update && \
 
 COPY . /home/fluidity
 RUN chown -R fluidity /home/fluidity
-
-ENV FCFLAGS="-I/usr/include"
 
 USER fluidity
 

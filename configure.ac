@@ -723,41 +723,9 @@ HAVE_ZOLTAN=no
 AS_IF([test "x$enable_sam" = "xyes"], [
   HAVE_ZOLTAN=no
 ],[
-  AS_IF([test -n "$with_zoltan"], [
-    CPPFLAGS="$CPPFLAGS -I$with_zoltan/include"
-    FCFLAGS="$FCFLAGS -I$with_zoltan/include"
-    LDFLAGS="$LDFLAGS -L$with_zoltan/lib"
-  ])
-  AC_CHECK_HEADERS([zoltan.h],[],[have_zoltan_hdr=no])
-  AC_MSG_CHECKING([whether to link against zoltan or trilinos_zoltan])
-  have_zoltan_lib=no
-  AC_CHECK_LIB([trilinos_zoltan],[Zoltan_Create],[have_zoltan_lib=yes; ZOLTAN_LIBS="-ltrilinos_zoltan"],[
-    AC_CHECK_LIB([zoltan],[Zoltan_Create],[have_zoltan_lib=yes; ZOLTAN_LIBS="-lzoltan"],[
-      AC_MSG_WARN([Neither zoltan nor trilinos_zoltan library found])
-    ])
-  ])
-  AC_SUBST([ZOLTAN_LIBS])
-  LIBS="$LIBS $ZOLTAN_LIBS"
-  AS_IF([test "x$have_zoltan_hdr" != "xno" -a "x$have_zoltan_lib" != "xno"], [
-    AC_LANG_PUSH([Fortran])
-    AC_MSG_CHECKING([for usable zoltan Fortran module])
-    cat > conftest_zoltan.F90 <<'EOT'
-program test_zoltan
-  use zoltan
-end program test_zoltan
-EOT
-    ${FC} $FCFLAGS -c conftest_zoltan.F90 >/dev/null 2>&1
-    if test "$?" -eq 0 ; then
-      AC_MSG_RESULT([yes])
-      AC_DEFINE([HAVE_ZOLTAN],[1],[Have Zoltan])
-      HAVE_ZOLTAN=yes
-    else
-      AC_MSG_RESULT([no])
-      AC_MSG_WARN([Zoltan library found but Fortran module unusable; rebuild Trilinos with same compiler/MPI])
-    fi
-    AC_LANG_POP([Fortran])
-  ],[:])
-])
+  CHECK_ZOLTAN
+]
+)
 AC_SUBST([HAVE_ZOLTAN])
 
 dnl -------- CGAL (optional) --------
