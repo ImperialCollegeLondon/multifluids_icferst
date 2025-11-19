@@ -27,10 +27,10 @@
 SHELL = @SHELL@
 
 PACKAGE_NAME = @PACKAGE_NAME@
-FLUIDITY = $(PACKAGE_NAME)
+FLUIDITY = fluidity
 
 FC      = @FC@
-FCFLAGS = -I../include -I/usr/include @CPPFLAGS@ @FCFLAGS@
+FCFLAGS = -I../include -I/usr/include @CPPFLAGS@ @FCFLAGS@ -DHAVE_PETSC_MODULES
 
 CC  = @CC@
 CFLAGS  = @CFLAGS@ -I../include
@@ -42,7 +42,7 @@ LINKER = @LINKER@ @LDFLAGS@
 
 FLLINKER = @FLLINKER@ @LDFLAGS@ $(FCFLAGS)
 
-LIBS = -L../lib ./lib/libadaptivity.a @LIBSPATIALINDEX@ @SPUDLIB@ ./lib/libvtkfortran.a @FLIBJUDY@ @LIBS@ @BLAS_LIBS@ @LIB_FEMDEM@
+LIBS = -L../lib ./lib/libadaptivity.a @LIBSPATIALINDEX@ @SPUDLIB@ ./lib/libvtkfortran.a -lmpi_mpifh -lgfortran @FLIBJUDY@ @LIBS@ @BLAS_LIBS@ @LIB_FEMDEM@
 FLIBS = -L../lib @FLIBS@
 
 # These objects are needed in each program as they provide the code related to
