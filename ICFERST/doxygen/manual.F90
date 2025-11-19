@@ -34,7 +34,7 @@
 !> @htmlonly
 !> <CODE>
 !> <PRE>
-!> mkdir MultiFluids_Dev && cd MultiFluids_Dev && git init && git remote add -t  master  -f origin git@github.com:ImperialCollegeLondon/multifluids_icferst.git && git checkout master
+!> git clone https://github.com/ImperialCollegeLondon/multifluids_icferst.git
 !> </PRE>
 !> </CODE>
 !> @endhtmlonly
@@ -45,7 +45,7 @@
 !> <PRE>
 !> sudo apt-add-repository ppa:fluidity-core/ppa
 !> sudo apt-get update
-!> sudo apt-get install fluidity-dev
+!> sudo apt-get install fluidity-dev autoconf-archive python-is-python3 pkg-config
 !> </PRE>
 !> </CODE>
 !> @endhtmlonly
@@ -68,7 +68,16 @@
 !> </CODE>
 !> @endhtmlonly
 !>
-!> 3b) You may need to explicitly include the python dependencies
+!> 3c) Ubuntu 24.04, set up the configuration file correctly by running
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> autoreconf --force --install
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> 3d) You may need to explicitly include the python dependencies
 !> @htmlonly
 !> <CODE>
 !> <PRE>
@@ -77,12 +86,25 @@
 !> </CODE>
 !> @endhtmlonly
 !>
-!> 4) Navigate to the root directory of your ICFERST folder
+!> 4) Navigate to the root directory of your ICFERST folder.
+!> You can install the application for all users by running:
 !> @htmlonly
 !> <CODE>
 !> <PRE>
 !> cd IC-FERST-FOLDER/
-!> sudo ./configure --enable-2d-adaptivity && make install
+!> ./configure --enable-2d-adaptivity
+!> make mp && sudo make install
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
+!> Or you can install it locally (only for your user) by running:
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> cd IC-FERST-FOLDER/
+!> ./configure --enable-2d-adaptivity --prefix=$HOME/ICFERST
+!> make mp && make install
 !> </PRE>
 !> </CODE>
 !> @endhtmlonly
