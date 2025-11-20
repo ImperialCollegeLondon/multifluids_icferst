@@ -1,5 +1,9 @@
-<map id="/home/mbahlali/Softwares/MultiFluids_Dev/ICFERST/src/multi_solvers.F90" name="/home/mbahlali/Softwares/MultiFluids_Dev/ICFERST/src/multi_solvers.F90">
-<area shape="rect" id="node1" title=" " alt="" coords="9,5,203,61"/>
-<area shape="rect" id="node2" title=" " alt="" coords="5,109,84,136"/>
-<area shape="rect" id="node3" title=" " alt="" coords="109,109,226,136"/>
+<map id="/home/mbahlali/Softwares/MultiFluids_Dev_master_ubuntu24_new/ICFERST/src/multi_solvers.F90" name="/home/mbahlali/Softwares/MultiFluids_Dev_master_ubuntu24_new/ICFERST/src/multi_solvers.F90">
+<area shape="rect" id="Node000001" title=" " alt="" coords="87,5,293,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,123,84,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="139,77,76,117,73,113,136,73"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="109,123,271,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="193,75,193,109,187,109,187,75"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="295,123,413,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="251,72,323,113,320,118,248,77"/>
 </map>

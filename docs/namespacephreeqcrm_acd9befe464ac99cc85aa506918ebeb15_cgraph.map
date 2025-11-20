@@ -1,5 +1,10 @@
 <map id="phreeqcrm::rm_getgascomppressures" name="phreeqcrm::rm_getgascomppressures">
-<area shape="rect" id="node1" title="Transfer pressures of gas components from each reaction cell to the array given in the argument list ..." alt="" coords="5,31,273,57"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="385,5,543,32"/>
-<area shape="rect" id="node3" href="$namespacephreeqcrm.html#af5867cb3e15ad7b4a21392203dc6f77b" title="Returns the number of gas phase components in the initial&#45;phreeqc module. RM_FindComponents must be c..." alt="" coords="321,56,607,83"/>
+<area shape="rect" id="Node000001" title="Transfer pressures of gas components from each reaction cell to the array given in the argument list ..." alt="" coords="5,67,273,92"/>
+<area shape="poly" id="edge5_Node000001_Node000001" title=" " alt="" coords="88,69,76,58,82,48,104,42,139,40,187,45,199,50,202,57,197,59,195,54,186,50,139,45,104,47,85,52,82,58,91,64"/>
+<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="385,29,543,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="250,64,371,50,371,55,250,69"/>
+<area shape="rect" id="Node000003" href="$namespacephreeqcrm.html#af5867cb3e15ad7b4a21392203dc6f77b" title="Returns the number of gas phase components in the initial&#45;phreeqc module. RM_FindComponents must be c..." alt="" coords="321,103,607,128"/>
+<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="254,89,336,98,335,104,254,95"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="413,31,401,21,407,11,428,5,464,3,512,7,524,13,527,20,522,22,520,17,511,12,464,8,429,10,410,15,406,20,416,27"/>
+<area shape="poly" id="edge4_Node000003_Node000003" title=" " alt="" coords="413,105,401,94,407,84,428,78,464,76,512,81,524,86,527,93,522,95,520,90,511,86,464,81,429,83,410,88,406,94,416,100"/>
 </map>

@@ -1,0 +1,4 @@
+<map id="phreeqcrm::rm_getgascompmoles" name="phreeqcrm::rm_getgascompmoles">
+<area shape="rect" id="Node000001" title="Transfer moles of gas components from each reaction cell to the array given in the argument list (gas..." alt="" coords="5,29,251,55"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="172,20,169,15,161,12,128,8,102,10,88,15,85,20,92,27,88,31,80,21,84,11,101,5,128,3,163,7,173,11,176,17"/>
+</map>

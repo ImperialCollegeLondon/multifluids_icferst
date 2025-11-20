@@ -1,4 +1,7 @@
 <map id="phreeqcrm::rm_concentrations2utility" name="phreeqcrm::rm_concentrations2utility">
-<area shape="rect" id="node1" title="N sets of component concentrations are converted to SOLUTIONs numbered 1&#45;n in the Utility IPhreeqc...." alt="" coords="5,5,272,32"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="320,5,479,32"/>
+<area shape="rect" id="Node000001" title="N sets of component concentrations are converted to SOLUTIONs numbered 1&#45;n in the Utility IPhreeqc...." alt="" coords="5,29,272,55"/>
+<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="97,31,88,21,92,11,110,5,139,3,175,7,185,11,189,17,185,20,182,15,174,12,139,8,111,10,96,15,93,20,101,27"/>
+<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="320,29,479,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="272,39,306,39,306,45,272,45"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="358,31,348,21,353,11,370,5,399,3,436,7,446,11,450,17,446,20,443,15,434,12,399,8,372,10,357,15,354,20,361,27"/>
 </map>

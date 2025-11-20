@@ -1,5 +1,11 @@
-<map id="/home/psalinas/Documents/workspace/MultiFluids_Dev/ICFERST/src/Multiphase_Prototype_Wrapper.F90" name="/home/psalinas/Documents/workspace/MultiFluids_Dev/ICFERST/src/Multiphase_Prototype_Wrapper.F90">
-<area shape="rect" id="node1" title=" " alt="" coords="5,5,217,76"/>
-<area shape="rect" id="node2" title=" " alt="" coords="11,124,89,151"/>
-<area shape="rect" id="node3" title=" " alt="" coords="114,124,231,151"/>
+<map id="/home/mbahlali/Softwares/MultiFluids_Dev_master_ubuntu24_new/ICFERST/src/Multiphase_Prototype_Wrapper.F90" name="/home/mbahlali/Softwares/MultiFluids_Dev_master_ubuntu24_new/ICFERST/src/Multiphase_Prototype_Wrapper.F90">
+<area shape="rect" id="Node000001" title=" " alt="" coords="143,5,400,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,123,84,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="191,77,86,120,84,115,188,72"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="109,123,271,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="244,77,211,114,207,110,240,73"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="295,123,413,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="303,73,337,110,333,114,299,77"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="436,123,541,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="351,72,450,115,448,120,349,77"/>
 </map>

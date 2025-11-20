@@ -1,0 +1,4 @@
+<map id="phreeqcrm::rm_setprintchemistrymask" name="phreeqcrm::rm_setprintchemistrymask">
+<area shape="rect" id="Node000001" title="Enable or disable detailed output for each reaction cell. Printing for a cell will occur only when th..." alt="" coords="5,29,281,55"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="193,20,190,16,181,12,143,8,114,10,98,15,95,20,103,27,99,31,89,21,94,11,113,5,143,3,183,7,193,12,197,18"/>
+</map>

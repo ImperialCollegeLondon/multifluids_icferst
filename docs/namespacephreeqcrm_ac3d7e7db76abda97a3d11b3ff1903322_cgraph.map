@@ -1,4 +1,7 @@
 <map id="phreeqcrm::rm_initialphreeqc2module" name="phreeqcrm::rm_initialphreeqc2module">
-<area shape="rect" id="node1" title="Transfer solutions and reactants from the InitialPhreeqc instance to the reaction&#45;module workers,..." alt="" coords="5,5,276,32"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="324,5,483,32"/>
+<area shape="rect" id="Node000001" title="Transfer solutions and reactants from the InitialPhreeqc instance to the reaction&#45;module workers,..." alt="" coords="5,29,276,55"/>
+<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="98,31,89,21,94,11,111,5,141,3,178,7,188,12,192,18,187,20,185,16,177,12,141,8,113,10,98,15,95,20,102,27"/>
+<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="324,29,483,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="276,39,310,39,310,45,276,45"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="361,31,352,21,357,11,374,5,403,3,441,7,451,12,455,18,450,20,447,16,439,12,403,8,375,10,360,15,357,20,365,27"/>
 </map>

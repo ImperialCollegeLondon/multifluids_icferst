@@ -1,0 +1,53 @@
+<map id="multi_data_types::deallocate_multi_dev_shape_funs" name="multi_data_types::deallocate_multi_dev_shape_funs">
+<area shape="rect" id="Node000001" title="Deallocates the required memory to store the derivatives of the shape functions." alt="" coords="1960,200,2171,240"/>
+<area shape="rect" id="Node000002" href="$namespacesolvers__module.html#ac9869d27925198c5c3a95232b79cbb97" title="The sparcity of the local CV connectivity is in: small_findrm, small_colm. ngl_its=max no of global i..." alt="" coords="1599,13,1912,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="2042,190,1988,123,1952,88,1911,60,1862,40,1864,36,1913,55,1955,84,1992,119,2046,187"/>
+<area shape="rect" id="Node000006" href="$namespacecv__advection.html#a3bd456f4f3d098a36288e7ed4a6dbf6b" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1328,181,1517,206"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1946,218,1518,200,1518,195,1946,212"/>
+<area shape="rect" id="Node000007" href="$namespacemultiphase__1d__engine.html#a2644f81b959a9c66d17c6ae96e452faf" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="1037,64,1247,104"/>
+<area shape="poly" id="edge19_Node000001_Node000007" title=" " alt="" coords="2035,192,1981,144,1947,121,1911,104,1856,90,1783,81,1602,73,1410,75,1247,81,1247,76,1410,70,1602,68,1783,76,1857,85,1913,99,1950,116,1984,139,2039,188"/>
+<area shape="rect" id="Node000013" href="$namespacecv__advection.html#a8e92f04a2ef0257a47a96daebf15cbb5" title=": In this method we assemble and solve the Laplacian system using at least P1 elements The equation s..." alt="" coords="1668,420,1843,460"/>
+<area shape="poly" id="edge20_Node000001_Node000013" title=" " alt="" coords="2049,254,2027,291,1996,334,1958,375,1913,410,1879,426,1844,436,1842,430,1878,421,1911,406,1955,372,1992,330,2023,288,2045,251"/>
+<area shape="rect" id="Node000014" href="$namespacecv__advection.html#a1ae53b6e2d75f63d1a426e6f3534d1d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="1685,228,1826,268"/>
+<area shape="poly" id="edge21_Node000001_Node000014" title=" " alt="" coords="1947,233,1827,244,1826,239,1946,228"/>
+<area shape="rect" id="Node000015" href="$namespacecompositional__terms.html#ade3a2016f1b239160f844f3db8622b63" title="Determine MAT_U from NU,NV,NW which are variables mapped to material mesh." alt="" coords="1676,292,1835,332"/>
+<area shape="poly" id="edge23_Node000001_Node000015" title=" " alt="" coords="2007,248,1913,283,1835,301,1834,296,1911,277,2005,243"/>
+<area shape="rect" id="Node000017" href="$namespacecv__advection.html#a7335aa20cf26620a8e0fefcb9be90fac" title=" " alt="" coords="1664,356,1847,396"/>
+<area shape="poly" id="edge26_Node000001_Node000017" title=" " alt="" coords="2038,252,1983,301,1949,326,1913,346,1881,359,1848,368,1846,362,1879,354,1911,342,1946,321,1980,297,2034,248"/>
+<area shape="rect" id="Node000019" href="$namespacemulti__surface__tension.html#abdbb49689046df472c9c0989687b8b5d" title="Calculate the surface tension force as a pressure force term: PLIKE_GRAD_SOU_COEF and PLIKE_GRAD_SOU_..." alt="" coords="1642,113,1869,153"/>
+<area shape="poly" id="edge29_Node000001_Node000019" title=" " alt="" coords="1990,198,1911,175,1840,156,1842,151,1913,169,1992,193"/>
+<area shape="rect" id="Node000003" href="$namespacemulti__interpolation.html#a1bbe85c775a5dcbd634c33cb5414f944" title="Mehs to mesh interpollation method, in Diamond DG_Galerkin." alt="" coords="799,5,945,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1585,28,946,28,946,23,1585,23"/>
+<area shape="rect" id="Node000004" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,184,417,224"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="785,20,713,19,632,24,547,39,506,51,467,66,425,92,388,124,335,186,331,182,384,120,421,88,464,62,504,46,546,34,631,19,713,14,785,15"/>
+<area shape="rect" id="Node000005" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,184,171,224"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="205,207,171,207,171,201,205,201"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="1322,179,1293,168,1278,158,1268,147,1259,137,1245,126,1204,107,1207,102,1248,122,1263,133,1272,144,1282,154,1296,163,1324,174"/>
+<area shape="rect" id="Node000008" href="$namespacemultiphase__1d__engine.html#a8b8466b21f31e369fc0ae74a939444cd" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="1050,249,1234,289"/>
+<area shape="poly" id="edge8_Node000006_Node000008" title=" " alt="" coords="1362,212,1217,252,1216,247,1361,207"/>
+<area shape="rect" id="Node000010" href="$namespacemultiphase__1d__engine.html#aa8ed1c2e68fd75835c3794475805554c" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="465,184,707,224"/>
+<area shape="poly" id="edge18_Node000006_Node000010" title=" " alt="" coords="1314,197,707,205,707,200,1314,192"/>
+<area shape="rect" id="Node000012" href="$namespacemultiphase__1d__engine.html#ae08ee439502a499a77b44ecdd504846a" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="496,120,676,160"/>
+<area shape="poly" id="edge16_Node000006_Node000012" title=" " alt="" coords="1314,186,1246,180,933,160,676,147,677,141,933,155,1247,175,1314,180"/>
+<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="1023,72,905,64,764,64,689,69,613,77,538,91,466,111,430,126,397,145,343,186,340,182,394,141,428,121,464,105,537,86,612,72,688,63,764,59,905,59,1024,67"/>
+<area shape="poly" id="edge15_Node000008_Node000004" title=" " alt="" coords="1037,286,990,289,841,298,725,300,610,290,465,261,411,245,363,227,365,222,413,240,466,256,611,284,725,295,841,293,989,284,1036,280"/>
+<area shape="rect" id="Node000009" href="$namespacemultiphase__1d__engine.html#ad72540721ea2ef4651301189e8973481" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="755,235,989,275"/>
+<area shape="poly" id="edge9_Node000008_Node000009" title=" " alt="" coords="1036,266,989,264,990,258,1037,261"/>
+<area shape="poly" id="edge10_Node000009_Node000004" title=" " alt="" coords="741,257,607,252,465,239,399,227,400,221,466,233,608,246,741,252"/>
+<area shape="poly" id="edge11_Node000009_Node000010" title=" " alt="" coords="745,235,699,227,700,221,746,230"/>
+<area shape="rect" id="Node000011" href="$namespacemultiphase__1d__engine.html#a07a7956a7419e82fb8f059cae3ded083" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="487,350,685,405"/>
+<area shape="poly" id="edge13_Node000009_Node000011" title=" " alt="" coords="812,283,652,352,650,347,810,278"/>
+<area shape="poly" id="edge12_Node000010_Node000004" title=" " alt="" coords="452,207,417,207,417,201,452,201"/>
+<area shape="poly" id="edge14_Node000011_Node000004" title=" " alt="" coords="490,347,464,333,426,307,391,278,337,226,340,222,395,274,429,303,467,328,492,342"/>
+<area shape="poly" id="edge17_Node000012_Node000004" title=" " alt="" coords="489,166,403,187,402,181,488,161"/>
+<area shape="poly" id="edge22_Node000014_Node000006" title=" " alt="" coords="1670,237,1501,209,1501,203,1671,232"/>
+<area shape="rect" id="Node000016" href="$namespacecompositional__terms.html#a9091a40e5dcfbb5b4ebbce9242c7d0c4" title="Calculate the diffusion coefficient COMP_DIFFUSION for current composition... based on page 136 in Re..." alt="" coords="1295,277,1551,317"/>
+<area shape="poly" id="edge24_Node000015_Node000016" title=" " alt="" coords="1662,311,1551,306,1551,300,1663,305"/>
+<area shape="poly" id="edge25_Node000016_Node000008" title=" " alt="" coords="1281,286,1234,281,1235,276,1281,281"/>
+<area shape="rect" id="Node000018" href="$namespacemultiphase__1d__engine.html#aa1ce62fd9e2240cf8992447180a0152c" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="776,356,968,396"/>
+<area shape="poly" id="edge27_Node000017_Node000018" title=" " alt="" coords="1650,379,968,379,968,373,1650,373"/>
+<area shape="poly" id="edge28_Node000018_Node000011" title=" " alt="" coords="762,379,685,380,685,374,762,374"/>
+<area shape="rect" id="Node000020" href="$namespacemulti__surface__tension.html#ae26cb34b2b50706fd7111f4398270e50" title=" " alt="" coords="1306,113,1539,153"/>
+<area shape="poly" id="edge30_Node000019_Node000020" title=" " alt="" coords="1628,136,1540,136,1540,131,1628,131"/>
+<area shape="poly" id="edge31_Node000020_Node000007" title=" " alt="" coords="1294,114,1246,105,1247,100,1295,108"/>
+</map>

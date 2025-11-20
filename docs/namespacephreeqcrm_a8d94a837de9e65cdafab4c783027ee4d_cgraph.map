@@ -1,0 +1,4 @@
+<map id="phreeqcrm::rm_getchemistrycellcount" name="phreeqcrm::rm_getchemistrycellcount">
+<area shape="rect" id="Node000001" title="Returns the number of chemistry cells in the reaction module. The number of chemistry cells is define..." alt="" coords="5,29,276,55"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="97,31,88,21,93,11,111,5,141,3,179,7,190,12,193,18,189,20,186,16,178,12,141,8,112,10,96,15,93,20,101,27"/>
+</map>

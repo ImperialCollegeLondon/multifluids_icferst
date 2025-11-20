@@ -1,4 +1,5 @@
 <map id="copy_outof_state::compute_node_global_numbers" name="copy_outof_state::compute_node_global_numbers">
-<area shape="rect" id="node1" title="This subroutine calculates the global node numbers requested to operates in ICFERST." alt="" coords="5,5,204,47"/>
-<area shape="rect" id="node2" href="$namespacemulti__tools.html#a29b23492be133b01a7eb9bce13adbdfb" title=" " alt="" coords="252,13,427,39"/>
+<area shape="rect" id="Node000001" title="This subroutine calculates the global node numbers requested to operates in ICFERST." alt="" coords="5,5,204,45"/>
+<area shape="rect" id="Node000002" href="$namespacemulti__tools.html#a29b23492be133b01a7eb9bce13adbdfb" title=" " alt="" coords="252,13,427,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="204,23,238,23,238,28,204,28"/>
 </map>

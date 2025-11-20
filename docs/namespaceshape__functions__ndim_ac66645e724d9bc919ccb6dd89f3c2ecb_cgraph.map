@@ -1,0 +1,18 @@
+<map id="shape_functions_ndim::legrot" name="shape_functions_ndim::legrot">
+<area shape="rect" id="Node000001" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 69 of:Spectral M..." alt="" coords="5,49,173,89"/>
+<area shape="rect" id="Node000002" href="$namespaceshape__functions__ndim.html#abaa8d6b19f2862d28efa5e91879477b1" title="This sub works out the Gauss&#45;Lobatto&#45;Legendre roots." alt="" coords="221,5,389,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="173,50,207,43,208,48,174,55"/>
+<area shape="rect" id="Node000005" href="$namespaceshape__functions__ndim.html#a95cc3420379fc5938487345745d5ef9e" title=" " alt="" coords="221,93,389,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="174,84,208,91,207,96,173,89"/>
+<area shape="rect" id="Node000003" href="$namespaceshape__functions__ndim.html#a5f7505362f3f3ab14bf74c6f351e454c" title="COMPUTES THE GAUSS&#45;LOBATTO COLLOCATION POINTS FOR JACOBI POLYNOMIALS." alt="" coords="437,5,605,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="390,23,424,23,424,28,390,28"/>
+<area shape="rect" id="Node000004" href="$namespaceshape__functions__ndim.html#a46b31cb5442a65a67616261565e9303e" title="COMPUTES THE JACOBI POLYNOMIAL (POLY) AND ITS DERIVATIVE (PDER) OF DEGREE N AT X." alt="" coords="653,5,821,45"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="606,23,640,23,640,28,606,28"/>
+<area shape="poly" id="edge9_Node000005_Node000005" title=" " alt="" coords="265,94,262,84,269,74,283,69,305,67,331,70,344,77,342,82,329,75,305,72,285,74,272,79,268,85,270,92"/>
+<area shape="rect" id="Node000006" href="$namespaceshape__functions__ndim.html#aa95b9f21f21fa18e757743b84004b83e" title="Calculate binomial coefficients." alt="" coords="437,93,605,133"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="390,111,424,111,424,116,390,116"/>
+<area shape="poly" id="edge6_Node000006_Node000006" title=" " alt="" coords="481,94,478,84,485,74,499,69,521,67,547,70,560,77,558,82,545,75,521,72,501,74,488,79,484,85,486,92"/>
+<area shape="rect" id="Node000007" href="$namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title="Calculate n!" alt="" coords="653,93,821,133"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="606,111,640,111,640,116,606,116"/>
+<area shape="poly" id="edge8_Node000007_Node000007" title=" " alt="" coords="697,94,694,84,701,74,715,69,737,67,763,70,776,77,774,82,761,75,737,72,717,74,704,79,700,85,702,92"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="multiphase_eos::calculate_absorption2" name="multiphase_eos::calculate_absorption2">
+<area shape="rect" id="Node000001" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="5,5,197,45"/>
+<area shape="rect" id="Node000002" href="$namespacemultiphase__eos.html#a19df2cd38bcac98a4dadc0a3327bc1d4" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="245,5,405,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="198,23,232,23,232,28,198,28"/>
+<area shape="rect" id="Node000003" href="$namespacemultiphase__eos.html#a2b630dc39b8a9a21ef87319a98039974" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="453,5,608,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="406,23,439,23,439,28,406,28"/>
+</map>

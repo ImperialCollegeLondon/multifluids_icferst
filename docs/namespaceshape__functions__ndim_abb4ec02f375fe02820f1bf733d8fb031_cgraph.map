@@ -1,7 +1,12 @@
 <map id="shape_functions_ndim::shatri" name="shape_functions_ndim::shatri">
-<area shape="rect" id="node1" title="get the shape functions for a triangle/tetrahedron" alt="" coords="5,100,173,141"/>
-<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#a37c95193cd7ac8186d5e2a9359793013" title="order so that the 1st nodes are on the base of tet for a quadratic tet..." alt="" coords="221,5,389,47"/>
-<area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#a91a5940ae1f635a9dbf21cc341de9d56" title="order so that the 1st nodes are on the base for a quadratic triangle..." alt="" coords="221,71,389,112"/>
-<area shape="rect" id="node4" href="$namespaceshape__functions__ndim.html#ac67c2ff971dd5f7bbfd22a1c1d22eacc" title="Generates the shape functions of a cubic triangle." alt="" coords="437,159,605,200"/>
-<area shape="rect" id="node5" href="$namespaceshape__functions__ndim.html#a445a3bd2cb68d70b3e9cd86febb890db" title=": Work out the shape functions and their derivatives..." alt="" coords="221,188,389,229"/>
+<area shape="rect" id="Node000001" title="get the shape functions for a triangle/tetrahedron" alt="" coords="5,99,173,139"/>
+<area shape="rect" id="Node000002" href="$namespaceshape__functions__ndim.html#a37c95193cd7ac8186d5e2a9359793013" title="order so that the 1st nodes are on the base of tet for a quadratic tet..." alt="" coords="221,5,389,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="130,96,220,55,237,48,239,53,222,60,133,101"/>
+<area shape="rect" id="Node000003" href="$namespaceshape__functions__ndim.html#a91a5940ae1f635a9dbf21cc341de9d56" title="order so that the 1st nodes are on the base for a quadratic triangle..." alt="" coords="221,69,389,109"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="173,105,208,100,208,105,174,110"/>
+<area shape="rect" id="Node000004" href="$namespaceshape__functions__ndim.html#ac67c2ff971dd5f7bbfd22a1c1d22eacc" title="Generates the shape functions of a cubic triangle." alt="" coords="437,156,605,196"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="174,127,424,161,424,166,173,132"/>
+<area shape="rect" id="Node000005" href="$namespaceshape__functions__ndim.html#a20883fea5c4c41ce4742fa1aee305ed6" title=": Work out the shape functions and their derivatives..." alt="" coords="221,184,389,224"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="142,136,243,177,241,181,140,141"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="389,190,424,186,424,191,390,196"/>
 </map>

@@ -1,4 +1,6 @@
 <map id="multi_phreeqc::deallocate_phreeqc" name="multi_phreeqc::deallocate_phreeqc">
-<area shape="rect" id="node1" title=" " alt="" coords="5,5,196,47"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#aa18cd6cf17f8ac7b5552880340d5a3d2" title="Destroys a reaction module." alt="" coords="244,13,419,39"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,22,196,62"/>
+<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#aa18cd6cf17f8ac7b5552880340d5a3d2" title="Destroys a reaction module." alt="" coords="244,29,419,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="196,39,230,39,230,45,196,45"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="294,31,286,21,290,11,306,5,331,3,364,7,376,16,373,20,362,11,331,8,307,10,294,15,291,20,298,27"/>
 </map>

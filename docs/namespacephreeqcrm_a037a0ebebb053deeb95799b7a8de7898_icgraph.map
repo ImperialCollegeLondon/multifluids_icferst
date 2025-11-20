@@ -1,0 +1,4 @@
+<map id="phreeqcrm::rm_getsurfacespeciescount" name="phreeqcrm::rm_getsurfacespeciescount">
+<area shape="rect" id="Node000001" title="Returns the number of surface species (such as &quot;Hfo_wOH&quot;) in the initial&#45;phreeqc module...." alt="" coords="5,29,284,55"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="194,21,192,16,184,12,145,8,115,10,99,15,96,20,104,27,100,31,90,21,95,11,114,5,145,3,185,7,196,12,199,18"/>
+</map>

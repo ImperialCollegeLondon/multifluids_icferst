@@ -1,4 +1,7 @@
 <map id="phreeqcrm::rm_setprintchemistrymask" name="phreeqcrm::rm_setprintchemistrymask">
-<area shape="rect" id="node1" title="Enable or disable detailed output for each reaction cell. Printing for a cell will occur only when th..." alt="" coords="5,5,281,32"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="329,5,488,32"/>
+<area shape="rect" id="Node000001" title="Enable or disable detailed output for each reaction cell. Printing for a cell will occur only when th..." alt="" coords="5,29,281,55"/>
+<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="101,31,91,21,96,11,114,5,143,3,181,7,192,12,195,18,191,20,188,16,180,12,143,8,115,10,100,15,97,20,105,27"/>
+<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="329,29,488,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="281,39,316,39,316,45,281,45"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="366,31,357,21,362,11,379,5,409,3,447,7,457,12,460,18,456,20,453,16,445,12,409,8,380,10,365,15,362,20,370,27"/>
 </map>

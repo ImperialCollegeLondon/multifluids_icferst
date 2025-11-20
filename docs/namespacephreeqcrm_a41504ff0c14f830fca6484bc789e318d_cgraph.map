@@ -1,0 +1,4 @@
+<map id="phreeqcrm::rm_getequilibriumphasesname" name="phreeqcrm::rm_getequilibriumphasesname">
+<area shape="rect" id="Node000001" title="Retrieves an item from the equilibrium phase list. The list includes all phases included in any EQUIL..." alt="" coords="5,29,308,55"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="108,31,98,21,103,11,123,5,157,3,201,7,212,13,215,19,211,21,209,16,200,12,157,8,124,10,107,15,103,20,112,27"/>
+</map>

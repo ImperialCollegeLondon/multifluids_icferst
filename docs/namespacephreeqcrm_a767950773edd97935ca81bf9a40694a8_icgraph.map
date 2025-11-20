@@ -1,0 +1,4 @@
+<map id="phreeqcrm::rm_initialphreeqc2concentrations" name="phreeqcrm::rm_initialphreeqc2concentrations">
+<area shape="rect" id="Node000001" title="Fills an array (bc_conc) with concentrations from solutions in the InitialPhreeqc instance...." alt="" coords="5,29,324,55"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="221,22,220,17,211,12,165,8,130,10,112,15,108,20,117,27,114,31,103,21,109,11,129,5,165,3,212,7,224,13,226,20"/>
+</map>
