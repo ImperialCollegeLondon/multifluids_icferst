@@ -464,9 +464,9 @@ contains
                 have_component_field = .true.
             !!$
             call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
-            
+
             !if (have_temperature_field) call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
-            
+
             if( have_component_field ) then
                 call get_option( '/numerical_methods/Max_compositional_its', NonLinearIteration_Components, default = 1 )
             end if
@@ -474,7 +474,7 @@ contains
 
         call compute_viscosity_EOS( state, Mdims )
 
-        if( have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) ) &
+        if( have_option( '/material_phase[0]/multiphase_properties/type_Formula/capillary_pressure' ) .or. have_option( '/material_phase[0]/multiphase_properties/type_Tabulated/capillary_pressure' ) ) &
             have_extra_DiffusionLikeTerm = .true.
         if ( have_option( '/mesh_adaptivity/hr_adaptivity' ) ) then
             call allocate( metric_tensor, extract_mesh(state(1), topology_mesh_name), 'ErrorMetric' )
@@ -514,7 +514,7 @@ contains
         if( current_time < finish_time .and. &
          .not. have_option("/io/disable_dump_at_start") ) then
 !-------------------------------------------------------------------------------
-! To allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state)
+! To allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state_units)
              if (do_checkpoint_simulation(dump_no)) then
                   checkpoint_number=0
                   call checkpoint_simulation(state,cp_no=checkpoint_number,&
@@ -522,7 +522,7 @@ contains
              end if
              !not_to_move_det_yet = .false. ;
 !-------------------------------------------------------------------------------
-              call write_state(dump_no, state)
+              call write_state_units(dump_no,Mdims,  state)
 
         end if
         !Initialise FPI_eq_taken
@@ -951,7 +951,9 @@ contains
             if (have_option("/porous_media/Gas_dissolution"))call flash_gas_dissolution(state, packed_state, Mdims, ndgln)
             !Update immobile fractions values (for hysteresis relperm models)
             !######HAS TO BE the last step of the time-loop
-            if (have_option_for_any_phase("/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient",&
+            if (have_option_for_any_phase("/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient",&
+            Mdims%n_in_pres) .or. &
+            have_option_for_any_phase("/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient",&
             Mdims%n_in_pres)) call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)
 
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
@@ -1088,7 +1090,7 @@ contains
                   if(dt < minc) then
                     ewrite(0, *) "Minimum timestep reached - terminating"
                     SIG_INT = .true.
-                    ! call write_state(dump_no, state)
+                    ! call write_state_units(dump_no,Mdims,  state)
                   end if
                 end if
                 dt = max( min( dt , maxc ), minc )
@@ -1144,7 +1146,7 @@ contains
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
         ! Dump at end, unless explicitly disabled
         if(.not. have_option("/io/disable_dump_at_end")) then
-            call write_state(dump_no, state)
+            call write_state_units(dump_no, Mdims, state)
         end if
         call tag_references()
         call deallocate(packed_state)
@@ -1377,7 +1379,7 @@ contains
                         call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     end if
                     not_to_move_det_yet = .false. ;
-                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                    call write_state_units( dump_no, Mdims, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
             else if (have_option('/io/dump_period')) then
                 ! dump based on the prescribed period of real time
@@ -1396,7 +1398,7 @@ contains
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
                     if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
-                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                    call write_state_units( dump_no, Mdims, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_RealTime
             end if
         end subroutine create_dump_vtu_and_checkpoints
@@ -1791,8 +1793,6 @@ contains
         end select
 
     end subroutine adapt_mesh_within_FPI
-
-
 
  end subroutine MultiFluids_SolveTimeLoop
 

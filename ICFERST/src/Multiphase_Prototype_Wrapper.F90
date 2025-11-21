@@ -860,7 +860,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
       .not. have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear')) then
         call get_option('/io/dump_period/constant', dump_period, default = 0.01)
         auxR = mod(dump_period,dt)
-        if ( abs(auxR) > 1e-8 .or. dt > dump_period) then
+        if ( abs(auxR) > RM8 .or. dt > dump_period) then
           dt = dump_period/ceiling(dump_period/dt)
           ewrite(0, *) "WARNING: Dump period has to be a multiple of the time-step. Time-step adjusted to: ", dt
           call set_option("/timestepping/timestep", dt)
@@ -1173,7 +1173,10 @@ contains
                 !For hysteresis relperms we need to keep track of when the saturation flips from drainage to imbibition
                 !We generate the memory here because we need to be able to interpolate...
                 if (have_option("/material_phase["//int2str(i-1)//&
-                "]/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then
+                "]/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient/prescribed/value") .or. &
+                    have_option("/material_phase["//int2str(i-1)//&
+                "]/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient/prescribed/value") ) then
+
                   option_path = "/material_phase["// int2str( i -1 )//"]/scalar_field::Saturation_flipping"
                   if (.not.have_option(option_path)) then
                     call add_option(trim(option_path),  stat=stat)
@@ -1304,7 +1307,7 @@ contains
                 Number_region_ids = k - 1
                 if (bar_pos>0) then
                     !It is a fluid property
-                    diamond_path = '/multiphase_properties/'//property(1:bar_pos-1)//'/scalar_field::'//property(bar_pos+1:len_trim(property))//'/prescribed/value'
+                    diamond_path = '/multiphase_properties/type_Formula/'//property(1:bar_pos-1)//'/scalar_field::'//property(bar_pos+1:len_trim(property))//'/prescribed/value'
                     !Get value
                     read(csv_table_strings(i,4) , *) value
 
@@ -1529,7 +1532,7 @@ contains
           call add_option("/solver_options/Linear_solver/relative_error", stat = stat)
           call set_option("/solver_options/Linear_solver/relative_error", 1e-10)
           call add_option("/solver_options/Linear_solver/absolute_error", stat = stat)
-          call set_option("/solver_options/Linear_solver/absolute_error", 1e-8)
+          call set_option("/solver_options/Linear_solver/absolute_error", RM8)
           call add_option("/solver_options/Linear_solver/max_iterations", stat = stat)
           call set_option("/solver_options/Linear_solver/max_iterations", 300)
           !Copy an option that always exists to ensure ignore all solver failues
@@ -1556,7 +1559,7 @@ contains
           call add_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/relative_error", stat = stat)
           call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/relative_error", 1e-10)
           call add_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/absolute_error", stat = stat)
-          call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/absolute_error", 1e-8)
+          call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/absolute_error", RM8)
           call add_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/max_iterations", stat = stat)
           call set_option("/solver_options/Linear_solver/Custom_solver_configuration/Velocity/max_iterations", 500)
           !Copy an option that always exists to ensure ignore all solver failues
@@ -1582,7 +1585,7 @@ contains
       !   call add_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/relative_error", stat = stat)
       !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/relative_error", 1e-10)
       !   call add_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/absolute_error", stat = stat)
-      !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/absolute_error", 1e-8)
+      !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/absolute_error", RM8)
       !   call add_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/max_iterations", stat = stat)
       !   call set_option("/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure/max_iterations", 300)
       !   !Remove null space for this option

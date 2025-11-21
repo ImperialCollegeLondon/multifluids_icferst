@@ -37,13 +37,13 @@ module multi_data_types
         module procedure allocate_multi_dev_shape_funs3
     end interface
 
-     !> Allocated a multi field type based on field name 
+     !> Allocated a multi field type based on field name
     interface allocate_multi_field
         module procedure allocate_multi_field1
         module procedure allocate_multi_field2
     end interface
 
-    !> Data type storing all the dimensionrs describing the mesh, fields, nodes, etc. 
+    !> Data type storing all the dimensionrs describing the mesh, fields, nodes, etc.
     !>@param ndim       Number of dimensions
     !>@param cv_nloc    Number of local control volumes
     !>@param u_nloc     Number of local velocity nodes
@@ -74,35 +74,35 @@ module multi_data_types
     !>@param n_in_pres  nphase/npres (i.e. real number of phases)
     !>@param init_time  Initial time
     type multi_dimensions
-        integer :: ndim       
-        integer :: cv_nloc    
-        integer :: u_nloc     
-        integer :: cv_snloc   
-        integer :: u_snloc    
-        integer :: nstate     
-        integer :: ncomp      
-        integer :: xu_nloc    
-        integer :: x_nloc     
-        integer :: x_snloc    
-        integer :: x_nloc_p1  
+        integer :: ndim
+        integer :: cv_nloc
+        integer :: u_nloc
+        integer :: cv_snloc
+        integer :: u_snloc
+        integer :: nstate
+        integer :: ncomp
+        integer :: xu_nloc
+        integer :: x_nloc
+        integer :: x_snloc
+        integer :: x_nloc_p1
         integer :: x_nonods_p1
-        integer :: p_nloc     
-        integer :: p_snloc    
-        integer :: mat_nloc   
-        integer :: totele     
-        integer :: stotel     
-        integer :: cv_nonods  
-        integer :: p_nonods   
-        integer :: mat_nonods 
-        integer :: u_nonods   
-        integer :: xu_nonods  
-        integer :: x_nonods   
-        integer :: ph_nloc    
-        integer :: ph_nonods  
-        integer :: nphase     
-        integer :: npres      
-        integer :: n_in_pres  
-        real    :: init_time  
+        integer :: p_nloc
+        integer :: p_snloc
+        integer :: mat_nloc
+        integer :: totele
+        integer :: stotel
+        integer :: cv_nonods
+        integer :: p_nonods
+        integer :: mat_nonods
+        integer :: u_nonods
+        integer :: xu_nonods
+        integer :: x_nonods
+        integer :: ph_nloc
+        integer :: ph_nonods
+        integer :: nphase
+        integer :: npres
+        integer :: n_in_pres
+        real    :: init_time
 
     end type multi_dimensions
 
@@ -112,7 +112,7 @@ module multi_data_types
     !> These parameters represent the degree of discretisation used, they are in general hardcoded based on the precision requested by the user
     !> so as said, to be removed in the future hopefully
     type multi_discretization_opts
-        
+
         integer ::  cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type
         integer ::  t_disopt, v_disopt
         real ::     t_beta, v_beta, t_theta, v_theta, u_theta, u_beta, compcoeff, compoptval
@@ -128,10 +128,10 @@ module multi_data_types
     !@param sbcvngi    Number of gauss integer points in the surface boundary of a control volume
     !@param nface      Number of faces per element
     type multi_gi_dimensions
-        integer :: cv_ngi     
-        integer :: scvngi     
-        integer :: sbcvngi    
-        integer :: nface      
+        integer :: cv_ngi
+        integer :: scvngi
+        integer :: sbcvngi
+        integer :: nface
     end type multi_gi_dimensions
 
 
@@ -150,9 +150,9 @@ module multi_data_types
     !>@param scvfensly Derivative of the Surface Control Volume Finite element (for CV fields converted to FE); dimension( cv_nloc, scvngi )
     !>@param scvfeweigh=>  Weights of the Surface Control Volume Finite element (for CV fields converted to FE); dimension( scvngi )
     !>@param scvfenlx_all=> Derivative of the Surface Control Volume Finite element (for CV fields converted to FE); dimension( ndim, cv_nloc, scvngi )
-    !>@param sufen=> Surface finite element shape function; dimension( u_nloc, scvngi ) 
-    !>@param sufenslx=>  Derivative of the Surface finite element shape function; dimension( u_nloc, scvngi ) 
-    !>@param sufensly=>  Derivative of the Surface finite element shape function; dimension( u_nloc, scvngi ) 
+    !>@param sufen=> Surface finite element shape function; dimension( u_nloc, scvngi )
+    !>@param sufenslx=>  Derivative of the Surface finite element shape function; dimension( u_nloc, scvngi )
+    !>@param sufensly=>  Derivative of the Surface finite element shape function; dimension( u_nloc, scvngi )
     !>@param sufenlx_all=> Derivative of the Surface finite element shape function; dimension( ndim, u_nloc, scvngi )
     !>@param u_on_face=> Velocity node on a given face; dimension( u_nloc, scvngi )
     !>@param ufem_on_face=> Finite element node on a given face; dimension( u_nloc, scvngi )
@@ -186,21 +186,21 @@ module multi_data_types
         real, pointer, dimension( : )  :: scvfeweigh=> null()
         real, pointer, dimension(  : , : ,: )  :: scvfenlx_all=> null()
         real, pointer, dimension(  : , : )  :: sufen=> null(), sufenslx=> null(), sufensly=> null()
-        real, pointer, dimension(  : , :, : )  :: sufenlx_all=> null() 
+        real, pointer, dimension(  : , :, : )  :: sufenlx_all=> null()
         logical, pointer, dimension(  : , : )  :: u_on_face=> null(), ufem_on_face=> null()
         real, pointer, dimension(  : , : )  :: sbcvn=> null()
         real, pointer, dimension(  : , : )  :: sbcvfen=> null(), sbcvfenslx=> null(), sbcvfensly=> null()
         real, pointer, dimension( : )  :: sbcvfeweigh=> null()
         real, pointer, dimension(  : , :, : )  :: sbcvfenlx_all=> null()
         real, pointer, dimension(  : , : )  :: sbufen=> null(), sbufenslx=> null(), sbufensly=> null()
-        real, pointer, dimension(  : , :,: )  :: sbufenlx_all=> null() 
+        real, pointer, dimension(  : , :,: )  :: sbufenlx_all=> null()
         integer, pointer, dimension(  : , : )  :: cv_sloclist=> null()
         integer, pointer, dimension(  : , : )  :: u_sloclist=> null()
         integer, pointer, dimension( : )  :: findgpts=> null()
         integer, pointer, dimension( : )  :: colgpts=> null()
         integer :: ncolgpts
-        type(petsc_csr_matrix) ::CV2FE 
-        type(petsc_csr_matrix) ::FE2CV 
+        type(petsc_csr_matrix) ::CV2FE
+        type(petsc_csr_matrix) ::FE2CV
 
     end type multi_shape_funs
 
@@ -230,14 +230,14 @@ module multi_data_types
     !> @htmlonly
     !> <CODE>
     !> <PRE>
-    !> Taken from wikipedia. For the following watrix: 
+    !> Taken from wikipedia. For the following watrix:
     !> 10 20  0  0  0  0
     !> 0  30  0 40  0  0
     !> 0  0  50 60 70  0
     !> 0  0  0  0  0  80
     !> You would access it using CSR as:
     !> V   = [ 10 20 30 40 50 60 70 80 ]
-    !> COL = [  0  1  1  3  2  3  4  5 ]   
+    !> COL = [  0  1  1  3  2  3  4  5 ]
     !> FIN = [  0  2  4  7  8 ]
     !> </PRE>
     !> </CODE>
@@ -260,15 +260,15 @@ module multi_data_types
     !>@param  m        CV-FEM matrix
     !>@param  HydrostaticPressure       HydrostaticPressure matrix
     type multi_sparsities
-        type (multi_sparsity) :: acv     
-        type (multi_sparsity) :: small_acv 
-        type (multi_sparsity) :: ele     
-        type (multi_sparsity) :: dgm_pha 
-        type (multi_sparsity) :: ct      
-        type (multi_sparsity) :: C       
-        type (multi_sparsity) :: cmc     
-        type (multi_sparsity) :: m       
-        type (multi_sparsity) :: HydrostaticPressure      
+        type (multi_sparsity) :: acv
+        type (multi_sparsity) :: small_acv
+        type (multi_sparsity) :: ele
+        type (multi_sparsity) :: dgm_pha
+        type (multi_sparsity) :: ct
+        type (multi_sparsity) :: C
+        type (multi_sparsity) :: cmc
+        type (multi_sparsity) :: m
+        type (multi_sparsity) :: HydrostaticPressure
     end type multi_sparsities
     !> This type contains all the local to global conversors for the different fields we have
     !>@param  cv=> null()      Control volume local to global numbering
@@ -282,16 +282,16 @@ module multi_data_types
     !>@param   suf_p=> null()   Pressure local to global numbering
     !>@param   suf_u=> null()   Velocity surface local to global numbering
     type multi_ndgln
-        integer, dimension( : ), pointer  :: cv=> null()     
-        integer, dimension( : ), pointer  :: u=> null()      
-        integer, dimension( : ), pointer  :: p=> null()     
-        integer, dimension( : ), pointer  :: x=> null()      
-        integer, dimension( : ), pointer  :: x_p1=> null()   
-        integer, dimension( : ), pointer  :: xu=> null()     
-        integer, dimension( : ), pointer  :: mat=> null()    
-        integer, dimension( : ), pointer ::  suf_cv=> null() 
-        integer, dimension( : ), pointer ::  suf_p=> null()  
-        integer, dimension( : ), pointer ::  suf_u=> null()  
+        integer, dimension( : ), pointer  :: cv=> null()
+        integer, dimension( : ), pointer  :: u=> null()
+        integer, dimension( : ), pointer  :: p=> null()
+        integer, dimension( : ), pointer  :: x=> null()
+        integer, dimension( : ), pointer  :: x_p1=> null()
+        integer, dimension( : ), pointer  :: xu=> null()
+        integer, dimension( : ), pointer  :: mat=> null()
+        integer, dimension( : ), pointer ::  suf_cv=> null()
+        integer, dimension( : ), pointer ::  suf_p=> null()
+        integer, dimension( : ), pointer ::  suf_u=> null()
     end type multi_ndgln
 
     !> This type contains all the necessary information to solve =systems, matrices, RHS, limiters, colouring and also flags to decide
@@ -309,7 +309,7 @@ module multi_data_types
     !>@param DGM_PETSC Matrix contatining the momemtum terms for Navier-Stokes/Stokes equation
     !>@param C_PETSC PETSc version of the gradient matrix (storable)
     !>@param CT_PETSC PETSc version of the divergence matrix
-    !>@param PIVIT_PETSC PETSc version of the divergence matrix        
+    !>@param PIVIT_PETSC PETSc version of the divergence matrix
     !>@param NO_MATRIX_STORE  Flag to whether calculate and use DGM_PETSC or C
     !>@param CV_pressure      Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)
     !>@param stored = .false. Flag to be true when the storable matrices have been stored
@@ -328,22 +328,22 @@ module multi_data_types
         type(vector_field) :: CV_RHS
         real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()
         integer, dimension(:), pointer :: ICOLOR => null()
-        integer :: NCOLOR 
+        integer :: NCOLOR
         type(petsc_csr_matrix):: DGM_PETSC
         type(petsc_csr_matrix):: C_PETSC
         type(petsc_csr_matrix):: CT_PETSC
-        type(petsc_csr_matrix):: PIVIT_PETSC      
-        logical :: NO_MATRIX_STORE 
-        logical :: CV_pressure     
+        type(petsc_csr_matrix):: PIVIT_PETSC
+        logical :: NO_MATRIX_STORE
+        logical :: CV_pressure
         logical :: stored = .false.
-        logical :: compact_PIVIT_MAT = .false. 
+        logical :: compact_PIVIT_MAT = .false.
         integer, dimension(:), pointer :: limiters_ELEMATPSI=> null()
         real, dimension(:), pointer :: limiters_ELEMATWEI=> null()
         integer, dimension(:,:,:), pointer :: WIC_FLIP_P_VEL_BCS=> null()
         INTEGER, DIMENSION( :, : ), pointer ::  FACE_ELE=> null()
     end type multi_matrices
 
-    !> Required values to compute the fluxes for porous media. Effectively the sigma terms from the papers 
+    !> Required values to compute the fluxes for porous media. Effectively the sigma terms from the papers
     !> Currently they are oversized since apart from the permeability they are not tensors, this should be changed!
     !>@param  adv_coef => null() Sigmas at the boundary to calculate fluxes
     !>@param  inv_adv_coef => null() Inverse of sigmas at the boundary to calculate fluxes
@@ -360,7 +360,7 @@ module multi_data_types
     !> @param val  Pointer with the values of the field stored
     !> @param have_field do we need this field for this simulation?
     !> @param is_constant  if ( .true. ) nonods = 1 for what follows     -   DELETE THIS MAYBE ???
-    !> @param memory_type 
+    !> @param memory_type
     !> 0  Isotropic tensor - ( 1, 1, nphase, nonods ) - this is unrolled as ( ndim, ndim, nphase, nonods );
     !> 1  Isotropic - ( 1, 1, nphase, nonods ) - diagonal;
     !> 2  Anisotropic - ( ndim, ndim, nphase, nonods );
@@ -374,7 +374,7 @@ module multi_data_types
     !>
     !> @ref allocate_multi_field
     !> @ref deallocate_multi_field
-    !> @ref add_array_to_multi_field 
+    !> @ref add_array_to_multi_field
     !> @ref add_multi_field_to_array
     !> @ref mult_multi_field_by_array
     !> @ref mult_multi_field_by_array_on_array
@@ -383,10 +383,10 @@ module multi_data_types
     !> @ref get_multi_field_inverse
     type multi_field
         real, dimension( :, :, :, : ), pointer :: val => null()
-        logical :: have_field =  .false. 
-        logical :: is_constant = .false. 
-        integer :: memory_type = -1 
-        integer :: ndim1 = -1, ndim2 = -1, ndim3 = -1 
+        logical :: have_field =  .false.
+        logical :: is_constant = .false.
+        integer :: memory_type = -1
+        integer :: ndim1 = -1, ndim2 = -1, ndim3 = -1
 
     end type multi_field
 
@@ -398,7 +398,7 @@ module multi_data_types
     !>@param  Concentration Unused currently
     !>@param  Velocity Unused currently
     type multi_absorption
-        type (multi_field) :: PorousMedia 
+        type (multi_field) :: PorousMedia
         type (multi_field) :: Components
         type (multi_field) :: Temperature
         type (multi_field) :: Concentration
@@ -434,7 +434,7 @@ module multi_data_types
         logical, dimension( : ), pointer     :: impose_strongBCs=> null()
     end type
 
-    
+
     !>Contains variables to analyse the flux across the BCs that the user is interested
     !>@param calculate_flux True if all the process related with this has to start or not
     !>@param outlet_id ids the user wants
@@ -444,12 +444,12 @@ module multi_data_types
     !>@param area_outlet Are of the surface id Mdins%nphase, size(outlet_id)
     !>@param field_names  Name of the field Mdins%nphase, nfields: Store with the same ordering the field names
     type multi_outfluxes
-        logical :: calculate_flux 
-        integer, dimension(:), allocatable :: outlet_id 
-        real :: porevolume 
+        logical :: calculate_flux
+        integer, dimension(:), allocatable :: outlet_id
+        real :: porevolume
         real, allocatable, dimension(:,:) :: totout
         real, allocatable, dimension(:,:,:) :: avgout
-        real, allocatable, dimension(:, :) :: area_outlet 
+        real, allocatable, dimension(:, :) :: area_outlet
         real, dimension(:,:),  allocatable  :: intflux
         character(len = FIELD_NAME_LEN), allocatable, dimension(:,:) :: field_names
 
@@ -462,8 +462,8 @@ module multi_data_types
     !>@param pipe_corner_nds1 size npipes
     !>@param pipe_corner_nds2 size npipes
      type pipe_coords
-        integer :: ele, npipes                               
-        logical, allocatable, dimension(:) :: pipe_index     
+        integer :: ele, npipes
+        logical, allocatable, dimension(:) :: pipe_index
         integer, allocatable, dimension(:) :: pipe_corner_nds1
         integer, allocatable, dimension(:) :: pipe_corner_nds2
      end type pipe_coords
@@ -472,11 +472,11 @@ module multi_data_types
          allocate_multi_field1, allocate_multi_field2
 
 contains
-    !> Allocated a multi field type based on field name 
+    !> Allocated a multi field type based on field name
     !>@param state Liked list containing the fluidity fields
     !>@param Mdims Field containing the dimensions of the model
     !>@param field_name Name of the field in fluidity format
-    !>@retval mfield Multi field allocated given its name 
+    !>@retval mfield Multi field allocated given its name
     subroutine allocate_multi_field1( state, Mdims, field_name, mfield )
         !>*********UNTESTED*********
         implicit none
@@ -544,9 +544,9 @@ contains
         return
     end subroutine allocate_multi_field1
 
-    !> Allocated a multi field type based on field name 
+    !> Allocated a multi field type based on field name
     !>@param Mdims Field containing the dimensions of the model
-    !>@retval mfield Multi field allocated given its name 
+    !>@retval mfield Multi field allocated given its name
     !>@param nonods_in number of nodes of the field
     !>@param field_name Name of the field in fluidity format
     subroutine allocate_multi_field2( Mdims, mfield, nonods_in, field_name)
@@ -621,7 +621,7 @@ contains
 
 
     !> Deallocation of a multi field type
-    !>@param mfield multifield to be deallocated 
+    !>@param mfield multifield to be deallocated
     !>@param and_destroy if not and_destroy then only the pointer is nullified, otherwise the field is deallocated
     subroutine deallocate_multi_field(mfield, and_destroy)
         implicit none
@@ -642,7 +642,7 @@ contains
     end subroutine deallocate_multi_field
 
     !> Deallocation of all of the multi field types within multi_absorp
-    !>@param multi_absorp all multifields within multi_absorp are deallocated 
+    !>@param multi_absorp all multifields within multi_absorp are deallocated
     !>@param and_destroy if not and_destroy then only the pointer is nullified, otherwise the field is deallocated
     subroutine deallocate_multi_absorption(multi_absorp, and_destroy)
         implicit none
@@ -795,7 +795,7 @@ contains
     !>@param mfield multifield to be multiplied
     !>@param b the array to add
     !>@param xpos starting positions
-    !>@param ypos starting positions 
+    !>@param ypos starting positions
     !>@param inode position to be retrieved
     !>@retval same input mfield with added b
     subroutine add_array_to_multi_field(mfield, b, xpos, ypos, inode)
@@ -858,7 +858,7 @@ contains
     !>@param mfield multifield to be multiplied
     !>@param b the array to add
     !>@param xpos starting positions
-    !>@param ypos starting positions 
+    !>@param ypos starting positions
     !>@param inode position to be retrieved
     !>@param a_in multiplier of mfield
     !>@retval same input array with added mfield
@@ -1096,7 +1096,7 @@ contains
 
 
     !>This subroutine allocates and initialises to zero all the arrays in a multi_shape_funs data type
-    !> It uses the Dimensions of the model and the gauss integration to be used to allocate 
+    !> It uses the Dimensions of the model and the gauss integration to be used to allocate
     !> the necessary shape functions
     !>@param shape_fun Shape functions for a given type of mesh, pressure or velocity
     !>@param Mdims Dimensions of the model
@@ -1716,21 +1716,21 @@ contains
                 end if
             end do
         end do
-    
+
         allocate(outfluxes%field_names(Mdims%nphase, nfields))
         allocate(outfluxes%totout( Mdims%nphase, size(outfluxes%outlet_id)))
         allocate(outfluxes%avgout(nfields, Mdims%nphase, size(outfluxes%outlet_id)))
         outfluxes%intflux= 0.; outfluxes%totout= 0.; outfluxes%avgout= 0.
 
         !Now We have to re-do it because Fortran won't let you do linked lists...
-        
-        do iphase = 1, Mdims%nphase 
+
+        do iphase = 1, Mdims%nphase
             nfields = 0
             do k = 1, option_count("/material_phase[" // int2str(iphase-1) // "]/scalar_field")
                 option_path = "/material_phase["// int2str( iphase - 1)//"]/scalar_field["// int2str( k - 1)//"]/prognostic"
                 if (have_option(trim(option_path))) then!Only for prognostic fields
                     call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",Field_Name)
-                    if (trim(Field_Name)/="Pressure".and. trim(Field_Name)/="HydrostaticPressure") then                     
+                    if (trim(Field_Name)/="Pressure".and. trim(Field_Name)/="HydrostaticPressure") then
                         nfields = nfields + 1
                         outfluxes%field_names(iphase, nfields) = Field_Name
                     end if
