@@ -732,7 +732,26 @@ start =
 
                element type_Tabulated {
                       ## Tabulated relative permeability and capillary pressure model
-                element Relperm_CapPressure_Table { xsd:string }
+                element Relperm_CapPressure_Table { xsd:string },
+                ## For drainage the immobile fraction is computed dynamically using the Land formula.
+                ## NOTE: No thermal effects considered to change the trapping, i.e. trapping is permanent
+                ##
+                ## High hysteresis ~ 0.2. Low hysteresis > 5
+                ##
+                ## Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".
+                ##
+                ## <b>When using tabulated data + Land trapping model, this is the INITIAL table for relperm. Make sure it represents the correct initial immobile fraction.</b>
+                element Land_trapping {
+                 element scalar_field {
+                    attribute name { "Land_coefficient" },
+                    (
+                       element prescribed {
+                          material_mesh_choice,
+                          prescribed_scalar_field
+                       }
+                    )
+                    }
+                  }?
                 }
 
             }?

@@ -952,6 +952,8 @@ contains
             !Update immobile fractions values (for hysteresis relperm models)
             !######HAS TO BE the last step of the time-loop
             if (have_option_for_any_phase("/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient",&
+            Mdims%n_in_pres) .or. &
+            have_option_for_any_phase("/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient",&
             Mdims%n_in_pres)) call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)
 
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then

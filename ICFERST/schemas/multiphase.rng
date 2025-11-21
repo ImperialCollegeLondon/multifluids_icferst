@@ -880,6 +880,27 @@ Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".</a:docu
                     <a:documentation>Tabulated relative permeability and capillary pressure model</a:documentation>
                     <data type="string"/>
                   </element>
+                  <optional>
+                    <element name="Land_trapping">
+                      <a:documentation>For drainage the immobile fraction is computed dynamically using the Land formula.
+NOTE: No thermal effects considered to change the trapping, i.e. trapping is permanent
+
+High hysteresis ~ 0.2. Low hysteresis &gt; 5
+
+Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".
+
+&lt;b&gt;When using tabulated data + Land trapping model, this is the INITIAL table for relperm. Make sure it represents the correct initial immobile fraction.&lt;/b&gt;</a:documentation>
+                      <element name="scalar_field">
+                        <attribute name="name">
+                          <value>Land_coefficient</value>
+                        </attribute>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                        </element>
+                      </element>
+                    </element>
+                  </optional>
                 </element>
               </choice>
             </element>
