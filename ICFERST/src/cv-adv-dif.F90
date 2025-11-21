@@ -664,7 +664,7 @@ contains
 
           !cv_beta == 1 means conservative, meaning that everything multiplied by one_m_cv_beta can be ignored
           one_m_cv_beta = 1.0 - cv_beta
-          conservative_advection = abs(one_m_cv_beta) <= 1e-8
+          conservative_advection = abs(one_m_cv_beta) <= RM8
           QUAD_OVER_WHOLE_ELE=.FALSE.
           ! Allocate memory for the control volume surface shape functions, etc.
           IF(GETCT) THEN
@@ -1245,7 +1245,7 @@ contains
                           !For the discontinuous formulation we want to use the discontinuous method only where there is a permeability jump
                           !elsewhere the normal method should work better as it is also more reliable
                           if (is_porous_media .and. between_elements) then
-                            permeability_jump = abs(perm%val(1,1,ele) - perm%val(1,1,ele2)/perm%val(1,1,ele)) > 1e-8
+                            permeability_jump = abs(perm%val(1,1,ele) - perm%val(1,1,ele2)/perm%val(1,1,ele)) > RM8
                           end if
                           !Create local variables to reduce slicing
                           LOC_T_J = T_ALL(1:final_phase, cv_nodj); LOC_TOLD_J = TOLD_ALL(1:final_phase, cv_nodj)
@@ -2914,7 +2914,7 @@ end if
                             end if
                         end if
                       !Only compute limited value if the field is not constant in the region
-                      if ( maxval(abs(F_CV_NODI - F_CV_NODJ)/VTOLFUN(F_CV_NODI)) > 1e-8) then
+                      if ( maxval(abs(F_CV_NODI - F_CV_NODJ)/VTOLFUN(F_CV_NODI)) > RM8) then
                         CALL ONVDLIM_ANO_MANY( NFIELD, &
                             LIMF , FEMFGI , F_INCOME , &
                             F_CV_NODI , F_CV_NODJ ,int_XI_LIMIT ,  &
@@ -3191,7 +3191,7 @@ end if
                 !Calculate velocity on the interface, either using upwinding or high order methods
                 if (use_porous_limiter) then!high order
                     !Check if there is any point on using the limiter
-                  if (maxval(abs(LOC_T_I - LOC_T_J)/VTOLFUN(LOC_T_I)) > 1e-8) then
+                  if (maxval(abs(LOC_T_I - LOC_T_J)/VTOLFUN(LOC_T_I)) > RM8) then
                     !Calculate saturation at GI, necessary for the limiter
                     FEMTGI_IPHA = matmul(LOC_FEMT, CV_funs%scvfen(:,GI) )
                     ! ************NEW LIMITER**************************
@@ -7746,14 +7746,15 @@ end if
     ! end subroutine sum_saturation_to_unity
 
 
-      SUBROUTINE SATURATION_ASSEMB( state, packed_state, &
+      SUBROUTINE SATURATION_ASSEMB( petsc_ACV, state, packed_state, &
         final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
         saturation, sat_prev, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
         SOURCT_ALL, VOLFRA_PORE, VAD_parameter, Phase_with_Pc, &
-        eles_with_pipe, pipes_aux, nonlinear_iteration,&
+        eles_with_pipe, pipes_aux,&
         assemble_collapsed_to_one_phase, getResidual)
         ! Inputs/Outputs
         IMPLICIT NONE
+        type(petsc_csr_matrix), intent( inout ) :: petsc_ACV
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         integer, intent(in) ::  final_phase
@@ -7785,8 +7786,6 @@ end if
         type (multi_pipe_package), intent(in) :: pipes_aux
         logical, optional, intent(in) ::  assemble_collapsed_to_one_phase
         logical, optional, intent(in) ::  getResidual
-        !Non-linear iteration count
-        integer, optional, intent(in) :: nonlinear_iteration
         ! ###################Local variables############################
         REAL, DIMENSION( :, : ), pointer :: MEAN_PORE_CV
 
@@ -7980,283 +7979,283 @@ end if
       end if
       if (getResidual) call zero(Mmat%CV_RHS)
       IF ( GETMAT ) THEN
-          call zero(Mmat%petsc_ACV)
+          call zero(petsc_ACV)
       END IF
       GLOBAL_FACE = 0
 
-        !Allocate derivatives of the shape functions
-        call allocate_multi_dev_shape_funs(CV_funs%scvfenlx_all, CV_funs%sufenlx_all, SdevFuns)
+      !Allocate derivatives of the shape functions
+      call allocate_multi_dev_shape_funs(CV_funs%scvfenlx_all, CV_funs%sufenlx_all, SdevFuns)
 
-        !###########################################
-        Loop_Elements: DO ELE = 1, Mdims%totele
-            if (IsParallel()) then
-                if (.not. assemble_ele(saturation,ele)) then
-                    skip=.true.
-                    neighbours=>ele_neigh(saturation,ele)
-                    do nb=1,size(neighbours)
-                        if (neighbours(nb)<=0) cycle
-                        if (assemble_ele(saturation,neighbours(nb))) then
-                            skip=.false.
-                            exit
-                        end if
-                    end do
-                    if (skip) cycle
-                end if
-            end if
+      !###########################################
+      Loop_Elements: DO ELE = 1, Mdims%totele
+          if (IsParallel()) then
+              if (.not. assemble_ele(saturation,ele)) then
+                  skip=.true.
+                  neighbours=>ele_neigh(saturation,ele)
+                  do nb=1,size(neighbours)
+                      if (neighbours(nb)<=0) cycle
+                      if (assemble_ele(saturation,neighbours(nb))) then
+                          skip=.false.
+                          exit
+                      end if
+                  end do
+                  if (skip) cycle
+              end if
+          end if
 
-            !Local copies of U IS THIS NEEDED?????
-            DO U_KLOC = 1, Mdims%u_nloc
-              U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
-              LOC_U( :, :, U_KLOC)=U_ALL( :, 1:final_phase, U_NODK)  !pscpsc I think for porous media they are both the same
-              LOC_NU( :, :, U_KLOC)=NU_ALL( :, 1:final_phase, U_NODK)!pscpsc I think for porous media they are both the same
-            END DO
-            Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
+          !Local copies of U IS THIS NEEDED?????
+          DO U_KLOC = 1, Mdims%u_nloc
+            U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
+            LOC_U( :, :, U_KLOC)=U_ALL( :, 1:final_phase, U_NODK)  !pscpsc I think for porous media they are both the same
+            LOC_NU( :, :, U_KLOC)=NU_ALL( :, 1:final_phase, U_NODK)!pscpsc I think for porous media they are both the same
+          END DO
+          Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
 
-                ! Global node number of the local node
-                CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                X_NODI = ndgln%x( ( ELE - 1 ) * Mdims%x_nloc  + CV_ILOC )
-                MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+              ! Global node number of the local node
+              CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+              X_NODI = ndgln%x( ( ELE - 1 ) * Mdims%x_nloc  + CV_ILOC )
+              MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
 
-                ! Generate some local variables to reduce slicing (sprint_to_do this is a waste...)
-                LOC_T_I = T_ALL(1:final_phase, cv_nodi)
-                ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
-                Loop_GCOUNT: DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
-                    ! CV_funs%colgpts stores the local Gauss-point number in the ELE
-                    GI = CV_funs%colgpts( GCOUNT )
-                    ! Get the neighbouring node for node ILOC and Gauss point GI
-                    CV_JLOC = CV_funs%cv_neiloc( CV_ILOC, GI )
-                    ELE2 = 0
-                    SELE = 0
-                    CV_SILOC=0
-                    INTEGRAT_AT_GI = .TRUE.
-                    ! CV_OTHER_LOC=0
-                    Conditional_CheckingNeighbourhood: IF ( CV_JLOC == -1 ) THEN
-                        ! We are on the boundary or next to another element.  Determine CV_OTHER_LOC
-                        ! CV_funs%cvfem_on_face(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
-                        ! Look for these nodes on the other elements.
-                        CALL FIND_OTHER_SIDE_FAST( CV_OTHER_LOC, Mdims%cv_nloc, INTEGRAT_AT_GI, &
-                            Mdims%x_nloc, ndgln%x,  &
-                            Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, ELE, ELE2,  &
-                            Mspars%ELE%fin, Mspars%ELE%col, .false. )
+              ! Generate some local variables to reduce slicing (sprint_to_do this is a waste...)
+              LOC_T_I = T_ALL(1:final_phase, cv_nodi)
+              ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
+              Loop_GCOUNT: DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
+                  ! CV_funs%colgpts stores the local Gauss-point number in the ELE
+                  GI = CV_funs%colgpts( GCOUNT )
+                  ! Get the neighbouring node for node ILOC and Gauss point GI
+                  CV_JLOC = CV_funs%cv_neiloc( CV_ILOC, GI )
+                  ELE2 = 0
+                  SELE = 0
+                  CV_SILOC=0
+                  INTEGRAT_AT_GI = .TRUE.
+                  ! CV_OTHER_LOC=0
+                  Conditional_CheckingNeighbourhood: IF ( CV_JLOC == -1 ) THEN
+                      ! We are on the boundary or next to another element.  Determine CV_OTHER_LOC
+                      ! CV_funs%cvfem_on_face(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
+                      ! Look for these nodes on the other elements.
+                      CALL FIND_OTHER_SIDE_FAST( CV_OTHER_LOC, Mdims%cv_nloc, INTEGRAT_AT_GI, &
+                          Mdims%x_nloc, ndgln%x,  &
+                          Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, ELE, ELE2,  &
+                          Mspars%ELE%fin, Mspars%ELE%col, .false. )
 
-                        IF ( INTEGRAT_AT_GI ) THEN
-                            CV_JLOC = CV_OTHER_LOC( CV_ILOC )
-                            SELE = 0
-                            ELE3=0
-                            IF ( CV_JLOC == 0 ) THEN ! We are on the boundary of the domain or subdomain
-                                CV_JLOC = CV_ILOC
-                                ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC
-                                CALL CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
-                                    Mmat%FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
-                                    ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
-                            END IF
-                            INTEGRAT_AT_GI = .NOT.( (ELE==ELE2) .AND. (SELE==0) )
-                        END IF
-                    END IF Conditional_CheckingNeighbourhood
-                    !Avoid integrating across the middle of a CV on the boundaries of elements
-                    !For disconditnuous pressure this is always true
-                    Conditional_integration: IF ( INTEGRAT_AT_GI ) THEN
-                        on_domain_boundary = ( SELE /= 0 )
-                        CV_NODJ = ndgln%cv( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
-                        X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
-                        MAT_NODJ = ndgln%mat( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
-                        !Create local variables to reduce slicing
-                        LOC_T_J = T_ALL(1:final_phase, cv_nodj)
+                      IF ( INTEGRAT_AT_GI ) THEN
+                          CV_JLOC = CV_OTHER_LOC( CV_ILOC )
+                          SELE = 0
+                          ELE3=0
+                          IF ( CV_JLOC == 0 ) THEN ! We are on the boundary of the domain or subdomain
+                              CV_JLOC = CV_ILOC
+                              ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC
+                              CALL CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
+                                  Mmat%FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
+                                  ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
+                          END IF
+                          INTEGRAT_AT_GI = .NOT.( (ELE==ELE2) .AND. (SELE==0) )
+                      END IF
+                  END IF Conditional_CheckingNeighbourhood
+                  !Avoid integrating across the middle of a CV on the boundaries of elements
+                  !For disconditnuous pressure this is always true
+                  Conditional_integration: IF ( INTEGRAT_AT_GI ) THEN
+                      on_domain_boundary = ( SELE /= 0 )
+                      CV_NODJ = ndgln%cv( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
+                      X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
+                      MAT_NODJ = ndgln%mat( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
+                      !Create local variables to reduce slicing
+                      LOC_T_J = T_ALL(1:final_phase, cv_nodj)
 
-                        if((.not.integrate_other_side).or.(CV_NODJ >= CV_NODI)) then
-                            integrate_other_side_and_not_boundary = integrate_other_side.and.(SELE.LE.0)
-                            GLOBAL_FACE = GLOBAL_FACE + 1
-                            ! Calculate the control volume normals at the Gauss pts. Internal subroutine for speed
-                            CALL SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, .false.,&
-                                  ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( :, CV_NODI ), X_NODI, X_NODJ)
+                      if((.not.integrate_other_side).or.(CV_NODJ >= CV_NODI)) then
+                          integrate_other_side_and_not_boundary = integrate_other_side.and.(SELE.LE.0)
+                          GLOBAL_FACE = GLOBAL_FACE + 1
+                          ! Calculate the control volume normals at the Gauss pts. Internal subroutine for speed
+                          CALL SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, .false.,&
+                                ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( :, CV_NODI ), X_NODI, X_NODJ)
 
-                            ! Compute the distance HDC between the nodes either side of the CV face
-                            ! (this is needed to compute the local courant number and the non-linear theta)
-                            IF ( on_domain_boundary) THEN
-                                HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-X_ALL(1:Mdims%ndim,X_NODI))**2) )
-                            ELSE
-                                HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-XC_CV_ALL(1:Mdims%ndim,CV_NODJ))**2) )
-                            END IF
-                            IF ( on_domain_boundary ) THEN
-                                DO U_SKLOC = 1, Mdims%u_snloc
-                                    U_KLOC = U_SLOC2LOC( U_SKLOC )
-                                    U_NODK = ndgln%u(( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
-                                    U_SNODK = ( SELE - 1 ) * Mdims%u_snloc + U_SKLOC
-                                    SLOC_NU(:, :, U_SKLOC) = NU_ALL(:, 1:final_phase, U_NODK)
-                                END DO
-                            END IF
-                            !------------------
-                            ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
-                            !Calling the functions directly instead inside a wrapper saves a around a 5%
-                            CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
-                                LOC_T_I, LOC_T_J, LOC_NU, SLOC_NU, UGI_COEF_ELE_ALL, &
-                                upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
-                                NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ))
-                            If_GOT_CAPDIFFUS: IF ( VAD_activated ) THEN
-                                IF(SELE == 0) THEN
-                                  CAP_DIFF_COEF_DIVDX = 0.0
-                                  !Project permeability at the GI point
-                                  auxR = 0.
-                                  do idim = 1, Mdims%ndim
-                                      do iv_idim = 1, Mdims%ndim
-                                          auxR = auxR + CVNORMX_ALL(idim, GI) * perm%val(idim,iv_idim,ele) * CVNORMX_ALL(iv_idim, GI)
-                                      end do
-                                  end do
-                                  do iphase =1, final_phase
-                                      CAP_DIFF_COEF_DIVDX(iphase) = auxR/HDC* (CAP_DIFFUSION( iphase, MAT_NODI )&
-                                          * upwnd%inv_adv_coef(1,1,iphase,MAT_NODI)*(1.-INCOME(iphase)) +&
-                                          CAP_DIFFUSION( iphase, MAT_NODJ ) * upwnd%inv_adv_coef(1,1,iphase,MAT_NODJ) * INCOME(iphase))
-                                  end do
-                                ELSE
-                                    CAP_DIFF_COEF_DIVDX = 0.0
-                                ENDIF
-                                !Distribute the capillary coefficient over the phases to ensure mass conservation
-                                !This is very important as it allows to use the over-relaxation parameter safely
-                                !and reduce the cost of using capillary pressure in several orders of magnitude
-                                do iphase =1, final_phase
-                                  if (iphase == phase_with_pc) then
-                                      CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
-                                  else!VAD is actually divided by wetting density so we need to adjust that when doing the other phases
-                                      CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres&
-                                          * Density%val(1,iphase,CV_NODI)/Density%val(1,phase_with_pc,CV_NODI)
-                                  end if
-                                end do
-                            ELSE
-                                CAP_DIFF_COEF_DIVDX = 0.0
-                            END IF If_GOT_CAPDIFFUS
-
-                            !Use upwinding to obtaing the values
+                          ! Compute the distance HDC between the nodes either side of the CV face
+                          ! (this is needed to compute the local courant number and the non-linear theta)
+                          IF ( on_domain_boundary) THEN
+                              HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-X_ALL(1:Mdims%ndim,X_NODI))**2) )
+                          ELSE
+                              HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-XC_CV_ALL(1:Mdims%ndim,CV_NODJ))**2) )
+                          END IF
                           IF ( on_domain_boundary ) THEN
-                              !saturation
-                              do iphase = 1, final_phase
-                                  if ( WIC_T_BC_ALL( 1,iphase, SELE ) /= WIC_T_BC_DIRICHLET )then
-                                      LIMT(iphase) = LOC_T_I(iphase)
-                                  ELSE
-                                      LIMT(iphase) = LOC_T_I(iphase) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_T_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                  END if
-                                      !Density
-                                  if ( WIC_D_BC_ALL( 1, iphase, SELE ) /= WIC_D_BC_DIRICHLET ) then
-                                      LIMD(iphase) = DEN_ALL(iphase, cv_nodi)
-                                  ELSE
-                                      LIMD(iphase) = DEN_ALL(iphase, cv_nodi) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_D_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                  END if
-                                  !Saturation
+                              DO U_SKLOC = 1, Mdims%u_snloc
+                                  U_KLOC = U_SLOC2LOC( U_SKLOC )
+                                  U_NODK = ndgln%u(( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
+                                  U_SNODK = ( SELE - 1 ) * Mdims%u_snloc + U_SKLOC
+                                  SLOC_NU(:, :, U_SKLOC) = NU_ALL(:, 1:final_phase, U_NODK)
+                              END DO
+                          END IF
+                          !------------------
+                          ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
+                          !Calling the functions directly instead inside a wrapper saves a around a 5%
+                          CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
+                              LOC_T_I, LOC_T_J, LOC_NU, SLOC_NU, UGI_COEF_ELE_ALL, &
+                              upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
+                              NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ))
+                          If_GOT_CAPDIFFUS: IF ( VAD_activated ) THEN
+                              IF(SELE == 0) THEN
+                                CAP_DIFF_COEF_DIVDX = 0.0
+                                !Project permeability at the GI point
+                                auxR = 0.
+                                do idim = 1, Mdims%ndim
+                                    do iv_idim = 1, Mdims%ndim
+                                        auxR = auxR + CVNORMX_ALL(idim, GI) * perm%val(idim,iv_idim,ele) * CVNORMX_ALL(iv_idim, GI)
+                                    end do
+                                end do
+                                do iphase =1, final_phase
+                                    CAP_DIFF_COEF_DIVDX(iphase) = auxR/HDC* (CAP_DIFFUSION( iphase, MAT_NODI )&
+                                        * upwnd%inv_adv_coef(1,1,iphase,MAT_NODI)*(1.-INCOME(iphase)) +&
+                                        CAP_DIFFUSION( iphase, MAT_NODJ ) * upwnd%inv_adv_coef(1,1,iphase,MAT_NODJ) * INCOME(iphase))
+                                end do
+                              ELSE
+                                  CAP_DIFF_COEF_DIVDX = 0.0
+                              ENDIF
+                              !Distribute the capillary coefficient over the phases to ensure mass conservation
+                              !This is very important as it allows to use the over-relaxation parameter safely
+                              !and reduce the cost of using capillary pressure in several orders of magnitude
+                              do iphase =1, final_phase
+                                if (iphase == phase_with_pc) then
+                                    CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
+                                else!VAD is actually divided by wetting density so we need to adjust that when doing the other phases
+                                    CAP_DIFF_COEF_DIVDX(1:final_phase) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres&
+                                        * Density%val(1,iphase,CV_NODI)/Density%val(1,phase_with_pc,CV_NODI)
+                                end if
                               end do
-                          else
-                              do iphase = 1, final_phase
-                                  LIMT(iphase)=LOC_T_I(iphase)*(1.0-INCOME(iphase)) + LOC_T_J(iphase)*INCOME(iphase)
-                                  LIMD(iphase)=DEN_ALL(iphase, cv_nodi)*(1.0-INCOME(iphase)) + DEN_ALL(iphase, cv_nodj)*INCOME(iphase)
-                              end do
-                          end if
+                          ELSE
+                              CAP_DIFF_COEF_DIVDX = 0.0
+                          END IF If_GOT_CAPDIFFUS
 
-                            LIMDT=LIMD*LIMT
-                            ! Make allowances for no matrix stencil operating from outside the boundary.
-                            BCZERO=1.0
-                            IF( on_domain_boundary ) BCZERO=1.0-INCOME
-                            !====================== ACV AND RHS ASSEMBLY ===================
-                            ! Obtain the CV discretised advection/diffusion equations
-                            LOC_RES_I=0.0; LOC_MAT_II =0.
-                            LOC_RES_J=0.0; LOC_MAT_JJ =0.
-                            LOC_MAT_IJ = 0.0; LOC_MAT_JI =0.
-                            IF ( GETMAT ) THEN
-                                ! Conservative discretisation. The matrix (PIVOT ON LOW ORDER SOLN)
-                                IF ( .not.on_domain_boundary) THEN
-                                  !Assemble off-diagonal cv_nodi-cv_nodj
-                                  LOC_MAT_IJ = LOC_MAT_IJ + SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMDT! Advection
-                                  if (VAD_activated) LOC_MAT_IJ = LOC_MAT_IJ - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_J
-                                  !Assemble off-diagonal cv_nodj-cv_nodi, integrate the other CV side contribution (the sign is changed)...
-                                  if(integrate_other_side_and_not_boundary) then
-                                    LOC_MAT_JI = LOC_MAT_JI - SdevFuns%DETWEI( GI ) * NDOTQNEW * (1. - INCOME) * LIMDT! Advection
-                                    if (VAD_activated) LOC_MAT_JI = LOC_MAT_JI - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_I
-                                  end if
-                                END IF ! endif of IF ( on_domain_boundary ) THEN ELSE
-
-                                !Assemble diagonal of the matrix of node cv_nodi
-                                LOC_MAT_II = LOC_MAT_II +  SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME ) * LIMDT! Advection
-                                if (VAD_activated) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_I
-
-                                !Assemble diagonal of the matrix of node cv_nodj
-                                if(integrate_other_side_and_not_boundary) then
-                                  LOC_MAT_JJ = LOC_MAT_JJ -  SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMDT! Advection
-                                  if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_J
-                                endif
-
-                            END IF  ! ENDOF IF ( GETMAT ) THEN
-
-                            ! Put results into the RHS vector
-                            if (getResidual)  then
-                              LOC_RES_I =  LOC_RES_I + SdevFuns%DETWEI( GI ) * ( NDOTQNEW * LIMDT)
-                              ! Subtract out 1st order term non-conservative adv.
-                                  if (VAD_activated) LOC_RES_I =  LOC_RES_I &
-                                      - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
-                                      *LIMT*((sat_prev(1:final_phase, cv_nodj)-sat_prev(1:final_phase,cv_nodi))-( LOC_T_J - LOC_T_I ))
-                              if(integrate_other_side_and_not_boundary) then
-                                LOC_RES_J =  LOC_RES_J  - SdevFuns%DETWEI( GI ) * (  NDOTQNEW * LIMDT)
-                                  if (VAD_activated) LOC_RES_J =  LOC_RES_J  &
-                                      -  SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
-                                      *LIMT*((sat_prev(1:final_phase, cv_nodi)-sat_prev(1:final_phase,cv_nodj))-( LOC_T_I - LOC_T_J ))
-                              endif
-                            endif
-                            ! this is for the internal energy equation source term..
-                            ! This is to introduce the compressibility term due to expansion and therefore the divergence of the velocity is non-zero
-                            !for wells this is not straightforward <= need to CHANGE THIS FOR COMPRESSIBILITY
-
+                          !Use upwinding to obtaing the values
+                        IF ( on_domain_boundary ) THEN
+                            !saturation
                             do iphase = 1, final_phase
-                                assembly_phase = iphase
-                                !For the RHS collapsing to assemble into phase 1 can be done just here
-                                if (loc_assemble_collapsed_to_one_phase) assembly_phase = 1
-                                if (getResidual) then
-                                  call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_RES_I(iphase))
-                                  call addto(Mmat%CV_RHS,assembly_phase, CV_NODJ,LOC_RES_J(iphase))
-                                endif
-                                !Introduce the information into the petsc_ACV matrix
-                                call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
-                                call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodj,cv_nodj, LOC_MAT_JJ(iphase) )
-                                call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodj, LOC_MAT_IJ(iphase) )
-                                call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodj,cv_nodi, LOC_MAT_JI(iphase) )
+                                if ( WIC_T_BC_ALL( 1,iphase, SELE ) /= WIC_T_BC_DIRICHLET )then
+                                    LIMT(iphase) = LOC_T_I(iphase)
+                                ELSE
+                                    LIMT(iphase) = LOC_T_I(iphase) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_T_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                END if
+                                    !Density
+                                if ( WIC_D_BC_ALL( 1, iphase, SELE ) /= WIC_D_BC_DIRICHLET ) then
+                                    LIMD(iphase) = DEN_ALL(iphase, cv_nodi)
+                                ELSE
+                                    LIMD(iphase) = DEN_ALL(iphase, cv_nodi) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_D_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                END if
+                                !Saturation
                             end do
-                          endif ! if(CV_NODJ.ge.CV_NODI) then
-                    END IF Conditional_integration
-                END DO Loop_GCOUNT
-            END DO Loop_CV_ILOC
-        END DO Loop_Elements
-        !Add compressibility to the transport equation/add time derivative term
-        Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
-            LOC_RES_I=0.0; LOC_MAT_II =0.
-            R_PHASE = MEAN_PORE_CV( 1, CV_NODI ) * Mass_CV( CV_NODI ) / DT
-            !Diagonal term Vol/dt * rho and accompaniying rhs term
-            do iphase = 1, final_phase
-                LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + DEN_ALL(iphase, cv_nodi) * R_PHASE(iphase)* T_ALL(iphase, cv_nodi)
-                if (getResidual)  LOC_RES_I(IPHASE)=LOC_RES_I(IPHASE)  &
-                              + DEN_ALL(iphase, cv_nodi) * R_PHASE(iphase)* T_ALL(iphase, cv_nodi) &
-                              -(+ Mass_CV( CV_NODI ) * SOURCT_ALL( IPHASE, CV_NODI )&
-                                + ( DENOLD_ALL(iphase, cv_nodi) ) &
-                                * R_PHASE(IPHASE) * TOLD_ALL(iphase, cv_nodi))
-            END DO
+                        else
+                            do iphase = 1, final_phase
+                                LIMT(iphase)=LOC_T_I(iphase)*(1.0-INCOME(iphase)) + LOC_T_J(iphase)*INCOME(iphase)
+                                LIMD(iphase)=DEN_ALL(iphase, cv_nodi)*(1.0-INCOME(iphase)) + DEN_ALL(iphase, cv_nodj)*INCOME(iphase)
+                            end do
+                        end if
 
-            do iphase = 1, final_phase
-                assembly_phase = iphase
-                !For the RHS collapsing to assemble into phase 1 can be done just here
-                if (loc_assemble_collapsed_to_one_phase) assembly_phase = 1
-                if (getResidual)  call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_RES_I(IPHASE))
-                !Introduce the information into the petsc_ACV matrix
-                call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
-          end do
-        END DO Loop_CVNODI2
+                          LIMDT=LIMD*LIMT
+                          ! Make allowances for no matrix stencil operating from outside the boundary.
+                          BCZERO=1.0
+                          IF( on_domain_boundary ) BCZERO=1.0-INCOME
+                          !====================== ACV AND RHS ASSEMBLY ===================
+                          ! Obtain the CV discretised advection/diffusion equations
+                          LOC_RES_I=0.0; LOC_MAT_II =0.
+                          LOC_RES_J=0.0; LOC_MAT_JJ =0.
+                          LOC_MAT_IJ = 0.0; LOC_MAT_JI =0.
+                          IF ( GETMAT ) THEN
+                              ! Conservative discretisation. The matrix (PIVOT ON LOW ORDER SOLN)
+                              IF ( .not.on_domain_boundary) THEN
+                                !Assemble off-diagonal cv_nodi-cv_nodj
+                                LOC_MAT_IJ = LOC_MAT_IJ + SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMDT! Advection
+                                if (VAD_activated) LOC_MAT_IJ = LOC_MAT_IJ - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_J
+                                !Assemble off-diagonal cv_nodj-cv_nodi, integrate the other CV side contribution (the sign is changed)...
+                                if(integrate_other_side_and_not_boundary) then
+                                  LOC_MAT_JI = LOC_MAT_JI - SdevFuns%DETWEI( GI ) * NDOTQNEW * (1. - INCOME) * LIMDT! Advection
+                                  if (VAD_activated) LOC_MAT_JI = LOC_MAT_JI - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_I
+                                end if
+                              END IF ! endif of IF ( on_domain_boundary ) THEN ELSE
+
+                              !Assemble diagonal of the matrix of node cv_nodi
+                              LOC_MAT_II = LOC_MAT_II +  SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME ) * LIMDT! Advection
+                              if (VAD_activated) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_I
+
+                              !Assemble diagonal of the matrix of node cv_nodj
+                              if(integrate_other_side_and_not_boundary) then
+                                LOC_MAT_JJ = LOC_MAT_JJ -  SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMDT! Advection
+                                if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_J
+                              endif
+
+                          END IF  ! ENDOF IF ( GETMAT ) THEN
+
+                          ! Put results into the RHS vector
+                          if (getResidual)  then
+                            LOC_RES_I =  LOC_RES_I + SdevFuns%DETWEI( GI ) * ( NDOTQNEW * LIMDT)
+                            ! Subtract out 1st order term non-conservative adv.
+                                if (VAD_activated) LOC_RES_I =  LOC_RES_I &
+                                    - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
+                                    *LIMT*((sat_prev(1:final_phase, cv_nodj)-sat_prev(1:final_phase,cv_nodi))-( LOC_T_J - LOC_T_I ))
+                            if(integrate_other_side_and_not_boundary) then
+                              LOC_RES_J =  LOC_RES_J  - SdevFuns%DETWEI( GI ) * (  NDOTQNEW * LIMDT)
+                                if (VAD_activated) LOC_RES_J =  LOC_RES_J  &
+                                    -  SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
+                                    *LIMT*((sat_prev(1:final_phase, cv_nodi)-sat_prev(1:final_phase,cv_nodj))-( LOC_T_I - LOC_T_J ))
+                            endif
+                          endif
+                          ! this is for the internal energy equation source term..
+                          ! This is to introduce the compressibility term due to expansion and therefore the divergence of the velocity is non-zero
+                          !for wells this is not straightforward <= need to CHANGE THIS FOR COMPRESSIBILITY
+
+                          do iphase = 1, final_phase
+                              assembly_phase = iphase
+                              !For the RHS collapsing to assemble into phase 1 can be done just here
+                              if (loc_assemble_collapsed_to_one_phase) assembly_phase = 1
+                              if (getResidual) then
+                                call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_RES_I(iphase))
+                                call addto(Mmat%CV_RHS,assembly_phase, CV_NODJ,LOC_RES_J(iphase))
+                              endif
+                              !Introduce the information into the petsc_ACV matrix
+                              call addto(petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
+                              call addto(petsc_ACV,assembly_phase,assembly_phase,cv_nodj,cv_nodj, LOC_MAT_JJ(iphase) )
+                              call addto(petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodj, LOC_MAT_IJ(iphase) )
+                              call addto(petsc_ACV,assembly_phase,assembly_phase,cv_nodj,cv_nodi, LOC_MAT_JI(iphase) )
+                          end do
+                        endif ! if(CV_NODJ.ge.CV_NODI) then
+                  END IF Conditional_integration
+              END DO Loop_GCOUNT
+          END DO Loop_CV_ILOC
+      END DO Loop_Elements
+      !Add compressibility to the transport equation/add time derivative term
+      Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
+          LOC_RES_I=0.0; LOC_MAT_II =0.
+          R_PHASE = MEAN_PORE_CV( 1, CV_NODI ) * Mass_CV( CV_NODI ) / DT
+          !Diagonal term Vol/dt * rho and accompaniying rhs term
+          do iphase = 1, final_phase
+              LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + DEN_ALL(iphase, cv_nodi) * R_PHASE(iphase)* T_ALL(iphase, cv_nodi)
+              if (getResidual)  LOC_RES_I(IPHASE)=LOC_RES_I(IPHASE)  &
+                            + DEN_ALL(iphase, cv_nodi) * R_PHASE(iphase)* T_ALL(iphase, cv_nodi) &
+                            -(+ Mass_CV( CV_NODI ) * SOURCT_ALL( IPHASE, CV_NODI )&
+                              + ( DENOLD_ALL(iphase, cv_nodi) ) &
+                              * R_PHASE(IPHASE) * TOLD_ALL(iphase, cv_nodi))
+          END DO
+
+          do iphase = 1, final_phase
+              assembly_phase = iphase
+              !For the RHS collapsing to assemble into phase 1 can be done just here
+              if (loc_assemble_collapsed_to_one_phase) assembly_phase = 1
+              if (getResidual)  call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_RES_I(IPHASE))
+              !Introduce the information into the petsc_ACV matrix
+              call addto(petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
+        end do
+      END DO Loop_CVNODI2
 
 
-           !deallocate(R_PRES,R_PHASE,MEAN_PORE_CV_PHASE)
-        !Assemble the part of the wells matrix and create corresponding RHS, absoprtions, etc.
-        if (Mdims%npres >1) call ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, saturation, den_all, denold_all, &
-                              final_phase, &! final_phase => reservoir domain
-                              Mdims, ndgln, well_dummy7, CV_P, SOURCT_ALL, well_dummy8, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
-                              SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, .true., .false., .true., getResidual,Mmat, Mspars, upwnd, .false., DT, &
-                              pipes_aux, well_dummy4, well_dummy6,mean_pore_cv, MEAN_PORE_CV, eles_with_pipe, .false.,&  ! pscpsc to be added MEN_PORE_CV_TOTAL?
-                              1.0, MASS_CV, well_dummy4, MASS_ELE, well_dummy2, well_dummy3,&
-                              well_dummy1, loc_assemble_collapsed_to_one_phase )
+          !deallocate(R_PRES,R_PHASE,MEAN_PORE_CV_PHASE)
+      !Assemble the part of the wells matrix and create corresponding RHS, absoprtions, etc.
+      ! if (Mdims%npres >1) call ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, saturation, den_all, denold_all, &
+      !                       final_phase, &! final_phase => reservoir domain
+      !                       Mdims, ndgln, well_dummy7, CV_P, SOURCT_ALL, well_dummy8, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
+      !                       SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, .true., .false., .true., getResidual,Mmat, Mspars, upwnd, .false., DT, &
+      !                       pipes_aux, well_dummy4, well_dummy6,mean_pore_cv, MEAN_PORE_CV, eles_with_pipe, .false.,&  ! pscpsc to be added MEN_PORE_CV_TOTAL?
+      !                       1.0, MASS_CV, well_dummy4, MASS_ELE, well_dummy2, well_dummy3,&
+      !                       well_dummy1, loc_assemble_collapsed_to_one_phase )
 
-        ! Deallocating temporary working arrays
-        call deallocate_multi_dev_shape_funs(SdevFuns)
+      ! Deallocating temporary working arrays
+      call deallocate_multi_dev_shape_funs(SdevFuns)
 
       call deallocate(saturation_BCs)
       call deallocate(density_BCs)

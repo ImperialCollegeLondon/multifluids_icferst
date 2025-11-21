@@ -569,7 +569,9 @@ for i in range( field.node_count ):
       </diagnostic>
     </vector_field>
     <multiphase_properties>
-      <Relperm_Corey />
+      <type_Formula>
+          <Relperm_Corey />
+      </type_Formula>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
@@ -1098,7 +1100,9 @@ for i in range( field.node_count ):
       </diagnostic>
     </vector_field>
     <multiphase_properties>
-      <Relperm_Corey />
+      <type_Formula>
+          <Relperm_Corey />
+      </type_Formula>
     </multiphase_properties>
   </material_phase>
   <material_phase name="Component1">

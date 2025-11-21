@@ -3,16 +3,16 @@
   <simulation_name>
     <string_value lines="1">Newton_normal_fault</string_value>
   </simulation_name>
-  <porous_media_simulator />
+  <porous_media_simulator/>
   <geometry>
     <dimension>
       <integer_value rank="0">3</integer_value>
     </dimension>
     <mesh name="CoordinateMesh">
       <from_file file_name="mesh_normal_fault_cubit">
-        <format name="gmsh" />
+        <format name="gmsh"/>
         <stat>
-          <include_in_stat />
+          <include_in_stat/>
         </stat>
       </from_file>
     </mesh>
@@ -28,7 +28,7 @@
         </restart>
       </iterative_method>
       <preconditioner name="hypre">
-        <hypre_type name="boomeramg" />
+        <hypre_type name="boomeramg"/>
       </preconditioner>
       <relative_error>
         <real_value rank="0">1e-10</real_value>
@@ -39,9 +39,9 @@
       <max_iterations>
         <integer_value rank="0">300</integer_value>
       </max_iterations>
-      <ignore_all_solver_failures />
+      <ignore_all_solver_failures/>
       <diagnostics>
-        <monitors />
+        <monitors/>
       </diagnostics>
       <Custom_solver_configuration>
         <field name="PhaseVolumeFraction">
@@ -51,7 +51,7 @@
             </restart>
           </iterative_method>
           <preconditioner name="bjacobi">
-            <preconditioner name="ilu" />
+            <preconditioner name="ilu"/>
           </preconditioner>
           <relative_error>
             <real_value rank="0">1e-5</real_value>
@@ -62,9 +62,9 @@
           <max_iterations>
             <integer_value rank="0">80</integer_value>
           </max_iterations>
-          <ignore_all_solver_failures />
+          <ignore_all_solver_failures/>
           <diagnostics>
-            <monitors />
+            <monitors/>
           </diagnostics>
         </field>
       </Custom_solver_configuration>
@@ -98,7 +98,7 @@
         <integer_value rank="0">1</integer_value>
       </constant>
     </dump_period_in_timesteps>
-    <Show_Convergence />
+    <Show_Convergence/>
     <dump_boundaryflux>
       <surface_ids>
         <integer_value rank="1" shape="2">1 6</integer_value>
@@ -126,7 +126,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
-            <mesh name="PressureMesh" />
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -137,14 +137,14 @@
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form />
-          <nonlinear_scheme />
+          <tensor_form/>
+          <nonlinear_scheme/>
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
     <scalar_field rank="0" name="Pressure">
       <prognostic>
-        <mesh name="PressureMesh" />
+        <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0</real_value>
@@ -155,7 +155,7 @@
             <integer_value rank="1" shape="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly />
+            <apply_weakly/>
             <constant>
               <real_value rank="0">200000</real_value>
             </constant>
@@ -166,26 +166,26 @@
             <integer_value rank="1" shape="1">6</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly />
+            <apply_weakly/>
             <constant>
               <real_value rank="0">10000000</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <exclude_from_detectors />
+          <exclude_from_detectors/>
         </detectors>
         <galerkin_projection>
           <continuous>
-            <solver />
+            <solver/>
           </continuous>
         </galerkin_projection>
-        <output />
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field rank="1" name="Velocity">
       <prognostic>
-        <mesh name="VelocityMesh" />
+        <mesh name="VelocityMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="1" dim1="dim" shape="3">0 0 0</real_value>
@@ -196,7 +196,7 @@
             <integer_value rank="1" shape="1">4</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly />
+            <apply_weakly/>
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -217,17 +217,17 @@
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors />
+          <include_in_detectors/>
         </detectors>
         <galerkin_projection>
-          <discontinuous />
+          <discontinuous/>
         </galerkin_projection>
-        <output />
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field rank="0" name="PhaseVolumeFraction">
       <prognostic>
-        <mesh name="PressureMesh" />
+        <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.2</real_value>
@@ -238,14 +238,14 @@
             <integer_value rank="1" shape="1">6</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly />
+            <apply_weakly/>
             <constant>
               <real_value rank="0">1</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors />
+          <include_in_detectors/>
         </detectors>
         <adaptivity_options>
           <absolute_measure>
@@ -256,9 +256,9 @@
                     <real_value rank="0">0.01</real_value>
                   </constant>
                 </value>
-                <stat />
+                <stat/>
                 <detectors>
-                  <exclude_from_detectors />
+                  <exclude_from_detectors/>
                 </detectors>
               </prescribed>
             </scalar_field>
@@ -266,31 +266,15 @@
         </adaptivity_options>
         <galerkin_projection>
           <continuous>
-            <solver />
+            <solver/>
           </continuous>
         </galerkin_projection>
       </prognostic>
     </scalar_field>
     <multiphase_properties>
-      <Relperm_Tabulated>
-        <relperm_table>WatRelPerm</relperm_table>
-      </Relperm_Tabulated>
-      <immobile_fraction>
-        <scalar_field name="value">
-          <prescribed>
-            <mesh name="P0DG" />
-            <value name="WholeMesh">
-              <constant>
-                <real_value rank="0">0.2</real_value>
-              </constant>
-            </value>
-            <stat />
-            <detectors>
-              <exclude_from_detectors />
-            </detectors>
-          </prescribed>
-        </scalar_field>
-      </immobile_fraction>
+      <type_Tabulated>
+        <Relperm_CapPressure_Table>WatRelPerm</Relperm_CapPressure_Table>
+      </type_Tabulated>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
@@ -303,7 +287,7 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
-            <mesh name="PressureMesh" />
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -314,17 +298,17 @@
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form />
-          <nonlinear_scheme />
+          <tensor_form/>
+          <nonlinear_scheme/>
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
     <scalar_field rank="0" name="Pressure">
-      <aliased material_phase_name="phase1" field_name="Pressure" />
+      <aliased material_phase_name="phase1" field_name="Pressure"/>
     </scalar_field>
     <vector_field rank="1" name="Velocity">
       <prognostic>
-        <mesh name="VelocityMesh" />
+        <mesh name="VelocityMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="1" dim1="dim" shape="3">0 0 0</real_value>
@@ -335,7 +319,7 @@
             <integer_value rank="1" shape="1">4</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly />
+            <apply_weakly/>
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -356,17 +340,17 @@
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors />
+          <include_in_detectors/>
         </detectors>
         <galerkin_projection>
-          <discontinuous />
+          <discontinuous/>
         </galerkin_projection>
-        <output />
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field rank="0" name="PhaseVolumeFraction">
       <prognostic>
-        <mesh name="PressureMesh" />
+        <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.8</real_value>
@@ -377,42 +361,26 @@
             <integer_value rank="1" shape="1">6</integer_value>
           </surface_ids>
           <type name="dirichlet">
-            <apply_weakly />
+            <apply_weakly/>
             <constant>
               <real_value rank="0">0</real_value>
             </constant>
           </type>
         </boundary_conditions>
         <detectors>
-          <include_in_detectors />
+          <include_in_detectors/>
         </detectors>
         <galerkin_projection>
           <continuous>
-            <solver />
+            <solver/>
           </continuous>
         </galerkin_projection>
       </prognostic>
     </scalar_field>
     <multiphase_properties>
-      <Relperm_Tabulated>
-        <relperm_table>NAPLRelPerm</relperm_table>
-      </Relperm_Tabulated>
-      <immobile_fraction>
-        <scalar_field name="value">
-          <prescribed>
-            <mesh name="P0DG" />
-            <value name="WholeMesh">
-              <constant>
-                <real_value rank="0">0.3</real_value>
-              </constant>
-            </value>
-            <stat />
-            <detectors>
-              <exclude_from_detectors />
-            </detectors>
-          </prescribed>
-        </scalar_field>
-      </immobile_fraction>
+      <type_Tabulated>
+        <Relperm_CapPressure_Table>NAPLRelPerm</Relperm_CapPressure_Table>
+      </type_Tabulated>
     </multiphase_properties>
   </material_phase>
   <mesh_adaptivity>
@@ -425,7 +393,7 @@
       <maximum_number_of_nodes>
         <integer_value rank="0">20000</integer_value>
       </maximum_number_of_nodes>
-      <disable_gradation />
+      <disable_gradation/>
       <tensor_field name="MinimumEdgeLengths">
         <anisotropic_symmetric>
           <constant>
@@ -443,13 +411,13 @@
       <aspect_ratio_bound>
         <real_value rank="0">30</real_value>
       </aspect_ratio_bound>
-      <preserve_mesh_regions />
+      <preserve_mesh_regions/>
     </hr_adaptivity>
   </mesh_adaptivity>
   <porous_media>
     <scalar_field name="Porosity">
       <prescribed>
-        <mesh name="P0DG" />
+        <mesh name="P0DG"/>
         <value name="mudstone">
           <region_ids>
             <integer_value rank="1" shape="1">2</integer_value>
@@ -466,16 +434,16 @@
             <real_value rank="0">0.2</real_value>
           </constant>
         </value>
-        <stat />
+        <stat/>
         <detectors>
-          <exclude_from_detectors />
+          <exclude_from_detectors/>
         </detectors>
-        <output />
+        <output/>
       </prescribed>
     </scalar_field>
     <tensor_field name="Permeability">
       <prescribed>
-        <mesh name="P0DG" />
+        <mesh name="P0DG"/>
         <value name="1000md">
           <region_ids>
             <integer_value rank="1" shape="1">3</integer_value>
@@ -496,7 +464,7 @@
             </constant>
           </diagonal>
         </value>
-        <output />
+        <output/>
       </prescribed>
     </tensor_field>
   </porous_media>

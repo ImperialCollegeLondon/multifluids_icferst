@@ -102,7 +102,7 @@ module multi_SP
             k = 2
           end if
           !Here the temperature has to be in Celsius
-          if (has_temperature) F_fields(k+1, 1, cv_inod) =  Temperature%val(1, 1, cv_inod) - Kelv_conv 
+          if (has_temperature) F_fields(k+1, 1, cv_inod) =  Temperature%val(1, 1, cv_inod) - Kelv_conv
         end do
 
         !Obtain the conductivity of the saturated rock
@@ -169,7 +169,7 @@ module multi_SP
         real, parameter :: Kelv_conv = 273.15
         real, dimension(Mdims%cv_nonods) :: water_conductivity, cv_counter
         logical, save :: show_msg = .true.
-        real, parameter :: tol = 1e-8
+        real, parameter :: tol = RM8
 
         !If using python code all the problem are the users
         if (have_option("/porous_media/SelfPotential/python_Rock_sat_conductivity_code")) then
@@ -262,7 +262,7 @@ module multi_SP
         real, dimension(:, :), pointer :: CV_Immobile_Fraction
         real, dimension(Mdims%cv_nonods) :: cv_counter, coupling_coef, coupling_coef_ee, coupling_coef_ed
         real, parameter :: EK_exp = 0.6 !From Jackson et al 2012
-        real, parameter :: Tol = 1e-8
+        real, parameter :: Tol = RM8
         logical :: post_process
 
         !Retrieve fields from state/packed_state

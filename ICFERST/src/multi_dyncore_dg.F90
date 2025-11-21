@@ -1720,63 +1720,75 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                 !To avoid a petsc warning error we need to re-allocate the matrix always
                 call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
 
-                 call ASSEMB_SAT_JAC_AND_RES( state, packed_state, &
-                 n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                 sat_field, prev_sat, velocity, density, multi_absorp, &
-                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                 DEN_ALL, DENOLD_ALL, &
-                 Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
-                 SUF_SIG_DIAGTEN_BC, &
-                 DERIV%val(1,:,:), P, &
-                 V_SOURCE, V_ABSORB, VOLFRA_PORE, &
-                 GETCV_DISC, GETCT, &
-                 IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
-                 THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                 MEAN_PORE_CV, &
-                 mass_Mn_pres, THERMAL, &
-                 .false.,  mass_Mn_pres, &
-                 mass_ele_transp, &          !Capillary variables
-                 VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                 Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-                 nonlinear_iteration = nonlinear_iteration)
+                call ASSEMB_SAT_JAC_AND_RES( state, packed_state, &
+                n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                sat_field, prev_sat, velocity, density, multi_absorp, &
+                DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                DEN_ALL, DENOLD_ALL, &
+                Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
+                SUF_SIG_DIAGTEN_BC, &
+                DERIV%val(1,:,:), P, &
+                V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+                GETCV_DISC, GETCT, &
+                IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
+                THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                MEAN_PORE_CV, &
+                mass_Mn_pres, THERMAL, &
+                .false.,  mass_Mn_pres, &
+                mass_ele_transp, &          !Capillary variables
+                VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+                Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                nonlinear_iteration = nonlinear_iteration)
 
-                 !Make the inf norm of the Courant number across cpus
-                 !Normally computed when dealing with the continuity equation but
-                 !if solving for saturation it is useful to have up to date information
-                 if (IsParallel()) then
-                    call allmax(Courant_number(1)); call allmax(Courant_number(2))
-                 end if
+                !Make the inf norm of the Courant number across cpus
+                !Normally computed when dealing with the continuity equation but
+                !if solving for saturation it is useful to have up to date information
+                if (IsParallel()) then
+                  call allmax(Courant_number(1)); call allmax(Courant_number(2))
+                end if
 
-                 !Time to solve the system
-                 !If using FPI with backtracking
-                 if (backtrack_par_factor < 1.01) then
-                     !Backup of the saturation field, to adjust the solution
-                     sat_bak = satura
+                !Time to solve the system
+                !If using FPI with backtracking
+                if (backtrack_par_factor < 1.01) then
+                    !Backup of the saturation field, to adjust the solution
+                    sat_bak = satura
 
-                     !If using ADAPTIVE FPI with backtracking
-                     if (backtrack_par_factor < 0) then
-                        if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
-                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
-                        end if
-                        if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
-                        resold = res; res = maxval(abs(Mmat%CV_RHS%val))
-                        !We use the highest residual across the domain
-                        if (IsParallel()) call allmax(res)
+                    !If using ADAPTIVE FPI with backtracking
+                    if (backtrack_par_factor < 0) then
+                      if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                          call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                      end if
+                      if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
+                      resold = res; res = maxval(abs(Mmat%CV_RHS%val))
+                      !We use the highest residual across the domain
+                      if (IsParallel()) call allmax(res)
 
-                        if (its == 1) then
-                            first_res = res !Variable to check total convergence of the SFPI method
-                        end if
-                     end if
-                 end if
+                      if (its == 1) then
+                          first_res = res !Variable to check total convergence of the SFPI method
+                      end if
+                    end if
+                end if
 
-                 call zero(solution)
-                 btrk = 1.0
-                if (nonlinear_iteration > 3) then
+                call zero(solution)
+
+                ! Choose a backtrack option
+                btrk = 1.0
+                if      (nonlinear_iteration <=1) then
+                  btrk = 0.75
+                else if (nonlinear_iteration <=5) then
+                  btrk = 1.0
+                else if (nonlinear_iteration <=8) then
                   btrk = 0.75;
-                else if (nonlinear_iteration > 10) then
-                  btrk = 0.5;
-                else if (nonlinear_iteration > 15) then
-                  btrk = 0.25;
+                else if (nonlinear_iteration <=13) then  ! Slowly increase the backtracking
+                  btrk = -0.04*float(nonlinear_iteration)+1.0;
+                else if (nonlinear_iteration <=15) then  ! One final push to try to get convergence
+                  btrk = 0.75
+                else
+                  if (mod(nonlinear_iteration,3)==0) then
+                    btrk = 0.75;
+                  else
+                    btrk = 0.25;
+                  end if
                 end if
 
                  !########Solve the system#############
@@ -1802,7 +1814,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                   !Set to zero the fields
                   call zero(Mmat%CV_RHS)
 
-                  if (its > max_allowed_its) then ! used to have as well res < 1e-8.or. but tends to exit after just one
+                  if (its > max_allowed_its) then ! used to have as well res < RM8.or. but tends to exit after just one
                     ! print *, "Newton solve: ", its, " ", res
                     backtrack_or_convergence = 1
                     if (IsParallel()) call halo_update(sat_field)
@@ -1966,103 +1978,104 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         !Non-linear iteration count
         integer, optional, intent(in) :: nonlinear_iteration
         ! ###################Local variables############################
-        type(petsc_csr_matrix) :: petsc_ACV2
+        type(petsc_csr_matrix) :: petsc_ACV2, petsc_JAC
         Integer :: cv_inod
         !Working fields
         type(csr_sparsity), pointer :: sparsity
-        real, dimension(:), allocatable :: Max_sat
-        real, dimension(:,:), pointer :: Satura, OldSatura, CV_Immobile_Fraction
+        real, dimension(:,:), pointer :: Satura, CV_Immobile_Fraction
         Integer :: ierr, j_indx, i_indx, iphase, cv_nodi;
         Real, parameter :: PERT = 1d-5;
         type(vector_field) :: vpert
-
         type( scalar_field ), pointer :: pipe_diameter
 
-
-        !Variables for capillary pressure
-        real, dimension(Mdims%cv_nonods) :: OvRelax_param
+        call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,CV_Immobile_Fraction = CV_Immobile_Fraction)
 
         ! 1) Create unperturbed matrix A
-
         call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
-        !Also recalculate the Over-relaxation parameter
-        call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
+        !Allocate temp matrix for unperturbed reservoir matrix
+        sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+        call allocate_global_multiphase_petsc_csr(PETSC_ACV2,sparsity,sat_field, Mdims%nphase)
 
-! print *, "ASSEMBLE FIRST"
-! read*
-        call SATURATION_ASSEMB( state, packed_state, &
+        call SATURATION_ASSEMB( PETSC_ACV2, state, packed_state, &
         Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
         sat_field, sat_bak, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
-        SOURCT_ALL, VOLFRA_PORE, &
-        VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-        eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-        nonlinear_iteration = nonlinear_iteration, getResidual = .true.)
+        SOURCT_ALL, VOLFRA_PORE,eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+        Phase_with_Pc = Phase_with_Pc,getResidual = .true.)  ! Calculate residual with current Saturation guess
+        call assemble(PETSC_ACV2)
 
-        ! Calculate residual with current Saturation guess
-        call assemble(Mmat%petsc_ACV)
-
-        ! Store matrix
-        sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-        call duplicate_petsc_matrix(Mmat%petsc_ACV, PETSC_ACV2)  ! pscpsc avoid duplication and assemble to given matrix
-
-! call MatView(petsc_ACV2%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
-! read*
-
-        ! pscpsc avoid reallocating => THE MATRIX TO STORE INTO THE SUBROUTINES...
-        call deallocate(Mmat%petsc_ACV)
-        call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, Mdims%nphase)
-
-        !Introduce perturbation. Make sure that the perturbation is between bounds
-        call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,&
-            OldPhaseVolumeFraction = OldSatura, CV_Immobile_Fraction = CV_Immobile_Fraction)
+        !2) Introduce perturbation. Make sure that the perturbation is between bounds
         call allocate(vpert,Mdims%nphase,sat_field%mesh,"vpert"); vpert%val = 0d0;
         do cv_inod = 1, Mdims%cv_nonods
-
           where (satura(:, cv_inod) - PERT > CV_Immobile_Fraction(:, cv_inod))
             vpert%val(:,cv_inod) = -PERT
           elsewhere
             vpert%val(:,cv_inod) = PERT
           end where
         end do
+
         ! Apply perturbation
         Satura = Satura + vpert%val
+
         ! Recalculate parameters
         call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
-        call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
-        ! Calculate perturbated matrix
-        call SATURATION_ASSEMB(state, packed_state, &
-        Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-        sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
-        SOURCT_ALL, VOLFRA_PORE, &
-        VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-        eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-        nonlinear_iteration = nonlinear_iteration, getResidual = .false.)
-        ! Undo perturbation
-        Satura = Satura - vpert%val
-        ! Compute Jacobian as (A-A_pertb/pertb)
-        call assemble(Mmat%petsc_ACV)
-! print*, "ASSEMBLED SECOND MATRIX"
-! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
-! read*
 
-        ! 1) A - A_pertb (Note that petsc_ACV is the perturbed matrix)
-        call MatAYPX(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
 
-        ! call MatAXPY(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
-! print*, "DIFF MATRICES"
-! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
-! read*
-        ! 2) Divide by the perturbation (it is row-wise)
-        vpert%val = 1d0/vpert%val
-        call scale_PETSc_matrix_by_vector(Mmat%petsc_ACV, vpert)
-! print*, "GENERATED JACOBIAN"
-! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ierr)
-! read*
+        if (Mdims%npres >1) then
+          !Allocate temp matrix for perturbed reservoir matrix and later on Jacobian
+          sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+          call allocate_global_multiphase_petsc_csr(petsc_JAC,sparsity,sat_field, Mdims%nphase)
+          ! Calculate perturbated matrix
+          call SATURATION_ASSEMB(petsc_JAC, state, packed_state, &
+          Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+          sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+          SOURCT_ALL, VOLFRA_PORE,eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+          Phase_with_Pc = Phase_with_Pc,getResidual = .false.)
+          call assemble(petsc_JAC)
+          ! Undo perturbation
+          Satura = Satura - vpert%val
+
+          ! 3) Compute Jacobian as (A-A_pertb)/pertb
+          ! 3.1) Calculate Jacobian of the reservoir part => A - A_pertb (Note that petsc_JAC is the perturbed matrix)
+          call MatAYPX(petsc_JAC%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
+          call deallocate(petsc_ACV2)
+          ! 3.2) Divide by the perturbation (it is row-wise)
+          vpert%val = 1d0/vpert%val
+          call scale_PETSc_matrix_by_vector(petsc_JAC, vpert)
+          ! 4) To avoid a PETSc bug, once I have generated the Jacobian of the
+          !   reservoir by perturbation I add the Jacobian of the Well (Mmat%petsc_ACV)
+          !   which is just the A matrix as it is sat * A
+          call WELLS_SATURATION_ASSEMB(state, packed_state, &
+                  Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                  sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+                  SOURCT_ALL, VOLFRA_PORE, eles_with_pipe, pipes_aux,getResidual = .true.)
+          call assemble(Mmat%petsc_ACV)
+          ! Assemble the overall Jacobian in Mmat%petsc_ACV
+          call MatAYPX(Mmat%petsc_ACV%M, real(1.0, kind = PetscScalar_kind), petsc_JAC%M, DIFFERENT_NONZERO_PATTERN, ierr)
+          call deallocate(petsc_JAC);
+        else
+          ! Calculate perturbated matrix
+          call SATURATION_ASSEMB(Mmat%petsc_ACV, state, packed_state, &
+          Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+          sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+          SOURCT_ALL, VOLFRA_PORE,eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+          Phase_with_Pc = Phase_with_Pc,getResidual = .false.)
+          call assemble(Mmat%petsc_ACV)
+          ! Undo perturbation
+          Satura = Satura - vpert%val
+
+          ! 3) Compute Jacobian as (A-A_pertb)/pertb
+          ! 3.1) Calculate Jacobian of the reservoir part => A - A_pertb (Note that Mmat%petsc_ACV is the perturbed matrix)
+          call MatAYPX(Mmat%petsc_ACV%M, real(-1.0, kind = PetscScalar_kind), PETSC_ACV2%M, DIFFERENT_NONZERO_PATTERN, ierr)
+          call deallocate(petsc_ACV2)
+          ! 3.2) Divide by the perturbation (it is row-wise)
+          vpert%val = 1d0/vpert%val
+          call scale_PETSc_matrix_by_vector(Mmat%petsc_ACV, vpert)
+        end if
 
         ! Clean up memory
-        call deallocate(petsc_ACV2);call deallocate(vpert);
+        call deallocate(vpert);
     end subroutine ASSEMB_SAT_JAC_AND_RES
 
     !>@brief:In this subroutine the components are solved for all the phases.
@@ -2629,7 +2642,7 @@ end if
             Mmat%PIVIT_MAT=0.0
         end if
 
-        if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', Mdims%nphase ) )then
+        if (have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure',Mdims%nphase) .or. have_option_for_any_phase('/multiphase_properties/type_Tabulated/capillary_pressure',Mdims%nphase)) then
             call calculate_capillary_pressure(packed_state, ndgln, Mdims%totele, Mdims%cv_nloc, CV_funs)
         end if
 
@@ -3695,8 +3708,8 @@ end if
                 gravity_on = have_option("/physical_parameters/gravity/magnitude")
                 call get_option( "/physical_parameters/gravity/magnitude", gravty, default = 0. )
                 !Check capillary options
-                capillary_pressure_activated = have_option_for_any_phase('/multiphase_properties/capillary_pressure', Mdims%nphase)
-                Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
+                capillary_pressure_activated = (have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure',Mdims%nphase) .or. have_option_for_any_phase('/multiphase_properties/type_Tabulated/capillary_pressure',Mdims%nphase))
+                Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
             end if
 
             CapPressure => extract_tensor_field( packed_state, "PackedCapPressure", stat )
@@ -4237,8 +4250,8 @@ end if
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
         position=>extract_vector_field(packed_state,"PressureCoordinate")
         !Check capillary options
-        capillary_pressure_activated = have_option_for_any_phase('/multiphase_properties/capillary_pressure', Mdims%nphase)
-        Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
+        capillary_pressure_activated = (have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure',Mdims%nphase) .or. have_option_for_any_phase('/multiphase_properties/type_Tabulated/capillary_pressure',Mdims%nphase))
+        Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
         CapPressure => extract_tensor_field( packed_state, "PackedCapPressure", stat )
         !We set the value of logicals
         PIVIT_ON_VISC = .false.
@@ -8295,7 +8308,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      !Check capillary pressure options
      do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
          !this way we try to avoid problems if someone introduces 0 capillary pressure in the second phase
-         if (have_option( "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure" )) then
+         if (have_option( "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/type_Formula/capillary_pressure" ) .or. have_option( "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/type_Tabulated/capillary_pressure" )) then
              Phase_with_Pc = iphase
          end if
      end do
@@ -8304,8 +8317,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      if (Phase_with_Pc>0) then
          !Get information for capillary pressure to be used
          if ( (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
-             "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) .or. (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
-             "]/multiphase_properties/capillary_pressure/type_Power_Law") ) )then
+             "]/multiphase_properties/type_Formula/capillary_pressure/type_Brooks_Corey") ) .or. (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
+             "]/multiphase_properties/type_Formula/capillary_pressure/type_Power_Law") ) )then
              call get_var_from_packed_state(packed_state, Cap_entry_pressure = Cap_entry_pressure,&
                  Cap_exponent = Cap_exponent)!no need for the imbibition because we need the derivative which will be zero as it is a constant
          end if
@@ -8431,7 +8444,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      ! if (Mdims%npres >1) THEN !If we have pipes, reduce VAD in the CVs that have pipes, they do not get along...
      !   PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
      !   do cv_nodi = 1, Mdims%cv_nonods
-     !     IF ( PIPE_DIAMETER%VAL(CV_NODI) > 1e-8 ) THEN
+     !     IF ( PIPE_DIAMETER%VAL(CV_NODI) > RM8 ) THEN
      !        Overrelaxation(CV_NODI) = Overrelaxation(CV_NODI) * 1e-2!Severely reduce Overrelaxation around wells
      !     end if
      !   end do
@@ -9864,7 +9877,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             !!! gravity !!!
             gravity = have_option("/physical_parameters/gravity")
             !!! Capillary pressure !!!
-            cap_pressure = have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)
+            cap_pressure = have_option_for_any_phase("/multiphase_properties/type_Formula/capillary_pressure", Mdims%nphase) .or. have_option_for_any_phase("/multiphase_properties/type_Tabulated/capillary_pressure", Mdims%nphase)
             !!! Single-phase flow !!!
             one_phase = (Mdims%n_in_pres == 1)
             !!! Black Oil
