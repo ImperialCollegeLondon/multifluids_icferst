@@ -9,15 +9,15 @@
 ../../../bin/icferst cwc_P1DGP1.mpml
 cp cwc_P1DGP1_1.vtu serial_P1DGP1.vtu
 mpirun -n 2  ../../../bin/icferst cwc_P1DGP1.mpml
-../../../bin/pvtu2vtu cwc_P1DGP1 1
-../../../bin/vtudiff serial_P1DGP1.vtu cwc_P1DGP1_1.vtu diff_P1DGP1.vtu
+./pvtu2vtu_new cwc_P1DGP1 1
+./vtudiff_new serial_P1DGP1.vtu cwc_P1DGP1_1.vtu diff_P1DGP1.vtu
 
 
 ../../../bin/icferst cwc_P1DGP2.mpml
 cp cwc_P1DGP2_1.vtu serial_P1DGP2.vtu
 mpirun -n 2  ../../../bin/icferst cwc_P1DGP2.mpml
-../../../bin/pvtu2vtu cwc_P1DGP2 1
-../../../bin/vtudiff serial_P1DGP2.vtu cwc_P1DGP2_1.vtu diff_P1DGP2.vtu</command_line>
+./pvtu2vtu_new cwc_P1DGP2 1
+./vtudiff_new serial_P1DGP2.vtu cwc_P1DGP2_1.vtu diff_P1DGP2.vtu</command_line>
   </problem_definition>
   <variables>
     <variable name="check_P1DGP1" language="python">import vtk

@@ -2816,7 +2816,8 @@ end if
           call extract_diagonal(cmc_petsc, diagonal_CMC)
           call scale_PETSc_matrix(cmc_petsc)
         end if
-        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+
+        call solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
@@ -2894,7 +2895,8 @@ end if
           REAL, DIMENSION( :, :, : ), intent(in) :: INV_B
           type( vector_field ), intent(inout) :: rhs_p
           type( vector_field ), intent(inout) :: deltap
-          type(tensor_field), intent(inout) :: P_all, velocity
+          type(tensor_field), pointer, intent(inout) :: P_all
+          type(tensor_field), intent(inout) :: velocity
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
           type( vector_field ), intent(inout) :: diagonal_A
           !Local variables
@@ -3001,7 +3003,7 @@ end if
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-            call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val, update_pres = .not. Special_precond)!don
+            call solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC, update_pres = .not. Special_precond)
             if (isParallel()) call halo_update(deltap)
             if (k == 1) then
               Omega = 1.0
@@ -3022,7 +3024,7 @@ end if
               !Ct x previous
               call compute_DIV_U(Mdims, Mmat, Mspars, aux_velocity%val, INV_B, rhs_p)
               !Solve again the system to finish the preconditioner
-              call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+              call solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC)
             end if
             if (isParallel()) call halo_update(P_all)
             !Update residual with the variation from the guessed value and the actual value obtained after appliying the function
@@ -3198,27 +3200,27 @@ end if
           type(multi_dimensions), intent(in) :: Mdims
           type( vector_field ), intent(inout) :: rhs_p
           type( vector_field ), intent(inout) :: deltap
-          real, dimension(Mdims%npres, Mdims%cv_nonods), intent(inout) :: P_all!Ensure dynamic conversion from three entries to two
+          type( tensor_field ), pointer :: P_all
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
-          real, dimension(Mdims%npres, Mdims%cv_nonods), intent(in) :: diagonal_CMC
+          type( vector_field ) :: diagonal_CMC
           logical, optional, intent(in) :: update_pres
           !Local variables
           integer :: its_taken
 
           !Rescale RHS (it is given the the matrix has been already re-scaled)
-          if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC)!Recover original X; X = D^-0.5 * X'
+          if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC%val)!Recover original X; X = D^-0.5 * X'
           call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken);total_lIts = total_lIts + its_taken;
           pres_its_taken = its_taken
 
           if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
           !If the system is re-scaled then now it is time to recover the correct solution
-          if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC) !Recover original X; X = D^-0.5 * X'
+          if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC%val) !Recover original X; X = D^-0.5 * X'
           !If false update pressure then return before doing so
           if (present_and_false(update_pres)) then
             return
           else
             !Now update the pressure
-            P_all = P_all + deltap%val
+            P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
           end if
 
         end subroutine solve_and_update_pressure

@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+import sys
+import vtk
+
+
+def convert_pvtu_to_vtu(pvtu_file, vtu_file, verbose=False):
+    reader = vtk.vtkXMLPUnstructuredGridReader()
+    reader.SetFileName(pvtu_file)
+    reader.Update()
+
+    ugrid = reader.GetOutput()
+    if ugrid is None:
+        print(f"Could not read {pvtu_file}")
+        return False
+
+    # Strip ghost cells if present
+    ghost_array = ugrid.GetCellData().GetArray("vtkGhostType")
+    if ghost_array:
+        if verbose:
+            print("  Ghost cells detected → stripping")
+
+        thresh = vtk.vtkThreshold()
+        thresh.SetInputData(ugrid)
+        thresh.SetInputArrayToProcess(
+            0, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_CELLS, "vtkGhostType"
+        )
+        thresh.SetUpperThreshold(0)  # keep only non-ghosts
+        thresh.SetThresholdFunction(vtk.vtkThreshold.THRESHOLD_UPPER)
+        thresh.Update()
+
+        ugrid = thresh.GetOutput()
+
+    writer = vtk.vtkXMLUnstructuredGridWriter()
+    writer.SetFileName(vtu_file)
+    writer.SetInputData(ugrid)
+    writer.Write()
+
+    if verbose:
+        print(f"Wrote {vtu_file}")
+    return True
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: pvtu2vtu input.pvtu output.vtu")
+        sys.exit(1)
+
+    convert_pvtu_to_vtu(sys.argv[1], sys.argv[2], verbose=True)

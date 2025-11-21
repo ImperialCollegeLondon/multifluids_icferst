@@ -15,145 +15,152 @@
 
 import sys
 from gi.repository import GObject as gobject
-from gi.repository import Gtk as gtk
+from gi.repository import Gtk
 from gi.repository import Pango as pango
 
-class CommentWidget(gtk.Frame):
+class CommentWidget(Gtk.Frame):
+    __gsignals__ = {
+        "on-store": (
+            gobject.SignalFlags.RUN_LAST,
+            gobject.TYPE_NONE,
+            ()
+        ),
+    }
+    fontsize = 12
 
-  __gsignals__ = { "on-store"  : (gobject.SignalFlags.RUN_LAST, gobject.TYPE_NONE, ())}
-  fontsize = 12
+    def __init__(self):
+        super().__init__()
 
-  def __init__(self):
-    gtk.Frame.__init__(self)
-    
-    scrolledWindow = gtk.ScrolledWindow()
-    scrolledWindow.set_policy(gtk.PolicyType.AUTOMATIC, gtk.PolicyType.AUTOMATIC)
+        # Create scrolled window and text view
+        scrolled_window = Gtk.ScrolledWindow()
+        scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
 
-    textView = self.textView = gtk.TextView()
-    textView.set_editable(False)
-    textView.set_wrap_mode(gtk.WrapMode.WORD)
-    textView.set_cursor_visible(False)
-    textView.modify_font(pango.FontDescription(str(self.fontsize)))
-    textView.connect("focus-in-event", self.focus_in)
-    textView.connect("focus-out-event", self.focus_out)
-    textView.modify_font(pango.FontDescription.from_string(str(self.fontsize)))
-    textView.get_buffer().create_tag("tag")
-    
-    scrolledWindow.add(textView)
-
-    label = gtk.Label()
-    label.set_markup("<b>Comment</b>")
-
-    self.set_shadow_type(gtk.ShadowType.NONE)
-    self.set_label_widget(label)
-    self.add(scrolledWindow)
-    
-    self.comment_tree = None                           
-    self.interacted = False
-    return
-
-  def update(self, node):
-    """
-    Update the widget with the given node
-    """
-
-    #before updateing store the old
-    self.store()
-
-    if node is None or not node.active:
-      self.textView.get_buffer().set_text("")
-      self.textView.set_cursor_visible(False)
-      self.textView.set_editable(False)
-      try:
-        self.textView.set_tooltip_text("")
-        self.textView.set_property("has-tooltip", False)
-      except:
-        pass
-      self.interacted = False
-      return
-
-    self.comment_tree = comment_tree = node.get_comment()
-    text_tag = self.textView.get_buffer().get_tag_table().lookup("tag")
-    if comment_tree is None:
-      self.textView.get_buffer().set_text("No comment")
-      self.textView.set_cursor_visible(False)
-      self.textView.set_editable(False)
-      text_tag.set_property("foreground", "grey")
-      try:
-        self.textView.set_tooltip_text("")
-        self.textView.set_property("has-tooltip", False)
-      except:
-        pass
-    else:
-      if comment_tree.data is None:
-        self.textView.get_buffer().set_text("(string)")
-      else:
-        self.textView.get_buffer().set_text(comment_tree.data)
-      if node.active:
-        self.textView.set_cursor_visible(True)
-        self.textView.set_editable(True)
-        text_tag.set_property("foreground", "black")
-      else:
-        self.textView.set_cursor_visible(False)
+        self.textView = Gtk.TextView()
         self.textView.set_editable(False)
-        text_tag.set_property("foreground", "grey")
+        self.textView.set_wrap_mode(Gtk.WrapMode.WORD)
+        self.textView.set_cursor_visible(False)
+        self.textView.modify_font(pango.FontDescription(str(self.fontsize)))
+        self.textView.connect("focus-in-event", self.focus_in)
+        self.textView.connect("focus-out-event", self.focus_out)
 
-    buffer_bounds = self.textView.get_buffer().get_bounds()
-    self.textView.get_buffer().apply_tag(text_tag, buffer_bounds[0], buffer_bounds[1])
+        scrolled_window.add(self.textView)
 
-    self.interacted = False
+        # Store buffer and create a persistent comment tag
+        self.buffer = self.textView.get_buffer()
+        self.comment_tag = self.buffer.create_tag(
+            "comment_tag",
+            foreground="grey"
+        )
 
-    return
+        # Frame label
+        label = Gtk.Label()
+        label.set_markup("<b>Comment</b>")
 
-  def store(self):
-    """
-    Store data in the node comment.
-    """
-   
-    comment_tree = self.comment_tree
-    if comment_tree is None or not self.interacted:
-      return
+        self.set_shadow_type(Gtk.ShadowType.NONE)
+        self.set_label_widget(label)
+        self.add(scrolled_window)
 
-    data_buffer_bounds = self.textView.get_buffer().get_bounds()
-    new_comment = self.textView.get_buffer().get_text(data_buffer_bounds[0], data_buffer_bounds[1], True)
+        # State
+        self.comment_tree = None
+        self.interacted = False
 
-    if new_comment != comment_tree.data:
-      if new_comment == "":
-        comment_tree.data = None
-        comment_tree.active = False
-      else:
-        comment_tree.set_data(new_comment)
-        comment_tree.active = True
-        self.emit("on-store")
-    return
+    def update(self, node):
+        """
+        Update the widget with the given node
+        """
+        # Store previous content if needed
+        self.store()
 
-  def focus_in(self, widget, event):
-    """
-    Called when the comment widget gains focus. Removes the printable_type
-    placeholder.
-    """
+        # No active node
+        if node is None or not node.active:
+            self.buffer.set_text("")
+            self.textView.set_cursor_visible(False)
+            self.textView.set_editable(False)
+            try:
+                self.textView.set_tooltip_text("")
+                self.textView.set_property("has-tooltip", False)
+            except Exception:
+                pass
+            self.interacted = False
+            return
 
-    comment_tree = self.comment_tree
-    if not comment_tree is None and not self.interacted:
-      self.interacted = True
-      if comment_tree.data is None:
-        self.textView.get_buffer().set_text("")
+        # Retrieve comment data
+        self.comment_tree = comment_tree = node.get_comment()
+        buf = self.buffer
+        tag = self.comment_tag
 
-    return
+        if comment_tree is None:
+            buf.set_text("No comment")
+            self.textView.set_cursor_visible(False)
+            self.textView.set_editable(False)
+            tag.set_property("foreground", "grey")
+            try:
+                self.textView.set_tooltip_text("")
+                self.textView.set_property("has-tooltip", False)
+            except Exception:
+                pass
+        else:
+            text = comment_tree.data if comment_tree.data is not None else "(string)"
+            buf.set_text(text)
+            if node.active:
+                self.textView.set_cursor_visible(True)
+                self.textView.set_editable(True)
+                tag.set_property("foreground", "black")
+            else:
+                self.textView.set_cursor_visible(False)
+                self.textView.set_editable(False)
+                tag.set_property("foreground", "grey")
 
-  def focus_out(self, widget, event):
-    """"
-    Called when the comment widget loses focus. Stores the comment.
-    """
-    self.store()
+        start, end = buf.get_bounds()
+        buf.apply_tag(tag, start, end)
+        self.interacted = False
 
-  def increase_font(self):
-    self.fontsize = self.fontsize + 2
-    self.textView.modify_font(pango.FontDescription(str(self.fontsize)))
+    def store(self):
+        """
+        Store data in the node comment.
+        """
+        comment_tree = self.comment_tree
+        if comment_tree is None or not self.interacted:
+            return
 
-  def decrease_font(self):
-    if self.fontsize > 0:
-      self.fontsize = self.fontsize - 2
-      self.textView.modify_font(pango.FontDescription(str(self.fontsize)))
-  
+        start, end = self.buffer.get_bounds()
+        new_comment = self.buffer.get_text(start, end, True)
+
+        if new_comment != comment_tree.data:
+            if new_comment == "":
+                comment_tree.data = None
+                comment_tree.active = False
+            else:
+                comment_tree.set_data(new_comment)
+                comment_tree.active = True
+                self.emit("on-store")
+
+    def focus_in(self, widget, event):
+        """
+        Called when the comment widget gains focus. Removes the placeholder.
+        """
+        comment_tree = self.comment_tree
+        if comment_tree is not None and not self.interacted:
+            self.interacted = True
+            if comment_tree.data is None:
+                self.buffer.set_text("")
+        return False
+
+    def focus_out(self, widget, event):
+        """
+        Called when the comment widget loses focus. Stores the comment.
+        """
+        self.store()
+        return False
+
+    def increase_font(self):
+        self.fontsize += 2
+        self.textView.modify_font(pango.FontDescription(str(self.fontsize)))
+
+    def decrease_font(self):
+        if self.fontsize > 0:
+            self.fontsize -= 2
+            self.textView.modify_font(pango.FontDescription(str(self.fontsize)))
+
+# Register GObject type
 gobject.type_register(CommentWidget)

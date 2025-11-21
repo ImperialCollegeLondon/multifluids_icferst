@@ -6,21 +6,7 @@
 ! still need #ifdef PETSC_VERSION>... in the main code
 #include "petscversion.h"
 #ifdef HAVE_PETSC_MODULES
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=8) || (PETSC_VERSION_MAJOR>=4)
 #include "petsc/finclude/petsc.h"
-#elif (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=6)
-#include "petsc/finclude/petscdef.h"
-#else
-#include "finclude/petscdef.h"
-#endif
-#else
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=8) || (PETSC_VERSION_MAJOR>=4)
-#error "From PETSc v3.8, petsc fortran modules are required. Ensure petsc fortran modules, compiled with the same fortran compiler, are installed and configure without the --disable-petsc-fortran-modules option."
-#elif (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR>=6)
-#include "petsc/finclude/petsc.h"
-#else
-#include "finclude/petsc.h"
-#endif
 #endif
 
 #ifndef PC_COMPOSITE_SYMMETRIC_MULTIPLICATIVE

@@ -1,11 +1,11 @@
-FROM fluidity/baseimages:bionic
+FROM fluidity/baseimages:noble
 
 USER root
 
 RUN apt-get -y update && \
       apt-get -y dist-upgrade && \
-      apt install -y python3-pip python3.8-venv libparmetis-dev gir1.2-gtksource-3.0  \
-      && rm -rf /var/cache/apt/archives && \
+      apt-get -y install autoconf-archive python-is-python3 pkg-config vim && \
+      rm -rf /var/cache/apt/archives && \
       rm -rf /var/lib/apt/lists
 
 COPY . /home/fluidity
@@ -13,6 +13,6 @@ RUN chown -R fluidity /home/fluidity
 
 USER fluidity
 
+RUN autoreconf --force --install
 RUN ./configure --enable-2d-adaptivity
-RUN make mp
-RUN make fltools
+RUN make -j8 mp

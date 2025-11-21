@@ -32,17 +32,22 @@ USA
 #include "string.h"
 
 #ifdef HAVE_PYTHON
-#include "Python.h"
-#if PY_MAJOR_VERSION >= 3
-#define PyInt_FromLong PyLong_FromLong
-#define PyInt_AsLong PyLong_AsLong
-#define PyString_Size PyUnicode_GET_SIZE
-#define PyString_AsString PyUnicode_AsUTF8
+  #include <Python.h>
+
+  /* PyInt → PyLong */
+  #define PyInt_FromLong  PyLong_FromLong
+  #define PyInt_AsLong    PyLong_AsLong
+
+  /* PyString_Size → Unicode length */
+  #define PyString_Size(obj)    PyUnicode_GetLength(obj)
+  /* PyString_AsString → UTF-8 bytes */
+  #define PyString_AsString(obj) PyUnicode_AsUTF8(obj)
 #endif
-#endif
+
 #ifdef HAVE_NUMPY
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#include "numpy/arrayobject.h"
+  #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+  #include <numpy/arrayobject.h>
+  /* In your module init, call: import_array(); */
 #endif
 
 #define set_scalar_field_from_python F77_FUNC(set_scalar_field_from_python, SET_SCALAR_FIELD_FROM_PYTHON)

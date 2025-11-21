@@ -31,15 +31,9 @@ module solvers_module
 
     use state_module
     use halo_data_types
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h" 
     use petsc
-#if PETSC_VERSION_MINOR==0
-    use petscvec
-    use petscmat
-    use petscksp
-    use petscpc
-#endif
-#endif
+
     use Copy_Outof_State
     use shape_functions_Linear_Quadratic
     use shape_functions_prototype
