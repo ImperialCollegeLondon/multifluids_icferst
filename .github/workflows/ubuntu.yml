@@ -8,19 +8,13 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - pablo_dev3
-      - master
       - magma_dev
-      - linfeng_dev
-      - geraldine_dev
       - phreeqc_link
-      - geraldine_dev_new
-      - vinicius_dev
       - meissam_dev_new
       - hayley_dev
       - ruixiao_dev_new
-      - master_ubuntu24
-      - master_ubuntu24_new
 
 jobs:
 
@@ -31,17 +25,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Build Bionic", "Build Focal" ]
+        name: [ "Build Bionic", "Build Noble" ]
         include:
 
           - name: "Build Bionic"
             release: bionic
 
-          - name: "Build Focal"
-            release: focal
-
           - name: "Build Noble"
-            release: noble  
+            release: noble
     steps:
 
       - name: Check Out Repo
@@ -72,19 +63,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Bionic", "Focal"]
+        name: [ "Bionic", "Noble"]
         include:
 
           - name: "Bionic"
             release: bionic
             runner: ubuntu-latest
             command: "make THREADS=2 serialtest-mp-xml"
-            output: "multiphase_test_results.xml"
-
-          - name: "Focal"
-            release: focal
-            runner: ubuntu-latest
-            command: "make THREADS=1 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
           - name: "Noble"
@@ -123,12 +108,10 @@ jobs:
 
     strategy:
       matrix:
-        name: [ "Report Bionic", "Report Focal", "Report Noble" ]
+        name: [ "Report Bionic", Report Noble" ]
         include:
           - name: "Report Bionic"
             release: bionic
-          - name: "Report Focal"
-            release: focal
           - name: "Report Noble"
             release: noble
 

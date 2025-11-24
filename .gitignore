@@ -24,7 +24,6 @@ config.status
 
 # Test outputs (only under ICFERST/tests)
 ICFERST/tests/**/log
-ICFERST/tests/**/*.csv
 ICFERST/tests/**/*.vtu
 ICFERST/tests/**/*.stat
 ICFERST/tests/**/*.detectors
