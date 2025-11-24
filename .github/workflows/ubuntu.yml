@@ -108,7 +108,7 @@ jobs:
 
     strategy:
       matrix:
-        name: [ "Report Bionic", Report Noble" ]
+        name: [ "Report Bionic", "Report Noble" ]
         include:
           - name: "Report Bionic"
             release: bionic
