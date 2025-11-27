@@ -1,4 +1,6 @@
 <map id="multiphase_eos::retrieve_reference_density" name="multiphase_eos::retrieve_reference_density">
-<area shape="rect" id="node1" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="5,5,189,47"/>
-<area shape="rect" id="node2" href="$namespacemultiphase__eos.html#ac13395594592fe917fc20b7c3c2b7a5d" title=": Read from diamond and decide which sort of density representation do we have" alt="" coords="237,5,412,47"/>
+<area shape="rect" id="Node000001" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="5,29,189,69"/>
+<area shape="poly" id="edge2_Node000001_Node000001" title=" " alt="" coords="55,30,52,20,59,10,74,5,97,3,124,6,138,13,136,18,122,11,97,8,76,10,62,15,58,21,60,28"/>
+<area shape="rect" id="Node000002" href="$namespacemultiphase__eos.html#ac13395594592fe917fc20b7c3c2b7a5d" title=": Read from diamond and decide which sort of density representation do we have" alt="" coords="237,29,412,69"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="189,47,223,47,223,52,189,52"/>
 </map>

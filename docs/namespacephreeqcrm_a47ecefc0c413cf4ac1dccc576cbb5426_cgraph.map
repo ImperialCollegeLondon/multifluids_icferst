@@ -1,0 +1,4 @@
+<map id="phreeqcrm::rm_getselectedoutputcolumncount" name="phreeqcrm::rm_getselectedoutputcolumncount">
+<area shape="rect" id="Node000001" title="Returns the number of columns in the current selected&#45;output definition. RM_SetCurrentSelectedOutputU..." alt="" coords="5,29,332,55"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="117,31,105,21,111,11,133,5,169,3,217,7,229,13,232,20,227,22,225,17,216,12,169,8,133,10,114,15,111,20,120,27"/>
+</map>

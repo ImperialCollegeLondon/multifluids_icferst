@@ -1,36 +1,89 @@
 <map id="shape_functions_linear_quadratic::lagrot" name="shape_functions_linear_quadratic::lagrot">
-<area shape="rect" id="node1" title="This computes the weight and points for standard Gaussian quadrature. If (GETNDP == T) then get the p..." alt="" coords="3231,225,3403,267"/>
-<area shape="rect" id="node2" href="$namespaceshape__functions__prototype.html#a8214cb813b277f2423568701a028127f" title="this subroutine generates the FE basis functions, weights and the derivatives of the shape functions ..." alt="" coords="2764,91,2963,132"/>
-<area shape="rect" id="node22" href="$namespaceshape__functions__ndim.html#ab0d45b5cca739d6579a00f6a5ac41de7" title=": For quadratic elements. Shape functions associated with volume integration using both CV basis func..." alt="" coords="2295,401,2463,443"/>
-<area shape="rect" id="node25" href="$namespaceshape__functions__linear__quadratic.html#ae147a04f99e1302e92b663b54ea271db" title="determine the 1d shape functions sn and its local derivative slnx." alt="" coords="3011,163,3183,219"/>
-<area shape="rect" id="node31" href="$namespaceshape__functions__linear__quadratic.html#a7da239d41bd2bc9cf80b2d50a0c00554" title="at the Gauss points. NB: We may need to define surface elements for p and (u,v,w)" alt="" coords="3011,261,3183,303"/>
-<area shape="rect" id="node3" href="$namespaceshape__functions__prototype.html#a327e5ef3b6b9241997dcf0c6f8cad2dd" title="This subroutine generates the FE basis functions, weights and the derivatives of the shape functions ..." alt="" coords="1785,227,1984,268"/>
-<area shape="rect" id="node4" href="$multi__shape__fct_8_f90.html#a3ac481479452947a759fbb6c9cf743e9" title=" " alt="" coords="1559,303,1737,330"/>
-<area shape="rect" id="node5" href="$namespaceshape__functions__prototype.html#ae23b2b5b8e264b0e1b498f4e28f1c18d" title="This subrt defines the sub&#45;control volume and FEM shape functions. Shape functions associated with vo..." alt="" coords="1312,296,1511,337"/>
-<area shape="rect" id="node6" href="$namespacecv__advection.html#a34e0fcace33673c6460aef98e962709e" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1056,175,1245,202"/>
-<area shape="rect" id="node16" href="$namespacesparsity__nd.html#a455ef657aa7fb1aaa3bff1b71aaa24a5" title=" " alt="" coords="1055,393,1247,435"/>
-<area shape="rect" id="node19" href="$namespacemultiphase__1d__engine.html#a7a01c78d922871a74af7e6e4a3228868" title=": Instead of including the gravity in the RHS normally, here a system based on a Laplacian is created..." alt="" coords="1049,263,1253,304"/>
-<area shape="rect" id="node20" href="$namespacemulti__surface__tension.html#a5a80b62b8be2aabfa44e733c53908eb4" title="Calculate the surface tension force as a pressure force term: PLIKE_GRAD_SOU_COEF and PLIKE_GRAD_SOU_..." alt="" coords="1037,328,1264,369"/>
-<area shape="rect" id="node7" href="$multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="781,226,965,253"/>
-<area shape="rect" id="node11" href="$namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="781,59,965,100"/>
-<area shape="rect" id="node14" href="$namespacemultiphase__1d__engine.html#aa5819c18b57b8144faa1885776a2cc8b" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="497,188,677,229"/>
-<area shape="rect" id="node15" href="$namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,123,708,164"/>
-<area shape="rect" id="node8" href="$namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="483,264,692,305"/>
-<area shape="rect" id="node9" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,155,419,196"/>
-<area shape="rect" id="node10" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,155,171,196"/>
-<area shape="rect" id="node12" href="$namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="470,5,705,47"/>
-<area shape="rect" id="node13" href="$multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,13,396,39"/>
-<area shape="rect" id="node17" href="$namespacespact.html#aeaf3853765a92827bf24c599fe79364e" title="Allocate and obtain the sparsity patterns of the two types of matricies for (momentum + cty) and for ..." alt="" coords="800,393,945,435"/>
-<area shape="rect" id="node18" href="$_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="505,401,670,427"/>
-<area shape="rect" id="node21" href="$namespacemulti__surface__tension.html#af2ba4e6081b82e255306f98d0e160098" title=" " alt="" coords="756,328,989,369"/>
-<area shape="rect" id="node23" href="$namespaceshape__functions__ndim.html#a7124edf2219f0df3e3bdbfc9148bac65" title=": For quadratic elements: Shape functions associated with volume integration using both CV (CVN) and ..." alt="" coords="2037,401,2205,443"/>
-<area shape="rect" id="node24" href="$namespaceshape__functions__prototype.html#a55f7da59b552d475085e9ae74e74f875" title="SHAPESV AND RELATED SUBRTS &amp; FUNCTIONS Shape functions associated with volume integration using both ..." alt="" coords="1785,328,1984,369"/>
-<area shape="rect" id="node26" href="$namespaceshape__functions__ndim.html#aec7c06f0cf1ffd44899b31601d1c0835" title="This subrt computes shape functions. For now, let&#39;s just define for one element type...." alt="" coords="2548,204,2716,245"/>
-<area shape="rect" id="node27" href="$namespaceshape__functions__ndim.html#abb29324e9e7ed1c60a8ac2d2dbe93b55" title=": this subroutine calculates shape functions sn, snlx, snly, snlz, sufnlx, sufnly,..." alt="" coords="2259,146,2500,202"/>
-<area shape="rect" id="node29" href="$namespaceshape__functions__ndim.html#a8e1483fa07acac02ed8dcdcd5355f922" title=": Determine the volume shape functions n, nlx, nly, nlz and weights cvweigh for the cv_nloc_cells CV ..." alt="" coords="2295,277,2463,319"/>
-<area shape="rect" id="node28" href="$namespaceshape__functions__ndim.html#a26392ba54127e829f1661b9f8a2a9d53" title=": Compute shape functions N, UN etc for linear triangles. Shape functions associated with volume inte..." alt="" coords="2037,189,2205,231"/>
-<area shape="rect" id="node30" href="$namespaceshape__functions__ndim.html#a62013afe2af3b6eb9358b519e41313b8" title=": Compute shape functions N, UN etc for linear trianles. Shape functions associated with volume integ..." alt="" coords="2037,255,2205,296"/>
-<area shape="rect" id="node32" href="$namespaceshape__functions__linear__quadratic.html#a0e2b87ea8cbf64e6526d68831575f1d7" title="This subrt. computes the shape functions M and N and their derivatives at the Gauss points for 3D...." alt="" coords="2777,263,2949,304"/>
-<area shape="rect" id="node33" href="$namespaceshape__functions__ndim.html#ae55e4b96c1fd166b0c386e93ddf53196" title="Get the shape functions on lines (in 2D) and quadrilateral surfaces in 3D." alt="" coords="2548,276,2716,317"/>
-<area shape="rect" id="node34" href="$namespaceshape__functions__ndim.html#a6aa37d81c26106c0d55a961df42387f0" title=": new 1 or 4 pt quadrature set on each CV of a quadratic tetrahedra ..... Compute shape functions N,..." alt="" coords="2032,321,2211,377"/>
+<area shape="rect" id="Node000001" title="This computes the weight and points for standard Gaussian quadrature. If (GETNDP == T) then get the p..." alt="" coords="3275,255,3447,295"/>
+<area shape="rect" id="Node000002" href="$namespaceshape__functions__prototype.html#a50d87063f46932290366708ada439a22" title="this subroutine generates the FE basis functions, weights and the derivatives of the shape functions ..." alt="" coords="2808,372,3007,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="3322,305,3278,331,3228,353,3172,369,3114,380,3007,392,3007,386,3114,375,3171,364,3226,348,3275,326,3319,300"/>
+<area shape="rect" id="Node000019" href="$namespaceshape__functions__ndim.html#ab0d45b5cca739d6579a00f6a5ac41de7" title=": For quadratic elements. Shape functions associated with volume integration using both CV basis func..." alt="" coords="2339,51,2507,91"/>
+<area shape="poly" id="edge27_Node000001_Node000019" title=" " alt="" coords="3316,250,3274,226,3226,205,3129,175,3028,150,2827,113,2647,90,2507,78,2508,73,2647,85,2828,108,3029,145,3130,170,3228,200,3276,221,3319,245"/>
+<area shape="rect" id="Node000024" href="$namespaceshape__functions__linear__quadratic.html#ae147a04f99e1302e92b663b54ea271db" title="determine the 1d shape functions sn and its local derivative slnx." alt="" coords="3055,283,3227,338"/>
+<area shape="poly" id="edge36_Node000001_Node000024" title=" " alt="" coords="3261,294,3227,299,3226,294,3260,288"/>
+<area shape="rect" id="Node000030" href="$namespaceshape__functions__linear__quadratic.html#a7da239d41bd2bc9cf80b2d50a0c00554" title="at the Gauss points. NB: We may need to define surface elements for p and (u,v,w)" alt="" coords="3055,215,3227,255"/>
+<area shape="poly" id="edge44_Node000001_Node000030" title=" " alt="" coords="3260,259,3226,253,3227,248,3261,254"/>
+<area shape="rect" id="Node000003" href="$namespaceshape__functions__prototype.html#a327e5ef3b6b9241997dcf0c6f8cad2dd" title="This subroutine generates the FE basis functions, weights and the derivatives of the shape functions ..." alt="" coords="1840,269,2039,309"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="2794,404,2650,409,2472,407,2376,400,2278,390,2181,375,2086,353,2029,334,1979,312,1982,307,2031,329,2087,348,2182,369,2279,385,2376,395,2473,401,2650,404,2794,398"/>
+<area shape="rect" id="Node000004" href="$namespaceshape__functions__prototype.html#af946f7e305f170666101ab84d86eed5e" title="This subrt defines the sub&#45;control volume and FEM shape functions. Shape functions associated with vo..." alt="" coords="1593,184,1792,224"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="1867,267,1750,227,1752,222,1869,262"/>
+<area shape="rect" id="Node000005" href="$namespacecv__advection.html#a3bd456f4f3d098a36288e7ed4a6dbf6b" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1337,299,1527,325"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="1632,232,1465,302,1463,297,1630,227"/>
+<area shape="rect" id="Node000014" href="$namespacesparsity__nd.html#a1d032ca66f83d492efe6a31597630dc9" title=" " alt="" coords="1336,63,1528,103"/>
+<area shape="poly" id="edge19_Node000004_Node000014" title=" " alt="" coords="1651,178,1601,147,1544,117,1513,105,1515,100,1546,112,1604,142,1654,174"/>
+<area shape="rect" id="Node000016" href="$namespacemultiphase__1d__engine.html#a5f51328ef034efd7e4104db3a9b58d4e" title=": Instead of including the gravity in the RHS normally, here a system based on a Laplacian is created..." alt="" coords="1330,191,1534,231"/>
+<area shape="poly" id="edge22_Node000004_Node000016" title=" " alt="" coords="1579,210,1534,211,1534,205,1579,204"/>
+<area shape="rect" id="Node000017" href="$namespacemulti__surface__tension.html#abdbb49689046df472c9c0989687b8b5d" title="Calculate the surface tension force as a pressure force term: PLIKE_GRAD_SOU_COEF and PLIKE_GRAD_SOU_..." alt="" coords="1319,127,1545,167"/>
+<area shape="poly" id="edge24_Node000004_Node000017" title=" " alt="" coords="1587,184,1523,169,1524,164,1589,178"/>
+<area shape="rect" id="Node000006" href="$namespacemultiphase__1d__engine.html#a2644f81b959a9c66d17c6ae96e452faf" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="767,177,977,217"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="1355,299,970,220,971,215,1356,294"/>
+<area shape="rect" id="Node000009" href="$namespacemultiphase__1d__engine.html#a8b8466b21f31e369fc0ae74a939444cd" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="1062,292,1246,332"/>
+<area shape="poly" id="edge8_Node000005_Node000009" title=" " alt="" coords="1323,315,1246,315,1246,309,1323,309"/>
+<area shape="rect" id="Node000011" href="$namespacemultiphase__1d__engine.html#aa8ed1c2e68fd75835c3794475805554c" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="465,343,707,383"/>
+<area shape="poly" id="edge18_Node000005_Node000011" title=" " alt="" coords="1366,330,1271,347,1119,360,966,366,707,368,707,363,966,361,1119,354,1270,341,1365,325"/>
+<area shape="rect" id="Node000013" href="$namespacemultiphase__1d__engine.html#ae08ee439502a499a77b44ecdd504846a" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="782,407,962,447"/>
+<area shape="poly" id="edge16_Node000005_Node000013" title=" " alt="" coords="1399,334,1341,364,1271,391,1191,408,1109,420,962,429,962,424,1108,415,1190,403,1270,385,1339,359,1397,329"/>
+<area shape="rect" id="Node000007" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,235,417,275"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="754,210,466,239,418,244,417,239,465,233,753,205"/>
+<area shape="rect" id="Node000008" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,235,171,275"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="205,257,171,257,171,252,205,252"/>
+<area shape="poly" id="edge15_Node000009_Node000007" title=" " alt="" coords="1050,292,989,283,833,269,676,261,417,256,417,251,677,255,833,263,990,277,1051,287"/>
+<area shape="rect" id="Node000010" href="$namespacemultiphase__1d__engine.html#ad72540721ea2ef4651301189e8973481" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="755,292,989,332"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="1048,315,990,315,990,309,1048,309"/>
+<area shape="poly" id="edge10_Node000010_Node000007" title=" " alt="" coords="741,303,465,276,417,270,418,265,466,271,741,298"/>
+<area shape="poly" id="edge11_Node000010_Node000011" title=" " alt="" coords="746,337,700,345,699,340,745,332"/>
+<area shape="rect" id="Node000012" href="$namespacemultiphase__1d__engine.html#a07a7956a7419e82fb8f059cae3ded083" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="487,111,685,166"/>
+<area shape="poly" id="edge13_Node000010_Node000012" title=" " alt="" coords="825,287,631,168,634,164,828,283"/>
+<area shape="poly" id="edge12_Node000011_Node000007" title=" " alt="" coords="503,341,464,326,357,277,359,272,466,322,505,336"/>
+<area shape="poly" id="edge14_Node000012_Node000007" title=" " alt="" coords="500,174,466,188,361,237,359,232,464,183,498,169"/>
+<area shape="poly" id="edge17_Node000013_Node000007" title=" " alt="" coords="768,440,698,441,621,436,541,423,464,397,421,371,384,339,353,305,331,276,335,273,357,302,388,335,424,367,466,392,542,418,621,431,699,436,768,434"/>
+<area shape="rect" id="Node000015" href="$namespacespact.html#a6c29c78215bb5a31cf61db40b5a02c86" title="Allocate and obtain the sparsity patterns of the two types of matricies for (momentum + cty) and for ..." alt="" coords="513,47,659,87"/>
+<area shape="poly" id="edge20_Node000014_Node000015" title=" " alt="" coords="1322,83,659,71,659,65,1322,78"/>
+<area shape="poly" id="edge21_Node000015_Node000007" title=" " alt="" coords="502,86,467,102,425,133,388,170,335,236,331,233,384,166,421,129,464,98,499,82"/>
+<area shape="poly" id="edge23_Node000016_Node000006" title=" " alt="" coords="1316,211,977,202,977,197,1316,205"/>
+<area shape="rect" id="Node000018" href="$namespacemulti__surface__tension.html#ae26cb34b2b50706fd7111f4398270e50" title=" " alt="" coords="1037,127,1271,167"/>
+<area shape="poly" id="edge25_Node000017_Node000018" title=" " alt="" coords="1305,149,1271,149,1271,144,1305,144"/>
+<area shape="poly" id="edge26_Node000018_Node000006" title=" " alt="" coords="1030,172,977,181,977,176,1029,166"/>
+<area shape="rect" id="Node000020" href="$namespaceshape__functions__ndim.html#a7124edf2219f0df3e3bdbfc9148bac65" title=": For quadratic elements: Shape functions associated with volume integration using both CV (CVN) and ..." alt="" coords="2087,120,2255,160"/>
+<area shape="poly" id="edge28_Node000019_Node000020" title=" " alt="" coords="2337,97,2245,123,2243,117,2336,92"/>
+<area shape="rect" id="Node000021" href="$namespaceshape__functions__prototype.html#a55f7da59b552d475085e9ae74e74f875" title="SHAPESV AND RELATED SUBRTS &amp; FUNCTIONS Shape functions associated with volume integration using both ..." alt="" coords="1840,177,2039,217"/>
+<area shape="poly" id="edge32_Node000019_Node000021" title=" " alt="" coords="2326,73,2210,83,2148,94,2088,111,2053,125,2021,143,1967,179,1964,175,2018,138,2051,120,2086,105,2147,89,2209,77,2326,68"/>
+<area shape="rect" id="Node000022" href="$namespacemulti__pipes.html#a491087428ce993ed3948c60741dd21a9" title=" " alt="" coords="2094,5,2247,45"/>
+<area shape="poly" id="edge33_Node000019_Node000022" title=" " alt="" coords="2325,56,2247,42,2248,36,2326,51"/>
+<area shape="poly" id="edge31_Node000020_Node000003" title=" " alt="" coords="2131,170,2040,232,1976,271,1973,267,2037,227,2128,166"/>
+<area shape="poly" id="edge29_Node000020_Node000021" title=" " alt="" coords="2077,166,2021,180,2020,175,2075,161"/>
+<area shape="poly" id="edge30_Node000021_Node000004" title=" " alt="" coords="1826,203,1792,204,1792,199,1826,198"/>
+<area shape="rect" id="Node000023" href="$namespacemultiphase__1d__engine.html#aa1ce62fd9e2240cf8992447180a0152c" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="1597,5,1789,45"/>
+<area shape="poly" id="edge34_Node000022_Node000023" title=" " alt="" coords="2080,28,1789,28,1789,23,2080,23"/>
+<area shape="poly" id="edge35_Node000023_Node000012" title=" " alt="" coords="1583,34,1319,53,970,92,686,128,685,123,969,86,1318,48,1583,29"/>
+<area shape="rect" id="Node000025" href="$namespaceshape__functions__ndim.html#aec7c06f0cf1ffd44899b31601d1c0835" title="This subrt computes shape functions. For now, let&#39;s just define for one element type...." alt="" coords="2592,259,2760,299"/>
+<area shape="poly" id="edge37_Node000024_Node000025" title=" " alt="" coords="3041,312,2929,308,2808,300,2760,294,2760,289,2808,295,2929,303,3041,307"/>
+<area shape="rect" id="Node000026" href="$namespaceshape__functions__ndim.html#abb29324e9e7ed1c60a8ac2d2dbe93b55" title=": this subroutine calculates shape functions sn, snlx, snly, snlz, sufnlx, sufnly,..." alt="" coords="2303,310,2544,365"/>
+<area shape="poly" id="edge38_Node000025_Node000026" title=" " alt="" coords="2579,304,2542,313,2541,307,2578,299"/>
+<area shape="rect" id="Node000028" href="$namespaceshape__functions__ndim.html#a8e1483fa07acac02ed8dcdcd5355f922" title=": Determine the volume shape functions n, nlx, nly, nlz and weights cvweigh for the cv_nloc_cells CV ..." alt="" coords="2339,245,2507,285"/>
+<area shape="poly" id="edge41_Node000025_Node000028" title=" " alt="" coords="2578,276,2507,272,2507,267,2578,271"/>
+<area shape="rect" id="Node000027" href="$namespaceshape__functions__ndim.html#a26392ba54127e829f1661b9f8a2a9d53" title=": Compute shape functions N, UN etc for linear triangles. Shape functions associated with volume inte..." alt="" coords="2087,299,2255,339"/>
+<area shape="poly" id="edge39_Node000026_Node000027" title=" " alt="" coords="2289,330,2255,328,2255,322,2289,325"/>
+<area shape="poly" id="edge40_Node000027_Node000003" title=" " alt="" coords="2072,309,2039,305,2039,299,2073,304"/>
+<area shape="rect" id="Node000029" href="$namespaceshape__functions__ndim.html#a62013afe2af3b6eb9358b519e41313b8" title=": Compute shape functions N, UN etc for linear trianles. Shape functions associated with volume integ..." alt="" coords="2087,235,2255,275"/>
+<area shape="poly" id="edge42_Node000028_Node000029" title=" " alt="" coords="2325,264,2255,261,2255,256,2326,259"/>
+<area shape="poly" id="edge43_Node000029_Node000021" title=" " alt="" coords="2075,234,2020,220,2021,215,2077,229"/>
+<area shape="poly" id="edge53_Node000030_Node000025" title=" " alt="" coords="3041,252,3007,256,2760,276,2760,271,3006,251,3041,247"/>
+<area shape="rect" id="Node000031" href="$namespaceshape__functions__linear__quadratic.html#a0e2b87ea8cbf64e6526d68831575f1d7" title="This subrt. computes the shape functions M and N and their derivatives at the Gauss points for 3D...." alt="" coords="2821,201,2993,241"/>
+<area shape="poly" id="edge45_Node000030_Node000031" title=" " alt="" coords="3040,232,2993,229,2994,224,3041,226"/>
+<area shape="rect" id="Node000032" href="$namespaceshape__functions__ndim.html#ae55e4b96c1fd166b0c386e93ddf53196" title="Get the shape functions on lines (in 2D) and quadrilateral surfaces in 3D." alt="" coords="2592,191,2760,231"/>
+<area shape="poly" id="edge54_Node000030_Node000032" title=" " alt="" coords="3079,212,3044,201,3006,192,2942,186,2877,186,2760,198,2760,192,2877,180,2943,180,3007,187,3045,195,3081,207"/>
+<area shape="poly" id="edge46_Node000031_Node000025" title=" " alt="" coords="2813,247,2758,261,2757,256,2812,242"/>
+<area shape="poly" id="edge47_Node000031_Node000032" title=" " alt="" coords="2807,219,2760,217,2760,212,2807,214"/>
+<area shape="poly" id="edge48_Node000032_Node000026" title=" " alt="" coords="2609,239,2594,249,2579,262,2570,274,2561,287,2545,300,2522,312,2519,308,2543,295,2557,283,2566,271,2575,258,2590,245,2606,235"/>
+<area shape="poly" id="edge52_Node000032_Node000027" title=" " alt="" coords="2578,200,2514,197,2444,200,2372,212,2304,236,2289,247,2280,260,2271,274,2256,289,2235,301,2232,296,2253,285,2267,271,2275,257,2285,243,2301,231,2370,207,2443,195,2514,192,2578,195"/>
+<area shape="poly" id="edge51_Node000032_Node000028" title=" " alt="" coords="2579,234,2508,250,2507,245,2578,229"/>
+<area shape="rect" id="Node000033" href="$namespaceshape__functions__ndim.html#a6aa37d81c26106c0d55a961df42387f0" title=": new 1 or 4 pt quadrature set on each CV of a quadratic tetrahedra ..... Compute shape functions N,..." alt="" coords="2334,115,2513,170"/>
+<area shape="poly" id="edge49_Node000032_Node000033" title=" " alt="" coords="2587,190,2512,169,2514,164,2589,185"/>
+<area shape="poly" id="edge50_Node000033_Node000021" title=" " alt="" coords="2321,165,2255,175,2039,194,2039,189,2254,169,2320,159"/>
 </map>

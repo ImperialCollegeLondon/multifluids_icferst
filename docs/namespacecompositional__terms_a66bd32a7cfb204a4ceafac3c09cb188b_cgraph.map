@@ -1,0 +1,11 @@
+<map id="compositional_terms::calculate_componentabsorptionterm" name="compositional_terms::calculate_componentabsorptionterm">
+<area shape="rect" id="Node000001" title="Calculate compositional model linkage between the phase expressed in COMP_ABSORB. Use values from the..." alt="" coords="5,29,275,69"/>
+<area shape="rect" id="Node000002" href="$namespacecompositional__terms.html#a23481f5d5ce42c14c00cbc93e4a7bfa2" title="Method to flash components." alt="" coords="323,29,481,69"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="275,47,309,47,309,52,275,52"/>
+<area shape="rect" id="Node000003" href="$namespacecompositional__terms.html#ac1d9985f8ba66b85d7ac0905db70ec6a" title="Width: width of the sigmoid function. The sigmoid function, varies between ( LowMag,..." alt="" coords="529,29,688,69"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="482,47,516,47,516,52,482,52"/>
+<area shape="poly" id="edge5_Node000003_Node000003" title=" " alt="" coords="570,30,568,20,574,11,588,5,609,3,633,6,646,13,643,18,631,11,609,8,589,10,577,15,573,21,575,28"/>
+<area shape="rect" id="Node000004" href="$namespacecompositional__terms.html#a221de77cdfcebf8981dbb91811e30c38" title=" " alt="" coords="736,29,895,69"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="688,47,722,47,722,52,688,52"/>
+<area shape="poly" id="edge4_Node000004_Node000004" title=" " alt="" coords="777,30,774,20,781,11,794,5,815,3,839,6,853,13,850,18,838,11,815,8,796,10,784,15,780,21,782,28"/>
+</map>

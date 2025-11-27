@@ -1,0 +1,41 @@
+<map id="shape_functions_ndim::spectr" name="shape_functions_ndim::spectr">
+<area shape="rect" id="Node000001" title="This subroutine defines a spectal element. IPOLY defines the element type and IQADRA the quadrature...." alt="" coords="5,157,173,197"/>
+<area shape="rect" id="Node000002" href="$namespaceshape__functions__ndim.html#aa7ca46dac1dcb83ef26c8e6df107fcee" title="This sub returns the weights WEIT the quadrature points QUAPOS and the node points NODPOS...." alt="" coords="221,69,389,109"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="139,155,242,112,244,117,141,160"/>
+<area shape="rect" id="Node000011" href="$namespaceshape__functions__ndim.html#ae9720d3b264e23823f256b5caf38dfd4" title="INOD contains the node at which the polynomial is associated with LXGP is the position at which the p..." alt="" coords="221,201,389,241"/>
+<area shape="poly" id="edge13_Node000001_Node000011" title=" " alt="" coords="174,192,208,199,207,204,173,197"/>
+<area shape="rect" id="Node000003" href="$namespaceshape__functions__ndim.html#abe4fc0f01320224bdcfcec2286ca4743" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 67 of:Spectral M..." alt="" coords="437,5,605,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="373,67,439,47,441,52,374,72"/>
+<area shape="rect" id="Node000004" href="$namespaceshape__functions__ndim.html#ac66645e724d9bc919ccb6dd89f3c2ecb" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 69 of:Spectral M..." alt="" coords="437,69,605,109"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="390,87,424,87,424,92,390,92"/>
+<area shape="rect" id="Node000005" href="$namespaceshape__functions__ndim.html#abaa8d6b19f2862d28efa5e91879477b1" title="This sub works out the Gauss&#45;Lobatto&#45;Legendre roots." alt="" coords="653,25,821,65"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="605,70,639,63,640,68,606,75"/>
+<area shape="rect" id="Node000008" href="$namespaceshape__functions__ndim.html#a95cc3420379fc5938487345745d5ef9e" title=" " alt="" coords="653,113,821,153"/>
+<area shape="poly" id="edge7_Node000004_Node000008" title=" " alt="" coords="606,104,640,111,639,116,605,109"/>
+<area shape="rect" id="Node000006" href="$namespaceshape__functions__ndim.html#a5f7505362f3f3ab14bf74c6f351e454c" title="COMPUTES THE GAUSS&#45;LOBATTO COLLOCATION POINTS FOR JACOBI POLYNOMIALS." alt="" coords="869,25,1037,65"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="822,43,856,43,856,48,822,48"/>
+<area shape="rect" id="Node000007" href="$namespaceshape__functions__ndim.html#a46b31cb5442a65a67616261565e9303e" title="COMPUTES THE JACOBI POLYNOMIAL (POLY) AND ITS DERIVATIVE (PDER) OF DEGREE N AT X." alt="" coords="1085,25,1253,65"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="1038,43,1072,43,1072,48,1038,48"/>
+<area shape="poly" id="edge12_Node000008_Node000008" title=" " alt="" coords="697,114,694,104,701,94,715,89,737,87,763,90,776,97,774,102,761,95,737,92,717,94,704,99,700,105,702,112"/>
+<area shape="rect" id="Node000009" href="$namespaceshape__functions__ndim.html#aa95b9f21f21fa18e757743b84004b83e" title="Calculate binomial coefficients." alt="" coords="869,121,1037,161"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="822,134,856,135,855,140,822,139"/>
+<area shape="poly" id="edge9_Node000009_Node000009" title=" " alt="" coords="913,122,910,112,917,102,931,97,953,95,979,98,992,105,990,110,977,103,953,100,933,102,920,107,916,113,918,120"/>
+<area shape="rect" id="Node000010" href="$namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title="Calculate n!" alt="" coords="1085,141,1253,181"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="1038,146,1072,150,1071,155,1038,152"/>
+<area shape="poly" id="edge11_Node000010_Node000010" title=" " alt="" coords="1129,142,1126,132,1133,122,1147,117,1169,115,1195,118,1208,125,1206,130,1193,123,1169,120,1149,122,1136,127,1132,133,1134,140"/>
+<area shape="poly" id="edge24_Node000011_Node000011" title=" " alt="" coords="265,202,262,192,269,182,283,177,305,175,331,178,344,185,342,190,329,183,305,180,285,182,272,187,268,193,270,200"/>
+<area shape="rect" id="Node000012" href="$namespaceshape__functions__ndim.html#a71cea7d9f22da5d924a68462c687ae9d" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="437,157,605,197"/>
+<area shape="poly" id="edge14_Node000011_Node000012" title=" " alt="" coords="389,202,423,195,424,200,390,207"/>
+<area shape="rect" id="Node000014" href="$namespaceshape__functions__ndim.html#acf33cbc8a1239c35cd2afbda096c37c0" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="437,245,605,285"/>
+<area shape="poly" id="edge19_Node000011_Node000014" title=" " alt="" coords="390,236,424,243,423,248,389,241"/>
+<area shape="rect" id="Node000015" href="$namespaceshape__functions__ndim.html#afa12b5126ba568c53b52f7ef59c894f7" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="437,333,605,373"/>
+<area shape="poly" id="edge22_Node000011_Node000015" title=" " alt="" coords="340,239,478,324,475,328,338,244"/>
+<area shape="poly" id="edge15_Node000012_Node000012" title=" " alt="" coords="481,158,478,148,485,138,499,133,521,131,547,134,560,141,558,146,545,139,521,136,501,138,488,143,484,149,486,156"/>
+<area shape="rect" id="Node000013" href="$namespaceshape__functions__ndim.html#ab898937c02e667f5b92b30a898d36263" title="If DIFF then return the n&#39;th Chebyshef polynomial differentiated w.r.t x. If DIFF2 then form the 2&#39;nd..." alt="" coords="653,201,821,241"/>
+<area shape="poly" id="edge16_Node000012_Node000013" title=" " alt="" coords="606,192,640,199,639,204,605,197"/>
+<area shape="poly" id="edge17_Node000013_Node000010" title=" " alt="" coords="821,207,1072,172,1072,177,822,212"/>
+<area shape="poly" id="edge18_Node000013_Node000013" title=" " alt="" coords="697,202,694,192,701,182,715,177,737,175,763,178,776,185,774,190,761,183,737,180,717,182,704,187,700,193,702,200"/>
+<area shape="poly" id="edge21_Node000014_Node000013" title=" " alt="" coords="605,246,639,239,640,244,606,251"/>
+<area shape="poly" id="edge20_Node000014_Node000014" title=" " alt="" coords="481,246,478,236,485,226,499,221,521,219,547,222,560,229,558,234,545,227,521,224,501,226,488,231,484,237,486,244"/>
+<area shape="poly" id="edge23_Node000015_Node000015" title=" " alt="" coords="481,334,478,324,485,314,499,309,521,307,547,310,560,317,558,322,545,315,521,312,501,314,488,319,484,325,486,332"/>
+</map>

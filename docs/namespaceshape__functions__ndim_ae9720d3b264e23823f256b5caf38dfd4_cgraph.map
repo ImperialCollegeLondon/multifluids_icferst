@@ -1,0 +1,20 @@
+<map id="shape_functions_ndim::specfu" name="shape_functions_ndim::specfu">
+<area shape="rect" id="Node000001" title="INOD contains the node at which the polynomial is associated with LXGP is the position at which the p..." alt="" coords="5,117,173,157"/>
+<area shape="poly" id="edge12_Node000001_Node000001" title=" " alt="" coords="49,118,46,108,53,98,67,93,89,91,115,94,128,101,126,106,113,99,89,96,69,98,56,103,52,109,54,116"/>
+<area shape="rect" id="Node000002" href="$namespaceshape__functions__ndim.html#a71cea7d9f22da5d924a68462c687ae9d" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="221,29,389,69"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="135,115,220,79,238,72,240,77,222,84,137,120"/>
+<area shape="rect" id="Node000005" href="$namespaceshape__functions__ndim.html#acf33cbc8a1239c35cd2afbda096c37c0" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="221,117,389,157"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="174,135,208,135,208,140,174,140"/>
+<area shape="rect" id="Node000006" href="$namespaceshape__functions__ndim.html#afa12b5126ba568c53b52f7ef59c894f7" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="221,205,389,245"/>
+<area shape="poly" id="edge10_Node000001_Node000006" title=" " alt="" coords="141,155,244,198,242,202,139,160"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="265,30,262,20,269,10,283,5,305,3,331,6,344,13,342,18,329,11,305,8,285,10,272,15,268,21,270,28"/>
+<area shape="rect" id="Node000003" href="$namespaceshape__functions__ndim.html#ab898937c02e667f5b92b30a898d36263" title="If DIFF then return the n&#39;th Chebyshef polynomial differentiated w.r.t x. If DIFF2 then form the 2&#39;nd..." alt="" coords="437,73,605,113"/>
+<area shape="poly" id="edge3_Node000002_Node000003" title=" " alt="" coords="390,64,424,71,423,76,389,69"/>
+<area shape="poly" id="edge6_Node000003_Node000003" title=" " alt="" coords="481,74,478,64,485,54,499,49,521,47,547,50,560,57,558,62,545,55,521,52,501,54,488,59,484,65,486,72"/>
+<area shape="rect" id="Node000004" href="$namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title="Calculate n!" alt="" coords="653,73,821,113"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="606,91,640,91,640,96,606,96"/>
+<area shape="poly" id="edge5_Node000004_Node000004" title=" " alt="" coords="697,74,694,64,701,54,715,49,737,47,763,50,776,57,774,62,761,55,737,52,717,54,704,59,700,65,702,72"/>
+<area shape="poly" id="edge9_Node000005_Node000003" title=" " alt="" coords="389,118,423,111,424,116,390,123"/>
+<area shape="poly" id="edge8_Node000005_Node000005" title=" " alt="" coords="265,118,262,108,269,98,283,93,305,91,331,94,344,101,342,106,329,99,305,96,285,98,272,103,268,109,270,116"/>
+<area shape="poly" id="edge11_Node000006_Node000006" title=" " alt="" coords="265,206,262,196,269,186,283,181,305,179,331,182,344,189,342,194,329,187,305,184,285,186,272,191,268,197,270,204"/>
+</map>

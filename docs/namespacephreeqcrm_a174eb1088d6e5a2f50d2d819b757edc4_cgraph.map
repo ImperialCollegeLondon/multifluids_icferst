@@ -1,4 +1,7 @@
 <map id="phreeqcrm::rm_setsaturation" name="phreeqcrm::rm_setsaturation">
-<area shape="rect" id="node1" title="Set the saturation of each reaction cell. Saturation is a fraction ranging from 0 to 1...." alt="" coords="5,5,216,32"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="264,5,423,32"/>
+<area shape="rect" id="Node000001" title="Set the saturation of each reaction cell. Saturation is a fraction ranging from 0 to 1...." alt="" coords="5,29,216,55"/>
+<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="73,31,65,21,69,11,85,5,111,3,143,7,156,16,152,20,141,11,111,8,86,10,73,15,70,20,77,27"/>
+<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="264,29,423,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="216,39,250,39,250,45,216,45"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="306,31,297,21,302,11,317,5,343,3,376,7,388,16,385,20,374,11,343,8,318,10,305,15,303,20,310,27"/>
 </map>

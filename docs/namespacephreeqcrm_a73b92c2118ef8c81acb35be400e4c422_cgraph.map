@@ -1,0 +1,4 @@
+<map id="phreeqcrm::rm_setcomponenth2o" name="phreeqcrm::rm_setcomponenth2o">
+<area shape="rect" id="Node000001" title="Select whether to include H2O in the component list. The concentrations of H and O must be known accu..." alt="" coords="5,29,248,55"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="87,31,79,21,83,11,100,5,127,3,161,7,171,11,174,17,170,20,167,15,160,12,127,8,101,10,87,15,84,20,91,27"/>
+</map>

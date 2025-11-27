@@ -1,0 +1,21 @@
+<map id="matrix_operations::color_get_cmc_pha" name="matrix_operations::color_get_cmc_pha">
+<area shape="rect" id="Node000001" title=":Initialize the momentum equation (CMC) and introduces the corresponding values in it...." alt="" coords="5,261,155,301"/>
+<area shape="rect" id="Node000002" href="$namespacematrix__operations.html#ad5ad0554a749a06b326c31623a4cdcc5" title=": CDP=C*DP" alt="" coords="225,5,375,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="84,260,98,217,122,162,156,105,177,79,201,55,212,47,215,52,204,59,181,82,160,108,127,165,103,219,89,262"/>
+<area shape="rect" id="Node000003" href="$namespacematrix__operations.html#a7a02a088a4fedcbf140c8c428b584b66" title=": CDP=C*DP" alt="" coords="225,69,375,109"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="89,260,132,191,164,153,201,119,212,112,215,117,204,123,167,156,136,194,94,262"/>
+<area shape="rect" id="Node000004" href="$namespacematrix__operations.html#aba1d615598280851aec4b9961a6143f0" title=": CV_RHS=CT*U" alt="" coords="225,133,375,173"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="100,259,145,221,201,183,215,176,217,181,204,188,148,225,104,263"/>
+<area shape="rect" id="Node000005" href="$namespacematrix__operations.html#a8e27b198056337c9ff000718b6e2e77d" title=": CV_RHS = CT * U" alt="" coords="225,197,375,237"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="149,259,217,239,219,244,150,264"/>
+<area shape="rect" id="Node000006" href="$namespacematrix__operations.html#afe397f5c92b62f5550f1493f14562b05" title=": DP = (C)^T U_LONG" alt="" coords="225,261,375,301"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="155,279,212,279,212,284,155,284"/>
+<area shape="rect" id="Node000007" href="$namespacematrix__operations.html#a5fdaa9ae7a0f2532c6c479c438c7d36a" title=": DP = (C)^T U_LONG" alt="" coords="218,325,382,365"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="150,299,219,319,217,324,149,304"/>
+<area shape="rect" id="Node000008" href="$namespacematrix__operations.html#ac9a34a5cd75791df761b847d2af5769b" title=": performs U = BLOCK_MAT * CDP, where block_mat" alt="" coords="225,389,375,429"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="104,299,148,337,204,375,217,382,215,386,201,380,145,342,100,304"/>
+<area shape="rect" id="Node000009" href="$namespacematrix__operations.html#a92f524ff8ca23ddea122d1ff961488df" title=": U = BLOCK_MAT * CDP The difference with PHA_BLOCK_MAT_VEC_MANY is that the input CDP is overwritten..." alt="" coords="203,454,397,509"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="94,300,137,368,168,406,204,439,212,445,209,449,201,443,164,409,133,371,90,303"/>
+<area shape="rect" id="Node000010" href="$namespacematrix__operations.html#a6e3a1b2176e5597faf4f9b7a042e6e7b" title=" " alt="" coords="225,533,375,573"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="89,301,102,345,125,404,159,465,180,493,204,518,215,526,212,530,201,522,176,497,154,468,120,406,97,347,84,302"/>
+</map>

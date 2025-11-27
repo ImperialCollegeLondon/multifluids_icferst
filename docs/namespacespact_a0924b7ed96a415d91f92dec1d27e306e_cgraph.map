@@ -1,4 +1,5 @@
 <map id="spact::check_sparsity" name="spact::check_sparsity">
-<area shape="rect" id="node1" title=" " alt="" coords="5,5,168,32"/>
-<area shape="rect" id="node2" href="$namespacespact.html#a5f2181b54a6a764030dc7d10bf49dd4f" title=" " alt="" coords="216,5,371,32"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,5,168,31"/>
+<area shape="rect" id="Node000002" href="$namespacespact.html#a5f2181b54a6a764030dc7d10bf49dd4f" title=" " alt="" coords="216,5,371,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="168,15,202,15,202,21,168,21"/>
 </map>

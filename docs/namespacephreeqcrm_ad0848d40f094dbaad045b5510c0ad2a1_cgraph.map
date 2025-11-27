@@ -1,5 +1,10 @@
 <map id="phreeqcrm::rm_getselectedoutput" name="phreeqcrm::rm_getselectedoutput">
-<area shape="rect" id="node1" title="Populates an array with values from the current selected&#45;output definition. RM_SetCurrentSelectedOutp..." alt="" coords="5,31,248,57"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="380,5,539,32"/>
-<area shape="rect" id="node3" href="$namespacephreeqcrm.html#a47ecefc0c413cf4ac1dccc576cbb5426" title="Returns the number of columns in the current selected&#45;output definition. RM_SetCurrentSelectedOutputU..." alt="" coords="296,56,623,83"/>
+<area shape="rect" id="Node000001" title="Populates an array with values from the current selected&#45;output definition. RM_SetCurrentSelectedOutp..." alt="" coords="5,67,248,92"/>
+<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="74,69,62,58,68,48,90,42,127,40,176,45,188,50,191,57,186,59,184,54,174,50,127,45,91,47,71,52,68,58,77,64"/>
+<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="380,29,539,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="240,64,366,50,367,55,240,69"/>
+<area shape="rect" id="Node000003" href="$namespacephreeqcrm.html#a47ecefc0c413cf4ac1dccc576cbb5426" title="Returns the number of columns in the current selected&#45;output definition. RM_SetCurrentSelectedOutputU..." alt="" coords="296,103,623,128"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="245,89,328,99,328,104,244,95"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="407,31,395,21,401,11,423,5,459,3,508,7,521,13,524,20,519,22,517,17,507,12,459,8,424,10,404,15,400,20,410,27"/>
+<area shape="poly" id="edge5_Node000003_Node000003" title=" " alt="" coords="407,105,395,94,401,84,423,78,459,76,508,81,521,86,524,93,519,95,517,90,507,86,459,81,424,83,404,88,400,94,410,100"/>
 </map>

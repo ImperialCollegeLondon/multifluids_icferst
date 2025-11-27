@@ -1,4 +1,7 @@
 <map id="phreeqcrm::rm_setporosity" name="phreeqcrm::rm_setporosity">
-<area shape="rect" id="node1" title="Set the porosity for each reaction cell. The volume of water in a reaction cell is the product of the..." alt="" coords="5,5,204,32"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="252,5,411,32"/>
+<area shape="rect" id="Node000001" title="Set the porosity for each reaction cell. The volume of water in a reaction cell is the product of the..." alt="" coords="5,29,204,55"/>
+<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="68,31,60,21,64,11,79,5,105,3,137,7,149,16,145,20,135,11,105,8,80,10,68,15,65,20,72,27"/>
+<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="252,29,411,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="204,39,238,39,238,45,204,45"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="294,31,286,21,291,11,306,5,331,3,363,7,375,16,372,20,361,11,331,8,307,10,294,15,292,20,298,27"/>
 </map>

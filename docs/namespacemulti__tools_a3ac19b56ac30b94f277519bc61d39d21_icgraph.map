@@ -1,9 +1,15 @@
 <map id="multi_tools::quicksort" name="multi_tools::quicksort">
-<area shape="rect" id="node1" title=":Sort a list in increasing order Vec is the vector to sort and n is an starting point,..." alt="" coords="880,35,1043,61"/>
-<area shape="rect" id="node2" href="$namespacespact.html#aaa6676a57a39f977170aba9c14e142d9" title=" " alt="" coords="667,5,825,32"/>
-<area shape="rect" id="node7" href="$namespacesparsity__nd.html#ae461c112b56d8320a70df9e84a8e3cd9" title="Form the sparsity of the phase coupled DG discretised matrix from the element&#45;wise multi&#45;phase sparsi..." alt="" coords="660,57,832,98"/>
-<area shape="rect" id="node3" href="$namespacespact.html#aeaf3853765a92827bf24c599fe79364e" title="Allocate and obtain the sparsity patterns of the two types of matricies for (momentum + cty) and for ..." alt="" coords="467,27,612,69"/>
-<area shape="rect" id="node4" href="$_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
-<area shape="rect" id="node5" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
-<area shape="rect" id="node6" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
+<area shape="rect" id="Node000001" title=":Sort a list in increasing order Vec is the vector to sort and n is an starting point,..." alt="" coords="879,35,1041,60"/>
+<area shape="poly" id="edge7_Node000001_Node000001" title=" " alt="" coords="998,25,988,17,960,13,937,15,925,20,923,26,929,33,925,36,918,26,921,16,936,10,960,8,990,12,1001,21"/>
+<area shape="rect" id="Node000002" href="$namespacespact.html#aaa6676a57a39f977170aba9c14e142d9" title=" " alt="" coords="665,5,824,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="864,37,824,31,824,26,865,32"/>
+<area shape="rect" id="Node000006" href="$namespacesparsity__nd.html#ae461c112b56d8320a70df9e84a8e3cd9" title="Form the sparsity of the phase coupled DG discretised matrix from the element&#45;wise multi&#45;phase sparsi..." alt="" coords="659,55,831,95"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="865,62,831,67,830,62,865,57"/>
+<area shape="rect" id="Node000003" href="$namespacespact.html#a6c29c78215bb5a31cf61db40b5a02c86" title="Allocate and obtain the sparsity patterns of the two types of matricies for (momentum + cty) and for ..." alt="" coords="465,27,611,67"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="652,34,611,40,611,34,651,29"/>
+<area shape="rect" id="Node000004" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,27,417,67"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="451,50,417,50,417,45,451,45"/>
+<area shape="rect" id="Node000005" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,27,171,67"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="205,50,171,50,171,45,205,45"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="645,65,611,60,612,55,646,59"/>
 </map>

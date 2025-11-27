@@ -1,0 +1,22 @@
+<map id="shape_functions_ndim::gtroot" name="shape_functions_ndim::gtroot">
+<area shape="rect" id="Node000001" title="This sub returns the weights WEIT the quadrature points QUAPOS and the node points NODPOS...." alt="" coords="5,37,173,77"/>
+<area shape="rect" id="Node000002" href="$namespaceshape__functions__ndim.html#abe4fc0f01320224bdcfcec2286ca4743" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 67 of:Spectral M..." alt="" coords="221,5,389,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="173,42,207,37,208,42,174,48"/>
+<area shape="rect" id="Node000003" href="$namespaceshape__functions__ndim.html#ac66645e724d9bc919ccb6dd89f3c2ecb" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 69 of:Spectral M..." alt="" coords="221,69,389,109"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="174,67,208,72,207,78,173,72"/>
+<area shape="rect" id="Node000004" href="$namespaceshape__functions__ndim.html#abaa8d6b19f2862d28efa5e91879477b1" title="This sub works out the Gauss&#45;Lobatto&#45;Legendre roots." alt="" coords="437,25,605,65"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="389,70,423,63,424,68,390,75"/>
+<area shape="rect" id="Node000007" href="$namespaceshape__functions__ndim.html#a95cc3420379fc5938487345745d5ef9e" title=" " alt="" coords="437,113,605,153"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="390,104,424,111,423,116,389,109"/>
+<area shape="rect" id="Node000005" href="$namespaceshape__functions__ndim.html#a5f7505362f3f3ab14bf74c6f351e454c" title="COMPUTES THE GAUSS&#45;LOBATTO COLLOCATION POINTS FOR JACOBI POLYNOMIALS." alt="" coords="653,25,821,65"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="606,43,640,43,640,48,606,48"/>
+<area shape="rect" id="Node000006" href="$namespaceshape__functions__ndim.html#a46b31cb5442a65a67616261565e9303e" title="COMPUTES THE JACOBI POLYNOMIAL (POLY) AND ITS DERIVATIVE (PDER) OF DEGREE N AT X." alt="" coords="869,25,1037,65"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="822,43,856,43,856,48,822,48"/>
+<area shape="poly" id="edge11_Node000007_Node000007" title=" " alt="" coords="481,114,478,104,485,94,499,89,521,87,547,90,560,97,558,102,545,95,521,92,501,94,488,99,484,105,486,112"/>
+<area shape="rect" id="Node000008" href="$namespaceshape__functions__ndim.html#aa95b9f21f21fa18e757743b84004b83e" title="Calculate binomial coefficients." alt="" coords="653,113,821,153"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="606,131,640,131,640,136,606,136"/>
+<area shape="poly" id="edge8_Node000008_Node000008" title=" " alt="" coords="697,114,694,104,701,94,715,89,737,87,763,90,776,97,774,102,761,95,737,92,717,94,704,99,700,105,702,112"/>
+<area shape="rect" id="Node000009" href="$namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title="Calculate n!" alt="" coords="869,113,1037,153"/>
+<area shape="poly" id="edge9_Node000008_Node000009" title=" " alt="" coords="822,131,856,131,856,136,822,136"/>
+<area shape="poly" id="edge10_Node000009_Node000009" title=" " alt="" coords="913,114,910,104,917,94,931,89,953,87,979,90,992,97,990,102,977,95,953,92,933,94,920,99,916,105,918,112"/>
+</map>

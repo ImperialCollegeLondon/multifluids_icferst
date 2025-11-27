@@ -1,0 +1,6 @@
+<map id="multiphase_eos::get_relperm" name="multiphase_eos::get_relperm">
+<area shape="rect" id="Node000001" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="5,29,160,69"/>
+<area shape="rect" id="Node000002" href="$namespacemultiphase__eos.html#ae38ba08b6363798b651a669f506ed944" title=": Computes normalised saturation for Land trapping with tabulated relperm" alt="" coords="208,29,399,69"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="160,47,194,47,194,52,160,52"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="262,30,260,20,266,10,281,5,303,3,329,6,343,13,340,18,327,11,303,8,282,10,270,15,265,21,267,28"/>
+</map>

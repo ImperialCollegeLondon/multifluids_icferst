@@ -1,0 +1,9 @@
+<map id="cv_advection::dg_derivs_all::dg_derivs_all2" name="cv_advection::dg_derivs_all::dg_derivs_all2">
+<area shape="rect" id="Node000001" title="Computes the derivatives of vector fields." alt="" coords="5,35,184,75"/>
+<area shape="rect" id="Node000002" href="$namespaceshape__functions__ndim.html#aa410dcc1343d2637dd6b67e9778c157c" title=" " alt="" coords="249,5,417,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="184,41,235,35,236,40,185,46"/>
+<area shape="rect" id="Node000004" href="$namespacecv__advection.html#adf4f6cf3db5049a9a7f73a113bea3921" title="Form approximate surface normal (NORMX,NORMY,NORMZ)" alt="" coords="232,70,435,95"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="185,62,219,67,218,72,184,68"/>
+<area shape="rect" id="Node000003" href="$namespaceshape__functions__ndim.html#aee06170a27bb4dab883f8ef10ff1cba8" title="Calculate the normal at the Gauss pts Perform x&#45;product. N=T1 x T2." alt="" coords="483,5,651,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="418,23,469,23,469,28,418,28"/>
+</map>

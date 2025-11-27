@@ -1,10 +1,25 @@
 <map id="phreeqcrm::rm_getspeciescount" name="phreeqcrm::rm_getspeciescount">
-<area shape="rect" id="node1" title="The number of aqueous species used in the reaction module. This method is intended for use with multi..." alt="" coords="420,157,651,184"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#affc2fce2c476d9efb90f20ab1504ff7b" title="Transfer concentrations of aqueous species to the array argument (species_conc) This method is intend..." alt="" coords="43,5,334,32"/>
-<area shape="rect" id="node3" href="$namespacephreeqcrm.html#a50ea93bee80f45de30a0c2d98604bbaf" title="Transfers diffusion coefficients at 25C to the array argument (diffc). This method is intended for us..." alt="" coords="79,56,298,83"/>
-<area shape="rect" id="node4" href="$namespacephreeqcrm.html#a833f1032511af34b73a6a44b8a413e57" title="Transfer log10 aqueous&#45;species activity coefficients to the array argument (species_log10gammas) This..." alt="" coords="45,107,333,133"/>
-<area shape="rect" id="node5" href="$namespacephreeqcrm.html#a351993b2b168f1131d0ba292336091a6" title="Transfer log10 aqueous&#45;species log10 molalities to the array argument (species_log10molalities) To us..." alt="" coords="41,157,337,184"/>
-<area shape="rect" id="node6" href="$namespacephreeqcrm.html#a412fcc30015d6930fad155ad552e3566" title="Transfers the charge of each aqueous species to the array argument (z). This method is intended for u..." alt="" coords="87,208,290,235"/>
-<area shape="rect" id="node7" href="$namespacephreeqcrm.html#a3a6b64040e8435bd9bbaa871d703a4ba" title="Fills an array (bc_conc) with aqueous species concentrations from solutions in the InitialPhreeqc ins..." alt="" coords="5,259,372,285"/>
-<area shape="rect" id="node8" href="$namespacephreeqcrm.html#a175641b24fc5ac336ef91114f134b799" title="Set solution concentrations in the reaction cells based on the vector of aqueous species concentratio..." alt="" coords="25,309,352,336"/>
+<area shape="rect" id="Node000001" title="The number of aqueous species used in the reaction module. This method is intended for use with multi..." alt="" coords="420,249,651,275"/>
+<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="597,242,596,237,586,233,535,228,498,230,477,235,473,240,484,247,480,251,468,241,474,231,497,225,535,223,588,227,600,233,602,240"/>
+<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#affc2fce2c476d9efb90f20ab1504ff7b" title="Transfer concentrations of aqueous species to the array argument (species_conc) This method is intend..." alt="" coords="43,29,334,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="519,238,496,199,463,152,421,106,397,85,371,68,333,53,335,48,373,64,400,81,425,102,467,149,501,196,524,235"/>
+<area shape="rect" id="Node000003" href="$namespacephreeqcrm.html#a50ea93bee80f45de30a0c2d98604bbaf" title="Transfers diffusion coefficients at 25C to the array argument (diffc). This method is intended for us..." alt="" coords="79,103,298,128"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="511,242,451,190,413,163,371,142,335,130,298,123,299,118,336,125,373,137,415,159,454,186,514,238"/>
+<area shape="rect" id="Node000004" href="$namespacephreeqcrm.html#a833f1032511af34b73a6a44b8a413e57" title="Transfer log10 aqueous&#45;species activity coefficients to the array argument (species_log10gammas) This..." alt="" coords="45,176,333,201"/>
+<area shape="poly" id="edge6_Node000001_Node000004" title=" " alt="" coords="485,247,371,215,308,204,308,199,373,210,486,242"/>
+<area shape="rect" id="Node000005" href="$namespacephreeqcrm.html#a351993b2b168f1131d0ba292336091a6" title="Transfer log10 aqueous&#45;species log10 molalities to the array argument (species_log10molalities) To us..." alt="" coords="41,249,337,275"/>
+<area shape="poly" id="edge8_Node000001_Node000005" title=" " alt="" coords="406,265,337,265,337,259,406,259"/>
+<area shape="rect" id="Node000006" href="$namespacephreeqcrm.html#a412fcc30015d6930fad155ad552e3566" title="Transfers the charge of each aqueous species to the array argument (z). This method is intended for u..." alt="" coords="87,323,290,348"/>
+<area shape="poly" id="edge10_Node000001_Node000006" title=" " alt="" coords="462,280,251,325,249,320,461,275"/>
+<area shape="rect" id="Node000007" href="$namespacephreeqcrm.html#a3a6b64040e8435bd9bbaa871d703a4ba" title="Fills an array (bc_conc) with aqueous species concentrations from solutions in the InitialPhreeqc ins..." alt="" coords="5,396,372,421"/>
+<area shape="poly" id="edge12_Node000001_Node000007" title=" " alt="" coords="507,285,447,323,373,362,313,383,254,399,253,393,311,378,371,357,444,319,504,280"/>
+<area shape="rect" id="Node000008" href="$namespacephreeqcrm.html#a175641b24fc5ac336ef91114f134b799" title="Set solution concentrations in the reaction cells based on the vector of aqueous species concentratio..." alt="" coords="25,469,352,495"/>
+<area shape="poly" id="edge14_Node000001_Node000008" title=" " alt="" coords="520,288,461,361,420,401,373,435,325,457,275,472,273,467,323,452,371,430,416,397,457,357,516,285"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="251,22,249,17,239,13,189,8,151,10,131,15,127,20,137,27,134,31,121,21,128,11,150,5,189,3,241,7,253,13,256,20"/>
+<area shape="poly" id="edge5_Node000003_Node000003" title=" " alt="" coords="251,95,249,90,239,86,189,81,151,83,131,88,127,94,137,100,134,105,121,94,128,84,150,78,189,76,241,81,253,87,256,94"/>
+<area shape="poly" id="edge7_Node000004_Node000004" title=" " alt="" coords="251,169,249,163,239,159,189,155,151,157,131,162,127,167,137,174,134,178,121,168,128,157,150,151,189,149,241,154,253,160,256,167"/>
+<area shape="poly" id="edge9_Node000005_Node000005" title=" " alt="" coords="251,242,249,237,239,233,189,228,151,230,131,235,127,240,137,247,134,251,121,241,128,231,150,225,189,223,241,227,253,233,256,240"/>
+<area shape="poly" id="edge11_Node000006_Node000006" title=" " alt="" coords="251,315,249,310,239,306,189,301,151,303,131,308,127,314,137,320,134,325,121,314,128,304,150,298,189,296,241,301,253,307,256,314"/>
+<area shape="poly" id="edge13_Node000007_Node000007" title=" " alt="" coords="251,389,249,383,239,379,189,375,151,377,131,382,127,387,137,394,134,398,121,388,128,377,150,371,189,369,241,374,253,380,256,387"/>
+<area shape="poly" id="edge15_Node000008_Node000008" title=" " alt="" coords="251,462,249,457,239,453,189,448,151,450,131,455,127,460,137,467,134,471,121,461,128,451,150,445,189,443,241,447,253,453,256,460"/>
 </map>

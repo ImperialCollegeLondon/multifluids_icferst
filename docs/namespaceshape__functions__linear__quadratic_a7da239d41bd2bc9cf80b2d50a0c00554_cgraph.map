@@ -1,5 +1,8 @@
 <map id="shape_functions_linear_quadratic::re2dn4" name="shape_functions_linear_quadratic::re2dn4">
-<area shape="rect" id="node1" title="at the Gauss points. NB: We may need to define surface elements for p and (u,v,w)" alt="" coords="5,5,177,47"/>
-<area shape="rect" id="node2" href="$namespaceshape__functions__linear__quadratic.html#a982b5a9f569eae9dc2b8382a0550bc2b" title="This computes the weight and points for standard Gaussian quadrature. If (GETNDP == T) then get the p..." alt="" coords="225,5,397,47"/>
-<area shape="rect" id="node3" href="$namespaceshape__functions__linear__quadratic.html#a102a858f9d79b84fa942c1d56730dab5" title="If WEIGHT is TRUE in function RGPTWE then return the Gauss&#45;pt weight else return the Gauss&#45;pt...." alt="" coords="445,5,617,47"/>
+<area shape="rect" id="Node000001" title="at the Gauss points. NB: We may need to define surface elements for p and (u,v,w)" alt="" coords="5,29,177,69"/>
+<area shape="rect" id="Node000002" href="$namespaceshape__functions__linear__quadratic.html#a982b5a9f569eae9dc2b8382a0550bc2b" title="This computes the weight and points for standard Gaussian quadrature. If (GETNDP == T) then get the p..." alt="" coords="225,29,397,69"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="178,47,212,47,212,52,178,52"/>
+<area shape="rect" id="Node000003" href="$namespaceshape__functions__linear__quadratic.html#a80503151b92134e8bc4261178968a508" title="If WEIGHT is TRUE in function RGPTWE then return the Gauss&#45;pt weight else return the Gauss&#45;pt...." alt="" coords="445,29,617,69"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="398,47,432,47,432,52,398,52"/>
+<area shape="poly" id="edge3_Node000003_Node000003" title=" " alt="" coords="490,30,488,20,494,10,509,5,531,3,557,6,571,13,568,18,555,11,531,8,510,10,498,15,493,21,495,28"/>
 </map>

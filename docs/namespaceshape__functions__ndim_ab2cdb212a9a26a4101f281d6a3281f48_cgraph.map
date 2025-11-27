@@ -1,5 +1,7 @@
 <map id="shape_functions_ndim::make_bilinear_hexahedra" name="shape_functions_ndim::make_bilinear_hexahedra">
-<area shape="rect" id="node1" title=" " alt="" coords="5,43,204,84"/>
-<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#a29ad83f0f46784a98dfe1604e624eb53" title=" " alt="" coords="252,5,481,47"/>
-<area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#acc329705b056aef8e675c19d3d92e3fb" title=" " alt="" coords="279,71,454,127"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,41,204,81"/>
+<area shape="rect" id="Node000002" href="$namespaceshape__functions__ndim.html#a29ad83f0f46784a98dfe1604e624eb53" title=" " alt="" coords="252,5,481,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="204,45,238,40,239,46,204,50"/>
+<area shape="rect" id="Node000003" href="$namespaceshape__functions__ndim.html#acc329705b056aef8e675c19d3d92e3fb" title=" " alt="" coords="279,70,454,125"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="204,72,266,81,265,86,204,78"/>
 </map>

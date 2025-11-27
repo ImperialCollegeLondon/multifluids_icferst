@@ -1,4 +1,7 @@
 <map id="phreeqcrm::rm_setconcentrations" name="phreeqcrm::rm_setconcentrations">
-<area shape="rect" id="node1" title="Use the vector of concentrations (c) to set the moles of components in each reaction cell...." alt="" coords="5,5,247,32"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="295,5,453,32"/>
+<area shape="rect" id="Node000001" title="Use the vector of concentrations (c) to set the moles of components in each reaction cell...." alt="" coords="5,29,247,55"/>
+<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="86,31,77,21,82,11,98,5,126,3,161,7,171,11,175,17,170,20,167,15,160,12,126,8,99,10,85,15,82,20,90,27"/>
+<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="295,29,453,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="247,39,281,39,281,45,247,45"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="334,31,325,21,330,11,346,5,374,3,409,7,419,11,423,17,418,20,415,15,408,12,374,8,347,10,333,15,330,20,338,27"/>
 </map>

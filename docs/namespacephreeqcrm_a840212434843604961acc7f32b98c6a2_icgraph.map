@@ -1,0 +1,4 @@
+<map id="phreeqcrm::rm_getsolidsolutioncomponentscount" name="phreeqcrm::rm_getsolidsolutioncomponentscount">
+<area shape="rect" id="Node000001" title="Returns the number of solid solution components in the initial&#45;phreeqc module. RM_FindComponents must..." alt="" coords="5,29,351,55"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="239,22,238,17,228,13,178,8,141,10,120,15,116,20,127,27,123,31,111,21,117,11,140,5,178,3,230,7,242,13,245,20"/>
+</map>
