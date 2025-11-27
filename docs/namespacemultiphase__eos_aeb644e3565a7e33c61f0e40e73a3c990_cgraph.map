@@ -1,4 +1,6 @@
 <map id="multiphase_eos::get_rockfluidprop" name="multiphase_eos::get_rockfluidprop">
-<area shape="rect" id="node1" title=":Gets the relperm max, the relperm exponent and the immobile fractions and stores them into packed st..." alt="" coords="5,5,160,47"/>
-<area shape="rect" id="node2" href="$multi__eos_8_f90.html#a098f3f1c27b74be5d61f21fcff4c50a7" title=": This internal subroutine checks the if we are flipping from drainage to imbibition,..." alt="" coords="208,13,404,39"/>
+<area shape="rect" id="node1" title=":Gets the relperm max, the relperm exponent and the immobile fractions and stores them into packed st..." alt="" coords="5,35,144,76"/>
+<area shape="rect" id="node2" href="$namespacemultiphase__eos.html#a29b9750459911134c7e711f15fa42614" title=" " alt="" coords="192,5,369,47"/>
+<area shape="rect" id="node4" href="$multi__eos_8_f90.html#a098f3f1c27b74be5d61f21fcff4c50a7" title=": This internal subroutine checks the if we are flipping from drainage to imbibition,..." alt="" coords="194,71,367,98"/>
+<area shape="rect" id="node3" href="$namespacemultiphase__eos.html#af14c426951c2a3fd50666548b0e17472" title=": Computes normalised saturation for Land trapping with tabulated relperm" alt="" coords="417,5,588,47"/>
 </map>

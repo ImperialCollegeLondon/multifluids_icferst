@@ -1,14 +1,8 @@
 <map id="shape_functions_ndim::make_qtets" name="shape_functions_ndim::make_qtets">
-<area shape="rect" id="Node000001" title="This subrt creates the local coordinates and node points for: (a) quadratic tetrahedra of unit volume..." alt="" coords="5,105,173,145"/>
-<area shape="rect" id="Node000002" href="$namespaceshape__functions__ndim.html#ab2cdb212a9a26a4101f281d6a3281f48" title=" " alt="" coords="221,41,420,81"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="162,103,234,82,236,88,163,108"/>
-<area shape="rect" id="Node000005" href="$namespaceshape__functions__ndim.html#a5dff129de3cfdb87cd666a114c2b56a2" title=" " alt="" coords="224,105,417,145"/>
-<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="174,123,210,123,210,128,174,128"/>
-<area shape="rect" id="Node000006" href="$namespaceshape__functions__ndim.html#a0baef8de3aad5dd6c661809fdd333369" title=" " alt="" coords="237,193,405,233"/>
-<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="144,143,255,186,254,191,142,148"/>
-<area shape="rect" id="Node000003" href="$namespaceshape__functions__ndim.html#a29ad83f0f46784a98dfe1604e624eb53" title=" " alt="" coords="468,5,697,45"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="420,45,454,40,455,46,420,50"/>
-<area shape="rect" id="Node000004" href="$namespaceshape__functions__ndim.html#acc329705b056aef8e675c19d3d92e3fb" title=" " alt="" coords="495,70,670,125"/>
-<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="420,72,482,81,481,86,420,78"/>
-<area shape="poly" id="edge6_Node000006_Node000006" title=" " alt="" coords="278,194,275,184,282,174,297,169,321,167,347,170,362,177,360,182,346,175,321,172,299,174,285,179,280,185,283,192"/>
+<area shape="rect" id="node1" title="This subrt creates the local coordinates and node points for: (a) quadratic tetrahedra of unit volume..." alt="" coords="5,107,157,148"/>
+<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#ab2cdb212a9a26a4101f281d6a3281f48" title=" " alt="" coords="205,41,383,83"/>
+<area shape="rect" id="node5" href="$namespaceshape__functions__ndim.html#a5dff129de3cfdb87cd666a114c2b56a2" title=" " alt="" coords="208,107,380,148"/>
+<area shape="rect" id="node6" href="$namespaceshape__functions__ndim.html#a0baef8de3aad5dd6c661809fdd333369" title=" " alt="" coords="218,172,370,213"/>
+<area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#a29ad83f0f46784a98dfe1604e624eb53" title=" " alt="" coords="431,5,637,47"/>
+<area shape="rect" id="node4" href="$namespaceshape__functions__ndim.html#acc329705b056aef8e675c19d3d92e3fb" title=" " alt="" coords="458,71,610,127"/>
 </map>

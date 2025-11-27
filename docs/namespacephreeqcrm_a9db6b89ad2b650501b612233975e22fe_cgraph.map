@@ -1,7 +1,4 @@
 <map id="phreeqcrm::rm_getsaturation" name="phreeqcrm::rm_getsaturation">
-<area shape="rect" id="Node000001" title="Returns a vector of saturations (sat_calc) as calculated by the reaction module. Reactions will chang..." alt="" coords="5,29,217,55"/>
-<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="74,31,65,21,70,11,85,5,111,3,144,7,156,16,153,20,142,11,111,8,86,10,73,15,71,20,78,27"/>
-<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="265,29,424,55"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="218,39,252,39,252,45,218,45"/>
-<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="307,31,299,21,303,11,319,5,345,3,377,7,390,16,386,20,375,11,345,8,320,10,307,15,304,20,311,27"/>
+<area shape="rect" id="node1" title="Returns a vector of saturations (sat_calc) as calculated by the reaction module. Reactions will chang..." alt="" coords="5,5,193,32"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="241,5,384,32"/>
 </map>

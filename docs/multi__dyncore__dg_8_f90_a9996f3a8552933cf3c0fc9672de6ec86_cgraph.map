@@ -1,0 +1,5 @@
+<map id="effective_cp_density" name="effective_cp_density">
+<area shape="rect" id="node1" title=": Checks convergence on the temperature field Calculation of the averaged heat capacity and density a..." alt="" coords="5,13,148,39"/>
+<area shape="rect" id="node2" href="$namespacemultiphase__eos.html#a282f02f39508adfb64d99bf4659af86c" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="196,5,360,47"/>
+<area shape="rect" id="node3" href="$namespacemultiphase__eos.html#ac13395594592fe917fc20b7c3c2b7a5d" title=": Read from diamond and decide which sort of density representation do we have" alt="" coords="408,5,567,47"/>
+</map>

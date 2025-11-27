@@ -1,9 +1,6 @@
 <map id="multi_machine_learning::test_xgboost" name="multi_machine_learning::test_xgboost">
-<area shape="rect" id="Node000001" title="Teste the XGBoost coupling." alt="" coords="5,69,184,109"/>
-<area shape="rect" id="Node000002" href="$namespacemulti__machine__learning.html#ab29633fc84fa093d2b642cca9277e4fb" title="Free the loaded XGBoost model from memory." alt="" coords="232,5,411,45"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="166,67,236,47,237,52,167,72"/>
-<area shape="rect" id="Node000003" href="$namespacemulti__machine__learning.html#aef6418a01cde10a690094f4356680ab9" title="Load the XGBoost model as &#45;&gt; xgb_model (private module variable)" alt="" coords="232,69,411,109"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="185,87,218,87,218,92,185,92"/>
-<area shape="rect" id="Node000004" href="$namespacemulti__machine__learning.html#ab0878ccdf102121522aa391c66ccdb83" title="Predict using the loaded XGBoost model xgboost_load_model() needs to be run first." alt="" coords="232,133,411,173"/>
-<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="167,107,237,127,236,132,166,112"/>
+<area shape="rect" id="node1" title="Teste the XGBoost coupling." alt="" coords="5,71,164,112"/>
+<area shape="rect" id="node2" href="$namespacemulti__machine__learning.html#ab29633fc84fa093d2b642cca9277e4fb" title="Free the loaded XGBoost model from memory." alt="" coords="212,5,371,47"/>
+<area shape="rect" id="node3" href="$namespacemulti__machine__learning.html#aef6418a01cde10a690094f4356680ab9" title="Load the XGBoost model as &#45;&gt; xgb_model (private module variable)" alt="" coords="212,71,371,112"/>
+<area shape="rect" id="node4" href="$namespacemulti__machine__learning.html#ab0878ccdf102121522aa391c66ccdb83" title="Predict using the loaded XGBoost model xgboost_load_model() needs to be run first." alt="" coords="212,136,371,177"/>
 </map>

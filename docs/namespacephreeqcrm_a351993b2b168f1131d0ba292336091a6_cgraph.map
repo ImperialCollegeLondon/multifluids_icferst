@@ -1,10 +1,5 @@
 <map id="phreeqcrm::rm_getspecieslog10molalities" name="phreeqcrm::rm_getspecieslog10molalities">
-<area shape="rect" id="Node000001" title="Transfer log10 aqueous&#45;species log10 molalities to the array argument (species_log10molalities) To us..." alt="" coords="5,67,301,92"/>
-<area shape="poly" id="edge5_Node000001_Node000001" title=" " alt="" coords="104,69,93,58,99,48,119,42,153,40,199,44,210,50,214,56,209,59,207,54,197,50,153,45,120,47,102,52,98,58,107,65"/>
-<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="385,29,544,55"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="259,64,371,50,372,56,260,69"/>
-<area shape="rect" id="Node000003" href="$namespacephreeqcrm.html#a00c0ccff8315adce0bd99e7b27c8f0c1" title="The number of aqueous species used in the reaction module. This method is intended for use with multi..." alt="" coords="349,103,580,128"/>
-<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="264,89,341,98,341,104,263,95"/>
-<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="415,31,404,21,410,11,430,5,465,3,510,7,522,12,525,19,520,21,518,16,509,12,465,8,431,10,413,15,410,20,419,27"/>
-<area shape="poly" id="edge4_Node000003_Node000003" title=" " alt="" coords="415,105,404,94,410,84,430,78,465,76,510,80,522,86,525,92,520,95,518,90,509,86,465,81,431,83,413,88,410,94,419,101"/>
+<area shape="rect" id="node1" title="Transfer log10 aqueous&#45;species log10 molalities to the array argument (species_log10molalities) To us..." alt="" coords="5,31,268,57"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="349,5,491,32"/>
+<area shape="rect" id="node3" href="$namespacephreeqcrm.html#a00c0ccff8315adce0bd99e7b27c8f0c1" title="The number of aqueous species used in the reaction module. This method is intended for use with multi..." alt="" coords="316,56,524,83"/>
 </map>

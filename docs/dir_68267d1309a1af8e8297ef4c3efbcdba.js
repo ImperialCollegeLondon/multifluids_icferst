@@ -22,5 +22,13 @@ var dir_68267d1309a1af8e8297ef4c3efbcdba =
     [ "Multiphase_Prototype_Wrapper.F90", "_multiphase___prototype___wrapper_8_f90.html", "_multiphase___prototype___wrapper_8_f90" ],
     [ "Multiphase_TimeLoop.F90", "_multiphase___time_loop_8_f90.html", "_multiphase___time_loop_8_f90" ],
     [ "RM_interface.F90", "_r_m__interface_8_f90.html", "_r_m__interface_8_f90" ],
-    [ "xgb_interface.F90", "xgb__interface_8_f90.html", "xgb__interface_8_f90" ]
+    [ "xgb_interface.F90", "xgb__interface_8_f90.html", [
+      [ "fortran_XGDMatrixCreateFromMat", "interfacexgb__interface_1_1fortran___x_g_d_matrix_create_from_mat.html", "interfacexgb__interface_1_1fortran___x_g_d_matrix_create_from_mat" ],
+      [ "fortran_XGBoosterCreate", "interfacexgb__interface_1_1fortran___x_g_booster_create.html", "interfacexgb__interface_1_1fortran___x_g_booster_create" ],
+      [ "fortran_XGBoosterLoadModel", "interfacexgb__interface_1_1fortran___x_g_booster_load_model.html", "interfacexgb__interface_1_1fortran___x_g_booster_load_model" ],
+      [ "fortran_XGBoosterSaveModel", "interfacexgb__interface_1_1fortran___x_g_booster_save_model.html", "interfacexgb__interface_1_1fortran___x_g_booster_save_model" ],
+      [ "fortran_XGBoosterPredict", "interfacexgb__interface_1_1fortran___x_g_booster_predict.html", "interfacexgb__interface_1_1fortran___x_g_booster_predict" ],
+      [ "fortran_XGBoosterFree", "interfacexgb__interface_1_1fortran___x_g_booster_free.html", "interfacexgb__interface_1_1fortran___x_g_booster_free" ],
+      [ "fortran_XGBoosterSetParam", "interfacexgb__interface_1_1fortran___x_g_booster_set_param.html", "interfacexgb__interface_1_1fortran___x_g_booster_set_param" ]
+    ] ]
 ];

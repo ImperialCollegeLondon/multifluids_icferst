@@ -1,7 +1,4 @@
 <map id="phreeqcrm::rm_initialphreeqc2concentrations" name="phreeqcrm::rm_initialphreeqc2concentrations">
-<area shape="rect" id="Node000001" title="Fills an array (bc_conc) with concentrations from solutions in the InitialPhreeqc instance...." alt="" coords="5,29,324,55"/>
-<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="119,31,109,21,114,11,133,5,165,3,206,7,217,12,221,18,216,21,213,16,205,12,165,8,134,10,117,15,114,20,123,27"/>
-<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="372,29,531,55"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="324,39,358,39,358,45,324,45"/>
-<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="406,31,395,21,401,11,420,5,451,3,493,7,504,12,507,18,502,21,500,16,491,12,451,8,421,10,404,15,401,20,409,27"/>
+<area shape="rect" id="node1" title="Fills an array (bc_conc) with concentrations from solutions in the InitialPhreeqc instance...." alt="" coords="5,5,287,32"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="335,5,477,32"/>
 </map>

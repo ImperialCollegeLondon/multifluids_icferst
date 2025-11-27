@@ -1,7 +1,6 @@
 <map id="multi_phreeqc::deallocate_phreeqc" name="multi_phreeqc::deallocate_phreeqc">
-<area shape="rect" id="Node000001" title=" " alt="" coords="465,5,656,45"/>
-<area shape="rect" id="Node000002" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,417,45"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="451,28,418,28,418,23,451,23"/>
-<area shape="rect" id="Node000003" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,45"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="205,28,171,28,171,23,205,23"/>
+<area shape="rect" id="node1" title=" " alt="" coords="424,27,595,69"/>
+<area shape="rect" id="node2" href="$_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="214,5,362,32"/>
+<area shape="rect" id="node3" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,57,376,98"/>
+<area shape="rect" id="node4" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,152,98"/>
 </map>

@@ -1,6 +1,4 @@
 <map id="shape_functions_ndim::tet_vol" name="shape_functions_ndim::tet_vol">
-<area shape="rect" id="Node000001" title=" " alt="" coords="5,29,173,69"/>
-<area shape="poly" id="edge2_Node000001_Node000001" title=" " alt="" coords="49,30,46,20,53,10,67,5,89,3,115,6,128,13,126,18,113,11,89,8,69,10,56,15,52,21,54,28"/>
-<area shape="rect" id="Node000002" href="$namespaceshape__functions__ndim.html#a7dbb03fa7fa657a2db86576f41ef2aa4" title=" " alt="" coords="221,29,389,69"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="174,47,208,47,208,52,174,52"/>
+<area shape="rect" id="node1" title=" " alt="" coords="5,5,157,47"/>
+<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#a7dbb03fa7fa657a2db86576f41ef2aa4" title=" " alt="" coords="205,5,357,47"/>
 </map>

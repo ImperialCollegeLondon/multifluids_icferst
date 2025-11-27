@@ -1,6 +1,4 @@
 <map id="multiphase_eos::normalise_relperm_tables" name="multiphase_eos::normalise_relperm_tables">
-<area shape="rect" id="Node000001" title=" " alt="" coords="5,29,204,69"/>
-<area shape="rect" id="Node000002" href="$namespacemultiphase__eos.html#ae38ba08b6363798b651a669f506ed944" title=": Computes normalised saturation for Land trapping with tabulated relperm" alt="" coords="252,29,443,69"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="204,47,238,47,238,52,204,52"/>
-<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="302,30,299,20,307,10,323,5,347,3,376,6,391,13,389,18,374,11,347,8,324,10,310,15,305,21,307,28"/>
+<area shape="rect" id="node1" title=" " alt="" coords="5,5,183,47"/>
+<area shape="rect" id="node2" href="$namespacemultiphase__eos.html#af14c426951c2a3fd50666548b0e17472" title=": Computes normalised saturation for Land trapping with tabulated relperm" alt="" coords="231,5,401,47"/>
 </map>

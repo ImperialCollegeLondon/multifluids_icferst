@@ -1,6 +1,4 @@
 <map id="shape_functions_linear_quadratic::lagrot" name="shape_functions_linear_quadratic::lagrot">
-<area shape="rect" id="Node000001" title="This computes the weight and points for standard Gaussian quadrature. If (GETNDP == T) then get the p..." alt="" coords="5,29,177,69"/>
-<area shape="rect" id="Node000002" href="$namespaceshape__functions__linear__quadratic.html#a80503151b92134e8bc4261178968a508" title="If WEIGHT is TRUE in function RGPTWE then return the Gauss&#45;pt weight else return the Gauss&#45;pt...." alt="" coords="225,29,397,69"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="178,47,212,47,212,52,178,52"/>
-<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="270,30,268,20,274,10,289,5,311,3,337,6,351,13,348,18,335,11,311,8,290,10,278,15,273,21,275,28"/>
+<area shape="rect" id="node1" title="This computes the weight and points for standard Gaussian quadrature. If (GETNDP == T) then get the p..." alt="" coords="5,5,160,47"/>
+<area shape="rect" id="node2" href="$namespaceshape__functions__linear__quadratic.html#a102a858f9d79b84fa942c1d56730dab5" title="If WEIGHT is TRUE in function RGPTWE then return the Gauss&#45;pt weight else return the Gauss&#45;pt...." alt="" coords="208,5,363,47"/>
 </map>

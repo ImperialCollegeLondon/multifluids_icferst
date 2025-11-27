@@ -1,7 +1,4 @@
 <map id="phreeqcrm::rm_initialphreeqccell2module" name="phreeqcrm::rm_initialphreeqccell2module">
-<area shape="rect" id="Node000001" title="A cell numbered n_user in the InitialPhreeqc instance is selected to populate a series of cells...." alt="" coords="5,29,300,55"/>
-<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="108,31,99,21,104,11,122,5,153,3,192,7,203,12,206,18,202,20,199,16,191,12,153,8,123,10,107,15,104,20,112,27"/>
-<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="348,29,507,55"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="300,39,334,39,334,45,300,45"/>
-<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="383,31,373,21,378,11,397,5,427,3,467,7,477,12,481,18,477,20,474,16,465,12,427,8,398,10,382,15,379,20,387,27"/>
+<area shape="rect" id="node1" title="A cell numbered n_user in the InitialPhreeqc instance is selected to populate a series of cells...." alt="" coords="5,5,264,32"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="312,5,455,32"/>
 </map>

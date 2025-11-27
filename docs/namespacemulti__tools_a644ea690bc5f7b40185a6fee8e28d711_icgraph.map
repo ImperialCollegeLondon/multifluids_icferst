@@ -1,8 +1,5 @@
 <map id="multi_tools::petsc_logging" name="multi_tools::petsc_logging">
-<area shape="rect" id="Node000001" title="Subroutines that can initialise, register and start/end a petsc performance profiling routin...." alt="" coords="465,35,604,75"/>
-<area shape="rect" id="Node000002" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,417,45"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="451,46,417,41,418,36,452,41"/>
-<area shape="rect" id="Node000003" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,35,171,75"/>
-<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="452,59,417,60,219,60,171,59,171,54,219,55,417,55,452,54"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="205,42,171,47,170,42,205,37"/>
+<area shape="rect" id="node1" title="Subroutines that can initialise, register and start/end a petsc performance profiling routin...." alt="" coords="424,35,549,76"/>
+<area shape="rect" id="node2" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" id="node3" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,35,152,76"/>
 </map>

@@ -1,31 +1,20 @@
 <map id="multi_tools::tolfun" name="multi_tools::tolfun">
-<area shape="rect" id="Node000001" title=":This function is a tolerance function for a value which is used as a denominator...." alt="" coords="1532,145,1673,171"/>
-<area shape="rect" id="Node000002" href="$namespacecv__advection.html#a3bd456f4f3d098a36288e7ed4a6dbf6b" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1295,173,1484,199"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1519,172,1485,176,1484,171,1518,166"/>
-<area shape="rect" id="Node000011" href="$namespacemultiphase__1d__engine.html#ab407ee959b55313b7b395f5eeac47e0e" title=": &lt;INERTIA ONLY&gt;Determine if we have an oscillation in the normal direction... dg_oscilat_detect=1...." alt="" coords="1305,106,1474,146"/>
-<area shape="poly" id="edge16_Node000001_Node000011" title=" " alt="" coords="1518,148,1474,141,1474,136,1519,143"/>
-<area shape="rect" id="Node000003" href="$namespacemultiphase__1d__engine.html#a2644f81b959a9c66d17c6ae96e452faf" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="1037,102,1247,142"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1325,172,1219,145,1221,139,1326,167"/>
-<area shape="rect" id="Node000006" href="$namespacemultiphase__1d__engine.html#a8b8466b21f31e369fc0ae74a939444cd" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="1050,166,1234,206"/>
-<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="1281,189,1234,189,1234,183,1281,183"/>
-<area shape="rect" id="Node000008" href="$namespacemultiphase__1d__engine.html#aa8ed1c2e68fd75835c3794475805554c" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="465,238,707,278"/>
-<area shape="poly" id="edge15_Node000002_Node000008" title=" " alt="" coords="1328,204,1247,221,1102,237,956,249,707,259,707,254,956,243,1102,232,1246,215,1327,199"/>
-<area shape="rect" id="Node000010" href="$namespacemultiphase__1d__engine.html#ae08ee439502a499a77b44ecdd504846a" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="782,291,962,331"/>
-<area shape="poly" id="edge13_Node000002_Node000010" title=" " alt="" coords="1361,209,1310,240,1248,268,1174,288,1098,301,962,313,962,308,1098,296,1173,283,1246,263,1307,236,1358,204"/>
-<area shape="rect" id="Node000004" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,134,417,174"/>
-<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="1095,97,1045,73,989,54,842,23,782,13,725,9,669,10,609,17,543,32,466,54,429,70,395,91,341,136,338,132,391,87,427,65,464,49,542,26,608,12,669,4,725,3,782,8,843,17,990,49,1047,68,1098,93"/>
-<area shape="rect" id="Node000005" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,134,171,174"/>
-<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="205,157,171,157,171,151,205,151"/>
-<area shape="poly" id="edge12_Node000006_Node000004" title=" " alt="" coords="1040,166,989,157,843,133,728,120,613,117,466,127,405,137,404,131,465,122,613,112,728,114,843,128,990,151,1041,160"/>
-<area shape="rect" id="Node000007" href="$namespacemultiphase__1d__engine.html#ad72540721ea2ef4651301189e8973481" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="755,166,989,206"/>
-<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="1036,189,990,189,990,183,1036,183"/>
-<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="791,165,706,149,631,143,555,141,418,147,417,142,555,136,631,137,707,143,792,160"/>
-<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="779,212,667,240,666,235,778,207"/>
-<area shape="rect" id="Node000009" href="$namespacemultiphase__1d__engine.html#a07a7956a7419e82fb8f059cae3ded083" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="487,159,685,213"/>
-<area shape="poly" id="edge10_Node000007_Node000009" title=" " alt="" coords="741,189,686,189,686,183,741,183"/>
-<area shape="poly" id="edge9_Node000008_Node000004" title=" " alt="" coords="487,236,464,228,405,203,354,176,356,172,408,198,466,223,489,231"/>
-<area shape="poly" id="edge11_Node000009_Node000004" title=" " alt="" coords="473,175,417,168,418,163,474,170"/>
-<area shape="poly" id="edge14_Node000010_Node000004" title=" " alt="" coords="768,327,699,330,621,328,541,316,464,292,422,268,384,236,354,204,331,176,336,173,358,200,388,233,425,264,466,287,542,311,621,323,699,325,768,322"/>
-<area shape="poly" id="edge18_Node000011_Node000003" title=" " alt="" coords="1291,127,1247,126,1247,121,1291,122"/>
-<area shape="poly" id="edge17_Node000011_Node000011" title=" " alt="" coords="1425,94,1413,87,1389,85,1369,86,1357,91,1352,97,1354,105,1349,106,1347,96,1353,87,1368,81,1389,79,1414,82,1428,89"/>
+<area shape="rect" id="node1" title=":This function is a tolerance function for a value which is used as a denominator...." alt="" coords="1611,177,1736,203"/>
+<area shape="rect" id="node2" href="$cv-adv-dif_8_f90.html#aaff0fabb63f42671a6a051512b761705" title=" " alt="" coords="1433,97,1539,123"/>
+<area shape="rect" id="node14" href="$namespacemultiphase__1d__engine.html#a75a4fb88f761b81639c9b81628eddc95" title=": &lt;INERTIA ONLY&gt;Determine if we have an oscillation in the normal direction... dg_oscilat_detect=1...." alt="" coords="1411,199,1561,240"/>
+<area shape="rect" id="node17" href="$cv-adv-dif_8_f90.html#a427571cc398104aab11b15662262c017" title="Computes the flux between CVs." alt="" coords="1421,147,1551,174"/>
+<area shape="rect" id="node18" href="$namespacemultiphase__1d__engine.html#a34cd5ba5d5dfec039fa896b5fdc14e9f" title=": &lt;INERTIA ONLY&gt; Determine if we have an oscillation in the normal direction... dg_oscilat_detect=1...." alt="" coords="1409,264,1563,305"/>
+<area shape="rect" id="node3" href="$namespacecv__advection.html#ac203699591f0f282b12da9d801f656c1" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1187,122,1361,149"/>
+<area shape="rect" id="node4" href="$multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="685,257,853,283"/>
+<area shape="rect" id="node8" href="$namespacemultiphase__1d__engine.html#a30f5738db096842f8f2890cec8440814" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="947,129,1114,171"/>
+<area shape="rect" id="node12" href="$namespacemultiphase__1d__engine.html#ad44e4be750a57ea3ecab7c4307a75b67" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="687,5,851,47"/>
+<area shape="rect" id="node13" href="$namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="923,64,1139,105"/>
+<area shape="rect" id="node5" href="$namespacemultiphase__1d__engine.html#ac8c3c3c252bab49e31602e628c983f5b" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="424,355,616,396"/>
+<area shape="rect" id="node6" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,165,376,207"/>
+<area shape="rect" id="node7" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,165,152,207"/>
+<area shape="rect" id="node9" href="$namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="664,188,875,229"/>
+<area shape="rect" id="node10" href="$multi__dyncore__dg_8_f90.html#af1bf5a11afa118074e812449240b70cb" title="WARNING: Still work in progress." alt="" coords="451,173,589,199"/>
+<area shape="rect" id="node11" href="$namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="431,274,609,330"/>
+<area shape="rect" id="node15" href="$multi__dyncore__dg_8_f90.html#a6a7f0d36d29011eddc120ea33cb763db" title="Here no homogenisation can be performed. NOTE: FOR THE TIME BEING ONLY ROW_SUM IS ACTIVATED HERE,..." alt="" coords="1217,257,1331,283"/>
+<area shape="rect" id="node16" href="$multi__dyncore__dg_8_f90.html#aa2eb04d27443c785084566c701903207" title="and faster to compute than for Navier&#45;Stokes. Therefore, here the RHS and the Mass matrix are compute..." alt="" coords="943,257,1118,283"/>
 </map>

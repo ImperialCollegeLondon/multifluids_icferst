@@ -1,63 +1,26 @@
 <map id="shape_functions_ndim::compute_surfaceshapefunctions_triangle_tetrahedron" name="shape_functions_ndim::compute_surfaceshapefunctions_triangle_tetrahedron">
-<area shape="rect" id="Node000001" title=": this subroutine calculates shape functions sn, snlx, snly, snlz, sufnlx, sufnly,..." alt="" coords="5,249,247,303"/>
-<area shape="rect" id="Node000002" href="$namespaceshape__functions__ndim.html#a257f57afe346a4a6cf4c30b4fb20ca11" title=" " alt="" coords="295,47,463,87"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="150,246,213,182,293,113,325,91,328,96,296,117,216,186,154,250"/>
-<area shape="rect" id="Node000004" href="$namespaceshape__functions__ndim.html#aa410dcc1343d2637dd6b67e9778c157c" title=" " alt="" coords="295,127,463,167"/>
-<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="179,246,325,171,328,175,182,251"/>
-<area shape="rect" id="Node000006" href="$namespaceshape__functions__ndim.html#a6ae6fe2f9e2d9806b94a4953dc6a12f4" title="Compute some local variables for suf_shape_tri_tet." alt="" coords="295,224,463,264"/>
-<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="247,258,281,254,281,259,247,263"/>
-<area shape="rect" id="Node000007" href="$namespaceshape__functions__ndim.html#aec7c06f0cf1ffd44899b31601d1c0835" title="This subrt computes shape functions. For now, let&#39;s just define for one element type...." alt="" coords="295,288,463,328"/>
-<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="247,289,281,293,281,298,247,294"/>
-<area shape="rect" id="Node000016" href="$namespaceshape__functions__ndim.html#ae55e4b96c1fd166b0c386e93ddf53196" title="Get the shape functions on lines (in 2D) and quadrilateral surfaces in 3D." alt="" coords="295,384,463,424"/>
-<area shape="poly" id="edge22_Node000001_Node000016" title=" " alt="" coords="182,301,327,375,325,380,180,306"/>
-<area shape="rect" id="Node000022" href="$namespaceshape__functions__ndim.html#a3a845aa5e30651da7fb65786056f5591" title="Compute the cv_iloc^{th} shape function value at point (xgi, ygi, zgi)" alt="" coords="295,529,463,569"/>
-<area shape="poly" id="edge33_Node000001_Node000022" title=" " alt="" coords="155,302,352,518,348,521,151,306"/>
-<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="338,47,336,37,342,28,357,22,379,20,404,23,418,30,415,35,402,28,379,25,358,27,345,32,341,38,343,46"/>
-<area shape="rect" id="Node000003" href="$namespaceshape__functions__ndim.html#ab9b13716183e460cfa60142194035eb1" title=" " alt="" coords="513,29,681,69"/>
-<area shape="poly" id="edge3_Node000002_Node000003" title=" " alt="" coords="463,57,499,54,499,60,463,63"/>
-<area shape="poly" id="edge4_Node000003_Node000003" title=" " alt="" coords="556,30,554,20,560,10,575,5,597,3,622,6,636,13,633,18,620,11,597,8,576,10,563,15,559,21,561,28"/>
-<area shape="rect" id="Node000005" href="$namespaceshape__functions__ndim.html#aee06170a27bb4dab883f8ef10ff1cba8" title="Calculate the normal at the Gauss pts Perform x&#45;product. N=T1 x T2." alt="" coords="513,93,681,133"/>
-<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="463,131,499,126,500,131,464,136"/>
-<area shape="rect" id="Node000008" href="$namespaceshape__functions__linear__quadratic.html#ae147a04f99e1302e92b663b54ea271db" title="determine the 1d shape functions sn and its local derivative slnx." alt="" coords="511,158,683,213"/>
-<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="439,285,461,274,485,253,509,230,528,217,531,222,512,234,489,257,464,278,441,290"/>
-<area shape="rect" id="Node000012" href="$namespaceshape__functions__linear__quadratic.html#a7da239d41bd2bc9cf80b2d50a0c00554" title="at the Gauss points. NB: We may need to define surface elements for p and (u,v,w)" alt="" coords="731,323,903,363"/>
-<area shape="poly" id="edge15_Node000007_Node000012" title=" " alt="" coords="448,285,499,274,559,267,621,265,683,273,732,291,775,313,772,318,730,295,682,279,621,270,559,272,500,280,449,290"/>
-<area shape="rect" id="Node000013" href="$namespaceshape__functions__linear__quadratic.html#ad903267339ffe53d619a566ab1451802" title="Quadratic variation (2D) for velocity – 9 node brick element. Linear variation (2D) for pressure – 4 ..." alt="" coords="511,288,683,328"/>
-<area shape="poly" id="edge17_Node000007_Node000013" title=" " alt="" coords="463,305,497,305,497,311,463,311"/>
-<area shape="rect" id="Node000014" href="$namespaceshape__functions__linear__quadratic.html#a08898de4c8264828159cf3ab5a812db4" title="Quadratic variation (3D) for velocity – 27 node brick element. Linear variation (3D) for pressure – 8..." alt="" coords="511,352,683,392"/>
-<area shape="poly" id="edge18_Node000007_Node000014" title=" " alt="" coords="448,326,516,346,514,351,447,331"/>
-<area shape="rect" id="Node000015" href="$namespaceshape__functions__linear__quadratic.html#a0e2b87ea8cbf64e6526d68831575f1d7" title="This subrt. computes the shape functions M and N and their derivatives at the Gauss points for 3D...." alt="" coords="511,416,683,456"/>
-<area shape="poly" id="edge19_Node000007_Node000015" title=" " alt="" coords="407,326,463,369,512,402,525,408,522,413,509,406,460,373,404,330"/>
-<area shape="rect" id="Node000009" href="$namespaceshape__functions__linear__quadratic.html#ae118f5b224460ba97069ff6f3247f53a" title="This return the Lagrange poly assocaited with node INOD at point LX If DIFF then send back the value ..." alt="" coords="731,165,903,205"/>
-<area shape="poly" id="edge10_Node000008_Node000009" title=" " alt="" coords="683,183,717,183,717,188,683,188"/>
-<area shape="rect" id="Node000010" href="$namespaceshape__functions__linear__quadratic.html#a982b5a9f569eae9dc2b8382a0550bc2b" title="This computes the weight and points for standard Gaussian quadrature. If (GETNDP == T) then get the p..." alt="" coords="951,323,1123,363"/>
-<area shape="poly" id="edge12_Node000008_Node000010" title=" " alt="" coords="675,210,968,315,966,320,673,215"/>
-<area shape="poly" id="edge11_Node000009_Node000009" title=" " alt="" coords="776,166,773,156,780,146,794,141,817,139,842,142,856,149,854,154,841,147,817,144,796,146,783,151,778,157,781,164"/>
-<area shape="rect" id="Node000011" href="$namespaceshape__functions__linear__quadratic.html#a80503151b92134e8bc4261178968a508" title="If WEIGHT is TRUE in function RGPTWE then return the Gauss&#45;pt weight else return the Gauss&#45;pt...." alt="" coords="1171,352,1343,392"/>
-<area shape="poly" id="edge13_Node000010_Node000011" title=" " alt="" coords="1124,352,1158,356,1157,361,1123,357"/>
-<area shape="poly" id="edge14_Node000011_Node000011" title=" " alt="" coords="1216,352,1213,342,1220,333,1234,327,1257,325,1282,328,1296,336,1294,340,1281,333,1257,331,1236,333,1223,337,1218,343,1221,351"/>
-<area shape="poly" id="edge16_Node000012_Node000010" title=" " alt="" coords="903,340,937,340,937,345,903,345"/>
-<area shape="poly" id="edge21_Node000015_Node000011" title=" " alt="" coords="683,425,1157,379,1158,384,683,430"/>
-<area shape="poly" id="edge20_Node000015_Node000012" title=" " alt="" coords="652,414,682,402,730,379,757,366,760,371,732,384,684,406,654,418"/>
-<area shape="poly" id="edge23_Node000016_Node000012" title=" " alt="" coords="412,422,458,446,511,465,559,477,598,482,636,480,681,466,783,370,787,374,684,470,637,485,598,488,558,482,510,471,456,451,409,426"/>
-<area shape="poly" id="edge24_Node000016_Node000013" title=" " alt="" coords="417,382,510,338,526,331,528,335,512,342,420,386"/>
-<area shape="poly" id="edge25_Node000016_Node000014" title=" " alt="" coords="463,389,497,384,498,389,464,394"/>
-<area shape="poly" id="edge26_Node000016_Node000015" title=" " alt="" coords="464,414,498,419,497,424,463,419"/>
-<area shape="rect" id="Node000017" href="$namespaceshape__functions__ndim.html#abb4ec02f375fe02820f1bf733d8fb031" title="get the shape functions for a triangle/tetrahedron" alt="" coords="513,531,681,571"/>
-<area shape="poly" id="edge27_Node000016_Node000017" title=" " alt="" coords="403,422,451,465,512,510,535,522,532,527,509,514,448,469,399,426"/>
-<area shape="rect" id="Node000018" href="$namespaceshape__functions__ndim.html#a37c95193cd7ac8186d5e2a9359793013" title="order so that the 1st nodes are on the base of tet for a quadratic tet..." alt="" coords="733,616,901,656"/>
-<area shape="poly" id="edge28_Node000017_Node000018" title=" " alt="" coords="650,568,753,609,751,613,648,573"/>
-<area shape="rect" id="Node000019" href="$namespaceshape__functions__ndim.html#a91a5940ae1f635a9dbf21cc341de9d56" title="order so that the 1st nodes are on the base for a quadratic triangle..." alt="" coords="733,437,901,477"/>
-<area shape="poly" id="edge29_Node000017_Node000019" title=" " alt="" coords="641,528,682,510,730,487,747,480,749,485,732,492,684,514,644,533"/>
-<area shape="rect" id="Node000020" href="$namespaceshape__functions__ndim.html#ac67c2ff971dd5f7bbfd22a1c1d22eacc" title="Generates the shape functions of a cubic triangle." alt="" coords="953,529,1121,569"/>
-<area shape="poly" id="edge30_Node000017_Node000020" title=" " alt="" coords="681,550,731,551,903,551,939,550,939,555,903,556,731,556,681,555"/>
-<area shape="rect" id="Node000021" href="$namespaceshape__functions__ndim.html#a20883fea5c4c41ce4742fa1aee305ed6" title=": Work out the shape functions and their derivatives..." alt="" coords="733,501,901,541"/>
-<area shape="poly" id="edge31_Node000017_Node000021" title=" " alt="" coords="680,537,719,532,720,537,681,542"/>
-<area shape="poly" id="edge32_Node000021_Node000020" title=" " alt="" coords="901,529,940,534,939,540,900,535"/>
-<area shape="poly" id="edge37_Node000022_Node000022" title=" " alt="" coords="338,530,336,520,342,510,357,505,379,503,404,506,418,513,415,518,402,511,379,508,358,510,345,515,341,521,343,528"/>
-<area shape="rect" id="Node000023" href="$namespaceshape__functions__ndim.html#a2cb290bece46a6733c9af01aec40d451" title=" " alt="" coords="513,635,681,675"/>
-<area shape="poly" id="edge34_Node000022_Node000023" title=" " alt="" coords="422,567,543,626,541,631,420,572"/>
-<area shape="poly" id="edge36_Node000023_Node000023" title=" " alt="" coords="556,635,554,625,560,616,575,610,597,608,622,611,636,618,633,623,620,616,597,613,576,615,563,620,559,626,561,634"/>
-<area shape="rect" id="Node000024" href="$namespaceshape__functions__ndim.html#a7dbb03fa7fa657a2db86576f41ef2aa4" title=" " alt="" coords="733,680,901,720"/>
-<area shape="poly" id="edge35_Node000023_Node000024" title=" " alt="" coords="681,669,720,677,719,683,680,675"/>
+<area shape="rect" id="node1" title=": this subroutine calculates shape functions sn, snlx, snly, snlz, sufnlx, sufnly,..." alt="" coords="5,229,224,285"/>
+<area shape="rect" id="node2" href="$namespaceshape__functions__ndim.html#a257f57afe346a4a6cf4c30b4fb20ca11" title=" " alt="" coords="272,23,424,64"/>
+<area shape="rect" id="node4" href="$namespaceshape__functions__ndim.html#a279dc82b53707b674ea9b70360e7e258" title=" " alt="" coords="272,104,424,145"/>
+<area shape="rect" id="node6" href="$namespaceshape__functions__ndim.html#a6ae6fe2f9e2d9806b94a4953dc6a12f4" title="Compute some local variables for suf_shape_tri_tet." alt="" coords="272,203,424,244"/>
+<area shape="rect" id="node7" href="$namespaceshape__functions__ndim.html#aec7c06f0cf1ffd44899b31601d1c0835" title="This subrt computes shape functions. For now, let&#39;s just define for one element type...." alt="" coords="272,268,424,309"/>
+<area shape="rect" id="node16" href="$namespaceshape__functions__ndim.html#ae55e4b96c1fd166b0c386e93ddf53196" title="Get the shape functions on lines (in 2D) and quadrilateral surfaces in 3D." alt="" coords="272,367,424,408"/>
+<area shape="rect" id="node22" href="$namespaceshape__functions__ndim.html#a3a845aa5e30651da7fb65786056f5591" title="Compute the cv_iloc^{th} shape function value at point (xgi, ygi, zgi)" alt="" coords="272,491,424,532"/>
+<area shape="rect" id="node3" href="$namespaceshape__functions__ndim.html#ab9b13716183e460cfa60142194035eb1" title=" " alt="" coords="474,5,626,47"/>
+<area shape="rect" id="node5" href="$namespaceshape__functions__ndim.html#a915ed0656cc376f20e85f62cd9cec4de" title="Calculate the normal at the Gauss pts Perform x&#45;product. N=T1 x T2." alt="" coords="474,71,626,112"/>
+<area shape="rect" id="node8" href="$namespaceshape__functions__linear__quadratic.html#ae147a04f99e1302e92b663b54ea271db" title="determine the 1d shape functions sn and its local derivative slnx." alt="" coords="472,137,628,193"/>
+<area shape="rect" id="node12" href="$namespaceshape__functions__linear__quadratic.html#a7da239d41bd2bc9cf80b2d50a0c00554" title="at the Gauss points. NB: We may need to define surface elements for p and (u,v,w)" alt="" coords="676,304,831,345"/>
+<area shape="rect" id="node13" href="$namespaceshape__functions__linear__quadratic.html#ad903267339ffe53d619a566ab1451802" title="Quadratic variation (2D) for velocity – 9 node brick element. Linear variation (2D) for pressure – 4 ..." alt="" coords="473,268,627,309"/>
+<area shape="rect" id="node14" href="$namespaceshape__functions__linear__quadratic.html#a08898de4c8264828159cf3ab5a812db4" title="Quadratic variation (3D) for velocity – 27 node brick element. Linear variation (3D) for pressure – 8..." alt="" coords="473,333,627,375"/>
+<area shape="rect" id="node15" href="$namespaceshape__functions__linear__quadratic.html#a0e2b87ea8cbf64e6526d68831575f1d7" title="This subrt. computes the shape functions M and N and their derivatives at the Gauss points for 3D...." alt="" coords="473,399,627,440"/>
+<area shape="rect" id="node9" href="$namespaceshape__functions__linear__quadratic.html#ae118f5b224460ba97069ff6f3247f53a" title="This return the Lagrange poly assocaited with node INOD at point LX If DIFF then send back the value ..." alt="" coords="676,144,831,185"/>
+<area shape="rect" id="node10" href="$namespaceshape__functions__linear__quadratic.html#a982b5a9f569eae9dc2b8382a0550bc2b" title="This computes the weight and points for standard Gaussian quadrature. If (GETNDP == T) then get the p..." alt="" coords="879,304,1033,345"/>
+<area shape="rect" id="node11" href="$namespaceshape__functions__linear__quadratic.html#a102a858f9d79b84fa942c1d56730dab5" title="If WEIGHT is TRUE in function RGPTWE then return the Gauss&#45;pt weight else return the Gauss&#45;pt...." alt="" coords="1081,333,1236,375"/>
+<area shape="rect" id="node17" href="$namespaceshape__functions__ndim.html#abb4ec02f375fe02820f1bf733d8fb031" title="get the shape functions for a triangle/tetrahedron" alt="" coords="474,516,626,557"/>
+<area shape="rect" id="node18" href="$namespaceshape__functions__ndim.html#a37c95193cd7ac8186d5e2a9359793013" title="order so that the 1st nodes are on the base of tet for a quadratic tet..." alt="" coords="677,604,829,645"/>
+<area shape="rect" id="node19" href="$namespaceshape__functions__ndim.html#a91a5940ae1f635a9dbf21cc341de9d56" title="order so that the 1st nodes are on the base for a quadratic triangle..." alt="" coords="677,421,829,463"/>
+<area shape="rect" id="node20" href="$namespaceshape__functions__ndim.html#ac67c2ff971dd5f7bbfd22a1c1d22eacc" title="Generates the shape functions of a cubic triangle." alt="" coords="880,516,1032,557"/>
+<area shape="rect" id="node21" href="$namespaceshape__functions__ndim.html#a445a3bd2cb68d70b3e9cd86febb890db" title=": Work out the shape functions and their derivatives..." alt="" coords="677,487,829,528"/>
+<area shape="rect" id="node23" href="$namespaceshape__functions__ndim.html#a2cb290bece46a6733c9af01aec40d451" title=" " alt="" coords="474,611,626,652"/>
+<area shape="rect" id="node24" href="$namespaceshape__functions__ndim.html#a7dbb03fa7fa657a2db86576f41ef2aa4" title=" " alt="" coords="677,669,829,711"/>
 </map>

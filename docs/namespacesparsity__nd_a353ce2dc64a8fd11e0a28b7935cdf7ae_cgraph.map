@@ -1,5 +1,4 @@
 <map id="sparsity_nd::poscmc" name="sparsity_nd::poscmc">
-<area shape="rect" id="Node000001" title="This subroutine forms the matrix operating on the pressure vector. It is found from C1T ML C1 + C2T M..." alt="" coords="5,5,160,31"/>
-<area shape="rect" id="Node000002" href="$namespacesparsity__1d.html#aedb401359d0f5f72001029c0510fc0fb" title=" " alt="" coords="208,5,352,31"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="160,15,194,15,194,21,160,21"/>
+<area shape="rect" id="node1" title="This subroutine forms the matrix operating on the pressure vector. It is found from C1T ML C1 + C2T M..." alt="" coords="5,5,148,32"/>
+<area shape="rect" id="node2" href="$namespacesparsity__1d.html#ae6ef1904813ab1128a01a1311670976a" title=" " alt="" coords="196,5,328,32"/>
 </map>

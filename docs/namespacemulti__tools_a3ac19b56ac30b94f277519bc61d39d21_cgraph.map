@@ -1,4 +1,5 @@
 <map id="multi_tools::quicksort" name="multi_tools::quicksort">
-<area shape="rect" id="Node000001" title=":Sort a list in increasing order Vec is the vector to sort and n is an starting point,..." alt="" coords="5,29,168,55"/>
-<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="59,31,54,21,57,11,68,5,87,3,109,6,119,15,115,19,107,11,87,8,70,10,61,15,59,20,64,28"/>
+<area shape="rect" id="node1" title=":Sort a list in increasing order Vec is the vector to sort and n is an starting point,..." alt="" coords="5,31,152,57"/>
+<area shape="rect" id="node2" href="$multi__tools_8_f90.html#a1bc37745e090cdc90171cd68ea218026" title=" " alt="" coords="200,5,300,32"/>
+<area shape="rect" id="node3" href="$multi__tools_8_f90.html#a054ef005839aa2ad2184eb3a6a28199a" title=" " alt="" coords="216,56,284,83"/>
 </map>

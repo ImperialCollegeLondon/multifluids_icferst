@@ -1,7 +1,10 @@
 <map id="multiphase_eos::calculate_absorption2" name="multiphase_eos::calculate_absorption2">
-<area shape="rect" id="node1" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="5,23,197,65"/>
-<area shape="rect" id="node2" href="$namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="245,23,405,65"/>
-<area shape="rect" id="node3" href="$namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="453,23,608,65"/>
-<area shape="rect" id="node4" href="$multi__eos_8_f90.html#a0f94604be6099dd1304ee7568ad7aac1" title=": Brooks corey model of relperm. This subroutine add a small quantity to the corey function to avoid ..." alt="" coords="656,5,827,32"/>
-<area shape="rect" id="node5" href="$multi__eos_8_f90.html#afb461540e77781fc8560dcdf98a7ed12" title=":This subroutine calculates the relative permeability for three phases First phase has to be water,..." alt="" coords="683,56,799,83"/>
+<area shape="rect" id="node1" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="5,74,179,115"/>
+<area shape="rect" id="node2" href="$namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="227,74,369,115"/>
+<area shape="rect" id="node3" href="$namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="417,74,556,115"/>
+<area shape="rect" id="node4" href="$multi__eos_8_f90.html#a0f94604be6099dd1304ee7568ad7aac1" title=": Brooks corey model of relperm. This subroutine add a small quantity to the corey function to avoid ..." alt="" coords="606,5,758,32"/>
+<area shape="rect" id="node5" href="$multi__eos_8_f90.html#afb461540e77781fc8560dcdf98a7ed12" title=":This subroutine calculates the relative permeability for three phases First phase has to be water,..." alt="" coords="630,56,734,83"/>
+<area shape="rect" id="node6" href="$multi__eos_8_f90.html#a1c26bc7b22b8141f8c07f7aff66de2d1" title=": Tabulated relperm. This subroutine computes the relperm based on tabulated data that the user provi..." alt="" coords="619,107,745,133"/>
+<area shape="rect" id="node7" href="$multi__eos_8_f90.html#aceb42bfefda5357e6464aec48d828dcd" title=": Tabulated relperm with Land trapping using normalised saturation" alt="" coords="604,157,760,184"/>
+<area shape="rect" id="node8" href="$namespacemultiphase__eos.html#af14c426951c2a3fd50666548b0e17472" title=": Computes normalised saturation for Land trapping with tabulated relperm" alt="" coords="808,150,979,191"/>
 </map>

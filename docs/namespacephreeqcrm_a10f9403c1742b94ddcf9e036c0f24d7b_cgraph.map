@@ -1,7 +1,4 @@
 <map id="phreeqcrm::rm_getdensity" name="phreeqcrm::rm_getdensity">
-<area shape="rect" id="Node000001" title="Transfer solution densities from the reaction cells to the array given in the argument list (density)..." alt="" coords="5,29,200,55"/>
-<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="66,31,58,21,62,11,78,5,103,3,134,7,146,16,143,20,132,11,103,8,79,10,66,15,63,20,70,27"/>
-<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="248,29,407,55"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="200,39,234,39,234,45,200,45"/>
-<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="291,31,283,21,287,11,302,5,327,3,359,7,371,16,368,20,357,11,327,8,303,10,291,15,288,20,295,27"/>
+<area shape="rect" id="node1" title="Transfer solution densities from the reaction cells to the array given in the argument list (density)..." alt="" coords="5,5,179,32"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="227,5,369,32"/>
 </map>

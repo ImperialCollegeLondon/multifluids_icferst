@@ -1,7 +1,4 @@
 <map id="phreeqcrm::rm_getselectedoutputcolumncount" name="phreeqcrm::rm_getselectedoutputcolumncount">
-<area shape="rect" id="Node000001" title="Returns the number of columns in the current selected&#45;output definition. RM_SetCurrentSelectedOutputU..." alt="" coords="296,29,623,55"/>
-<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="519,22,517,17,507,12,459,8,424,10,404,15,400,20,410,27,407,31,395,21,401,11,423,5,459,3,508,7,521,13,524,20"/>
-<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ad0848d40f094dbaad045b5510c0ad2a1" title="Populates an array with values from the current selected&#45;output definition. RM_SetCurrentSelectedOutp..." alt="" coords="5,29,248,55"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="282,45,248,45,248,39,282,39"/>
-<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="186,22,184,17,174,12,127,8,91,10,71,15,68,20,77,27,74,31,62,21,68,11,90,5,127,3,176,7,188,13,191,20"/>
+<area shape="rect" id="node1" title="Returns the number of columns in the current selected&#45;output definition. RM_SetCurrentSelectedOutputU..." alt="" coords="269,5,560,32"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ad0848d40f094dbaad045b5510c0ad2a1" title="Populates an array with values from the current selected&#45;output definition. RM_SetCurrentSelectedOutp..." alt="" coords="5,5,221,32"/>
 </map>

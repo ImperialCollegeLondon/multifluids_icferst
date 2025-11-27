@@ -1,7 +1,4 @@
 <map id="phreeqcrm::rm_getgfw" name="phreeqcrm::rm_getgfw">
-<area shape="rect" id="Node000001" title="Returns the gram formula weights (g/mol) for the components in the reaction&#45;module component list." alt="" coords="5,29,175,55"/>
-<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="55,31,48,21,52,11,66,5,90,3,119,6,131,15,128,20,117,11,90,8,68,10,56,15,53,20,60,28"/>
-<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="223,29,381,55"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="175,39,209,39,209,45,175,45"/>
-<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="267,31,260,21,264,11,278,5,302,3,331,6,343,15,340,20,329,11,302,8,280,10,268,15,265,20,272,28"/>
+<area shape="rect" id="node1" title="Returns the gram formula weights (g/mol) for the components in the reaction&#45;module component list." alt="" coords="5,5,157,32"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="205,5,348,32"/>
 </map>

@@ -1,10 +1,6 @@
 <map id="phreeqcrm::rm_seterrorhandlermode" name="phreeqcrm::rm_seterrorhandlermode">
-<area shape="rect" id="Node000001" title="Set the action to be taken when the reaction module encounters an error. Options are 0,..." alt="" coords="657,29,920,55"/>
-<area shape="poly" id="edge4_Node000001_Node000001" title=" " alt="" coords="833,20,831,15,823,12,789,8,762,10,747,15,745,20,752,27,748,31,739,21,744,11,761,5,789,3,824,7,834,11,838,17"/>
-<area shape="rect" id="Node000002" href="$namespacemulti__phreeqc.html#a6f7a386091a527dece1d5da82943a289" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="465,22,609,62"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="644,45,609,45,609,39,644,39"/>
-<area shape="rect" id="Node000003" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,22,417,62"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="452,45,418,45,418,39,452,39"/>
-<area shape="rect" id="Node000004" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,22,171,62"/>
-<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="205,45,171,45,171,39,205,39"/>
+<area shape="rect" id="node1" title="Set the action to be taken when the reaction module encounters an error. Options are 0,..." alt="" coords="600,13,831,39"/>
+<area shape="rect" id="node2" href="$namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="424,5,552,47"/>
+<area shape="rect" id="node3" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" id="node4" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
 </map>

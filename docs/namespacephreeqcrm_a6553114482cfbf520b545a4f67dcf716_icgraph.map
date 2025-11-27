@@ -1,13 +1,7 @@
 <map id="phreeqcrm::rm_findcomponents" name="phreeqcrm::rm_findcomponents">
-<area shape="rect" id="Node000001" title="Returns the number of items in the list of all elements in the InitialPhreeqc instance...." alt="" coords="657,45,887,70"/>
-<area shape="poly" id="edge4_Node000001_Node000001" title=" " alt="" coords="814,36,803,27,772,23,747,25,733,30,731,36,738,43,734,46,726,36,730,26,746,20,772,18,805,22,818,31"/>
-<area shape="rect" id="Node000002" href="$namespacemulti__phreeqc.html#a6f7a386091a527dece1d5da82943a289" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="465,5,609,45"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="665,45,609,38,610,32,665,40"/>
-<area shape="rect" id="Node000005" href="$namespacemulti__phreeqc.html#af0501745aedd5d6a82320293f7128b10" title="Call PHREEQCRM and compute the reactions of the fields defined associated with the input ID." alt="" coords="465,69,609,109"/>
-<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="665,75,610,82,609,77,665,69"/>
-<area shape="rect" id="Node000003" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,37,417,77"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="452,40,418,45,417,40,451,35"/>
-<area shape="rect" id="Node000004" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,37,171,77"/>
-<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="205,60,171,60,171,55,205,55"/>
-<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="451,80,417,74,418,69,452,74"/>
+<area shape="rect" id="node1" title="Returns the number of items in the list of all elements in the InitialPhreeqc instance...." alt="" coords="601,46,807,73"/>
+<area shape="rect" id="node2" href="$namespacemulti__phreeqc.html#a81c3fa5effd1a8d5a6b6ec4622003a9f" title="This subroutine is used to initialise all the necessary parameters that PHREEQCRM requires...." alt="" coords="425,5,553,47"/>
+<area shape="rect" id="node5" href="$namespacemulti__phreeqc.html#aee344bd4200d550db264a9d4255778b0" title="Call PHREEQCRM and compute the reactions of the fields defined associated with the input ID." alt="" coords="424,71,553,112"/>
+<area shape="rect" id="node3" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,39,376,80"/>
+<area shape="rect" id="node4" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,39,152,80"/>
 </map>

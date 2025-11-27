@@ -1,7 +1,5 @@
 <map id="/home/mbahlali/Softwares/multifluids_icferst/ICFERST/src/multi_pipes.F90" name="/home/mbahlali/Softwares/multifluids_icferst/ICFERST/src/multi_pipes.F90">
-<area shape="rect" id="Node000001" title=" " alt="" coords="16,5,217,60"/>
-<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,84,133"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,62,65,99,61,96,93,58"/>
-<area shape="rect" id="Node000003" title=" " alt="" coords="109,108,271,133"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="141,58,173,96,169,99,137,62"/>
+<area shape="rect" id="node1" title=" " alt="" coords="14,5,205,61"/>
+<area shape="rect" id="node2" title=" " alt="" coords="5,109,77,136"/>
+<area shape="rect" id="node3" title=" " alt="" coords="102,109,253,136"/>
 </map>

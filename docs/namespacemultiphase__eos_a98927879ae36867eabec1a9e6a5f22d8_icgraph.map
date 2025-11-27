@@ -1,9 +1,6 @@
 <map id="multiphase_eos::update_velocity_absorption_coriolis" name="multiphase_eos::update_velocity_absorption_coriolis">
-<area shape="rect" id="Node000001" title=":Computes velocity absorption associated to coriolis forces from diamond information" alt="" coords="723,5,933,45"/>
-<area shape="rect" id="Node000002" href="$namespacemultiphase__1d__engine.html#a2644f81b959a9c66d17c6ae96e452faf" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="465,5,675,45"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="709,28,675,28,675,23,709,23"/>
-<area shape="rect" id="Node000003" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,417,45"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="452,28,417,28,417,23,452,23"/>
-<area shape="rect" id="Node000004" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,45"/>
-<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="205,28,171,28,171,23,205,23"/>
+<area shape="rect" id="node1" title=":Computes velocity absorption associated to coriolis forces from diamond information" alt="" coords="664,5,853,47"/>
+<area shape="rect" id="node2" href="$namespacemultiphase__1d__engine.html#ac8c3c3c252bab49e31602e628c983f5b" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="424,5,616,47"/>
+<area shape="rect" id="node3" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" id="node4" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
 </map>

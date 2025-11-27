@@ -1,13 +1,6 @@
 <map id="phreeqcrm::rm_getstartcell" name="phreeqcrm::rm_getstartcell">
-<area shape="rect" id="Node000001" title="Returns an array with the starting cell numbers from the range of cell numbers assigned to each worke..." alt="" coords="5,103,204,128"/>
-<area shape="poly" id="edge5_Node000001_Node000001" title=" " alt="" coords="63,104,54,94,58,84,76,78,105,76,141,80,151,85,155,90,151,93,148,89,140,85,105,81,77,83,62,88,59,94,67,101"/>
-<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="285,29,443,55"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="140,100,251,63,284,55,285,60,253,69,141,105"/>
-<area shape="rect" id="Node000003" href="$namespacephreeqcrm.html#aa8592a527010fd499050141a7f771a60" title="Returns the number of MPI processes (tasks) assigned to the reaction module. For the OPENMP version,..." alt="" coords="261,103,467,128"/>
-<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="204,113,247,113,247,118,204,118"/>
-<area shape="rect" id="Node000004" href="$namespacephreeqcrm.html#a420ba0736ce274622f66171f750c30b5" title="Returns the number of threads, which is equal to the number of workers used to run in parallel with O..." alt="" coords="252,176,476,201"/>
-<area shape="poly" id="edge6_Node000001_Node000004" title=" " alt="" coords="151,126,306,170,304,175,150,131"/>
-<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="322,31,313,21,318,11,335,5,364,3,401,7,411,11,415,17,410,20,407,15,399,12,364,8,336,10,321,15,318,20,326,27"/>
-<area shape="poly" id="edge4_Node000003_Node000003" title=" " alt="" coords="322,104,313,94,318,84,335,78,364,76,401,80,411,85,415,90,410,93,407,89,399,85,364,81,336,83,321,88,318,94,326,101"/>
-<area shape="poly" id="edge7_Node000004_Node000004" title=" " alt="" coords="322,178,313,168,318,158,335,151,364,149,401,153,411,158,415,164,410,167,407,162,399,158,364,155,336,157,321,162,318,167,326,174"/>
+<area shape="rect" id="node1" title="Returns an array with the starting cell numbers from the range of cell numbers assigned to each worke..." alt="" coords="5,56,183,83"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="259,5,401,32"/>
+<area shape="rect" id="node3" href="$namespacephreeqcrm.html#aa8592a527010fd499050141a7f771a60" title="Returns the number of MPI processes (tasks) assigned to the reaction module. For the OPENMP version,..." alt="" coords="238,56,422,83"/>
+<area shape="rect" id="node4" href="$namespacephreeqcrm.html#a420ba0736ce274622f66171f750c30b5" title="Returns the number of threads, which is equal to the number of workers used to run in parallel with O..." alt="" coords="231,107,429,133"/>
 </map>

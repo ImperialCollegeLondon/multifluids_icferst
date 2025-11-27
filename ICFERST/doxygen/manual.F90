@@ -371,11 +371,11 @@
 !> Using the diamond GUI to configure test cases
 !> The input files are “EXAMPLE.mpml”. This files can be either manipulated using diamond a GUI, or a text file.
 !> To open the diamond GUI for ICFERST this is an example,
-!> found in the examples folder in IC-FERST-FOLDER/legacy_reservoir_prototype/tests/3D_BL
+!> found in the examples folder in IC-FERST-FOLDER/legacy_reservoir_prototype/tests/3D_BL_P0DGP1CV
 !> @htmlonly
 !> <CODE>
 !> <PRE>
-!> diamond -s IC-FERST-FOLDER/legacy_reservoir_prototype/schemas/multiphase.rng 3D_test.mpml
+!> IC-FERST-FOLDER/libspud/diamond/bin/diamond -s IC-FERST-FOLDER/ICFERST/schemas/multiphase.rng 3D_test.mpml
 !> </PRE>
 !> </CODE>
 !> @endhtmlonly
@@ -642,6 +642,18 @@
 !> The simplification mainly focuses on not having to describe the discretisation type, use of defaults for solvers and other settings
 !> , density not being defined as a scalar field explicitly, simplified interpolation settings, etc. These can be found in multiphase_prototype_wrapper
 !> and are generated using the spud options as defined in the Fluidity manual in the manual folder
+!>
+!> \subsection running Running IC-FERST
+!>
+!> Once you are happy with the contents of your input .mpml file, you can run IC-FERST using:
+!> @htmlonly
+!> <CODE>
+!> <PRE>
+!> mpirun -n 1 IC-FERST-FOLDER/bin/icferst 3D_test.mpml
+!> </PRE>
+!> </CODE>
+!> @endhtmlonly
+!>
 !> \subsection applications Applications and tests
 !>
 !> ICFERST can currently be used to model inertia dominated flows (Navier-Stokes), Stokes flow or Darcy flow.

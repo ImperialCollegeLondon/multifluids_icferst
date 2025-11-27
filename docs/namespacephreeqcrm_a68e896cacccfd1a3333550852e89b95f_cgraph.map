@@ -1,10 +1,5 @@
 <map id="phreeqcrm::rm_getgascompphi" name="phreeqcrm::rm_getgascompphi">
-<area shape="rect" id="Node000001" title="Transfer fugacity coefficients (phi) of gas components from each reaction cell to the array given in ..." alt="" coords="5,67,231,92"/>
-<area shape="poly" id="edge5_Node000001_Node000001" title=" " alt="" coords="70,69,59,58,65,48,85,42,118,40,162,44,174,50,177,56,172,59,170,54,161,50,118,45,85,47,68,52,64,58,73,65"/>
-<area shape="rect" id="Node000002" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="342,29,501,55"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="221,64,328,51,329,56,222,69"/>
-<area shape="rect" id="Node000003" href="$namespacephreeqcrm.html#af5867cb3e15ad7b4a21392203dc6f77b" title="Returns the number of gas phase components in the initial&#45;phreeqc module. RM_FindComponents must be c..." alt="" coords="279,103,564,128"/>
-<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="226,89,301,98,300,104,225,95"/>
-<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="373,31,362,21,368,11,388,5,421,3,466,7,477,13,480,19,475,21,473,16,464,12,421,8,389,10,371,15,368,20,377,27"/>
-<area shape="poly" id="edge4_Node000003_Node000003" title=" " alt="" coords="373,105,362,94,368,84,388,78,421,76,466,80,477,86,480,92,475,95,473,90,464,86,421,81,389,83,371,88,368,94,377,101"/>
+<area shape="rect" id="node1" title="Transfer fugacity coefficients (phi) of gas components from each reaction cell to the array given in ..." alt="" coords="5,31,207,57"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="311,5,453,32"/>
+<area shape="rect" id="node3" href="$namespacephreeqcrm.html#af5867cb3e15ad7b4a21392203dc6f77b" title="Returns the number of gas phase components in the initial&#45;phreeqc module. RM_FindComponents must be c..." alt="" coords="255,56,509,83"/>
 </map>
