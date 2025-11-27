@@ -21,7 +21,7 @@ print('Running the model')
 path = os.getcwd()
 binpath = path[:path.index('ICFERST')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
-os.system(binpath + ' ' + path + '/2D_Dispersive_Saline_Intrusion.mpml')
+os.system(f'mpirun -n 1 {binpath} ' + path + '/2D_Dispersive_Saline_Intrusion.mpml')
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST 
 
 #TOLERANCE OF THE CHECKING

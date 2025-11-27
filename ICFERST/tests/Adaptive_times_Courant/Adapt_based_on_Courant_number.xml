@@ -4,7 +4,7 @@
   <owner userid="pablo.salinas"/>
   <tags>porous mpml adaptive_time tbc CV_pressure</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>../../../bin/icferst Adapt_based_on_Courant_number.mpml</command_line>
+    <command_line>mpirun -n 1  ../../../bin/icferst Adapt_based_on_Courant_number.mpml</command_line>
   </problem_definition>
   <variables>
     <variable name="final_dt" language="python">from fluidity_tools import stat_parser as stat

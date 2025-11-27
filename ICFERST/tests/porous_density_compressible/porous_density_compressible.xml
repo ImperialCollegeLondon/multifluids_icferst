@@ -4,7 +4,7 @@
   <owner userid="pablo.salinas"/>
   <tags>porous mpml P0DG</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>../../../bin/icferst porous_density_compressible.mpml</command_line>
+    <command_line>mpirun -n 1  ../../../bin/icferst porous_density_compressible.mpml</command_line>
   </problem_definition>
   <variables>
     <variable name="max_rho" language="python">from fluidity_tools import stat_parser as stat

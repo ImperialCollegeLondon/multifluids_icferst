@@ -19,7 +19,7 @@ path = os.getcwd()
 binpath = path[:path.index('ICFERST')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
 os.system('rm -f ' + path+ '/QuickTest_DG_outfluxes.csv')
-os.system(binpath + ' ' + path + '/*mpml')
+os.system(f'mpirun -n 1 {binpath} ' + path + '/*mpml')
 
 with open('QuickTest_DG_outfluxes.csv','r') as f1:
 # Need a slightly modified script to correctly read this file in       

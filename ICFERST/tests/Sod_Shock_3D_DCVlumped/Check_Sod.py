@@ -63,7 +63,7 @@ binpath = path[:path.index('ICFERST')] + 'bin/icferst'
 
 os.system('make clean')
 os.system('make')
-os.system(binpath + ' ' + path + '/sod_shock3d_test.mpml')
+os.system(f'mpirun -n 1 {binpath} ' + path + '/sod_shock3d_test.mpml')
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P2DGP1DG AND
 #IT COMPARES THE SOLUTION AGAINST AN ACTUAL ANALYTICAL SOLUTION
 

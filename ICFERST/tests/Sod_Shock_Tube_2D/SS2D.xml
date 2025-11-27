@@ -4,8 +4,8 @@
   <owner userid="zhihua.xie"/>
   <tags>mpml</tags>
   <problem_definition length="long" nprocs="1">
-    <command_line>../../../bin/icferst Sod_Shock_Tube_2D_P1DGP1_20by20.mpml
-../../../bin/icferst Sod_Shock_Tube_2D_P1DGP2_20by20.mpml</command_line>
+    <command_line>mpirun -n 1  ../../../bin/icferst Sod_Shock_Tube_2D_P1DGP1_20by20.mpml
+mpirun -n 1  ../../../bin/icferst Sod_Shock_Tube_2D_P1DGP2_20by20.mpml</command_line>
   </problem_definition>
   <variables>
     <variable name="rho_max_p1dgp1_20by20" language="python">from fluidity_tools import stat_parser as stat

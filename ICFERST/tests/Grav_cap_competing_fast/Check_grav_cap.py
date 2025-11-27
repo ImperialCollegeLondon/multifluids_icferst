@@ -19,7 +19,7 @@ print('Running the model')
 path = os.getcwd()
 binpath = path[:path.index('ICFERST')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
-os.system(binpath + ' ' + path + '/*mpml')
+os.system(f'mpirun -n 1 {binpath} ' + path + '/*mpml')
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P1DGP1 AND 
 #TESTING GRAVITY AND CAPILLARY FORCES
 

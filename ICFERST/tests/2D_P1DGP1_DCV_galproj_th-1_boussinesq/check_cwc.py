@@ -53,7 +53,7 @@ print('Running the model')
 path = os.getcwd()
 binpath = path[:path.index('ICFERST')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
-os.system(binpath + ' ' + path + '/*mpml')
+os.system(f'mpirun -n 1 {binpath} ' + path + '/*mpml')
 
 xarray = [0.5, 1.5, 2.15]
 

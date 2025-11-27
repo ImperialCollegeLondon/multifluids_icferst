@@ -4,7 +4,7 @@
   <owner userid="pablo.salinas"/>
   <tags>porous mpml tracers</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>../../../bin/icferst ./*.mpml</command_line>
+    <command_line>mpirun -n 1  ../../../bin/icferst ./*.mpml</command_line>
   </problem_definition>
   <variables>
     <variable name="max_tracer1" language="python">from fluidity_tools import stat_parser as stat

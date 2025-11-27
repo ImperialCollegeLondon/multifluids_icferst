@@ -4,7 +4,7 @@
   <owner userid="dimitrios.pavlidis"/>
   <tags>mpml wells</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>../../../bin/icferst thiem_well_injector.mpml</command_line>
+    <command_line>mpirun -n 1  ../../../bin/icferst thiem_well_injector.mpml</command_line>
   </problem_definition>
   <variables>
     <variable name="phase1_pressure_max" language="python">from fluidity_tools import stat_parser as stat

@@ -21,7 +21,7 @@ print('Running the model')
 path = os.getcwd()
 binpath = path[:path.index('ICFERST')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
-os.system(binpath + ' ' + path + '/stokes_test.mpml')
+os.system(f'mpirun -n 1 {binpath} ' + path + '/stokes_test.mpml')
 
 
 #TOLERANCE OF THE CHECKING

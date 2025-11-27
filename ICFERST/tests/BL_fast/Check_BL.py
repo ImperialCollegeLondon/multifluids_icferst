@@ -21,7 +21,7 @@ print('Running the model')
 path = os.getcwd()
 binpath = path[:path.rindex('ICFERST')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
-os.system(binpath + ' ' + path + '/BL_fast.mpml')
+os.system(f'mpirun -n 1 {binpath} ' + path + '/BL_fast.mpml')
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P2DGP1DG AND 
 #A STRUCTURED MESH OF 30 ELEMENTS IN THE X-DIRECTION
 #IT COMPARES THE SOLUTION AGAINST AN ACTUAL ANALYTICAL SOLUTION
