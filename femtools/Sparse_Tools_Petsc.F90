@@ -36,6 +36,7 @@ module sparse_tools_petsc
   use data_structures
   use parallel_tools
   use halo_data_types
+  use halos_allocates
 #include "petsc/finclude/petsc.h"
   use petsc
 #include "petsc/finclude/petscmat.h"
@@ -46,6 +47,7 @@ module sparse_tools_petsc
   use fields_manipulation
   use petsc_tools
   implicit none
+#include "petsc_legacy.h"
   private
 
   type petsc_csr_matrix
@@ -242,7 +244,7 @@ contains
     ! this is very important for assembly routines (e.g. DG IP viscosity)
     ! that try to add zeros outside the provided sparsity; if we go outside
     ! the provided n/o nonzeros the assembly will become very slow!!!
-      call MatSetOption(matrix%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
+    call MatSetOption(matrix%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
 
     ! Necessary for local assembly: we don't want to communicate non-local dofs
     call MatSetOption(matrix%M, MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE, ierr)
@@ -280,18 +282,51 @@ contains
 
   end subroutine allocate_petsc_csr_matrix_from_sparsity
 
-    subroutine allocate_petsc_csr_matrix_from_nnz(matrix, rows, columns, &
+  subroutine allocate_petsc_csr_matrix_from_nnz(matrix, rows, columns, &
       dnnz, onnz, blocks, name, halo, row_halo, column_halo, &
       element_size, use_inodes, group_size)
-    !!< [Description remains the same]
+    !!< Allocates a petsc_csr_matrix, i.e. a csr_matrix variant
+    !!< that directly stores in petsc format. For this version the number
+    !!< of nonzeros in each row needs to be provided explicitly. This allows
+    !!< for a more fine-grained nnz estimate in case of different sparsities
+    !!< on off-diagonal blocks (i.e. for component to component coupling)
+    !!< dnnz is the number of local entries in the row (i.e. owned by this
+    !!< process) onnz is the number of non-local/not-owned entries. This has
+    !!< to be specified for all rows of the different vertical blocks, i.e.
+    !!< size(dnnz)==size(onnz)==nprows*blocks(1), where nprows is the number
+    !!< of private rows (contiguisly numbered). In serial only dnnz is used
+    !!< and size(dnnz)==rows*blocks(1).
     type(petsc_csr_matrix), intent(out) :: matrix
     integer, intent(in):: rows, columns
     integer, dimension(:), intent(in):: dnnz, onnz
     integer, dimension(2), intent(in):: blocks
     character(len=*), intent(in) :: name
     type(halo_type), pointer, optional:: halo, row_halo, column_halo
+    !! If provided, the actual PETSc matrix will employ a block structure
+    !! where each local block consists of the degrees of freedom
+    !! of 'element_size' subsequent indices. Note that these blocks are
+    !! something entirely different than the blocks of the previous 'blocks'
+    !! argument, which only refer to dim argument in the set/addto interface
+    !! i.e. call addto(M, dim1, dim2, i1, i2, val) where
+    !! 1<=dim1<=blocks(1) and 1<=dim2<=blocks(2).
+    !! To distinguish the element_size blocks will be referred to as
+    !! element blocks. They consist of entries that have the same
+    !! value for (i1-1)/element_size and (i2-1)/element_size (integer division)
+    !! At the moment entries which have a different dim1 or dim2 are not
+    !! included in the element block (this might be a future option).
+    !! If provided the arguments rows and columns change their meaning
+    !! to be the number of element block rows and columns. The size of dnnz and onnz
+    !! is still nprows*blocks(1), but they now contain the number of
+    !! nonzero element blocks in an element block row.
     integer, intent(in), optional:: element_size
+    !! petsc's inodes don't work with certain preconditioners ("mg" and "eisenstat")
+    !! that's why we default to not use them
     logical, intent(in), optional:: use_inodes
+    !! in the numbering of petsc dofs, split the blocks in 'g' groups of size 'group_size', where
+    !! g=blocks/group_size and the petsc numbers within each group are contiguous. Thus the petsc
+    !! numbering, going from major to minor, is given by g x nodes x group_size
+    !! Default is group_size=(1,1), i.e. no grouping is taking place and all dofs are numbered such that
+    !! all dofs of the first block are numbered continously first, followed by those of the second block, etc.
     integer, dimension(2), intent(in), optional:: group_size
 
     type(halo_type), pointer:: lrow_halo, lcolumn_halo
@@ -366,7 +401,8 @@ contains
       npcols=matrix%column_numbering%nprivatenodes
       if (associated(lrow_halo)) then
         if (lrow_halo%data_type==HALO_TYPE_CG_NODE) then
-          ! Mask out non-local rows.
+          ! Mask out non-local rows.  FIXME: with local assembly this
+          ! shouldn't be needed
           matrix%row_numbering%gnn2unn(nprows+1:,:)=-1
         end if
       end if
@@ -414,12 +450,21 @@ contains
     call MatSetup(matrix%M, ierr)
 
     if (.not. use_element_blocks) then
+      ! this is very important for assembly routines (e.g. DG IP viscosity)
+      ! that try to add zeros outside the provided sparsity; if we go outside
+      ! the provided n/o nonzeros the assembly will become very slow!!!
       call MatSetOption(matrix%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
     end if
 
-    ! Necessary for local assembly
+    ! Necessary for local assembly: we don't want to communicate non-local dofs
     call MatSetOption(matrix%M, MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE, ierr)
+
+    ! to make sure we're not underestimating the number of nonzeros ever, make
+    ! petsc fail if new allocations are necessary. If uncommenting the setting of this
+    ! option fixes your problem the number of no
     call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE, ierr)
+
+    ! saves us from doing a transpose for block inserts
     call MatSetOption(matrix%M, MAT_ROW_ORIENTED, PETSC_FALSE, ierr)
 
     if (.not. (present_and_true(use_inodes) .or. use_element_blocks)) then
@@ -427,12 +472,16 @@ contains
     end if
 
     if (associated(lrow_halo)) then
+      ! these are also pointed to in the row_numbering
+      ! but only refcounted here
       allocate(matrix%row_halo)
       matrix%row_halo = lrow_halo
       call incref(matrix%row_halo)
     end if
 
     if (associated(lcolumn_halo)) then
+      ! these are also pointed to in the column_numbering
+      ! but only refcounted here
       allocate(matrix%column_halo)
       matrix%column_halo = lcolumn_halo
       call incref(matrix%column_halo)
@@ -441,7 +490,8 @@ contains
     allocate(matrix%ksp)
     matrix%ksp = PETSC_NULL_KSP
 
-    nullify(matrix%refcount)
+    nullify(matrix%refcount) ! Hack for gfortran component initialisation
+    !                         bug.
     call addref(matrix)
 
   end subroutine allocate_petsc_csr_matrix_from_nnz
@@ -693,7 +743,7 @@ contains
 #if PETSC_VERSION_MINOR>=20
     MatInfo :: matrixinfo
 #else
-    PetscReal :: matrixinfo(MAT_INFO_SIZE)
+    double precision, dimension(MAT_INFO_SIZE):: matrixinfo
 #endif
     PetscErrorCode:: ierr
 
@@ -739,7 +789,6 @@ contains
     type(petsc_csr_matrix), intent(inout) :: matrix
     integer, intent(in) :: blocki,blockj
     integer, dimension(:), intent(in) :: i,j
-    ! real, dimension(size(i),size(j)), intent(in) :: val
     PetscScalar, dimension(size(i),size(j)), intent(in) :: val
 
     PetscInt :: size1, size2
