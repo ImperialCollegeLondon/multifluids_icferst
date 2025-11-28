@@ -371,16 +371,15 @@ contains
           logical :: conservative_advection
           ! GRAVTY is used in the free surface method only...
           !        ===> GENEREIC INTEGERS <===
-          INTEGER :: COUNT, ICOUNT, JCOUNT, ELE, ELE2, GI, GCOUNT, SELE, V_SILOC, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
-              CV_NODJ, ISWITCH, CV_NODI, U_NODK, TIMOPT, X_NODI,  X_NODJ, CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, CV_SILOC
-          INTEGER :: I, IDIM, U_ILOC, ELE3, k, NFIELD, CV_KLOC, CV_NODK, IFI, COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC, iofluxes,&
-              IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, IPT,ILOOP,IMID,JMID,JDIM, IGETCT, global_face,J, FEM_IT, nb, i_use_volume_frac_t2
+          INTEGER :: COUNT, ELE, ELE2, GI, GCOUNT, SELE, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
+              CV_NODJ, CV_NODI, U_NODK, TIMOPT, X_NODI,  X_NODJ, CV_INOD = 0, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, CV_SILOC
+          INTEGER :: I, ELE3, k, NFIELD, CV_KLOC, CV_NODK, IFI, COUNT_IN = 0, COUNT_OUT = 0,CV_KLOC2,CV_NODK2,CV_SKLOC,&
+              IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, IPT,ILOOP,IMID,JMID, IGETCT, global_face, FEM_IT, nb, i_use_volume_frac_t2
           INTEGER, dimension(1) :: IDUM
           integer, dimension(:), pointer :: neighbours
           INTEGER, dimension(final_phase) :: LOC_WIC_T_BC_ALL
           !        ===>  GENERIC REALS  <===
-          REAL :: HDC, RSUM, THERM_FTHETA, W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, cc, one_m_cv_beta, auxR
-          REAL :: R, NDOTQ_HAT, DeltaP
+          REAL :: HDC, RSUM, THERM_FTHETA, W_SUM_ONE1, W_SUM_ONE2, one_m_cv_beta, auxR, NDOTQ_HAT
           REAL, dimension(final_phase) :: FTHETA, FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, &
               ROBIN1, ROBIN2, BCZERO
           !Local copy of tracers and densities
@@ -399,7 +398,6 @@ contains
               JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
               C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
 
-          REAL, DIMENSION( : ), allocatable ::  N
           real, dimension (Mdims%cv_nonods) ::  SUM_CV
           real, dimension (:), pointer :: MASS_ELE
           type(vector_field), pointer :: vfield
@@ -421,13 +419,12 @@ contains
           ! Variables used in GET_INT_VEL_NEW:
           REAL, DIMENSION ( Mdims%ndim, final_phase, Mdims%u_nloc ) :: LOC_U, LOC2_U, LOC_NU, LOC2_NU, LOC_NUOLD, LOC2_NUOLD
           REAL, DIMENSION ( Mdims%ndim, final_phase, Mdims%u_snloc ) :: SLOC_NU, SLOC_NUOLD
-  				REAL, DIMENSION ( :, : ), allocatable :: LOC_U_HAT, LOC2_U_HAT
           INTEGER :: CV_KNOD2, U_SNODK
           REAL, DIMENSION ( final_phase, Mdims%cv_nloc ) :: LOC_FEMT, LOC2_FEMT, LOC_FEMTOLD, LOC2_FEMTOLD, LOC_FEMT2, LOC2_FEMT2, &
                                                               LOC_FEMT2OLD, LOC2_FEMT2OLD
           ! nphase Variables:
           real, dimension(final_phase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, NDOTQNEW, LIMDTOLD, &
-              INCOMEOLD, NDOTQOLD, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, LIMDTT2OLD, FVT, FVT2, LIMD, LIMDT, LIMDTT2, INCOME_J
+              INCOMEOLD, NDOTQOLD, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, FVT, LIMD, LIMDT
           real, dimension(final_phase)::LIMT2, LIMT2OLD
           real, dimension(final_phase, Mdims%cv_nonods) :: FEMT_ALL, FEMTOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL
           REAL, DIMENSION( Mdims%ndim, final_phase, Mdims%cv_nloc, Mdims%totele ) :: DTX_ELE_ALL, DTOLDX_ELE_ALL
@@ -469,13 +466,11 @@ contains
           real, dimension( final_phase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3
           real, dimension( final_phase ) :: THETA_VEL
           real, dimension( final_phase) :: LOC_CV_RHS_I, LOC_CV_RHS_J, LOC_MAT_II, LOC_MAT_JJ, LOC_MAT_IJ, LOC_MAT_JI
-          REAL, DIMENSION( final_phase ) :: wrelax, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
+          REAL, DIMENSION( final_phase ) :: FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
           REAL, DIMENSION ( Mdims%ndim,final_phase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
           type( vector_field ), pointer :: MeanPoreCV, MeanPoreCV_total
           real, dimension(:), allocatable :: DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU
           real, dimension(final_phase) :: DENOIN_B, CTILIN_B, DENOOU_B, CTILOU_B, FTILIN_B, FTILOU_B
-          !! femdem
-          type( vector_field ), pointer :: delta_u_all, us_all
           real :: VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
           type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
           type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
@@ -495,7 +490,7 @@ contains
           logical :: permeability_jump
           real, dimension(Mdims%ndim, Mdims%ndim) :: inv_harmonic_perm
           real, dimension(final_phase):: rsum_nodi, rsum_nodj
-          integer :: COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
+          integer :: COUNT_SUF, P_JLOC, P_JNOD, stat, ipres
           REAL :: MM_GRAVTY
           !Variables for assemble_collapsed_to_one_phase; Note that diffusion parameters etc need
           logical :: loc_assemble_collapsed_to_one_phase !to be then scaled before getting into this subroutine
@@ -503,9 +498,6 @@ contains
           !Variable to decide, for porous media, whether to use high order methods or not
           logical :: use_porous_limiter = .true.
           logical :: activate_limiters = .true.
-          !Variables to calculate flux across boundaries
-          logical :: calculate_flux
-          integer :: U_JLOC
 
           logical :: have_absorption
           !Variables for get int_vel_porous_vel
@@ -519,19 +511,8 @@ contains
           logical :: compute_outfluxes
           real, dimension(:, :,:), allocatable :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
           real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
-          real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
-          REAL, DIMENSION( :,:,: ), allocatable, target:: SUF_T2_BC_value, SUF_T_BC_ROB2_value
           !Variables to speed up diffusivity computations
           logical :: has_anisotropic_diffusivity
-          ! !Variables for internal subroutine SCVDETNX (created here for speed)
-          ! INTEGER :: SCV_NODJ,  SCV_JLOC
-          ! REAL :: SCV_A, SCV_B, SCV_C
-          ! REAL :: SCV_DETJ
-          ! REAL :: SCV_DXDLX, SCV_DXDLY, SCV_DYDLX
-          ! REAL :: SCV_DYDLY, SCV_DZDLX, SCV_DZDLY
-          ! REAL :: SCV_TWOPI
-          ! REAL :: SCV_RGI, SCV_RDUM
-          ! real, dimension(3) :: SCV_POSVGI, SCV_BAK
 
           !Decide if we are solving for nphases-1
           Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
@@ -2616,40 +2597,6 @@ end if
       RETURN
     END SUBROUTINE TRI_tet_LOCCORDS
 
-          subroutine dump_multiphase(prefix,icp)
-            character(len=*), intent(in) :: prefix
-            integer, optional :: icp
-            integer, save :: its=0
-            integer :: ip, lcomp
-            type( scalar_field ), dimension(2*Mdims%nphase) :: tcr
-            type( vector_field ), dimension(2*Mdims%nphase) :: vel
-            type( vector_field ), pointer :: position
-            position=>extract_vector_field(state(1),"Coordinate")
-            if (present(icp)) then
-                lcomp=icp
-            else
-                lcomp=0
-            end if
-            do ip=1,Mdims%nphase
-                tcr(ip)=wrap_scalar_field(tracer%mesh,T_ALL(ip,:),&
-                    'TracerPhase'//int2str(ip))
-                tcr(ip+Mdims%nphase)=wrap_scalar_field(tracer%mesh,TOLD_ALL(ip,:),&
-                    'OldTracerPhase'//int2str(ip))
-                vel(ip)=wrap_vector_field(velocity%mesh,NU_ALL(:,ip,:),&
-                    'NLVelocityPhase'//int2str(ip))
-                vel(ip+Mdims%nphase)=wrap_vector_field(velocity%mesh,NUOLD_ALL(:,ip,:),&
-                    'OldNLVelocityPhase'//int2str(ip))
-            end do
-            call vtk_write_fields(prefix//trim(tracer%name)&
-                //'Component'//int2str(lcomp),&
-                its,position,tracer%mesh,sfields=tcr,vfields=vel)
-            do ip=1,2*Mdims%nphase
-                call deallocate(tcr(ip))
-                call deallocate(vel(ip))
-            end do
-            its=its+1
-        end subroutine dump_multiphase
-
         logical function has_anisotropic_diffusion(tracer)
         implicit none
             !Global variables
@@ -3853,7 +3800,7 @@ end if
         logical, intent(in) :: use_volume_frac_T2
         integer, intent(in) :: nfield
         ! local variables...
-        INTEGER :: ifield, ipt
+        INTEGER :: ipt
 
         IPT=1;LOC_F = 0.!<= Extremely important to initialise LOC_F here
         CALL PACK_LOC( LOC_F, field1,    nfield, IPT, IGOT_T_PACK(:,1) )
@@ -3985,7 +3932,7 @@ end if
         integer, intent(in) :: nfield
 
         ! local variables...
-        INTEGER :: ifield, ipt
+        INTEGER :: ipt
 
         IPT=1
         CALL UNPACK_LOC( LOC_F, field1,    nfield, IPT, IGOT_T_PACK(:,1), IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1))
@@ -4052,8 +3999,7 @@ end if
         LOGICAL, intent( inout ) :: INTEGRAT_AT_GI
         LOGICAL, intent( in ) :: DISTCONTINUOUS_METHOD
         ! Local variables
-        INTEGER :: X_KLOC, X_NODK, X_NODK2, COUNT, ELE3, SUF_COUNT, CV_KLOC, CV_KLOC2, &
-            &     U_KLOC, U_KLOC2,  XU_NODK, XU_NODK2
+        INTEGER :: X_KLOC, X_NODK, X_NODK2, COUNT, ELE3, SUF_COUNT, CV_KLOC, CV_KLOC2
 
         !ewrite(3,*) 'In FIND_OTHER_SIDE'
 
@@ -4284,7 +4230,7 @@ end if
         ! local variables
         !---------------------------------
         type (multi_dev_shape_funs) :: DevFuns
-        integer :: cv_nodi, cv_nodj, COUNT, max_iterations
+        integer :: cv_nodi, cv_nodj, COUNT
         integer :: iele, cv_iloc, cv_jloc, cv_gi, it                         ! loop variables
         real :: nn, nm, mn, mm
         type(scalar_field) :: cv_mass
@@ -4293,7 +4239,6 @@ end if
         type(vector_field), dimension(size(psi_int)) :: psi_int_temp
         type(csr_sparsity), pointer :: sparsity
         logical :: do_not_project,  is_to_update
-        character(len=option_path_len) :: option_path
 
         !---------------------------------
         ! initialisation and allocation
@@ -4735,7 +4680,7 @@ end if
         ! Local variables
         REAL, DIMENSION( CV_NLOC, CV_NLOC, TOTELE ) :: MASELE
         REAL, DIMENSION( NDIM, NPHASE, CV_NLOC, TOTELE ) :: VTX_ELE, VTOLDX_ELE
-        LOGICAL :: D1, D3, APPLYBC( NPHASE )
+        LOGICAL :: APPLYBC( NPHASE )
         REAL, dimension( CV_NGI ) :: DETWEI, RA
         REAL, DIMENSION( NDIM, size(NLX,1), CV_NGI):: NX_ALL
         REAL, DIMENSION( NDIM, size(X_NLX,1),CV_NGI ) :: X_NX_ALL
@@ -6024,8 +5969,7 @@ end if
         final_phase, Mdims, CV_funs, ndgln, Mmat, GI, between_elements, on_domain_boundary, &
         ELE, ELE2, SELE, HDC, MASS_ELE, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
         C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC, &
-        U_SLOC2LOC, CV_SLOC2LOC,  &
-        SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
+        U_SLOC2LOC, CV_SLOC2LOC, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
         WIC_U_BC_ALL, WIC_P_BC_ALL,SUF_P_BC_ALL,&
         UGI_COEF_ELE_ALL,  &
         UGI_COEF_ELE2_ALL,  &
@@ -6073,13 +6017,8 @@ end if
         !gravity
         REAL :: gravty
         ! Local variables...
-        INTEGER :: U_KLOC, U_KLOC2, IDIM, &
-            IPHASE, U_SKLOC, I, J, U_KKLOC, &
-            u_iloc, u_siloc, count, COUNT_SUF
-        real :: Mass_corrector, auxR
-        !Local variables for CV pressure bcs
-        integer :: KPHASE, CV_SNODK, CV_SNODK_IPHA, CV_SKLOC
-        real, dimension(:,:), allocatable :: SUF_SIG_DIAGTEN_BC_pha_GI
+        INTEGER :: U_KLOC, U_KLOC2, IPHASE, U_SKLOC, u_iloc, u_siloc
+        real :: Mass_corrector = 0.0, auxR = 0.0
 
         !If using Mmat%C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
         if (Mmat%CV_pressure) call introduce_C_CV_boundary_conditions(Bound_ele_correct)
@@ -6213,7 +6152,7 @@ end if
             implicit none
             real, dimension(:,:,:), intent(out) :: Bound_ele_correct
             !Local variables
-            integer :: U_KLOC, IPHASE, P_SJLOC, U_INOD, ipres, CV_KLOC, P_ILOC, CV_ILOC, i, n_bcs
+            integer :: IPHASE, U_INOD, ipres, i, n_bcs
             logical, save :: show_warn_msg = .true.
             logical, save :: have_been_read = .false.
             logical, save :: hydrostatic_bc
@@ -6400,7 +6339,7 @@ end if
                 real, dimension( : ), allocatable :: WEIGHT, L1, L2, L3, L4
                 integer, dimension( : ), allocatable :: SUB_NDGLNO, SUB_XNDGLNO, ndgln_p2top1
                 INTEGER :: SUB_TOTELE, NGI,NLOC, ELE, IL_LOC, IQ_LOC, &
-                    LOC_ELE, SUB_ELE, SUB_LIN_TOTELE
+                    LOC_ELE = 0, SUB_ELE = 0, SUB_LIN_TOTELE = 0
 
 
                 ! **********************Calculate linear shape functions...
@@ -6517,8 +6456,6 @@ end if
                 REAL, DIMENSION(:), INTENT(IN) :: WEIGHT
                 !Local variables
 
-                INTEGER, DIMENSION( NCOLM ) :: ELEMATPSI
-                REAL, DIMENSION( NCOLM * NLOC  ) :: ELEMATWEI
                 ! Allocate memory for the interpolated upwind values
                 LOGICAL, PARAMETER :: BOUND  = .TRUE.! limiting options
                 integer, dimension(:), allocatable :: NOD_FINDELE
@@ -7370,10 +7307,10 @@ end if
       ! local variables...
       logical :: INTEGRAT_AT_GI, skip, on_domain_boundary
       logical :: DISTCONTINUOUS_METHOD = .false.!For the time being this subroutine only works for continuous fields
-      integer :: stat ,nb, ele, ele2, ele3, sele, cv_siloc, i, local_phases, CV_NODK, cv_kloc,&
-      cv_iloc, cv_jloc, cv_nodi, cv_nodj, idim, iphase, GCOUNT, GI, x_nodi, x_nodj, cv_xloc
+      integer :: nb, ele, ele2, ele3, sele, cv_siloc, i, local_phases, CV_NODK, cv_kloc,&
+      cv_iloc, cv_jloc, cv_nodi, cv_nodj, iphase, GCOUNT, GI, x_nodi, x_nodj, cv_xloc
       real :: HDC, HDLi, HDLj
-      type( vector_field ), pointer :: X_ALL, MASS_CV, XC_CV_ALL
+      type( vector_field ), pointer :: X_ALL, XC_CV_ALL
       LOGICAL, DIMENSION( Mdims%x_nonods ) :: X_SHARE
       integer, dimension (Mdims%cv_nloc) ::CV_OTHER_LOC
       integer, dimension (Mdims%cv_snloc) :: CV_SLOC2LOC
@@ -7601,12 +7538,7 @@ end if
       logical, intent(in) :: on_domain_boundary, between_elements
       !     - Local variables
       INTEGER :: NODJ,  JLOC
-      REAL :: A, B, C
-      REAL :: DETJ
-      REAL :: DXDLX, DXDLY, DYDLX
-      REAL :: DYDLY, DZDLX, DZDLY
-      REAL :: TWOPI
-      REAL :: RGI, RDUM
+      REAL :: A, DETJ, DXDLX, DXDLY, DYDLX, DYDLY, DZDLX, DZDLY, TWOPI, RGI, RDUM
       real, dimension(3) :: POSVGI, DLX,DLY
       !ewrite(3,*)' In SCVDETNX'
       POSVGI = 0.0
@@ -7711,41 +7643,6 @@ end if
 
       END SUBROUTINE SCVDETNX
 
-!SPRINT_TO_DO REMOVEME
-    ! subroutine sum_saturation_to_unity(nphase, Imble_frac, saturation)
-    !
-    !     integer :: nphase
-    !     real, dimension(:), intent ( inout ) :: saturation
-    !     real, dimension(:,:), intent ( in ) :: Imble_frac
-    !     ! local
-    !     real, dimension(nphase) :: Normalized_sat
-    !     real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
-    !     integer :: iphase
-    !
-    !     ! assume immobile fraction in the model is the same, use ele = 1
-    !     moveable_sat = 1.0 - sum(Imble_frac(:,1))
-    !
-    !     !Work in normalized saturation here
-    !     Normalized_sat = (saturation - Imble_frac(:, 1))/moveable_sat
-    !     sum_of_phases = sum(Normalized_sat)
-    !     correction = (1.0 - sum_of_phases)
-    !
-    !     !Spread the error to all the phases weighted by their moveable presence in that CV
-    !     !Increase the range to look for solutions by allowing oscillations below 0.01 percent
-    !     if (abs(correction) > 1d-8) saturation = (Normalized_sat * &
-    !         (1.0 + correction/sum_of_phases))* moveable_sat + Imble_frac(:, 1)
-    !
-    !     !Make sure saturation is between bounds after the modification
-    !     do iphase = 1, nphase
-    !         minsat = Imble_frac(iphase, 1)
-    !         maxsat = moveable_sat + minsat
-    !         saturation(iphase) =  min(max(minsat, saturation(iphase)),maxsat)
-    !     end do
-    !
-    !     return
-    ! end subroutine sum_saturation_to_unity
-
-
       SUBROUTINE SATURATION_ASSEMB( petsc_ACV, state, packed_state, &
         final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
         saturation, sat_prev, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
@@ -7789,22 +7686,19 @@ end if
         ! ###################Local variables############################
         REAL, DIMENSION( :, : ), pointer :: MEAN_PORE_CV
 
-        REAL, dimension(:), ALLOCATABLE :: DIFF_COEF, COEF
         !        ===>  LOGICALS  <===
         ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
         logical, PARAMETER :: integrate_other_side= .true.
         LOGICAL :: GETMAT, D1, D3, INTEGRAT_AT_GI, QUAD_OVER_WHOLE_ELE
-        logical :: skip, logical_igot_theta_flux, zero_vel_BC
+        logical :: skip, zero_vel_BC
         ! GRAVTY is used in the free surface method only...
         !        ===> GENERIC INTEGERS <===
-        INTEGER :: COUNT, ICOUNT, JCOUNT, ELE, ELE2, GI, GCOUNT, SELE, V_SILOC, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
-            CV_NODJ, CV_NODI, U_NODK, X_NODI,  X_NODJ, CV_INOD, MAT_NODI,  MAT_NODJ, CV_SILOC
-        INTEGER :: I, IDIM, U_ILOC, ELE3, k, CV_KLOC, CV_NODK, COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC, iofluxes,&
-            IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, ILOOP,JDIM, IGETCT, global_face,J, nb, i_use_volume_frac_t2
+        INTEGER :: ELE, ELE2, GI, GCOUNT, SELE, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, &
+            CV_NODJ, CV_NODI, U_NODK, X_NODI,  X_NODJ, MAT_NODI,  MAT_NODJ, CV_SILOC
+        INTEGER :: IDIM, ELE3, CV_KLOC2, U_SKLOC, global_face, nb
         integer, dimension(:), pointer :: neighbours
-        INTEGER, dimension(final_phase) :: LOC_WIC_T_BC_ALL
         !        ===>  GENERIC REALS  <===
-        REAL :: HDC, RSUM, W_SUM_ONE1, W_SUM_ONE2, auxR
+        REAL :: HDC, RSUM, auxR
         REAL, dimension(final_phase) :: BCZERO
         !Local copy of saturations and densities
         real, dimension(final_phase) :: LOC_T_J, LOC_T_I
@@ -7812,9 +7706,6 @@ end if
         integer, dimension (Mdims%cv_nloc) ::CV_OTHER_LOC
         integer, dimension (Mdims%cv_snloc) :: CV_SLOC2LOC
         integer, dimension (Mdims%u_snloc) :: U_SLOC2LOC
-        !Allocate only for get_CT
-        INTEGER, DIMENSION( : ), allocatable :: JCOUNT_KLOC, ICOUNT_KLOC, &
-            C_JCOUNT_KLOC, C_ICOUNT_KLOC
 
         real, dimension (:), pointer :: MASS_ELE
         type(vector_field), pointer :: vfield
@@ -7825,9 +7716,9 @@ end if
         !###Variables for shape function calculation###
         type (multi_dev_shape_funs) :: SdevFuns
         ! Variables used in GET_INT_VEL_NEW:
-        REAL, DIMENSION ( Mdims%ndim, final_phase, Mdims%u_nloc ) :: LOC_U, LOC2_U, LOC_NU, LOC2_NU
+        REAL, DIMENSION ( Mdims%ndim, final_phase, Mdims%u_nloc ) :: LOC_U, LOC_NU
         REAL, DIMENSION ( Mdims%ndim, final_phase, Mdims%u_snloc ) :: SLOC_NU
-        INTEGER :: CV_KNOD2, U_SNODK
+        INTEGER :: U_SNODK
         ! nphase Variables:
         real, dimension(final_phase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, NDOTQNEW, &
             LIMT, LIMD, LIMDT
@@ -7841,7 +7732,7 @@ end if
         !! boundary_condition fields
         type(tensor_field) :: velocity_BCs,saturation_BCs, density_BCs
         type(tensor_field) :: pressure_BCs
-        INTEGER, DIMENSION( 1 , Mdims%nphase , surface_element_count(saturation) ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_T2_BC_ALL
+        INTEGER, DIMENSION( 1 , Mdims%nphase , surface_element_count(saturation) ) :: WIC_T_BC_ALL, WIC_D_BC_ALL
         INTEGER, DIMENSION( Mdims%ndim , Mdims%nphase , surface_element_count(saturation) ) :: WIC_U_BC_ALL
         type( tensor_field ), pointer ::  pressure
         INTEGER, DIMENSION ( 1,Mdims%npres,surface_element_count(saturation) ) :: WIC_P_BC_ALL
@@ -7849,22 +7740,12 @@ end if
         REAL, DIMENSION(:,:,: ), pointer :: SUF_D_BC_ALL
         REAL, DIMENSION(:,:,: ), pointer :: SUF_U_BC_ALL
         REAL, DIMENSION( :,:,: ), allocatable, target :: SUF_T_BC
-        !Working variables for subroutines that are called several times
-        real, dimension( Mdims%ndim,final_phase ) :: rdum_ndim_nphase_1
-        real, dimension( final_phase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3
-        real, dimension( final_phase ) :: THETA_VEL
         real, dimension( final_phase) :: LOC_RES_I, LOC_RES_J, LOC_MAT_II, LOC_MAT_JJ, LOC_MAT_IJ, LOC_MAT_JI
-        REAL, DIMENSION( final_phase ) :: wrelax, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
-        REAL, DIMENSION ( Mdims%ndim,final_phase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
+        REAL, DIMENSION( final_phase ) :: abs_tilde
+        REAL, DIMENSION ( Mdims%ndim,final_phase ) :: UDGI2_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
         type( vector_field ), pointer :: MeanPoreCV
         type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
         type( tensor_field ), pointer :: old_saturation
-        ! Dummy variables to call the wells subroutine
-        REAL, DIMENSION(:),allocatable :: well_dummy1
-        real, dimension(:,:),allocatable :: well_dummy6, well_dummy7
-        real, dimension(:,:,:),allocatable:: well_dummy2,well_dummy4,well_dummy5
-        REAL, DIMENSION(:,:,:),pointer :: well_dummy8 => null()
-        type (multi_outfluxes) :: well_dummy3
 
         ! variables for pipes (that are needed in cv_assemb as well), allocatable because they are big and barely used
         Real, dimension(:), pointer :: MASS_CV
@@ -7875,10 +7756,6 @@ end if
         logical :: VAD_activated, on_domain_boundary
         !Variable to decide if we are introducing the sum of phases = 1 in Ct or elsewhere
         logical :: Solve_all_phases
-        !Variables for get_int_vel_porous_vel
-        logical :: permeability_jump
-        integer :: COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
-        REAL :: MM_GRAVTY
         !Variables for assemble_collapsed_to_one_phase; Note that diffusion parameters etc need
         logical :: loc_assemble_collapsed_to_one_phase !to be then scaled before getting into this subroutine
         integer :: assembly_phase
@@ -7886,7 +7763,7 @@ end if
         !Variables for get int_vel_porous_vel
         logical :: iv_Incomming_flow
         REAL, DIMENSION(Mdims%ndim) :: iv_SUF_SIG_DIAGTEN_BC_GI
-        INTEGER :: iv_u_kloc, iv_u_skloc, iv_cv_kloc, iv_idim, iv_CV_SKLOC, iv_CV_SNODK, iv_CV_SNODK_IPHA, iv_IPHASE, iv_u_kloc2
+        INTEGER :: iv_u_kloc, iv_u_skloc, iv_cv_kloc, iv_idim, iv_CV_SKLOC, iv_CV_SNODK, iv_CV_SNODK_IPHA, iv_IPHASE
 
 
         !Decide if we are solving for nphases-1
@@ -8270,73 +8147,6 @@ end if
         RETURN
     contains
 
-
-
-  SUBROUTINE TRI_tet_LOCCORDS(Xpt, LOCCORDS,  &
-       !     The 3 corners of the tri...
-       X_CORNERS_ALL, NDIM,CV_NLOC)
-    ! obtain the local coordinates LOCCORDS from a pt in or outside the tet/triangle Xpt
-    ! with corner nodes X_CORNERS_ALL
-    IMPLICIT NONE
-    INTEGER, intent(in) :: NDIM,CV_NLOC
-    REAL, dimension(NDIM), intent(in) :: Xpt
-    REAL, dimension(NDIM+1), intent(inout) :: LOCCORDS
-    REAL, dimension(NDIM,CV_NLOC), intent(in) :: X_CORNERS_ALL
-
-    IF (NDIM==3) THEN
-       CALL TRILOCCORDS(Xpt(1),Xpt(2),Xpt(3), &
-            LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4),&
-            !     The 4 corners of the tet...
-            X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),X_CORNERS_ALL(3,1),&
-            X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),X_CORNERS_ALL(3,2),&
-            X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3),X_CORNERS_ALL(3,3),&
-            X_CORNERS_ALL(1,4),X_CORNERS_ALL(2,4),X_CORNERS_ALL(3,4) )
-    ELSE
-       CALL TRILOCCORDS2D(Xpt(1),Xpt(2), &
-            LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),&
-            !     The 3 corners of the tri...
-            X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),&
-            X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),&
-            X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3) )
-    END IF
-    ! From  the local coordinates find the shape function value...
-    RETURN
-  END SUBROUTINE TRI_tet_LOCCORDS
-
-        subroutine dump_multiphase(prefix,icp)
-          character(len=*), intent(in) :: prefix
-          integer, optional :: icp
-          integer, save :: its=0
-          integer :: ip, lcomp
-          type( scalar_field ), dimension(2*Mdims%nphase) :: tcr
-          type( vector_field ), dimension(2*Mdims%nphase) :: vel
-          type( vector_field ), pointer :: position
-          position=>extract_vector_field(state(1),"Coordinate")
-          if (present(icp)) then
-              lcomp=icp
-          else
-              lcomp=0
-          end if
-          do ip=1,Mdims%nphase
-              tcr(ip)=wrap_scalar_field(saturation%mesh,T_ALL(ip,:),&
-                  'saturationPhase'//int2str(ip))
-              tcr(ip+Mdims%nphase)=wrap_scalar_field(saturation%mesh,TOLD_ALL(ip,:),&
-                  'OldsaturationPhase'//int2str(ip))
-              vel(ip)=wrap_vector_field(velocity%mesh,NU_ALL(:,ip,:),&
-                  'NLVelocityPhase'//int2str(ip))
-              vel(ip+Mdims%nphase)=wrap_vector_field(velocity%mesh,NUOLD_ALL(:,ip,:),&
-                  'OldNLVelocityPhase'//int2str(ip))
-          end do
-          call vtk_write_fields(prefix//trim(saturation%name)&
-              //'Component'//int2str(lcomp),&
-              its,position,saturation%mesh,sfields=tcr,vfields=vel)
-          do ip=1,2*Mdims%nphase
-              call deallocate(tcr(ip))
-              call deallocate(vel(ip))
-          end do
-          its=its+1
-      end subroutine dump_multiphase
-
       !---------------------------------------------------------------------------
       !> @author Chris Pain, Pablo Salinas
       !> @brief Computes the flux between CVs for porous media. NDOTQNEW contains the fluxes for a given gauss integration point
@@ -8618,62 +8428,6 @@ end if
               ! END IF
           RETURN
       END SUBROUTINE GET_INT_VEL_POROUS_VEL
-
-      subroutine get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC ,&
-                                      C_JCOUNT_KLOC, C_ICOUNT_KLOC )
-      implicit none
-          integer, dimension(:), intent(inout):: JCOUNT_KLOC, ICOUNT_KLOC
-          integer, dimension(:), intent(inout):: C_JCOUNT_KLOC, C_ICOUNT_KLOC
-          !Local variables
-          integer :: U_KLOC, U_NODK, JCOUNT, COUNT, ICOUNT
-        ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
-          DO U_KLOC = 1, Mdims%u_nloc
-              U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
-              JCOUNT = 0
-              DO COUNT = Mspars%CT%fin( CV_NODI ), Mspars%CT%fin( CV_NODI + 1 ) - 1
-                  IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
-                      JCOUNT = COUNT
-                      EXIT
-                  END IF
-              END DO
-              JCOUNT_KLOC( U_KLOC ) = JCOUNT
-              if(integrate_other_side) then
-                  ! for integrating just on one side...
-                  ICOUNT = 0
-                  DO COUNT = Mspars%CT%fin( CV_NODJ ), Mspars%CT%fin( CV_NODJ + 1 ) - 1
-                      IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
-                          ICOUNT = COUNT
-                          EXIT
-                      END IF
-                  END DO
-                  ICOUNT_KLOC( U_KLOC ) = ICOUNT
-              endif
-          END DO
-          ! IF ( between_elements ) THEN
-          !     DO U_KLOC =  1, Mdims%u_nloc
-          !         U_NODK = ndgln%u( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
-          !         JCOUNT = 0
-          !         DO COUNT = Mspars%CT%fin( CV_NODI ), Mspars%CT%fin( CV_NODI + 1 ) - 1
-          !             IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
-          !                 JCOUNT = COUNT
-          !                 EXIT
-          !             END IF
-          !         END DO
-          !         JCOUNT_KLOC2( U_KLOC ) = JCOUNT
-          !         if(integrate_other_side) then
-          !             ! for integrating just on one side...
-          !             ICOUNT = 0
-          !             DO COUNT = Mspars%CT%fin( CV_NODJ ), Mspars%CT%fin( CV_NODJ + 1 ) - 1
-          !                 IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
-          !                     ICOUNT = COUNT
-          !                     EXIT
-          !                 END IF
-          !             END DO
-          !             ICOUNT_KLOC2( U_KLOC ) = ICOUNT
-          !         endif
-          !     END DO
-          ! END IF ! endof IF ( between_elements ) THEN
-      end subroutine get_neigbouring_lists
 
   END SUBROUTINE SATURATION_ASSEMB
 
