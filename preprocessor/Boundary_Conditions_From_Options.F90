@@ -955,6 +955,9 @@ contains
     ns=1
     nbcs=option_count(trim(bc_path))
 
+    have_smoothing = .false.
+    applies = .false.
+
     boundary_conditions: do i=0, nbcs-1
        bc_path_i=trim(bc_path)//"["//int2str(i)//"]"
        call get_option(trim(bc_path_i)//"/name", bc_name)

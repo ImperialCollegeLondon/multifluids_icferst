@@ -532,7 +532,7 @@ contains
         end if
         ! When outlet_id is allocated, calculate_flux is true and we want to calculate outfluxes
         ! If calculating boundary fluxes, allocate and initialise to zero outfluxes variables
-        if (outfluxes%calculate_flux) call allocate_multi_outfluxes(Mdims, outfluxes)
+        call allocate_multi_outfluxes(Mdims, outfluxes)
 !       Allocate memory and initialise calculate_mass_global if calculate_mass_flag is switched on to store the total mass change in the domain
         allocate(calculate_mass_delta(Mdims%nphase,2))
         calculate_mass_delta(:,:) = 0.0
