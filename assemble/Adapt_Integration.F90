@@ -651,7 +651,7 @@ contains
 
 
     else !If it has failed re-use the old mesh parameters
-      ewrite(0, *) 'WARNING: Mesh adaptivity failed, re-using old mesh')
+      ewrite(0, *) 'WARNING: Mesh adaptivity failed, re-using old mesh'
       ! ! HOWEVER we need to fake that is has worked so for parallel we can follow the same procedure
       if (associated(output_positions%refcount)) call deallocate(output_positions)
       call allocate(output_positions,input_positions%dim,input_positions%mesh,name=trim(input_positions%name))
