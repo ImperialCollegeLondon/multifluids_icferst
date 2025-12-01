@@ -144,7 +144,7 @@ contains
   !---------------------------------------------------------------------------
     SUBROUTINE CV_ASSEMB( state, packed_state, &
           final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-          tracer, velocity, density, multi_absorp, &
+          tracer, velocity, density, &
           DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B,&
           DEN_ALL, DENOLD_ALL, &
           CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, &
@@ -298,7 +298,6 @@ contains
           type(tensor_field), intent(inout), target :: tracer
           type(tensor_field), intent(in), target :: density
           type(tensor_field), intent(in) :: velocity
-          type(multi_absorption), intent(inout) :: multi_absorp
           INTEGER, intent( in ) :: CV_DISOPT, CV_DG_VEL_INT_OPT, &
               IGOT_T2, IGOT_THETA_FLUX
           REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
@@ -379,7 +378,7 @@ contains
           integer, dimension(:), pointer :: neighbours
           INTEGER, dimension(final_phase) :: LOC_WIC_T_BC_ALL
           !        ===>  GENERIC REALS  <===
-          REAL :: HDC, RSUM, THERM_FTHETA, W_SUM_ONE1, W_SUM_ONE2, one_m_cv_beta, auxR, NDOTQ_HAT
+          REAL :: HDC, RSUM, THERM_FTHETA, W_SUM_ONE1, W_SUM_ONE2, one_m_cv_beta, auxR
           REAL, dimension(final_phase) :: FTHETA, FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, &
               ROBIN1, ROBIN2, BCZERO
           !Local copy of tracers and densities
@@ -1445,7 +1444,7 @@ contains
                               IF( GOT_T2 ) THEN
                                   IF( is_porous_media ) THEN
                                       CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
-                                          LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD, &
+                                          LOC_T2OLD_J, LOC_FEMT2OLD, &
                                           LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
                                           UGI_COEF_ELE_ALL(:,1:final_phase,:), UGI_COEF_ELE2_ALL(:,1:final_phase,:), &
                                           upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
@@ -1455,7 +1454,7 @@ contains
                                           T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .false.)
                                       CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
-                                          LOC_T2_I, LOC_T2_J, LOC_FEMT2, &
+                                          LOC_T2_J, LOC_FEMT2, &
                                           LOC_NU, LOC2_NU, SLOC_NU, &
                                           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                                           upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
@@ -1477,7 +1476,7 @@ contains
                               ELSE
                                   IF( is_porous_media ) THEN
                                       CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
-                                          LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD, &
+                                          LOC_TOLD_J, LOC_FEMTOLD, &
                                           LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
                                           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                                           upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
@@ -1487,7 +1486,7 @@ contains
                                           TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .false.)!Sprint_to_do store for a time-level old values?? Would halve the cost of flux calculation...
                                       CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
-                                          LOC_T_I, LOC_T_J, LOC_FEMT, &
+                                          LOC_T_J, LOC_FEMT, &
                                           LOC_NU, LOC2_NU, SLOC_NU, &
                                           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                                           upwnd%adv_coef(1,1,1:final_phase, MAT_NODI), upwnd%adv_coef_grad(1,1,1:final_phase, MAT_NODI), &
@@ -1733,12 +1732,12 @@ contains
 
                                   CALL PUT_IN_CT_RHS(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
                                       final_phase, Mdims, CV_funs, ndgln, Mmat, GI,  &
-                                      between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, MASS_ELE, &
-                                      JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
+                                      between_elements, on_domain_boundary, ELE, ELE2, SELE, MASS_ELE, &
+                                      JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, &
                                       SdevFuns%DETWEI, CVNORMX_ALL, DEN_ALL(1:final_phase,:), CV_NODI, CV_NODJ, &
                                       WIC_U_BC_ALL, WIC_P_BC_ALL, pressure_BCs%val, &
                                       UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,  &
-                                      NDOTQNEW, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT, NDOTQ_HAT, &
+                                      NDOTQNEW, NDOTQOLD, LIMDT, LIMDTOLD, &
                                       FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
                                       loc_u, THETA_VEL, &
                                       rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, X_ALL, SUF_D_BC_ALL, gravty)
@@ -3012,7 +3011,7 @@ end if
         !> @brief Computes the flux between CVs for porous media. NDOTQNEW contains the fluxes for a given gauss integration point
         !---------------------------------------------------------------------------
         SUBROUTINE GET_INT_VEL_POROUS_VEL(NDOTQNEW, NDOTQ, INCOME, &
-            LOC_T_I, LOC_T_J, LOC_FEMT, &
+            LOC_T_J, LOC_FEMT, &
             LOC_NU, LOC2_NU, SLOC_NU, &
             UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
             I_adv_coef, I_adv_coef_grad, &
@@ -3026,7 +3025,7 @@ end if
             ! it assumes a compact_overlapping decomposition approach for velocity.
             IMPLICIT NONE
             REAL, DIMENSION( : ), intent( inout ) :: NDOTQNEW, NDOTQ, INCOME
-            REAL, DIMENSION( : ), intent( in ) :: LOC_T_I, LOC_T_J
+            REAL, DIMENSION( : ), intent( in ) :: LOC_T_J
             REAL, DIMENSION( :, : ), intent( in ) :: LOC_FEMT
             REAL, DIMENSION( :, :, : ), intent( in ) ::  LOC_NU, LOC2_NU, SLOC_NU
             REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL!This is for the continuity equation, so we convert V into u
@@ -5967,14 +5966,13 @@ end if
     !> It also computes the gradient matrix using the DCVFE method
     SUBROUTINE PUT_IN_CT_RHS( GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
         final_phase, Mdims, CV_funs, ndgln, Mmat, GI, between_elements, on_domain_boundary, &
-        ELE, ELE2, SELE, HDC, MASS_ELE, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
+        ELE, ELE2, SELE, MASS_ELE, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
         C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC, &
-        U_SLOC2LOC, CV_SLOC2LOC, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
+        U_SLOC2LOC, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
         WIC_U_BC_ALL, WIC_P_BC_ALL,SUF_P_BC_ALL,&
         UGI_COEF_ELE_ALL,  &
         UGI_COEF_ELE2_ALL,  &
-        NDOTQ, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT, &
-        NDOTQ_HAT, &
+        NDOTQ, NDOTQOLD, LIMDT, LIMDTOLD, &
         FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
         loc_u, THETA_VEL, &
         UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP, X_ALL, SUF_D_BC_ALL, gravty) !<= local memory sent down for speed...
@@ -5992,18 +5990,16 @@ end if
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
         INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
         INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
-        INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC, CV_SLOC2LOC
+        INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
         REAL, DIMENSION( :, :, : ), intent( inout ) :: SUF_P_BC_ALL
         REAL, DIMENSION( : ), intent( inout ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
         REAL, DIMENSION( :, :, : ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
         REAL, DIMENSION( : ), intent( in ) :: SCVDETWEI, MASS_ELE
         REAL, DIMENSION( :, : ), intent( in ) :: CVNORMX_ALL
         REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL
-        REAL, DIMENSION( : ), intent( in ) :: NDOTQ, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT
-        REAL, intent( in ) :: NDOTQ_HAT
+        REAL, DIMENSION( : ), intent( in ) :: NDOTQ, NDOTQOLD, LIMDT, LIMDTOLD
         REAL, DIMENSION( : ), intent( in ) :: THETA_VEL
         integer, dimension(:,:,:) :: WIC_U_BC_ALL, WIC_P_BC_ALL
-        REAL, intent( in ) :: HDC
         REAL,  DIMENSION( : ), intent( in ) :: FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J
         ! local memory sent down for speed...
         REAL,  DIMENSION( Mdims%ndim, final_phase ), intent( inout ) :: UDGI_IMP_ALL
@@ -7643,16 +7639,14 @@ end if
 
       END SUBROUTINE SCVDETNX
 
-      SUBROUTINE SATURATION_ASSEMB( petsc_ACV, state, packed_state, &
-        final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-        saturation, sat_prev, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
-        SOURCT_ALL, VOLFRA_PORE, VAD_parameter, Phase_with_Pc, &
-        eles_with_pipe, pipes_aux,&
+      SUBROUTINE SATURATION_ASSEMB( petsc_ACV, packed_state, &
+        final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mmat, upwnd, &
+        saturation, sat_prev, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
+        SOURCT_ALL, VAD_parameter, Phase_with_Pc, &
         assemble_collapsed_to_one_phase, getResidual)
         ! Inputs/Outputs
         IMPLICIT NONE
         type(petsc_csr_matrix), intent( inout ) :: petsc_ACV
-        type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         integer, intent(in) ::  final_phase
         type(multi_dimensions), intent(in) :: Mdims
@@ -7660,7 +7654,6 @@ end if
         type(multi_shape_funs), intent(inout) :: CV_funs
         type(multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
-        type (multi_discretization_opts) :: Mdisopt
         type (multi_matrices), intent(inout) :: Mmat
         type (porous_adv_coefs), intent(inout) :: upwnd
         type(tensor_field), intent(inout), target :: saturation
@@ -7672,15 +7665,10 @@ end if
         REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL
         REAL, intent( in ) :: DT
         REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-        REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
         REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
-        REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
         !Variables for Vanishing artificial diffusion
         integer, optional, intent(in) :: Phase_with_Pc
         real, optional, dimension(:), intent(in) :: VAD_parameter
-        ! Calculate_mass variable
-        type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
-        type (multi_pipe_package), intent(in) :: pipes_aux
         logical, optional, intent(in) ::  assemble_collapsed_to_one_phase
         logical, optional, intent(in) ::  getResidual
         ! ###################Local variables############################
@@ -7695,7 +7683,7 @@ end if
         !        ===> GENERIC INTEGERS <===
         INTEGER :: ELE, ELE2, GI, GCOUNT, SELE, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, &
             CV_NODJ, CV_NODI, U_NODK, X_NODI,  X_NODJ, MAT_NODI,  MAT_NODJ, CV_SILOC
-        INTEGER :: IDIM, ELE3, CV_KLOC2, U_SKLOC, global_face, nb
+        INTEGER :: IDIM, ELE3, U_SKLOC, global_face, nb
         integer, dimension(:), pointer :: neighbours
         !        ===>  GENERIC REALS  <===
         REAL :: HDC, RSUM, auxR
@@ -7720,8 +7708,7 @@ end if
         REAL, DIMENSION ( Mdims%ndim, final_phase, Mdims%u_snloc ) :: SLOC_NU
         INTEGER :: U_SNODK
         ! nphase Variables:
-        real, dimension(final_phase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, NDOTQNEW, &
-            LIMT, LIMD, LIMDT
+        real, dimension(final_phase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, NDOTQNEW, LIMT, LIMD, LIMDT
         REAL , DIMENSION( Mdims%ndim, final_phase ) :: NUGI_ALL
         LOGICAL :: integrate_other_side_and_not_boundary
         !Working variables
@@ -7741,7 +7728,6 @@ end if
         REAL, DIMENSION(:,:,: ), pointer :: SUF_U_BC_ALL
         REAL, DIMENSION( :,:,: ), allocatable, target :: SUF_T_BC
         real, dimension( final_phase) :: LOC_RES_I, LOC_RES_J, LOC_MAT_II, LOC_MAT_JJ, LOC_MAT_IJ, LOC_MAT_JI
-        REAL, DIMENSION( final_phase ) :: abs_tilde
         REAL, DIMENSION ( Mdims%ndim,final_phase ) :: UDGI2_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
         type( vector_field ), pointer :: MeanPoreCV
         type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
@@ -7965,9 +7951,9 @@ end if
                           ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
                           !Calling the functions directly instead inside a wrapper saves a around a 5%
                           CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
-                              LOC_T_I, LOC_T_J, LOC_NU, SLOC_NU, UGI_COEF_ELE_ALL, &
+                              LOC_NU, SLOC_NU, UGI_COEF_ELE_ALL, &
                               upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODI), upwnd%inv_adv_coef(1,1,1:final_phase,MAT_NODJ), &
-                              NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ))
+                              NUGI_ALL)
                           If_GOT_CAPDIFFUS: IF ( VAD_activated ) THEN
                               IF(SELE == 0) THEN
                                 CAP_DIFF_COEF_DIVDX = 0.0
@@ -8152,22 +8138,18 @@ end if
       !> @brief Computes the flux between CVs for porous media. NDOTQNEW contains the fluxes for a given gauss integration point
       !---------------------------------------------------------------------------
       SUBROUTINE GET_INT_VEL_POROUS_VEL(NDOTQNEW, NDOTQ, INCOME, &
-          LOC_T_I, LOC_T_J, &
           LOC_NU, SLOC_NU, &
           UGI_COEF_ELE_ALL, &
-          I_inv_adv_coef, J_inv_adv_coef, &
-          UDGI_ALL,MASS_CV_I, MASS_CV_J)
+          I_inv_adv_coef, J_inv_adv_coef, UDGI_ALL)
           !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===
           ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
           ! it assumes a compact_overlapping decomposition approach for velocity.
           IMPLICIT NONE
           REAL, DIMENSION( : ), intent( inout ) :: NDOTQNEW, NDOTQ, INCOME
-          REAL, DIMENSION( : ), intent( in ) :: LOC_T_I, LOC_T_J
           REAL, DIMENSION( :, :, : ), intent( in ) ::  LOC_NU, SLOC_NU
           REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL!This is for the continuity equation, so we convert V into u
           REAL, DIMENSION( : ), intent( in ) :: I_inv_adv_coef, J_inv_adv_coef
           REAL, DIMENSION( :, :  ), intent( inout ) :: UDGI_ALL
-          REAL, intent( in ) :: MASS_CV_I, MASS_CV_J
 
           UGI_COEF_ELE_ALL=0.0
           Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
