@@ -651,6 +651,7 @@ contains
 
 
     else !If it has failed re-use the old mesh parameters
+      ewrite(0, *) 'WARNING: Mesh adaptivity failed, re-using old mesh')
       ! ! HOWEVER we need to fake that is has worked so for parallel we can follow the same procedure
       if (associated(output_positions%refcount)) call deallocate(output_positions)
       call allocate(output_positions,input_positions%dim,input_positions%mesh,name=trim(input_positions%name))
@@ -666,7 +667,7 @@ contains
       nwnelm = output_positions%mesh%elements 
       ! nwnsel = size(output_mesh%faces%coplanar_ids)
       output_mesh => output_positions%mesh
-      call deallocate(output_mesh%halos)
+      if (associated(output_mesh%halos)) call deallocate(output_mesh%halos)
     end if
     if(nhalos > 0) then
       ewrite(2, *) "Constructing output halos"
