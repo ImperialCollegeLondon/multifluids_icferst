@@ -513,6 +513,8 @@ contains
           !Variables to speed up diffusivity computations
           logical :: has_anisotropic_diffusivity
 
+          T2_ALL => null()
+          T2OLD_ALL => null()
           !Decide if we are solving for nphases-1
           Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
           !Check vanishing artificial diffusion options
@@ -4685,9 +4687,12 @@ end if
         REAL, DIMENSION( NDIM, size(X_NLX,1),CV_NGI ) :: X_NX_ALL
         REAL :: VOLUME
         REAL, DIMENSION( CV_NLOC, CV_NLOC )  :: MASS, INV_MASS
-        REAL, DIMENSION( NDIM, X_SNLOC ) :: XSL( 3, X_SNLOC ), SNORMXN( NDIM, SBCVNGI ), SDETWE( SBCVNGI )
+        REAL :: XSL( 3, X_SNLOC )
+        REAL :: SNORMXN( 3, SBCVNGI )   ! Needs to be at least 3 dims to be used in determinant calculation
+        REAL :: NORMX( 3 ) 
+        REAL :: SDETWE( SBCVNGI )
         INTEGER  :: SLOC2LOC( CV_SNLOC ), X_SLOC2LOC( X_SNLOC ), ILOC_OTHER_SIDE( CV_SNLOC )
-        REAL :: NN, NNX( NDIM ), NORMX( 3 ), SAREA, NRBC, RTBC, VLM_NORX( NDIM )
+        REAL :: NN, NNX( NDIM ), SAREA, NRBC, RTBC, VLM_NORX( NDIM )
         INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_ILOC2, &
             CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, &
             CV_SILOC, CV_SJLOC, CV_SJLOC2, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, &
