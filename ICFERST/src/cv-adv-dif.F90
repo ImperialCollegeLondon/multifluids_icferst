@@ -513,6 +513,8 @@ contains
           !Variables to speed up diffusivity computations
           logical :: has_anisotropic_diffusivity
 
+          real, pointer :: X_3(:)
+
           T2_ALL => null()
           T2OLD_ALL => null()
           !Decide if we are solving for nphases-1
@@ -1000,6 +1002,13 @@ contains
             CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
           end if
           IF ( GOT_DIFFUS) THEN
+            ! Create a dummy Z dimension if X_ALL is 2D
+            if (size(X_ALL, 1) >= 3) then
+                X_3 = X_ALL(3, :)
+            else
+                allocate(X_3(size(X_ALL, 2)))
+                X_3 = 0.0
+            end if
             if (activate_limiters) then
              CALL DG_DERIVS_ALL( FEMT_ALL, FEMTOLD_ALL, &
                  DTX_ELE_ALL, DTOLDX_ELE_ALL, &
@@ -1008,7 +1017,7 @@ contains
                  CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVWEIGHT, &
                  CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
                  CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
-                 Mdims%x_nonods, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), &
+                 Mdims%x_nonods, X_ALL(1,:),X_ALL(2,:),X_3, &
                  CV_GIdims%nface, Mmat%FACE_ELE, CV_funs%cv_sloclist, CV_funs%cv_sloclist, Mdims%cv_snloc, Mdims%cv_snloc, WIC_T_BC_ALL, SUF_T_BC_ALL, &
                  CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfeweigh, &
                  CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly )
@@ -1020,10 +1029,13 @@ contains
                CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVWEIGHT, &
                CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
                CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
-               Mdims%x_nonods, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), &
+               Mdims%x_nonods, X_ALL(1,:),X_ALL(2,:),X_3, &
                CV_GIdims%nface, Mmat%FACE_ELE, CV_funs%cv_sloclist, CV_funs%cv_sloclist, Mdims%cv_snloc, Mdims%cv_snloc, WIC_T_BC_ALL, SUF_T_BC_ALL, &
                CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfeweigh, &
                CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly )
+            end if
+            if (size(X_ALL, 1) >= 3) then
+                deallocate(X_3)
             end if
           end if
           !     =============== DEFINE THETA FOR TIME-STEPPING ===================
