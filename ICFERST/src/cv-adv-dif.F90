@@ -1034,7 +1034,7 @@ contains
                CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfeweigh, &
                CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly )
             end if
-            if (size(X_ALL, 1) >= 3) then
+            if (size(X_ALL, 1) < 3) then
                 deallocate(X_3)
             end if
           end if
