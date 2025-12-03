@@ -1004,7 +1004,7 @@ contains
           IF ( GOT_DIFFUS) THEN
             ! Create a dummy Z dimension if X_ALL is 2D
             if (size(X_ALL, 1) >= 3) then
-                X_3 = X_ALL(3, :)
+                X_3 => X_ALL(3, :)
             else
                 allocate(X_3(size(X_ALL, 2)))
                 X_3 = 0.0
