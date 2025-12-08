@@ -3624,6 +3624,8 @@ end subroutine get_DarcyVelocity
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: fluxstring
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: intfluxstring
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: tempstring
+        character(len=100000), dimension(size(outfluxes%intflux,1)) :: volstring
+        character(len=100000), dimension(size(outfluxes%intflux,1)) :: massstring
         character (len = 50) :: simulation_name, fieldName
         character(len = FIELD_NAME_LEN) :: phase_name
         character(len = OPTION_PATH_LEN) :: path
@@ -3655,6 +3657,8 @@ end subroutine get_DarcyVelocity
                 outfluxes%totout = 0.!If nan then make it zero
             end where
             outfluxes%intflux = outfluxes%intflux + outfluxes%totout(:, :)*dt
+            outfluxes%vol_flux = outfluxes%vol_flux + outfluxes%totout_vol(:, :)*dt
+            outfluxes%mass_flux = outfluxes%mass_flux + outfluxes%totout_mass(:, :)*dt
 
 
             ! Write column headings to file
@@ -3671,8 +3675,11 @@ end subroutine get_DarcyVelocity
                   do ioutlet =1, size(outfluxes%intflux,2)
                     write(fluxstring(iphase),'(a, a, i0, a)')   trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]VolRate"
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
-                    write(intfluxstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]TotProd"
-                    whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+                    ! Cumulative volume/mass columns
+                    write(volstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]CumuVolume"
+                    whole_line = trim(whole_line) // "," // trim(volstring(iphase))
+                    write(massstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]CumuMass"
+                    whole_line = trim(whole_line) // "," // trim(massstring(iphase))
                     !Averaged value over the surface
                     do ifields = 1, size(outfluxes%field_names,2)
                       write(tempstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S", outfluxes%outlet_id(ioutlet),&
@@ -3697,19 +3704,18 @@ end subroutine get_DarcyVelocity
               do ioutlet =1, size(outfluxes%intflux,2)
                 write(fluxstring(iphase),'(a)') printEng(outfluxes%totout(iphase,ioutlet))
                 whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
-                write(intfluxstring(iphase),'(a)') printEng(outfluxes%intflux(iphase,ioutlet))
-                whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+
+                write(volstring(iphase),'(a)') printEng(outfluxes%vol_flux(iphase,ioutlet))
+                whole_line = trim(whole_line) // "," // trim(volstring(iphase))
+                write(massstring(iphase),'(a)') printEng(outfluxes%mass_flux(iphase,ioutlet))
+                whole_line = trim(whole_line) // "," // trim(massstring(iphase))
+
                 !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
                 do ifields = 1, size(outfluxes%field_names,2)
                   fieldName = trim(outfluxes%field_names(iphase, ifields))
                   call getOutputConverter(fieldName,outSysFactor, outSysShft)
-                  if (fieldName == "Temperature") then
-                      write(tempstring(iphase),'(a)') &
-                          printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)*outSysFactor+outSysShft) ! Print the temperature outfluxes in Celsius, not Kelvin
-                  else
-                      write(tempstring(iphase),'(a)') &
-                          printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)*outSysFactor+outSysShft)
-                  end if
+                  write(tempstring(iphase),'(a)') &
+                      printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)*outSysFactor+outSysShft)
                   whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                 end do
               end do
@@ -3765,6 +3771,8 @@ end subroutine get_DarcyVelocity
                 outfluxes%area_outlet(iphase, iofluxes) = outfluxes%area_outlet(iphase, iofluxes) + suf_area
                 bcs_outfluxes(iphase, CV_NODI, iofluxes) =  bcs_outfluxes(iphase, CV_NODI, iofluxes) + &
                 Vol_flux(iphase)
+                outfluxes%bcs_vol_flux(iphase, CV_NODI, iofluxes) = bcs_outfluxes(iphase, CV_NODI, iofluxes)
+                outfluxes%bcs_mass_flux(iphase, CV_NODI, iofluxes) = bcs_outfluxes(iphase, CV_NODI, iofluxes) - Vol_flux(iphase) + Mass_flux(iphase)
               end do
               !Average value over the surface
               do ifields = 1, size(outfluxes_fields)

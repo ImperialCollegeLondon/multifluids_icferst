@@ -3597,6 +3597,8 @@ end if
                         do k = 1, size(outfluxes%outlet_id)
                             do iphase = 1, Mdims%nphase
                                 outfluxes%totout(iphase, k) = sum(bcs_outfluxes( iphase, :, k))
+                                outfluxes%totout_vol(iphase, k) = sum(outfluxes%bcs_vol_flux(iphase, :, k))
+                                outfluxes%totout_mass(iphase, k) = sum(outfluxes%bcs_mass_flux(iphase, :, k))
                             end do
                         end do
                         ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
@@ -3605,6 +3607,8 @@ end if
                                 ! Ensure all processors have the correct value of totout for parallel runs
                                 do iphase = 1, Mdims%nphase
                                     call allsum(outfluxes%totout(iphase, k))
+                                    call allsum(outfluxes%totout_vol(iphase, k))
+                                    call allsum(outfluxes%totout_mass(iphase, k))
                                 end do
                             end do
                         end if
