@@ -29,9 +29,9 @@ with open('QuickTest_DG_outfluxes.csv','r') as f1:
         try:
            tC.append(float(columns[0]))
            f1C.append(float(columns[3]))
-           f2C.append(float(columns[7]))
+           f2C.append(float(columns[8]))
            t1C.append(float(columns[4]))
-           t2C.append(float(columns[8]))        
+           t2C.append(float(columns[9]))        
         except:
            print("some error1")
 
