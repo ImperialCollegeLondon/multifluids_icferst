@@ -60,7 +60,7 @@ contains
 
     SUBROUTINE WELLS_SATURATION_ASSEMB( state, packed_state, &
       final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-      saturation, sat_prev, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+      saturation, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
       SOURCT_ALL, VOLFRA_PORE, eles_with_pipe, pipes_aux,&
       assemble_collapsed_to_one_phase, getResidual)
       ! Inputs/Outputs
@@ -77,7 +77,6 @@ contains
       type (multi_matrices), intent(inout) :: Mmat
       type (porous_adv_coefs), intent(inout) :: upwnd
       type(tensor_field), intent(inout), target :: saturation
-      real, dimension(:,:) :: sat_prev
       type(tensor_field), intent(in), target :: density
       type(tensor_field), intent(in) :: velocity
 
@@ -170,7 +169,7 @@ contains
         final_phase, &! final_phase => reservoir domain
         Mdims, ndgln, well_dummy7, CV_P, SOURCT_ALL, well_dummy8, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
         SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, getcv_disc, getct, getNewtonType, getResidual,Mmat, Mspars, upwnd, .false., DT, &
-        pipes_aux, well_dummy4, well_dummy6,MEAN_PORE_CV, MEAN_PORE_CV, eles_with_pipe, .false.,&  ! pscpsc to be added MEN_PORE_CV_TOTAL?
+        pipes_aux, well_dummy4, well_dummy6,MEAN_PORE_CV, MEAN_PORE_CV, eles_with_pipe, .false.,&
         1.0, MASS_CV, well_dummy4, MASS_ELE, well_dummy2, well_dummy3,&
         well_dummy1, loc_assemble_collapsed_to_one_phase )
 

@@ -231,9 +231,6 @@ contains
         real, save :: stored_dt = -1
         real :: old_acctim, nonlinear_dt
 
-        ! VAD related saturation
-        real, allocatable, dimension(:,:) :: prev_sat
-
         !! Variables to initialise porous media models
         logical :: exit_initialise_porous_media = .false.
         !Generic variables
@@ -723,9 +720,6 @@ contains
                 !#=================================================================================================================
 
                 if (after_adapt .or. (itime == 1 .and. its == 1)) then
-                  ! After adapt, we need to reallocate the prev_sat array
-                  if (allocated(prev_sat)) deallocate(prev_sat)
-                  allocate(prev_sat(Mdims%nphase, Mdims%cv_nonods))
                   if (have_option("/porous_media/Phreeqc_coupling"))then
 #ifdef USING_PHREEQC
                     call init_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc, after_adapt)
@@ -738,7 +732,7 @@ contains
                   ! Ensure that sat_bak is always defined (pscpsc only if VAD defined)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
-                    if (its <= picard_its) then
+                    if (its <= picard_its ) then
                       ! print *, "Picard iteration", its, picard_its
                       call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
@@ -747,19 +741,12 @@ contains
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
                     else
                       ! print *, "Newton iteration", its, picard_its
-                      if (its==1)  prev_sat = saturation_field%val(1,:,:)
                       call VolumeFraction_Assemble_Solve_Newton( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
-                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, prev_sat, &
+                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
                   end if
-                  !Update the prev_sat field (pscpsc only if VAD defined)
-                  ! Especial handler only required by adapt within FPI, which should removed as it is never used
-                  if (size(saturation_field%val,3)/=size(prev_sat,2)) then
-                    deallocate(prev_sat); allocate(prev_sat(Mdims%nphase, Mdims%cv_nonods))
-                  end if
-                  prev_sat = saturation_field%val(1,:,:)
 
                 end if Conditional_PhaseVolumeFraction
               call petsc_logging(3,stages,ierrr,default=.true.)

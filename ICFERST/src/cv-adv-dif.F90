@@ -7748,7 +7748,7 @@ end if
 
       SUBROUTINE SATURATION_ASSEMB( petsc_ACV, state, packed_state, &
         final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-        saturation, sat_prev, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+        saturation, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
         SOURCT_ALL, VOLFRA_PORE, VAD_parameter, Phase_with_Pc, &
         eles_with_pipe, pipes_aux,&
         assemble_collapsed_to_one_phase, getResidual)
@@ -7767,7 +7767,6 @@ end if
         type (multi_matrices), intent(inout) :: Mmat
         type (porous_adv_coefs), intent(inout) :: upwnd
         type(tensor_field), intent(inout), target :: saturation
-        real, dimension(:,:) :: sat_prev
         type(tensor_field), intent(in), target :: density
         type(tensor_field), intent(in) :: velocity
 
@@ -7893,9 +7892,9 @@ end if
         Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
         !Check vanishing artificial diffusion options
         VAD_activated = .false.  ! pscpsc when the rest works. activate this again
-        if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
-            VAD_activated = Phase_with_Pc >0
-        end if
+        ! if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
+        !     VAD_activated = Phase_with_Pc >0
+        ! end if
 
         loc_assemble_collapsed_to_one_phase = .false.
         if (present_and_true(assemble_collapsed_to_one_phase)) then
@@ -7971,11 +7970,11 @@ end if
 
       !Obtain elements surrounding an element (FACE_ELE) only if it is not stored yet
       if (.not. associated(Mmat%FACE_ELE)) then
-      allocate(Mmat%FACE_ELE(CV_GIdims%nface, Mdims%totele))
-      Mmat%FACE_ELE = 0.
-      CALL CALC_FACE_ELE( Mmat%FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
-      Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
-      CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
+        allocate(Mmat%FACE_ELE(CV_GIdims%nface, Mdims%totele))
+        Mmat%FACE_ELE = 0.
+        CALL CALC_FACE_ELE( Mmat%FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
+        Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+        CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
       end if
       if (getResidual) call zero(Mmat%CV_RHS)
       IF ( GETMAT ) THEN
@@ -8162,22 +8161,22 @@ end if
                               IF ( .not.on_domain_boundary) THEN
                                 !Assemble off-diagonal cv_nodi-cv_nodj
                                 LOC_MAT_IJ = LOC_MAT_IJ + SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMDT! Advection
-                                if (VAD_activated) LOC_MAT_IJ = LOC_MAT_IJ - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_J
+                                ! if (VAD_activated) LOC_MAT_IJ = LOC_MAT_IJ - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_J
                                 !Assemble off-diagonal cv_nodj-cv_nodi, integrate the other CV side contribution (the sign is changed)...
                                 if(integrate_other_side_and_not_boundary) then
                                   LOC_MAT_JI = LOC_MAT_JI - SdevFuns%DETWEI( GI ) * NDOTQNEW * (1. - INCOME) * LIMDT! Advection
-                                  if (VAD_activated) LOC_MAT_JI = LOC_MAT_JI - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_I
+                                  ! if (VAD_activated) LOC_MAT_JI = LOC_MAT_JI - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_I
                                 end if
                               END IF ! endif of IF ( on_domain_boundary ) THEN ELSE
 
                               !Assemble diagonal of the matrix of node cv_nodi
                               LOC_MAT_II = LOC_MAT_II +  SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME ) * LIMDT! Advection
-                              if (VAD_activated) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_I
+                              ! if (VAD_activated) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_I
 
                               !Assemble diagonal of the matrix of node cv_nodj
                               if(integrate_other_side_and_not_boundary) then
                                 LOC_MAT_JJ = LOC_MAT_JJ -  SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMDT! Advection
-                                if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_J
+                                ! if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX*LIMT*LOC_T_J
                               endif
 
                           END IF  ! ENDOF IF ( GETMAT ) THEN
@@ -8186,14 +8185,14 @@ end if
                           if (getResidual)  then
                             LOC_RES_I =  LOC_RES_I + SdevFuns%DETWEI( GI ) * ( NDOTQNEW * LIMDT)
                             ! Subtract out 1st order term non-conservative adv.
-                                if (VAD_activated) LOC_RES_I =  LOC_RES_I &
-                                    - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
-                                    *LIMT*((sat_prev(1:final_phase, cv_nodj)-sat_prev(1:final_phase,cv_nodi))-( LOC_T_J - LOC_T_I ))
+                                ! if (VAD_activated) LOC_RES_I =  LOC_RES_I &
+                                !     - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
+                                !     *LIMT*((TOLD_ALL(1:final_phase, cv_nodj)-TOLD_ALL(1:final_phase,cv_nodi))-( LOC_T_J - LOC_T_I ))
                             if(integrate_other_side_and_not_boundary) then
                               LOC_RES_J =  LOC_RES_J  - SdevFuns%DETWEI( GI ) * (  NDOTQNEW * LIMDT)
-                                if (VAD_activated) LOC_RES_J =  LOC_RES_J  &
-                                    -  SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
-                                    *LIMT*((sat_prev(1:final_phase, cv_nodi)-sat_prev(1:final_phase,cv_nodj))-( LOC_T_I - LOC_T_J ))
+                                ! if (VAD_activated) LOC_RES_J =  LOC_RES_J  &
+                                !     -  SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
+                                !     *LIMT*((TOLD_ALL(1:final_phase, cv_nodi)-TOLD_ALL(1:final_phase,cv_nodj))-( LOC_T_I - LOC_T_J ))
                             endif
                           endif
                           ! this is for the internal energy equation source term..
