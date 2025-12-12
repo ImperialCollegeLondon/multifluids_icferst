@@ -27,7 +27,7 @@
 #include "confdefs.h"
 #include "fdebug.h"
 
-! Tries to be CF 1.4 complient
+! Tries to be CF 1.4 compliant
 module NetCDFWriter
   private
   public::NetCDFWriter_init, NetCDFWriter_write_variable
@@ -93,6 +93,8 @@ contains
     integer varid, dims(1)
     integer ierr
     real default_time(1)
+    integer start1(1), count1(1)
+    real, allocatable :: time_data(:)
 
     default_time(1) = 0
 
@@ -197,18 +199,42 @@ contains
     assert(ierr.eq.0)
 
     ! Write variable values
+    start1(1) = 1
     varid = ncvid(ncid, "time", ierr)
     if(present(time_coord)) then
-       call ncvpt(ncid, varid, 1, size(time_coord), time_coord, ierr)
+        count1(1) = size(time_coord)
+        allocate(time_data(count1(1)))
+        time_data = real(time_coord)
+#ifdef DOUBLEP
+        call ncvptd(ncid, varid, start1, count1, time_data, ierr)
+#else
+        call ncvptf(ncid, varid, start1, count1, time_data, ierr)
+#endif
+        deallocate(time_data)
     else
-       call ncvpt(ncid, varid, 1, 1, default_time, ierr)
+        count1(1) = 1
+#ifdef DOUBLEP
+        call ncvptd(ncid, varid, start1, count1, dble(default_time), ierr)
+#else
+        call ncvptf(ncid, varid, start1, count1, default_time, ierr)
+#endif
     end if
 
     varid = ncvid(ncid, "latitude", ierr)
-    call ncvpt(ncid, varid, 1, size(latitude), latitude, ierr)
+    count1(1) = size(latitude)
+#ifdef DOUBLEP
+    call ncvptd(ncid, varid, start1, count1, dble(latitude), ierr)
+#else
+    call ncvptf(ncid, varid, start1, count1, latitude, ierr)
+#endif
     
     varid = ncvid(ncid, "longitude", ierr)
-    call ncvpt(ncid, varid, 1, size(longitude), longitude, ierr)
+    count1(1) = size(longitude)
+#ifdef DOUBLEP
+    call ncvptd(ncid, varid, start1, count1, dble(longitude), ierr)
+#else
+    call ncvptf(ncid, varid, start1, count1, longitude, ierr)
+#endif
     
     call ncclos(ncid, ierr)
     assert(ierr.eq.0)
@@ -263,11 +289,11 @@ contains
          len_trim(units), units, ierr)
     assert(ierr.eq.0)
     
-    call ncapt(ncid, varid, "_FillValue", NCSHORT, &
+    call ncapts(ncid, varid, "_FillValue", NCSHORT, &
          1, fillvalue, ierr)
     assert(ierr.eq.0)
     
-    call ncapt(ncid, varid, "missing_value", NCSHORT, &
+    call ncapts(ncid, varid, "missing_value", NCSHORT, &
          1, fillvalue, ierr)
     assert(ierr.eq.0)
 
@@ -276,12 +302,12 @@ contains
     min_v = minval(variable)
     
     add_offset = (max_v + min_v)*0.5
-    call ncapt(ncid, varid, "add_offset", ncdouble, &
+    call ncaptd(ncid, varid, "add_offset", NCDOUBLE, &
          1, add_offset, ierr)
     assert(ierr.eq.0)
     
     scale_factor = (max_v - min_v)/(2**16 - 5)
-    call ncapt(ncid, varid, "scale_factor", ncdouble, &
+    call ncaptd(ncid, varid, "scale_factor", NCDOUBLE, &
          1, scale_factor, ierr)
     assert(ierr.eq.0)
     
@@ -290,9 +316,9 @@ contains
     assert(ierr.eq.0)
     
     start = 1
-    count(1) = size(variable(:, 1, 1))
-    count(2) = size(variable(1, :, 1))
-    count(3) = size(variable(1, 1, :))
+    count(1) = size(variable, 1)
+    count(2) = size(variable, 2)
+    count(3) = size(variable, 3)
     allocate(short_var(count(1), count(2), count(3)))
 
     do i=1, count(1)
@@ -303,8 +329,9 @@ contains
           end do
        end do
     end do
-    call ncvpt(ncid, varid, start, count, short_var, ierr)
+    call ncvpts(ncid, varid, start, count, short_var, ierr)
 
+    deallocate(short_var)
     call ncclos(ncid, ierr)
     assert(ierr.eq.0)
 #endif

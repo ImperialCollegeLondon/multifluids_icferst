@@ -2709,7 +2709,7 @@ contains
 
   end subroutine write_detectors
 
-  subroutine write_mpi_out(state,detector_list,time,dt)
+  subroutine write_mpi_out(state, detector_list, time, dt)
     !!< Writes detector information (position, value of scalar and vector fields at that position, etc.) into detectors file using MPI output
     ! commands so that when running in parallel all processors can write at the same time information into the file at the right location.
 
@@ -2755,12 +2755,12 @@ contains
     ! this is necessary for files bigger than 2GB
     location_to_write = (int(detector_list%mpi_write_count, kind=MPI_OFFSET_KIND) - 1) * number_total_columns * realsize
 
-    if(procno == 1) then
-      ! Output time data
-      call mpi_file_write_at(detector_list%mpi_fh, location_to_write, time, 1, getpreal(), MPI_STATUS_IGNORE, ierror)
+    if (procno == 1) then
+      ! Output time data - pass scalars as arrays of size 1
+      call mpi_file_write_at(detector_list%mpi_fh, location_to_write, [time], 1, getpreal(), MPI_STATUS_IGNORE, ierror)
       assert(ierror == MPI_SUCCESS)
 
-      call mpi_file_write_at(detector_list%mpi_fh, location_to_write + realsize, dt, 1, getpreal(), MPI_STATUS_IGNORE, ierror)
+      call mpi_file_write_at(detector_list%mpi_fh, location_to_write + realsize, [dt], 1, getpreal(), MPI_STATUS_IGNORE, ierror)
       assert(ierror == MPI_SUCCESS)
     end if
     location_to_write = location_to_write + 2 * realsize
@@ -2783,14 +2783,14 @@ contains
     state_loop: do phase = 1, size(state)
 
       if (allocated(detector_list%sfield_list)) then
-        if (size(detector_list%sfield_list(phase)%ptr)>0) then
+        if (size(detector_list%sfield_list(phase)%ptr) > 0) then
         scalar_loop: do i = 1, size(detector_list%sfield_list(phase)%ptr)
           ! Output statistics for each scalar field
           sfield => extract_scalar_field(state(phase), detector_list%sfield_list(phase)%ptr(i))
 
           node => detector_list%first
           scalar_node_loop: do j = 1, detector_list%length
-            if (node%element<0) then
+            if (node%element < 0) then
                if (detector_list%write_nan_outside) then
                   call cget_nan(value)
                else
@@ -2802,7 +2802,8 @@ contains
 
             offset = location_to_write + (detector_list%total_num_det * (i - 1) + (node%id_number - 1)) * realsize
 
-            call mpi_file_write_at(detector_list%mpi_fh, offset, value, 1, getpreal(), MPI_STATUS_IGNORE, ierror)
+            ! Pass scalar as array of size 1
+            call mpi_file_write_at(detector_list%mpi_fh, offset, [value], 1, getpreal(), MPI_STATUS_IGNORE, ierror)
             assert(ierror == MPI_SUCCESS)
             node => node%next
           end do scalar_node_loop
@@ -2810,10 +2811,10 @@ contains
         end do scalar_loop
         end if
       end if
-      location_to_write = location_to_write + detector_list%total_num_det *detector_list%num_sfields * realsize
+      location_to_write = location_to_write + detector_list%total_num_det * detector_list%num_sfields * realsize
 
       if (allocated(detector_list%vfield_list)) then
-        if (size(detector_list%vfield_list(phase)%ptr)>0) then
+        if (size(detector_list%vfield_list(phase)%ptr) > 0) then
         vector_loop: do i = 1, size(detector_list%vfield_list(phase)%ptr)
           ! Output statistics for each vector field
           vfield => extract_vector_field(state(phase), detector_list%vfield_list(phase)%ptr(i))
@@ -2824,7 +2825,7 @@ contains
 
           node => detector_list%first
           vector_node_loop: do j = 1, detector_list%length
-            if (node%element<0) then
+            if (node%element < 0) then
                if (detector_list%write_nan_outside) then
                   call cget_nan(value)
                   vvalue(:) = value
@@ -2875,7 +2876,7 @@ contains
 
     ewrite(2, *) "Exiting write_mpi_out"
 
-  end subroutine write_mpi_out
+end subroutine write_mpi_out
 
   subroutine list_det_into_csr_sparsity(detector_list,ihash_sparsity,list_into_array,element_detector_list,count)
 !! This subroutine creates a hash table called ihash_sparsity and a csr_sparsity matrix called element_detector_list that we use to find out

@@ -1,0 +1,6 @@
+<map id="multiphase_1d_engine::dg_oscilat_detect" name="multiphase_1d_engine::dg_oscilat_detect">
+<area shape="rect" id="Node000001" title=": &lt;INERTIA ONLY&gt;Determine if we have an oscillation in the normal direction... dg_oscilat_detect=1...." alt="" coords="5,29,175,69"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="52,30,50,20,56,11,69,5,90,3,114,6,127,13,124,18,112,11,90,8,71,10,59,15,55,21,57,28"/>
+<area shape="rect" id="Node000002" href="$namespacemulti__tools.html#a9bc979224e98f447e412133da3464728" title=":This function is a tolerance function for a value which is used as a denominator...." alt="" coords="223,37,364,62"/>
+<area shape="poly" id="edge2_Node000001_Node000002" title=" " alt="" coords="175,47,209,47,209,52,175,52"/>
+</map>

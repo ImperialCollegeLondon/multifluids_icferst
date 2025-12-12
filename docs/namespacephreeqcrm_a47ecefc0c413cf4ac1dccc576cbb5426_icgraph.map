@@ -1,4 +1,4 @@
 <map id="phreeqcrm::rm_getselectedoutputcolumncount" name="phreeqcrm::rm_getselectedoutputcolumncount">
-<area shape="rect" id="node1" title="Returns the number of columns in the current selected&#45;output definition. RM_SetCurrentSelectedOutputU..." alt="" coords="296,5,623,32"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ad0848d40f094dbaad045b5510c0ad2a1" title="Populates an array with values from the current selected&#45;output definition. RM_SetCurrentSelectedOutp..." alt="" coords="5,5,248,32"/>
+<area shape="rect" id="node1" title="Returns the number of columns in the current selected&#45;output definition. RM_SetCurrentSelectedOutputU..." alt="" coords="269,5,560,32"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ad0848d40f094dbaad045b5510c0ad2a1" title="Populates an array with values from the current selected&#45;output definition. RM_SetCurrentSelectedOutp..." alt="" coords="5,5,221,32"/>
 </map>

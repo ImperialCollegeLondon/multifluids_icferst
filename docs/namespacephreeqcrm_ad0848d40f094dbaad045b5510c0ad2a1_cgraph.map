@@ -1,5 +1,5 @@
 <map id="phreeqcrm::rm_getselectedoutput" name="phreeqcrm::rm_getselectedoutput">
-<area shape="rect" id="node1" title="Populates an array with values from the current selected&#45;output definition. RM_SetCurrentSelectedOutp..." alt="" coords="5,31,248,57"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="380,5,539,32"/>
-<area shape="rect" id="node3" href="$namespacephreeqcrm.html#a47ecefc0c413cf4ac1dccc576cbb5426" title="Returns the number of columns in the current selected&#45;output definition. RM_SetCurrentSelectedOutputU..." alt="" coords="296,56,623,83"/>
+<area shape="rect" id="node1" title="Populates an array with values from the current selected&#45;output definition. RM_SetCurrentSelectedOutp..." alt="" coords="5,31,221,57"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="343,5,486,32"/>
+<area shape="rect" id="node3" href="$namespacephreeqcrm.html#a47ecefc0c413cf4ac1dccc576cbb5426" title="Returns the number of columns in the current selected&#45;output definition. RM_SetCurrentSelectedOutputU..." alt="" coords="269,56,560,83"/>
 </map>

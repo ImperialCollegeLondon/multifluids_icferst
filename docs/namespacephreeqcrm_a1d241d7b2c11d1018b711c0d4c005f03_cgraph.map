@@ -1,0 +1,4 @@
+<map id="phreeqcrm::rm_getexchangespeciescount" name="phreeqcrm::rm_getexchangespeciescount">
+<area shape="rect" id="Node000001" title="Returns the number of exchange species in the initial&#45;phreeqc module. RM_FindComponents must be calle..." alt="" coords="5,29,300,55"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="106,31,95,21,101,11,120,5,153,3,195,7,206,12,210,18,205,21,203,16,194,12,153,8,121,10,104,15,101,20,109,27"/>
+</map>

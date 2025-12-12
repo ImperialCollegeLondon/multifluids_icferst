@@ -284,25 +284,9 @@
       </prognostic>
     </scalar_field>
     <multiphase_properties>
-      <Relperm_Tabulated>
-        <relperm_table>WatRelPerm</relperm_table>
-      </Relperm_Tabulated>
-      <immobile_fraction>
-        <scalar_field name="value">
-          <prescribed>
-            <mesh name="P0DG"/>
-            <value name="WholeMesh">
-              <constant>
-                <real_value rank="0">0.2</real_value>
-              </constant>
-            </value>
-            <stat/>
-            <detectors>
-              <exclude_from_detectors/>
-            </detectors>
-          </prescribed>
-        </scalar_field>
-      </immobile_fraction>
+      <type_Tabulated>
+        <Relperm_CapPressure_Table>WatRelPerm</Relperm_CapPressure_Table>
+      </type_Tabulated>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
@@ -434,25 +418,9 @@
       </prognostic>
     </scalar_field>
     <multiphase_properties>
-      <Relperm_Tabulated>
-        <relperm_table>NAPLRelPerm</relperm_table>
-      </Relperm_Tabulated>
-      <immobile_fraction>
-        <scalar_field name="value">
-          <prescribed>
-            <mesh name="P0DG"/>
-            <value name="WholeMesh">
-              <constant>
-                <real_value rank="0">0.3</real_value>
-              </constant>
-            </value>
-            <stat/>
-            <detectors>
-              <exclude_from_detectors/>
-            </detectors>
-          </prescribed>
-        </scalar_field>
-      </immobile_fraction>
+      <type_Tabulated>
+        <Relperm_CapPressure_Table>NAPLRelPerm</Relperm_CapPressure_Table>
+      </type_Tabulated>
     </multiphase_properties>
   </material_phase>
   <porous_media>

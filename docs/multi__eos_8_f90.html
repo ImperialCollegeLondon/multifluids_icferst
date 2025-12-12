@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.17"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ICFERST: /home/mbahlali/Softwares/MultiFluids_Dev/ICFERST/src/multi_eos.F90 File Reference</title>
+<title>ICFERST: /home/mbahlali/Softwares/multifluids_icferst/ICFERST/src/multi_eos.F90 File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -27,7 +27,7 @@
   <td id="projectlogo"><img alt="Logo" src="IC_FERST_Logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">ICFERST
-   &#160;<span id="projectnumber">22-06</span>
+   &#160;<span id="projectnumber">25-11</span>
    </div>
    <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
@@ -96,10 +96,10 @@ $(document).ready(function(){initNavTree('multi__eos_8_f90.html',''); initResiza
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for multi_eos.F90:</div>
 <div class="dyncontent">
-<div class="center"><img src="multi__eos_8_f90__incl.png" border="0" usemap="#_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2multi__eos_8_f90" alt=""/></div>
-<map name="_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2multi__eos_8_f90" id="_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2multi__eos_8_f90">
-<area shape="rect" title=" " alt="" coords="5,5,199,61"/>
-<area shape="rect" title=" " alt="" coords="63,109,141,136"/>
+<div class="center"><img src="multi__eos_8_f90__incl.png" border="0" usemap="#_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2multi__eos_8_f90" alt=""/></div>
+<map name="_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2multi__eos_8_f90" id="_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2multi__eos_8_f90">
+<area shape="rect" title=" " alt="" coords="5,5,196,61"/>
+<area shape="rect" title=" " alt="" coords="65,109,137,136"/>
 </map>
 </div>
 </div><table class="memberdecls">
@@ -158,9 +158,20 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a0f94604be6099dd1304ee7568ad7aac1"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="multi__eos_8_f90.html#a0f94604be6099dd1304ee7568ad7aac1">relperm_corey_epsilon</a> (Kr)</td></tr>
 <tr class="memdesc:a0f94604be6099dd1304ee7568ad7aac1"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Brooks corey model of relperm. This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems when dividing it to obtain the sigma.  <a href="multi__eos_8_f90.html#a0f94604be6099dd1304ee7568ad7aac1">More...</a><br /></td></tr>
 <tr class="separator:a0f94604be6099dd1304ee7568ad7aac1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1c26bc7b22b8141f8c07f7aff66de2d1"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="multi__eos_8_f90.html#a1c26bc7b22b8141f8c07f7aff66de2d1">relperm_tabulated</a> (Kr)</td></tr>
+<tr class="memdesc:a1c26bc7b22b8141f8c07f7aff66de2d1"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Tabulated relperm. This subroutine computes the relperm based on tabulated data that the user provides (method: linear interpolation).  <a href="multi__eos_8_f90.html#a1c26bc7b22b8141f8c07f7aff66de2d1">More...</a><br /></td></tr>
+<tr class="separator:a1c26bc7b22b8141f8c07f7aff66de2d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aceb42bfefda5357e6464aec48d828dcd"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="multi__eos_8_f90.html#aceb42bfefda5357e6464aec48d828dcd">relperm_tabulated_land</a> (S_phase, CV_Immobile_fract, nphase, iphase, Kr)</td></tr>
+<tr class="memdesc:aceb42bfefda5357e6464aec48d828dcd"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Tabulated relperm with Land trapping using normalised saturation  <a href="multi__eos_8_f90.html#aceb42bfefda5357e6464aec48d828dcd">More...</a><br /></td></tr>
+<tr class="separator:aceb42bfefda5357e6464aec48d828dcd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afb461540e77781fc8560dcdf98a7ed12"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="multi__eos_8_f90.html#afb461540e77781fc8560dcdf98a7ed12">relperm_stone</a> (Kr)</td></tr>
 <tr class="memdesc:afb461540e77781fc8560dcdf98a7ed12"><td class="mdescLeft">&#160;</td><td class="mdescRight">:This subroutine calculates the relative permeability for three phases First phase has to be water, second oil and the third gas We use Stone's model II adapted, and for the two phases we use the Corey model Model explained in: Aziz, K. And Settari, T.:“Petroleum Reservoir Simulation” Applied Science Publishers, London, 30-38, 1979.  <a href="multi__eos_8_f90.html#afb461540e77781fc8560dcdf98a7ed12">More...</a><br /></td></tr>
 <tr class="separator:afb461540e77781fc8560dcdf98a7ed12"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a29b9750459911134c7e711f15fa42614"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#a29b9750459911134c7e711f15fa42614">multiphase_eos::normalise_relperm_tables</a> (nphase)</td></tr>
+<tr class="separator:a29b9750459911134c7e711f15fa42614"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af14c426951c2a3fd50666548b0e17472"><td class="memItemLeft" align="right" valign="top">real function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#af14c426951c2a3fd50666548b0e17472">multiphase_eos::compute_normalised_saturation</a> (S_phase, Simm_phase, Simm_all, nphase, iphase)</td></tr>
+<tr class="memdesc:af14c426951c2a3fd50666548b0e17472"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Computes normalised saturation for Land trapping with tabulated relperm  <a href="namespacemultiphase__eos.html#af14c426951c2a3fd50666548b0e17472">More...</a><br /></td></tr>
+<tr class="separator:af14c426951c2a3fd50666548b0e17472"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:add6fbcd53b92e8dd346a9ac6fbc30055"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#add6fbcd53b92e8dd346a9ac6fbc30055">multiphase_eos::calculate_capillary_pressure</a> (packed_state, NDGLN, totele, cv_nloc, CV_funs)</td></tr>
 <tr class="memdesc:add6fbcd53b92e8dd346a9ac6fbc30055"><td class="mdescLeft">&#160;</td><td class="mdescRight">: In this subroutine the capilalry pressure is computed based on the saturation and the formula used  <a href="namespacemultiphase__eos.html#add6fbcd53b92e8dd346a9ac6fbc30055">More...</a><br /></td></tr>
 <tr class="separator:add6fbcd53b92e8dd346a9ac6fbc30055"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -244,6 +255,18 @@ Functions/Subroutines</h2></td></tr>
 Variables</h2></td></tr>
 <tr class="memitem:ae1ce91e74714b2c125d7a764aaa79ff3"><td class="memItemLeft" align="right" valign="top">real, parameter&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#ae1ce91e74714b2c125d7a764aaa79ff3">multiphase_eos::flooding_hmin</a> = 1e-5</td></tr>
 <tr class="separator:ae1ce91e74714b2c125d7a764aaa79ff3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac9e26a6e715bbcea0e5f3d124871a8b2"><td class="memItemLeft" align="right" valign="top">logical, save&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#ac9e26a6e715bbcea0e5f3d124871a8b2">multiphase_eos::tables_loaded</a> = .false.</td></tr>
+<tr class="separator:ac9e26a6e715bbcea0e5f3d124871a8b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa82391e55c623b151745a9ef5fe09e97"><td class="memItemLeft" align="right" valign="top">real, dimension(:,:,:), allocatable, save&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#aa82391e55c623b151745a9ef5fe09e97">multiphase_eos::relperm_table_data</a></td></tr>
+<tr class="separator:aa82391e55c623b151745a9ef5fe09e97"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad75fdebae56a34f58313eb37d69fae6e"><td class="memItemLeft" align="right" valign="top">real, dimension(:,:,:), allocatable, save&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#ad75fdebae56a34f58313eb37d69fae6e">multiphase_eos::pc_table_data</a></td></tr>
+<tr class="separator:ad75fdebae56a34f58313eb37d69fae6e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aadda55c84c6fbe47425442430dc79dd4"><td class="memItemLeft" align="right" valign="top">real, dimension(:,:,:), allocatable, save&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#aadda55c84c6fbe47425442430dc79dd4">multiphase_eos::relperm_table_norm_data</a></td></tr>
+<tr class="separator:aadda55c84c6fbe47425442430dc79dd4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aede48d1965af522f9a3bfcf4148a9395"><td class="memItemLeft" align="right" valign="top">logical, save&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#aede48d1965af522f9a3bfcf4148a9395">multiphase_eos::tables_normalised</a> = .false.</td></tr>
+<tr class="separator:aede48d1965af522f9a3bfcf4148a9395"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac225ca863b2915b70181fe53abe4d779"><td class="memItemLeft" align="right" valign="top">real, dimension(:), allocatable, save&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemultiphase__eos.html#ac225ca863b2915b70181fe53abe4d779">multiphase_eos::original_immobile_per_phase</a></td></tr>
+<tr class="separator:ac225ca863b2915b70181fe53abe4d779"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Function/Subroutine Documentation</h2>
 <a id="a2e38f3c2af7da0c1a95bbb5e485cf0b7"></a>
@@ -314,12 +337,15 @@ Here is the call graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="multi__eos_8_f90_a2e38f3c2af7da0c1a95bbb5e485cf0b7_cgraph.png" border="0" usemap="#multi__eos_8_f90_a2e38f3c2af7da0c1a95bbb5e485cf0b7_cgraph" alt=""/></div>
 <map name="multi__eos_8_f90_a2e38f3c2af7da0c1a95bbb5e485cf0b7_cgraph" id="multi__eos_8_f90_a2e38f3c2af7da0c1a95bbb5e485cf0b7_cgraph">
-<area shape="rect" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="5,23,179,65"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a659427fd61af753266767259b441a345" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="227,23,419,65"/>
-<area shape="rect" href="namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="467,23,627,65"/>
-<area shape="rect" href="namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="675,23,829,65"/>
-<area shape="rect" href="multi__eos_8_f90.html#a0f94604be6099dd1304ee7568ad7aac1" title=": Brooks corey model of relperm. This subroutine add a small quantity to the corey function to avoid ..." alt="" coords="877,5,1048,32"/>
-<area shape="rect" href="multi__eos_8_f90.html#afb461540e77781fc8560dcdf98a7ed12" title=":This subroutine calculates the relative permeability for three phases First phase has to be water,..." alt="" coords="905,56,1021,83"/>
+<area shape="rect" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="5,74,160,115"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a659427fd61af753266767259b441a345" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="208,74,381,115"/>
+<area shape="rect" href="namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="429,74,572,115"/>
+<area shape="rect" href="namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="620,74,759,115"/>
+<area shape="rect" href="multi__eos_8_f90.html#a0f94604be6099dd1304ee7568ad7aac1" title=": Brooks corey model of relperm. This subroutine add a small quantity to the corey function to avoid ..." alt="" coords="809,5,961,32"/>
+<area shape="rect" href="multi__eos_8_f90.html#afb461540e77781fc8560dcdf98a7ed12" title=":This subroutine calculates the relative permeability for three phases First phase has to be water,..." alt="" coords="833,56,937,83"/>
+<area shape="rect" href="multi__eos_8_f90.html#a1c26bc7b22b8141f8c07f7aff66de2d1" title=": Tabulated relperm. This subroutine computes the relperm based on tabulated data that the user provi..." alt="" coords="822,107,947,133"/>
+<area shape="rect" href="multi__eos_8_f90.html#aceb42bfefda5357e6464aec48d828dcd" title=": Tabulated relperm with Land trapping using normalised saturation" alt="" coords="807,157,963,184"/>
+<area shape="rect" href="namespacemultiphase__eos.html#af14c426951c2a3fd50666548b0e17472" title=": Computes normalised saturation for Land trapping with tabulated relperm" alt="" coords="1011,150,1181,191"/>
 </map>
 </div>
 <div class="dynheader">
@@ -327,11 +353,13 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="multi__eos_8_f90_a2e38f3c2af7da0c1a95bbb5e485cf0b7_icgraph.png" border="0" usemap="#multi__eos_8_f90_a2e38f3c2af7da0c1a95bbb5e485cf0b7_icgraph" alt=""/></div>
 <map name="multi__eos_8_f90_a2e38f3c2af7da0c1a95bbb5e485cf0b7_icgraph" id="multi__eos_8_f90_a2e38f3c2af7da0c1a95bbb5e485cf0b7_icgraph">
-<area shape="rect" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="1032,5,1205,47"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="756,5,984,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,35,708,76"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="1165,78,1320,119"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="915,78,1117,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a245ebfb2c63f41aaf90233ccb819bad4" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="688,17,867,58"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,78,376,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,137,640,178"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="443,5,621,61"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,78,152,119"/>
 </map>
 </div>
 
@@ -429,11 +457,14 @@ Here is the call graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="multi__eos_8_f90_a7b4b5e95a2c1b64f376a9c4092d60c0a_cgraph.png" border="0" usemap="#multi__eos_8_f90_a7b4b5e95a2c1b64f376a9c4092d60c0a_cgraph" alt=""/></div>
 <map name="multi__eos_8_f90_a7b4b5e95a2c1b64f376a9c4092d60c0a_cgraph" id="multi__eos_8_f90_a7b4b5e95a2c1b64f376a9c4092d60c0a_cgraph">
-<area shape="rect" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="5,31,217,57"/>
-<area shape="rect" href="namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="265,23,425,65"/>
-<area shape="rect" href="namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="473,23,628,65"/>
-<area shape="rect" href="multi__eos_8_f90.html#a0f94604be6099dd1304ee7568ad7aac1" title=": Brooks corey model of relperm. This subroutine add a small quantity to the corey function to avoid ..." alt="" coords="676,5,847,32"/>
-<area shape="rect" href="multi__eos_8_f90.html#afb461540e77781fc8560dcdf98a7ed12" title=":This subroutine calculates the relative permeability for three phases First phase has to be water,..." alt="" coords="703,56,819,83"/>
+<area shape="rect" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="5,81,199,108"/>
+<area shape="rect" href="namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="247,74,389,115"/>
+<area shape="rect" href="namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="437,74,576,115"/>
+<area shape="rect" href="multi__eos_8_f90.html#a0f94604be6099dd1304ee7568ad7aac1" title=": Brooks corey model of relperm. This subroutine add a small quantity to the corey function to avoid ..." alt="" coords="626,5,778,32"/>
+<area shape="rect" href="multi__eos_8_f90.html#afb461540e77781fc8560dcdf98a7ed12" title=":This subroutine calculates the relative permeability for three phases First phase has to be water,..." alt="" coords="650,56,754,83"/>
+<area shape="rect" href="multi__eos_8_f90.html#a1c26bc7b22b8141f8c07f7aff66de2d1" title=": Tabulated relperm. This subroutine computes the relperm based on tabulated data that the user provi..." alt="" coords="639,107,765,133"/>
+<area shape="rect" href="multi__eos_8_f90.html#aceb42bfefda5357e6464aec48d828dcd" title=": Tabulated relperm with Land trapping using normalised saturation" alt="" coords="624,157,780,184"/>
+<area shape="rect" href="namespacemultiphase__eos.html#af14c426951c2a3fd50666548b0e17472" title=": Computes normalised saturation for Land trapping with tabulated relperm" alt="" coords="828,150,999,191"/>
 </map>
 </div>
 <div class="dynheader">
@@ -441,11 +472,13 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="multi__eos_8_f90_a7b4b5e95a2c1b64f376a9c4092d60c0a_icgraph.png" border="0" usemap="#multi__eos_8_f90_a7b4b5e95a2c1b64f376a9c4092d60c0a_icgraph" alt=""/></div>
 <map name="multi__eos_8_f90_a7b4b5e95a2c1b64f376a9c4092d60c0a_icgraph" id="multi__eos_8_f90_a7b4b5e95a2c1b64f376a9c4092d60c0a_icgraph">
-<area shape="rect" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="1032,13,1244,39"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="756,5,984,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,35,708,76"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="1165,85,1359,112"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="915,78,1117,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a245ebfb2c63f41aaf90233ccb819bad4" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="688,17,867,58"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,78,376,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,137,640,178"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="443,5,621,61"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,78,152,119"/>
 </map>
 </div>
 
@@ -507,11 +540,11 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="multi__eos_8_f90_acd1caed43acc66691c351206d8dd7b2c_icgraph.png" border="0" usemap="#multi__eos_8_f90_acd1caed43acc66691c351206d8dd7b2c_icgraph" alt=""/></div>
 <map name="multi__eos_8_f90_acd1caed43acc66691c351206d8dd7b2c_icgraph" id="multi__eos_8_f90_acd1caed43acc66691c351206d8dd7b2c_icgraph">
-<area shape="rect" title=":This functions returns the capillary pressure for a certain input saturation" alt="" coords="964,13,1093,39"/>
-<area shape="rect" href="namespacemultiphase__eos.html#add6fbcd53b92e8dd346a9ac6fbc30055" title=": In this subroutine the capilalry pressure is computed based on the saturation and the formula used" alt="" coords="724,5,916,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" title=":This functions returns the capillary pressure for a certain input saturation" alt="" coords="885,13,1004,39"/>
+<area shape="rect" href="namespacemultiphase__eos.html#add6fbcd53b92e8dd346a9ac6fbc30055" title=": In this subroutine the capilalry pressure is computed based on the saturation and the formula used" alt="" coords="664,5,837,47"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ac8c3c3c252bab49e31602e628c983f5b" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="424,5,616,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
 </map>
 </div>
 
@@ -571,16 +604,18 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="multi__eos_8_f90_a0f94604be6099dd1304ee7568ad7aac1_icgraph.png" border="0" usemap="#multi__eos_8_f90_a0f94604be6099dd1304ee7568ad7aac1_icgraph" alt=""/></div>
 <map name="multi__eos_8_f90_a0f94604be6099dd1304ee7568ad7aac1_icgraph" id="multi__eos_8_f90_a0f94604be6099dd1304ee7568ad7aac1_icgraph">
-<area shape="rect" title=": Brooks corey model of relperm. This subroutine add a small quantity to the corey function to avoid ..." alt="" coords="1943,42,2113,69"/>
-<area shape="rect" href="namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1740,35,1895,76"/>
-<area shape="rect" href="namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1532,35,1692,76"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a659427fd61af753266767259b441a345" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="1292,5,1484,47"/>
-<area shape="rect" href="multi__eos_8_f90.html#a7b4b5e95a2c1b64f376a9c4092d60c0a" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="1032,71,1244,98"/>
-<area shape="rect" href="multi__eos_8_f90.html#a2e38f3c2af7da0c1a95bbb5e485cf0b7" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="1051,5,1225,47"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="756,35,984,76"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,35,419,76"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,64,708,105"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,35,171,76"/>
+<area shape="rect" title=": Brooks corey model of relperm. This subroutine add a small quantity to the corey function to avoid ..." alt="" coords="2005,85,2157,112"/>
+<area shape="rect" href="namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1819,78,1957,119"/>
+<area shape="rect" href="namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1628,78,1771,119"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a659427fd61af753266767259b441a345" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="1407,49,1580,90"/>
+<area shape="rect" href="multi__eos_8_f90.html#a7b4b5e95a2c1b64f376a9c4092d60c0a" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="1165,115,1359,141"/>
+<area shape="rect" href="multi__eos_8_f90.html#a2e38f3c2af7da0c1a95bbb5e485cf0b7" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="1185,49,1339,90"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="915,78,1117,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a245ebfb2c63f41aaf90233ccb819bad4" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="688,17,867,58"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,78,376,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,137,640,178"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="443,5,621,61"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,78,152,119"/>
 </map>
 </div>
 
@@ -608,16 +643,133 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="multi__eos_8_f90_afb461540e77781fc8560dcdf98a7ed12_icgraph.png" border="0" usemap="#multi__eos_8_f90_afb461540e77781fc8560dcdf98a7ed12_icgraph" alt=""/></div>
 <map name="multi__eos_8_f90_afb461540e77781fc8560dcdf98a7ed12_icgraph" id="multi__eos_8_f90_afb461540e77781fc8560dcdf98a7ed12_icgraph">
-<area shape="rect" title=":This subroutine calculates the relative permeability for three phases First phase has to be water,..." alt="" coords="1943,42,2059,69"/>
-<area shape="rect" href="namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1740,35,1895,76"/>
-<area shape="rect" href="namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1532,35,1692,76"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a659427fd61af753266767259b441a345" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="1292,5,1484,47"/>
-<area shape="rect" href="multi__eos_8_f90.html#a7b4b5e95a2c1b64f376a9c4092d60c0a" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="1032,71,1244,98"/>
-<area shape="rect" href="multi__eos_8_f90.html#a2e38f3c2af7da0c1a95bbb5e485cf0b7" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="1051,5,1225,47"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="756,35,984,76"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,35,419,76"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,64,708,105"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,35,171,76"/>
+<area shape="rect" title=":This subroutine calculates the relative permeability for three phases First phase has to be water,..." alt="" coords="2005,85,2109,112"/>
+<area shape="rect" href="namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1819,78,1957,119"/>
+<area shape="rect" href="namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1628,78,1771,119"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a659427fd61af753266767259b441a345" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="1407,49,1580,90"/>
+<area shape="rect" href="multi__eos_8_f90.html#a7b4b5e95a2c1b64f376a9c4092d60c0a" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="1165,115,1359,141"/>
+<area shape="rect" href="multi__eos_8_f90.html#a2e38f3c2af7da0c1a95bbb5e485cf0b7" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="1185,49,1339,90"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="915,78,1117,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a245ebfb2c63f41aaf90233ccb819bad4" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="688,17,867,58"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,78,376,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,137,640,178"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="443,5,621,61"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,78,152,119"/>
+</map>
+</div>
+
+</div>
+</div>
+<a id="a1c26bc7b22b8141f8c07f7aff66de2d1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1c26bc7b22b8141f8c07f7aff66de2d1">&#9670;&nbsp;</a></span>relperm_tabulated()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine get_relperm::relperm_tabulated </td>
+          <td>(</td>
+          <td class="paramtype">real, intent(inout)&#160;</td>
+          <td class="paramname"><em>Kr</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>: Tabulated relperm. This subroutine computes the relperm based on tabulated data that the user provides (method: linear interpolation). </p>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="multi__eos_8_f90_a1c26bc7b22b8141f8c07f7aff66de2d1_icgraph.png" border="0" usemap="#multi__eos_8_f90_a1c26bc7b22b8141f8c07f7aff66de2d1_icgraph" alt=""/></div>
+<map name="multi__eos_8_f90_a1c26bc7b22b8141f8c07f7aff66de2d1_icgraph" id="multi__eos_8_f90_a1c26bc7b22b8141f8c07f7aff66de2d1_icgraph">
+<area shape="rect" title=": Tabulated relperm. This subroutine computes the relperm based on tabulated data that the user provi..." alt="" coords="2005,85,2131,112"/>
+<area shape="rect" href="namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1819,78,1957,119"/>
+<area shape="rect" href="namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1628,78,1771,119"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a659427fd61af753266767259b441a345" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="1407,49,1580,90"/>
+<area shape="rect" href="multi__eos_8_f90.html#a7b4b5e95a2c1b64f376a9c4092d60c0a" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="1165,115,1359,141"/>
+<area shape="rect" href="multi__eos_8_f90.html#a2e38f3c2af7da0c1a95bbb5e485cf0b7" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="1185,49,1339,90"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="915,78,1117,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a245ebfb2c63f41aaf90233ccb819bad4" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="688,17,867,58"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,78,376,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,137,640,178"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="443,5,621,61"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,78,152,119"/>
+</map>
+</div>
+
+</div>
+</div>
+<a id="aceb42bfefda5357e6464aec48d828dcd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aceb42bfefda5357e6464aec48d828dcd">&#9670;&nbsp;</a></span>relperm_tabulated_land()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine get_relperm::relperm_tabulated_land </td>
+          <td>(</td>
+          <td class="paramtype">real, intent(in)&#160;</td>
+          <td class="paramname"><em>S_phase</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, dimension(:), intent(in)&#160;</td>
+          <td class="paramname"><em>CV_Immobile_fract</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>nphase</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(in)&#160;</td>
+          <td class="paramname"><em>iphase</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, intent(out)&#160;</td>
+          <td class="paramname"><em>Kr</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>: Tabulated relperm with Land trapping using normalised saturation </p>
+<div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="multi__eos_8_f90_aceb42bfefda5357e6464aec48d828dcd_cgraph.png" border="0" usemap="#multi__eos_8_f90_aceb42bfefda5357e6464aec48d828dcd_cgraph" alt=""/></div>
+<map name="multi__eos_8_f90_aceb42bfefda5357e6464aec48d828dcd_cgraph" id="multi__eos_8_f90_aceb42bfefda5357e6464aec48d828dcd_cgraph">
+<area shape="rect" title=": Tabulated relperm with Land trapping using normalised saturation" alt="" coords="5,13,161,39"/>
+<area shape="rect" href="namespacemultiphase__eos.html#af14c426951c2a3fd50666548b0e17472" title=": Computes normalised saturation for Land trapping with tabulated relperm" alt="" coords="209,5,380,47"/>
+</map>
+</div>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="multi__eos_8_f90_aceb42bfefda5357e6464aec48d828dcd_icgraph.png" border="0" usemap="#multi__eos_8_f90_aceb42bfefda5357e6464aec48d828dcd_icgraph" alt=""/></div>
+<map name="multi__eos_8_f90_aceb42bfefda5357e6464aec48d828dcd_icgraph" id="multi__eos_8_f90_aceb42bfefda5357e6464aec48d828dcd_icgraph">
+<area shape="rect" title=": Tabulated relperm with Land trapping using normalised saturation" alt="" coords="2005,85,2161,112"/>
+<area shape="rect" href="namespacemultiphase__eos.html#afa5bc056e9d4cafeb1706afca8e780c1" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1819,78,1957,119"/>
+<area shape="rect" href="namespacemultiphase__eos.html#af235dd0c336c71b8afbfb65399766c10" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="1628,78,1771,119"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a659427fd61af753266767259b441a345" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="1407,49,1580,90"/>
+<area shape="rect" href="multi__eos_8_f90.html#a7b4b5e95a2c1b64f376a9c4092d60c0a" title=": Computes the absorption and its derivatives against the saturation on the boundary" alt="" coords="1165,115,1359,141"/>
+<area shape="rect" href="multi__eos_8_f90.html#a2e38f3c2af7da0c1a95bbb5e485cf0b7" title=": Computes the absorption and its derivatives against the saturation" alt="" coords="1185,49,1339,90"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="915,78,1117,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a245ebfb2c63f41aaf90233ccb819bad4" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="688,17,867,58"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,78,376,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,137,640,178"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="443,5,621,61"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,78,152,119"/>
 </map>
 </div>
 
@@ -667,11 +819,13 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="multi__eos_8_f90_aa152716c3e7e6d83fb9b90b26a9c7be7_icgraph.png" border="0" usemap="#multi__eos_8_f90_aa152716c3e7e6d83fb9b90b26a9c7be7_icgraph" alt=""/></div>
 <map name="multi__eos_8_f90_aa152716c3e7e6d83fb9b90b26a9c7be7_icgraph" id="multi__eos_8_f90_aa152716c3e7e6d83fb9b90b26a9c7be7_icgraph">
-<area shape="rect" title=": For porous media, just sets the viscosity as a scalar" alt="" coords="1032,13,1139,39"/>
-<area shape="rect" href="namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="756,5,984,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,35,708,76"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" title=": For porous media, just sets the viscosity as a scalar" alt="" coords="1165,85,1264,112"/>
+<area shape="rect" href="namespacemultiphase__eos.html#a1d4a7655cae6c58eae3fc141d80d5639" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="915,78,1117,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a245ebfb2c63f41aaf90233ccb819bad4" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="688,17,867,58"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,78,376,119"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,137,640,178"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="443,5,621,61"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,78,152,119"/>
 </map>
 </div>
 

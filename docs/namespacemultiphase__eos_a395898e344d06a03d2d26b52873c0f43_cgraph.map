@@ -1,0 +1,8 @@
+<map id="multiphase_eos::get_rockfluidprop" name="multiphase_eos::get_rockfluidprop">
+<area shape="rect" id="Node000001" title=":Gets the relperm max, the relperm exponent and the immobile fractions and stores them into packed st..." alt="" coords="5,29,160,69"/>
+<area shape="rect" id="Node000002" href="$namespacemultiphase__eos.html#a29b9750459911134c7e711f15fa42614" title=" " alt="" coords="208,29,407,69"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="160,47,194,47,194,52,160,52"/>
+<area shape="rect" id="Node000003" href="$namespacemultiphase__eos.html#ae38ba08b6363798b651a669f506ed944" title=": Computes normalised saturation for Land trapping with tabulated relperm" alt="" coords="455,29,645,69"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="407,47,441,47,441,52,407,52"/>
+<area shape="poly" id="edge3_Node000003_Node000003" title=" " alt="" coords="505,30,502,20,509,10,525,5,550,3,578,6,594,13,591,18,577,11,550,8,527,10,512,15,507,21,510,28"/>
+</map>

@@ -1,5 +1,5 @@
 <map id="phreeqcrm::rm_getspecieslog10molalities" name="phreeqcrm::rm_getspecieslog10molalities">
-<area shape="rect" id="node1" title="Transfer log10 aqueous&#45;species log10 molalities to the array argument (species_log10molalities) To us..." alt="" coords="5,31,301,57"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="385,5,544,32"/>
-<area shape="rect" id="node3" href="$namespacephreeqcrm.html#a00c0ccff8315adce0bd99e7b27c8f0c1" title="The number of aqueous species used in the reaction module. This method is intended for use with multi..." alt="" coords="349,56,580,83"/>
+<area shape="rect" id="node1" title="Transfer log10 aqueous&#45;species log10 molalities to the array argument (species_log10molalities) To us..." alt="" coords="5,31,268,57"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="349,5,491,32"/>
+<area shape="rect" id="node3" href="$namespacephreeqcrm.html#a00c0ccff8315adce0bd99e7b27c8f0c1" title="The number of aqueous species used in the reaction module. This method is intended for use with multi..." alt="" coords="316,56,524,83"/>
 </map>

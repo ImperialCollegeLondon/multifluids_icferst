@@ -27,7 +27,7 @@
   <td id="projectlogo"><img alt="Logo" src="IC_FERST_Logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">ICFERST
-   &#160;<span id="projectnumber">22-06</span>
+   &#160;<span id="projectnumber">25-11</span>
    </div>
    <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
@@ -117,6 +117,12 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a119325e40cdcd54b1766472b55920364"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#a119325e40cdcd54b1766472b55920364">get_anderson_acceleration_new_guess</a> (N, M, NewField, History_field, stored_residuals, max_its, prev_small_matrix, restart_now)</td></tr>
 <tr class="memdesc:a119325e40cdcd54b1766472b55920364"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine provides a new guess based on previous updates and residuals. Use this subroutine to speed up any system being solved by looping. A new guess is computed and returned Method explained in DOI.10.1137/10078356X.  <a href="namespacesolvers__module.html#a119325e40cdcd54b1766472b55920364">More...</a><br /></td></tr>
 <tr class="separator:a119325e40cdcd54b1766472b55920364"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4c840140691d09333884394d27476512"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#a4c840140691d09333884394d27476512">scale_petsc_matrix_by_vector</a> (Mat_petsc, vfield)</td></tr>
+<tr class="memdesc:a4c840140691d09333884394d27476512"><td class="mdescLeft">&#160;</td><td class="mdescRight">In this subroutine the matrix is multiplied by vfield A is-written.  <a href="namespacesolvers__module.html#a4c840140691d09333884394d27476512">More...</a><br /></td></tr>
+<tr class="separator:a4c840140691d09333884394d27476512"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a89a8383ac71c32c7fb89f80a4bfd9963"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#a89a8383ac71c32c7fb89f80a4bfd9963">petsc_matvec</a> (Mat_petsc, vfield, sol)</td></tr>
+<tr class="memdesc:a89a8383ac71c32c7fb89f80a4bfd9963"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs y=Ax using fluidity vectors (not very efficient)  <a href="namespacesolvers__module.html#a89a8383ac71c32c7fb89f80a4bfd9963">More...</a><br /></td></tr>
+<tr class="separator:a89a8383ac71c32c7fb89f80a4bfd9963"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af233b921efdba4e01b5920ccf509ef29"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#af233b921efdba4e01b5920ccf509ef29">scale_petsc_matrix</a> (Mat_petsc)</td></tr>
 <tr class="memdesc:af233b921efdba4e01b5920ccf509ef29"><td class="mdescLeft">&#160;</td><td class="mdescRight">In this subroutine the matrix is re-scaled based on the formula D^-0.5 * A * D^-0.5 X'= D^-0.5 b; and next X = D^-0.5 * X'; IMPORTANT: the step X = D^-0.5 * X' needs to be done elsewhere store the diagonal before calling this This should allow to deal with high ranges of viscosity ratio for example A is-written.  <a href="namespacesolvers__module.html#af233b921efdba4e01b5920ccf509ef29">More...</a><br /></td></tr>
 <tr class="separator:af233b921efdba4e01b5920ccf509ef29"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -199,10 +205,11 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacesolvers__module_a4e86e8d68a22dcc9e670af385d938bf4_icgraph.png" border="0" usemap="#namespacesolvers__module_a4e86e8d68a22dcc9e670af385d938bf4_icgraph" alt=""/></div>
 <map name="namespacesolvers__module_a4e86e8d68a22dcc9e670af385d938bf4_icgraph" id="namespacesolvers__module_a4e86e8d68a22dcc9e670af385d938bf4_icgraph">
-<area shape="rect" title=": The maximum backtracking factor is calculated based on the Courant number and physical effects ocur..." alt="" coords="756,5,919,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,5,708,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" title=": The maximum backtracking factor is calculated based on the Courant number and physical effects ocur..." alt="" coords="688,43,835,84"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,5,640,47"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="443,71,621,127"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,43,376,84"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,43,152,84"/>
 </map>
 </div>
 
@@ -381,11 +388,11 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacesolvers__module_aad076a468a68cdb44f63a6290e9c8159_icgraph.png" border="0" usemap="#namespacesolvers__module_aad076a468a68cdb44f63a6290e9c8159_icgraph" alt=""/></div>
 <map name="namespacesolvers__module_aad076a468a68cdb44f63a6290e9c8159_icgraph" id="namespacesolvers__module_aad076a468a68cdb44f63a6290e9c8159_icgraph">
-<area shape="rect" title=": This subroutine converts the C (gradient) and CT (Divergence) matrices into PETSc format Mainly dev..." alt="" coords="940,5,1123,61"/>
-<area shape="rect" href="namespacesolvers__module.html#ab1b067219293fc4e2583394acce02bfa" title="In this subroutine the Schur complement is generated and solved using PETSc to update the pressure fi..." alt="" coords="724,13,892,54"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,13,676,54"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,13,419,54"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,13,171,54"/>
+<area shape="rect" title=": This subroutine converts the C (gradient) and CT (Divergence) matrices into PETSc format Mainly dev..." alt="" coords="865,5,1033,61"/>
+<area shape="rect" href="namespacesolvers__module.html#ab1b067219293fc4e2583394acce02bfa" title="In this subroutine the Schur complement is generated and solved using PETSc to update the pressure fi..." alt="" coords="664,13,817,54"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ac8c3c3c252bab49e31602e628c983f5b" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="424,13,616,54"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,13,376,54"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,13,152,54"/>
 </map>
 </div>
 
@@ -581,10 +588,10 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c_icgraph.png" border="0" usemap="#namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c_icgraph" alt=""/></div>
 <map name="namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c_icgraph" id="namespacesolvers__module_a4773b0f364c52ef1ca48a3ead9f6693c_icgraph">
-<area shape="rect" title=":In this subroutine we applied some corrections and backtrack_par on the saturations obtained from th..." alt="" coords="756,5,907,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,5,708,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" title=":In this subroutine we applied some corrections and backtrack_par on the saturations obtained from th..." alt="" coords="688,5,823,47"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,5,640,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
 </map>
 </div>
 
@@ -671,11 +678,11 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacesolvers__module_a119325e40cdcd54b1766472b55920364_icgraph.png" border="0" usemap="#namespacesolvers__module_a119325e40cdcd54b1766472b55920364_icgraph" alt=""/></div>
 <map name="namespacesolvers__module_a119325e40cdcd54b1766472b55920364_icgraph" id="namespacesolvers__module_a119325e40cdcd54b1766472b55920364_icgraph">
-<area shape="rect" title="This subroutine provides a new guess based on previous updates and residuals. Use this subroutine to ..." alt="" coords="991,5,1167,61"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a09c428fa5a27cf3407e6a1bcc917f161" title="Generic subroutine that perform the Anderson acceleration solver. This is storing a set of results fo..." alt="" coords="724,20,943,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,13,676,54"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,13,419,54"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,13,171,54"/>
+<area shape="rect" title="This subroutine provides a new guess based on previous updates and residuals. Use this subroutine to ..." alt="" coords="911,5,1069,61"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#a09c428fa5a27cf3407e6a1bcc917f161" title="Generic subroutine that perform the Anderson acceleration solver. This is storing a set of results fo..." alt="" coords="664,20,863,47"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ac8c3c3c252bab49e31602e628c983f5b" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="424,13,616,54"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,13,376,54"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,13,152,54"/>
 </map>
 </div>
 
@@ -770,13 +777,50 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c_icgraph.png" border="0" usemap="#namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c_icgraph" alt=""/></div>
 <map name="namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c_icgraph" id="namespacesolvers__module_a27f681607a9e40b1e99a8f45cd6a940c_icgraph">
-<area shape="rect" title=": This subroutines eliminates the oscillations in the saturation that are bigger than a certain toler..." alt="" coords="955,35,1165,76"/>
-<area shape="rect" href="namespacesolvers__module.html#a4773b0f364c52ef1ca48a3ead9f6693c" title=":In this subroutine we applied some corrections and backtrack_par on the saturations obtained from th..." alt="" coords="756,5,907,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,35,708,76"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,35,419,76"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,35,171,76"/>
+<area shape="rect" title=": This subroutines eliminates the oscillations in the saturation that are bigger than a certain toler..." alt="" coords="871,35,1063,76"/>
+<area shape="rect" href="namespacesolvers__module.html#a4773b0f364c52ef1ca48a3ead9f6693c" title=":In this subroutine we applied some corrections and backtrack_par on the saturations obtained from th..." alt="" coords="688,5,823,47"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,35,640,76"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,35,376,76"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,35,152,76"/>
 </map>
 </div>
+
+</div>
+</div>
+<a id="a89a8383ac71c32c7fb89f80a4bfd9963"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a89a8383ac71c32c7fb89f80a4bfd9963">&#9670;&nbsp;</a></span>petsc_matvec()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine, public solvers_module::petsc_matvec </td>
+          <td>(</td>
+          <td class="paramtype">type(petsc_csr_matrix), intent(inout)&#160;</td>
+          <td class="paramname"><em>Mat_petsc</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(vector_field), intent(in)&#160;</td>
+          <td class="paramname"><em>vfield</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(vector_field), intent(inout)&#160;</td>
+          <td class="paramname"><em>sol</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Performs y=Ax using fluidity vectors (not very efficient) </p>
+<dl class="section author"><dt>Author</dt><dd>Pablo Salinas </dd></dl>
 
 </div>
 </div>
@@ -898,10 +942,10 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_icgraph.png" border="0" usemap="#namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_icgraph" alt=""/></div>
 <map name="namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_icgraph" id="namespacesolvers__module_ab1b067219293fc4e2583394acce02bfa_icgraph">
-<area shape="rect" title="In this subroutine the Schur complement is generated and solved using PETSc to update the pressure fi..." alt="" coords="724,5,892,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" title="In this subroutine the Schur complement is generated and solved using PETSc to update the pressure fi..." alt="" coords="664,5,817,47"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ac8c3c3c252bab49e31602e628c983f5b" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="424,5,616,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
 </map>
 </div>
 
@@ -930,10 +974,53 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacesolvers__module_af233b921efdba4e01b5920ccf509ef29_icgraph.png" border="0" usemap="#namespacesolvers__module_af233b921efdba4e01b5920ccf509ef29_icgraph" alt=""/></div>
 <map name="namespacesolvers__module_af233b921efdba4e01b5920ccf509ef29_icgraph" id="namespacesolvers__module_af233b921efdba4e01b5920ccf509ef29_icgraph">
-<area shape="rect" title="In this subroutine the matrix is re&#45;scaled based on the formula D^&#45;0.5 * A * D^&#45;0...." alt="" coords="724,5,891,47"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="467,5,676,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" title="In this subroutine the matrix is re&#45;scaled based on the formula D^&#45;0.5 * A * D^&#45;0...." alt="" coords="664,5,816,47"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ac8c3c3c252bab49e31602e628c983f5b" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="424,5,616,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
+</map>
+</div>
+
+</div>
+</div>
+<a id="a4c840140691d09333884394d27476512"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4c840140691d09333884394d27476512">&#9670;&nbsp;</a></span>scale_petsc_matrix_by_vector()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine, public solvers_module::scale_petsc_matrix_by_vector </td>
+          <td>(</td>
+          <td class="paramtype">type(petsc_csr_matrix), intent(inout)&#160;</td>
+          <td class="paramname"><em>Mat_petsc</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(vector_field), intent(in)&#160;</td>
+          <td class="paramname"><em>vfield</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>In this subroutine the matrix is multiplied by vfield A is-written. </p>
+<dl class="section author"><dt>Author</dt><dd>Pablo Salinas </dd></dl>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacesolvers__module_a4c840140691d09333884394d27476512_icgraph.png" border="0" usemap="#namespacesolvers__module_a4c840140691d09333884394d27476512_icgraph" alt=""/></div>
+<map name="namespacesolvers__module_a4c840140691d09333884394d27476512_icgraph" id="namespacesolvers__module_a4c840140691d09333884394d27476512_icgraph">
+<area shape="rect" title="In this subroutine the matrix is multiplied by vfield A is&#45;written." alt="" coords="877,13,1045,54"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a245ebfb2c63f41aaf90233ccb819bad4" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="651,13,829,54"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="424,5,603,61"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,13,376,54"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,13,152,54"/>
 </map>
 </div>
 
@@ -992,13 +1079,14 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacesolvers__module_a9bba1ef1495c1a4a47a7eea3f2c17719_icgraph.png" border="0" usemap="#namespacesolvers__module_a9bba1ef1495c1a4a47a7eea3f2c17719_icgraph" alt=""/></div>
 <map name="namespacesolvers__module_a9bba1ef1495c1a4a47a7eea3f2c17719_icgraph" id="namespacesolvers__module_a9bba1ef1495c1a4a47a7eea3f2c17719_icgraph">
-<area shape="rect" title=":This subroutines eliminates the oscillations in the saturation that are bigger than a certain tolera..." alt="" coords="1039,64,1220,105"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="756,5,991,47"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="510,66,665,93"/>
-<area shape="rect" href="namespacesolvers__module.html#a4773b0f364c52ef1ca48a3ead9f6693c" title=":In this subroutine we applied some corrections and backtrack_par on the saturations obtained from th..." alt="" coords="798,123,949,164"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,64,419,105"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,64,171,105"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,119,708,160"/>
+<area shape="rect" title=":This subroutines eliminates the oscillations in the saturation that are bigger than a certain tolera..." alt="" coords="947,93,1111,135"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="688,123,899,164"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#af1bf5a11afa118074e812449240b70cb" title="WARNING: Still work in progress." alt="" coords="463,73,601,99"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="443,174,621,230"/>
+<area shape="rect" href="namespacesolvers__module.html#a4773b0f364c52ef1ca48a3ead9f6693c" title=":In this subroutine we applied some corrections and backtrack_par on the saturations obtained from th..." alt="" coords="726,5,861,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,116,376,157"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,116,152,157"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,7,640,48"/>
 </map>
 </div>
 

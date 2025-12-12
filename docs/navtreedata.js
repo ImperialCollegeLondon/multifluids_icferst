@@ -70,6 +70,7 @@ var NAVTREE =
           [ "Input using python", "index.html#pythonscripting", null ],
           [ "Simplified diamond interface", "index.html#int_conv", null ]
         ] ],
+        [ "Running IC-FERST", "index.html#running", null ],
         [ "Applications and tests", "index.html#applications", [
           [ "Automatic Testing", "index.html#test_case", null ]
         ] ],
@@ -106,10 +107,11 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "_extract___from___state_8_f90.html",
-"_r_m__interface_8_f90.html#aa06999b1b2bf8b9920785359f9ed0593",
-"interfacexgb__interface_1_1fortran___x_g_booster_create.html",
-"multi__shape__fct_8_f90.html#a06fcc23267a886a2b3122b3a77667801",
-"namespaceshape__functions__linear__quadratic.html"
+"_r_m__interface_8_f90.html#a992f72222ea69c860a607c16540a3549",
+"interfaceshape__functions__linear__quadratic_1_1detnlxr.html#a1c937315c60a13f3d055e8203ba990f1",
+"multi__pipes_8_f90.html#aa27e23615cb61d7b64663cda62a2e7da",
+"namespacemembers_n.html",
+"structmulti__data__types_1_1multi__sparsity.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

@@ -1,0 +1,4 @@
+<map id="phreeqcrm::rm_getgascomponentscount" name="phreeqcrm::rm_getgascomponentscount">
+<area shape="rect" id="Node000001" title="Returns the number of gas phase components in the initial&#45;phreeqc module. RM_FindComponents must be c..." alt="" coords="5,29,291,55"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="103,31,93,21,98,11,117,5,148,3,189,7,200,12,203,18,199,21,196,16,188,12,148,8,118,10,101,15,98,20,106,27"/>
+</map>

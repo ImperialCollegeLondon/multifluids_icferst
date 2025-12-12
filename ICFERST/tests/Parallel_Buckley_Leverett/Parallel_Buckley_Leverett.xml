@@ -7,10 +7,10 @@
     <command_line>make
 
 ../../../bin/icferst BL_quartered.mpml
-mv BL_radial_0.vtu serial.vtu
+cp BL_radial_0.vtu serial.vtu
 mpirun -n 2  ../../../bin/icferst BL_quartered.mpml
-../../../bin/pvtu2vtu BL_radial 0
-../../../bin/vtudiff serial.vtu BL_radial_0.vtu diff.vtu</command_line>
+./pvtu2vtu_new BL_radial 0
+./vtudiff_new serial.vtu BL_radial_0.vtu diff.vtu</command_line>
   </problem_definition>
   <variables>
     <variable name="check_P1DGP1" language="python">import vtk

@@ -16,6 +16,7 @@ var multi__eos_8_f90 =
     [ "calculate_u_source_cv", "multi__eos_8_f90.html#ac21530a3f76ed685a2ce5fcb0bb11bd0", null ],
     [ "calculate_viscosity", "multi__eos_8_f90.html#a26eebc3a39a15f39961c783b8558fbef", null ],
     [ "cap_bulk_rho", "multi__eos_8_f90.html#aa45791df12ab50edf07b075fc8c83335", null ],
+    [ "compute_normalised_saturation", "multi__eos_8_f90.html#af14c426951c2a3fd50666548b0e17472", null ],
     [ "compute_viscosity_eos", "multi__eos_8_f90.html#aba2170c291d049cf032d6b1a253aa276", null ],
     [ "copy_metal_field", "multi__eos_8_f90.html#a84fa5e7155dc42f6e8365fc6a0dfd899", null ],
     [ "correction_mass_metal", "multi__eos_8_f90.html#a2e3f9c0b2e55a90103c72b4570f45e48", null ],
@@ -33,8 +34,11 @@ var multi__eos_8_f90 =
     [ "linear_eos_formula", "multi__eos_8_f90.html#a5d9a124e3bfdcebea01989fde6ea5cd1", null ],
     [ "metal_dissolution", "multi__eos_8_f90.html#a7403abd4f0f6b2a8237aaa49bee9081e", null ],
     [ "metal_precipitation", "multi__eos_8_f90.html#ad552bb5fe3f1a7753cb81faaf6097893", null ],
+    [ "normalise_relperm_tables", "multi__eos_8_f90.html#a29b9750459911134c7e711f15fa42614", null ],
     [ "relperm_corey_epsilon", "multi__eos_8_f90.html#a0f94604be6099dd1304ee7568ad7aac1", null ],
     [ "relperm_stone", "multi__eos_8_f90.html#afb461540e77781fc8560dcdf98a7ed12", null ],
+    [ "relperm_tabulated", "multi__eos_8_f90.html#a1c26bc7b22b8141f8c07f7aff66de2d1", null ],
+    [ "relperm_tabulated_land", "multi__eos_8_f90.html#aceb42bfefda5357e6464aec48d828dcd", null ],
     [ "retrieve_reference_density", "multi__eos_8_f90.html#a282f02f39508adfb64d99bf4659af86c", null ],
     [ "saturation_temperature", "multi__eos_8_f90.html#a2591de41e9c67340b83129722447923b", null ],
     [ "set_viscosity", "multi__eos_8_f90.html#aa152716c3e7e6d83fb9b90b26a9c7be7", null ],
@@ -43,5 +47,11 @@ var multi__eos_8_f90 =
     [ "update_velocity_absorption", "multi__eos_8_f90.html#a15a1f78f9f889b58b7b9f45de20d5a48", null ],
     [ "update_velocity_absorption_coriolis", "multi__eos_8_f90.html#a98927879ae36867eabec1a9e6a5f22d8", null ],
     [ "update_velocity_source", "multi__eos_8_f90.html#a8f7f68ee8d294089b9077c480795eb9c", null ],
-    [ "flooding_hmin", "multi__eos_8_f90.html#ae1ce91e74714b2c125d7a764aaa79ff3", null ]
+    [ "flooding_hmin", "multi__eos_8_f90.html#ae1ce91e74714b2c125d7a764aaa79ff3", null ],
+    [ "original_immobile_per_phase", "multi__eos_8_f90.html#ac225ca863b2915b70181fe53abe4d779", null ],
+    [ "pc_table_data", "multi__eos_8_f90.html#ad75fdebae56a34f58313eb37d69fae6e", null ],
+    [ "relperm_table_data", "multi__eos_8_f90.html#aa82391e55c623b151745a9ef5fe09e97", null ],
+    [ "relperm_table_norm_data", "multi__eos_8_f90.html#aadda55c84c6fbe47425442430dc79dd4", null ],
+    [ "tables_loaded", "multi__eos_8_f90.html#ac9e26a6e715bbcea0e5f3d124871a8b2", null ],
+    [ "tables_normalised", "multi__eos_8_f90.html#aede48d1965af522f9a3bfcf4148a9395", null ]
 ];

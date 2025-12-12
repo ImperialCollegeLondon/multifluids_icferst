@@ -48,13 +48,16 @@ htmldir = @htmldir@/
 pdfdir = @pdfdir@/
 
 FC      = @FC@
+F77     = @F77@
 FCFLAGS = @FCFLAGS@
 
 MPIF90  = @MPIF90@
+MPIF77  = @MPIF77@
 MPICC   = @MPICC@
 MPICXX  = @MPICXX@
 
 CC	= @CC@
+CPPFLAGS += -I./include
 CFLAGS	= @CPPFLAGS@ @CFLAGS@
 
 CXX	= @CXX@
@@ -64,12 +67,18 @@ LINKER  = @LINKER@ @LDFLAGS@ $(CXXFLAGS)
 
 FLLINKER = @FLLINKER@ @LDFLAGS@ $(FCFLAGS)
 
-LIBS    = -L./lib -l$(FLUIDITY) @LIB_FEMDEM@ ./lib/libadaptivity.a \
-           ./lib/libvtkfortran.a @LIBSPATIALINDEX@  @SPUDLIB@ @FLIBJUDY@ \
-           @LIBS@ @BLAS_LIBS@ @LIB_XGBOOST@ @LIB_PHREEQC@
+export FC F77 CC CXX MPIF90 MPIF77 MPICC MPICXX
+
+
+LIBS = -L./lib -lfluidity -lmpi_mpifh -lgfortran \
+       @LIB_FEMDEM@ ./lib/libadaptivity.a ./lib/libvtkfortran.a \
+       @LIBSPATIALINDEX@ @SPUDLIB@ @FLIBJUDY@ \
+       @LIBS@ @BLAS_LIBS@ @LIB_XGBOOST@ @LIB_PHREEQC@
 
 OBJS = $(shell find . -mindepth 2 -maxdepth 2 -name '*.c' -o -name '*.cpp' -o -name '*.[fF]' -o -name '*.F90' | grep -v ^./lib | xargs)
 MAKE = @MAKE@ -s
+#@SET_MAKE@            # expands to nothing or 'MAKE=make' on weird makes
+#MAKEFLAGS += -s
 
 AR = @AR@
 
@@ -178,7 +187,7 @@ bin/$(FLUIDITY): main.o lib/lib$(FLUIDITY).a
 	@echo "    LD $(PROGRAM)"
 	@$(EVAL) $(LINKER) -o $(PROGRAM) main.o $(LIBS)
 
-mp: bin/icferst
+mp: bin/icferst fldecomp
 
 bin/icferst: fluidity_library
 	@echo "    MAKE icferst"
@@ -187,7 +196,7 @@ bin/icferst: fluidity_library
 	@echo "    MKDIR ICFERST"
 	@mkdir -p bin
 	@echo "    LD icferst"
-	@$(EVAL) $(LINKER) -o bin/icferst ICFERST/main.o ./ICFERST/lib/libmphase.a $(CXXFLAGS) $(LIBS)
+	@$(EVAL) mpif90 -o bin/icferst ICFERST/main.o ./ICFERST/lib/libmphase.a $(CXXFLAGS) $(LIBS)
 	@cd ../
 
 bin/form_pod_basis: fluidity_library reduced_modelling/Form_Pod_Basis_Main.F90

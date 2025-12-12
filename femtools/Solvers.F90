@@ -32,9 +32,10 @@ module solvers
   use elements
   use spud
   use parallel_tools
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
   use petsc
-#endif
+#include <petsc/finclude/petscksp.h>
+  use petscksp  
   use Sparse_Tools
   use Fields
   use profiler
@@ -46,10 +47,16 @@ module solvers
   use vtk_interfaces
   use halos
   use MeshDiagnostics
-  implicit none
-  ! Module to provide explicit interfaces to matrix solvers.
 
+
+! Module to provide explicit interfaces to matrix solvers.  
 #include "petsc_legacy.h"
+implicit none 
+
+#if PETSC_VERSION_MINOR>12
+       external KSPMONITORDEFAULT
+       external KSPMonitorTrueResidualNorm
+#endif
 
   ! stuff used in the PETSc monitor (see petsc_solve_callback_setup() below)
   integer :: petsc_monitor_iteration = 0
@@ -271,7 +278,6 @@ subroutine petsc_solve_vector(x, matrix, rhs, option_path, deallocate_matrix)
   type(csr_matrix) :: matrixblock
   type(scalar_field) :: rhsblock, xblock
   integer :: i
-
   assert(x%dim==rhs%dim)
   assert(size(x%val(1,:))==size(rhs%val(1,:)))
   assert(size(x%val(1,:))==block_size(matrix,2))
@@ -732,7 +738,7 @@ subroutine petsc_solve_setup(y, A, b, ksp, petsc_numbering, &
 !!
 !! PETSc solution vector
 Vec, intent(out):: y
-!! PETSc matrix
+! PETSc matrix
 Mat, intent(out):: A
 !! PETSc rhs vector
 Vec, intent(out):: b
@@ -992,7 +998,7 @@ type(vector_field), intent(in), optional :: positions
     ! same for the matrix, kspgetoperators returns the matrix reference
     ! owned by the ksp - make it a separate reference
     call PetscObjectReferenceWrapper(A, ierr)
-
+    
   end if
 
   b=PetscNumberingCreateVec(petsc_numbering)
@@ -1369,10 +1375,11 @@ logical, optional, intent(in):: nomatrixdump
   ! Check convergence and give warning+matrixdump if needed.
   ! This needs to be done before we copy back the result as
   ! x still contains the initial guess to be used in the matrixdump.
-  call ConvergenceCheck(reason, iterations, name, solver_option_path, &
-       startfromzero, A, b, petsc_numbering, &
-       x0=x0, vector_x0=vector_x0, &
-       checkconvergence=checkconvergence,nomatrixdump=nomatrixdump)
+
+  ! call ConvergenceCheck(reason, iterations, name, solver_option_path, &
+  !      startfromzero, A, b, petsc_numbering, &
+  !      x0=x0, vector_x0=vector_x0, &
+  !      checkconvergence=checkconvergence,nomatrixdump=nomatrixdump)
 
   ewrite(2, "(A, ' PETSc reason of convergence: ', I0)") trim(name), reason
   ewrite(2, "(A, ' PETSc n/o iterations: ', I0)") trim(name), iterations
@@ -1485,6 +1492,7 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
   logical, optional, intent(in):: checkconvergence
   !! if present do not dump matrix equation:
   logical, optional, intent(in):: nomatrixdump
+  logical, save :: show_convergence_detailed
 
   ! did we dump before? :
   logical, save:: matrixdumped=.false.
@@ -1492,6 +1500,8 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
   PetscErrorCode ierr
   character(len=30) reasons(10)
   real spin_up_time, current_time
+
+  show_convergence_detailed = have_option( '/io/Show_Convergence_Detailed')
 
   reasons(1)  = "Undefined"
   reasons(2)  = "KSP_DIVERGED_NULL"
@@ -1513,7 +1523,11 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
        have_option(trim(solver_option_path)//'/ignore_all_solver_failures'))  then
        if (getprocno() == 1) then
          nSolverWarnings = nSolverWarnings + 1
-         ewrite(1,*) 'Maximum number of iterations reached for '// trim(name)// ' solver, moving on.'
+         if (show_convergence_detailed) then
+           ewrite(-1,*) 'Maximum number of iterations reached for '// trim(name)// ' solver, moving on.'
+         else
+           ewrite(1,*) 'Maximum number of iterations reached for '// trim(name)// ' solver, moving on.'
+         end if
        end if
        return
      end if
@@ -1524,19 +1538,46 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
         if (.not. checkconvergence .and. reason==-3) return
      end if
      ! write reason+iterations to STDERR so we never miss it:
-     ewrite(1,*) 'WARNING: Failed to converge.'
-     ewrite(1,*) "PETSc did not converge for matrix solve of: " // trim(name)
-     if((reason>=-10) .and. (reason<=-1)) then
-        ewrite(1,*) 'Reason for non-convergence: ', reasons(-reason)
+     if (show_convergence_detailed) then
+       ewrite(-1,*) 'WARNING: Failed to converge.'
+       ewrite(-1,*) "PETSc did not converge for matrix solve of: " // trim(name)
      else
-        ewrite(1,*) 'Reason for non-convergence is undefined: ', reason
+       ewrite(1,*) 'WARNING: Failed to converge.'
+       ewrite(1,*) "PETSc did not converge for matrix solve of: " // trim(name)
+     end if
+
+     if((reason>=-10) .and. (reason<=-1)) then
+       if (show_convergence_detailed) then
+         ewrite(-1,*) 'Reason for non-convergence: ', reasons(-reason)
+       else
+         ewrite(1,*) 'Reason for non-convergence: ', reasons(-reason)
+       end if
+     else
+       if (show_convergence_detailed) then
+         ewrite(-1,*) 'Reason for non-convergence is undefined: ', reason
+       else
+         ewrite(1,*) 'Reason for non-convergence is undefined: ', reason
+       end if
      endif
-     ewrite(1,*) 'Number of iterations: ', iterations
+
+     if (show_convergence_detailed) then
+       ewrite(-1,*) 'Number of iterations: ', iterations
+     else
+       ewrite(1,*) 'Number of iterations: ', iterations
+     end if
 
      if (have_option(trim(solver_option_path)//'/ignore_all_solver_failures')) then
-        ewrite(1,*) 'Specified ignore_all_solver_failures, therefore continuing'
+       if (show_convergence_detailed) then
+         ewrite(-1,*) 'Specified ignore_all_solver_failures, therefore continuing'
+       else
+         ewrite(1,*) 'Specified ignore_all_solver_failures, therefore continuing'
+       end if
      elseif (reason/=-3 .or. have_option(trim(solver_option_path)//'/never_ignore_solver_failures')) then
-        ewrite(1,*) "Sending signal to dump and finish"
+       if (show_convergence_detailed) then
+         ewrite(-1,*) "Sending signal to dump and finish"
+       else
+         ewrite(1,*) "Sending signal to dump and finish"
+       end if
         ! Setting SIGINT in Signal_Vars module will cause dump and crash
         sig_int=.true.
      elseif (have_option(trim(solver_option_path)//'/allow_non_convergence_during_spinup')) then
@@ -1709,7 +1750,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     ! =========================================================
     call KSPGetPC(ksp, pc, ierr)
 
-    call setup_pc_from_options(pc, pmat, &
+    call setup_pc_from_options(ksp, pc, pmat, &
        trim(solver_option_path)//'/preconditioner[0]', &
        petsc_numbering=petsc_numbering, &
        prolongators=prolongators, surface_node_list=surface_node_list, &
@@ -1734,7 +1775,6 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
         if (have_option(trim(solver_option_path)//'/preconditioner::hypre/shift_positive_definite')) then
          shifttype=MAT_SHIFT_POSITIVE_DEFINITE
          call PCFactorSetShiftType(pc,shifttype, ierr) !> shift the mat to positive definite - ao 12-02-20
-         !print *, "MAT shifting to positive definite"
          ewrite(2, *) 'forcing the MAT to shift to a positive definite for CG and HYPRE combo'
         end if
     end if
@@ -1789,15 +1829,19 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        '/diagnostics/monitors/preconditioned_residual')) then
         call PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, &
            PETSC_VIEWER_DEFAULT,vf,ierr)
-        call KSPMonitorSet(ksp, KSPMonitorDefault, vf, &
+#if PETSC_VERSION_MINOR<=12
+        call KSPMonitorSet(ksp, KSPMonitorDefault, vf, &  
            PetscViewerAndFormatDestroy, ierr)
+#endif
     end if
     if (have_option(trim(solver_option_path)// &
        '/diagnostics/monitors/true_residual')) then
         call PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, &
            PETSC_VIEWER_DEFAULT,vf,ierr)
-        call KSPMonitorSet(ksp, KSPMonitorTrueResidualNorm, vf, &
+#if PETSC_VERSION_MINOR<=12
+        call KSPMonitorSet(ksp, KSPMonitorTrueResidualNorm, vf, &   
            PetscViewerAndFormatDestroy, ierr)
+#endif
     end if
 
     if (have_option(trim(solver_option_path)// &
@@ -1824,8 +1868,10 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
          FLAbort("Need petsc_numbering for monitor")
        end if
        call petsc_monitor_setup(petsc_numbering, max_its)
-       call KSPMonitorSet(ksp, MyKSPMonitor, vf, &
-            &                     PETSC_NULL_FUNCTION, ierr)
+       ! NOTE: there doesn't seem to be a clean way to provide NULL to the void *mctx
+       ! argument in for fortran interface to PETSc v3.8 - PETSC_NULL_KSP does get translated to NULL
+       call KSPMonitorSet(ksp, MyKSPMonitor, PETSC_NULL_KSP, &
+            &                     PETSC_NULL_FUNCTION,ierr)
     end if
 
 #if PETSC_VERSION_MINOR<6
@@ -1953,9 +1999,10 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
 
   end subroutine attach_null_space_from_options
 
-  recursive subroutine setup_pc_from_options(pc, pmat, option_path, &
+  recursive subroutine setup_pc_from_options(ksp, pc, pmat, option_path, &
     petsc_numbering, prolongators, surface_node_list, matrix_csr, &
     internal_smoothing_option, is_subpc)
+  KSP, intent(inout) :: ksp  
   PC, intent(inout):: pc
   Mat, intent(in):: pmat
   character(len=*), intent(in):: option_path
@@ -1969,9 +2016,10 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
   ! if present and true, don't setup sor and eisenstat as subpc (again)
   logical, optional, intent(in) :: is_subpc
   character( len = option_path_len ) :: opt
-  integer :: n_local, first_local
+  
 
     KSP:: subksp
+    KSP,pointer      ::   subksp_array(:) => null()
     PC:: subpc
     MatNullSpace:: nullsp
     PCType:: pctype, hypretype
@@ -1979,12 +2027,13 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     PCJacobiType:: pc_jacobi_type
     PetscBool :: abs
     PetscReal :: def
+    PetscInt :: n_local, first_local
 #if PETSC_VERSION_MINOR >=9
     MatSolverType:: matsolvertype
 #else
     MatSolverPackage:: matsolverpackage
 #endif
-
+    integer :: i
 
     call get_option(trim(option_path)//'/name', pctype)
 
@@ -2024,7 +2073,6 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
         if (have_option(trim(option_path)//'/boomeramg_relaxation')) then
           call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_relax_type_all","symmetric-SOR/Jacobi", ierr)
           call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_coarsen_type","Falgout", ierr)
-           !print *, "BoomerAMG relaxation"
         end if
       end if
 
@@ -2058,29 +2106,49 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
       ! need to call this before the subpc can be retrieved:
       call PCSetup(pc, ierr)
 
-#if PETSC_VERSION_MINOR>=14
+#if PETSC_VERSION_MINOR>=14 
+      call KSPSetUp(ksp,ierr)
       if (pctype==PCBJACOBI) then
-        call PCBJacobiGetSubKSP(pc,n_local,first_local,subksp,ierr)
+        call PCBJacobiGetSubKSP(pc,n_local,first_local, PETSC_NULL_KSP,ierr)
+        allocate(subksp_array(n_local))
+        call PCBJacobiGetSubKSP(pc,n_local , first_local,subksp_array,ierr)
       else
-        call PCASMGetSubKSP(pc,n_local,first_local,subksp,ierr)
+        call PCASMGetSubKSP(pc,n_local,first_local,subksp_array,ierr)
       end if
+
+       !##############################################
+       ! not using recursive way of setting the sub pc
+      ewrite(2,*) "Going into setup_pc_from_options for the subpc within the local domain."
+      do i=1, n_local
+        call KSPGetPC(subksp_array(i), subpc, ierr)
+        call setup_pc_from_options(ksp, subpc, pmat, &
+         trim(option_path)//'/preconditioner[0]', &
+         petsc_numbering=petsc_numbering, &
+         prolongators=prolongators, surface_node_list=surface_node_list, &
+         matrix_csr=matrix_csr, internal_smoothing_option=internal_smoothing_option, &
+         is_subpc=.true.)
+      end do
+      ewrite(2,*) "Finished setting up subpc."
 #else
       if (pctype==PCBJACOBI) then
         call PCBJacobiGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
       else
         call PCASMGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
       end if
-#endif
       call KSPGetPC(subksp, subpc, ierr)
+      !##############################################
+      ! This recursive way of setting this subroutine only works for old versions of petsc........
       ! recursively call to setup the subpc
       ewrite(2,*) "Going into setup_pc_from_options for the subpc within the local domain."
-      call setup_pc_from_options(subpc, pmat, &
+      call setup_pc_from_options(ksp, subpc, pmat, &
          trim(option_path)//'/preconditioner[0]', &
          petsc_numbering=petsc_numbering, &
          prolongators=prolongators, surface_node_list=surface_node_list, &
          matrix_csr=matrix_csr, internal_smoothing_option=internal_smoothing_option, &
          is_subpc=.true.)
       ewrite(2,*) "Finished setting up subpc."
+#endif      
+
 
     else if (IsParallel() .and. (pctype==PCSOR .or. &
       pctype==PCEISENSTAT) .and. .not. present_and_true(is_subpc)) then
@@ -2093,11 +2161,17 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        call PCSetup(pc, ierr)
 #if PETSC_VERSION_MINOR>=14
 ! Extract the array of KSP contexts for the local blocks
-        call PCBJacobiGetSubKSP(pc,n_local,first_local,subksp,ierr)
+        call KSPSetUp(ksp,ierr)
+        call PCBJacobiGetSubKSP(pc,n_local,first_local, PETSC_NULL_KSP,ierr)
+        allocate(subksp_array(n_local))
+
+        call PCBJacobiGetSubKSP(pc,n_local,first_local,subksp_array,ierr)
+        call KSPGetPC(subksp_array(1), subpc, ierr)
 #else
        call PCBJacobiGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
-#endif
        call KSPGetPC(subksp, subpc, ierr)
+#endif
+       
        call PCSetType(subpc, pctype, ierr)
 
     else if (pctype==PCFIELDSPLIT) then
@@ -2153,8 +2227,8 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
         ! call PetscOptionsInsertString("-pc_gamg_sym_graph true", ierr)
 
         !We always get issues with unsymmetric graphs, forcing symmetry seems not to be that expensive and should help with this
-        call PCGAMGSetSymGraph(pc, PETSC_TRUE, ierr)
-
+        ! call PCGAMGSetSymGraph(pc, PETSC_TRUE, ierr)
+        
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
 #if PETSC_VERSION_MINOR<8
@@ -2204,13 +2278,14 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
   type(petsc_numbering_type), intent(in):: petsc_numbering
 
     character(len=128):: fieldsplit_type
-    KSP, dimension(size(petsc_numbering%gnn2unn,2)):: subksps
+    ! KSP, dimension(size(petsc_numbering%gnn2unn,2)):: subksps
+    KSP, pointer, dimension(:) :: subksps
     Mat :: mat, pmat
     MatNullSpace :: null_space
     IS:: index_set
     PetscErrorCode:: ierr
-    integer:: i, n
-
+    integer:: i
+    PetscInt :: n  
     call PCSetType(pc, "fieldsplit", ierr)
 
     call PCFieldSplitGetSubKSP(pc, n, subksps, ierr)
@@ -2240,8 +2315,9 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
       call pcfieldsplitsettype(pc, PC_COMPOSITE_MULTIPLICATIVE, ierr)
     case ("additive")
       call pcfieldsplitsettype(pc, PC_COMPOSITE_ADDITIVE, ierr)
-    case ("symmetric_multiplicative")
-      call pcfieldsplitsettype(pc, PC_COMPOSITE_SYMMETRIC_MULTIPLICATIVE, ierr)
+    ! currently gives error in petsc 3.23
+    ! case ("symmetric_multiplicative")
+    !   call pcfieldsplitsettype(pc, PC_COMPOSITE_SYMMETRIC_MULTIPLICATIVE, ierr)
     case default
       FLAbort("Unknown fieldsplit_type")
     end select
@@ -2580,8 +2656,7 @@ end subroutine petsc_monitor_destroy
 subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
 !! The monitor function that gets called each iteration of petsc_solve
 !! (if petsc_solve_callback_setup is called)
-  PetscInt, intent(in) :: n
-  PetscObject, intent(in):: dummy
+  PetscInt, intent(in) :: n,dummy
   KSP, intent(in) :: ksp
   PetscErrorCode, intent(out) :: ierr
 

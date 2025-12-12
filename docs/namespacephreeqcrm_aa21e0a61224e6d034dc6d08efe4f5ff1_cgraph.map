@@ -1,4 +1,4 @@
 <map id="phreeqcrm::rm_initialphreeqccell2module" name="phreeqcrm::rm_initialphreeqccell2module">
-<area shape="rect" id="node1" title="A cell numbered n_user in the InitialPhreeqc instance is selected to populate a series of cells...." alt="" coords="5,5,300,32"/>
-<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="348,5,507,32"/>
+<area shape="rect" id="node1" title="A cell numbered n_user in the InitialPhreeqc instance is selected to populate a series of cells...." alt="" coords="5,5,264,32"/>
+<area shape="rect" id="node2" href="$namespacephreeqcrm.html#ae8a50594bacfaf961614749f94ce16d2" title="Abort the program. irm_result will be interpreted as an IRM_RESULT value and decoded; err_str will be..." alt="" coords="312,5,455,32"/>
 </map>

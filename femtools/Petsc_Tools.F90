@@ -33,9 +33,12 @@ module Petsc_Tools
   use Reference_Counting
   use halo_data_types
   use halos_base
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petscmat.h"  
+  use petscmat 
+#include "petsc/finclude/petsc.h"   
   use petsc
-#endif
+
+
   use Sparse_Tools
   use fields_data_types
   use fields_base
@@ -1096,8 +1099,10 @@ contains
     real, dimension(:), allocatable:: vals
     integer, dimension(:), pointer:: cols
     integer rows(1)
-    integer, dimension(:), allocatable:: colidx, nnz
-    integer ncols, nprows, npcols
+    integer, dimension(:), allocatable:: colidx
+    integer ncols 
+    PetscInt :: nprows, npcols
+    PetscInt, dimension(:), pointer :: nnz
     integer i, l
 
     ncols=size(sparsity,2)
@@ -1117,7 +1122,7 @@ contains
       npcols=ncols
     end if
 
-    allocate(nnz(1:nprows))
+    allocate(nnz(nprows)) 
     ! calcute n/o nonzero entries of private rows:
     do i=1, nprows
       cols => row_m_ptr(sparsity, i)
@@ -1125,9 +1130,13 @@ contains
       nnz(i)=count(cols<=npcols)
 
     end do
-
+#if PETSC_VERSION_MINOR>=20
+call MatCreateAIJ(MPI_COMM_SELF, nprows, npcols, nprows, npcols, &
+      PETSC_NULL_INTEGER, nnz, 0, PETSC_NULL_INTEGER_ARRAY, M, ierr)
+#else
     call MatCreateAIJ(MPI_COMM_SELF, nprows, npcols, nprows, npcols, &
-      0, nnz, 0, PETSC_NULL_INTEGER, M, ierr)
+      PETSC_NULL_INTEGER(1), nnz, 0, PETSC_NULL_INTEGER, M, ierr)
+#endif
     call MatSetup(M, ierr)
 
     call MatSetOption(M, MAT_USE_INODES, PETSC_FALSE, ierr)
@@ -1302,8 +1311,13 @@ contains
       end do
     end do
 
+#if PETSC_VERSION_MINOR>=20
     call MatCreateAIJ(MPI_COMM_FEMTOOLS, nrowsp, ncolsp, nrows, ncols, &
-      0, d_nnz, 0, o_nnz, M, ierr)
+      PETSC_DETERMINE, d_nnz, PETSC_DETERMINE, o_nnz, M, ierr)
+#else
+    call MatCreateAIJ(MPI_COMM_FEMTOOLS, nrowsp, ncolsp, nrows, ncols, &
+      PETSC_NULL_INTEGER(1), d_nnz, PETSC_NULL_INTEGER(1), o_nnz, M, ierr)
+#endif
     call MatSetup(M, ierr)
 
     if (.not. present_and_true(use_inodes)) then
@@ -1357,12 +1371,12 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
            end do
         end do
 
-#if PETSC_VERSION_MINOR>=8
+#if PETSC_VERSION_MINOR>=20
    call MatCreateSeqAIJ(MPI_COMM_SELF, nrows, ncols, &
-     PETSC_NULL_INTEGER(1), nnz, M, ierr)
+     PETSC_DETERMINE, nnz, M, ierr)
 #else
    call MatCreateSeqAIJ(MPI_COMM_SELF, nrows, ncols, &
-     PETSC_NULL_INTEGER, nnz, M, ierr)
+     PETSC_NULL_INTEGER(1), nnz, M, ierr)
 #endif
 
         if (.not. present_and_true(use_inodes)) then
@@ -1441,9 +1455,13 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
               end if
            end do
         end do
-
+#if PETSC_VERSION_MINOR>=20
         call MatCreateAIJ(MPI_COMM_FEMTOOLS, nrowsp, ncolsp, nrows, ncols, &
-             PETSC_NULL_INTEGER, d_nnz, PETSC_NULL_INTEGER, o_nnz, M, ierr)
+             PETSC_DETERMINE, d_nnz, PETSC_DETERMINE, o_nnz, M, ierr)
+#else
+        call MatCreateAIJ(MPI_COMM_FEMTOOLS, nrowsp, ncolsp, nrows, ncols, &
+             PETSC_NULL_INTEGER(1), d_nnz, PETSC_NULL_INTEGER(1), o_nnz, M, ierr)
+#endif
 
         if (.not. present_and_true(use_inodes)) then
            call MatSetOption(M, MAT_USE_INODES, PETSC_FALSE, ierr)
@@ -1478,16 +1496,28 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
 
     PetscErrorCode ierr
     type(csr_sparsity) :: sparsity
-    double precision, dimension(MAT_INFO_SIZE):: matrixinfo
-    PetscScalar, dimension(:), allocatable:: row_vals
-    integer, dimension(:), allocatable:: row_cols, unn2gnn
+    
+    ! PetscScalar, dimension(:), allocatable:: row_vals
+    integer, dimension(:), allocatable::  unn2gnn
     integer private_columns
-    integer i, j, k, ui, rows, columns, entries, ncols, offset, end_of_range
-    logical parallel
+    integer i, j, k, ui, rows, columns, entries,   end_of_range
 
+    PetscInt    :: row, offset, ncols
+    PetscInt, pointer :: row_cols(:)
+    PetscScalar, pointer :: row_vals(:)
+    logical parallel
+#if PETSC_VERSION_MINOR>=20
+    MatInfo :: matrixinfo
+#else
+    double precision, dimension(MAT_INFO_SIZE):: matrixinfo
+#endif
     ! get the necessary info about the matrix:
     call MatGetInfo(matrix, MAT_LOCAL, matrixinfo, ierr)
+#if PETSC_VERSION_MINOR>=20
+    entries=int(matrixinfo%nz_used)
+#else
     entries=matrixinfo(MAT_INFO_NZ_USED)
+#endif
     ! note we're no longer using MAT_INFO for getting local n/o rows and cols
     ! as it's bugged in Petsc < 3.0 and obsoloted thereafter:
     call MatGetLocalSize(matrix, rows, columns, ierr)
@@ -1563,11 +1593,21 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
       do i=0, rows-1
         sparsity%findrm(i+1)=j
 #ifdef DOUBLEP
+#if PETSC_VERSION_MINOR>=20
+        call MatGetRow(matrix, offset+i, ncols, row_cols, row_vals, ierr)
+        do k = 1, ncols
+          sparsity%colm(j + k - 1) = row_cols(k)
+          A%val(j + k - 1) = row_vals(k)
+        end do
+        call MatRestoreRow(matrix, offset+i, ncols, row_cols, row_vals, ierr)
+#else
         call MatGetRow(matrix, offset+i, ncols, sparsity%colm(j:), A%val(j:), ierr)
+        call MatRestoreRow(matrix, offset+i, ncols, sparsity%colm(j:), A%val(j:), ierr)
+#endif
         j=j+ncols
         ! This is stupid, we were given copies in MatGetRow so it could
         ! have restored its internal tmp arrays straight away, anyway:
-        call MatRestoreRow(matrix, offset+i, ncols, sparsity%colm(j:), A%val(j:), ierr)
+        
 #else
         allocate(row_vals(size(A%val) - j + 1))
         call MatGetRow(matrix, offset+i, ncols, sparsity%colm(j:), row_vals, ierr)

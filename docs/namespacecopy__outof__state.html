@@ -27,7 +27,7 @@
   <td id="projectlogo"><img alt="Logo" src="IC_FERST_Logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">ICFERST
-   &#160;<span id="projectnumber">22-06</span>
+   &#160;<span id="projectnumber">25-11</span>
    </div>
    <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
@@ -127,9 +127,9 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a60ec84623fb582762f2139794470ba13"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a60ec84623fb582762f2139794470ba13">finalise_multistate</a> (packed_state, multiphase_state, multicomponent_state)</td></tr>
 <tr class="memdesc:a60ec84623fb582762f2139794470ba13"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Destrys packed_state and the passed down states  <a href="namespacecopy__outof__state.html#a60ec84623fb582762f2139794470ba13">More...</a><br /></td></tr>
 <tr class="separator:a60ec84623fb582762f2139794470ba13"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a577c504f5230ff200ee711334eebe54a"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a577c504f5230ff200ee711334eebe54a">adaptive_nonlinear</a> (Mdims, packed_state, reference_field, its, Repeat_time_step, ExitNonLinearLoop, nonLinearAdaptTs, old_acctim, order, calculate_mass_delta, adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Current_Courant, first_time_step)</td></tr>
-<tr class="memdesc:a577c504f5230ff200ee711334eebe54a"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonlinear iterations are going and depending on that increase the timestep or decreases the timestep and repeats that timestep  <a href="namespacecopy__outof__state.html#a577c504f5230ff200ee711334eebe54a">More...</a><br /></td></tr>
-<tr class="separator:a577c504f5230ff200ee711334eebe54a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab4b7de28d3bd0751dcb50d273ab574df"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#ab4b7de28d3bd0751dcb50d273ab574df">adaptive_nonlinear</a> (Mdims, packed_state, reference_field, its, itime, Repeat_time_step, ExitNonLinearLoop, nonLinearAdaptTs, old_acctim, order, calculate_mass_delta, adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Current_Courant, first_time_step)</td></tr>
+<tr class="memdesc:ab4b7de28d3bd0751dcb50d273ab574df"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonlinear iterations are going and depending on that increase the timestep or decreases the timestep and repeats that timestep  <a href="namespacecopy__outof__state.html#ab4b7de28d3bd0751dcb50d273ab574df">More...</a><br /></td></tr>
+<tr class="separator:ab4b7de28d3bd0751dcb50d273ab574df"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad775c010bade229fba0416002e6928a6"><td class="memItemLeft" align="right" valign="top">real function, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#ad775c010bade229fba0416002e6928a6">inf_norm_scalar_normalised</a> (tracer, reference_tracer, dumping, totally_min_max)</td></tr>
 <tr class="memdesc:ad775c010bade229fba0416002e6928a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs the tracer to be used and the reference tracer to normallise, the dumping to be set to 1.0 and totally_min_max which includes the min max values of the field across all processors also for normalisation.  <a href="namespacecopy__outof__state.html#ad775c010bade229fba0416002e6928a6">More...</a><br /></td></tr>
 <tr class="separator:ad775c010bade229fba0416002e6928a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -172,12 +172,20 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a52b4659aa8636bb70d12b05923bc58b8"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a52b4659aa8636bb70d12b05923bc58b8">impose_connected_bcs</a> (outfluxes, packed_state, Mdims, acctime)</td></tr>
 <tr class="memdesc:a52b4659aa8636bb70d12b05923bc58b8"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Using the outfluxes values, it imposes as BC the averaged value of another BC(from within the domain) It is a basic method to get this functionality but it will work in parallel. However, it does not guarantee mass conservation as it uses the value from the previous time-step although it can still be used for many cases such as ATES, or ventilation. Overwrites the dirichlet BC values. Currently it uses the information from outfluxes so it is MANDATORY to use and request outfluxes for those BCs  <a href="namespacecopy__outof__state.html#a52b4659aa8636bb70d12b05923bc58b8">More...</a><br /></td></tr>
 <tr class="separator:a52b4659aa8636bb70d12b05923bc58b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4d23340ebea84c65fde71abdf1444071"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a4d23340ebea84c65fde71abdf1444071">getoutputconverter</a> (fieldname, factor, shft)</td></tr>
+<tr class="memdesc:a4d23340ebea84c65fde71abdf1444071"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the factor to convert from internal (SI) to the output system For temperature it returns the shift term not the factor.  <a href="namespacecopy__outof__state.html#a4d23340ebea84c65fde71abdf1444071">More...</a><br /></td></tr>
+<tr class="separator:a4d23340ebea84c65fde71abdf1444071"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aad2f9a59bdb78d6bc3ed3bbd30f689fc"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#aad2f9a59bdb78d6bc3ed3bbd30f689fc">converttooutunits</a> (state, Mdims, convertBack)</td></tr>
+<tr class="memdesc:aad2f9a59bdb78d6bc3ed3bbd30f689fc"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Convert fields to out units. Also has a backwards options as we need to undo this after dumping the VTK files  <a href="namespacecopy__outof__state.html#aad2f9a59bdb78d6bc3ed3bbd30f689fc">More...</a><br /></td></tr>
+<tr class="separator:aad2f9a59bdb78d6bc3ed3bbd30f689fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af6fb85b60c7bb747b61c41c24b07b785"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#af6fb85b60c7bb747b61c41c24b07b785">write_state_units</a> (dump_no, Mdims, state)</td></tr>
+<tr class="separator:af6fb85b60c7bb747b61c41c24b07b785"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>This module enables the multiphase prototype code to interact with state by copying everything required from state to ICFERST, adaptive time-stepping, outfluxes computation, tunneled BCs and Darcy velocity. </p>
 </div><h2 class="groupheader">Function/Subroutine Documentation</h2>
-<a id="a577c504f5230ff200ee711334eebe54a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a577c504f5230ff200ee711334eebe54a">&#9670;&nbsp;</a></span>adaptive_nonlinear()</h2>
+<a id="ab4b7de28d3bd0751dcb50d273ab574df"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab4b7de28d3bd0751dcb50d273ab574df">&#9670;&nbsp;</a></span>adaptive_nonlinear()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -205,6 +213,12 @@ Functions/Subroutines</h2></td></tr>
           <td></td>
           <td class="paramtype">integer, intent(inout)&#160;</td>
           <td class="paramname"><em>its</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">integer, intent(inout)&#160;</td>
+          <td class="paramname"><em>itime</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -301,23 +315,23 @@ Functions/Subroutines</h2></td></tr>
 <div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
-<div class="center"><img src="namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a_cgraph.png" border="0" usemap="#namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a_cgraph" alt=""/></div>
-<map name="namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a_cgraph" id="namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a_cgraph">
-<area shape="rect" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="5,104,204,145"/>
-<area shape="rect" href="namespacecopy__outof__state.html#a7d6957a54cc1cc0a38a4a7a90bca1f89" title=": We create a potential to optimize F = sum (f**2), so the solution is when this potential reaches a ..." alt="" coords="255,5,439,47"/>
-<area shape="rect" href="namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b" title="@DEPRECATED: Gets memory from packed state This subroutine returns a pointer to the desired values of..." alt="" coords="256,71,437,112"/>
-<area shape="rect" href="namespacecopy__outof__state.html#ad775c010bade229fba0416002e6928a6" title="Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs t..." alt="" coords="252,136,441,177"/>
-<area shape="rect" href="namespacemulti__tools.html#a1ab322da5f344e1d042fb429ebce3637" title=": Returns true if the input name is an Active Tracer type, Tracer, Species, Concentration or any othe..." alt="" coords="266,201,427,243"/>
+<div class="center"><img src="namespacecopy__outof__state_ab4b7de28d3bd0751dcb50d273ab574df_cgraph.png" border="0" usemap="#namespacecopy__outof__state_ab4b7de28d3bd0751dcb50d273ab574df_cgraph" alt=""/></div>
+<map name="namespacecopy__outof__state_ab4b7de28d3bd0751dcb50d273ab574df_cgraph" id="namespacecopy__outof__state_ab4b7de28d3bd0751dcb50d273ab574df_cgraph">
+<area shape="rect" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="5,104,184,145"/>
+<area shape="rect" href="namespacecopy__outof__state.html#a7d6957a54cc1cc0a38a4a7a90bca1f89" title=": We create a potential to optimize F = sum (f**2), so the solution is when this potential reaches a ..." alt="" coords="234,5,401,47"/>
+<area shape="rect" href="namespacecopy__outof__state.html#a0520a99d915a669f52eadab9a438194b" title="@DEPRECATED: Gets memory from packed state This subroutine returns a pointer to the desired values of..." alt="" coords="235,71,400,112"/>
+<area shape="rect" href="namespacecopy__outof__state.html#ad775c010bade229fba0416002e6928a6" title="Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs t..." alt="" coords="232,136,403,177"/>
+<area shape="rect" href="namespacemulti__tools.html#a1ab322da5f344e1d042fb429ebce3637" title=": Returns true if the input name is an Active Tracer type, Tracer, Species, Concentration or any othe..." alt="" coords="245,201,390,243"/>
 </map>
 </div>
 <div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
-<div class="center"><img src="namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a_icgraph.png" border="0" usemap="#namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a_icgraph" alt=""/></div>
-<map name="namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a_icgraph" id="namespacecopy__outof__state_a577c504f5230ff200ee711334eebe54a_icgraph">
-<area shape="rect" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="467,5,665,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<div class="center"><img src="namespacecopy__outof__state_ab4b7de28d3bd0751dcb50d273ab574df_icgraph.png" border="0" usemap="#namespacecopy__outof__state_ab4b7de28d3bd0751dcb50d273ab574df_icgraph" alt=""/></div>
+<map name="namespacecopy__outof__state_ab4b7de28d3bd0751dcb50d273ab574df_icgraph" id="namespacecopy__outof__state_ab4b7de28d3bd0751dcb50d273ab574df_icgraph">
+<area shape="rect" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="424,5,603,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
 </map>
 </div>
 
@@ -458,18 +472,19 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_a1394fdd5e9adcc149eb319739c07f854_icgraph.png" border="0" usemap="#namespacecopy__outof__state_a1394fdd5e9adcc149eb319739c07f854_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_a1394fdd5e9adcc149eb319739c07f854_icgraph" id="namespacecopy__outof__state_a1394fdd5e9adcc149eb319739c07f854_icgraph">
-<area shape="rect" title=": Subroutine to calculate the integrated mass inside the domain" alt="" coords="1517,152,1719,193"/>
-<area shape="rect" href="cv-adv-dif_8_f90.html#a77201531d5bc443a857dce86befbb61e" title=" " alt="" coords="1276,152,1469,193"/>
-<area shape="rect" href="namespacecv__advection.html#a34e0fcace33673c6460aef98e962709e" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1039,159,1228,186"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="778,130,962,157"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="778,64,962,105"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#aa5819c18b57b8144faa1885776a2cc8b" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="494,240,674,281"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="749,181,991,223"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="479,123,689,164"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,123,419,164"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,123,171,164"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,5,701,47"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,13,396,39"/>
+<area shape="rect" title=": Subroutine to calculate the integrated mass inside the domain" alt="" coords="1611,204,1793,245"/>
+<area shape="rect" href="cv-adv-dif_8_f90.html#a77201531d5bc443a857dce86befbb61e" title=" " alt="" coords="1385,204,1563,245"/>
+<area shape="rect" href="namespacecv__advection.html#ac203699591f0f282b12da9d801f656c1" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1163,211,1337,238"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="947,63,1115,90"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a30f5738db096842f8f2890cec8440814" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="947,165,1114,207"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ad44e4be750a57ea3ecab7c4307a75b67" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="711,247,875,288"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,355,640,396"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ac8c3c3c252bab49e31602e628c983f5b" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="697,5,889,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,173,376,215"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,173,152,215"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="688,165,899,207"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#af1bf5a11afa118074e812449240b70cb" title="WARNING: Still work in progress." alt="" coords="463,173,601,199"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="443,223,621,279"/>
 </map>
 </div>
 
@@ -507,8 +522,8 @@ Here is the call graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_cgraph.png" border="0" usemap="#namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_cgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_cgraph" id="namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_cgraph">
-<area shape="rect" title="This subroutine calculates the global node numbers requested to operates in ICFERST." alt="" coords="5,5,204,47"/>
-<area shape="rect" href="namespacemulti__tools.html#a29b23492be133b01a7eb9bce13adbdfb" title=" " alt="" coords="252,13,427,39"/>
+<area shape="rect" title="This subroutine calculates the global node numbers requested to operates in ICFERST." alt="" coords="5,5,185,47"/>
+<area shape="rect" href="namespacemulti__tools.html#a29b23492be133b01a7eb9bce13adbdfb" title=" " alt="" coords="233,13,389,39"/>
 </map>
 </div>
 <div class="dynheader">
@@ -516,10 +531,67 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_icgraph.png" border="0" usemap="#namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_icgraph" id="namespacecopy__outof__state_abba0b467480d0b56c11d18f70e8c680e_icgraph">
-<area shape="rect" title="This subroutine calculates the global node numbers requested to operates in ICFERST." alt="" coords="467,27,665,69"/>
-<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
+<area shape="rect" title="This subroutine calculates the global node numbers requested to operates in ICFERST." alt="" coords="424,27,604,69"/>
+<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="214,5,362,32"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,57,376,98"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,152,98"/>
+</map>
+</div>
+
+</div>
+</div>
+<a id="aad2f9a59bdb78d6bc3ed3bbd30f689fc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aad2f9a59bdb78d6bc3ed3bbd30f689fc">&#9670;&nbsp;</a></span>converttooutunits()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine, public copy_outof_state::converttooutunits </td>
+          <td>(</td>
+          <td class="paramtype">type( state_type ), dimension( : ), intent(in)&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type (<a class="el" href="structmulti__data__types_1_1multi__dimensions.html">multi_dimensions</a>)&#160;</td>
+          <td class="paramname"><em>Mdims</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">logical, intent(in)&#160;</td>
+          <td class="paramname"><em>convertBack</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>: Convert fields to out units. Also has a backwards options as we need to undo this after dumping the VTK files </p>
+<div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacecopy__outof__state_aad2f9a59bdb78d6bc3ed3bbd30f689fc_cgraph.png" border="0" usemap="#namespacecopy__outof__state_aad2f9a59bdb78d6bc3ed3bbd30f689fc_cgraph" alt=""/></div>
+<map name="namespacecopy__outof__state_aad2f9a59bdb78d6bc3ed3bbd30f689fc_cgraph" id="namespacecopy__outof__state_aad2f9a59bdb78d6bc3ed3bbd30f689fc_cgraph">
+<area shape="rect" title=": Convert fields to out units. Also has a backwards options as we need to undo this after dumping the..." alt="" coords="5,5,236,32"/>
+<area shape="rect" href="namespacecopy__outof__state.html#a4d23340ebea84c65fde71abdf1444071" title="Returns the factor to convert from internal (SI) to the output system For temperature it returns the ..." alt="" coords="284,5,523,32"/>
+</map>
+</div>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacecopy__outof__state_aad2f9a59bdb78d6bc3ed3bbd30f689fc_icgraph.png" border="0" usemap="#namespacecopy__outof__state_aad2f9a59bdb78d6bc3ed3bbd30f689fc_icgraph" alt=""/></div>
+<map name="namespacecopy__outof__state_aad2f9a59bdb78d6bc3ed3bbd30f689fc_icgraph" id="namespacecopy__outof__state_aad2f9a59bdb78d6bc3ed3bbd30f689fc_icgraph">
+<area shape="rect" title=": Convert fields to out units. Also has a backwards options as we need to undo this after dumping the..." alt="" coords="631,35,861,61"/>
+<area shape="rect" href="namespacecopy__outof__state.html#af6fb85b60c7bb747b61c41c24b07b785" title=" " alt="" coords="424,27,583,69"/>
+<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="214,5,362,32"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,57,376,98"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,152,98"/>
 </map>
 </div>
 
@@ -567,13 +639,22 @@ Here is the caller graph for this function:</div>
   </dd>
 </dl>
 <div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacecopy__outof__state_adbfe914b0d919d92535a188ab7c0e384_cgraph.png" border="0" usemap="#namespacecopy__outof__state_adbfe914b0d919d92535a188ab7c0e384_cgraph" alt=""/></div>
+<map name="namespacecopy__outof__state_adbfe914b0d919d92535a188ab7c0e384_cgraph" id="namespacecopy__outof__state_adbfe914b0d919d92535a188ab7c0e384_cgraph">
+<area shape="rect" title=": Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file ..." alt="" coords="5,5,168,47"/>
+<area shape="rect" href="namespacecopy__outof__state.html#a4d23340ebea84c65fde71abdf1444071" title="Returns the factor to convert from internal (SI) to the output system For temperature it returns the ..." alt="" coords="216,13,455,39"/>
+</map>
+</div>
+<div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_adbfe914b0d919d92535a188ab7c0e384_icgraph.png" border="0" usemap="#namespacecopy__outof__state_adbfe914b0d919d92535a188ab7c0e384_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_adbfe914b0d919d92535a188ab7c0e384_icgraph" id="namespacecopy__outof__state_adbfe914b0d919d92535a188ab7c0e384_icgraph">
-<area shape="rect" title=": Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file ..." alt="" coords="467,5,645,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" title=": Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file ..." alt="" coords="424,5,587,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
 </map>
 </div>
 
@@ -736,12 +817,12 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_a7d6957a54cc1cc0a38a4a7a90bca1f89_icgraph.png" border="0" usemap="#namespacecopy__outof__state_a7d6957a54cc1cc0a38a4a7a90bca1f89_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_a7d6957a54cc1cc0a38a4a7a90bca1f89_icgraph" id="namespacecopy__outof__state_a7d6957a54cc1cc0a38a4a7a90bca1f89_icgraph">
-<area shape="rect" title=": We create a potential to optimize F = sum (f**2), so the solution is when this potential reaches a ..." alt="" coords="955,39,1139,80"/>
-<area shape="rect" href="namespacecopy__outof__state.html#a577c504f5230ff200ee711334eebe54a" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="488,5,687,47"/>
-<area shape="rect" href="namespacesolvers__module.html#a4773b0f364c52ef1ca48a3ead9f6693c" title=":In this subroutine we applied some corrections and backtrack_par on the saturations obtained from th..." alt="" coords="756,68,907,109"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,39,419,80"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,39,171,80"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,71,708,112"/>
+<area shape="rect" title=": We create a potential to optimize F = sum (f**2), so the solution is when this potential reaches a ..." alt="" coords="871,39,1037,80"/>
+<area shape="rect" href="namespacecopy__outof__state.html#ab4b7de28d3bd0751dcb50d273ab574df" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="443,5,621,47"/>
+<area shape="rect" href="namespacesolvers__module.html#a4773b0f364c52ef1ca48a3ead9f6693c" title=":In this subroutine we applied some corrections and backtrack_par on the saturations obtained from th..." alt="" coords="688,68,823,109"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,39,376,80"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,39,152,80"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,71,640,112"/>
 </map>
 </div>
 
@@ -913,8 +994,8 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_a25e9236f15044530da105400e0e3e3f4_icgraph.png" border="0" usemap="#namespacecopy__outof__state_a25e9236f15044530da105400e0e3e3f4_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_a25e9236f15044530da105400e0e3e3f4_icgraph" id="namespacecopy__outof__state_a25e9236f15044530da105400e0e3e3f4_icgraph">
-<area shape="rect" title=": Obtain the type of element u_ele_type = cv_ele_type = p_ele_type will flag the dimension and type o..." alt="" coords="219,5,381,47"/>
-<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="5,13,171,39"/>
+<area shape="rect" title=": Obtain the type of element u_ele_type = cv_ele_type = p_ele_type will flag the dimension and type o..." alt="" coords="201,5,349,47"/>
+<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="5,13,153,39"/>
 </map>
 </div>
 
@@ -1420,23 +1501,26 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_a0520a99d915a669f52eadab9a438194b_icgraph.png" border="0" usemap="#namespacecopy__outof__state_a0520a99d915a669f52eadab9a438194b_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_a0520a99d915a669f52eadab9a438194b_icgraph" id="namespacecopy__outof__state_a0520a99d915a669f52eadab9a438194b_icgraph">
-<area shape="rect" title="@DEPRECATED: Gets memory from packed state This subroutine returns a pointer to the desired values of..." alt="" coords="1400,223,1581,264"/>
-<area shape="rect" href="namespacecopy__outof__state.html#a577c504f5230ff200ee711334eebe54a" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="485,71,683,112"/>
-<area shape="rect" href="namespacemulti__sp.html#a3761caa03a0d114b25c395685b965a73" title=": This subroutine computes the saturated rock conductivity based on Tiab and Donaldson,..." alt="" coords="795,361,945,403"/>
-<area shape="rect" href="namespacesolvers__module.html#adef72e22883fb36304a2da0099927175" title="The sparcity of the local CV connectivity is in: small_findrm, small_colm. ngl_its=max no of global i..." alt="" coords="1039,386,1352,413"/>
-<area shape="rect" href="namespacecompositional__terms.html#ab7087656dea2acf341899e4e7a7f8eca" title="make sure the composition sums to 1.0" alt="" coords="1101,9,1290,51"/>
-<area shape="rect" href="namespacecv__advection.html#a34e0fcace33673c6460aef98e962709e" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1101,230,1290,257"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,180,419,221"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,180,171,221"/>
-<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="501,426,667,453"/>
-<area shape="rect" href="namespacemulti__interpolation.html#a4f1475bd24977140d41a9601fce62e7f" title="Mehs to mesh interpollation method, in Diamond DG_Galerkin." alt="" coords="797,427,943,468"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,5,701,47"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,13,396,39"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="778,259,962,286"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="778,128,962,169"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#aa5819c18b57b8144faa1885776a2cc8b" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="494,304,674,345"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="749,193,991,235"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="479,239,689,280"/>
+<area shape="rect" title="@DEPRECATED: Gets memory from packed state This subroutine returns a pointer to the desired values of..." alt="" coords="1471,180,1636,221"/>
+<area shape="rect" href="namespacecopy__outof__state.html#ab4b7de28d3bd0751dcb50d273ab574df" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="431,31,609,72"/>
+<area shape="rect" href="namespacemulti__sp.html#a3761caa03a0d114b25c395685b965a73" title=": This subroutine computes the saturated rock conductivity based on Tiab and Donaldson,..." alt="" coords="945,148,1079,189"/>
+<area shape="rect" href="namespacesolvers__module.html#adef72e22883fb36304a2da0099927175" title="The sparcity of the local CV connectivity is in: small_findrm, small_colm. ngl_its=max no of global i..." alt="" coords="1144,215,1423,242"/>
+<area shape="rect" href="namespacecompositional__terms.html#ab7087656dea2acf341899e4e7a7f8eca" title="make sure the composition sums to 1.0" alt="" coords="1196,269,1371,311"/>
+<area shape="rect" href="namespacecv__advection.html#ac203699591f0f282b12da9d801f656c1" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1196,397,1371,423"/>
+<area shape="rect" href="namespacecv__advection.html#a905f4c27062409712fb0cb34da9157fa" title=" " alt="" coords="1201,95,1365,136"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,305,376,347"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,305,152,347"/>
+<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="698,221,846,247"/>
+<area shape="rect" href="namespacemulti__interpolation.html#a4f1475bd24977140d41a9601fce62e7f" title="Mehs to mesh interpollation method, in Diamond DG_Galerkin." alt="" coords="947,213,1077,255"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="667,272,877,313"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#af1bf5a11afa118074e812449240b70cb" title="WARNING: Still work in progress." alt="" coords="451,237,589,263"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="431,97,609,153"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="928,506,1096,533"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a30f5738db096842f8f2890cec8440814" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="929,331,1095,372"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ad44e4be750a57ea3ecab7c4307a75b67" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="438,389,602,431"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="664,448,880,489"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ac8c3c3c252bab49e31602e628c983f5b" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="424,507,616,548"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a245ebfb2c63f41aaf90233ccb819bad4" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="683,99,861,140"/>
 </map>
 </div>
 
@@ -1464,17 +1548,18 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_ac1305d6f3dc1c1ec92a4135ea55947b9_icgraph.png" border="0" usemap="#namespacecopy__outof__state_ac1305d6f3dc1c1ec92a4135ea55947b9_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_ac1305d6f3dc1c1ec92a4135ea55947b9_icgraph" id="namespacecopy__outof__state_ac1305d6f3dc1c1ec92a4135ea55947b9_icgraph">
-<area shape="rect" title=": For a given field, retrieve the associated finite element field name" alt="" coords="1276,159,1503,186"/>
-<area shape="rect" href="namespacecv__advection.html#a34e0fcace33673c6460aef98e962709e" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1039,159,1228,186"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="778,130,962,157"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="778,64,962,105"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#aa5819c18b57b8144faa1885776a2cc8b" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="494,240,674,281"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="749,181,991,223"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="479,123,689,164"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,123,419,164"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,123,171,164"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,5,701,47"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,13,396,39"/>
+<area shape="rect" title=": For a given field, retrieve the associated finite element field name" alt="" coords="1385,211,1588,238"/>
+<area shape="rect" href="namespacecv__advection.html#ac203699591f0f282b12da9d801f656c1" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1163,211,1337,238"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="947,63,1115,90"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a30f5738db096842f8f2890cec8440814" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="947,165,1114,207"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ad44e4be750a57ea3ecab7c4307a75b67" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="711,247,875,288"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,355,640,396"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ac8c3c3c252bab49e31602e628c983f5b" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="697,5,889,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,173,376,215"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,173,152,215"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="688,165,899,207"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#af1bf5a11afa118074e812449240b70cb" title="WARNING: Still work in progress." alt="" coords="463,173,601,199"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="443,223,621,279"/>
 </map>
 </div>
 
@@ -1502,17 +1587,70 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_abc850cced2fb9b525f015e758e4b45da_icgraph.png" border="0" usemap="#namespacecopy__outof__state_abc850cced2fb9b525f015e758e4b45da_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_abc850cced2fb9b525f015e758e4b45da_icgraph" id="namespacecopy__outof__state_abc850cced2fb9b525f015e758e4b45da_icgraph">
-<area shape="rect" title=": For a given field, retrieve the associated old field name" alt="" coords="1276,159,1496,186"/>
-<area shape="rect" href="namespacecv__advection.html#a34e0fcace33673c6460aef98e962709e" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1039,159,1228,186"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="778,130,962,157"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="778,64,962,105"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#aa5819c18b57b8144faa1885776a2cc8b" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="494,240,674,281"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="749,181,991,223"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="479,123,689,164"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,123,419,164"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,123,171,164"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,5,701,47"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,13,396,39"/>
+<area shape="rect" title=": For a given field, retrieve the associated old field name" alt="" coords="1396,158,1593,185"/>
+<area shape="rect" href="namespacecv__advection.html#ac203699591f0f282b12da9d801f656c1" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1173,127,1348,154"/>
+<area shape="rect" href="namespacecv__advection.html#a905f4c27062409712fb0cb34da9157fa" title=" " alt="" coords="1179,180,1343,221"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="933,69,1101,95"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a30f5738db096842f8f2890cec8440814" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="934,249,1101,291"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ad44e4be750a57ea3ecab7c4307a75b67" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="431,5,595,47"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="909,120,1125,161"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ac8c3c3c252bab49e31602e628c983f5b" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="660,61,852,103"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,152,376,193"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,152,152,193"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="651,249,861,291"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#af1bf5a11afa118074e812449240b70cb" title="WARNING: Still work in progress." alt="" coords="444,257,583,283"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="424,177,603,233"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a245ebfb2c63f41aaf90233ccb819bad4" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="667,183,845,224"/>
+</map>
+</div>
+
+</div>
+</div>
+<a id="a4d23340ebea84c65fde71abdf1444071"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4d23340ebea84c65fde71abdf1444071">&#9670;&nbsp;</a></span>getoutputconverter()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine, public copy_outof_state::getoutputconverter </td>
+          <td>(</td>
+          <td class="paramtype">character( len = * ), intent(in)&#160;</td>
+          <td class="paramname"><em>fieldname</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, intent(out)&#160;</td>
+          <td class="paramname"><em>factor</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">real, intent(out)&#160;</td>
+          <td class="paramname"><em>shft</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns the factor to convert from internal (SI) to the output system For temperature it returns the shift term not the factor. </p>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacecopy__outof__state_a4d23340ebea84c65fde71abdf1444071_icgraph.png" border="0" usemap="#namespacecopy__outof__state_a4d23340ebea84c65fde71abdf1444071_icgraph" alt=""/></div>
+<map name="namespacecopy__outof__state_a4d23340ebea84c65fde71abdf1444071_icgraph" id="namespacecopy__outof__state_a4d23340ebea84c65fde71abdf1444071_icgraph">
+<area shape="rect" title="Returns the factor to convert from internal (SI) to the output system For temperature it returns the ..." alt="" coords="913,46,1152,73"/>
+<area shape="rect" href="namespacecopy__outof__state.html#aad2f9a59bdb78d6bc3ed3bbd30f689fc" title=": Convert fields to out units. Also has a backwards options as we need to undo this after dumping the..." alt="" coords="635,17,865,43"/>
+<area shape="rect" href="namespacecopy__outof__state.html#adbfe914b0d919d92535a188ab7c0e384" title=": Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file ..." alt="" coords="424,71,587,112"/>
+<area shape="rect" href="namespacecopy__outof__state.html#af6fb85b60c7bb747b61c41c24b07b785" title=" " alt="" coords="426,5,585,47"/>
+<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="214,13,362,39"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,67,376,108"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,67,152,108"/>
 </map>
 </div>
 
@@ -1550,11 +1688,11 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_acea2acdccf9091776be013ade24bcd97_icgraph.png" border="0" usemap="#namespacecopy__outof__state_acea2acdccf9091776be013ade24bcd97_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_acea2acdccf9091776be013ade24bcd97_icgraph" id="namespacecopy__outof__state_acea2acdccf9091776be013ade24bcd97_icgraph">
-<area shape="rect" title=": Subroutine to check whether an option is true for any phase in diamond, if any is true it returns t..." alt="" coords="688,35,863,76"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="namespacecopy__outof__state.html#afca89971343f6586b89f1cddda00b2c8" title=": This subroutine creates packed_state from state(:) and links the appropiate memory so it is acessib..." alt="" coords="467,64,640,105"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
-<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,71,401,98"/>
+<area shape="rect" title=": Subroutine to check whether an option is true for any phase in diamond, if any is true it returns t..." alt="" coords="631,35,789,76"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="namespacecopy__outof__state.html#afca89971343f6586b89f1cddda00b2c8" title=": This subroutine creates packed_state from state(:) and links the appropiate memory so it is acessib..." alt="" coords="424,64,583,105"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
+<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="214,71,362,98"/>
 </map>
 </div>
 
@@ -1656,10 +1794,10 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_ad775c010bade229fba0416002e6928a6_icgraph.png" border="0" usemap="#namespacecopy__outof__state_ad775c010bade229fba0416002e6928a6_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_ad775c010bade229fba0416002e6928a6_icgraph" id="namespacecopy__outof__state_ad775c010bade229fba0416002e6928a6_icgraph">
-<area shape="rect" title="Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs t..." alt="" coords="713,5,903,47"/>
-<area shape="rect" href="namespacecopy__outof__state.html#a577c504f5230ff200ee711334eebe54a" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="467,5,665,47"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" title="Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs t..." alt="" coords="651,5,821,47"/>
+<area shape="rect" href="namespacecopy__outof__state.html#ab4b7de28d3bd0751dcb50d273ab574df" title=": This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonl..." alt="" coords="424,5,603,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
 </map>
 </div>
 
@@ -1687,17 +1825,18 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_ab7c981b328d9950b1c375aaacaa3cda0_icgraph.png" border="0" usemap="#namespacecopy__outof__state_ab7c981b328d9950b1c375aaacaa3cda0_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_ab7c981b328d9950b1c375aaacaa3cda0_icgraph" id="namespacecopy__outof__state_ab7c981b328d9950b1c375aaacaa3cda0_icgraph">
-<area shape="rect" title=": Checks whether a field is constant or not" alt="" coords="1276,152,1429,193"/>
-<area shape="rect" href="namespacecv__advection.html#a34e0fcace33673c6460aef98e962709e" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1039,159,1228,186"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="778,130,962,157"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="778,64,962,105"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#aa5819c18b57b8144faa1885776a2cc8b" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="494,240,674,281"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="749,181,991,223"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="479,123,689,164"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,123,419,164"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,123,171,164"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,5,701,47"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,13,396,39"/>
+<area shape="rect" title=": Checks whether a field is constant or not" alt="" coords="1385,204,1525,245"/>
+<area shape="rect" href="namespacecv__advection.html#ac203699591f0f282b12da9d801f656c1" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1163,211,1337,238"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="947,63,1115,90"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a30f5738db096842f8f2890cec8440814" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="947,165,1114,207"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ad44e4be750a57ea3ecab7c4307a75b67" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="711,247,875,288"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,355,640,396"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ac8c3c3c252bab49e31602e628c983f5b" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="697,5,889,47"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,173,376,215"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,173,152,215"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="688,165,899,207"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#af1bf5a11afa118074e812449240b70cb" title="WARNING: Still work in progress." alt="" coords="463,173,601,199"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="443,223,621,279"/>
 </map>
 </div>
 
@@ -1759,32 +1898,32 @@ Here is the call graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_afca89971343f6586b89f1cddda00b2c8_cgraph.png" border="0" usemap="#namespacecopy__outof__state_afca89971343f6586b89f1cddda00b2c8_cgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_afca89971343f6586b89f1cddda00b2c8_cgraph" id="namespacecopy__outof__state_afca89971343f6586b89f1cddda00b2c8_cgraph">
-<area shape="rect" title=": This subroutine creates packed_state from state(:) and links the appropiate memory so it is acessib..." alt="" coords="5,91,179,132"/>
-<area shape="rect" href="namespacemulti__tools.html#ac75ade49c065a07b12ef6532bbbd7abb" title=":Copies the data from inval to outval safely. If the sizes are different outval is populated using th..." alt="" coords="228,6,400,33"/>
-<area shape="rect" href="namespacecopy__outof__state.html#acea2acdccf9091776be013ade24bcd97" title=": Subroutine to check whether an option is true for any phase in diamond, if any is true it returns t..." alt="" coords="227,57,401,99"/>
-<area shape="rect" href="namespacemulti__tools.html#a88fe8456a6aab41a0c9aeff3b0a4f2ec" title=": Returns true if the input name is a Tracer type:PassiveTracer, Tracer, Species, Concentration or an..." alt="" coords="235,123,393,164"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a54aa7c2f3b52f8fb9e403339ac85c10b" title=" " alt="" coords="230,188,398,229"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a8fe09e952cf3b4ee2627342abc216d66" title="This subroutine defines a spectal element. IPOLY defines the element type and IQADRA the quadrature...." alt="" coords="665,119,833,160"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a25072ca7508393d73b9e91c2e80ebc6f" title=":This subroutine defines the shape functions M and N and their derivatives at the Gauss points for qu..." alt="" coords="449,217,617,259"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a62d482e48ef37a99c81efcdd8e273644" title="This sub returns the weights WEIT the quadrature points QUAPOS and the node points NODPOS...." alt="" coords="881,71,1049,112"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#afc7053552eace6af239edcd5d1b99cb3" title="INOD contains the node at which the polynomial is associated with LXGP is the position at which the p..." alt="" coords="881,168,1049,209"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a287190f2e4c6ec0425a18bc9d5ab56b2" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 67 of:Spectral M..." alt="" coords="1097,5,1265,47"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a465010bbab3913a160a668f64191ba31" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 69 of:Spectral M..." alt="" coords="1097,71,1265,112"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#aa001da7c1c2a50e7cd0b182f17f6bd1f" title="This sub works out the Gauss&#45;Lobatto&#45;Legendre roots." alt="" coords="1313,39,1481,80"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a9a01d935ddfe5ea36a29ffe505dbf73e" title=" " alt="" coords="1313,104,1481,145"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#ab137b075bc778e2a27a0c1810a49b492" title="COMPUTES THE GAUSS&#45;LOBATTO COLLOCATION POINTS FOR JACOBI POLYNOMIALS." alt="" coords="1529,39,1697,80"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a09da641d2526c3de68637ac538d3aabd" title="COMPUTES THE JACOBI POLYNOMIAL (POLY) AND ITS DERIVATIVE (PDER) OF DEGREE N AT X." alt="" coords="1745,39,1913,80"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#ae03154693b140919ff0c589df8e58f89" title="Calculate binomial coefficients." alt="" coords="1529,105,1697,147"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title="Calculate n!" alt="" coords="1745,133,1913,175"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#afcdd60fa5c35faed86afbc64194f32f5" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="1097,136,1265,177"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#af8259d92f168acab30360351113dd84a" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="1097,201,1265,243"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a647388b8d7683edf0e0f203e5bcad3b6" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="1097,267,1265,308"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#ab7a1f6dd86d185746575caf1b293c45f" title="If DIFF then return the n&#39;th Chebyshef polynomial differentiated w.r.t x. If DIFF2 then form the 2&#39;nd..." alt="" coords="1313,169,1481,211"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a37c95193cd7ac8186d5e2a9359793013" title="order so that the 1st nodes are on the base of tet for a quadratic tet..." alt="" coords="665,184,833,225"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a91a5940ae1f635a9dbf21cc341de9d56" title="order so that the 1st nodes are on the base for a quadratic triangle..." alt="" coords="665,249,833,291"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#a445a3bd2cb68d70b3e9cd86febb890db" title=": Work out the shape functions and their derivatives..." alt="" coords="665,315,833,356"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#ad8bb7dc236ed2a0b994488d081ee70f4" title=": This sub calculates the local corrds L1, L2, L3, L4 and weights at the quadrature points...." alt="" coords="665,380,833,421"/>
-<area shape="rect" href="namespaceshape__functions__ndim.html#ac67c2ff971dd5f7bbfd22a1c1d22eacc" title="Generates the shape functions of a cubic triangle." alt="" coords="881,315,1049,356"/>
+<area shape="rect" title=": This subroutine creates packed_state from state(:) and links the appropiate memory so it is acessib..." alt="" coords="5,91,164,132"/>
+<area shape="rect" href="namespacemulti__tools.html#ac75ade49c065a07b12ef6532bbbd7abb" title=":Copies the data from inval to outval safely. If the sizes are different outval is populated using th..." alt="" coords="214,6,369,33"/>
+<area shape="rect" href="namespacecopy__outof__state.html#acea2acdccf9091776be013ade24bcd97" title=": Subroutine to check whether an option is true for any phase in diamond, if any is true it returns t..." alt="" coords="212,57,371,99"/>
+<area shape="rect" href="namespacemulti__tools.html#a88fe8456a6aab41a0c9aeff3b0a4f2ec" title=": Returns true if the input name is a Tracer type:PassiveTracer, Tracer, Species, Concentration or an..." alt="" coords="220,123,363,164"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a54aa7c2f3b52f8fb9e403339ac85c10b" title=" " alt="" coords="215,188,367,229"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a8fe09e952cf3b4ee2627342abc216d66" title="This subroutine defines a spectal element. IPOLY defines the element type and IQADRA the quadrature...." alt="" coords="619,119,771,160"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a25072ca7508393d73b9e91c2e80ebc6f" title=":This subroutine defines the shape functions M and N and their derivatives at the Gauss points for qu..." alt="" coords="419,217,571,259"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a62d482e48ef37a99c81efcdd8e273644" title="This sub returns the weights WEIT the quadrature points QUAPOS and the node points NODPOS...." alt="" coords="819,71,971,112"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#afc7053552eace6af239edcd5d1b99cb3" title="INOD contains the node at which the polynomial is associated with LXGP is the position at which the p..." alt="" coords="819,168,971,209"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a287190f2e4c6ec0425a18bc9d5ab56b2" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 67 of:Spectral M..." alt="" coords="1019,5,1171,47"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a465010bbab3913a160a668f64191ba31" title="This computes the weight and points for Chebyshev&#45;Gauss&#45;Lobatto quadrature. See page 69 of:Spectral M..." alt="" coords="1019,71,1171,112"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#aa001da7c1c2a50e7cd0b182f17f6bd1f" title="This sub works out the Gauss&#45;Lobatto&#45;Legendre roots." alt="" coords="1219,39,1371,80"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a9a01d935ddfe5ea36a29ffe505dbf73e" title=" " alt="" coords="1219,104,1371,145"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#ab137b075bc778e2a27a0c1810a49b492" title="COMPUTES THE GAUSS&#45;LOBATTO COLLOCATION POINTS FOR JACOBI POLYNOMIALS." alt="" coords="1419,39,1571,80"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a09da641d2526c3de68637ac538d3aabd" title="COMPUTES THE JACOBI POLYNOMIAL (POLY) AND ITS DERIVATIVE (PDER) OF DEGREE N AT X." alt="" coords="1619,39,1771,80"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#ae03154693b140919ff0c589df8e58f89" title="Calculate binomial coefficients." alt="" coords="1419,105,1571,147"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a7cc3628b1dbcd982fcef188b9d1493f2" title="Calculate n!" alt="" coords="1619,133,1771,175"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#afcdd60fa5c35faed86afbc64194f32f5" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="1019,136,1171,177"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#af8259d92f168acab30360351113dd84a" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="1019,201,1171,243"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a647388b8d7683edf0e0f203e5bcad3b6" title="If DIFF then returns the spectral function DIFFERENTIATED W.R.T X associated. This function returns t..." alt="" coords="1019,267,1171,308"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#ab7a1f6dd86d185746575caf1b293c45f" title="If DIFF then return the n&#39;th Chebyshef polynomial differentiated w.r.t x. If DIFF2 then form the 2&#39;nd..." alt="" coords="1219,169,1371,211"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a37c95193cd7ac8186d5e2a9359793013" title="order so that the 1st nodes are on the base of tet for a quadratic tet..." alt="" coords="619,184,771,225"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a91a5940ae1f635a9dbf21cc341de9d56" title="order so that the 1st nodes are on the base for a quadratic triangle..." alt="" coords="619,249,771,291"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#a445a3bd2cb68d70b3e9cd86febb890db" title=": Work out the shape functions and their derivatives..." alt="" coords="619,315,771,356"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#ad8bb7dc236ed2a0b994488d081ee70f4" title=": This sub calculates the local corrds L1, L2, L3, L4 and weights at the quadrature points...." alt="" coords="619,380,771,421"/>
+<area shape="rect" href="namespaceshape__functions__ndim.html#ac67c2ff971dd5f7bbfd22a1c1d22eacc" title="Generates the shape functions of a cubic triangle." alt="" coords="819,315,971,356"/>
 </map>
 </div>
 <div class="dynheader">
@@ -1792,10 +1931,10 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_afca89971343f6586b89f1cddda00b2c8_icgraph.png" border="0" usemap="#namespacecopy__outof__state_afca89971343f6586b89f1cddda00b2c8_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_afca89971343f6586b89f1cddda00b2c8_icgraph" id="namespacecopy__outof__state_afca89971343f6586b89f1cddda00b2c8_icgraph">
-<area shape="rect" title=": This subroutine creates packed_state from state(:) and links the appropiate memory so it is acessib..." alt="" coords="467,27,640,69"/>
-<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="236,5,401,32"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
+<area shape="rect" title=": This subroutine creates packed_state from state(:) and links the appropiate memory so it is acessib..." alt="" coords="424,27,583,69"/>
+<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="214,5,362,32"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,57,376,98"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,152,98"/>
 </map>
 </div>
 
@@ -2001,17 +2140,75 @@ Here is the caller graph for this function:</div>
 <div class="dyncontent">
 <div class="center"><img src="namespacecopy__outof__state_a3e466dfb76c8c3e30de12d2f7d36d3bb_icgraph.png" border="0" usemap="#namespacecopy__outof__state_a3e466dfb76c8c3e30de12d2f7d36d3bb_icgraph" alt=""/></div>
 <map name="namespacecopy__outof__state_a3e466dfb76c8c3e30de12d2f7d36d3bb_icgraph" id="namespacecopy__outof__state_a3e466dfb76c8c3e30de12d2f7d36d3bb_icgraph">
-<area shape="rect" title=": Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a g..." alt="" coords="1276,152,1463,193"/>
-<area shape="rect" href="namespacecv__advection.html#a34e0fcace33673c6460aef98e962709e" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1039,159,1228,186"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="778,130,962,157"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a98e757b51a04b55df8d38e36470e0b96" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="778,64,962,105"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#aa5819c18b57b8144faa1885776a2cc8b" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="494,240,674,281"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="749,181,991,223"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#ae5be4b78c1796fac4008d398a7cdd0aa" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="479,123,689,164"/>
-<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,123,419,164"/>
-<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,123,171,164"/>
-<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="467,5,701,47"/>
-<area shape="rect" href="multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="241,13,396,39"/>
+<area shape="rect" title=": Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a g..." alt="" coords="1396,151,1565,192"/>
+<area shape="rect" href="namespacecv__advection.html#ac203699591f0f282b12da9d801f656c1" title="This subroutines generates the transport equation for a cv field. It also can generate the Continuity..." alt="" coords="1173,127,1348,154"/>
+<area shape="rect" href="namespacemulti__pipes.html#a5864085287edf4a5c965fd7173de21c7" title=" " alt="" coords="1191,180,1330,221"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#a1329a9f2f2cb2da28424447b49428e34" title=" " alt="" coords="933,69,1101,95"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a30f5738db096842f8f2890cec8440814" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="934,249,1101,291"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ad44e4be750a57ea3ecab7c4307a75b67" title="Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passiv..." alt="" coords="431,5,595,47"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="909,120,1125,161"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#ac8c3c3c252bab49e31602e628c983f5b" title="Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix..." alt="" coords="660,61,852,103"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,152,376,193"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,152,152,193"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a871f4ede396b430a5194023196511192" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="651,249,861,291"/>
+<area shape="rect" href="multi__dyncore__dg_8_f90.html#af1bf5a11afa118074e812449240b70cb" title="WARNING: Still work in progress." alt="" coords="444,257,583,283"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="424,177,603,233"/>
+<area shape="rect" href="namespacemultiphase__1d__engine.html#a245ebfb2c63f41aaf90233ccb819bad4" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="667,183,845,224"/>
+</map>
+</div>
+
+</div>
+</div>
+<a id="af6fb85b60c7bb747b61c41c24b07b785"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af6fb85b60c7bb747b61c41c24b07b785">&#9670;&nbsp;</a></span>write_state_units()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">subroutine, public copy_outof_state::write_state_units </td>
+          <td>(</td>
+          <td class="paramtype">integer, intent(inout)&#160;</td>
+          <td class="paramname"><em>dump_no</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type (<a class="el" href="structmulti__data__types_1_1multi__dimensions.html">multi_dimensions</a>)&#160;</td>
+          <td class="paramname"><em>Mdims</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">type(state_type), dimension(:), intent(inout)&#160;</td>
+          <td class="paramname"><em>state</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacecopy__outof__state_af6fb85b60c7bb747b61c41c24b07b785_cgraph.png" border="0" usemap="#namespacecopy__outof__state_af6fb85b60c7bb747b61c41c24b07b785_cgraph" alt=""/></div>
+<map name="namespacecopy__outof__state_af6fb85b60c7bb747b61c41c24b07b785_cgraph" id="namespacecopy__outof__state_af6fb85b60c7bb747b61c41c24b07b785_cgraph">
+<area shape="rect" title=" " alt="" coords="5,5,164,47"/>
+<area shape="rect" href="namespacecopy__outof__state.html#aad2f9a59bdb78d6bc3ed3bbd30f689fc" title=": Convert fields to out units. Also has a backwards options as we need to undo this after dumping the..." alt="" coords="212,13,443,39"/>
+<area shape="rect" href="namespacecopy__outof__state.html#a4d23340ebea84c65fde71abdf1444071" title="Returns the factor to convert from internal (SI) to the output system For temperature it returns the ..." alt="" coords="491,13,729,39"/>
+</map>
+</div>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="namespacecopy__outof__state_af6fb85b60c7bb747b61c41c24b07b785_icgraph.png" border="0" usemap="#namespacecopy__outof__state_af6fb85b60c7bb747b61c41c24b07b785_icgraph" alt=""/></div>
+<map name="namespacecopy__outof__state_af6fb85b60c7bb747b61c41c24b07b785_icgraph" id="namespacecopy__outof__state_af6fb85b60c7bb747b61c41c24b07b785_icgraph">
+<area shape="rect" title=" " alt="" coords="424,27,583,69"/>
+<area shape="rect" href="_multiphase___time_loop_8_f90.html#acdc79e479d6b4674e9471ef506d78b2f" title=" " alt="" coords="214,5,362,32"/>
+<area shape="rect" href="namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,57,376,98"/>
+<area shape="rect" href="_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,152,98"/>
 </map>
 </div>
 

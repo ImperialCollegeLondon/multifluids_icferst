@@ -784,7 +784,9 @@ contains
 
     ! If there's no $NodeData section, don't try to read in column IDs: return
     read(fd, iostat=fileState, fmt=*) charBuf
-    if( trim(charBuf) .ne. "$NodeData" .or. fileState .lt. 0 ) then
+    if (fileState .lt. 0) then
+       return
+    else if (trim(charBuf) .ne. "$NodeData") then
        return
     end if
 

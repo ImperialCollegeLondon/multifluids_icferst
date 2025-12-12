@@ -29,9 +29,8 @@
 !----------------------------------------------------------------------------------------
 module multiphase_time_loop
 
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
   use petsc
-#endif
 
 #ifdef USING_PHREEQC
   use multi_phreeqc
@@ -460,7 +459,10 @@ contains
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/is_multiphase_component' ) ) &
                 have_component_field = .true.
             !!$
-            call Calculate_All_Rhos( state, packed_state, Mdims )
+            call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
+
+            !if (have_temperature_field) call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
+
             if( have_component_field ) then
                 call get_option( '/numerical_methods/Max_compositional_its', NonLinearIteration_Components, default = 1 )
             end if
@@ -468,7 +470,7 @@ contains
 
         call compute_viscosity_EOS( state, Mdims )
 
-        if( have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) ) &
+        if( have_option( '/material_phase[0]/multiphase_properties/type_Formula/capillary_pressure' ) .or. have_option( '/material_phase[0]/multiphase_properties/type_Tabulated/capillary_pressure' ) ) &
             have_extra_DiffusionLikeTerm = .true.
         if ( have_option( '/mesh_adaptivity/hr_adaptivity' ) ) then
             call allocate( metric_tensor, extract_mesh(state(1), topology_mesh_name), 'ErrorMetric' )
@@ -527,7 +529,7 @@ contains
         end if
         ! When outlet_id is allocated, calculate_flux is true and we want to calculate outfluxes
         ! If calculating boundary fluxes, allocate and initialise to zero outfluxes variables
-        if (outfluxes%calculate_flux) call allocate_multi_outfluxes(Mdims, outfluxes)
+        call allocate_multi_outfluxes(Mdims, outfluxes)
 !       Allocate memory and initialise calculate_mass_global if calculate_mass_flag is switched on to store the total mass change in the domain
         allocate(calculate_mass_delta(Mdims%nphase,2))
         calculate_mass_delta(:,:) = 0.0
@@ -653,7 +655,7 @@ contains
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,itime,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
-                call Calculate_All_Rhos( state, packed_state, Mdims )
+                call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
 
                 if ( is_porous_media ) then
                     call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
@@ -935,7 +937,9 @@ contains
             if (have_option("/porous_media/Gas_dissolution"))call flash_gas_dissolution(state, packed_state, Mdims, ndgln)
             !Update immobile fractions values (for hysteresis relperm models)
             !######HAS TO BE the last step of the time-loop
-            if (have_option_for_any_phase("/multiphase_properties/immobile_fraction/scalar_field::Land_coefficient",&
+            if (have_option_for_any_phase("/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient",&
+            Mdims%n_in_pres) .or. &
+            have_option_for_any_phase("/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient",&
             Mdims%n_in_pres)) call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)
 
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
@@ -952,7 +956,7 @@ contains
             endif
 
             current_time = acctim
-            call Calculate_All_Rhos( state, packed_state, Mdims )
+            call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
             !!$ Calculate diagnostic fields (it should be outside the timeloop as a one-way coupling field only)
             call get_option( '/timestepping/timestep', dt); !Backup of dt
@@ -1616,7 +1620,7 @@ contains
                     DEALLOCATE( RSUM )
                 end if
 
-                call Calculate_All_Rhos( state, packed_state, Mdims )
+                call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
             end if Conditional_ReallocatingFields
         end subroutine adapt_mesh_mp
 

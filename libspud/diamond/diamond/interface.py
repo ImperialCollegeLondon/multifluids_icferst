@@ -110,7 +110,11 @@ class Diamond:
       dim_path = "/geometry/dimension", suffix=None):
     self.gladefile = gladefile
     self.gui = gtk.Builder()
-    self.gui.add_from_file(self.gladefile)
+    # self.gui.add_from_file(self.gladefile)
+    self.gui.add_objects_from_file(self.gladefile, [
+    "mainWindow",
+    "popupmenu"
+])
 
     self.statusbar = DiamondStatusBar(self.gui.get_object("statusBar"))
     self.find      = DiamondFindDialog(self, gladefile)
@@ -356,7 +360,7 @@ class Diamond:
     Handle opening or clearing of the current file and / or schema.
     """
 
-    self.find.on_find_close_button()
+    self.find.on_find_dialog_close()
     if schemafile is None:
       self.close_schema()
     elif schemafile != "":
@@ -1908,6 +1912,10 @@ class Diamond:
     """
     
     optionsFrame = self.gui.get_object("optionsFrame")
+    
+    child = optionsFrame.get_child()
+    if child:
+        optionsFrame.remove(child)
 
     vpane1 = gtk.VPaned()
     vpane2 = gtk.VPaned()
@@ -1953,97 +1961,109 @@ class Diamond:
     
     return
 
+
 class DiamondFindDialog:
-  def __init__(self, parent, gladefile):
-    self.parent = parent
-    self.gladefile = gladefile
-    self.search_dialog = None
+    def __init__(self, parent, gladefile):
+        self.parent = parent
+        self.gladefile = gladefile
+        self.search_dialog = None
+        self.search_builder = gtk.Builder()
+        self.search_builder.add_objects_from_file(
+            self.gladefile, 
+            ["find_dialog"]  # Only load this specific object
+        )
+        
+        # Connect all signals at initialization
+        self.search_builder.connect_signals({
+            "on_find_dialog_close": self.on_find_dialog_close,
+            "on_find_clicked": self.on_find_clicked,
+            "on_find_dialog_delete": self.on_find_dialog_delete
+        })
 
-    return
+    def on_find(self, widget=None):
+        if self.search_dialog is not None:
+            self.search_dialog.present()  # Bring to front if already exists
+            return
 
-  def on_find(self, widget=None):
-    """
-    Open up the find dialog. It has to be created each time from the glade file.
-    """
+        # Get dialog widget
+        self.search_dialog = self.search_builder.get_object("find_dialog")
+        self.search_dialog.set_transient_for(self.parent.main_window)
+        self.search_dialog.set_modal(True)
+        
+        # Get other widgets
+        search_entry = self.search_builder.get_object("search_entry")
+        search_entry.connect("activate", self.on_find_clicked)
+        
+        # Reset search parameters
+        self.search_generator = None
+        self.search_text = ""
+        self.search_count = 0
+        self.search_dialog.show()
+        self.parent.statusbar.set_statusbar("")
 
-    if not self.search_dialog is None:
+    def on_find_clicked(self, button):
+      """
+      Search. Each time "Find" is clicked, we compare the stored search text to the
+      text in the entry box. If it's the same, we find next; if it's different, we
+      start a new search. self.search_treestore does the heavy lifting.
+      """
+
+      search_entry = self.search_gui.get_widget("search_entry")
+
+      self.parent.statusbar.clear_statusbar()
+
+      text = search_entry.get_text()
+      if text == "":
+        self.parent.statusbar.set_statusbar("No text")
+        return
+
+      # check if we've started a new search
+      if text != self.search_text:
+        # started a new search
+        self.search_generator = None
+        self.search_generator = self.parent.search_treestore(text)
+        self.search_text = text
+        self.search_count = 0
+
+      try:
+        # get the iter of the next tree that matches
+        iter = next(self.search_generator)
+        path = self.parent.treestore.get_path(iter)
+        # scroll down to it, expand it, and select it
+        self.parent.treeview.expand_to_path(path)
+        self.parent.treeview.get_selection().select_iter(iter)
+        self.parent.treeview.scroll_to_cell(path, use_align=True, col_align=0.5)
+        # count how many hits we've had
+        self.search_count = self.search_count + 1
+      except StopIteration:
+        # reset the search and cycle
+        self.search_text = ""
+        # if something was found, go through again
+        if self.search_count > 0:
+          self.on_find_find_button(button)
+        else:
+          self.parent.statusbar.set_statusbar("No results")
+
       return
 
-    signals =      {"on_find_dialog_close": self.on_find_close_button,
-                    "on_close_clicked": self.on_find_close_button,
-                    "on_find_clicked": self.on_find_find_button}
+    def on_find_dialog_close(self, button = None):
+      """
+      Close the search widget.
+      """
 
-    self.search_gui = gtk.glade.XML(self.gladefile, root="find_dialog")
-    self.search_dialog = self.search_gui.get_widget("find_dialog")
-    self.search_gui.signal_autoconnect(signals)
-    search_entry = self.search_gui.get_widget("search_entry")
-    search_entry.connect("activate", self.on_find_find_button)
+      if not self.search_dialog is None:
+        self.search_dialog.hide()
+        self.search_dialog = None
+      self.parent.statusbar.clear_statusbar()
 
-    # reset the search parameters
-    self.search_generator = None
-    self.search_text = ""
-    self.search_count = 0
-    self.search_dialog.show()
-    self.parent.statusbar.set_statusbar("")
-
-    return
-
-  def on_find_find_button(self, button):
-    """
-    Search. Each time "Find" is clicked, we compare the stored search text to the
-    text in the entry box. If it's the same, we find next; if it's different, we
-    start a new search. self.search_treestore does the heavy lifting.
-    """
-
-    search_entry = self.search_gui.get_widget("search_entry")
-
-    self.parent.statusbar.clear_statusbar()
-
-    text = search_entry.get_text()
-    if text == "":
-      self.parent.statusbar.set_statusbar("No text")
       return
 
-    # check if we've started a new search
-    if text != self.search_text:
-      # started a new search
-      self.search_generator = None
-      self.search_generator = self.parent.search_treestore(text)
-      self.search_text = text
-      self.search_count = 0
+    def on_find_dialog_delete(self, widget, event):
+        """Handle window close (X button)"""
+        self.on_find_dialog_close()
+        return True  # Prevent default destruction
 
-    try:
-      # get the iter of the next tree that matches
-      iter = next(self.search_generator)
-      path = self.parent.treestore.get_path(iter)
-      # scroll down to it, expand it, and select it
-      self.parent.treeview.expand_to_path(path)
-      self.parent.treeview.get_selection().select_iter(iter)
-      self.parent.treeview.scroll_to_cell(path, use_align=True, col_align=0.5)
-      # count how many hits we've had
-      self.search_count = self.search_count + 1
-    except StopIteration:
-      # reset the search and cycle
-      self.search_text = ""
-      # if something was found, go through again
-      if self.search_count > 0:
-        self.on_find_find_button(button)
-      else:
-        self.parent.statusbar.set_statusbar("No results")
 
-    return
-
-  def on_find_close_button(self, button = None):
-    """
-    Close the search widget.
-    """
-
-    if not self.search_dialog is None:
-      self.search_dialog.hide()
-      self.search_dialog = None
-    self.parent.statusbar.clear_statusbar()
-
-    return
 
 class DiamondStatusBar:
   def __init__(self, statusbar):

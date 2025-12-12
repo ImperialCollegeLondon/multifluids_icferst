@@ -1,0 +1,5 @@
+<map id="copy_outof_state::write_state_units" name="copy_outof_state::write_state_units">
+<area shape="rect" id="node1" title=" " alt="" coords="5,5,164,47"/>
+<area shape="rect" id="node2" href="$namespacecopy__outof__state.html#aad2f9a59bdb78d6bc3ed3bbd30f689fc" title=": Convert fields to out units. Also has a backwards options as we need to undo this after dumping the..." alt="" coords="212,13,443,39"/>
+<area shape="rect" id="node3" href="$namespacecopy__outof__state.html#a4d23340ebea84c65fde71abdf1444071" title="Returns the factor to convert from internal (SI) to the output system For temperature it returns the ..." alt="" coords="491,13,729,39"/>
+</map>

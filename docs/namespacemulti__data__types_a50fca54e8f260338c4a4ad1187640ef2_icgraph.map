@@ -1,5 +1,5 @@
 <map id="multi_data_types::destroy_multi_outfluxes" name="multi_data_types::destroy_multi_outfluxes">
-<area shape="rect" id="node1" title="Deallocates the multi_outfluxes field." alt="" coords="467,5,659,47"/>
-<area shape="rect" id="node2" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,5,419,47"/>
-<area shape="rect" id="node3" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,171,47"/>
+<area shape="rect" id="node1" title="Deallocates the multi_outfluxes field." alt="" coords="424,5,596,47"/>
+<area shape="rect" id="node2" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,5,376,47"/>
+<area shape="rect" id="node3" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,5,152,47"/>
 </map>

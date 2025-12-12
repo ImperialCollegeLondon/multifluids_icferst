@@ -1,0 +1,8 @@
+<map id="multiphase_eos::total_mass_metal" name="multiphase_eos::total_mass_metal">
+<area shape="rect" id="Node000001" title=": subroutine to calculate the metal total mass (in kg)." alt="" coords="5,29,168,69"/>
+<area shape="rect" id="Node000002" href="$namespacemultiphase__eos.html#a282f02f39508adfb64d99bf4659af86c" title=": For boussinesq porous media we need the reference density to ensure consistency when mixing with th..." alt="" coords="216,29,400,69"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="168,47,202,47,202,52,168,52"/>
+<area shape="poly" id="edge3_Node000002_Node000002" title=" " alt="" coords="267,30,264,20,271,10,286,5,308,3,334,6,348,13,346,18,332,11,308,8,287,10,274,15,269,21,272,28"/>
+<area shape="rect" id="Node000003" href="$namespacemultiphase__eos.html#ac13395594592fe917fc20b7c3c2b7a5d" title=": Read from diamond and decide which sort of density representation do we have" alt="" coords="448,29,623,69"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="400,47,434,47,434,52,400,52"/>
+</map>

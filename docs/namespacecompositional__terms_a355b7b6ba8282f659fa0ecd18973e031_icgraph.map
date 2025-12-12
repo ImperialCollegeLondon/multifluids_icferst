@@ -1,0 +1,20 @@
+<map id="compositional_terms::calc_comp_dif_ten" name="compositional_terms::calc_comp_dif_ten">
+<area shape="rect" id="Node000001" title="Calculate the diffusion coefficient COMP_DIFFUSION for current composition... based on page 136 in Re..." alt="" coords="1573,139,1732,179"/>
+<area shape="rect" id="Node000002" href="$namespacecompositional__terms.html#a9091a40e5dcfbb5b4ebbce9242c7d0c4" title="Calculate the diffusion coefficient COMP_DIFFUSION for current composition... based on page 136 in Re..." alt="" coords="1269,139,1525,179"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1559,162,1526,162,1526,157,1559,157"/>
+<area shape="rect" id="Node000003" href="$namespacemultiphase__1d__engine.html#a8b8466b21f31e369fc0ae74a939444cd" title="Calls to generate the transport equation for the transport of energy/temperature and to solve the tra..." alt="" coords="1037,139,1221,179"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1256,162,1221,162,1221,157,1256,157"/>
+<area shape="rect" id="Node000004" href="$namespacemultiphase__1d__engine.html#ad72540721ea2ef4651301189e8973481" title=":In this subroutine the components are solved for all the phases. Systems for each component are asse..." alt="" coords="755,70,989,110"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="1041,138,946,113,948,107,1042,133"/>
+<area shape="rect" id="Node000005" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,70,417,110"/>
+<area shape="poly" id="edge10_Node000003_Node000005" title=" " alt="" coords="1024,179,908,191,767,198,692,197,615,193,539,183,465,169,431,158,400,143,347,112,349,108,402,139,433,153,466,163,540,178,615,187,692,192,767,193,908,186,1023,173"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="821,66,767,43,706,25,639,13,586,8,533,12,466,25,405,46,353,72,351,67,403,41,465,19,532,7,586,3,640,7,707,19,769,38,823,62"/>
+<area shape="rect" id="Node000007" href="$namespacemultiphase__1d__engine.html#aa8ed1c2e68fd75835c3794475805554c" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="465,34,707,74"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="741,76,707,72,707,67,742,71"/>
+<area shape="rect" id="Node000008" href="$namespacemultiphase__1d__engine.html#a07a7956a7419e82fb8f059cae3ded083" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="487,99,685,153"/>
+<area shape="poly" id="edge8_Node000004_Node000008" title=" " alt="" coords="741,109,686,116,685,111,741,104"/>
+<area shape="rect" id="Node000006" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,70,171,110"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="205,93,171,93,171,87,205,87"/>
+<area shape="poly" id="edge7_Node000007_Node000005" title=" " alt="" coords="452,75,418,79,417,74,451,69"/>
+<area shape="poly" id="edge9_Node000008_Node000005" title=" " alt="" coords="473,114,417,106,418,101,474,108"/>
+</map>

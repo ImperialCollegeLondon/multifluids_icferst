@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.17"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ICFERST: /home/mbahlali/Softwares/MultiFluids_Dev/ICFERST/src/Extract_From_State.F90 File Reference</title>
+<title>ICFERST: /home/mbahlali/Softwares/multifluids_icferst/ICFERST/src/Extract_From_State.F90 File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -27,7 +27,7 @@
   <td id="projectlogo"><img alt="Logo" src="IC_FERST_Logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">ICFERST
-   &#160;<span id="projectnumber">22-06</span>
+   &#160;<span id="projectnumber">25-11</span>
    </div>
    <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
@@ -96,10 +96,10 @@ $(document).ready(function(){initNavTree('_extract___from___state_8_f90.html',''
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for Extract_From_State.F90:</div>
 <div class="dyncontent">
-<div class="center"><img src="_extract___from___state_8_f90__incl.png" border="0" usemap="#_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2_extract___from___state_8_f90" alt=""/></div>
-<map name="_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2_extract___from___state_8_f90" id="_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2_extract___from___state_8_f90">
-<area shape="rect" title=" " alt="" coords="5,5,209,61"/>
-<area shape="rect" title=" " alt="" coords="68,109,147,136"/>
+<div class="center"><img src="_extract___from___state_8_f90__incl.png" border="0" usemap="#_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2_extract___from___state_8_f90" alt=""/></div>
+<map name="_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2_extract___from___state_8_f90" id="_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2_extract___from___state_8_f90">
+<area shape="rect" title=" " alt="" coords="5,5,196,61"/>
+<area shape="rect" title=" " alt="" coords="65,109,137,136"/>
 </map>
 </div>
 </div><table class="memberdecls">
@@ -141,9 +141,9 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a60ec84623fb582762f2139794470ba13"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a60ec84623fb582762f2139794470ba13">copy_outof_state::finalise_multistate</a> (packed_state, multiphase_state, multicomponent_state)</td></tr>
 <tr class="memdesc:a60ec84623fb582762f2139794470ba13"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Destrys packed_state and the passed down states  <a href="namespacecopy__outof__state.html#a60ec84623fb582762f2139794470ba13">More...</a><br /></td></tr>
 <tr class="separator:a60ec84623fb582762f2139794470ba13"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a577c504f5230ff200ee711334eebe54a"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a577c504f5230ff200ee711334eebe54a">copy_outof_state::adaptive_nonlinear</a> (Mdims, packed_state, reference_field, its, Repeat_time_step, ExitNonLinearLoop, nonLinearAdaptTs, old_acctim, order, calculate_mass_delta, adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Current_Courant, first_time_step)</td></tr>
-<tr class="memdesc:a577c504f5230ff200ee711334eebe54a"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonlinear iterations are going and depending on that increase the timestep or decreases the timestep and repeats that timestep  <a href="namespacecopy__outof__state.html#a577c504f5230ff200ee711334eebe54a">More...</a><br /></td></tr>
-<tr class="separator:a577c504f5230ff200ee711334eebe54a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab4b7de28d3bd0751dcb50d273ab574df"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#ab4b7de28d3bd0751dcb50d273ab574df">copy_outof_state::adaptive_nonlinear</a> (Mdims, packed_state, reference_field, its, itime, Repeat_time_step, ExitNonLinearLoop, nonLinearAdaptTs, old_acctim, order, calculate_mass_delta, adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Current_Courant, first_time_step)</td></tr>
+<tr class="memdesc:ab4b7de28d3bd0751dcb50d273ab574df"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This subroutine either store variables before the nonlinear timeloop starts, or checks how the nonlinear iterations are going and depending on that increase the timestep or decreases the timestep and repeats that timestep  <a href="namespacecopy__outof__state.html#ab4b7de28d3bd0751dcb50d273ab574df">More...</a><br /></td></tr>
+<tr class="separator:ab4b7de28d3bd0751dcb50d273ab574df"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad775c010bade229fba0416002e6928a6"><td class="memItemLeft" align="right" valign="top">real function, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#ad775c010bade229fba0416002e6928a6">copy_outof_state::inf_norm_scalar_normalised</a> (tracer, reference_tracer, dumping, totally_min_max)</td></tr>
 <tr class="memdesc:ad775c010bade229fba0416002e6928a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Calculate the inf norm of the normalised field, so the field goes from 0 to 1 It requires as inputs the tracer to be used and the reference tracer to normallise, the dumping to be set to 1.0 and totally_min_max which includes the min max values of the field across all processors also for normalisation.  <a href="namespacecopy__outof__state.html#ad775c010bade229fba0416002e6928a6">More...</a><br /></td></tr>
 <tr class="separator:ad775c010bade229fba0416002e6928a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -186,6 +186,14 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a52b4659aa8636bb70d12b05923bc58b8"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a52b4659aa8636bb70d12b05923bc58b8">copy_outof_state::impose_connected_bcs</a> (outfluxes, packed_state, Mdims, acctime)</td></tr>
 <tr class="memdesc:a52b4659aa8636bb70d12b05923bc58b8"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Using the outfluxes values, it imposes as BC the averaged value of another BC(from within the domain) It is a basic method to get this functionality but it will work in parallel. However, it does not guarantee mass conservation as it uses the value from the previous time-step although it can still be used for many cases such as ATES, or ventilation. Overwrites the dirichlet BC values. Currently it uses the information from outfluxes so it is MANDATORY to use and request outfluxes for those BCs  <a href="namespacecopy__outof__state.html#a52b4659aa8636bb70d12b05923bc58b8">More...</a><br /></td></tr>
 <tr class="separator:a52b4659aa8636bb70d12b05923bc58b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4d23340ebea84c65fde71abdf1444071"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#a4d23340ebea84c65fde71abdf1444071">copy_outof_state::getoutputconverter</a> (fieldname, factor, shft)</td></tr>
+<tr class="memdesc:a4d23340ebea84c65fde71abdf1444071"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the factor to convert from internal (SI) to the output system For temperature it returns the shift term not the factor.  <a href="namespacecopy__outof__state.html#a4d23340ebea84c65fde71abdf1444071">More...</a><br /></td></tr>
+<tr class="separator:a4d23340ebea84c65fde71abdf1444071"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aad2f9a59bdb78d6bc3ed3bbd30f689fc"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#aad2f9a59bdb78d6bc3ed3bbd30f689fc">copy_outof_state::converttooutunits</a> (state, Mdims, convertBack)</td></tr>
+<tr class="memdesc:aad2f9a59bdb78d6bc3ed3bbd30f689fc"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Convert fields to out units. Also has a backwards options as we need to undo this after dumping the VTK files  <a href="namespacecopy__outof__state.html#aad2f9a59bdb78d6bc3ed3bbd30f689fc">More...</a><br /></td></tr>
+<tr class="separator:aad2f9a59bdb78d6bc3ed3bbd30f689fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af6fb85b60c7bb747b61c41c24b07b785"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacecopy__outof__state.html#af6fb85b60c7bb747b61c41c24b07b785">copy_outof_state::write_state_units</a> (dump_no, Mdims, state)</td></tr>
+<tr class="separator:af6fb85b60c7bb747b61c41c24b07b785"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->
 </div><!-- doc-content -->

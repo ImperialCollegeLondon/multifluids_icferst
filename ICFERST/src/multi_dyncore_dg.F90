@@ -402,7 +402,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-                   tracer, velocity, density, multi_absorp, &
+                   tracer, velocity, density, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
                    cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
@@ -1001,7 +1001,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    nconc_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-                   tracer, velocity, density, multi_absorp, &
+                   tracer, velocity, density, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
                    cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
@@ -1268,7 +1268,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                  call CV_ASSEMB( state, packed_state, &
                      n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                     sat_field, velocity, density, multi_absorp, &
+                     sat_field, velocity, density, &
                      DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                      DEN_ALL, DENOLD_ALL, &
                      Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
@@ -2638,7 +2638,7 @@ end if
             Mmat%PIVIT_MAT=0.0
         end if
 
-        if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', Mdims%nphase ) )then
+        if (have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure',Mdims%nphase) .or. have_option_for_any_phase('/multiphase_properties/type_Tabulated/capillary_pressure',Mdims%nphase)) then
             call calculate_capillary_pressure(packed_state, ndgln, Mdims%totele, Mdims%cv_nloc, CV_funs)
         end if
 
@@ -2812,7 +2812,8 @@ end if
           call extract_diagonal(cmc_petsc, diagonal_CMC)
           call scale_PETSc_matrix(cmc_petsc)
         end if
-        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+
+        call solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
@@ -2890,7 +2891,8 @@ end if
           REAL, DIMENSION( :, :, : ), intent(in) :: INV_B
           type( vector_field ), intent(inout) :: rhs_p
           type( vector_field ), intent(inout) :: deltap
-          type(tensor_field), intent(inout) :: P_all, velocity
+          type(tensor_field), pointer, intent(inout) :: P_all
+          type(tensor_field), intent(inout) :: velocity
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
           type( vector_field ), intent(inout) :: diagonal_A
           !Local variables
@@ -2997,7 +2999,7 @@ end if
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-            call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val, update_pres = .not. Special_precond)!don
+            call solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC, update_pres = .not. Special_precond)
             if (isParallel()) call halo_update(deltap)
             if (k == 1) then
               Omega = 1.0
@@ -3018,7 +3020,7 @@ end if
               !Ct x previous
               call compute_DIV_U(Mdims, Mmat, Mspars, aux_velocity%val, INV_B, rhs_p)
               !Solve again the system to finish the preconditioner
-              call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+              call solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC)
             end if
             if (isParallel()) call halo_update(P_all)
             !Update residual with the variation from the guessed value and the actual value obtained after appliying the function
@@ -3194,27 +3196,27 @@ end if
           type(multi_dimensions), intent(in) :: Mdims
           type( vector_field ), intent(inout) :: rhs_p
           type( vector_field ), intent(inout) :: deltap
-          real, dimension(Mdims%npres, Mdims%cv_nonods), intent(inout) :: P_all!Ensure dynamic conversion from three entries to two
+          type( tensor_field ), pointer :: P_all
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
-          real, dimension(Mdims%npres, Mdims%cv_nonods), intent(in) :: diagonal_CMC
+          type( vector_field ) :: diagonal_CMC
           logical, optional, intent(in) :: update_pres
           !Local variables
           integer :: its_taken
 
           !Rescale RHS (it is given the the matrix has been already re-scaled)
-          if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC)!Recover original X; X = D^-0.5 * X'
+          if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC%val)!Recover original X; X = D^-0.5 * X'
           call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken);total_lIts = total_lIts + its_taken;
           pres_its_taken = its_taken
 
           if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
           !If the system is re-scaled then now it is time to recover the correct solution
-          if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC) !Recover original X; X = D^-0.5 * X'
+          if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC%val) !Recover original X; X = D^-0.5 * X'
           !If false update pressure then return before doing so
           if (present_and_false(update_pres)) then
             return
           else
             !Now update the pressure
-            P_all = P_all + deltap%val
+            P_all%val(1,:,:) = P_all%val(1,:,:)+deltap%val
           end if
 
         end subroutine solve_and_update_pressure
@@ -3618,7 +3620,7 @@ end if
 
         call CV_ASSEMB( state, packed_state, &
             Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-            tracer, velocity, density, multi_absorp, &
+            tracer, velocity, density, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             DEN_OR_ONE, DENOLD_OR_ONE, &
             Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, v_beta, &
@@ -3702,8 +3704,8 @@ end if
                 gravity_on = have_option("/physical_parameters/gravity/magnitude")
                 call get_option( "/physical_parameters/gravity/magnitude", gravty, default = 0. )
                 !Check capillary options
-                capillary_pressure_activated = have_option_for_any_phase('/multiphase_properties/capillary_pressure', Mdims%nphase)
-                Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
+                capillary_pressure_activated = (have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure',Mdims%nphase) .or. have_option_for_any_phase('/multiphase_properties/type_Tabulated/capillary_pressure',Mdims%nphase))
+                Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
             end if
 
             CapPressure => extract_tensor_field( packed_state, "PackedCapPressure", stat )
@@ -4244,8 +4246,8 @@ end if
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
         position=>extract_vector_field(packed_state,"PressureCoordinate")
         !Check capillary options
-        capillary_pressure_activated = have_option_for_any_phase('/multiphase_properties/capillary_pressure', Mdims%nphase)
-        Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
+        capillary_pressure_activated = (have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure',Mdims%nphase) .or. have_option_for_any_phase('/multiphase_properties/type_Tabulated/capillary_pressure',Mdims%nphase))
+        Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
         CapPressure => extract_tensor_field( packed_state, "PackedCapPressure", stat )
         !We set the value of logicals
         PIVIT_ON_VISC = .false.
@@ -8302,7 +8304,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      !Check capillary pressure options
      do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
          !this way we try to avoid problems if someone introduces 0 capillary pressure in the second phase
-         if (have_option( "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure" )) then
+         if (have_option( "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/type_Formula/capillary_pressure" ) .or. have_option( "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/type_Tabulated/capillary_pressure" )) then
              Phase_with_Pc = iphase
          end if
      end do
@@ -8311,8 +8313,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      if (Phase_with_Pc>0) then
          !Get information for capillary pressure to be used
          if ( (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
-             "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) .or. (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
-             "]/multiphase_properties/capillary_pressure/type_Power_Law") ) )then
+             "]/multiphase_properties/type_Formula/capillary_pressure/type_Brooks_Corey") ) .or. (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
+             "]/multiphase_properties/type_Formula/capillary_pressure/type_Power_Law") ) )then
              call get_var_from_packed_state(packed_state, Cap_entry_pressure = Cap_entry_pressure,&
                  Cap_exponent = Cap_exponent)!no need for the imbibition because we need the derivative which will be zero as it is a constant
          end if
@@ -9871,7 +9873,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             !!! gravity !!!
             gravity = have_option("/physical_parameters/gravity")
             !!! Capillary pressure !!!
-            cap_pressure = have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)
+            cap_pressure = have_option_for_any_phase("/multiphase_properties/type_Formula/capillary_pressure", Mdims%nphase) .or. have_option_for_any_phase("/multiphase_properties/type_Tabulated/capillary_pressure", Mdims%nphase)
             !!! Single-phase flow !!!
             one_phase = (Mdims%n_in_pres == 1)
             !!! Black Oil

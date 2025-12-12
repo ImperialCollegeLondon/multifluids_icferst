@@ -1,0 +1,4 @@
+<map id="phreeqcrm::rm_getselectedoutputcount" name="phreeqcrm::rm_getselectedoutputcount">
+<area shape="rect" id="Node000001" title="Returns the number of selected&#45;output definitions. RM_SetCurrentSelectedOutputUserNumber determines w..." alt="" coords="5,29,284,55"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="100,31,90,21,95,11,114,5,145,3,185,7,196,12,199,18,194,21,192,16,184,12,145,8,115,10,99,15,96,20,104,27"/>
+</map>

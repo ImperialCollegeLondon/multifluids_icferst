@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.17"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ICFERST: /home/mbahlali/Softwares/MultiFluids_Dev/ICFERST/src/multi_tools.F90 File Reference</title>
+<title>ICFERST: /home/mbahlali/Softwares/multifluids_icferst/ICFERST/src/multi_tools.F90 File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -27,7 +27,7 @@
   <td id="projectlogo"><img alt="Logo" src="IC_FERST_Logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">ICFERST
-   &#160;<span id="projectnumber">22-06</span>
+   &#160;<span id="projectnumber">25-11</span>
    </div>
    <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
@@ -92,15 +92,17 @@ $(document).ready(function(){initNavTree('multi__tools_8_f90.html',''); initResi
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &quot;fdebug.h&quot;</code><br />
+<code>#include &quot;petsc/finclude/petsc.h&quot;</code><br />
 <code>#include &quot;petsc_legacy.h&quot;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for multi_tools.F90:</div>
 <div class="dyncontent">
-<div class="center"><img src="multi__tools_8_f90__incl.png" border="0" usemap="#_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2multi__tools_8_f90" alt=""/></div>
-<map name="_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2multi__tools_8_f90" id="_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2multi__tools_8_f90">
-<area shape="rect" title=" " alt="" coords="9,5,203,61"/>
-<area shape="rect" title=" " alt="" coords="5,109,84,136"/>
-<area shape="rect" title=" " alt="" coords="109,109,226,136"/>
+<div class="center"><img src="multi__tools_8_f90__incl.png" border="0" usemap="#_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2multi__tools_8_f90" alt=""/></div>
+<map name="_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2multi__tools_8_f90" id="_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2multi__tools_8_f90">
+<area shape="rect" title=" " alt="" coords="82,5,273,61"/>
+<area shape="rect" title=" " alt="" coords="5,109,77,136"/>
+<area shape="rect" title=" " alt="" coords="102,109,253,136"/>
+<area shape="rect" title=" " alt="" coords="277,109,385,136"/>
 </map>
 </div>
 </div><table class="memberdecls">
@@ -158,9 +160,13 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a5e01cea8994467049dde8f8679bf966f"><td class="memItemLeft" align="right" valign="top">real function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__tools.html#a5e01cea8994467049dde8f8679bf966f">multi_tools::table_interpolation</a> (X_points, Y_points, input_X)</td></tr>
 <tr class="memdesc:a5e01cea8994467049dde8f8679bf966f"><td class="mdescLeft">&#160;</td><td class="mdescRight">X_points, Y_points to form a linear (size == 2) or quadratic (size == 3) interpolation.  <a href="namespacemulti__tools.html#a5e01cea8994467049dde8f8679bf966f">More...</a><br /></td></tr>
 <tr class="separator:a5e01cea8994467049dde8f8679bf966f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a95899601ea9e47ed0511dc1e87a53785"><td class="memItemLeft" align="right" valign="top">real function&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__tools.html#a95899601ea9e47ed0511dc1e87a53785">multi_tools::table_interpolation_linear</a> (X_points, Y_points, input_X)</td></tr>
+<tr class="separator:a95899601ea9e47ed0511dc1e87a53785"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9cf0d43cd5f90a02f337d253ef19d47d"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__tools.html#a9cf0d43cd5f90a02f337d253ef19d47d">multi_tools::read_csv_table</a> (data_array, path_to_table, extra_data)</td></tr>
 <tr class="memdesc:a9cf0d43cd5f90a02f337d253ef19d47d"><td class="mdescLeft">&#160;</td><td class="mdescRight">:Template of csv table OPTIONAL section (header) real1,real2,real3,..., size(extra_data) rows,columns 2,3 Pressure,Saturation 1000,0.9 250,0.5 100,0.1  <a href="namespacemulti__tools.html#a9cf0d43cd5f90a02f337d253ef19d47d">More...</a><br /></td></tr>
 <tr class="separator:a9cf0d43cd5f90a02f337d253ef19d47d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6f450f6b3c3d96035cf16468d21a0bdd"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__tools.html#a6f450f6b3c3d96035cf16468d21a0bdd">multi_tools::read_csv_table_standard</a> (data_array, path_to_table, extra_data)</td></tr>
+<tr class="separator:a6f450f6b3c3d96035cf16468d21a0bdd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa621c334a67449127204c9b12f80bc99"><td class="memItemLeft" align="right" valign="top">subroutine&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__tools.html#aa621c334a67449127204c9b12f80bc99">multi_tools::extract_strings_from_csv_file</a> (csv_table_strings, path_to_table, Nentries)</td></tr>
 <tr class="memdesc:aa621c334a67449127204c9b12f80bc99"><td class="mdescLeft">&#160;</td><td class="mdescRight">:This subroutine reads a csv file and returns them in an array  <a href="namespacemulti__tools.html#aa621c334a67449127204c9b12f80bc99">More...</a><br /></td></tr>
 <tr class="separator:aa621c334a67449127204c9b12f80bc99"><td class="memSeparator" colspan="2">&#160;</td></tr>

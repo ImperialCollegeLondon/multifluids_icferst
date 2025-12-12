@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.17"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ICFERST: /home/mbahlali/Softwares/MultiFluids_Dev/ICFERST/src/multi_pipes.F90 File Reference</title>
+<title>ICFERST: /home/mbahlali/Softwares/multifluids_icferst/ICFERST/src/multi_pipes.F90 File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -27,7 +27,7 @@
   <td id="projectlogo"><img alt="Logo" src="IC_FERST_Logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">ICFERST
-   &#160;<span id="projectnumber">22-06</span>
+   &#160;<span id="projectnumber">25-11</span>
    </div>
    <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
@@ -92,15 +92,15 @@ $(document).ready(function(){initNavTree('multi__pipes_8_f90.html',''); initResi
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &quot;fdebug.h&quot;</code><br />
-<code>#include &quot;petsc_legacy.h&quot;</code><br />
+<code>#include &quot;petsc/finclude/petsc.h&quot;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for multi_pipes.F90:</div>
 <div class="dyncontent">
-<div class="center"><img src="multi__pipes_8_f90__incl.png" border="0" usemap="#_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2multi__pipes_8_f90" alt=""/></div>
-<map name="_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2multi__pipes_8_f90" id="_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2multi__pipes_8_f90">
-<area shape="rect" title=" " alt="" coords="9,5,203,61"/>
-<area shape="rect" title=" " alt="" coords="5,109,84,136"/>
-<area shape="rect" title=" " alt="" coords="109,109,226,136"/>
+<div class="center"><img src="multi__pipes_8_f90__incl.png" border="0" usemap="#_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2multi__pipes_8_f90" alt=""/></div>
+<map name="_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2multi__pipes_8_f90" id="_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2multi__pipes_8_f90">
+<area shape="rect" title=" " alt="" coords="14,5,205,61"/>
+<area shape="rect" title=" " alt="" coords="5,109,77,136"/>
+<area shape="rect" title=" " alt="" coords="102,109,253,136"/>
 </map>
 </div>
 </div><table class="memberdecls">
@@ -112,9 +112,11 @@ Modules</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions/Subroutines</h2></td></tr>
-<tr class="memitem:a7cfd75b337f007460a86d927e152004e"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__pipes.html#a7cfd75b337f007460a86d927e152004e">multi_pipes::assemble_pipe_transport_and_cty</a> (state, packed_state, tracer, den_all, denold_all, final_phase, Mdims, ndgln, DERIV, CV_P, SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL, SUF_D_BC_ALL, SUF_U_BC_ALL, getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, mean_pore_cv, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes, porous_heat_coef, assemble_collapsed_to_one_phase)</td></tr>
-<tr class="memdesc:a7cfd75b337f007460a86d927e152004e"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This sub modifies either MmatCT or the Advection-diffusion equation for 1D pipe modelling NOTE final_phase has to be define for the reservoir domain, i.e. for two phase flow it can be either 1 or 2, not 3 or 4. We define wells_first_phase as the first phase of the well domain  <a href="namespacemulti__pipes.html#a7cfd75b337f007460a86d927e152004e">More...</a><br /></td></tr>
-<tr class="separator:a7cfd75b337f007460a86d927e152004e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5864085287edf4a5c965fd7173de21c7"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__pipes.html#a5864085287edf4a5c965fd7173de21c7">multi_pipes::wells_saturation_assemb</a> (state, packed_state, final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, saturation, sat_prev, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, SOURCT_ALL, VOLFRA_PORE, eles_with_pipe, pipes_aux, assemble_collapsed_to_one_phase, getResidual)</td></tr>
+<tr class="separator:a5864085287edf4a5c965fd7173de21c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab82f1610bcaea57cc72b2bccf9a351c2"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__pipes.html#ab82f1610bcaea57cc72b2bccf9a351c2">multi_pipes::assemble_pipe_transport_and_cty</a> (state, packed_state, tracer, den_all, denold_all, final_phase, Mdims, ndgln, DERIV, CV_P, SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL, SUF_D_BC_ALL, SUF_U_BC_ALL, getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, mean_pore_cv, MEAN_PORE_CV_TOTAL, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes, porous_heat_coef, assemble_collapsed_to_one_phase)</td></tr>
+<tr class="memdesc:ab82f1610bcaea57cc72b2bccf9a351c2"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This sub modifies either MmatCT or the Advection-diffusion equation for 1D pipe modelling NOTE final_phase has to be define for the reservoir domain, i.e. for two phase flow it can be either 1 or 2, not 3 or 4. We define wells_first_phase as the first phase of the well domain  <a href="namespacemulti__pipes.html#ab82f1610bcaea57cc72b2bccf9a351c2">More...</a><br /></td></tr>
+<tr class="separator:ab82f1610bcaea57cc72b2bccf9a351c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a297beee584d63c08823a85520b973ef5"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemulti__pipes.html#a297beee584d63c08823a85520b973ef5">multi_pipes::mod_1d_force_bal_c</a> (STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe, GET_PIVIT_MAT, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA, NU_ALL, U_SOURCE, U_SOURCE_CV, pipes_aux)</td></tr>
 <tr class="memdesc:a297beee584d63c08823a85520b973ef5"><td class="mdescLeft">&#160;</td><td class="mdescRight">: This sub modifies MmatC for 1D pipe modelling. Works on the momentum equation  <a href="namespacemulti__pipes.html#a297beee584d63c08823a85520b973ef5">More...</a><br /></td></tr>
 <tr class="separator:a297beee584d63c08823a85520b973ef5"><td class="memSeparator" colspan="2">&#160;</td></tr>

@@ -1,4 +1,4 @@
 <map id="multi_machine_learning::xgboost_load_model" name="multi_machine_learning::xgboost_load_model">
-<area shape="rect" id="node1" title="Load the XGBoost model as &#45;&gt; xgb_model (private module variable)" alt="" coords="232,5,411,47"/>
-<area shape="rect" id="node2" href="$namespacemulti__machine__learning.html#aba184938c5cec750a298b8cc0294ed22" title="Teste the XGBoost coupling." alt="" coords="5,5,184,47"/>
+<area shape="rect" id="node1" title="Load the XGBoost model as &#45;&gt; xgb_model (private module variable)" alt="" coords="212,5,371,47"/>
+<area shape="rect" id="node2" href="$namespacemulti__machine__learning.html#aba184938c5cec750a298b8cc0294ed22" title="Teste the XGBoost coupling." alt="" coords="5,5,164,47"/>
 </map>

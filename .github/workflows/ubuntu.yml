@@ -5,17 +5,14 @@ permissions:
   contents: read
 
 on:
+  workflow_dispatch:
   push:
     branches:
+      - main
       - pablo_dev3
-      - master
       - magma_dev
-      - linfeng_dev
-      - geraldine_dev
       - phreeqc_link
-      - geraldine_dev_new
-      - vinicius_dev
-      - meissam_dev_new
+      - meissam_dev
       - hayley_dev
       - ruixiao_dev_new
 
@@ -28,14 +25,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Build Bionic", "Build Focal" ]
+        name: [ "Build Bionic", "Build Noble" ]
         include:
 
           - name: "Build Bionic"
             release: bionic
 
-          - name: "Build Focal"
-            release: focal
+          - name: "Build Noble"
+            release: noble
     steps:
 
       - name: Check Out Repo
@@ -66,7 +63,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [ "Bionic", "Focal"]
+        name: [ "Bionic", "Noble"]
         include:
 
           - name: "Bionic"
@@ -75,19 +72,18 @@ jobs:
             command: "make THREADS=2 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
 
-          - name: "Focal"
-            release: focal
+          - name: "Noble"
+            release: noble
             runner: ubuntu-latest
             command: "make THREADS=1 serialtest-mp-xml"
             output: "multiphase_test_results.xml"
-
     steps:
 
       - name: Run tests (${{ matrix.name }})
         run: |
          chmod 777 .
          docker pull icferst/actions:${{ matrix.release }}-${{ github.sha }}
-         docker run --memory=12g --cpus=4 --oom-kill-disable=false -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
+         docker run --memory=16g --cpus=4 --oom-kill-disable=false -v $PWD:/host icferst/actions:${{ matrix.release }}-${{ github.sha }} \
            /bin/bash -c "${{ matrix.command }} 2>&1 | tee /host/${{ matrix.release }}-testrun.log && \
            cp -v ICFERST/tests/${{ matrix.output }} /host/${{ matrix.release }}-${{ matrix.output}}"
 
@@ -112,12 +108,12 @@ jobs:
 
     strategy:
       matrix:
-        name: [ "Report Bionic", "Report Focal" ]
+        name: [ "Report Bionic", "Report Noble" ]
         include:
           - name: "Report Bionic"
             release: bionic
-          - name: "Report Focal"
-            release: focal
+          - name: "Report Noble"
+            release: noble
 
     steps:
       - uses: actions/download-artifact@v4

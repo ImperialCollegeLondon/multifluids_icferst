@@ -1,7 +1,9 @@
 <map id="matrix_operations::allocate_global_multiphase_petsc_csr" name="matrix_operations::allocate_global_multiphase_petsc_csr">
-<area shape="rect" id="node1" title=" " alt="" coords="756,20,957,76"/>
-<area shape="rect" id="node2" href="$multi__dyncore__dg_8_f90.html#a171ba3eb037458ea0b2f128257e43588" title="WARNING: Still work in progress." alt="" coords="510,5,665,32"/>
-<area shape="rect" id="node3" href="$namespacemultiphase__1d__engine.html#ad29606c63b241238edd97827aa4564d7" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="467,57,708,98"/>
-<area shape="rect" id="node4" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,57,419,98"/>
-<area shape="rect" id="node5" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,57,171,98"/>
+<area shape="rect" id="node1" title=" " alt="" coords="915,82,1093,138"/>
+<area shape="rect" id="node2" href="$namespacemultiphase__1d__engine.html#a245ebfb2c63f41aaf90233ccb819bad4" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="688,5,867,47"/>
+<area shape="rect" id="node3" href="$namespacemultiphase__1d__engine.html#a1eb9efc0b06941858a54239da8c431a0" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="443,57,621,113"/>
+<area shape="rect" id="node6" href="$multi__dyncore__dg_8_f90.html#af1bf5a11afa118074e812449240b70cb" title="WARNING: Still work in progress." alt="" coords="708,122,847,149"/>
+<area shape="rect" id="node7" href="$namespacemultiphase__1d__engine.html#af3db1ae3b84a80d4754b797d31be7983" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="424,151,640,192"/>
+<area shape="rect" id="node4" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="200,115,376,156"/>
+<area shape="rect" id="node5" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,115,152,156"/>
 </map>

@@ -37,8 +37,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <vtk.h>
-
 #include "Precision.h"
 #define REAL flfloat_t
 #include "vtkmeshio.h"

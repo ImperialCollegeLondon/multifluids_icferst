@@ -267,7 +267,8 @@ class Variable(TestOrVariable):
         try:
             exec(self.code, varsdict)
         except:
-            print("Variable computation raised an exception")
+            exc = sys.exc_info()[1]
+            print("Variable computation raised an exception:", exc)
             print("-" * 80)
             for (lineno, line) in enumerate(self.code.split('\n')):
               print("%3d  %s" % (lineno+1, line))

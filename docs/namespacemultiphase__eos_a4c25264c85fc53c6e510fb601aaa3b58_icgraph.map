@@ -1,0 +1,17 @@
+<map id="multiphase_eos::calculate_absorption2" name="multiphase_eos::calculate_absorption2">
+<area shape="rect" id="Node000001" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="1271,78,1463,118"/>
+<area shape="rect" id="Node000002" href="$namespacemultiphase__eos.html#a8c66b15baf1f392d67a7b875514f9db7" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="995,78,1223,118"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1257,101,1223,101,1223,95,1257,95"/>
+<area shape="rect" id="Node000003" href="$namespacemultiphase__1d__engine.html#aa1ce62fd9e2240cf8992447180a0152c" title="This subroutines generates calls CV_ASSEMB twice to generate a numerical jacobian for the solution of..." alt="" coords="755,17,947,57"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1010,77,935,59,936,54,1011,72"/>
+<area shape="rect" id="Node000005" href="$namespacemultiphase__time__loop.html#a04598d33bda1f46f9537570dbc0119bc" title="This is the main subroutine from which everything is called. It performs the time&#45;loop and therefore ..." alt="" coords="219,78,417,118"/>
+<area shape="poly" id="edge6_Node000002_Node000005" title=" " alt="" coords="981,101,418,101,418,95,981,95"/>
+<area shape="rect" id="Node000007" href="$namespacemultiphase__1d__engine.html#aa8ed1c2e68fd75835c3794475805554c" title="Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method ..." alt="" coords="465,135,707,175"/>
+<area shape="poly" id="edge7_Node000002_Node000007" title=" " alt="" coords="981,115,947,119,707,145,706,140,946,114,981,110"/>
+<area shape="rect" id="Node000004" href="$namespacemultiphase__1d__engine.html#a07a7956a7419e82fb8f059cae3ded083" title="Calls to generate the residual of the transport of saturation onlyequation for the saturation and Jac..." alt="" coords="487,5,685,60"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="741,38,685,37,686,31,741,32"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="474,63,402,81,400,75,473,57"/>
+<area shape="rect" id="Node000006" href="$_multiphase___prototype___wrapper_8_f90.html#a0849c5f8b4a25b1987221c6a5a69eeda" title=" " alt="" coords="5,78,171,118"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="205,101,171,101,171,95,205,95"/>
+<area shape="poly" id="edge8_Node000007_Node000005" title=" " alt="" coords="478,135,412,121,413,115,479,130"/>
+</map>

@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.17"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ICFERST: /home/mbahlali/Softwares/MultiFluids_Dev/ICFERST/src/multi_solvers.F90 File Reference</title>
+<title>ICFERST: /home/mbahlali/Softwares/multifluids_icferst/ICFERST/src/multi_solvers.F90 File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -27,7 +27,7 @@
   <td id="projectlogo"><img alt="Logo" src="IC_FERST_Logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">ICFERST
-   &#160;<span id="projectnumber">22-06</span>
+   &#160;<span id="projectnumber">25-11</span>
    </div>
    <div id="projectbrief">Reservoir simulator based on DCVFEM, Dynamic Mesh optimisation and Surface-based modelling</div>
   </td>
@@ -92,15 +92,17 @@ $(document).ready(function(){initNavTree('multi__solvers_8_f90.html',''); initRe
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &quot;fdebug.h&quot;</code><br />
+<code>#include &quot;petsc/finclude/petsc.h&quot;</code><br />
 <code>#include &quot;petsc_legacy.h&quot;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for multi_solvers.F90:</div>
 <div class="dyncontent">
-<div class="center"><img src="multi__solvers_8_f90__incl.png" border="0" usemap="#_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2multi__solvers_8_f90" alt=""/></div>
-<map name="_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2multi__solvers_8_f90" id="_2home_2mbahlali_2_softwares_2_multi_fluids___dev_2_i_c_f_e_r_s_t_2src_2multi__solvers_8_f90">
-<area shape="rect" title=" " alt="" coords="9,5,203,61"/>
-<area shape="rect" title=" " alt="" coords="5,109,84,136"/>
-<area shape="rect" title=" " alt="" coords="109,109,226,136"/>
+<div class="center"><img src="multi__solvers_8_f90__incl.png" border="0" usemap="#_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2multi__solvers_8_f90" alt=""/></div>
+<map name="_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2multi__solvers_8_f90" id="_2home_2mbahlali_2_softwares_2multifluids__icferst_2_i_c_f_e_r_s_t_2src_2multi__solvers_8_f90">
+<area shape="rect" title=" " alt="" coords="82,5,273,61"/>
+<area shape="rect" title=" " alt="" coords="5,109,77,136"/>
+<area shape="rect" title=" " alt="" coords="102,109,253,136"/>
+<area shape="rect" title=" " alt="" coords="277,109,385,136"/>
 </map>
 </div>
 </div><table class="memberdecls">
@@ -133,6 +135,12 @@ Functions/Subroutines</h2></td></tr>
 <tr class="memitem:a119325e40cdcd54b1766472b55920364"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#a119325e40cdcd54b1766472b55920364">solvers_module::get_anderson_acceleration_new_guess</a> (N, M, NewField, History_field, stored_residuals, max_its, prev_small_matrix, restart_now)</td></tr>
 <tr class="memdesc:a119325e40cdcd54b1766472b55920364"><td class="mdescLeft">&#160;</td><td class="mdescRight">This subroutine provides a new guess based on previous updates and residuals. Use this subroutine to speed up any system being solved by looping. A new guess is computed and returned Method explained in DOI.10.1137/10078356X.  <a href="namespacesolvers__module.html#a119325e40cdcd54b1766472b55920364">More...</a><br /></td></tr>
 <tr class="separator:a119325e40cdcd54b1766472b55920364"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4c840140691d09333884394d27476512"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#a4c840140691d09333884394d27476512">solvers_module::scale_petsc_matrix_by_vector</a> (Mat_petsc, vfield)</td></tr>
+<tr class="memdesc:a4c840140691d09333884394d27476512"><td class="mdescLeft">&#160;</td><td class="mdescRight">In this subroutine the matrix is multiplied by vfield A is-written.  <a href="namespacesolvers__module.html#a4c840140691d09333884394d27476512">More...</a><br /></td></tr>
+<tr class="separator:a4c840140691d09333884394d27476512"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a89a8383ac71c32c7fb89f80a4bfd9963"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#a89a8383ac71c32c7fb89f80a4bfd9963">solvers_module::petsc_matvec</a> (Mat_petsc, vfield, sol)</td></tr>
+<tr class="memdesc:a89a8383ac71c32c7fb89f80a4bfd9963"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs y=Ax using fluidity vectors (not very efficient)  <a href="namespacesolvers__module.html#a89a8383ac71c32c7fb89f80a4bfd9963">More...</a><br /></td></tr>
+<tr class="separator:a89a8383ac71c32c7fb89f80a4bfd9963"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af233b921efdba4e01b5920ccf509ef29"><td class="memItemLeft" align="right" valign="top">subroutine, public&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacesolvers__module.html#af233b921efdba4e01b5920ccf509ef29">solvers_module::scale_petsc_matrix</a> (Mat_petsc)</td></tr>
 <tr class="memdesc:af233b921efdba4e01b5920ccf509ef29"><td class="mdescLeft">&#160;</td><td class="mdescRight">In this subroutine the matrix is re-scaled based on the formula D^-0.5 * A * D^-0.5 X'= D^-0.5 b; and next X = D^-0.5 * X'; IMPORTANT: the step X = D^-0.5 * X' needs to be done elsewhere store the diagonal before calling this This should allow to deal with high ranges of viscosity ratio for example A is-written.  <a href="namespacesolvers__module.html#af233b921efdba4e01b5920ccf509ef29">More...</a><br /></td></tr>
 <tr class="separator:af233b921efdba4e01b5920ccf509ef29"><td class="memSeparator" colspan="2">&#160;</td></tr>

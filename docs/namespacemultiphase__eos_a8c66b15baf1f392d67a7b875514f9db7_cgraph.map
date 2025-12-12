@@ -1,0 +1,15 @@
+<map id="multiphase_eos::calculate_porousmedia_absorptionterms" name="multiphase_eos::calculate_porousmedia_absorptionterms">
+<area shape="rect" id="Node000001" title=": Here we compute the absorption for porous media This is the sigma term defined in the papers and co..." alt="" coords="5,63,233,103"/>
+<area shape="rect" id="Node000002" href="$namespacemultiphase__eos.html#a4c25264c85fc53c6e510fb601aaa3b58" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="281,5,473,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="209,60,273,46,274,51,211,65"/>
+<area shape="rect" id="Node000003" href="$namespacemultiphase__eos.html#a19df2cd38bcac98a4dadc0a3327bc1d4" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="521,35,681,75"/>
+<area shape="poly" id="edge7_Node000001_Node000003" title=" " alt="" coords="233,73,507,57,508,63,234,79"/>
+<area shape="rect" id="Node000006" href="$namespacemultiphase__eos.html#ae389bf78d79bfc3260a4b53fe2e117d8" title="In this subroutine we compute the viscosity EOS. Options for different EOS." alt="" coords="282,120,473,160"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="211,100,274,114,273,120,209,105"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="474,35,508,40,507,45,473,41"/>
+<area shape="rect" id="Node000004" href="$namespacemultiphase__eos.html#a2b630dc39b8a9a21ef87319a98039974" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="729,35,884,75"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="682,52,715,52,715,57,682,57"/>
+<area shape="rect" id="Node000005" href="$namespacemultiphase__eos.html#ae38ba08b6363798b651a669f506ed944" title=": Computes normalised saturation for Land trapping with tabulated relperm" alt="" coords="932,35,1123,75"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="884,52,918,52,918,57,884,57"/>
+<area shape="poly" id="edge5_Node000005_Node000005" title=" " alt="" coords="986,35,984,25,990,16,1005,10,1027,8,1053,11,1067,18,1064,23,1051,16,1027,13,1006,15,994,20,989,26,991,34"/>
+</map>

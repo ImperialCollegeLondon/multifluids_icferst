@@ -1,0 +1,18 @@
+FROM fluidity/baseimages:noble
+
+USER root
+
+RUN apt-get -y update && \
+      apt-get -y dist-upgrade && \
+      apt-get -y install autoconf-archive python-is-python3 pkg-config vim && \
+      rm -rf /var/cache/apt/archives && \
+      rm -rf /var/lib/apt/lists
+
+COPY . /home/fluidity
+RUN chown -R fluidity /home/fluidity
+
+USER fluidity
+
+RUN autoreconf --force --install
+RUN ./configure --enable-2d-adaptivity
+RUN make -j8 mp

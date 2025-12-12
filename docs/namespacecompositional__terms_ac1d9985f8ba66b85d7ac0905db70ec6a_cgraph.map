@@ -1,0 +1,7 @@
+<map id="compositional_terms::sigmoid_function" name="compositional_terms::sigmoid_function">
+<area shape="rect" id="Node000001" title="Width: width of the sigmoid function. The sigmoid function, varies between ( LowMag,..." alt="" coords="5,29,164,69"/>
+<area shape="poly" id="edge3_Node000001_Node000001" title=" " alt="" coords="46,30,44,20,50,11,64,5,85,3,109,6,122,13,119,18,107,11,85,8,65,10,53,15,49,21,51,28"/>
+<area shape="rect" id="Node000002" href="$namespacecompositional__terms.html#a221de77cdfcebf8981dbb91811e30c38" title=" " alt="" coords="212,29,371,69"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="164,47,198,47,198,52,164,52"/>
+<area shape="poly" id="edge2_Node000002_Node000002" title=" " alt="" coords="253,30,250,20,257,11,270,5,291,3,315,6,329,13,326,18,314,11,291,8,272,10,260,15,256,21,258,28"/>
+</map>

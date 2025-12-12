@@ -10,7 +10,9 @@ var multi__solvers_8_f90 =
     [ "get_optimal_backtrack_par", "multi__solvers_8_f90.html#a6570270bacc4d22f9633611d8ea6c1a7", null ],
     [ "initialise_saturation_sums_one", "multi__solvers_8_f90.html#a85646e595797edceed6d3be72173ef7f", null ],
     [ "non_porous_ensure_sum_to_one", "multi__solvers_8_f90.html#a27f681607a9e40b1e99a8f45cd6a940c", null ],
+    [ "petsc_matvec", "multi__solvers_8_f90.html#a89a8383ac71c32c7fb89f80a4bfd9963", null ],
     [ "petsc_stokes_solver", "multi__solvers_8_f90.html#ab1b067219293fc4e2583394acce02bfa", null ],
     [ "scale_petsc_matrix", "multi__solvers_8_f90.html#af233b921efdba4e01b5920ccf509ef29", null ],
+    [ "scale_petsc_matrix_by_vector", "multi__solvers_8_f90.html#a4c840140691d09333884394d27476512", null ],
     [ "set_saturation_to_sum_one", "multi__solvers_8_f90.html#a9bba1ef1495c1a4a47a7eea3f2c17719", null ]
 ];

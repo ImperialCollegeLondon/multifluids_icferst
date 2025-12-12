@@ -4,3 +4,39 @@
 #autoconf temp folders/files/logs
 autom4te.cache
 config.log
+
+# Backup files
+*~
+
+# Build artifacts
+*.o
+*.so
+*.a
+*.mod
+*.lo
+*.la
+*.lai
+*.pyc
+__pycache__/
+make.log
+libtool
+config.status
+
+# Test outputs (only under ICFERST/tests)
+ICFERST/tests/**/log
+ICFERST/tests/**/*.vtu
+ICFERST/tests/**/*.stat
+ICFERST/tests/**/*.detectors
+ICFERST/tests/**/*.detectors.dat
+ICFERST/tests/**/*_outfluxes.csv
+
+bin/icferst
+include/version.h
+spatialindex-1.8.0/make.log
+version.inc
+
+# Generated / build files
+diagnostics/Diagnostic_Fields_New.F90
+libspud/diamond/diamond/plugins.py
+libspud/diamond/diamond/preprocess.py
+

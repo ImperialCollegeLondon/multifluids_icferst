@@ -1,606 +1,194 @@
-dnl @synopsis ACX_BLAS([ACTION-IF-FOUND[, ACTION-IF-NOT-FOUND]])
-dnl
-dnl This macro looks for a library that implements the BLAS
-dnl linear-algebra interface (see http://www.netlib.org/blas/).
-dnl On success, it sets the BLAS_LIBS output variable to
-dnl hold the requisite library linkages.
-dnl
-dnl To link with BLAS, you should link with:
-dnl
-dnl 	$BLAS_LIBS $LIBS $FCLIBS
-dnl
-dnl in that order.  FCLIBS is the output variable of the
-dnl AC_FC_LIBRARY_LDFLAGS macro (called if necessary by ACX_BLAS),
-dnl and is sometimes necessary in order to link with FC libraries.
-dnl Users will also need to use AC_FC_DUMMY_MAIN (see the autoconf
-dnl manual), for the same reason.
-dnl
-dnl Many libraries are searched for, from ATLAS to CXML to ESSL.
-dnl The user may also use --with-blas=<lib> in order to use some
-dnl specific BLAS library <lib>.  In order to link successfully,
-dnl however, be aware that you will probably need to use the same
-dnl Fortran compiler (which can be set via the FC env. var.) as
-dnl was used to compile the BLAS library.
-dnl
-dnl ACTION-IF-FOUND is a list of shell commands to run if a BLAS
-dnl library is found, and ACTION-IF-NOT-FOUND is a list of commands
-dnl to run it if it is not found.  If ACTION-IF-FOUND is not specified,
-dnl the default action will define HAVE_BLAS.
-dnl
-dnl This macro requires autoconf 2.50 or later.
-dnl
-dnl @version $Id$
-dnl @author Steven G. Johnson <stevenj@alum.mit.edu>
-dnl
-dnl Modified by Jonas Juselius <jonas@iki.fi>
-dnl
-AC_DEFUN([ACX_BLAS], [
-AC_PREREQ(2.59)
+# generated automatically by aclocal 1.16.5 -*- Autoconf -*-
 
-acx_blas_ok=no
-acx_blas_save_LIBS="$LIBS"
-acx_blas_save_LDFLAGS="$LDFLAGS"
-acx_blas_save_FFLAGS="$FFLAGS"
-acx_blas_libs=""
-acx_blas_dir=""
+# Copyright (C) 1996-2021 Free Software Foundation, Inc.
 
-AC_ARG_WITH(blas,
-	[AC_HELP_STRING([--with-blas=<lib>], [use BLAS library <lib>])])
+# This file is free software; the Free Software Foundation
+# gives unlimited permission to copy and/or distribute it,
+# with or without modifications, as long as this notice is preserved.
 
-case $with_blas in
-	yes | "") ;;
-	no) acx_blas_ok=disable ;;
-	-l* | */* | *.a | *.so | *.so.* | *.o) acx_blas_libs="$with_blas" ;;
-	*) acx_blas_libs="-l$with_blas" ;;
-esac
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY, to the extent permitted by law; without
+# even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.
 
-AC_ARG_WITH(blas_dir,
-	[AC_HELP_STRING([--with-blas-dir=<dir>], [look for BLAS library in <dir>])])
+m4_ifndef([AC_CONFIG_MACRO_DIRS], [m4_defun([_AM_CONFIG_MACRO_DIRS], [])m4_defun([AC_CONFIG_MACRO_DIRS], [_AM_CONFIG_MACRO_DIRS($@)])])
+# ===========================================================================
+#  https://www.gnu.org/software/autoconf-archive/ax_check_compile_flag.html
+# ===========================================================================
+#
+# SYNOPSIS
+#
+#   AX_CHECK_COMPILE_FLAG(FLAG, [ACTION-SUCCESS], [ACTION-FAILURE], [EXTRA-FLAGS], [INPUT])
+#
+# DESCRIPTION
+#
+#   Check whether the given FLAG works with the current language's compiler
+#   or gives an error.  (Warnings, however, are ignored)
+#
+#   ACTION-SUCCESS/ACTION-FAILURE are shell commands to execute on
+#   success/failure.
+#
+#   If EXTRA-FLAGS is defined, it is added to the current language's default
+#   flags (e.g. CFLAGS) when the check is done.  The check is thus made with
+#   the flags: "CFLAGS EXTRA-FLAGS FLAG".  This can for example be used to
+#   force the compiler to issue an error when a bad flag is given.
+#
+#   INPUT gives an alternative input source to AC_COMPILE_IFELSE.
+#
+#   NOTE: Implementation based on AX_CFLAGS_GCC_OPTION. Please keep this
+#   macro in sync with AX_CHECK_{PREPROC,LINK}_FLAG.
+#
+# LICENSE
+#
+#   Copyright (c) 2008 Guido U. Draheim <guidod@gmx.de>
+#   Copyright (c) 2011 Maarten Bosmans <mkbosmans@gmail.com>
+#
+#   Copying and distribution of this file, with or without modification, are
+#   permitted in any medium without royalty provided the copyright notice
+#   and this notice are preserved.  This file is offered as-is, without any
+#   warranty.
 
-case $with_blas_dir in
-      yes | no | "") ;;
-     -L*) LDFLAGS="$LDFLAGS $with_blas_dir" 
-	      acx_blas_dir="$with_blas_dir" ;;
-      *) LDFLAGS="$LDFLAGS -L$with_blas_dir" 
-	      acx_blas_dir="-L$with_blas_dir" ;;
-esac
+#serial 6
 
-# Are we linking from C?
-case "$ac_ext" in
-  f*|F*) sgemm="sgemm" ;;
-  *)
-   AC_FC_FUNC([sgemm])
-   LIBS="$LIBS $FCLIBS"
-   ;;
-esac
+AC_DEFUN([AX_CHECK_COMPILE_FLAG],
+[AC_PREREQ(2.64)dnl for _AC_LANG_PREFIX and AS_VAR_IF
+AS_VAR_PUSHDEF([CACHEVAR],[ax_cv_check_[]_AC_LANG_ABBREV[]flags_$4_$1])dnl
+AC_CACHE_CHECK([whether _AC_LANG compiler accepts $1], CACHEVAR, [
+  ax_check_save_flags=$[]_AC_LANG_PREFIX[]FLAGS
+  _AC_LANG_PREFIX[]FLAGS="$[]_AC_LANG_PREFIX[]FLAGS $4 $1"
+  AC_COMPILE_IFELSE([m4_default([$5],[AC_LANG_PROGRAM()])],
+    [AS_VAR_SET(CACHEVAR,[yes])],
+    [AS_VAR_SET(CACHEVAR,[no])])
+  _AC_LANG_PREFIX[]FLAGS=$ax_check_save_flags])
+AS_VAR_IF(CACHEVAR,yes,
+  [m4_default([$2], :)],
+  [m4_default([$3], :)])
+AS_VAR_POPDEF([CACHEVAR])dnl
+])dnl AX_CHECK_COMPILE_FLAGS
 
-# If --with-blas is defined, then look for THIS AND ONLY THIS blas lib
-if test $acx_blas_ok = no; then
-case $with_blas in
-    ""|yes) ;;
-	*) save_LIBS="$LIBS"; LIBS="$acx_blas_libs $LIBS"
-	AC_MSG_CHECKING([for $sgemm in $acx_blas_libs])
-	AC_TRY_LINK_FUNC($sgemm, [acx_blas_ok=yes])
-	AC_MSG_RESULT($acx_blas_ok)
-	LIBS="$save_LIBS"
-	acx_blas_ok=specific
-	;;
-esac
+# ===========================================================================
+#        https://www.gnu.org/software/autoconf-archive/ax_openmp.html
+# ===========================================================================
+#
+# SYNOPSIS
+#
+#   AX_OPENMP([ACTION-IF-FOUND[, ACTION-IF-NOT-FOUND]])
+#
+# DESCRIPTION
+#
+#   This macro tries to find out how to compile programs that use OpenMP a
+#   standard API and set of compiler directives for parallel programming
+#   (see http://www-unix.mcs/)
+#
+#   On success, it sets the OPENMP_CFLAGS/OPENMP_CXXFLAGS/OPENMP_F77FLAGS
+#   output variable to the flag (e.g. -omp) used both to compile *and* link
+#   OpenMP programs in the current language.
+#
+#   NOTE: You are assumed to not only compile your program with these flags,
+#   but also link it with them as well.
+#
+#   If you want to compile everything with OpenMP, you should set:
+#
+#     CFLAGS="$CFLAGS $OPENMP_CFLAGS"
+#     #OR#  CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"
+#     #OR#  FFLAGS="$FFLAGS $OPENMP_FFLAGS"
+#
+#   (depending on the selected language).
+#
+#   The user can override the default choice by setting the corresponding
+#   environment variable (e.g. OPENMP_CFLAGS).
+#
+#   ACTION-IF-FOUND is a list of shell commands to run if an OpenMP flag is
+#   found, and ACTION-IF-NOT-FOUND is a list of commands to run it if it is
+#   not found. If ACTION-IF-FOUND is not specified, the default action will
+#   define HAVE_OPENMP.
+#
+# LICENSE
+#
+#   Copyright (c) 2008 Steven G. Johnson <stevenj@alum.mit.edu>
+#   Copyright (c) 2015 John W. Peterson <jwpeterson@gmail.com>
+#   Copyright (c) 2016 Nick R. Papior <nickpapior@gmail.com>
+#
+#   This program is free software: you can redistribute it and/or modify it
+#   under the terms of the GNU General Public License as published by the
+#   Free Software Foundation, either version 3 of the License, or (at your
+#   option) any later version.
+#
+#   This program is distributed in the hope that it will be useful, but
+#   WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+#   Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License along
+#   with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+#   As a special exception, the respective Autoconf Macro's copyright owner
+#   gives unlimited permission to copy, distribute and modify the configure
+#   scripts that are the output of Autoconf when processing the Macro. You
+#   need not follow the terms of the GNU General Public License when using
+#   or distributing such scripts, even though portions of the text of the
+#   Macro appear in them. The GNU General Public License (GPL) does govern
+#   all other use of the material that constitutes the Autoconf Macro.
+#
+#   This special exception to the GPL applies to versions of the Autoconf
+#   Macro released by the Autoconf Archive. When you make and distribute a
+#   modified version of the Autoconf Macro, you may extend this special
+#   exception to the GPL to apply to your modified version as well.
+
+#serial 13
+
+AC_DEFUN([AX_OPENMP], [
+AC_PREREQ([2.69]) dnl for _AC_LANG_PREFIX
+
+AC_CACHE_CHECK([for OpenMP flag of _AC_LANG compiler], ax_cv_[]_AC_LANG_ABBREV[]_openmp, [save[]_AC_LANG_PREFIX[]FLAGS=$[]_AC_LANG_PREFIX[]FLAGS
+ax_cv_[]_AC_LANG_ABBREV[]_openmp=unknown
+# Flags to try:  -fopenmp (gcc), -mp (SGI & PGI),
+#                -qopenmp (icc>=15), -openmp (icc),
+#                -xopenmp (Sun), -omp (Tru64),
+#                -qsmp=omp (AIX),
+#                none
+ax_openmp_flags="-fopenmp -openmp -qopenmp -mp -xopenmp -omp -qsmp=omp none"
+if test "x$OPENMP_[]_AC_LANG_PREFIX[]FLAGS" != x; then
+  ax_openmp_flags="$OPENMP_[]_AC_LANG_PREFIX[]FLAGS $ax_openmp_flags"
 fi
+for ax_openmp_flag in $ax_openmp_flags; do
+  case $ax_openmp_flag in
+    none) []_AC_LANG_PREFIX[]FLAGS=$save[]_AC_LANG_PREFIX[] ;;
+    *) []_AC_LANG_PREFIX[]FLAGS="$save[]_AC_LANG_PREFIX[]FLAGS $ax_openmp_flag" ;;
+  esac
+  AC_LINK_IFELSE([AC_LANG_SOURCE([[
+@%:@include <omp.h>
 
-# First, check BLAS_LIBS environment variable
-if test $acx_blas_ok = no; then
-if test "x$BLAS_LIBS" != x; then
-	save_LIBS="$LIBS"; LIBS="$BLAS_LIBS $LIBS"
-	AC_MSG_CHECKING([for $sgemm in $BLAS_LIBS])
-	AC_TRY_LINK_FUNC($sgemm, [acx_blas_ok=yes; acx_blas_libs=$BLAS_LIBS])
-	AC_MSG_RESULT($acx_blas_ok)
-	LIBS="$save_LIBS"
-fi
-fi
+static void
+parallel_fill(int * data, int n)
+{
+  int i;
+@%:@pragma omp parallel for
+  for (i = 0; i < n; ++i)
+    data[i] = i;
+}
 
-# BLAS linked to by default?  (happens on some supercomputers)
-if test $acx_blas_ok = no; then
-	AC_MSG_CHECKING([for builtin $sgemm])
-	AC_TRY_LINK_FUNC($sgemm, [acx_blas_ok=yes])
-	AC_MSG_RESULT($acx_blas_ok)
-fi
-
-# Intel mkl BLAS. Unfortunately some of Intel's blas routines are
-# in their lapack library...
-if test $acx_blas_ok = no; then
-	AC_CHECK_LIB(mkl_def, $sgemm, 
-	[acx_blas_ok=yes; acx_blas_libs="-lmkl_def -lm"],
-	[],[-lm])
-fi
-if test $acx_blas_ok = no; then
-	AC_CHECK_LIB(mkl_ipf, $sgemm, 
-	[acx_blas_ok=yes; acx_blas_libs="-lmkl_ipf -lguide -lm"],
-	[],[-lguide -lm])
-fi
-if test $acx_blas_ok = no; then
-        AC_CHECK_LIB(mkl_em64t, $sgemm,
-        [acx_blas_ok=yes; acx_blas_libs="-lmkl_em64t -lguide -liomp5"],
-        [],[-lguide -liomp5])
-fi
-# check for older mkl
-if test $acx_blas_ok = no; then
-	AC_MSG_NOTICE([trying Intel MKL < 7:])
-	unset ac_cv_lib_mkl_def_sgemm
-	AC_CHECK_LIB(mkl_lapack, lsame, [
-	    acx_lapack_ok=yes;
-		AC_CHECK_LIB(mkl_def, $sgemm, 
-			[acx_blas_ok=yes; 
-			acx_blas_libs="-lmkl_def -lmkl_lapack -lm -lpthread"],
-			[],[-lm -lpthread
-		])
-	])
-	AC_MSG_NOTICE([Intel MKL < 7... $acx_blas_ok])
-fi
-
-# BLAS in ACML (pgi)
-if test $acx_blas_ok = no; then
-	AC_CHECK_LIB(acml, $sgemm, [acx_blas_ok=yes; acx_blas_libs="-lacml"])
-fi
-
-# BLAS in ATLAS library? (http://math-atlas.sourceforge.net/)
-if test $acx_blas_ok = no; then
-	AC_CHECK_LIB(f77blas, $sgemm,
-		[acx_blas_ok=yes; acx_blas_libs="-lf77blas -latlas"],
-		[], [-latlas])
-fi
-
-# ia64-hp-hpux11.22 BLAS library?
-if test $acx_blas_ok = no; then
-        AC_CHECK_LIB(veclib, $sgemm, 
-		[acx_blas_ok=yes; acx_blas_libs="-lveclib8"])
-fi
-
-# BLAS in PhiPACK libraries? (requires generic BLAS lib, too)
-if test $acx_blas_ok = no; then
-    AC_MSG_NOTICE([trying PhiPACK:])
-	AC_CHECK_LIB(blas, $sgemm,
-		[AC_CHECK_LIB(dgemm, dgemm,
-			[AC_CHECK_LIB(sgemm, $sgemm,
-			[acx_blas_ok=yes; acx_blas_libs="-lsgemm -ldgemm -lblas"],
-			[], [-lblas])],
-		[], [-lblas])
-	])
-    AC_MSG_NOTICE([PhiPACK... $acx_blas_ok])
-fi
-
-# BLAS in Alpha CXML library?
-if test $acx_blas_ok = no; then
-	AC_CHECK_LIB(cxml, $sgemm, [acx_blas_ok=yes;acx_blas_libs="-lcxml"])
-fi
-
-# BLAS in Alpha DXML library? (now called CXML, see above)
-if test $acx_blas_ok = no; then
-	AC_CHECK_LIB(dxml, $sgemm, [acx_blas_ok=yes;acx_blas_libs="-ldxml"])
-fi
-
-# BLAS in Sun Performance library?
-if test $acx_blas_ok = no; then
-	if test "x$GCC" != xyes; then # only works with Sun CC
-		AC_CHECK_LIB(sunmath, acosp,
-			[AC_CHECK_LIB(sunperf, $sgemm,
-        			[acx_blas_libs="-xlic_lib=sunperf -lsunmath"
-                    acx_blas_ok=yes],[],[-lsunmath])
-		])
-	fi
-fi
-
-# BLAS in SCSL library?  (SGI/Cray Scientific Library)
-if test $acx_blas_ok = no; then
-	AC_CHECK_LIB(scs, $sgemm, [acx_blas_ok=yes; acx_blas_libs="-lscs"])
-fi
-
-# BLAS in SGIMATH library?
-if test $acx_blas_ok = no; then
-	AC_CHECK_LIB(complib.sgimath, $sgemm,
-		     [acx_blas_ok=yes; acx_blas_libs="-lcomplib.sgimath"])
-fi
-
-# BLAS in IBM ESSL library? (requires generic BLAS lib, too)
-if test $acx_blas_ok = no; then
-    unset ac_cv_lib_blas_sgemm
-	AC_MSG_NOTICE([trying IBM ESSL:])
-	AC_CHECK_LIB(blas, $sgemm,
-		[AC_CHECK_LIB(essl, $sgemm,
-			[acx_blas_ok=yes; acx_blas_libs="-lessl -lblas"],
-			[], [-lblas])
-	])
-	AC_MSG_NOTICE([IBM ESSL... $acx_blas_ok])
-fi
-
-# Generic BLAS library?
-if test $acx_blas_ok = no; then
-    unset ac_cv_lib_blas_sgemm
-	AC_CHECK_LIB(blas, $sgemm, [acx_blas_ok=yes; acx_blas_libs="-lblas"])
-fi
-
-# blas on SGI/CRAY 
-if test $acx_blas_ok = no; then
-    unset ac_cv_lib_blas_sgemm
-	AC_CHECK_LIB(blas, $sgemm, 
-	[acx_blas_ok=yes; acx_blas_libs="-lblas -lcraylibs"],[],[-lcraylibs])
-fi
-
-# Check for vecLib framework (Darwin)
-if test $acx_blas_ok = no; then
-	save_LIBS="$LIBS"; LIBS="-framework vecLib $LIBS"
-	AC_MSG_CHECKING([for $sgemm in vecLib])
-	AC_TRY_LINK_FUNC($sgemm, [acx_blas_ok=yes; acx_blas_libs="-framework vecLib"])
-	AC_MSG_RESULT($acx_blas_ok)
-	LIBS="$save_LIBS"
-fi
- 
-BLAS_LIBS="$acx_blas_libs"
-AC_SUBST(BLAS_LIBS)
-
-LIBS="$acx_blas_save_LIBS"
-LDFLAGS="$acx_blas_save_LDFLAGS $acx_blas_dir"
-
-test x"$acx_blas_ok" = xspecific && acx_blas_ok=yes
-# Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
-if test x"$acx_blas_ok" = xyes; then
-        ifelse([$1],,AC_DEFINE(HAVE_BLAS,1,[Define if you have a BLAS library.]),[$1])
-        :
+int
+main()
+{
+  int arr[100000];
+  omp_set_num_threads(2);
+  parallel_fill(arr, 100000);
+  return 0;
+}
+]])],[ax_cv_[]_AC_LANG_ABBREV[]_openmp=$ax_openmp_flag; break],[])
+done
+[]_AC_LANG_PREFIX[]FLAGS=$save[]_AC_LANG_PREFIX[]FLAGS
+])
+if test "x$ax_cv_[]_AC_LANG_ABBREV[]_openmp" = "xunknown"; then
+  m4_default([$2],:)
 else
-        acx_blas_ok=no
-        $2
-fi
-])dnl ACX_BLAS
-
-dnl @synopsis ACX_LAPACK([ACTION-IF-FOUND[, ACTION-IF-NOT-FOUND]])
-dnl
-dnl This macro looks for a library that implements the LAPACK
-dnl linear-algebra interface (see http://www.netlib.org/lapack/).
-dnl On success, it sets the LAPACK_LIBS output variable to
-dnl hold the requisite library linkages.
-dnl
-dnl To link with LAPACK, you should link with:
-dnl
-dnl 	$LAPACK_LIBS $BLAS_LIBS $LIBS 
-dnl
-dnl in that order.  BLAS_LIBS is the output variable of the ACX_BLAS
-dnl macro, called automatically.  FLIBS is the output variable of the
-dnl AC_F77_LIBRARY_LDFLAGS macro (called if necessary by ACX_BLAS),
-dnl and is sometimes necessary in order to link with F77 libraries.
-dnl Users will also need to use AC_F77_DUMMY_MAIN (see the autoconf
-dnl manual), for the same reason.
-dnl
-dnl The user may also use --with-lapack=<lib> in order to use some
-dnl specific LAPACK library <lib>.  In order to link successfully,
-dnl however, be aware that you will probably need to use the same
-dnl Fortran compiler (which can be set via the F77 env. var.) as
-dnl was used to compile the LAPACK and BLAS libraries.
-dnl
-dnl ACTION-IF-FOUND is a list of shell commands to run if a LAPACK
-dnl library is found, and ACTION-IF-NOT-FOUND is a list of commands
-dnl to run it if it is not found.  If ACTION-IF-FOUND is not specified,
-dnl the default action will define HAVE_LAPACK.
-dnl
-dnl @version $Id$
-dnl @author Steven G. Johnson <stevenj@alum.mit.edu>
-dnl
-AC_DEFUN([ACX_LAPACK], [
-AC_REQUIRE([ACX_BLAS])
-acx_lapack_ok=no
-acx_lapack_save_LIBS="$LIBS"
-acx_lapack_save_LDFLAGS="$LDFLAGS"
-acx_lapack_save_FFLAGS="$FFLAGS"
-acx_lapack_libs=""
-acx_lapack_dir=""
-
-AC_ARG_WITH(lapack,
-	[AC_HELP_STRING([--with-lapack=<lib>], [use LAPACK library <lib>])])
-
-case $with_lapack in
-	yes | "") ;;
-	no) acx_lapack_ok=disable ;;
-	-l* | */* | *.a | *.so | *.so.* | *.o) acx_lapack_libs="$with_lapack" ;;
-	*) acx_lapack_libs="-l$with_lapack" ;;
-esac
-
-AC_ARG_WITH(lapack_dir,
-	[AC_HELP_STRING([--with-lapack-dir=<dir>], [look for LAPACK library in <dir>])])
-
-case $with_lapack_dir in
-      yes | no | "") ;;
-     -L*) LDFLAGS="$LDFLAGS $with_lapack_dir" 
-	      acx_lapack_dir="$with_lapack_dir" ;;
-      *) LDFLAGS="$LDFLAGS -L$with_lapack_dir" 
-	      acx_lapack_dir="-L$with_lapack_dir" ;;
-esac
-
-# We cannot use LAPACK if BLAS is not found
-if test "x$acx_blas_ok" != xyes; then
-	acx_lapack_ok=noblas
-fi
-
-# Are we linking from C?
-case "$ac_ext" in
-  f*|F*) dsyev="dsyev" ;;
-  *)
-   AC_FC_FUNC([dsyev])
-   LIBS="$LIBS $FCLIBS"
-   ;;
-esac
-
-# If --with-lapack is defined, then look for THIS AND ONLY THIS lapack lib
-if test $acx_lapack_ok = no; then
-case $with_lapack in
-    ""|yes) ;;
-	*) save_LIBS="$LIBS"; LIBS="$acx_lapack_libs $LIBS"
-	AC_MSG_CHECKING([for $dsyev in $acx_lapack_libs])
-	AC_TRY_LINK_FUNC($dsyev, [acx_lapack_ok=yes])
-	AC_MSG_RESULT($acx_lapack_ok)
-	LIBS="$save_LIBS"
-	acx_lapack_ok=yes
-	;;
-esac
-fi
-
-# First, check LAPACK_LIBS environment variable
-if test $acx_lapack_ok = no; then
-if test "x$LAPACK_LIBS" != x; then
-	save_LIBS="$LIBS"; LIBS="$LAPACK_LIBS $LIBS"
-	AC_MSG_CHECKING([for $dsyev in $LAPACK_LIBS])
-	AC_TRY_LINK_FUNC($dsyev, [acx_lapack_ok=yes; 
-	     acx_lapack_libs=$LAPACK_LIBS])
-	AC_MSG_RESULT($acx_lapack_ok)
-	LIBS="$save_LIBS"
-fi
-fi
-
-# Intel MKL LAPACK?
-if test $acx_lapack_ok = no; then
-	AC_CHECK_LIB(mkl_lapack, $dsyev, 
-	[acx_lapack_ok=yes; acx_lapack_libs="-lmkl_lapack -lguide"],
-	[],[])
-fi
-
-# Sun sunperf?
-if test $acx_lapack_ok = no; then
-	AC_CHECK_LIB(sunperf, $dsyev, 
-	[acx_lapack_ok=yes; acx_lapack_libs="-lsunperf"],
-	[],[])
-fi
-
-# LAPACK linked to by default?  (is sometimes included in BLAS lib)
-if test $acx_lapack_ok = no; then
-	AC_MSG_CHECKING([for $dsyev in BLAS library])
-	AC_TRY_LINK_FUNC($dsyev, [acx_lapack_ok=yes; acx_lapack_libs=""])
-	AC_MSG_RESULT($acx_lapack_ok)
-fi
-
-# Generic LAPACK library?
-if test $acx_lapack_ok = no; then
-	AC_CHECK_LIB(lapack, $dsyev,
-		[acx_lapack_ok=yes; acx_lapack_libs="-llapack"], [], [])
-fi
-
-LAPACK_LIBS="$LAPACK_LIBS $acx_lapack_libs"
-LIBS="$acx_lapack_save_LIBS"
-LDFLAGS="$acx_lapack_save_LDFLAGS $acx_lapack_dir"
-
-AC_SUBST(LAPACK_LIBS)
-
-# Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
-if test x"$acx_lapack_ok" = xyes; then
-        ifelse([$1],,AC_DEFINE(HAVE_LAPACK,1,[Define if you have LAPACK library.]),[$1])
-        :
-else
-        acx_lapack_ok=no
-        $2
-fi
-])dnl ACX_LAPACK
-dnl ----------------------------------------------------------------------------
-dnl check for the required PETSc library
-dnl ----------------------------------------------------------------------------
-AC_DEFUN([ACX_PETSc], [
-AC_REQUIRE([ACX_BLAS])
-BLAS_LIBS="$BLAS_LIBS $FLIBS"
-AC_REQUIRE([ACX_LAPACK])
-LAPACK_LIBS="$LAPACK_LIBS $BLAS_LIBS"
-AC_PATH_XTRA
-
-if test "x$PETSC_DIR" == "x"; then
-  AC_MSG_WARN( [No PETSC_DIR set - trying to autodetect] )
-
-  # Try to identify the obvious choice
-  if test -f /usr/lib/petsc/include/petscversion.h ; then
-    export PETSC_DIR=/usr/lib/petsc
-  elif test -f /usr/include/petscversion.h ; then
-    export PETSC_DIR=/usr
-  elif test -f /usr/local/include/petscversion.h ; then
-    export PETSC_DIR=/usr/local
+  if test "x$ax_cv_[]_AC_LANG_ABBREV[]_openmp" != "xnone"; then
+    OPENMP_[]_AC_LANG_PREFIX[]FLAGS=$ax_cv_[]_AC_LANG_ABBREV[]_openmp
   fi
+  m4_default([$1], [AC_DEFINE(HAVE_OPENMP,1,[Define if OpenMP is enabled])])
 fi
-# Check again incase we failed.
-if test "x$PETSC_DIR" == "x"; then 
-  AC_MSG_WARN( [No PETSC_DIR set - do you need to load a petsc module?] )
-  AC_MSG_ERROR( [You need to set PETSC_DIR to point at your PETSc installation... exiting] )
-fi
-AC_MSG_NOTICE([Using PETSC_DIR=$PETSC_DIR])
-
-PETSC_LINK_LIBS=`make -s -f petsc_makefile_old getlinklibs 2> /dev/null || make -s -f petsc_makefile getlinklibs`
-LIBS="$PETSC_LINK_LIBS $LIBS"
-
-# need to add -I$PWD/include/ to what we get from petsc, so we can use our own petsc_legacy.h wrapper
-PETSC_INCLUDE_FLAGS=`make -s -f petsc_makefile_old getincludedirs 2> /dev/null || make -s -f petsc_makefile getincludedirs`
-CPPFLAGS="$CPPFLAGS $PETSC_INCLUDE_FLAGS -I$PWD/include/"
-FCFLAGS="$FCFLAGS $PETSC_INCLUDE_FLAGS -I$PWD/include/"
-
-# first check we have the right petsc version
-AC_COMPUTE_INT(PETSC_VERSION_MAJOR, "PETSC_VERSION_MAJOR", [#include "petscversion.h"], 
-  [AC_MSG_ERROR([Unknown petsc major version])])
-AC_COMPUTE_INT(PETSC_VERSION_MINOR, "PETSC_VERSION_MINOR", [#include "petscversion.h"], 
-  [AC_MSG_ERROR([Unknown petsc minor version])])
-AC_MSG_NOTICE([Detected PETSc version "$PETSC_VERSION_MAJOR"."$PETSC_VERSION_MINOR"])
-# if major<3 or minor<4
-if test "0$PETSC_VERSION_MAJOR" -lt 3 -o "0$PETSC_VERSION_MINOR" -lt 4; then
-  AC_MSG_ERROR([Fluidity needs PETSc version >=3.4])
-fi
-
-AC_LANG(Fortran)
-# F90 (capital F) to invoke preprocessing
-ac_ext=F90
-
-# may need some extra flags for testing that we don't want to use in the end
-SAVE_FCFLAGS="$FCFLAGS"
-
-if test "$enable_petsc_fortran_modules" != "no" ; then
-  # now try if the petsc fortran modules work:
-  AC_LINK_IFELSE(
-          [AC_LANG_PROGRAM([],[[
-                          use petsc
-                          integer :: ierr
-                          print*, "hello petsc"
-                          call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-                          ]])],
-          [
-              AC_MSG_NOTICE([PETSc modules are working.])
-              AC_DEFINE(HAVE_PETSC_MODULES,1,[Define if you have petsc fortran modules.] )
-              FCFLAGS="$FCFLAGS -DHAVE_PETSC_MODULES"
-          ],
-          [
-              AC_MSG_NOTICE([PETSc modules don't work, using headers instead.])
-          ])
-elif test "0$PETSC_VERSION_MINOR" -ge 8; then
-  AC_MSG_ERROR([PETSc v3.8 and newer requires petsc fortran modules. Do not use the --disable-petsc-fortran-modules option])
-fi
-
-# now try a more realistic program, it's a stripped down
-# petsc tutorial - using the headers in the same way as we do in the code
-AC_LINK_IFELSE(
-[AC_LANG_SOURCE([
-program test_petsc
-#ifdef HAVE_PETSC_MODULES
-  use petsc
-#endif
-implicit none
-#include "petsc_legacy.h"
-      double precision  norm
-      PetscInt  i,j,II0,m,n,its
-      PetscInt, dimension(1) ::  II, JJ
-      PetscInt  Istart,Iend,ione
-      PetscErrorCode ierr
-      PetscBool flg
-      PetscScalar, dimension(1) :: v
-      PetscScalar one,neg_one
-      Vec         x,b,u
-      Mat         A 
-      KSP         ksp
-
-      call PetscInitialize(PETSC_NULL_CHARACTER,ierr)
-      m = 3
-      n = 3
-      one  = 1.0
-      neg_one = -1.0
-      ione    = 1
-      call PetscOptionsGetInt(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER,'-m',m,flg,ierr)
-      call PetscOptionsGetInt(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER,'-n',n,flg,ierr)
-
-      call MatCreate(PETSC_COMM_WORLD,A,ierr)
-      call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,m*n,m*n,ierr)
-      call MatSetFromOptions(A,ierr)
-
-      call MatGetOwnershipRange(A,Istart,Iend,ierr)
-      
-      do 10, II0=Istart,Iend-1
-        II = II0
-        v = -1.0
-        i = II0/n
-        j = II0 - i*n  
-        if (i.gt.0) then
-          JJ = II - n
-          call MatSetValues(A,ione,II,ione,JJ,v,INSERT_VALUES,ierr)
-        endif
-        if (i.lt.m-1) then
-          JJ = II + n
-          call MatSetValues(A,ione,II,ione,JJ,v,INSERT_VALUES,ierr)
-        endif
-        if (j.gt.0) then
-          JJ = II - 1
-          call MatSetValues(A,ione,II,ione,JJ,v,INSERT_VALUES,ierr)
-        endif
-        if (j.lt.n-1) then
-          JJ = II + 1
-          call MatSetValues(A,ione,II,ione,JJ,v,INSERT_VALUES,ierr)
-        endif
-        v = 4.0
-        call  MatSetValues(A,ione,II,ione,II,v,INSERT_VALUES,ierr)
- 10   continue
-
-      call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-      call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-
-      call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,m*n,u,ierr)
-      call VecSetFromOptions(u,ierr)
-      call VecDuplicate(u,b,ierr)
-      call VecDuplicate(b,x,ierr)
-
-      call VecSet(u,one,ierr)
-      call MatMult(A,u,b,ierr)
-
-      call KSPCreate(PETSC_COMM_WORLD,ksp,ierr)
-      call KSPSetOperators(ksp,A,A,ierr)
-      call KSPSetFromOptions(ksp,ierr)
-
-      call KSPSolve(ksp,b,x,ierr)
-
-      call VecAXPY(x,neg_one,u,ierr)
-      call VecNorm(x,NORM_2,norm,ierr)
-      call KSPGetIterationNumber(ksp,its,ierr)
-
-      call KSPDestroy(ksp,ierr)
-      call VecDestroy(u,ierr)
-      call VecDestroy(x,ierr)
-      call VecDestroy(b,ierr)
-      call MatDestroy(A,ierr)
-
-      call PetscFinalize(ierr)
-end program test_petsc
-])],
-[
-AC_MSG_NOTICE([PETSc program succesfully compiled and linked.])
-],
-[
-cp conftest.F90 test_petsc.F90
-AC_MSG_FAILURE([Failed to compile and link PETSc program.])])
-
-FCFLAGS="$SAVE_FCFLAGS"
-AC_LANG_RESTORE
-
-
-AC_DEFINE(HAVE_PETSC,1,[Define if you have the PETSc library.])
-
-])dnl ACX_PETSc
-
-m4_include(m4/ACX_lib_automagic.m4)
-
-dnl ----------------------------------------------------------------------------
-dnl check for the optional hypre library (linked in with PETSc)
-dnl ----------------------------------------------------------------------------
-AC_DEFUN([ACX_hypre], [
-AC_REQUIRE([ACX_PETSc])
-
-# Ensure the comiler finds the library...
-tmpLIBS=$LIBS
-tmpCPPFLAGS=$CPPFLAGS
-AC_LANG_SAVE
-AC_LANG([Fortran])
-AC_SEARCH_LIBS(
-	[PCHYPRESetType],
-	[HYPRE],
-	[AC_DEFINE(HAVE_HYPRE,1,[Define if you have hypre library.])],)
-# Save variables...
-AC_LANG_RESTORE
-LIBS=$tmpLIBS
-CPPFLAGS=$tmpCPPFLAGS
-])dnl ACX_hypre
+])dnl AX_OPENMP
 
 # ===========================================================================
 #     https://www.gnu.org/software/autoconf-archive/ax_python_devel.html
@@ -608,7 +196,7 @@ CPPFLAGS=$tmpCPPFLAGS
 #
 # SYNOPSIS
 #
-#   AX_PYTHON_DEVEL([version[,optional]])
+#   AX_PYTHON_DEVEL([version])
 #
 # DESCRIPTION
 #
@@ -626,11 +214,6 @@ CPPFLAGS=$tmpCPPFLAGS
 #   match, and pay special attention to the single quotes surrounding the
 #   version number. Don't use "PYTHON_VERSION" for this: that environment
 #   variable is declared as precious and thus reserved for the end-user.
-#
-#   By default this will fail if it does not detect a development version of
-#   python.  If you want it to continue, set optional to true, like
-#   AX_PYTHON_DEVEL([], [true]).  The ax_python_devel_found variable will be
-#   "no" if it fails.
 #
 #   This macro should work for all versions of Python >= 2.1.0. As an end
 #   user, you can disable the check for the python version by setting the
@@ -676,18 +259,10 @@ CPPFLAGS=$tmpCPPFLAGS
 #   modified version of the Autoconf Macro, you may extend this special
 #   exception to the GPL to apply to your modified version as well.
 
-#serial 37
+#serial 33
 
 AU_ALIAS([AC_PYTHON_DEVEL], [AX_PYTHON_DEVEL])
 AC_DEFUN([AX_PYTHON_DEVEL],[
-	# Get whether it's optional
-	if test -z "$2"; then
-	   ax_python_devel_optional=false
-	else
-	   ax_python_devel_optional=$2
-	fi
-	ax_python_devel_found=yes
-
 	#
 	# Allow the use of a (user set) custom python version
 	#
@@ -698,26 +273,21 @@ AC_DEFUN([AX_PYTHON_DEVEL],[
 
 	AC_PATH_PROG([PYTHON],[python[$PYTHON_VERSION]])
 	if test -z "$PYTHON"; then
-	   AC_MSG_WARN([Cannot find python$PYTHON_VERSION in your system path])
-	   if ! $ax_python_devel_optional; then
-	      AC_MSG_ERROR([Giving up, python development not available])
-	   fi
-	   ax_python_devel_found=no
+	   AC_MSG_ERROR([Cannot find python$PYTHON_VERSION in your system path])
 	   PYTHON_VERSION=""
 	fi
 
-	if test $ax_python_devel_found = yes; then
-	   #
-	   # Check for a version of Python >= 2.1.0
-	   #
-	   AC_MSG_CHECKING([for a version of Python >= '2.1.0'])
-	   ac_supports_python_ver=`$PYTHON -c "import sys; \
+	#
+	# Check for a version of Python >= 2.1.0
+	#
+	AC_MSG_CHECKING([for a version of Python >= '2.1.0'])
+	ac_supports_python_ver=`$PYTHON -c "import sys; \
 		ver = sys.version.split ()[[0]]; \
 		print (ver >= '2.1.0')"`
-	   if test "$ac_supports_python_ver" != "True"; then
+	if test "$ac_supports_python_ver" != "True"; then
 		if test -z "$PYTHON_NOVERSIONCHECK"; then
 			AC_MSG_RESULT([no])
-			AC_MSG_WARN([
+			AC_MSG_FAILURE([
 This version of the AC@&t@_PYTHON_DEVEL macro
 doesn't work properly with versions of Python before
 2.1.0. You may need to re-run configure, setting the
@@ -726,27 +296,20 @@ PYTHON_EXTRA_LIBS and PYTHON_EXTRA_LDFLAGS by hand.
 Moreover, to disable this check, set PYTHON_NOVERSIONCHECK
 to something else than an empty string.
 ])
-			if ! $ax_python_devel_optional; then
-			   AC_MSG_FAILURE([Giving up])
-			fi
-			ax_python_devel_found=no
-			PYTHON_VERSION=""
 		else
 			AC_MSG_RESULT([skip at user request])
 		fi
-	   else
+	else
 		AC_MSG_RESULT([yes])
-	   fi
 	fi
 
-	if test $ax_python_devel_found = yes; then
-	   #
-	   # If the macro parameter ``version'' is set, honour it.
-	   # A Python shim class, VPy, is used to implement correct version comparisons via
-	   # string expressions, since e.g. a naive textual ">= 2.7.3" won't work for
-	   # Python 2.7.10 (the ".1" being evaluated as less than ".3").
-	   #
-	   if test -n "$1"; then
+	#
+	# If the macro parameter ``version'' is set, honour it.
+	# A Python shim class, VPy, is used to implement correct version comparisons via
+	# string expressions, since e.g. a naive textual ">= 2.7.3" won't work for
+	# Python 2.7.10 (the ".1" being evaluated as less than ".3").
+	#
+	if test -n "$1"; then
 		AC_MSG_CHECKING([for a version of Python $1])
                 cat << EOF > ax_python_devel_vpy.py
 class VPy:
@@ -776,30 +339,24 @@ EOF
 			AC_MSG_RESULT([yes])
 		else
 			AC_MSG_RESULT([no])
-			AC_MSG_WARN([this package requires Python $1.
+			AC_MSG_ERROR([this package requires Python $1.
 If you have it installed, but it isn't the default Python
 interpreter in your system path, please pass the PYTHON_VERSION
 variable to configure. See ``configure --help'' for reference.
 ])
-			if ! $ax_python_devel_optional; then
-			   AC_MSG_ERROR([Giving up])
-			fi
-			ax_python_devel_found=no
 			PYTHON_VERSION=""
 		fi
-	   fi
 	fi
 
-	if test $ax_python_devel_found = yes; then
-	   #
-	   # Check if you have distutils, else fail
-	   #
-	   AC_MSG_CHECKING([for the sysconfig Python package])
-	   ac_sysconfig_result=`$PYTHON -c "import sysconfig" 2>&1`
-	   if test $? -eq 0; then
+	#
+	# Check if you have distutils, else fail
+	#
+	AC_MSG_CHECKING([for the sysconfig Python package])
+	ac_sysconfig_result=`$PYTHON -c "import sysconfig" 2>&1`
+	if test $? -eq 0; then
 		AC_MSG_RESULT([yes])
 		IMPORT_SYSCONFIG="import sysconfig"
-	   else
+	else
 		AC_MSG_RESULT([no])
 
 		AC_MSG_CHECKING([for the distutils Python package])
@@ -808,24 +365,18 @@ variable to configure. See ``configure --help'' for reference.
 			AC_MSG_RESULT([yes])
 			IMPORT_SYSCONFIG="from distutils import sysconfig"
 		else
-			AC_MSG_WARN([cannot import Python module "distutils".
+			AC_MSG_ERROR([cannot import Python module "distutils".
 Please check your Python installation. The error was:
 $ac_sysconfig_result])
-			if ! $ax_python_devel_optional; then
-			   AC_MSG_ERROR([Giving up])
-			fi
-			ax_python_devel_found=no
 			PYTHON_VERSION=""
 		fi
-	   fi
 	fi
 
-	if test $ax_python_devel_found = yes; then
-	   #
-	   # Check for Python include path
-	   #
-	   AC_MSG_CHECKING([for Python include path])
-	   if test -z "$PYTHON_CPPFLAGS"; then
+	#
+	# Check for Python include path
+	#
+	AC_MSG_CHECKING([for Python include path])
+	if test -z "$PYTHON_CPPFLAGS"; then
 		if test "$IMPORT_SYSCONFIG" = "import sysconfig"; then
 			# sysconfig module has different functions
 			python_path=`$PYTHON -c "$IMPORT_SYSCONFIG; \
@@ -847,15 +398,15 @@ $ac_sysconfig_result])
 			fi
 		fi
 		PYTHON_CPPFLAGS=$python_path
-	   fi
-	   AC_MSG_RESULT([$PYTHON_CPPFLAGS])
-	   AC_SUBST([PYTHON_CPPFLAGS])
+	fi
+	AC_MSG_RESULT([$PYTHON_CPPFLAGS])
+	AC_SUBST([PYTHON_CPPFLAGS])
 
-	   #
-	   # Check for Python library path
-	   #
-	   AC_MSG_CHECKING([for Python library path])
-	   if test -z "$PYTHON_LIBS"; then
+	#
+	# Check for Python library path
+	#
+	AC_MSG_CHECKING([for Python library path])
+	if test -z "$PYTHON_LIBS"; then
 		# (makes two attempts to ensure we've got a version number
 		# from the interpreter)
 		ac_python_version=`cat<<EOD | $PYTHON -
@@ -920,29 +471,21 @@ EOD`
 			PYTHON_LIBS="-L$ac_python_libdir -lpython$ac_python_version"
 		fi
 
-		if test -z "$PYTHON_LIBS"; then
-			AC_MSG_WARN([
+		if test -z "PYTHON_LIBS"; then
+			AC_MSG_ERROR([
   Cannot determine location of your Python DSO. Please check it was installed with
   dynamic libraries enabled, or try setting PYTHON_LIBS by hand.
 			])
-			if ! $ax_python_devel_optional; then
-			   AC_MSG_ERROR([Giving up])
-			fi
-			ax_python_devel_found=no
-			PYTHON_VERSION=""
 		fi
-	   fi
 	fi
+	AC_MSG_RESULT([$PYTHON_LIBS])
+	AC_SUBST([PYTHON_LIBS])
 
-	if test $ax_python_devel_found = yes; then
-	   AC_MSG_RESULT([$PYTHON_LIBS])
-	   AC_SUBST([PYTHON_LIBS])
-
-	   #
-	   # Check for site packages
-	   #
-	   AC_MSG_CHECKING([for Python site-packages path])
-	   if test -z "$PYTHON_SITE_PKG"; then
+	#
+	# Check for site packages
+	#
+	AC_MSG_CHECKING([for Python site-packages path])
+	if test -z "$PYTHON_SITE_PKG"; then
 		if test "$IMPORT_SYSCONFIG" = "import sysconfig"; then
 			PYTHON_SITE_PKG=`$PYTHON -c "
 $IMPORT_SYSCONFIG;
@@ -963,15 +506,15 @@ print(sitedir)"`
 			PYTHON_SITE_PKG=`$PYTHON -c "$IMPORT_SYSCONFIG; \
 				print (sysconfig.get_python_lib(0,0));"`
 		fi
-	   fi
-	   AC_MSG_RESULT([$PYTHON_SITE_PKG])
-	   AC_SUBST([PYTHON_SITE_PKG])
+	fi
+	AC_MSG_RESULT([$PYTHON_SITE_PKG])
+	AC_SUBST([PYTHON_SITE_PKG])
 
-	   #
-	   # Check for platform-specific site packages
-	   #
-	   AC_MSG_CHECKING([for Python platform specific site-packages path])
-	   if test -z "$PYTHON_PLATFORM_SITE_PKG"; then
+	#
+	# Check for platform-specific site packages
+	#
+	AC_MSG_CHECKING([for Python platform specific site-packages path])
+	if test -z "$PYTHON_PLATFORM_SITE_PKG"; then
 		if test "$IMPORT_SYSCONFIG" = "import sysconfig"; then
 			PYTHON_PLATFORM_SITE_PKG=`$PYTHON -c "
 $IMPORT_SYSCONFIG;
@@ -992,62 +535,60 @@ print(sitedir)"`
 			PYTHON_PLATFORM_SITE_PKG=`$PYTHON -c "$IMPORT_SYSCONFIG; \
 				print (sysconfig.get_python_lib(1,0));"`
 		fi
-	   fi
-	   AC_MSG_RESULT([$PYTHON_PLATFORM_SITE_PKG])
-	   AC_SUBST([PYTHON_PLATFORM_SITE_PKG])
+	fi
+	AC_MSG_RESULT([$PYTHON_PLATFORM_SITE_PKG])
+	AC_SUBST([PYTHON_PLATFORM_SITE_PKG])
 
-	   #
-	   # libraries which must be linked in when embedding
-	   #
-	   AC_MSG_CHECKING(python extra libraries)
-	   if test -z "$PYTHON_EXTRA_LIBS"; then
-	      PYTHON_EXTRA_LIBS=`$PYTHON -c "$IMPORT_SYSCONFIG; \
+	#
+	# libraries which must be linked in when embedding
+	#
+	AC_MSG_CHECKING(python extra libraries)
+	if test -z "$PYTHON_EXTRA_LIBS"; then
+	   PYTHON_EXTRA_LIBS=`$PYTHON -c "$IMPORT_SYSCONFIG; \
                 conf = sysconfig.get_config_var; \
                 print (conf('LIBS') + ' ' + conf('SYSLIBS'))"`
-	   fi
-	   AC_MSG_RESULT([$PYTHON_EXTRA_LIBS])
-	   AC_SUBST(PYTHON_EXTRA_LIBS)
+	fi
+	AC_MSG_RESULT([$PYTHON_EXTRA_LIBS])
+	AC_SUBST(PYTHON_EXTRA_LIBS)
 
-	   #
-	   # linking flags needed when embedding
-	   #
-	   AC_MSG_CHECKING(python extra linking flags)
-	   if test -z "$PYTHON_EXTRA_LDFLAGS"; then
+	#
+	# linking flags needed when embedding
+	#
+	AC_MSG_CHECKING(python extra linking flags)
+	if test -z "$PYTHON_EXTRA_LDFLAGS"; then
 		PYTHON_EXTRA_LDFLAGS=`$PYTHON -c "$IMPORT_SYSCONFIG; \
 			conf = sysconfig.get_config_var; \
 			print (conf('LINKFORSHARED'))"`
-		# Hack for macos, it sticks this in here.
-		PYTHON_EXTRA_LDFLAGS=`echo $PYTHON_EXTRA_LDFLAGS | sed 's/CoreFoundation.*$/CoreFoundation/'`
-	   fi
-	   AC_MSG_RESULT([$PYTHON_EXTRA_LDFLAGS])
-	   AC_SUBST(PYTHON_EXTRA_LDFLAGS)
+	fi
+	AC_MSG_RESULT([$PYTHON_EXTRA_LDFLAGS])
+	AC_SUBST(PYTHON_EXTRA_LDFLAGS)
 
-	   #
-	   # final check to see if everything compiles alright
-	   #
-	   AC_MSG_CHECKING([consistency of all components of python development environment])
-	   # save current global flags
-	   ac_save_LIBS="$LIBS"
-	   ac_save_LDFLAGS="$LDFLAGS"
-	   ac_save_CPPFLAGS="$CPPFLAGS"
-	   LIBS="$ac_save_LIBS $PYTHON_LIBS $PYTHON_EXTRA_LIBS"
-	   LDFLAGS="$ac_save_LDFLAGS $PYTHON_EXTRA_LDFLAGS"
-	   CPPFLAGS="$ac_save_CPPFLAGS $PYTHON_CPPFLAGS"
-	   AC_LANG_PUSH([C])
-	   AC_LINK_IFELSE([
+	#
+	# final check to see if everything compiles alright
+	#
+	AC_MSG_CHECKING([consistency of all components of python development environment])
+	# save current global flags
+	ac_save_LIBS="$LIBS"
+	ac_save_LDFLAGS="$LDFLAGS"
+	ac_save_CPPFLAGS="$CPPFLAGS"
+	LIBS="$ac_save_LIBS $PYTHON_LIBS $PYTHON_EXTRA_LIBS"
+	LDFLAGS="$ac_save_LDFLAGS $PYTHON_EXTRA_LDFLAGS"
+	CPPFLAGS="$ac_save_CPPFLAGS $PYTHON_CPPFLAGS"
+	AC_LANG_PUSH([C])
+	AC_LINK_IFELSE([
 		AC_LANG_PROGRAM([[#include <Python.h>]],
 				[[Py_Initialize();]])
 		],[pythonexists=yes],[pythonexists=no])
-	   AC_LANG_POP([C])
-	   # turn back to default flags
-	   CPPFLAGS="$ac_save_CPPFLAGS"
-	   LIBS="$ac_save_LIBS"
-	   LDFLAGS="$ac_save_LDFLAGS"
+	AC_LANG_POP([C])
+	# turn back to default flags
+	CPPFLAGS="$ac_save_CPPFLAGS"
+	LIBS="$ac_save_LIBS"
+	LDFLAGS="$ac_save_LDFLAGS"
 
-	   AC_MSG_RESULT([$pythonexists])
+	AC_MSG_RESULT([$pythonexists])
 
-	   if test ! "x$pythonexists" = "xyes"; then
-	      AC_MSG_WARN([
+	if test ! "x$pythonexists" = "xyes"; then
+	   AC_MSG_FAILURE([
   Could not link test program to Python. Maybe the main Python library has been
   installed in some non-standard library path. If so, pass it to configure,
   via the LIBS environment variable.
@@ -1057,13 +598,8 @@ print(sitedir)"`
    You probably have to install the development version of the Python package
    for your distribution.  The exact name of this package varies among them.
   ============================================================================
-	      ])
-	      if ! $ax_python_devel_optional; then
-		 AC_MSG_ERROR([Giving up])
-	      fi
-	      ax_python_devel_found=no
-	      PYTHON_VERSION=""
-	   fi
+	   ])
+	  PYTHON_VERSION=""
 	fi
 
 	#
@@ -1071,42 +607,352 @@ print(sitedir)"`
 	#
 ])
 
+# pkg.m4 - Macros to locate and use pkg-config.   -*- Autoconf -*-
+# serial 12 (pkg-config-0.29.2)
 
-AC_DEFUN([ACX_adjoint], [
-# Set variables...
-AC_ARG_WITH(
-	[adjoint],
-	[  --with-adjoint=prefix        Prefix where libadjoint is installed],
-	[adjoint="$withval"],
-    [])
+dnl Copyright © 2004 Scott James Remnant <scott@netsplit.com>.
+dnl Copyright © 2012-2015 Dan Nicholson <dbn.lists@gmail.com>
+dnl
+dnl This program is free software; you can redistribute it and/or modify
+dnl it under the terms of the GNU General Public License as published by
+dnl the Free Software Foundation; either version 2 of the License, or
+dnl (at your option) any later version.
+dnl
+dnl This program is distributed in the hope that it will be useful, but
+dnl WITHOUT ANY WARRANTY; without even the implied warranty of
+dnl MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+dnl General Public License for more details.
+dnl
+dnl You should have received a copy of the GNU General Public License
+dnl along with this program; if not, write to the Free Software
+dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+dnl 02111-1307, USA.
+dnl
+dnl As a special exception to the GNU General Public License, if you
+dnl distribute this file as part of a program that contains a
+dnl configuration script generated by Autoconf, you may include it under
+dnl the same distribution terms that you use for the rest of that
+dnl program.
 
-bakLIBS=$LIBS
-tmpLIBS=$LIBS
-tmpCPPFLAGS=$CPPFLAGS
-if test "$adjoint" != "no"; then
-  if test -d "$adjoint" ; then
-    adjoint_LIBS_PATH="$adjoint/lib"
-    adjoint_INCLUDES_PATH="$adjoint/include"
-    # Ensure the comiler finds the library...
-    tmpLIBS="$tmpLIBS -L$adjoint/lib"
-    tmpCPPFLAGS="$tmpCPPFLAGS  -I$adjoint/include -I$adjoint/include/libadjoint"
-  fi
-  if [[ -f /usr/lib/libadjoint.a -o -f /usr/local/lib/libadjoint.a ]] ; then
-    tmpLIBS="$tmpLIBS -L/usr/lib -L/usr/local/lib/ -ladjoint"
-    tmpCPPFLAGS="$tmpCPPFLAGS -I/usr/include/ -I/usr/local/include/ -I/usr/include/libadjoint -I/usr/local/include/libadjoint"
-  fi
+dnl PKG_PREREQ(MIN-VERSION)
+dnl -----------------------
+dnl Since: 0.29
+dnl
+dnl Verify that the version of the pkg-config macros are at least
+dnl MIN-VERSION. Unlike PKG_PROG_PKG_CONFIG, which checks the user's
+dnl installed version of pkg-config, this checks the developer's version
+dnl of pkg.m4 when generating configure.
+dnl
+dnl To ensure that this macro is defined, also add:
+dnl m4_ifndef([PKG_PREREQ],
+dnl     [m4_fatal([must install pkg-config 0.29 or later before running autoconf/autogen])])
+dnl
+dnl See the "Since" comment for each macro you use to see what version
+dnl of the macros you require.
+m4_defun([PKG_PREREQ],
+[m4_define([PKG_MACROS_VERSION], [0.29.2])
+m4_if(m4_version_compare(PKG_MACROS_VERSION, [$1]), -1,
+    [m4_fatal([pkg.m4 version $1 or higher is required but ]PKG_MACROS_VERSION[ found])])
+])dnl PKG_PREREQ
+
+dnl PKG_PROG_PKG_CONFIG([MIN-VERSION])
+dnl ----------------------------------
+dnl Since: 0.16
+dnl
+dnl Search for the pkg-config tool and set the PKG_CONFIG variable to
+dnl first found in the path. Checks that the version of pkg-config found
+dnl is at least MIN-VERSION. If MIN-VERSION is not specified, 0.9.0 is
+dnl used since that's the first version where most current features of
+dnl pkg-config existed.
+AC_DEFUN([PKG_PROG_PKG_CONFIG],
+[m4_pattern_forbid([^_?PKG_[A-Z_]+$])
+m4_pattern_allow([^PKG_CONFIG(_(PATH|LIBDIR|SYSROOT_DIR|ALLOW_SYSTEM_(CFLAGS|LIBS)))?$])
+m4_pattern_allow([^PKG_CONFIG_(DISABLE_UNINSTALLED|TOP_BUILD_DIR|DEBUG_SPEW)$])
+AC_ARG_VAR([PKG_CONFIG], [path to pkg-config utility])
+AC_ARG_VAR([PKG_CONFIG_PATH], [directories to add to pkg-config's search path])
+AC_ARG_VAR([PKG_CONFIG_LIBDIR], [path overriding pkg-config's built-in search path])
+
+if test "x$ac_cv_env_PKG_CONFIG_set" != "xset"; then
+	AC_PATH_TOOL([PKG_CONFIG], [pkg-config])
 fi
-LIBS=$tmpLIBS
-CPPFLAGS=$tmpCPPFLAGS
+if test -n "$PKG_CONFIG"; then
+	_pkg_min_version=m4_default([$1], [0.9.0])
+	AC_MSG_CHECKING([pkg-config is at least version $_pkg_min_version])
+	if $PKG_CONFIG --atleast-pkgconfig-version $_pkg_min_version; then
+		AC_MSG_RESULT([yes])
+	else
+		AC_MSG_RESULT([no])
+		PKG_CONFIG=""
+	fi
+fi[]dnl
+])dnl PKG_PROG_PKG_CONFIG
 
-AC_LANG_SAVE
-AC_LANG_C
-AC_CHECK_LIB(
-	[adjoint],
-	[adj_get_adjoint_equation],
-	[AC_DEFINE(HAVE_ADJOINT,1,[Define if you have libadjoint.])HAVE_ADJOINT=yes],
-	[AC_MSG_WARN( [Could not link in libadjoint ... ] );HAVE_ADJOINT=no;LIBS=$bakLIBS] )
-# Save variables...
-AC_LANG_RESTORE
+dnl PKG_CHECK_EXISTS(MODULES, [ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+dnl -------------------------------------------------------------------
+dnl Since: 0.18
+dnl
+dnl Check to see whether a particular set of modules exists. Similar to
+dnl PKG_CHECK_MODULES(), but does not set variables or print errors.
+dnl
+dnl Please remember that m4 expands AC_REQUIRE([PKG_PROG_PKG_CONFIG])
+dnl only at the first occurrence in configure.ac, so if the first place
+dnl it's called might be skipped (such as if it is within an "if", you
+dnl have to call PKG_CHECK_EXISTS manually
+AC_DEFUN([PKG_CHECK_EXISTS],
+[AC_REQUIRE([PKG_PROG_PKG_CONFIG])dnl
+if test -n "$PKG_CONFIG" && \
+    AC_RUN_LOG([$PKG_CONFIG --exists --print-errors "$1"]); then
+  m4_default([$2], [:])
+m4_ifvaln([$3], [else
+  $3])dnl
+fi])
 
-])dnl ACX_adjoint
+dnl _PKG_CONFIG([VARIABLE], [COMMAND], [MODULES])
+dnl ---------------------------------------------
+dnl Internal wrapper calling pkg-config via PKG_CONFIG and setting
+dnl pkg_failed based on the result.
+m4_define([_PKG_CONFIG],
+[if test -n "$$1"; then
+    pkg_cv_[]$1="$$1"
+ elif test -n "$PKG_CONFIG"; then
+    PKG_CHECK_EXISTS([$3],
+                     [pkg_cv_[]$1=`$PKG_CONFIG --[]$2 "$3" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes ],
+		     [pkg_failed=yes])
+ else
+    pkg_failed=untried
+fi[]dnl
+])dnl _PKG_CONFIG
+
+dnl _PKG_SHORT_ERRORS_SUPPORTED
+dnl ---------------------------
+dnl Internal check to see if pkg-config supports short errors.
+AC_DEFUN([_PKG_SHORT_ERRORS_SUPPORTED],
+[AC_REQUIRE([PKG_PROG_PKG_CONFIG])
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi[]dnl
+])dnl _PKG_SHORT_ERRORS_SUPPORTED
+
+
+dnl PKG_CHECK_MODULES(VARIABLE-PREFIX, MODULES, [ACTION-IF-FOUND],
+dnl   [ACTION-IF-NOT-FOUND])
+dnl --------------------------------------------------------------
+dnl Since: 0.4.0
+dnl
+dnl Note that if there is a possibility the first call to
+dnl PKG_CHECK_MODULES might not happen, you should be sure to include an
+dnl explicit call to PKG_PROG_PKG_CONFIG in your configure.ac
+AC_DEFUN([PKG_CHECK_MODULES],
+[AC_REQUIRE([PKG_PROG_PKG_CONFIG])dnl
+AC_ARG_VAR([$1][_CFLAGS], [C compiler flags for $1, overriding pkg-config])dnl
+AC_ARG_VAR([$1][_LIBS], [linker flags for $1, overriding pkg-config])dnl
+
+pkg_failed=no
+AC_MSG_CHECKING([for $2])
+
+_PKG_CONFIG([$1][_CFLAGS], [cflags], [$2])
+_PKG_CONFIG([$1][_LIBS], [libs], [$2])
+
+m4_define([_PKG_TEXT], [Alternatively, you may set the environment variables $1[]_CFLAGS
+and $1[]_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.])
+
+if test $pkg_failed = yes; then
+        AC_MSG_RESULT([no])
+        _PKG_SHORT_ERRORS_SUPPORTED
+        if test $_pkg_short_errors_supported = yes; then
+                $1[]_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "$2" 2>&1`
+        else
+                $1[]_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "$2" 2>&1`
+        fi
+        # Put the nasty error message in config.log where it belongs
+        echo "$$1[]_PKG_ERRORS" >&AS_MESSAGE_LOG_FD
+
+        m4_default([$4], [AC_MSG_ERROR(
+[Package requirements ($2) were not met:
+
+$$1_PKG_ERRORS
+
+Consider adjusting the PKG_CONFIG_PATH environment variable if you
+installed software in a non-standard prefix.
+
+_PKG_TEXT])[]dnl
+        ])
+elif test $pkg_failed = untried; then
+        AC_MSG_RESULT([no])
+        m4_default([$4], [AC_MSG_FAILURE(
+[The pkg-config script could not be found or is too old.  Make sure it
+is in your PATH or set the PKG_CONFIG environment variable to the full
+path to pkg-config.
+
+_PKG_TEXT
+
+To get pkg-config, see <http://pkg-config.freedesktop.org/>.])[]dnl
+        ])
+else
+        $1[]_CFLAGS=$pkg_cv_[]$1[]_CFLAGS
+        $1[]_LIBS=$pkg_cv_[]$1[]_LIBS
+        AC_MSG_RESULT([yes])
+        $3
+fi[]dnl
+])dnl PKG_CHECK_MODULES
+
+
+dnl PKG_CHECK_MODULES_STATIC(VARIABLE-PREFIX, MODULES, [ACTION-IF-FOUND],
+dnl   [ACTION-IF-NOT-FOUND])
+dnl ---------------------------------------------------------------------
+dnl Since: 0.29
+dnl
+dnl Checks for existence of MODULES and gathers its build flags with
+dnl static libraries enabled. Sets VARIABLE-PREFIX_CFLAGS from --cflags
+dnl and VARIABLE-PREFIX_LIBS from --libs.
+dnl
+dnl Note that if there is a possibility the first call to
+dnl PKG_CHECK_MODULES_STATIC might not happen, you should be sure to
+dnl include an explicit call to PKG_PROG_PKG_CONFIG in your
+dnl configure.ac.
+AC_DEFUN([PKG_CHECK_MODULES_STATIC],
+[AC_REQUIRE([PKG_PROG_PKG_CONFIG])dnl
+_save_PKG_CONFIG=$PKG_CONFIG
+PKG_CONFIG="$PKG_CONFIG --static"
+PKG_CHECK_MODULES($@)
+PKG_CONFIG=$_save_PKG_CONFIG[]dnl
+])dnl PKG_CHECK_MODULES_STATIC
+
+
+dnl PKG_INSTALLDIR([DIRECTORY])
+dnl -------------------------
+dnl Since: 0.27
+dnl
+dnl Substitutes the variable pkgconfigdir as the location where a module
+dnl should install pkg-config .pc files. By default the directory is
+dnl $libdir/pkgconfig, but the default can be changed by passing
+dnl DIRECTORY. The user can override through the --with-pkgconfigdir
+dnl parameter.
+AC_DEFUN([PKG_INSTALLDIR],
+[m4_pushdef([pkg_default], [m4_default([$1], ['${libdir}/pkgconfig'])])
+m4_pushdef([pkg_description],
+    [pkg-config installation directory @<:@]pkg_default[@:>@])
+AC_ARG_WITH([pkgconfigdir],
+    [AS_HELP_STRING([--with-pkgconfigdir], pkg_description)],,
+    [with_pkgconfigdir=]pkg_default)
+AC_SUBST([pkgconfigdir], [$with_pkgconfigdir])
+m4_popdef([pkg_default])
+m4_popdef([pkg_description])
+])dnl PKG_INSTALLDIR
+
+
+dnl PKG_NOARCH_INSTALLDIR([DIRECTORY])
+dnl --------------------------------
+dnl Since: 0.27
+dnl
+dnl Substitutes the variable noarch_pkgconfigdir as the location where a
+dnl module should install arch-independent pkg-config .pc files. By
+dnl default the directory is $datadir/pkgconfig, but the default can be
+dnl changed by passing DIRECTORY. The user can override through the
+dnl --with-noarch-pkgconfigdir parameter.
+AC_DEFUN([PKG_NOARCH_INSTALLDIR],
+[m4_pushdef([pkg_default], [m4_default([$1], ['${datadir}/pkgconfig'])])
+m4_pushdef([pkg_description],
+    [pkg-config arch-independent installation directory @<:@]pkg_default[@:>@])
+AC_ARG_WITH([noarch-pkgconfigdir],
+    [AS_HELP_STRING([--with-noarch-pkgconfigdir], pkg_description)],,
+    [with_noarch_pkgconfigdir=]pkg_default)
+AC_SUBST([noarch_pkgconfigdir], [$with_noarch_pkgconfigdir])
+m4_popdef([pkg_default])
+m4_popdef([pkg_description])
+])dnl PKG_NOARCH_INSTALLDIR
+
+
+dnl PKG_CHECK_VAR(VARIABLE, MODULE, CONFIG-VARIABLE,
+dnl [ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
+dnl -------------------------------------------
+dnl Since: 0.28
+dnl
+dnl Retrieves the value of the pkg-config variable for the given module.
+AC_DEFUN([PKG_CHECK_VAR],
+[AC_REQUIRE([PKG_PROG_PKG_CONFIG])dnl
+AC_ARG_VAR([$1], [value of $3 for $2, overriding pkg-config])dnl
+
+_PKG_CONFIG([$1], [variable="][$3]["], [$2])
+AS_VAR_COPY([$1], [pkg_cv_][$1])
+
+AS_VAR_IF([$1], [""], [$5], [$4])dnl
+])dnl PKG_CHECK_VAR
+
+dnl PKG_WITH_MODULES(VARIABLE-PREFIX, MODULES,
+dnl   [ACTION-IF-FOUND],[ACTION-IF-NOT-FOUND],
+dnl   [DESCRIPTION], [DEFAULT])
+dnl ------------------------------------------
+dnl
+dnl Prepare a "--with-" configure option using the lowercase
+dnl [VARIABLE-PREFIX] name, merging the behaviour of AC_ARG_WITH and
+dnl PKG_CHECK_MODULES in a single macro.
+AC_DEFUN([PKG_WITH_MODULES],
+[
+m4_pushdef([with_arg], m4_tolower([$1]))
+
+m4_pushdef([description],
+           [m4_default([$5], [build with ]with_arg[ support])])
+
+m4_pushdef([def_arg], [m4_default([$6], [auto])])
+m4_pushdef([def_action_if_found], [AS_TR_SH([with_]with_arg)=yes])
+m4_pushdef([def_action_if_not_found], [AS_TR_SH([with_]with_arg)=no])
+
+m4_case(def_arg,
+            [yes],[m4_pushdef([with_without], [--without-]with_arg)],
+            [m4_pushdef([with_without],[--with-]with_arg)])
+
+AC_ARG_WITH(with_arg,
+     AS_HELP_STRING(with_without, description[ @<:@default=]def_arg[@:>@]),,
+    [AS_TR_SH([with_]with_arg)=def_arg])
+
+AS_CASE([$AS_TR_SH([with_]with_arg)],
+            [yes],[PKG_CHECK_MODULES([$1],[$2],$3,$4)],
+            [auto],[PKG_CHECK_MODULES([$1],[$2],
+                                        [m4_n([def_action_if_found]) $3],
+                                        [m4_n([def_action_if_not_found]) $4])])
+
+m4_popdef([with_arg])
+m4_popdef([description])
+m4_popdef([def_arg])
+
+])dnl PKG_WITH_MODULES
+
+dnl PKG_HAVE_WITH_MODULES(VARIABLE-PREFIX, MODULES,
+dnl   [DESCRIPTION], [DEFAULT])
+dnl -----------------------------------------------
+dnl
+dnl Convenience macro to trigger AM_CONDITIONAL after PKG_WITH_MODULES
+dnl check._[VARIABLE-PREFIX] is exported as make variable.
+AC_DEFUN([PKG_HAVE_WITH_MODULES],
+[
+PKG_WITH_MODULES([$1],[$2],,,[$3],[$4])
+
+AM_CONDITIONAL([HAVE_][$1],
+               [test "$AS_TR_SH([with_]m4_tolower([$1]))" = "yes"])
+])dnl PKG_HAVE_WITH_MODULES
+
+dnl PKG_HAVE_DEFINE_WITH_MODULES(VARIABLE-PREFIX, MODULES,
+dnl   [DESCRIPTION], [DEFAULT])
+dnl ------------------------------------------------------
+dnl
+dnl Convenience macro to run AM_CONDITIONAL and AC_DEFINE after
+dnl PKG_WITH_MODULES check. HAVE_[VARIABLE-PREFIX] is exported as make
+dnl and preprocessor variable.
+AC_DEFUN([PKG_HAVE_DEFINE_WITH_MODULES],
+[
+PKG_HAVE_WITH_MODULES([$1],[$2],[$3],[$4])
+
+AS_IF([test "$AS_TR_SH([with_]m4_tolower([$1]))" = "yes"],
+        [AC_DEFINE([HAVE_][$1], 1, [Enable ]m4_tolower([$1])[ support])])
+])dnl PKG_HAVE_DEFINE_WITH_MODULES
+
+m4_include([m4/libtool.m4])
+m4_include([m4/ltoptions.m4])
+m4_include([m4/ltsugar.m4])
+m4_include([m4/ltversion.m4])
+m4_include([m4/lt~obsolete.m4])

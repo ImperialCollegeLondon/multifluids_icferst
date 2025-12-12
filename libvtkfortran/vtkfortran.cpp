@@ -31,15 +31,24 @@
 
 #ifdef HAVE_MPI
 #include <mpi.h>
+#include <vtkMPIController.h>
+#else
+#include <vtkDummyController.h>
 #endif
 
-#ifdef HAVE_VTK
-
-#include <vtk.h>
-
-#if VTK_MAJOR_VERSION>6
-#define VTK_USES_MPI 1
-#endif
+#include <vtkUnstructuredGrid.h>
+#include <vtkPoints.h>
+#include <vtkCellArray.h>
+#include <vtkXMLUnstructuredGridWriter.h>
+#include <vtkXMLPUnstructuredGridWriter.h>
+#include <vtkZLibDataCompressor.h>
+#include <vtkIntArray.h>
+#include <vtkFloatArray.h>
+#include <vtkDoubleArray.h>
+#include <vtkUnsignedCharArray.h>
+#include <vtkDataSetAttributes.h>
+#include <vtkCellData.h>
+#include <vtkPointData.h>
 
 #include <vector>
 #include <string>
@@ -48,7 +57,7 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-
+#include <cstring>
 #include "tinyxml.h"
 
 using namespace std;
@@ -123,9 +132,6 @@ extern "C" {
     initialized = true;
 
     dataSet = vtkUnstructuredGrid::New();
-#ifdef DEBUG
-    dataSet->DebugOn();
-#endif
     string title(vtkTitle, *len2);
     fl_vtkFileName = string(outName, *len1);
 
@@ -271,8 +277,6 @@ extern "C" {
       newScalars->InsertValue(i, vect[i]);
 
     dataSet->GetPointData()->AddArray(newScalars);
-    dataSet->GetPointData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::SCALARS);
-
     newScalars->Delete();
     return;
   }
@@ -295,8 +299,6 @@ extern "C" {
       newScalars->InsertValue(i, vect[i]);
 
     dataSet->GetPointData()->AddArray(newScalars);
-    dataSet->GetPointData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::SCALARS);
-
     newScalars->Delete();
     return;
   }
@@ -319,8 +321,6 @@ extern "C" {
       newScalars->InsertValue(i, vect[i]);
 
     dataSet->GetPointData()->AddArray(newScalars);
-    dataSet->GetPointData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::SCALARS);
-
     newScalars->Delete();
     return;
   }
@@ -345,8 +345,6 @@ extern "C" {
     }
 
     dataSet->GetPointData()->AddArray(newVectors);
-    dataSet->GetPointData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::VECTORS);
-
     newVectors->Delete();
     return;
   }
@@ -371,8 +369,6 @@ extern "C" {
     }
 
     dataSet->GetPointData()->AddArray(newVectors);
-    dataSet->GetPointData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::VECTORS);
-
     newVectors->Delete();
     return;
   }
@@ -402,10 +398,6 @@ extern "C" {
     }
 
     dataSet->GetPointData()->AddArray(newTensors);
-    dataSet->GetPointData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::TENSORS);
-
-    dataSet->GetPointData()->SetTensors( newTensors );
-
     newTensors->Delete();
     return;
   }
@@ -435,10 +427,6 @@ extern "C" {
     }
 
     dataSet->GetPointData()->AddArray(newTensors);
-    dataSet->GetPointData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::TENSORS);
-
-    dataSet->GetPointData()->SetTensors( newTensors );
-
     newTensors->Delete();
     return;
   }
@@ -462,8 +450,6 @@ extern "C" {
       newScalars->InsertValue(i, vect[i]);
 
     dataSet->GetCellData()->AddArray(newScalars);
-    dataSet->GetCellData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::SCALARS);
-
     newScalars->Delete();
     return;
   }
@@ -473,31 +459,47 @@ extern "C" {
      Write out VTK ghost levels.
      @param[in] ghost_levels This array is 0 for owned elements, 1 otherwise.
   */
-  void vtkwriteghostlevels(int *ghost_levels) {
-      vtkUnsignedCharArray *ghostArray = vtkUnsignedCharArray::New();
-      ghostArray->SetName("vtkGhostType");
-      ghostArray->SetNumberOfComponents(1);
-      ghostArray->SetNumberOfTuples(ecnt);
 
-      vtkFloatArray *ghostScalar = vtkFloatArray::New();  // New array for visualization
-      ghostScalar->SetName("GhostCellScalar");
-      ghostScalar->SetNumberOfComponents(1);
-      ghostScalar->SetNumberOfTuples(ecnt);
+#if VTK_MAJOR_VERSION >= 9
+    void vtkwriteghostlevels(int *ghost_levels) {
+        vtkUnsignedCharArray *ghosts = vtkUnsignedCharArray::New();
+        ghosts->SetName(vtkDataSetAttributes::GhostArrayName());
+        ghosts->SetNumberOfTuples(ecnt);
 
-      for (unsigned i = 0; i < ecnt; i++) {
-          unsigned char ghostValue = ghost_levels[i] ? vtkDataSetAttributes::DUPLICATECELL : 0;
-          ghostArray->InsertValue(i, ghostValue);
-          ghostScalar->InsertValue(i, ghost_levels[i]);  // 0 or 1, directly usable in ParaView
-      }
+        for(unsigned i=0; i<ecnt; i++) {
+            ghosts->SetValue(i, ghost_levels[i] ? vtkDataSetAttributes::HIDDENCELL : 0);
+        }
 
-      dataSet->GetCellData()->AddArray(ghostArray);
-      dataSet->GetCellData()->SetActiveScalars("vtkGhostType");  // Needed for ghost handling
+        dataSet->GetCellData()->AddArray(ghosts);
+        ghosts->Delete();
+    }
+#else
+    void vtkwriteghostlevels(int *ghost_levels) {
+        vtkUnsignedCharArray *ghostArray = vtkUnsignedCharArray::New();
+        ghostArray->SetName("vtkGhostType");
+        ghostArray->SetNumberOfComponents(1);
+        ghostArray->SetNumberOfTuples(ecnt);
 
-      dataSet->GetCellData()->AddArray(ghostScalar);  // This one will be visible in ParaView
+        vtkFloatArray *ghostScalar = vtkFloatArray::New();  // New array for visualization
+        ghostScalar->SetName("GhostCellScalar");
+        ghostScalar->SetNumberOfComponents(1);
+        ghostScalar->SetNumberOfTuples(ecnt);
 
-      ghostArray->Delete();
-      ghostScalar->Delete();
-  }
+        for (unsigned i = 0; i < ecnt; i++) {
+            unsigned char ghostValue = ghost_levels[i] ? vtkDataSetAttributes::DUPLICATECELL : 0;
+            ghostArray->InsertValue(i, ghostValue);
+            ghostScalar->InsertValue(i, ghost_levels[i]);  // 0 or 1, directly usable in ParaView
+        }
+
+        dataSet->GetCellData()->AddArray(ghostArray);
+        dataSet->GetCellData()->SetActiveScalars("vtkGhostType");  // Needed for ghost handling
+
+        dataSet->GetCellData()->AddArray(ghostScalar);  // This one will be visible in ParaView
+
+        ghostArray->Delete();
+        ghostScalar->Delete();
+    }
+#endif
 
   /**
      Writes cellular scalar float values.
@@ -517,8 +519,6 @@ extern "C" {
       newScalars->InsertValue(i, vect[i]);
 
     dataSet->GetCellData()->AddArray(newScalars);
-    dataSet->GetCellData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::SCALARS);
-
     newScalars->Delete();
     return;
   }
@@ -541,8 +541,6 @@ extern "C" {
       newScalars->InsertValue(i, vect[i]);
 
     dataSet->GetCellData()->AddArray(newScalars);
-    dataSet->GetCellData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::SCALARS);
-
     newScalars->Delete();
     return;
   }
@@ -567,8 +565,6 @@ extern "C" {
     }
 
     dataSet->GetCellData()->AddArray(newVectors);
-    dataSet->GetCellData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::VECTORS);
-
     newVectors->Delete();
     return;
   }
@@ -593,8 +589,6 @@ extern "C" {
     }
 
     dataSet->GetCellData()->AddArray(newVectors);
-    dataSet->GetCellData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::VECTORS);
-
     newVectors->Delete();
     return;
   }
@@ -624,10 +618,6 @@ extern "C" {
     }
 
     dataSet->GetCellData()->AddArray(newTensors);
-    dataSet->GetCellData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::TENSORS);
-
-    dataSet->GetCellData()->SetTensors( newTensors );
-
     newTensors->Delete();
     return;
   }
@@ -657,10 +647,6 @@ extern "C" {
     }
 
     dataSet->GetCellData()->AddArray(newTensors);
-    dataSet->GetCellData()->SetActiveAttribute(tag.c_str(), vtkDataSetAttributes::TENSORS);
-
-    dataSet->GetCellData()->SetTensors( newTensors );
-
     newTensors->Delete();
     return;
   }
@@ -670,24 +656,12 @@ extern "C" {
    */
   void vtkclose(){
     vtkXMLUnstructuredGridWriter *writer= vtkXMLUnstructuredGridWriter::New();
-
-#ifdef DEBUG
-    writer->DebugOn();
-#endif
     vtkZLibDataCompressor* compressor = vtkZLibDataCompressor::New();
 
-#ifdef DEBUG
-    cerr<<"fl_vtkFileName - "<<fl_vtkFileName<<endl;
-#endif
     writer->SetFileName( fl_vtkFileName.c_str() );
-
-    // writer->SetDataModeToAppended();
     writer->SetDataModeToBinary();
-    writer->SetEncodeAppendedData(1);       // Base64-encode appended payload
-    writer->SetCompressorTypeToNone();  
-
-    writer->EncodeAppendedDataOff();
-
+    writer->SetCompressorTypeToZLib();
+    writer->SetEncodeAppendedData(0);
 #if VTK_MAJOR_VERSION <= 5
     writer->SetInput(dataSet);
 #else
@@ -708,20 +682,14 @@ extern "C" {
   }
 
   void _vtkpclose_nointerleave(const int *rank, const int *npartitions){
-    if((*npartitions)<2)
+    if((*npartitions)<2){
       vtkclose();
+      return;
+    }
 
     vtkXMLPUnstructuredGridWriter *writer= vtkXMLPUnstructuredGridWriter::New();
-
-#ifdef DEBUG
-    writer->DebugOn();
-#endif
     vtkZLibDataCompressor* compressor = vtkZLibDataCompressor::New();
 
-    writer->SetDataModeToBinary();
-#ifdef DEBUG
-    cerr<<"fl_vtkFileName - "<<fl_vtkFileName<<endl;
-#endif
     string filename = fl_vtkFileName;
     bool is_pvtu = false;
     string basename;
@@ -749,36 +717,62 @@ extern "C" {
     compressor->Delete();
 
     writer->SetDataModeToBinary();
-    writer->SetEncodeAppendedData(1);       // Base64-encode appended payload
-    writer->SetCompressorTypeToNone();  
+    writer->SetCompressorTypeToZLib();
+    writer->SetEncodeAppendedData(0);
 
-    writer->EncodeAppendedDataOff();
-#ifdef VTK_USES_MPI
-    // From version 6.3 VTK uses parallel communication to decide
-    // which files have been written
-    if (!writer->GetController()) {
-      vtkMPIController *cont = vtkMPIController::New();
-      cont->SetCommunicator(vtkMPICommunicator::GetWorldCommunicator());
-      writer->SetController(cont);
-    }
-    writer->SetWriteSummaryFile(true);
-#else
-    writer->SetWriteSummaryFile((*rank)==0);
-#endif
+#if VTK_MAJOR_VERSION >= 9
+  #ifdef HAVE_MPI
+      if (!writer->GetController()) {
+        vtkMPIController *cont = vtkMPIController::New();
+        // cont->Initialize();
+        cont->SetCommunicator(vtkMPICommunicator::GetWorldCommunicator());
+        writer->SetController(cont);
+        cont->Delete();
+      }
+      writer->SetWriteSummaryFile(1);
+  #else
+      writer->SetWriteSummaryFile((*rank)==0);
+  #endif
 
-    writer->Write();
-    writer->Delete();
+      writer->Write();
+      writer->Delete();
 
-    // Finished
-    dataSet->Delete();
-    dataSet = NULL;
+      // Finished
+      dataSet->Delete();
+      dataSet = NULL;
 
-    if(is_pvtu){
-      if((*rank)==0){
+      if(is_pvtu && (*rank)==0){
         rename(filename.c_str(), fl_vtkFileName.c_str());
         pvtu_fix_path(fl_vtkFileName.c_str(), basename.c_str());
       }
-    }
+#else
+  #ifdef VTK_USES_MPI
+      // From version 6.3 VTK uses parallel communication to decide
+      // which files have been written
+      if (!writer->GetController()) {
+        vtkMPIController *cont = vtkMPIController::New();
+        cont->SetCommunicator(vtkMPICommunicator::GetWorldCommunicator());
+        writer->SetController(cont);
+      }
+      writer->SetWriteSummaryFile(true);
+  #else
+      writer->SetWriteSummaryFile((*rank)==0);
+  #endif
+
+      writer->Write();
+      writer->Delete();
+
+      // Finished
+      dataSet->Delete();
+      dataSet = NULL;
+
+      if(is_pvtu){
+        if((*rank)==0){
+          rename(filename.c_str(), fl_vtkFileName.c_str());
+          pvtu_fix_path(fl_vtkFileName.c_str(), basename.c_str());
+        }
+      }
+#endif
 
     return;
   }
@@ -791,7 +785,6 @@ extern "C" {
 #ifdef HAVE_MPI
     // Interleaving is experimental - play at your own risk
 #define INTERLEAVE_IO_TRESHOLD 64000
-#define CORES_PER_NODE 8
     if(*npartitions>INTERLEAVE_IO_TRESHOLD){
       int nwrites = (int)(sqrt(*npartitions)+0.5);
 
@@ -837,6 +830,3 @@ extern "C" {
     return;
   }
 }
-#else
-#include "vtkfortran-dummy.cpp"
-#endif

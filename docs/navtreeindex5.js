@@ -1,10 +1,5 @@
 var NAVTREEINDEX5 =
 {
-"structmulti__data__types_1_1multi__sparsities.html#a7285ef94c65f7a1a9c953e245794e95d":[2,0,1,13,6],
-"structmulti__data__types_1_1multi__sparsities.html#a74ede11a2a5ad035372a4f7ddd74498d":[2,0,1,13,0],
-"structmulti__data__types_1_1multi__sparsities.html#a8dec2e285d86610c9fe02e9975d5586b":[2,0,1,13,2],
-"structmulti__data__types_1_1multi__sparsities.html#ab03463e20954ee1e3e0800deb600a7bf":[2,0,1,13,8],
-"structmulti__data__types_1_1multi__sparsities.html#acc8e34117aeecf35792fe8040034f6ca":[2,0,1,13,5],
 "structmulti__data__types_1_1multi__sparsity.html":[2,0,1,14],
 "structmulti__data__types_1_1multi__sparsity.html#a0540892f8d1bd92dad2ef8326e62761d":[2,0,1,14,2],
 "structmulti__data__types_1_1multi__sparsity.html#a09b3700546364fd6fc38e4a44ade31eb":[2,0,1,14,1],
@@ -26,21 +21,5 @@ var NAVTREEINDEX5 =
 "structmulti__data__types_1_1porous__adv__coefs.html#aa78a22a9bdf2c3325b1eea2980ad14da":[2,0,1,17,3],
 "structmulti__data__types_1_1porous__adv__coefs.html#add52cedca92232c0d06b577474b4e3a8":[2,0,1,17,2],
 "structmulti__data__types_1_1porous__adv__coefs.html#adfcceabfbe5ca89e3dc81710be1fa6f4":[2,0,1,17,1],
-"structmulti__magma_1_1coupling__term__coef.html":[2,0,2,0],
-"structmulti__magma_1_1coupling__term__coef.html#a2425c026b6792c0180a547c67be3175b":[2,0,2,0,2],
-"structmulti__magma_1_1coupling__term__coef.html#a652bfdd341493055d8c698061446c6e9":[2,0,2,0,1],
-"structmulti__magma_1_1coupling__term__coef.html#a6ea25d0aedcb4d0cd3ab57290bcc9ac7":[2,0,2,0,4],
-"structmulti__magma_1_1coupling__term__coef.html#aed6cdde0bf516c5858b18286663dbf99":[2,0,2,0,0],
-"structmulti__magma_1_1coupling__term__coef.html#aefc08959c2d9102a7801077b112ffea5":[2,0,2,0,3],
-"structmulti__magma_1_1magma__phase__diagram.html":[2,0,2,1],
-"structmulti__magma_1_1magma__phase__diagram.html#a36c68bedb748aa20e80272c38d49903d":[2,0,2,1,4],
-"structmulti__magma_1_1magma__phase__diagram.html#a3bf24cdd15418027aca850ab1fa29d77":[2,0,2,1,3],
-"structmulti__magma_1_1magma__phase__diagram.html#a42a6e06104ff75a37d5c1f7947a96b00":[2,0,2,1,8],
-"structmulti__magma_1_1magma__phase__diagram.html#a7591da6d152f1d5511668e86ee7fc275":[2,0,2,1,6],
-"structmulti__magma_1_1magma__phase__diagram.html#a8025ec9b40dfff2c7f89f7db6d13f0c4":[2,0,2,1,2],
-"structmulti__magma_1_1magma__phase__diagram.html#a827fdad50a8476c2c51ba2cfa333d6dc":[2,0,2,1,0],
-"structmulti__magma_1_1magma__phase__diagram.html#ad36ecb5805a2e65a9a96db2c72ebfed3":[2,0,2,1,5],
-"structmulti__magma_1_1magma__phase__diagram.html#ad5883bbdf631a7f2f1a250da19375b33":[2,0,2,1,1],
-"structmulti__magma_1_1magma__phase__diagram.html#af0880cdb50a873be28b94a25daffff16":[2,0,2,1,7],
-"xgb__interface_8_f90.html":[3,0,0,24]
+"xgb__interface_8_f90.html":[3,0,0,22]
 };

@@ -37,9 +37,9 @@ module sparse_tools_petsc
   use parallel_tools
   use halo_data_types
   use halos_allocates
-#ifdef HAVE_PETSC_MODULES
+#include "petsc/finclude/petsc.h"
   use petsc
-#endif
+#include "petsc/finclude/petscmat.h"
   use Sparse_Tools
   use fields_data_types
   use fields_base
@@ -335,6 +335,8 @@ contains
     integer:: nprows, npcols, urows, ucols
     integer:: index_rows, index_columns
     logical:: use_element_blocks
+    ! Define null arrays for PETSc calls
+    integer, pointer :: null_int_array(:) => null()
 
     matrix%name = name
 
@@ -413,7 +415,7 @@ contains
       ! Create serial block matrix:
       call MatCreateBAIJ(MPI_COMM_SELF, element_size, &
          urows, ucols, urows, ucols, &
-         0, dnnz, 0, PETSC_NULL_INTEGER, matrix%M, ierr)
+         0, dnnz, 0, null_int_array, matrix%M, ierr)
 
     elseif (use_element_blocks) then
 
@@ -431,7 +433,7 @@ contains
 
       ! Create serial matrix:
       call MatCreateAIJ(MPI_COMM_SELF, urows, ucols, urows, ucols, &
-         0, dnnz, 0, PETSC_NULL_INTEGER, matrix%M, ierr)
+         0, dnnz, 0, null_int_array, matrix%M, ierr)
       call MatSetBlockSizes(matrix%M, lgroup_size(1), lgroup_size(2), ierr)
 
     else
@@ -737,13 +739,21 @@ contains
     integer :: entries
     type(petsc_csr_matrix), intent(in) :: matrix
 
+    
+#if PETSC_VERSION_MINOR>=20
+    MatInfo :: matrixinfo
+#else
     double precision, dimension(MAT_INFO_SIZE):: matrixinfo
+#endif
     PetscErrorCode:: ierr
 
     ! get the necessary info about the matrix:
     call MatGetInfo(matrix%M, MAT_LOCAL, matrixinfo, ierr)
+#if PETSC_VERSION_MINOR>=20
+    entries=int(matrixinfo%nz_used)
+#else
     entries=matrixinfo(MAT_INFO_NZ_USED)
-
+#endif
   end function petsc_csr_entries
 
   subroutine petsc_csr_zero(matrix)
@@ -779,17 +789,18 @@ contains
     type(petsc_csr_matrix), intent(inout) :: matrix
     integer, intent(in) :: blocki,blockj
     integer, dimension(:), intent(in) :: i,j
-    real, dimension(size(i),size(j)), intent(in) :: val
+    PetscScalar, dimension(size(i),size(j)), intent(in) :: val
 
+    PetscInt :: size1, size2
     PetscInt, dimension(size(i)):: idxm
     PetscInt, dimension(size(j)):: idxn
     PetscErrorCode:: ierr
 
     idxm=matrix%row_numbering%gnn2unn(i,blocki)
     idxn=matrix%column_numbering%gnn2unn(j,blockj)
-
-    call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, real(val, kind=PetscScalar_kind), &
-        ADD_VALUES, ierr)
+    size1=size(idxm)
+    size2=size(idxn)
+    call MatSetValues(matrix%M, size1, idxm, size2, idxn, reshape(val, [size1*size2]), ADD_VALUES, ierr)
 
     matrix%is_assembled=.false.
 
@@ -801,17 +812,18 @@ contains
     type(petsc_csr_matrix), intent(inout) :: matrix
     integer, intent(in) :: i
     integer, intent(in) :: j
-    real, dimension(:,:), intent(in) :: val
+    PetscScalar, dimension(:,:), intent(in) :: val
 
+    PetscInt :: size1, size2
     PetscInt, dimension(size(matrix%row_numbering%gnn2unn,2)):: idxm
     PetscInt, dimension(size(matrix%column_numbering%gnn2unn,2)):: idxn
     PetscErrorCode:: ierr
 
     idxm=matrix%row_numbering%gnn2unn(i,:)
     idxn=matrix%column_numbering%gnn2unn(j,:)
-
-    call MatSetValues(matrix%M, size(idxm), idxm, size(idxn), idxn, &
-                  real(val, kind=PetscScalar_kind), ADD_VALUES, ierr)
+    size1=size(idxm)
+    size2=size(idxn)
+    call MatSetValues(matrix%M, size1, idxm, size2, idxn, reshape(val, [size1*size2]), ADD_VALUES, ierr)
 
     matrix%is_assembled=.false.
 
@@ -839,7 +851,7 @@ contains
         ! unfortunately we need a copy here to pass contiguous memory
         value=val(blocki, blockj, :, :)
         call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, &
-              value, ADD_VALUES, ierr)
+              [value], ADD_VALUES, ierr)
       end do
     end do
 
@@ -871,7 +883,7 @@ contains
           ! unfortunately we need a copy here to pass contiguous memory
           value=val(blocki, blockj, :, :)
           call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, &
-                value, ADD_VALUES, ierr)
+                [value], ADD_VALUES, ierr)
         end if
       end do
     end do
@@ -887,7 +899,7 @@ contains
 
     PetscErrorCode:: ierr
 
-    call MatScale(matrix%M, real(scale ,kind=PetscScalar_kind), ierr)
+    call MatScale(matrix%M, scale, ierr)
     matrix%is_assembled=.false. ! I think?
 
   end subroutine petsc_csr_scale
@@ -974,7 +986,7 @@ contains
     call assemble(p)
 
     ! this creates the petsc ptap matrix and computes it
-    call MatPTAP(a%M, p%M, MAT_INITIAL_MATRIX, 1.5_PETSCSCALAR_KIND, c%M, ierr)
+    call MatPTAP(a%M, p%M, MAT_INITIAL_MATRIX, 1.5, c%M, ierr)
 
     ! rest of internals for c is copied from A
     c%row_numbering=a%row_numbering

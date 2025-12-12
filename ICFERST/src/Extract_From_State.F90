@@ -669,7 +669,7 @@ contains
         ! pack rock-fluid properties
         ! if there is capillary pressure, we store 5 entries, otherwise just 3:
         ! (Immobile fraction, Krmax, relperm exponent, [capillary entry pressure, capillary exponent])
-        if(have_option_for_any_phase('/multiphase_properties/capillary_pressure',nphase)) then
+        if(have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure',nphase) .or. have_option_for_any_phase('/multiphase_properties/type_Tabulated/capillary_pressure',nphase)) then
             call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[6,nphase])
         else
             call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[3,nphase])
@@ -821,7 +821,7 @@ contains
            call insert_sfield(packed_state,"PhaseVolumeFractionComponentSource",1,nphase)
         end if
 
-        if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
+        if (have_option_for_any_phase('/multiphase_properties/type_Formula/capillary_pressure',nphase) .or. have_option_for_any_phase('/multiphase_properties/type_Tabulated/capillary_pressure',nphase)) then
             call allocate(ten_field,pressure%mesh,"PackedCapPressure",dim=[1,nphase])
             call insert(packed_state,ten_field,"PackedCapPressure")
             call deallocate(ten_field)
@@ -2181,7 +2181,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
         decreaseFactor, default = 2.0 )
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
         incr_threshold, default = int(0.25 * NonLinearIteration) )
-    show_FPI_conv = .not.have_option( '/io/Show_Convergence')
+    show_FPI_conv = .not. (have_option( '/io/Show_Convergence') .or. have_option( '/io/Show_Convergence_Detailed'))
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
         Aim_num_FPI, default = int(0.20 * NonLinearIteration) )
     Aim_num_FPI = min(Aim_num_FPI, NonLinearIteration)!People may ask for higher Aim_num_FPI...
@@ -2512,15 +2512,16 @@ ts_ref_val = 0d0;
                         else
                             dt = dt * min(auxR, 1.5*increaseFactor)
                         end if
-                        auxR = stored_dt
+
                         call set_option( '/timestepping/timestep', dt )
-                        stored_dt = dt
                         !Ensure that period_vtus or the final time are matched, controlled by max_ts
                         dt = max(min(dt, max_ts), min_ts)
                         call set_option( '/timestepping/timestep', dt )
                         ! if (getprocno() == 1 .and. abs(auxR-dt)/dt > 1d-3)then
                         !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "Time step changed to:", dt/conversor, trim(DtTimeUnits)
                         ! end if
+                        stored_dt = dt
+                        auxR = stored_dt
                         ExitNonLinearLoop = .true.
                         ! Update comparison variables
                         nSolverWarningsOld = nSolverWarnings;  nDMOWarningsOld = nDMOWarnings;
@@ -3631,6 +3632,8 @@ end subroutine get_DarcyVelocity
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: fluxstring
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: intfluxstring
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: tempstring
+        character(len=100000), dimension(size(outfluxes%intflux,1)) :: volstring
+        character(len=100000), dimension(size(outfluxes%intflux,1)) :: massstring
         character (len = 50) :: simulation_name, fieldName
         character(len = FIELD_NAME_LEN) :: phase_name
         character(len = OPTION_PATH_LEN) :: path
@@ -3662,6 +3665,8 @@ end subroutine get_DarcyVelocity
                 outfluxes%totout = 0.!If nan then make it zero
             end where
             outfluxes%intflux = outfluxes%intflux + outfluxes%totout(:, :)*dt
+            outfluxes%vol_flux = outfluxes%vol_flux + outfluxes%totout_vol(:, :)*dt
+            outfluxes%mass_flux = outfluxes%mass_flux + outfluxes%totout_mass(:, :)*dt
 
 
             ! Write column headings to file
@@ -3678,8 +3683,11 @@ end subroutine get_DarcyVelocity
                   do ioutlet =1, size(outfluxes%intflux,2)
                     write(fluxstring(iphase),'(a, a, i0, a)')   trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]VolRate"
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
-                    write(intfluxstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]TotProd"
-                    whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+                    ! Cumulative volume/mass columns
+                    write(volstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]CumuVolume"
+                    whole_line = trim(whole_line) // "," // trim(volstring(iphase))
+                    write(massstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S",outfluxes%outlet_id(ioutlet),"]CumuMass"
+                    whole_line = trim(whole_line) // "," // trim(massstring(iphase))
                     !Averaged value over the surface
                     do ifields = 1, size(outfluxes%field_names,2)
                       write(tempstring(iphase),'(a, a, i0, a)') trim(phase_name),"[S", outfluxes%outlet_id(ioutlet),&
@@ -3704,19 +3712,18 @@ end subroutine get_DarcyVelocity
               do ioutlet =1, size(outfluxes%intflux,2)
                 write(fluxstring(iphase),'(a)') printEng(outfluxes%totout(iphase,ioutlet))
                 whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
-                write(intfluxstring(iphase),'(a)') printEng(outfluxes%intflux(iphase,ioutlet))
-                whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+
+                write(volstring(iphase),'(a)') printEng(outfluxes%vol_flux(iphase,ioutlet))
+                whole_line = trim(whole_line) // "," // trim(volstring(iphase))
+                write(massstring(iphase),'(a)') printEng(outfluxes%mass_flux(iphase,ioutlet))
+                whole_line = trim(whole_line) // "," // trim(massstring(iphase))
+
                 !For these fields we show: Sum(Ti*Ai)/Sum(Ai)
                 do ifields = 1, size(outfluxes%field_names,2)
                   fieldName = trim(outfluxes%field_names(iphase, ifields))
                   call getOutputConverter(fieldName,outSysFactor, outSysShft)
-                  if (fieldName == "Temperature") then
-                      write(tempstring(iphase),'(a)') &
-                          printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)*outSysFactor+outSysShft) ! Print the temperature outfluxes in Celsius, not Kelvin
-                  else
-                      write(tempstring(iphase),'(a)') &
-                          printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)*outSysFactor+outSysShft)
-                  end if
+                  write(tempstring(iphase),'(a)') &
+                      printEng(outfluxes%avgout(ifields, iphase,ioutlet)/outfluxes%area_outlet(iphase, ioutlet)*outSysFactor+outSysShft)
                   whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                 end do
               end do
@@ -3772,6 +3779,8 @@ end subroutine get_DarcyVelocity
                 outfluxes%area_outlet(iphase, iofluxes) = outfluxes%area_outlet(iphase, iofluxes) + suf_area
                 bcs_outfluxes(iphase, CV_NODI, iofluxes) =  bcs_outfluxes(iphase, CV_NODI, iofluxes) + &
                 Vol_flux(iphase)
+                outfluxes%bcs_vol_flux(iphase, CV_NODI, iofluxes) = bcs_outfluxes(iphase, CV_NODI, iofluxes)
+                outfluxes%bcs_mass_flux(iphase, CV_NODI, iofluxes) = bcs_outfluxes(iphase, CV_NODI, iofluxes) - Vol_flux(iphase) + Mass_flux(iphase)
               end do
               !Average value over the surface
               do ifields = 1, size(outfluxes_fields)
@@ -4151,4 +4160,3 @@ end subroutine get_DarcyVelocity
     end subroutine write_state_units
 
 end module Copy_Outof_State
-

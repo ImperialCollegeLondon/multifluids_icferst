@@ -1,0 +1,10 @@
+<map id="multiphase_eos::calculate_absorption2" name="multiphase_eos::calculate_absorption2">
+<area shape="rect" id="Node000001" title=": Subroutine where the absorption for the porous media is actually computed" alt="" coords="5,29,197,69"/>
+<area shape="rect" id="Node000002" href="$namespacemultiphase__eos.html#a19df2cd38bcac98a4dadc0a3327bc1d4" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="245,29,405,69"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="198,47,232,47,232,52,198,52"/>
+<area shape="rect" id="Node000003" href="$namespacemultiphase__eos.html#a2b630dc39b8a9a21ef87319a98039974" title=":Calculates the relative permeability for 1, 2 (Brooks&#45;corey) or 3 (stone&#39;s model) phases" alt="" coords="453,29,608,69"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="406,47,439,47,439,52,406,52"/>
+<area shape="rect" id="Node000004" href="$namespacemultiphase__eos.html#ae38ba08b6363798b651a669f506ed944" title=": Computes normalised saturation for Land trapping with tabulated relperm" alt="" coords="656,29,847,69"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="608,47,642,47,642,52,608,52"/>
+<area shape="poly" id="edge4_Node000004_Node000004" title=" " alt="" coords="710,30,708,20,714,10,729,5,751,3,777,6,791,13,788,18,775,11,751,8,730,10,718,15,713,21,715,28"/>
+</map>
