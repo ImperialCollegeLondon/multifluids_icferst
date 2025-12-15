@@ -1972,17 +1972,14 @@ solver_options =
                 }?
               ),
               (
-                ## <b>Recommended settings: 0</b>
+                ## Use a Newton solver for the saturation.
                 ##
                 ## <b>Recommended infinite norm tol: 1e-3 to 1e-5. Recommended 5e-4</b>
                 ##
-                ## Controls how many non-linear iterations are perfomed using the classical Picard with acceleration
-                ## solver. Once the number of iterations pass the value provided here a Newton solver without backtracking will be used.
+                ## NOTE: VAD disabled. <b>Only fast discretisation.</b>
                 ##
-                ## NOTE1: Still in development. VAD disabled. Only fast discretisation. Wells not fully functional yet.
-                ##
-                element Picard_its{
-                integer
+                element useNewtonSolver{
+                empty
                 }?
               ),
               (

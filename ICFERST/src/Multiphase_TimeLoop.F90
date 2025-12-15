@@ -157,8 +157,9 @@ contains
             mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
         !!$ Defining time- and nonlinear interations-loops variables
         integer :: itime, dump_period_in_timesteps, final_timestep, &
-            NonLinearIteration, NonLinearIteration_Components, itimeflag, picard_its
+            NonLinearIteration, NonLinearIteration_Components, itimeflag
         real :: acctim, finish_time, dump_period
+        logical :: useNewtonSolver
         !!$ Defining problem that will be solved
         logical :: have_temperature_field, have_concentration_field, have_component_field, have_extra_DiffusionLikeTerm, &
             solve_force_balance, solve_PhaseVolumeFraction
@@ -440,10 +441,10 @@ contains
             call get_option('/io/dump_period/constant', dump_period, default = 0.01)
         end if
         call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
-        call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Picard_its', picard_its, default = NonLinearIteration+1 )
+        useNewtonSolver = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/useNewtonSolver')
 
         call get_option("/geometry/simulation_quality", sim_qlty)
-        if (trim(sim_qlty) /= "fast" .and. have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Picard_its')) then
+        if (trim(sim_qlty) /= "fast" .and. have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/useNewtonSolver')) then
             ewrite(0,*) "====================================================================="
             ewrite(0,*) "WARNING: Newton solver should be used with simulation_quality = fast."
             ewrite(0,*) "====================================================================="
@@ -734,15 +735,13 @@ contains
                   ! Ensure that sat_bak is always defined (pscpsc only if VAD defined)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
-                    if (its <= picard_its ) then
-                      ! print *, "Picard iteration", its, picard_its
+                    if (.not. useNewtonSolver) then
                       call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val,porosity_total_field%val, igot_theta_flux, mass_ele, its, itime, SFPI_taken, SFPI_its, Courant_number, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
                     else
-                      ! print *, "Newton iteration", its, picard_its
                       call VolumeFraction_Assemble_Solve_Newton( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
