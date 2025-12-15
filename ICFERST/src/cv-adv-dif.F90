@@ -7695,11 +7695,10 @@ end if
     ! end subroutine sum_saturation_to_unity
 
 
-      SUBROUTINE SATURATION_ASSEMB( petsc_ACV, state, packed_state, &
-        final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-        saturation, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
-        SOURCT_ALL, VOLFRA_PORE, VAD_parameter, Phase_with_Pc, &
-        eles_with_pipe, pipes_aux,&
+      SUBROUTINE SATURATION_ASSEMB( petsc_ACV, packed_state, &
+        final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mmat, upwnd, &
+        saturation, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
+        SOURCT_ALL, Phase_with_Pc, &
         assemble_collapsed_to_one_phase, getResidual)
         ! Inputs/Outputs
         IMPLICIT NONE
@@ -7724,7 +7723,6 @@ end if
         REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
         !Variables for Vanishing artificial diffusion
         integer, optional, intent(in) :: Phase_with_Pc
-        real, optional, dimension(:), intent(in) :: VAD_parameter
         logical, optional, intent(in) ::  assemble_collapsed_to_one_phase
         logical, optional, intent(in) ::  getResidual
         ! ###################Local variables############################
@@ -7812,9 +7810,6 @@ end if
         Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
         !Check vanishing artificial diffusion options
         VAD_activated = .false.  ! pscpsc when the rest works. activate this again
-        ! if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
-        !     VAD_activated = Phase_with_Pc >0
-        ! end if
 
         loc_assemble_collapsed_to_one_phase = .false.
         if (present_and_true(assemble_collapsed_to_one_phase)) then
@@ -7861,20 +7856,20 @@ end if
         X_SHARE = .FALSE.
 
         !###############Conditional allocations######################
-        IF ( VAD_activated) THEN
+        ! IF ( VAD_activated) THEN
 
-            ALLOCATE( CAP_DIFFUSION( final_phase, Mdims%mat_nonods ) )
-            !Introduce the information in CAP_DIFFUSION
-            CAP_DIFFUSION = 0.!Initialize to zero just in case
-            do ele = 1, Mdims%totele
-                do CV_ILOC = 1, Mdims%cv_nloc
-                    CV_NODI = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
-                    MAT_NODI = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
-                    CAP_DIFFUSION(Phase_with_Pc, MAT_NODI) = &
-                        - T_ALL(Phase_with_Pc, CV_NODI) * VAD_parameter(CV_NODI)
-                end do
-            end do
-        ENDIF
+        !     ALLOCATE( CAP_DIFFUSION( final_phase, Mdims%mat_nonods ) )
+        !     !Introduce the information in CAP_DIFFUSION
+        !     CAP_DIFFUSION = 0.!Initialize to zero just in case
+        !     do ele = 1, Mdims%totele
+        !         do CV_ILOC = 1, Mdims%cv_nloc
+        !             CV_NODI = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
+        !             MAT_NODI = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
+        !             CAP_DIFFUSION(Phase_with_Pc, MAT_NODI) = &
+        !                 - T_ALL(Phase_with_Pc, CV_NODI) * VAD_parameter(CV_NODI)
+        !         end do
+        !     end do
+        ! ENDIF
 
         ndotq = 0.
 

@@ -1993,11 +1993,10 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
         call allocate_global_multiphase_petsc_csr(PETSC_ACV2,sparsity,sat_field, Mdims%nphase)
 
-        call SATURATION_ASSEMB( PETSC_ACV2, state, packed_state, &
-        Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-        sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
-        SOURCT_ALL, VOLFRA_PORE,eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-        Phase_with_Pc = Phase_with_Pc,getResidual = .true.)  ! Calculate residual with current Saturation guess
+        call SATURATION_ASSEMB( PETSC_ACV2, packed_state, &
+        Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mmat,upwnd,&
+        sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
+        SOURCT_ALL, Phase_with_Pc = Phase_with_Pc,getResidual = .true.)  ! Calculate residual with current Saturation guess
         call assemble(PETSC_ACV2)
 
         !2) Introduce perturbation. Make sure that the perturbation is between bounds
@@ -2023,11 +2022,10 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
           sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
           call allocate_global_multiphase_petsc_csr(petsc_JAC,sparsity,sat_field, Mdims%nphase)
           ! Calculate perturbated matrix
-          call SATURATION_ASSEMB(petsc_JAC, state, packed_state, &
-          Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-          sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
-          SOURCT_ALL, VOLFRA_PORE,eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-          Phase_with_Pc = Phase_with_Pc,getResidual = .false.)
+          call SATURATION_ASSEMB(petsc_JAC, packed_state, &
+          Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mmat,upwnd,&
+          sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
+          SOURCT_ALL, Phase_with_Pc = Phase_with_Pc,getResidual = .false.)
           call assemble(petsc_JAC)
           ! Undo perturbation
           Satura = Satura - vpert%val
@@ -2052,11 +2050,10 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
           call deallocate(petsc_JAC);
         else
           ! Calculate perturbated matrix
-          call SATURATION_ASSEMB(Mmat%petsc_ACV, state, packed_state, &
-          Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-          sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
-          SOURCT_ALL, VOLFRA_PORE,eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-          Phase_with_Pc = Phase_with_Pc,getResidual = .false.)
+          call SATURATION_ASSEMB(Mmat%petsc_ACV, packed_state, &
+          Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mmat,upwnd,&
+          sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
+          SOURCT_ALL, Phase_with_Pc = Phase_with_Pc,getResidual = .false.)
           call assemble(Mmat%petsc_ACV)
           ! Undo perturbation
           Satura = Satura - vpert%val
