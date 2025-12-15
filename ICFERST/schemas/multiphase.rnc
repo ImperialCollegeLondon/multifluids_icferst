@@ -716,6 +716,8 @@ start =
                      ##
                      ## High hysteresis ~ 0.2. Low hysteresis > 5
                      ##
+                     ## Use this option for cases where the initial condition of a phase is below the immobile fraction
+                     ##
                      ## Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".
                     element scalar_field {
                        attribute name { "Land_coefficient" },
@@ -738,6 +740,8 @@ start =
                 ##
                 ## High hysteresis ~ 0.2. Low hysteresis > 5
                 ##
+		## Use this option for cases where the initial condition of a phase is below the immobile fraction
+		##
                 ## Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".
                 ##
                 ## <b>When using tabulated data + Land trapping model, this is the INITIAL table for relperm. Make sure it represents the correct initial immobile fraction.</b>
@@ -1933,7 +1937,7 @@ solver_options =
         ## non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.
 		element Non_Linear_Solver {
            integer,
-           ##<b>NOTE: For multiphase porous media only. Otherwise this value is ignored.</b>
+           ##<b>NOTE: For multiphase porous media (with Picard) only. Otherwise this value is ignored.</b>
            ##
            ## This is the convergence criterion for the Fixed Point Iteration solver.
            ## The functional to compare is:

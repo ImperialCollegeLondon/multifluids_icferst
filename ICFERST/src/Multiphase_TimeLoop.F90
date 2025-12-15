@@ -734,7 +734,6 @@ contains
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                   ! Ensure that sat_bak is always defined (pscpsc only if VAD defined)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-
                     if (.not. useNewtonSolver) then
                       call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &

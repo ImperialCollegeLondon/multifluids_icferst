@@ -1769,23 +1769,12 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                 call zero(solution)
 
                 ! Choose a backtrack option
-                btrk = 1.0
-                if      (nonlinear_iteration <=1) then
-                  btrk = 0.75
-                else if (nonlinear_iteration <=5) then
+                if      (nonlinear_iteration <=6) then
                   btrk = 1.0
-                else if (nonlinear_iteration <=8) then
-                  btrk = 0.75;
-                else if (nonlinear_iteration <=13) then  ! Slowly increase the backtracking
-                  btrk = -0.04*float(nonlinear_iteration)+1.0;
-                else if (nonlinear_iteration <=15) then  ! One final push to try to get convergence
-                  btrk = 0.75
-                else
-                  if (mod(nonlinear_iteration,3)==0) then
-                    btrk = 0.75;
-                  else
-                    btrk = 0.25;
-                  end if
+                else if (nonlinear_iteration <=13) then  ! Slowly increase the backtracking to try to stabilise
+                  btrk = -0.0028*float(nonlinear_iteration*nonlinear_iteration)+1.0; !(from 0.86 to 0.52)
+                else  ! hope for the best and try to converge
+                  btrk = 1.0;
                 end if
 
                  !########Solve the system#############
@@ -1812,8 +1801,9 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                   !Set to zero the fields
                   call zero(Mmat%CV_RHS)
 
-                  if (its > max_allowed_its) then ! used to have as well res < RM8.or. but tends to exit after just one
+                  if (its >= max_allowed_its) then ! used to have as well res < RM8.or. but tends to exit after just one
                     ! print *, "Newton solve: ", its, " ", res
+                    satisfactory_convergence = .true.
                     backtrack_or_convergence = 1
                     if (IsParallel()) call halo_update(sat_field)
                     exit Loop_NonLinearFlux
