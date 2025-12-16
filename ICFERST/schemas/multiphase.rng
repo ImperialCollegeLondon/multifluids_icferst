@@ -487,10 +487,25 @@ of hr-adaptive period.</a:documentation>
               <element name="minimum_timestep">
                 <a:documentation>Minimum time step size.
 Manual suggests 0.0</a:documentation>
+                <choice>
+                  <a:documentation>If enabled, signals model dump if a timestep less
+than or equal to the minimum_timestep is requested.</a:documentation>
+                  <element name="constant">
+                    <ref name="real"/>
+                  </element>
+                  <element name="python">
+                    <a:documentation>Python function prescribing integer input. Functions should be of the form:
+
+ def val(t):
+    # Function code
+    return # Return value
+
+</a:documentation>
+                    <ref name="python_code"/>
+                  </element>
+                </choice>
                 <optional>
                   <element name="dump_vtu_if_reached">
-                    <a:documentation>If enabled, signals model dump if a timestep less
-than or equal to the minimum_timestep is requested.</a:documentation>
                     <optional>
                       <element name="terminate">
                         <a:documentation>If enabled, signals model termination if a timestep less
@@ -503,14 +518,27 @@ allow for the latest output to be written.</a:documentation>
                     <ref name="comment"/>
                   </element>
                 </optional>
-                <ref name="real"/>
               </element>
             </optional>
             <optional>
               <element name="maximum_timestep">
                 <a:documentation>Maximum time step size.
 Manual suggests 1.E+10</a:documentation>
-                <ref name="real"/>
+                <choice>
+                  <element name="constant">
+                    <ref name="real"/>
+                  </element>
+                  <element name="python">
+                    <a:documentation>Python function prescribing integer input. Functions should be of the form:
+
+ def val(t):
+    # Function code
+    return # Return value
+
+</a:documentation>
+                    <ref name="python_code"/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <optional>

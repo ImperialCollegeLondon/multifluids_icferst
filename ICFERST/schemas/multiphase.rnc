@@ -430,6 +430,21 @@ start =
                element minimum_timestep {
                   ## If enabled, signals model dump if a timestep less
                   ## than or equal to the minimum_timestep is requested.
+                  (
+                     element constant {
+                       real
+                     }|
+                     ## Python function prescribing integer input. Functions should be of the form:
+                     ##
+                     ##  def val(t):
+                     ##     # Function code
+                     ##     return # Return value
+                     ##
+                     ##
+                     element python {
+                       python_code
+                     }
+                  ),
                   element dump_vtu_if_reached {
                       ## If enabled, signals model termination if a timestep less
                       ## than or equal to the minimum_timestep is requested. The
@@ -439,13 +454,26 @@ start =
                          comment
                       }?,
                      comment
-                  }?,
-                  real
+                  }?
                }?,
                ## Maximum time step size.
                ## Manual suggests 1.E+10
                element maximum_timestep {
-                  real
+                  (
+                       element constant {
+                       real
+                     }|
+                     ## Python function prescribing integer input. Functions should be of the form:
+                     ##
+                     ##  def val(t):
+                     ##     # Function code
+                     ##     return # Return value
+                     ##
+                     ##
+                     element python {
+                       python_code
+                     }
+                  )
                }?,
                ## The maximum ratio by which the timestep is allowed
                ## to increase in a timestep adapt. e.g., a value of
