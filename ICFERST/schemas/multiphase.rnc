@@ -744,6 +744,8 @@ start =
                      ##
                      ## High hysteresis ~ 0.2. Low hysteresis > 5
                      ##
+                     ## Use this option for cases where the initial condition of a phase is below the immobile fraction
+                     ##
                      ## Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".
                     element scalar_field {
                        attribute name { "Land_coefficient" },
@@ -766,6 +768,8 @@ start =
                 ##
                 ## High hysteresis ~ 0.2. Low hysteresis > 5
                 ##
+		## Use this option for cases where the initial condition of a phase is below the immobile fraction
+		##
                 ## Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".
                 ##
                 ## <b>When using tabulated data + Land trapping model, this is the INITIAL table for relperm. Make sure it represents the correct initial immobile fraction.</b>
@@ -1961,7 +1965,7 @@ solver_options =
         ## non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.
 		element Non_Linear_Solver {
            integer,
-           ##<b>NOTE: For multiphase porous media only. Otherwise this value is ignored.</b>
+           ##<b>NOTE: For multiphase porous media (with Picard) only. Otherwise this value is ignored.</b>
            ##
            ## This is the convergence criterion for the Fixed Point Iteration solver.
            ## The functional to compare is:
@@ -2000,17 +2004,14 @@ solver_options =
                 }?
               ),
               (
-                ## <b>Recommended settings: 0</b>
+                ## Use a Newton solver for the saturation.
                 ##
                 ## <b>Recommended infinite norm tol: 1e-3 to 1e-5. Recommended 5e-4</b>
                 ##
-                ## Controls how many non-linear iterations are perfomed using the classical Picard with acceleration
-                ## solver. Once the number of iterations pass the value provided here a Newton solver without backtracking will be used.
+                ## NOTE: VAD disabled. <b>Only fast discretisation.</b>
                 ##
-                ## NOTE1: Still in development. VAD disabled. Only fast discretisation. Wells not fully functional yet.
-                ##
-                element Picard_its{
-                integer
+                element useNewtonSolver{
+                empty
                 }?
               ),
               (

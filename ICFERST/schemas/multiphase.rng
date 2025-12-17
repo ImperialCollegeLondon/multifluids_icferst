@@ -891,6 +891,8 @@ NOTE: No thermal effects considered to change the trapping, i.e. trapping is per
 
 High hysteresis ~ 0.2. Low hysteresis &gt; 5
 
+Use this option for cases where the initial condition of a phase is below the immobile fraction
+
 Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".</a:documentation>
                         <attribute name="name">
                           <value>Land_coefficient</value>
@@ -914,6 +916,8 @@ Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".</a:docu
 NOTE: No thermal effects considered to change the trapping, i.e. trapping is permanent
 
 High hysteresis ~ 0.2. Low hysteresis &gt; 5
+
+Use this option for cases where the initial condition of a phase is below the immobile fraction
 
 Land_coefficient = (1/Maximum_Immobile_Fraction) - 1; Also known as "C".
 
@@ -2392,7 +2396,7 @@ non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then 
           <ref name="integer"/>
           <optional>
             <element name="Fixed_Point_Iteration">
-              <a:documentation>&lt;b&gt;NOTE: For multiphase porous media only. Otherwise this value is ignored.&lt;/b&gt;
+              <a:documentation>&lt;b&gt;NOTE: For multiphase porous media (with Picard) only. Otherwise this value is ignored.&lt;/b&gt;
 
 This is the convergence criterion for the Fixed Point Iteration solver.
 The functional to compare is:
@@ -2430,17 +2434,14 @@ The field selected in "adaptive_timestep_nonlinear" has preference over this</a:
                 </element>
               </optional>
               <optional>
-                <element name="Picard_its">
-                  <a:documentation>&lt;b&gt;Recommended settings: 0&lt;/b&gt;
+                <element name="useNewtonSolver">
+                  <a:documentation>Use a Newton solver for the saturation.
 
 &lt;b&gt;Recommended infinite norm tol: 1e-3 to 1e-5. Recommended 5e-4&lt;/b&gt;
 
-Controls how many non-linear iterations are perfomed using the classical Picard with acceleration
-solver. Once the number of iterations pass the value provided here a Newton solver without backtracking will be used.
-
-NOTE1: Still in development. VAD disabled. Only fast discretisation. Wells not fully functional yet.
+NOTE: VAD disabled. &lt;b&gt;Only fast discretisation.&lt;/b&gt;
 </a:documentation>
-                  <ref name="integer"/>
+                  <empty/>
                 </element>
               </optional>
               <optional>

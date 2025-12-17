@@ -2699,6 +2699,14 @@ contains
     !>@brief: This function prints the header for the terminal
     subroutine printHeader()
 
+      character(len=*), parameter :: &
+        RED    = achar(27) // '[31m', &
+        GREEN  = achar(27) // '[32m', &
+        YELLOW = achar(27) // '[33m', &
+        BLUE   = achar(27) // '[34m', &
+        RESET  = achar(27) // '[0m'
+
+
       select case (variable_selection)
       case (2)
           write(temp_string, '(a, 1PE10.3,a,i0)' ) "| L_inf:", inf_norm_val
@@ -2765,15 +2773,15 @@ contains
         if (printTemp)  temp_string = trim(temp_string)//" "// printPretty(inf_norm_temp)           // "| "
         if (printConc)  temp_string = trim(temp_string)//" "// printPretty(inf_norm_conc)           // "| "
         if (printTrcrs) temp_string = trim(temp_string)//" "// printPretty(Tracers_ref_val)         // "| "
-        if (its >= NonLinearIteration .and. .not. ExitNonLinearLoop)    then
-          temp_string = trim(temp_string)   //"  Fail|"
-        else
+        if (its >= NonLinearIteration )    then  !.and. .not. ExitNonLinearLoop
+          temp_string = trim(temp_string)   // RED  //"MxNits"// RESET //"|"
+        else  !RED // "This is red text" // RESET
           if (nSolverWarnings>nSolverWarningsOld) then
-            temp_string = trim(temp_string) //"LinSol|"
+            temp_string = trim(temp_string) //YELLOW//"LinSol"// RESET //"|"
           else if (nDMOWarnings>nDMOWarningsOld) then
-            temp_string = trim(temp_string) //"   DMO|"
+            temp_string = trim(temp_string) //YELLOW//"   DMO"// RESET //"|"
           else
-            temp_string = trim(temp_string) //"    OK|"
+            temp_string = trim(temp_string) // GREEN//"    OK"// RESET //"|"
           end if
         end if
         write(snits,'(I6)') nDMOWarnings+nSolverWarnings !re=use string variable snits

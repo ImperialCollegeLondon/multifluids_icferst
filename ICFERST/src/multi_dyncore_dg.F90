@@ -1541,7 +1541,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !>@param  THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J ????
     subroutine VolumeFraction_Assemble_Solve_Newton( state,packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
-         eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, prev_sat, &
+         eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, time_step, SFPI_taken, SFPI_its, Courant_number,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
@@ -1562,7 +1562,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             INTEGER, intent( in ) :: igot_theta_flux
             REAL, intent( in ) :: DT
             REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
-            real, dimension( : ,: ), intent( inout ) :: prev_sat
             REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
             !REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
             REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
@@ -1606,7 +1605,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             integer :: Phase_with_Pc
             !Variables to stabilize the non-linear iteration solver
             integer :: Max_sat_its, total_cv_nodes
-            real, dimension(:,:), allocatable :: sat_bak, backtrack_sat
             real :: Previous_convergence, updating, new_backtrack_par, aux, resold, first_res, btrk
             real, save :: res = -1
             logical :: satisfactory_convergence
@@ -1698,7 +1696,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             if (Mdims%npres > 1) pipe_diameter => extract_scalar_field( state(1), "DiameterPipe" )
 
             nullify(DEN_ALL); nullify(DENOLD_ALL)
-            allocate (sat_bak(Mdims%nphase, Mdims%cv_nonods), backtrack_sat(Mdims%nphase, Mdims%cv_nonods))
             !Allocate residual, to compute the residual
             if (backtrack_par_factor < 1.01) call allocate(residual,nphase,sat_field%mesh,"residual")
             call allocate(Mmat%CV_RHS,nphase,sat_field%mesh,"RHS")
@@ -1722,7 +1719,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
 
                 call ASSEMB_SAT_JAC_AND_RES( state, packed_state, &
                 n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                sat_field, prev_sat, velocity, density, multi_absorp, &
+                sat_field, velocity, density, multi_absorp, &
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                 DEN_ALL, DENOLD_ALL, &
                 Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
@@ -1747,54 +1744,44 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                   call allmax(Courant_number(1)); call allmax(Courant_number(2))
                 end if
 
-                !Time to solve the system
-                !If using FPI with backtracking
-                if (backtrack_par_factor < 1.01) then
-                    !Backup of the saturation field, to adjust the solution
-                    sat_bak = satura
+                ! !Time to solve the system
+                ! !If using FPI with backtracking
+                ! if (backtrack_par_factor < 1.01) then
+                !     !Backup of the saturation field, to adjust the solution
+                !     sat_bak = satura
 
-                    !If using ADAPTIVE FPI with backtracking
-                    if (backtrack_par_factor < 0) then
-                      if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
-                          call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
-                      end if
-                      if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
-                      resold = res; res = maxval(abs(Mmat%CV_RHS%val))
-                      !We use the highest residual across the domain
-                      if (IsParallel()) call allmax(res)
+                !     !If using ADAPTIVE FPI with backtracking
+                !     if (backtrack_par_factor < 0) then
+                !       if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                !           call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                !       end if
+                !       if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
+                !       resold = res; res = maxval(abs(Mmat%CV_RHS%val))
+                !       !We use the highest residual across the domain
+                !       if (IsParallel()) call allmax(res)
 
-                      if (its == 1) then
-                          first_res = res !Variable to check total convergence of the SFPI method
-                      end if
-                    end if
-                end if
+                !       if (its == 1) then
+                !           first_res = res !Variable to check total convergence of the SFPI method
+                !       end if
+                !     end if
+                ! end if
 
                 call zero(solution)
 
                 ! Choose a backtrack option
-                btrk = 1.0
-                if      (nonlinear_iteration <=1) then
-                  btrk = 0.75
-                else if (nonlinear_iteration <=5) then
+                if      (nonlinear_iteration <=6) then
                   btrk = 1.0
-                else if (nonlinear_iteration <=8) then
-                  btrk = 0.75;
-                else if (nonlinear_iteration <=13) then  ! Slowly increase the backtracking
-                  btrk = -0.04*float(nonlinear_iteration)+1.0;
-                else if (nonlinear_iteration <=15) then  ! One final push to try to get convergence
-                  btrk = 0.75
-                else
-                  if (mod(nonlinear_iteration,3)==0) then
-                    btrk = 0.75;
-                  else
-                    btrk = 0.25;
-                  end if
+                else if (nonlinear_iteration <=13) then  ! Slowly increase the backtracking to try to stabilise
+                  btrk = -0.0028*float(nonlinear_iteration*nonlinear_iteration)+1.0; !(from 0.86 to 0.52)
+                else  ! hope for the best and try to converge
+                  btrk = 1.0;
                 end if
 
                  !########Solve the system#############
                  call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken);total_lIts = total_lIts + its_taken;
                  !To avoid a petsc warning error we need to re-allocate the matrix always
                  call deallocate(Mmat%petsc_ACV)
+                !  sat_field%val(1,:,:) = sat_field%val(1,:,:)+ btrk*solution%val(:,:)
                  !solution now contains dS. Update the saturation field
                   do ipres =1, mdims%npres
                     do cv_nodi = 1, Mdims%cv_nonods
@@ -1814,8 +1801,9 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
                   !Set to zero the fields
                   call zero(Mmat%CV_RHS)
 
-                  if (its > max_allowed_its) then ! used to have as well res < RM8.or. but tends to exit after just one
+                  if (its >= max_allowed_its) then ! used to have as well res < RM8.or. but tends to exit after just one
                     ! print *, "Newton solve: ", its, " ", res
+                    satisfactory_convergence = .true.
                     backtrack_or_convergence = 1
                     if (IsParallel()) call halo_update(sat_field)
                     exit Loop_NonLinearFlux
@@ -1847,7 +1835,6 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
              !#### Deallocate dummy variables required for_cv_assemb with no memory usage ####
 
              DEALLOCATE( mass_mn_pres, MEAN_PORE_CV)
-             DEALLOCATE( sat_bak, backtrack_sat )
              call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
              if (backtrack_par_factor < 1.01) call deallocate(residual)
              !Deallocate pointers only if not pointing to something in packed state
@@ -1898,7 +1885,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
     !---------------------------------------------------------------------------
     SUBROUTINE ASSEMB_SAT_JAC_AND_RES( state, packed_state, &
         final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-        sat_field, sat_bak, velocity, density, multi_absorp, &
+        sat_field, velocity, density, multi_absorp, &
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B,&
         DEN_ALL, DENOLD_ALL, &
         CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, &
@@ -1933,7 +1920,6 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         type (multi_matrices), intent(inout) :: Mmat
         type (porous_adv_coefs), intent(inout) :: upwnd
         type(tensor_field), intent(inout), target :: sat_field
-        real, dimension(:,:) :: sat_bak
         type(tensor_field), intent(in), target :: density
         type(tensor_field), intent(in) :: velocity
         type(multi_absorption), intent(inout) :: multi_absorp
@@ -1999,7 +1985,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
 
         call SATURATION_ASSEMB( PETSC_ACV2, packed_state, &
         Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mmat,upwnd,&
-        sat_field, sat_bak, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
+        sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
         SOURCT_ALL, Phase_with_Pc = Phase_with_Pc,getResidual = .true.)  ! Calculate residual with current Saturation guess
         call assemble(PETSC_ACV2)
 
@@ -2028,7 +2014,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
           ! Calculate perturbated matrix
           call SATURATION_ASSEMB(petsc_JAC, packed_state, &
           Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mmat,upwnd,&
-          sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
+          sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
           SOURCT_ALL, Phase_with_Pc = Phase_with_Pc,getResidual = .false.)
           call assemble(petsc_JAC)
           ! Undo perturbation
@@ -2046,7 +2032,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
           !   which is just the A matrix as it is sat * A
           call WELLS_SATURATION_ASSEMB(state, packed_state, &
                   Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                  sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
+                  sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, CV_P, &
                   SOURCT_ALL, VOLFRA_PORE, eles_with_pipe, pipes_aux,getResidual = .true.)
           call assemble(Mmat%petsc_ACV)
           ! Assemble the overall Jacobian in Mmat%petsc_ACV
@@ -2056,7 +2042,7 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
           ! Calculate perturbated matrix
           call SATURATION_ASSEMB(Mmat%petsc_ACV, packed_state, &
           Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mmat,upwnd,&
-          sat_field, sat_bak,velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
+          sat_field, velocity, density, DEN_ALL, DENOLD_ALL, DT, SUF_SIG_DIAGTEN_BC, &
           SOURCT_ALL, Phase_with_Pc = Phase_with_Pc,getResidual = .false.)
           call assemble(Mmat%petsc_ACV)
           ! Undo perturbation

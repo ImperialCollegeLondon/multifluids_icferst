@@ -688,7 +688,7 @@ contains
 
         !Obtain saturation field from packed_state
         sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-        satura =>  sat_field%val(1,:,:)
+        satura    => sat_field%val(1,:,:)
         !Get Immobile_fractions
         call get_var_from_packed_state(packed_state, CV_immobile_fraction = CV_immobile_fraction)
 
