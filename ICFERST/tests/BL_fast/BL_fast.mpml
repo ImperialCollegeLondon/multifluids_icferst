@@ -77,9 +77,7 @@
         <Infinite_norm_tol>
           <real_value rank="0">1e-5</real_value>
         </Infinite_norm_tol>
-        <Picard_its>
-          <integer_value rank="0">0</integer_value>
-        </Picard_its>
+        <useNewtonSolver/>
         <Backtracking_factor>
           <real_value rank="0">-10</real_value>
         </Backtracking_factor>

@@ -25,9 +25,7 @@
       <integer_value rank="0">7</integer_value>
       <Fixed_Point_Iteration>
         <real_value rank="0">5e-2</real_value>
-        <Picard_its>
-          <integer_value rank="0">0</integer_value>
-        </Picard_its>
+        <useNewtonSolver/>
       </Fixed_Point_Iteration>
     </Non_Linear_Solver>
   </solver_options>
