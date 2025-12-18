@@ -453,8 +453,6 @@ module multi_data_types
         real, dimension(:,:),  allocatable  :: intflux
         real, allocatable, dimension(:,:) :: vol_flux
         real, allocatable, dimension(:,:) :: mass_flux
-        real, allocatable, dimension(:,:,:) :: bcs_vol_flux
-        real, allocatable, dimension(:,:,:) :: bcs_mass_flux
         real, allocatable, dimension(:,:) :: totout_vol
         real, allocatable, dimension(:,:) :: totout_mass
         character(len = FIELD_NAME_LEN), allocatable, dimension(:,:) :: field_names
@@ -1710,8 +1708,6 @@ contains
         allocate(outfluxes%intflux(Mdims%nphase,size(outfluxes%outlet_id)))
         allocate(outfluxes%vol_flux(Mdims%nphase,size(outfluxes%outlet_id)))
         allocate(outfluxes%mass_flux(Mdims%nphase,size(outfluxes%outlet_id)))
-        allocate(outfluxes%bcs_vol_flux(Mdims%nphase,Mdims%cv_nonods,size(outfluxes%outlet_id)))
-        allocate(outfluxes%bcs_mass_flux(Mdims%nphase,Mdims%cv_nonods,size(outfluxes%outlet_id)))
         allocate(outfluxes%area_outlet(Mdims%nphase,size(outfluxes%outlet_id)))
 
         do iphase = 1, 1
@@ -1735,8 +1731,6 @@ contains
         outfluxes%intflux= 0.; outfluxes%totout= 0.; outfluxes%avgout= 0.
         outfluxes%totout_vol= 0.
         outfluxes%totout_mass= 0.
-        outfluxes%bcs_vol_flux= 0.
-        outfluxes%bcs_mass_flux= 0.
         outfluxes%vol_flux= 0.
         outfluxes%mass_flux= 0.
 
@@ -1764,7 +1758,7 @@ contains
         implicit none
         type (multi_outfluxes), intent(inout) :: outfluxes
 
-        deallocate(outfluxes%totout, outfluxes%totout_vol, outfluxes%totout_mass, outfluxes%intflux, outfluxes%vol_flux, outfluxes%mass_flux, outfluxes%outlet_id, outfluxes%avgout, outfluxes%area_outlet, outfluxes%bcs_vol_flux, outfluxes%bcs_mass_flux )
+        deallocate(outfluxes%totout, outfluxes%totout_vol, outfluxes%totout_mass, outfluxes%intflux,outfluxes%outlet_id, outfluxes%avgout, outfluxes%area_outlet, outfluxes%vol_flux, outfluxes%mass_flux )
 
     end subroutine destroy_multi_outfluxes
 

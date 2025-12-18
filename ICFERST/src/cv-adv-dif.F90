@@ -509,6 +509,8 @@ contains
           ! ####Variables for outfluxes#####
           logical :: compute_outfluxes
           real, dimension(:, :,:), allocatable :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
+          real, dimension(:, :,:), allocatable :: bcs_outfluxes_mass
+          real, dimension(:, :,:), allocatable :: bcs_outfluxes_vol
           real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
           !Variables to speed up diffusivity computations
           logical :: has_anisotropic_diffusivity
@@ -593,8 +595,12 @@ contains
               !Allocate array to pass to store mass going through the boundaries
               if (allocated( outfluxes%outlet_id )) then
                   allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
+                  allocate(bcs_outfluxes_mass(Mdims%nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes_mass= 0.!position zero is to store outfluxes over all bcs
+                  allocate(bcs_outfluxes_vol(Mdims%nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes_vol= 0.!position zero is to store outfluxes over all bcs
                 else
                   allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:1)); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
+                  allocate(bcs_outfluxes_mass(Mdims%nphase, Mdims%cv_nonods, 0:1)); bcs_outfluxes_mass= 0.!position zero is to store outfluxes over all bcs
+                  allocate(bcs_outfluxes_vol(Mdims%nphase, Mdims%cv_nonods, 0:1)); bcs_outfluxes_vol= 0.!position zero is to store outfluxes over all bcs
               end if
               allocate ( calculate_mass_internal(final_phase));calculate_mass_internal(:) = 0.0  ! calculate_internal_mass subroutine
               allocate(outfluxes_fields(size(outfluxes%field_names,2)))
@@ -1935,7 +1941,7 @@ contains
 
                             !Finally store fluxes across all the boundaries either for mass conservation check or mass outflux
                             if (compute_outfluxes .and. on_domain_boundary) then
-                              call update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi,  SdevFuns%DETWEI(gi), &
+                              call update_outfluxes(bcs_outfluxes,bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, sele, cv_nodi,  SdevFuns%DETWEI(gi), &
                                 ndotqnew * SdevFuns%DETWEI(gi) * LIMT, ndotqnew * SdevFuns%DETWEI(gi) * LIMDT, & !Vol_flux and Mass_flux
                                 old_tracer, outfluxes_fields, 1, final_phase )
                             end if
@@ -2122,7 +2128,7 @@ contains
                                 Mdims, ndgln, DERIV, CV_P, SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
                                 SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, getcv_disc, getct, .false., .true., Mmat, Mspars, upwnd, GOT_T2, DT, &
                                 pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES,mean_pore_cv, MEAN_PORE_CV_TOTAL, eles_with_pipe, thermal,&
-                                CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes,&
+                                CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes,&
                                 porous_heat_coef, loc_assemble_collapsed_to_one_phase )
 
           if ( compute_outfluxes) then
@@ -2164,6 +2170,8 @@ contains
           if (VAD_activated) deallocate(CAP_DIFFUSION)
           ewrite(3,*) 'Leaving CV_ASSEMB'
           if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
+          if (allocated(bcs_outfluxes_mass)) deallocate(bcs_outfluxes_mass)
+          if (allocated(bcs_outfluxes_vol)) deallocate(bcs_outfluxes_vol)
 
           RETURN
       contains
@@ -3597,8 +3605,8 @@ end if
                         do k = 1, size(outfluxes%outlet_id)
                             do iphase = 1, Mdims%nphase
                                 outfluxes%totout(iphase, k) = sum(bcs_outfluxes( iphase, :, k))
-                                outfluxes%totout_vol(iphase, k) = sum(outfluxes%bcs_vol_flux(iphase, :, k))
-                                outfluxes%totout_mass(iphase, k) = sum(outfluxes%bcs_mass_flux(iphase, :, k))
+                                outfluxes%totout_mass(iphase, k) = sum(bcs_outfluxes_mass( iphase, :, k))
+                                outfluxes%totout_vol(iphase, k) = sum(bcs_outfluxes_vol( iphase, :, k))
                             end do
                         end do
                         ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout

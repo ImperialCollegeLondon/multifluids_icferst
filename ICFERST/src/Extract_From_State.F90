@@ -3748,11 +3748,13 @@ end subroutine get_DarcyVelocity
     !>@param tracer field being transported/computed
     !>@param outfluxes_fields to extract also from active/passive tracers
     !>@param start_phase, end_phase Initial and final phase to be considered here
-    subroutine update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi, suf_area, Vol_flux, Mass_flux, tracer, outfluxes_fields, start_phase, end_phase )
+    subroutine update_outfluxes(bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, sele, cv_nodi, suf_area, Vol_flux, Mass_flux, tracer, outfluxes_fields, start_phase, end_phase )
       implicit none
       integer, intent(in) :: sele, cv_nodi, start_phase, end_phase
       type (multi_outfluxes), intent(inout) :: outfluxes
       real, dimension(:, :,0:), intent(inout) :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
+      real, dimension(:, :,0:), intent(inout) :: bcs_outfluxes_mass!the total mass entering the domain is captured by 'bcs_outfluxes'
+      real, dimension(:, :,0:), intent(inout) :: bcs_outfluxes_vol!the total mass entering the domain is captured by 'bcs_outfluxes'
       type (tensor_field), pointer, intent(in) :: tracer
       type (tensor_field_pointer), DIMENSION(:) :: outfluxes_fields
       real, dimension(:), intent(in) :: Vol_flux, Mass_flux
@@ -3772,6 +3774,14 @@ end subroutine get_DarcyVelocity
                 Mass_flux(iphase)!For the mass conservation check we need to consider mass!
             end do
         end if
+
+        do iphase = start_phase, end_phase
+            bcs_outfluxes_mass(iphase, CV_NODI, 0) =  bcs_outfluxes_mass(iphase, CV_NODI,0) + &
+            Mass_flux(iphase)
+            bcs_outfluxes_vol(iphase, CV_NODI, 0) =  bcs_outfluxes_vol(iphase, CV_NODI,0) + &
+            Vol_flux(iphase)
+        end do
+
         if (outfluxes%calculate_flux)  then
           do iofluxes = 1, size(outfluxes%outlet_id)!here below we just need a saturation
             if (integrate_over_surface_element(tracer, sele, (/outfluxes%outlet_id(iofluxes)/))) then
@@ -3779,8 +3789,10 @@ end subroutine get_DarcyVelocity
                 outfluxes%area_outlet(iphase, iofluxes) = outfluxes%area_outlet(iphase, iofluxes) + suf_area
                 bcs_outfluxes(iphase, CV_NODI, iofluxes) =  bcs_outfluxes(iphase, CV_NODI, iofluxes) + &
                 Vol_flux(iphase)
-                outfluxes%bcs_vol_flux(iphase, CV_NODI, iofluxes) = bcs_outfluxes(iphase, CV_NODI, iofluxes)
-                outfluxes%bcs_mass_flux(iphase, CV_NODI, iofluxes) = bcs_outfluxes(iphase, CV_NODI, iofluxes) - Vol_flux(iphase) + Mass_flux(iphase)
+                bcs_outfluxes_mass(iphase, CV_NODI, iofluxes) =  bcs_outfluxes_mass(iphase, CV_NODI, iofluxes) + &
+                Mass_flux(iphase)
+                bcs_outfluxes_vol(iphase, CV_NODI, iofluxes) =  bcs_outfluxes_vol(iphase, CV_NODI, iofluxes) + &
+                Vol_flux(iphase)
               end do
               !Average value over the surface
               do ifields = 1, size(outfluxes_fields)

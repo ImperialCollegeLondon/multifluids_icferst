@@ -171,8 +171,8 @@ contains
         final_phase, &! final_phase => reservoir domain
         Mdims, ndgln, well_dummy7, CV_P, SOURCT_ALL, well_dummy8, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
         SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, getcv_disc, getct, getNewtonType, getResidual,Mmat, Mspars, upwnd, .false., DT, &
-        pipes_aux, well_dummy4, well_dummy6,MEAN_PORE_CV, MEAN_PORE_CV, eles_with_pipe, .false.,&
-        1.0, MASS_CV, well_dummy4, MASS_ELE, well_dummy2, well_dummy3,&
+        pipes_aux, well_dummy4, well_dummy6,MEAN_PORE_CV, MEAN_PORE_CV, eles_with_pipe, .false.,&  ! pscpsc to be added MEN_PORE_CV_TOTAL?
+        1.0, MASS_CV, well_dummy4, MASS_ELE, well_dummy2, well_dummy2, well_dummy2, well_dummy3,&
         well_dummy1, loc_assemble_collapsed_to_one_phase )
 
 
@@ -218,7 +218,7 @@ contains
     !>@param assemble_collapsed_to_one_phase Collapses phases and solves for one single temperature. When there is thermal equilibrium
     SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                   getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                  INV_SIGMA, upwnd, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase )
+                  INV_SIGMA, upwnd, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase )
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
       type(multi_dimensions), intent(in) :: Mdims
@@ -238,6 +238,8 @@ contains
       integer, intent(in) :: final_phase, wells_first_phase
       ! Local variables
       real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
+      real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes_mass!<= if allocated then calculate outfluxes
+      real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes_vol!<= if allocated then calculate outfluxes
       type (multi_outfluxes), intent(inout) :: outfluxes
       ! Local variables
       INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc, jphase, assembly_phase
@@ -1003,7 +1005,7 @@ contains
                   !Finally store fluxes across all the boundaries either for mass conservation check or mass outflux
                   if (compute_outfluxes) then
                     sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)!We need SELE for this, not ideal but this operation is not done much overall
-                    call update_outfluxes(bcs_outfluxes, outfluxes, sele, JCV_NOD, suf_area,  &
+                    call update_outfluxes(bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, sele, JCV_NOD, suf_area,  &
                         NDOTQ * suf_area * LIMT, NDOTQ * suf_area * LIMDT, &!Vol_flux and Mass_flux
                         T_ALL, outfluxes_fields, wells_first_phase, final_phase*2 )
                   end if
@@ -1162,7 +1164,7 @@ contains
   subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, final_phase, Mdims, ndgln, DERIV, CV_P, &
                   SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL,&
                   getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, &
-                  mean_pore_cv, MEAN_PORE_CV_TOTAL, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes, porous_heat_coef, assemble_collapsed_to_one_phase )
+                  mean_pore_cv, MEAN_PORE_CV_TOTAL, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, porous_heat_coef, assemble_collapsed_to_one_phase )
       type(tensor_field), intent(inout) :: tracer
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
@@ -1189,6 +1191,8 @@ contains
       REAL, DIMENSION( : ), optional, intent(in) :: porous_heat_coef
       !variables to store the pipe outfluxes if asked by the user
       real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
+      real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes_mass!<= if allocated then calculate outfluxes
+      real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes_vol!<= if allocated then calculate outfluxes
       type (multi_outfluxes), intent(inout) :: outfluxes
       ! Local variables
       real :: auxR, cc, deltaP, rp, rp_nano, skin, h, h_nano, INV_SIGMA_ND, INV_SIGMA_NANO_N, w_sum_one1, w_sum_one2, one_m_cv_beta, beta, beta_min, beta_max, k_beta, tol
@@ -1303,7 +1307,7 @@ contains
       MASS_PIPE_FOR_COUP = 0.
       CALL MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
           getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
-          SIGMA_INV_APPROX, upwnd, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase)
+          SIGMA_INV_APPROX, upwnd, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase)
 
       GAMMA_PRES_ABS2 = 0.0
       !A_GAMMA_PRES_ABS only for compressible flow? sprint_to_do DO WE NEED TO DO THIS FOR Incompressible FLOW??
