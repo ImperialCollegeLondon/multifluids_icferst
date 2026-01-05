@@ -422,8 +422,22 @@ contains
           REAL, DIMENSION ( final_phase, Mdims%cv_nloc ) :: LOC_FEMT, LOC2_FEMT, LOC_FEMTOLD, LOC2_FEMTOLD, LOC_FEMT2, LOC2_FEMT2, &
                                                               LOC_FEMT2OLD, LOC2_FEMT2OLD
           ! nphase Variables:
-          real, dimension(final_phase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, NDOTQNEW, LIMDTOLD, &
-              INCOMEOLD, NDOTQOLD, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, FVT, LIMD, LIMDT
+          real, dimension(final_phase) :: NDOTQ
+          real, dimension(final_phase) :: INCOME
+          real, dimension(final_phase) :: CAP_DIFF_COEF_DIVDX
+          real, dimension(final_phase) :: DIFF_COEF_DIVDX
+          real, dimension(final_phase) :: DIFF_COEFOLD_DIVDX
+          real, dimension(final_phase) :: NDOTQNEW
+          real, dimension(final_phase) :: LIMDTOLD
+          real, dimension(final_phase) :: INCOMEOLD
+          real, dimension(final_phase) :: NDOTQOLD
+          real, dimension(final_phase) :: LIMTOLD
+          real, dimension(final_phase) :: LIMT
+          real, dimension(final_phase) :: LIMT_HAT
+          real, dimension(final_phase) :: LIMDOLD
+          real, dimension(final_phase) :: FVT
+          real, dimension(final_phase) :: LIMD
+          real, dimension(final_phase) :: LIMDT
           real, dimension(final_phase)::LIMT2, LIMT2OLD
           real, dimension(final_phase, Mdims%cv_nonods) :: FEMT_ALL, FEMTOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL
           REAL, DIMENSION( Mdims%ndim, final_phase, Mdims%cv_nloc, Mdims%totele ) :: DTX_ELE_ALL, DTOLDX_ELE_ALL
@@ -519,6 +533,7 @@ contains
 
           T2_ALL => null()
           T2OLD_ALL => null()
+          LIMDOLD = 0.0
           !Decide if we are solving for nphases-1
           Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
           !Check vanishing artificial diffusion options
