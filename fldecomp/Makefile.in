@@ -63,7 +63,7 @@ FLDECOMP = ../bin/fldecomp
 
 fldecomp: $(LIB) $(OBJS) 
 	@$(EVAL) $(LINKER) @OPENMP_CXXFLAGS@ -o $(FLDECOMP) -I../include/ \
-	    $(OBJS) $(LIBS) 
+	    $(OBJS) $(LIBS) $(LDFLAGS)
 
 clean:
 	rm -f *.o *~

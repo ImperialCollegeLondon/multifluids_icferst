@@ -433,18 +433,6 @@ dnl -------- Feature-tested flags (needs autoconf-archive) --------
 AX_CHECK_COMPILE_FLAG([-ffree-line-length-none],[FCFLAGS="$FCFLAGS -ffree-line-length-none"],[])
 AX_CHECK_COMPILE_FLAG([-ffixed-line-length-none],[FCFLAGS="$FCFLAGS -ffixed-line-length-none"],[])
 
-AS_IF([test "x$enable_debugging" = "xyes"], [
-  AX_CHECK_COMPILE_FLAG([-Og],[CFLAGS="$CFLAGS -Og"; CXXFLAGS="$CXXFLAGS -Og"],[CFLAGS="$CFLAGS -O0"; CXXFLAGS="$CXXFLAGS -O0"])
-  FCFLAGS="$FCFLAGS -g"
-  CFLAGS="$CFLAGS -g"
-  CXXFLAGS="$CXXFLAGS -g"
-  AC_DEFINE([DDEBUG],[1],[Enable debug code])
-], [
-  AX_CHECK_COMPILE_FLAG([-O3],[CFLAGS="$CFLAGS -O3"; CXXFLAGS="$CXXFLAGS -O3"],[])
-  AX_CHECK_COMPILE_FLAG([-O3],[FCFLAGS="$FCFLAGS -O3"],[])
-  AC_DEFINE([NDEBUG],[1],[Disable asserts])
-])
-
 AS_IF([test "x$enable_profiling" = "xyes"], [
   FCFLAGS="-pg $FCFLAGS"
   CFLAGS="-pg $CFLAGS"
@@ -995,6 +983,26 @@ AS_IF([test "x$enable_debugging" = "xyes"], [
   ])
 ])
 AC_SUBST([MEMORY_STATS])
+
+AS_IF([test "x$enable_debugging" = "xyes"], [
+  # Remove any existing -O flags to avoid conflicts
+  CFLAGS=`echo "$CFLAGS" | sed 's/-O[0-9g]*//g'`
+  CXXFLAGS=`echo "$CXXFLAGS" | sed 's/-O[0-9g]*//g'`
+  FCFLAGS=`echo "$FCFLAGS" | sed 's/-O[0-9g]*//g'`
+  # Always use -O0 for debugging
+  CFLAGS="$CFLAGS -O0"
+  CXXFLAGS="$CXXFLAGS -O0"
+  FCFLAGS="$FCFLAGS -O0"
+  FCFLAGS="$FCFLAGS -g"
+  CFLAGS="$CFLAGS -g -fsanitize=address -static-libasan"
+  CXXFLAGS="$CXXFLAGS -g -fsanitize=address -static-libasan"
+  LDFLAGS="$LDFLAGS -fsanitize=address -static-libasan"
+  AC_DEFINE([DDEBUG],[1],[Enable debug code])
+], [
+  AX_CHECK_COMPILE_FLAG([-O3],[CFLAGS="$CFLAGS -O3"; CXXFLAGS="$CXXFLAGS -O3"],[])
+  AX_CHECK_COMPILE_FLAG([-O3],[FCFLAGS="$FCFLAGS -O3"],[])
+  AC_DEFINE([NDEBUG],[1],[Disable asserts])
+])
 
 dnl -------- Hyperlight module --------
 AS_IF([test "x$enable_hyperlight" = "xyes"],[
