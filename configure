@@ -10240,13 +10240,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 if test "$USING_GFORTRAN" = "yes"; then
-    if test "$enable_debugging" = "yes" ; then
 	FFLAGS="-frecord-marker=4 $FFLAGS"
 	FCFLAGS="-frecord-marker=4 $FCFLAGS"
-    else
-	FFLAGS="-ffast-math -frecord-marker=4 $FFLAGS"
-	FCFLAGS="-ffast-math -frecord-marker=4 $FCFLAGS"
-    fi
     cat >> confdefs.h << EOF
 #define USING_GFORTRAN 1
 EOF

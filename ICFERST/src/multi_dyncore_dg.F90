@@ -1243,8 +1243,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             call allocate(Mmat%CV_RHS,nphase,sat_field%mesh,"RHS")
             call allocate(solution,nphase,sat_field%mesh,"Saturation")!; call zero(solution)
 
-            IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
-              ! use DEN=1 because the density is already in the theta variables
+            ! IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
+            !   ! use DEN=1 because the density is already in the theta variables
+            if (has_boussinesq_aprox) then
               ALLOCATE( DEN_ALL( nphase, Mdims%cv_nonods )); DEN_ALL = 1.
               ALLOCATE( DENOLD_ALL( nphase, Mdims%cv_nonods )); DENOLD_ALL = 1.
             ELSE
@@ -1701,8 +1702,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             call allocate(Mmat%CV_RHS,nphase,sat_field%mesh,"RHS")
             call allocate(solution,nphase,sat_field%mesh,"Saturation")!; call zero(solution)
 
-            IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
-              ! use DEN=1 because the density is already in the theta variables
+            ! IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
+            !   ! use DEN=1 because the density is already in the theta variables
+            if (has_boussinesq_aprox) then
               ALLOCATE( DEN_ALL( nphase, Mdims%cv_nonods )); DEN_ALL = 1.
               ALLOCATE( DENOLD_ALL( nphase, Mdims%cv_nonods )); DENOLD_ALL = 1.
             ELSE

@@ -457,7 +457,7 @@ contains
 
   end subroutine deallocate_subdomain_mesh
 
-  subroutine deallocate_mesh_faces(mesh)
+  recursive subroutine deallocate_mesh_faces(mesh)
     type(mesh_type) :: mesh
 
     if (.not.associated(mesh%faces)) return
@@ -509,7 +509,7 @@ contains
 
   end subroutine deallocate_mesh_faces
 
-  subroutine deallocate_mesh(mesh)
+  recursive subroutine deallocate_mesh(mesh)
     !!< Deallocate the components of mesh. Shape functions are not
     !!< deallocated here.
     type(mesh_type), intent(inout) :: mesh
@@ -625,7 +625,7 @@ contains
 
   end subroutine deallocate_scalar_field
 
-  subroutine remove_boundary_conditions_scalar(field)
+  recursive subroutine remove_boundary_conditions_scalar(field)
      !!< Removes and deallocates all boundary conditions from a field
      type(scalar_field), intent(inout):: field
 
@@ -681,7 +681,7 @@ contains
 
   end subroutine deallocate_vector_field
 
-  subroutine remove_boundary_conditions_vector(field)
+  recursive subroutine remove_boundary_conditions_vector(field)
      !!< Removes and deallocates all boundary conditions from a field
      type(vector_field), intent(inout):: field
      integer:: i
