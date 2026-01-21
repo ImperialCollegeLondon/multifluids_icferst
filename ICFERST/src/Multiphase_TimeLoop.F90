@@ -254,6 +254,8 @@ contains
         double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
         real :: total_mass_metal_before_adapt, total_mass_metal_after_adapt, total_mass_metal_after_correction, total_mass_metal_after_bound
         logical :: viscosity_EOS
+        character(len=PYTHON_FUNC_LEN) :: pyfunc
+        
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -1021,8 +1023,19 @@ contains
                 nonlinear_dt = dt!To use if also the nonlinear adapt time-step is on
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
                 call get_option( '/timestepping/adaptive_timestep/requested_cfl', rc )
-                call get_option( '/timestepping/adaptive_timestep/minimum_timestep', minc, stat, default = 0.)
-                call get_option( '/timestepping/adaptive_timestep/maximum_timestep', maxc, stat, default = 66.e6)
+
+                call get_option('/timestepping/adaptive_timestep/minimum_timestep/constant', minc, stat, default = 0.)
+                if (have_option('/timestepping/adaptive_timestep/minimum_timestep/python')) then
+                    call get_option('/timestepping/adaptive_timestep/minimum_timestep/python', pyfunc)
+                    call real_from_python(pyfunc, acctim, minc)
+                end if
+
+                call get_option('/timestepping/adaptive_timestep/maximum_timestep/constant', maxc, stat, default = 66.e6)
+                if (have_option('/timestepping/adaptive_timestep/maximum_timestep/python')) then
+                    call get_option('/timestepping/adaptive_timestep/maximum_timestep/python', pyfunc)
+                    call real_from_python(pyfunc, acctim, maxc)
+                end if
+
                 call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat, default = 1.1)
                 !For porous media we need to use the Courant number obtained in cv_assemb
                 if (is_porous_media) then

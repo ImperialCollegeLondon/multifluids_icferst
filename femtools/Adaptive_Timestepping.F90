@@ -31,7 +31,7 @@ module adaptive_timestepping
   !!< Contains new style adaptive timestepping routines
   
   use fldebug
-  use global_parameters, only : OPTION_PATH_LEN, FIELD_NAME_LEN
+  use global_parameters, only : OPTION_PATH_LEN, FIELD_NAME_LEN, PYTHON_FUNC_LEN
   use spud
   use unittest_tools
   use fields
@@ -70,6 +70,8 @@ contains
     type(scalar_field), pointer :: cflnumber_field
     type(vector_field), pointer :: velocity_field
     type(mesh_type), pointer :: mesh
+    character(len=PYTHON_FUNC_LEN) :: pyfunc
+    real :: current_time
         
     ewrite(1, *) "In calc_cflnumber_field_based_dt"
 
@@ -79,9 +81,19 @@ contains
       lforce_calculation = .false.
     end if
 
+    call get_option("/timestepping/current_time", current_time)
+
     call get_option(base_path // "/requested_cfl", max_cfl)
-    call get_option(base_path // "/minimum_timestep", min_dt, default = tiny(0.0))
-    call get_option(base_path // "/maximum_timestep", max_dt, default = huge(0.0))
+    call get_option(base_path // "/minimum_timestep/constant", min_dt, default = tiny(0.0))
+    if (have_option(base_path // '/minimum_timestep/python')) then
+      call get_option(base_path // '/minimum_timestep/python', pyfunc)
+      call real_from_python(pyfunc, current_time, min_dt)
+    end if
+    call get_option(base_path // "/maximum_timestep/constant", max_dt, default = huge(0.0))
+    if (have_option(base_path // '/maximum_timestep/python')) then
+      call get_option(base_path // '/maximum_timestep/python', pyfunc)
+      call real_from_python(pyfunc, current_time, max_dt)
+    end if
     call get_option(base_path // "/increase_tolerance", increase_tolerance, default = huge(0.0) * epsilon(0.0))
     ! what type of cfl number are we using?
     call get_option(base_path//"/courant_number[0]/name", cfl_type)
@@ -187,6 +199,8 @@ contains
     character(len = OPTION_PATH_LEN) :: base_path
     integer :: stat
     real :: max_cfl, max_dt, min_dt, increase_tolerance
+    character(len=PYTHON_FUNC_LEN) :: pyfunc
+    real :: current_time
     
     base_path = "/timestepping/adaptive_timestep"
     
@@ -205,7 +219,15 @@ contains
       FLExit("Maximum adaptive timestepping CFL number must be positive")
     end if
     
-    call get_option(trim(base_path) // "/minimum_timestep", min_dt, stat)
+    call get_option("/timestepping/current_time", current_time)
+
+    if (have_option(trim(base_path) // '/minimum_timestep/constant')) then
+      call get_option(trim(base_path) // "/minimum_timestep/constant", min_dt, stat)
+    else if (have_option(trim(base_path) // '/minimum_timestep/python')) then
+      call get_option(trim(base_path) // '/minimum_timestep/python', pyfunc)
+      call real_from_python(pyfunc, current_time, min_dt)
+    end if
+
     if(stat == SPUD_NO_ERROR) then
       if(min_dt < 0.0) then
         FLExit("Minimum timestep size cannot be negative")

@@ -36,7 +36,7 @@ module fluids_module
        simulation_start_time, &
        simulation_start_cpu_time, &
        simulation_start_wall_time, &
-       topology_mesh_name, FIELD_NAME_LEN, is_porous_media
+       topology_mesh_name, FIELD_NAME_LEN, is_porous_media, PYTHON_FUNC_LEN
   use futils, only: int2str
   use reference_counting, only: print_references
   use parallel_tools
@@ -912,6 +912,7 @@ contains
     real, intent(inout) :: dt
     integer, intent(inout) :: nonlinear_iterations, nonlinear_iterations_adapt
     type(state_type), dimension(:), pointer :: sub_state
+    character(len=PYTHON_FUNC_LEN) :: pyfunc
 
     ! Overwrite the number of nonlinear iterations if the option is switched on
     if(have_option("/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt")) then
@@ -939,8 +940,12 @@ contains
     call enforce_discrete_properties(state)
 
     if (have_option("/mesh_adaptivity/hr_adaptivity/adaptive_timestep_at_adapt")) then
-        if (have_option("/timestepping/adaptive_timestep/minimum_timestep")) then
-            call get_option("/timestepping/adaptive_timestep/minimum_timestep", dt)
+        if (have_option('/timestepping/adaptive_timestep/minimum_timestep/constant')) then
+            call get_option('/timestepping/adaptive_timestep/minimum_timestep/constant', dt)
+            call set_option("/timestepping/timestep", dt)
+        else if (have_option('/timestepping/adaptive_timestep/minimum_timestep/python')) then
+            call get_option('/timestepping/adaptive_timestep/minimum_timestep/python', pyfunc)
+            call real_from_python(pyfunc, current_time, dt)
             call set_option("/timestepping/timestep", dt)
         else
             ewrite(-1,*) "Warning: you have adaptive timestep adjustment after &&
